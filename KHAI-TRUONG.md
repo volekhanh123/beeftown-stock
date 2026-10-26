@@ -11,7 +11,7 @@ Các bước kỹ thuật đã có hướng dẫn trong `README.md` thì ở đ�
 | 1 | Gộp các PR đang mở: #73 (soát luồng 6 bước của kho), #88 (đổi màu `/noi-bo` và kho). | Khánh | 14/10 |
 | 2 | Chạy migration theo số ở SQL Editor, mỗi file một lần: trước hết các file đã ở main mà production còn thiếu (`npm run doi-chieu` chỉ ra; khi viết: `0063`, `0065` chưa chạy; `0069`–`0074`, `0078`, `0081`, `0084` vừa gộp ở PR #74, #75, #77, #78, #81), rồi hai file của PR #73 (hiện là `0086`, `0087`; số đổi nếu PR khác gộp trước — lấy số trong PR lúc gộp). Sau đó `npm run doi-chieu` phải báo KHỚP. Cách làm: `README.md`, mục "Chạy migration lên production". | Khánh | 15/10 |
 | 3 | `npm run deploy` khi CI xanh — beeftown.vn hiện địa chỉ mới. | Khánh | 15/10 |
-| 4 | Bật sao lưu hằng đêm: thêm 2 secret `SAO_LUU_DB_URL`, `SAO_LUU_MAT_KHAU`, chạy tay một lượt, đèn "Sao lưu dữ liệu" ở `/noi-bo` phải xanh. Đèn đang đỏ từ 05/10 — **chưa có bản sao nào**. Cách làm: `README.md`, mục "Sao lưu và khôi phục". | Khánh | 15/10 |
+| 4 | Bật sao lưu hằng đêm: thêm 2 secret `SAO_LUU_DB_URL`, `SAO_LUU_MAT_KHAU`, chạy tay một lượt, đèn "Sao lưu dữ liệu" ở `/noi-bo` phải ở mức **Ổn**. Đèn đang ở mức **Xử lý ngay** (đỏ) từ 05/10 — **chưa có bản sao nào**. Cách làm: `README.md`, mục "Sao lưu và khôi phục". | Khánh | 15/10 |
 
 ## B. Trước phiếu nhận hàng thật đầu tiên (khoảng 20/10)
 
@@ -20,7 +20,7 @@ Các bước kỹ thuật đã có hướng dẫn trong `README.md` thì ở đ�
 | # | Việc | Ai | Hạn |
 |---|---|---|---|
 | 5 | Mở Kho → Mặt hàng và Nhà cung cấp, ghi lại những mục anh đã gõ tay giữa dữ liệu mô phỏng (đã thấy: mặt hàng "RIBEYE", nhà cung cấp "SLK Grou…"). Bước 7 xoá cả chúng. | Khánh | 17/10 |
-| 6 | Kiểm tra đèn "Sao lưu dữ liệu" xanh (mục 4) — có bản sao trước khi xoá. | Khánh | 17/10 |
+| 6 | Kiểm tra đèn "Sao lưu dữ liệu" ở mức **Ổn** (mục 4) — có bản sao trước khi xoá. | Khánh | 17/10 |
 | 7 | Dọn dữ liệu thử của kho: `crm/supabase/thu/don-du-lieu-thu-truoc-khai-truong.sql`. Sửa 3 dòng đầu file, chạy `'xem'`: đọc số dòng và cột "mới nhất" — mọi ngày ở đó phải là ngày nạp dữ liệu mô phỏng hoặc ngày anh bấm thử. Rồi chạy `'xoa'`. File tự từ chối nếu sai tên chi nhánh, sai ngày, đã tới 20/10, kho đã có danh mục thật, hoặc iPOS đang bật. Giữ vị trí, lý do, cài đặt kho, máy; số phiếu và số tảng bắt đầu lại từ 0001. | Khánh | 17/10 |
 | 8 | `/noi-bo/cai-dat` → Chi nhánh: tên, địa chỉ "Tầng 3, 63 Hồ Tùng Mậu", giờ mở (còn câu hỏi trưa 10:00 hay 11:00 — `README.md`). Nhập bàn thật, hoặc đóng form đặt bàn. | Khánh | 20/10 |
 | 9 | **Sau bước 7.** Danh mục thật theo màn **Kho → Thiết lập** (10 bước): mặt hàng, nhà cung cấp, công thức pha lóc, bảng ủ, ô mã cho phần cắt ủ, mã cân trùng mã món trên FABi, vị trí, lý do. Nguồn: bảng dữ liệu gốc dựng từ file của Sang. | Sang nhập, Khánh duyệt | 20/10 |

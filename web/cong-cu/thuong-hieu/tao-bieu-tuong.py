@@ -21,7 +21,6 @@ Không vẽ lại gì: mọi hình là path gốc, chỉ được đặt vị tr
 các SVG đầu vào (đỏ #BD0000, trắng). Chạy lại cho cùng kết quả.
 """
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -34,7 +33,11 @@ DO = '#BD0000'
 # Biểu tượng maskable: Android cắt theo hình tròn / bo tròn tùy máy, chỉ chắc giữ được
 # hình tròn đường kính 80% cạnh (vùng an toàn, chuẩn W3C). Giữ CẢ khung bao của
 # đầu bò trong hình tròn 78% — chừa 2% cho điểm khử răng cưa ở mép.
-VUNG_AN_TOAN, VUNG_GIU = 0.80, 0.78
+VUNG_GIU = 0.78
+# Ảnh chia sẻ: logo chính rộng 480px. Khoảng trống quanh logo theo guideline (trang 3) bằng
+# cạnh ô đầu bò, khoảng 14,8% bề rộng logo → 71px; 480 + 2 × 71 = 622 ≤ 630, nên ứng dụng cắt
+# ảnh thành ô vuông giữa (Zalo, WhatsApp) vẫn giữ trọn logo cùng khoảng trống của nó.
+RONG_LOGO_CHIA_SE = 480
 
 
 def doc(svg):
@@ -91,9 +94,10 @@ def ve_png(vao, ra, rong, cao=None):
         sys.exit(f've-svg.mjs không dựng được {Path(vao).name}:\n{kq.stderr.strip()}')
 
 
-# Đầu bò của brandmark cao khoảng 86% ô (guideline trang 5). Biểu tượng iPhone phủ kín nền đỏ
-# giữ đúng tỷ lệ đó: iPhone bo góc khoảng 22% cạnh, sừng bò vẫn nằm trong phần còn lại.
-TY_LE_CAO_IPHONE = 0.86
+# Biểu tượng iPhone: đầu bò trắng cao 66% cạnh trên nền đỏ phủ kín. iPhone bo góc khoảng 22%
+# cạnh; ở 66% sừng bò cách mép đủ xa, nhìn cân như biểu tượng app thường thấy (đầu bò của
+# brandmark cao 86% ô — đặt nguyên tỷ lệ đó lên biểu tượng iPhone thì sừng sát mép).
+TY_LE_CAO_IPHONE = 0.66
 
 
 def dung_bieu_tuong_app(public):
@@ -150,7 +154,7 @@ def main():
             '<!doctype html><html><body style="margin:0;width:1200px;height:630px;overflow:hidden;'
             f'position:relative;background:{DO}">'
             f'<img src="{(ra / "logo-ngang-trang.svg").as_uri()}" style="position:absolute;left:50%;top:50%;'
-            'width:680px;transform:translate(-50%,-50%)">'
+            f'width:{RONG_LOGO_CHIA_SE}px;transform:translate(-50%,-50%)">'
             '</body></html>', encoding='utf-8')
         ve_png(html, ra / 'chia-se-1200x630.png', 1200, 630)
         # PNG nén lại cho nhẹ: ảnh chỉ có hai màu phẳng và mép khử răng cưa.

@@ -208,7 +208,6 @@ const t = dich(ngonNgu, {
     <h1>{t.tieuDe}</h1>
     <p class="dan">{khongChacKhiChuaMo ? t.danKhongChac : chuaMo ? t.danChuaMo : t.dan}</p>
   </div>
-  <span class="trang-tri net huong-thao-5 net-goc" aria-hidden="true"></span>
 </section>
 
 <section class="be-kem hb">
@@ -216,7 +215,6 @@ const t = dich(ngonNgu, {
 
     {daNhanYeuCau && ketQua && (
       <div class="hb-the hb-da-nhan" data-ket-qua="da-nhan" tabindex="-1">
-        <img class="hb-tem" src="/thuong-hieu/tem-tron.svg" width="320" height="320" alt="" loading="lazy" decoding="async" />
         <h2 class="hb-tieu-de-the">{t.daNhan}</h2>
         {ketQua.ma && (
           <p class="hb-ma">{t.maYeuCau}<strong>{ketQua.ma}</strong></p>
@@ -636,8 +634,8 @@ const t = dich(ngonNgu, {
   .hb-dang-cho .hb-so { border-width: 3px; }
 
   /* ---- Thẻ (form / chưa mở / đã nhận) --------------------------------------- */
-  /* Cùng quy tắc với .the (cong-khai.css): nền kem sau trên trang kem, viền mảnh, đệm 20px
-     (điện thoại) / 24px, không bóng đổ. Ô nhập bên trong nền Cream. */
+  /* Cùng quy tắc với .the (cong-khai.css): nền xám nhạt --kem-sau trên trang trắng, viền mảnh,
+     đệm 20px (điện thoại) / 24px, không bóng đổ. Ô nhập bên trong nền trắng. */
   .hb-the {
     position: relative;
     background: var(--kem-sau);
@@ -652,10 +650,11 @@ const t = dich(ngonNgu, {
     text-wrap: balance;
   }
 
-  /* Khung lỗi của máy chủ: chữ than trên nền nhuộm đỏ nhạt, vạch đỏ đậm bên trái. */
+  /* Khung lỗi của máy chủ: chữ đen trên nền xám --kem-dam, vạch đỏ đậm bên trái — không nền đỏ nhạt
+     (bảng 22/10/2026 không có màu nhạt nào); câu lỗi luôn có chữ, vạch là dấu thứ hai. */
   .hb-loi {
     border-left: 4px solid var(--do-dam);
-    background: rgba(137, 6, 7, .08);
+    background: var(--kem-dam);
     padding: var(--k-3) var(--k-4);
     margin: 0 0 var(--k-5);
   }
@@ -688,8 +687,8 @@ const t = dich(ngonNgu, {
   .hb-buoi:lang(ko) { letter-spacing: .02em; }
   .hb-buoi:first-of-type { margin-top: 0; }
   /* Khung giờ là nút bấm, không phải ô chọn nhỏ xíu. Cao 48px — cùng chiều cao với ô nhập
-     và nút — để bấm được bằng ngón cái trong lúc đi đường. Chưa chọn: nền Cream như ô nhập;
-     đang chọn: nền Beef Red, chữ Cream, thêm dấu ✓. */
+     và nút — để bấm được bằng ngón cái trong lúc đi đường. Chưa chọn: nền trắng như ô nhập;
+     đang chọn: nền đỏ, chữ trắng, thêm dấu ✓. */
   .hb-chip {
     display: grid; gap: var(--k-2);
     grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
@@ -752,23 +751,9 @@ const t = dich(ngonNgu, {
   .hb-chua-mo .hang-nut { margin-top: var(--k-5); }
 
   /* ---- Đã nhận yêu cầu --------------------------------------------------- */
+  /* Không dấu thương hiệu thứ hai trong thẻ: đầu trang đã có logo; thẻ có vạch đỏ 4px ở trên và
+     tiêu đề "Đã nhận". */
   .hb-da-nhan { overflow: clip; border-top: 4px solid var(--do); }
-  .hb-tem {
-    display: block; width: 104px; height: auto; margin: 0 0 var(--k-4);
-  }
-  /* Từ 600px tem nổi ở góc phải, chữ chạy vòng quanh; khối "chưa giữ bàn" là
-     flow-root nên nền của nó không chui xuống dưới tem. */
-  @media (min-width: 600px) {
-    .hb-tem {
-      float: right; width: 120px; margin: calc(-1 * var(--k-2)) 0 var(--k-3) var(--k-4);
-      shape-outside: circle(50%); transform: rotate(-8deg);
-    }
-    .hb-chua-giu { display: flow-root; }
-  }
-  /* Tiêu đề cạnh tem cũng là flow-root: cả khối nằm gọn bên trái tem, mọi dòng cùng bề
-     rộng — text-wrap: balance mới chia đều được (Chrome không cân dòng khi có float chen
-     vào giữa đoạn, nên "… của / bạn" rơi một chữ xuống dòng). */
-  @media (min-width: 600px) { .hb-da-nhan .hb-tieu-de-the { display: flow-root; } }
   .hb-ma { font-size: 17px; margin: 0 0 var(--k-4); }
   .hb-ma strong {
     display: inline-block; margin-left: 2px;

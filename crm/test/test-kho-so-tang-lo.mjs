@@ -215,7 +215,7 @@ await nhom('3 · MỌI TRANG NÊU TÊN MỘT LÔ ĐỀU KÈM SỐ TẢNG', async
      /docNgayUTang\(/.test(pha) && /chuTang\(/.test(pha) && /TINH_TRANG_U_NB/.test(pha) && /cauConU\(/.test(pha) && /t\.moNgay\(/.test(pha));
   ok('HỒI QUY: phiên lóc — câu nhắc tảng còn đang ủ dựng bằng cauTangConU với ngày Việt Nam (homNayVn)',
      /cauTangConU\([^)]*homNayVn\(\)[^)]*\)/.test(pha) || (/cauTangConU\(/.test(pha) && /const homNay = homNayVn\(\)/.test(pha)));
-  // Câu nhắc là dòng vàng (nb-bao luu-y), có ở bước Cân & quét VÀ bước Kết quả; không chặn nút Chốt.
+  // Câu nhắc là khối lưu ý (nb-bao luu-y), có ở bước Cân & quét VÀ bước Kết quả; không chặn nút Chốt.
   const khoi = ten => {
     const i = pha.indexOf(`buoc === '${ten}' ? (`);
     const cac = ["buoc === 'can_quet' ? (", "buoc === 'ket_qua' ? (", "buoc === 'xong' ? ("].map(m => pha.indexOf(m)).filter(x => x > i);

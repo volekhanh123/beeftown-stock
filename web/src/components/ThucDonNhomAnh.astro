@@ -5,9 +5,8 @@
  * Khánh chốt cuốn menu in "bản sáng" ngày 11/10/2026 và bảo đưa lên trang Thực đơn. Không đưa nguyên
  * trang cuốn (giá dummy, chữ chờ chốt, ảnh khay AI): món vẫn đọc từ thuc_don_cong_khai() và chỉ món ĐÃ
  * CÔNG BỐ mới tới đây; component này chỉ mượn cách trình bày của cuốn:
- *  · tên nhóm chữ hoa, đậm 800, màu nhấn của bề mặt (Beef Red trên kem, đỏ đậm trên kem đậm; Marigold
- *    trên dải tối — không bao giờ chữ đỏ trên nền tối), cỡ --co-nhom (28 → 40px: to hơn h2, không to
- *    hơn h1);
+ *  · tên nhóm chữ hoa, đậm 800, màu nhấn của bề mặt (đỏ trên nền sáng; trắng trên dải đen — không
+ *    bao giờ chữ đỏ trên nền đen), cỡ --co-nhom (28 → 40px: to hơn h2, không to hơn h1);
  *  · ngay dưới là câu của nhóm (CAU_NHOM, khóa theo MÃ NHÓM, đậm, màu chữ chính) — nhóm không có câu
  *    (Món đặc trưng, nhóm đồ uống, nhóm mới) thì không in gì;
  *  · kieu 'dan-dau' (món ăn): món đầu tiên database trả là món dẫn đầu. Như trang của cuốn: tên nhóm,
@@ -67,7 +66,7 @@ const conLai = danDau ? nhom.mon.slice(1) : nhom.mon;
 const baCot = conLai.length >= 3;
 
 // sizes của <img> — bề rộng ảnh thật sự hiện ra (khung 1200px, lề 20–40px):
-//  · ảnh dẫn đầu từ 768px: cột phải, tối đa 560px; dải tối: cột nhóm ≤ 640px chia đôi;
+//  · ảnh dẫn đầu từ 768px: cột phải, tối đa 560px; dải đen: cột nhóm ≤ 640px chia đôi;
 //  · lưới ba cột: một phần ba khung; lưới hai cột: một nửa, tối đa 460px; dưới 600px: hết bề ngang;
 //  · ly signature: một phần ba cột thực đơn (7/11 khung từ 1024px), điện thoại tối đa 220px;
 //  · hàng gọn: dưới 600px ảnh nhỏ 128px — cùng chuỗi lưới cho từ 600px trở lên.

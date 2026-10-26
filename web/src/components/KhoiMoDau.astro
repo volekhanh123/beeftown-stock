@@ -6,9 +6,10 @@
  * bạn thích, rồi cùng cả bàn thưởng thức." Descriptor đứng trên câu chính.
  *
  * Hình chính là ảnh hero-vi-gas (ảnh minh họa, lib/anh.ts) — thay cho mảng vân mỡ đỏ của bản
- * trước. Tagline Pick it. Grill it. Love it. là một dải Beef Red gọn ngay dưới ảnh: không
- * đè lên ảnh, không logo hay chữ nào đặt lên ảnh, khung ảnh không bóng đổ. Dải có aria-hidden
- * (như bản trước): khối ba bước ngay sau đã đọc tagline ở dòng hiệu.
+ * trước. Tagline (THUONG_HIEU.khauHieu) là một dải đỏ gọn ngay dưới ảnh, chữ trắng in hoa như
+ * logo chính in "PICK IT, GRILL IT, LOVE IT!": không đè lên ảnh, không logo hay chữ nào đặt lên
+ * ảnh, khung ảnh không bóng đổ. Dải có aria-hidden (như bản trước): khối ba bước ngay sau đã đọc
+ * tagline ở dòng hiệu.
  *
  * Thứ tự (một nguồn HTML, CSS xếp lại):
  *  · điện thoại, máy tính bảng (dưới 900px): câu chính → mô tả → 2 nút → ảnh → dòng địa điểm.
@@ -41,8 +42,9 @@ const nut = nutMoDau(nd, ngonNgu);
 const lh = lienHe(nd);
 const ngayMo = nd.ngay_khai_truong;
 const daMo = !!(ngayMo && ngayMo <= homNayVn());
-// Ba vế của tagline, mỗi vế một khối: dải hẹp thì xuống dòng giữa hai vế, không cắt đôi "Grill / it.".
-const veKhauHieu = THUONG_HIEU.khauHieu.split(/(?<=\.)\s+/);
+// Ba vế của tagline, mỗi vế một khối: dải hẹp thì xuống dòng giữa hai vế, không cắt đôi "grill / it,".
+// Tách sau dấu phẩy, chấm hay chấm than: "Pick it," "grill it," "love it!" — dấu câu đổi lần nữa vẫn đúng.
+const veKhauHieu = THUONG_HIEU.khauHieu.split(/(?<=[,.!])\s+/);
 // Câu chỉ đường tách thành từng vế (sau dấu phẩy), mỗi vế một khối inline-block: xuống dòng
 // giữa hai vế, không cắt đôi "ngay cạnh / GS25" hay "thang / máy".
 // Chữ giữ nguyên (không \u00a0 trong loiLen — test đọc nguyên câu).
@@ -105,7 +107,7 @@ const cumDc = cumDiaChi(diaChiManDau(nd));
   .kmd-nut { margin-bottom: var(--k-6); }
   .kmd-hinh { margin-bottom: var(--k-6); }
 
-  /* Ảnh và dải tagline là một khối: ảnh bo hai góc trên, dải đỏ bo hai góc dưới. */
+  /* Ảnh và dải tagline là một khối: ảnh bo hai góc trên, dải đỏ bo hai góc dưới. Chữ trắng trên đỏ 6,64 : 1. */
   .kmd-hinh :global(.anh) { border-radius: var(--bo-anh) var(--bo-anh) 0 0; }
   .kmd-khau-hieu {
     display: flex; flex-wrap: wrap; justify-content: center; gap: 2px .9em;

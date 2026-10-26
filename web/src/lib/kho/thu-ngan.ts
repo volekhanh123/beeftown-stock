@@ -4,7 +4,7 @@
  * Kho chỉ biết một khay bán ra thuộc tảng nào khi dòng hóa đơn iPOS mang MÃ Ô (FABi bán món
  * "<món> ô <số>", mã món = mã ô) — hoặc mã giảm giá (trừ theo hạn gần nhất, có chủ ý: lô cận
  * date ở quầy gần như luôn là lô lóc sớm nhất). Thu ngân chọn tay món chung, tem in bằng mã
- * chung, món ô chưa có trên FABi: tổng tồn vẫn đúng, đèn vẫn xanh, nhưng truy vết tảng hỏng
+ * chung, món ô chưa có trên FABi: tổng tồn vẫn đúng, đèn iPOS vẫn "Đang chạy tốt", nhưng truy vết tảng hỏng
  * âm thầm. File này cho hai màn thấy chỗ hỏng:
  *
  *   · Ghép món (/noi-bo/kho/ban-ipos/ghep, vai danh_muc): "Món cần có trên FABi" — mỗi ô mã và
@@ -380,13 +380,14 @@ export function monCanCoTrenFabi(du: DuLieuMonFabi): DongMonFabi[] {
     || (a.loai === b.loai ? 0 : a.loai === 'o' ? -1 : 1));
 }
 
-/** Nhãn và lớp nb-nhan của cột "Trên FABi". */
+/** Nhãn và lớp nb-nhan của cột "Trên FABi": có → song (K4 ✓); ngừng bán / chưa thấy → luu-y (K5 "lưu ý", không phải
+    "nháp" — nhap là K3 nền đen); chưa đọc thực đơn → tat (K6). */
 export function nhanTrenFabi(tt: TrenFabi): [HaiThuTieng, string] {
   switch (tt) {
     case 'co': return [{ vi: 'Mã món có trên FABi (mã vạch phải thử bằng một tem)',
                          en: 'Dish code is on FABi (check the barcode with one test label)' }, 'song'];
-    case 'ngung_ban': return [{ vi: 'Có trên FABi nhưng ngừng bán', en: 'On FABi but no longer sold' }, 'nhap'];
-    case 'chua_thay': return [{ vi: 'Chưa thấy trên FABi', en: 'Not seen on FABi' }, 'nhap'];
+    case 'ngung_ban': return [{ vi: 'Có trên FABi nhưng ngừng bán', en: 'On FABi but no longer sold' }, 'luu-y'];
+    case 'chua_thay': return [{ vi: 'Chưa thấy trên FABi', en: 'Not seen on FABi' }, 'luu-y'];
     default: return [{ vi: 'Chưa đọc được thực đơn iPOS', en: 'iPOS menu not read yet' }, 'tat'];
   }
 }

@@ -68,9 +68,10 @@ trong `/noi-bo`.
 
 ## Dữ kiện cố định
 
-- Tên: **Beeftown**. Descriptor: *Beef Specialty Restaurant*. Tagline: *Pick it. Grill it. Love it.*
-  (có dấu chấm; `THUONG_HIEU` trong `web/src/lib/chu.ts`). Câu chính cho khách: *Không cần rành bò.
-  Chọn theo gu, thấy giá trước.*
+- Tên: **Beeftown**. Descriptor: *Beef Specialty Restaurant*. Tagline: *Pick it, grill it, love it!*
+  (dấu phẩy, chấm than — theo logo 21/10/2026, Khánh chốt 26/10/2026; `THUONG_HIEU.khauHieu` trong
+  `web/src/lib/chu.ts`; giữ nguyên tiếng Anh ở mọi thứ tiếng; logo chính đã in tagline — đừng gõ lại
+  cạnh logo). Câu chính cho khách: *Không cần rành bò. Chọn theo gu, thấy giá trước.*
 - Địa điểm: **Tầng 3, 63 Hồ Tùng Mậu** (tiếng Anh "Floor 3, 63 Hồ Tùng Mậu", tiếng Hàn "Hồ Tùng Mậu
   63, 3층"). Bản ngắn không có tầng: "63 Hồ Tùng Mậu, TP.HCM" / "63 Hồ Tùng Mậu, Ho Chi Minh City" /
   "호치민시 Hồ Tùng Mậu 63" (`diaChiNgan`). Mã đã ghi đúng như vậy: `DIA_CHI_PHAN`, `DIA_CHI_NHA_HANG`

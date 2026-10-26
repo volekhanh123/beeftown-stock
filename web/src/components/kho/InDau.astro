@@ -1,7 +1,11 @@
 ---
 /**
- * Đầu trang KHI IN (ẩn trên màn hình): tên quán, chi nhánh, tên chứng từ, số
+ * Đầu trang KHI IN (ẩn trên màn hình): logo, chi nhánh, tên chứng từ, số
  * phiếu, giờ in. Giấy in ra để ký, lưu cùng hóa đơn, nên phải tự nói nó là gì.
+ *
+ * Logo chính bản đen (logo-ngang-den.svg, Brand Guidelines 21/10/2026): máy in của
+ * quán in đen trắng — bản đỏ ra xám nhạt. Logo là hình, không gõ lại chữ BEEFTOWN.
+ * Không lazy: ảnh lười nằm trong khối ẩn trên màn hình thì có khi chưa tải lúc bấm in.
  */
 import { dinhDangThoiDiem } from '../../lib/kho/chung.ts';
 import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
@@ -14,7 +18,8 @@ const t = dichNB(nnCua(Astro), {
 });
 ---
 <header class="kho-chi-in kho-in-dau">
-  <p class="kho-in-quan">BEEFTOWN{chiNhanh ? ` · ${chiNhanh}` : ''}</p>
+  <img class="kho-in-logo" src="/thuong-hieu/logo-ngang-den.svg" width="579" height="131" alt="Beeftown" />
+  {chiNhanh && <p class="kho-in-quan">{chiNhanh}</p>}
   <p class="kho-in-ten">{tieuDe}</p>
   <p class="kho-in-so">{soPhieu ? `${t.so}: ${soPhieu} · ` : ''}{t.inLuc} {dinhDangThoiDiem(new Date().toISOString())}</p>
 </header>

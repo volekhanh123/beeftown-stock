@@ -444,9 +444,9 @@ const idMa = (ma: string) => `ma-${ma.replace(/[^A-Za-z0-9_-]/g, '_')}`;
                     <td>{m.loai ?? '—'}</td>
                     <td>{o.kieu === 'da_ghep' && g
                       ? <>{chuKieu(g)}{g.don_vi_ban && g.don_vi_ban !== 'suat' ? ` · ${tenDonViBan(g.don_vi_ban, nn).toLowerCase()}` : ''}
-                          {o.ghepSai && <> <span class="nb-nhan nhap">{t.nenBoGhep}</span></>}</>
-                      : o.kieu === 'tu_nhan_giam' ? <span class="nb-nhan song">{t.khoTuNhanGiam(o.phanTram)}</span>
-                      : o.kieu === 'tu_nhan_o' ? <span class="nb-nhan song">{t.khoTuNhanO(o.soO, oTheoId.get(o.oMaId)?.ten ?? '')}</span>
+                          {o.ghepSai && <> <span class="nb-nhan luu-y">{t.nenBoGhep}</span></>}</>
+                      : o.kieu === 'tu_nhan_giam' ? <span class="nb-nhan thong-tin">{t.khoTuNhanGiam(o.phanTram)}</span>
+                      : o.kieu === 'tu_nhan_o' ? <span class="nb-nhan thong-tin">{t.khoTuNhanO(o.soO, oTheoId.get(o.oMaId)?.ten ?? '')}</span>
                       : <a class="nb-nut phu" href={`${DUONG}?ma=${encodeURIComponent(m.ma_ipos)}#${idMa(m.ma_ipos)}`}>{t.ghep}</a>}</td>
                   </tr>
                 );

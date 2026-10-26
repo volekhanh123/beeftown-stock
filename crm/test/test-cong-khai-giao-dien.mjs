@@ -10,26 +10,29 @@
  *   1. Mọi đường dẫn trong CAP_DUONG_DAN (web/src/lib/chu.ts) có file trang thật — nút đổi
  *      ngôn ngữ và sitemap không trỏ vào trang 404; và mọi trang .astro công khai đều nằm
  *      trong bảng đó.
- *   2. Khối :root đầu tiên của chung.css (cả /noi-bo và kho dùng) khai đúng 13 biến gốc với
- *      giá trị của bảng màu chốt 09/10/2026, mỗi biến một lần. cong-khai.css chỉ
- *      layouts/Trang.astro nạp, và mọi quy tắc của nó nằm dưới .ck / html:has(body.ck) —
- *      không lọt ra /noi-bo, kho.
- *   3. SVG thương hiệu (web/public/thuong-hieu, bieu-tuong.svg) sạch: có viewBox; không
- *      <script>, không thuộc tính on…=, không <text> (chữ là nét vẽ gốc của PDF), không
- *      <image>, không href ra ngoài; màu chỉ trong bảng màu thương hiệu (bất biến 6).
+ *   2. Khối :root đầu tiên của chung.css (cả /noi-bo và kho dùng) khai đúng 11 biến gốc với
+ *      giá trị của bảng 22/10/2026 (đỏ, đen, trắng cùng màu pha màn hình 25/10/2026), mỗi biến
+ *      một lần; hai biến vàng cũ không còn khai. cong-khai.css chỉ layouts/Trang.astro nạp, và
+ *      mọi quy tắc của nó nằm dưới .ck / html:has(body.ck) — không lọt ra /noi-bo, kho.
+ *   3. Bộ logo 21/10/2026 (web/public/thuong-hieu, bieu-tuong.svg): đúng tập file — logo chính,
+ *      logo phụ, brandmark, mỗi thứ ba bản đỏ / đen / trắng, cùng nét đầu bò; không còn file nào của
+ *      bộ hình cũ. SVG sạch: có viewBox; không <script>, không thuộc tính on…=, không <text> (chữ là
+ *      path gốc của BEEFTOWN_Brand_Guidelines.pdf), không <image>, không href ra ngoài; màu chỉ
+ *      #BD0000, #000000, #FFFFFF, và mỗi bản đúng bộ màu của nó (bản trắng khoét đầu bò lộ nền).
  *   4. Tên file tài sản là ASCII. Mỗi cỡ ảnh khai trong anh-tao-san.ts có đủ .avif + .webp,
  *      mỗi file ≤ 300 KB, tổng ≤ 8 MB, không file ảnh thừa.
  *   5. Mọi file trong web/public/thuong-hieu, web/public/anh, web/cong-cu được git thấy
- *      (.gitignore "chặn hết rồi mở từng cái"). Ảnh chia sẻ đúng 1200×630.
- *   6. Trang công khai dùng đúng bảng màu Khánh chốt ngày 09/10/2026 (THUONG-HIEU.md): mã khai
- *      một lần trong khối .ck đầu tiên của cong-khai.css; không file công khai nào còn mã của
- *      bảng cũ; các cặp chữ / nền của hệ bề mặt đủ tương phản (WCAG 2.2). /noi-bo và kho dùng
- *      cùng bảng đó từ 12/10/2026 — phần của hai nơi ấy: test-noi-bo-bang-mau.mjs.
- *   7. Thành phần và khung trang của đợt redesign (PR 2): bảng màu không có trắng — không file
- *      công khai nào còn mã màu ngoài bảng; ô nhập nền Cream trong thẻ kem sau vẫn đủ tương phản
- *      viền; cỡ chữ, lưới, chiều cao đầu trang khai đúng; chân trang bỏ hoa văn chữ; biểu tượng
- *      một nét không co theo cỡ; bộ chọn ngôn ngữ in đủ ba thứ tiếng. (Số đo trên trang đã dựng:
- *      web/kiem-tra/do-giao-dien.mjs, chạy trong thu-trinh-duyet và thu-day-du.)
+ *      (.gitignore "chặn hết rồi mở từng cái"). Ảnh chia sẻ đúng 1200×630, chỉ màu đỏ và trắng.
+ *   6. Trang công khai dùng đúng bảng 22/10/2026 (THUONG-HIEU.md): mã khai một lần trong khối .ck
+ *      đầu tiên của cong-khai.css; không file công khai nào còn mã của các bảng cũ (kể cả bảng
+ *      09/10/2026 và tám màu trạng thái); các cặp chữ / nền của hệ bề mặt đủ tương phản (WCAG 2.2).
+ *      /noi-bo và kho dùng cùng bảng đó — phần của hai nơi ấy: test-noi-bo-bang-mau.mjs.
+ *   7. Thành phần và khung trang: mã màu viết thẳng chỉ là mã của bảng 22/10/2026 — nền trang trắng
+ *      đi qua token --kem, không trắng ngà, không kem cũ, không #fff ngoài bản in; ô nhập nền trắng
+ *      trong thẻ #F4F4F4 vẫn đủ tương phản viền; cỡ chữ, lưới, chiều cao đầu trang khai đúng; đầu
+ *      trang, chân trang, thẻ nhãn khay đặt đúng bản logo, đúng tỷ lệ viewBox; chân trang bỏ hoa văn
+ *      chữ; biểu tượng một nét không co theo cỡ; bộ chọn ngôn ngữ in đủ ba thứ tiếng. (Số đo trên
+ *      trang đã dựng: web/kiem-tra/do-giao-dien.mjs, chạy trong thu-trinh-duyet và thu-day-du.)
  */
 
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
@@ -90,17 +93,20 @@ await nhom('1 · MỌI ĐƯỜNG DẪN CÓ FILE TRANG, MỌI TRANG CÔNG KHAI C�
 });
 
 // ===========================================================================
-// 13 biến gốc của khối :root đầu tiên trong chung.css — chép tay ở đây, KHÔNG đọc từ file:
+// 11 biến gốc của khối :root đầu tiên trong chung.css — chép tay ở đây, KHÔNG đọc từ file:
 // sửa nhầm một giá trị ở chung.css thì /noi-bo và kho đổi màu theo, và phép thử này đỏ.
-// Tới 10/10/2026 bảng này chép bảng màu cũ, để một PR của trang công khai không lỡ tay đổi màu
-// nội bộ. Ngày 12/10/2026 /noi-bo và kho đổi sang bảng màu Khánh chốt 09/10/2026, nên giá trị
-// mong đợi là bảng đó — cùng giá trị với khối .ck (BANG_MAU_CHOT, nhóm 6).
+// Từ PR "Đổi nhận diện website" giá trị mong đợi là bảng 22/10/2026 (đỏ #BD0000, đen, trắng) cùng các
+// màu pha màn hình Khánh duyệt 25/10/2026 — cùng giá trị với khối .ck (BANG_MAU_CHOT, nhóm 6). Tên biến
+// giữ (--kem là trắng, --than là đen); đổi tên là PR sau. Hai biến vàng (--mu-tat, --cuc-vang) bỏ hẳn:
+// BIEN_BO bên dưới gác chúng không quay lại.
 const BIEN_GOC = {
-  '--do': '#A70C0C', '--do-dam': '#890607', '--kem': '#F0E3D0', '--kem-sau': '#EBDCC6',
-  '--mu-tat': '#F5AA14', '--cuc-vang': '#F5AA14', '--than': '#151008', '--da': '#B8A98C',
-  '--muc-nhat': 'rgba(21, 16, 8, .68)', '--vach': 'rgba(21, 16, 8, .16)', '--vach-kem': 'rgba(240, 227, 208, .22)',
-  '--vien-o': '#7A7366', '--rong': 'min(1120px, 90%)',
+  '--do': '#BD0000', '--do-dam': '#8F0000', '--kem': '#FFFFFF', '--kem-sau': '#F4F4F4',
+  '--than': '#000000', '--da': '#E2E2E2',
+  '--muc-nhat': '#555555', '--vach': '#E2E2E2', '--vach-kem': 'rgba(255, 255, 255, .22)',
+  '--vien-o': '#767676', '--rong': 'min(1120px, 90%)',
 };
+// Biến của bảng cũ đã bỏ: không được khai lại ở đâu (một ok mỗi biến, bù cho hai dòng BIEN_GOC bớt đi).
+const BIEN_BO = ['--mu-tat', '--cuc-vang'];
 const boChuThich = css => css.replace(/\/\*[\s\S]*?\*\//g, '');
 const chuanHoa = v => v.trim().replace(/\s+/g, ' ').toLowerCase();
 
@@ -163,7 +169,7 @@ function kieuCua(f) {
 }
 // Tên màu CSS, màu hệ thống và bộ quét cách viết màu: mau-css.mjs (dùng chung với test-noi-bo-bang-mau.mjs).
 
-await nhom('2 · chung.css ĐÚNG 13 BIẾN GỐC CỦA BẢNG MÀU CHỐT; cong-khai.css CHỈ Ở TRANG CÔNG KHAI', async () => {
+await nhom('2 · chung.css ĐÚNG 11 BIẾN GỐC CỦA BẢNG 22/10/2026; cong-khai.css CHỈ Ở TRANG CÔNG KHAI', async () => {
   const chung = boChuThich(readFileSync(join(SRC, 'styles', 'chung.css'), 'utf8'));
   const root = chung.match(/:root\s*\{([^}]*)\}/)?.[1] ?? '';
   for (const [bien, giaTri] of Object.entries(BIEN_GOC)) {
@@ -171,6 +177,10 @@ await nhom('2 · chung.css ĐÚNG 13 BIẾN GỐC CỦA BẢNG MÀU CHỐT; cong
     const soLanKhai = (chung.match(new RegExp(`(?:^|[;{\\s])${bien.replace(/-/g, '\\-')}\\s*:`, 'g')) ?? []).length;
     ok(`chung.css: ${bien} là ${giaTri}, khai đúng một lần`, !!m && chuanHoa(m[1]) === chuanHoa(giaTri) && soLanKhai === 1,
        m ? `${m[1].trim()} · khai ${soLanKhai} lần` : 'không thấy trong khối :root đầu tiên');
+  }
+  for (const bien of BIEN_BO) {
+    const soLanKhai = (chung.match(new RegExp(`(?:^|[;{\\s])${bien.replace(/-/g, '\\-')}\\s*:`, 'g')) ?? []).length;
+    ok(`chung.css không còn khai ${bien} (biến vàng của bảng cũ, bỏ theo bảng 22/10/2026)`, soLanKhai === 0, `khai ${soLanKhai} lần`);
   }
 
   // Ai nạp cong-khai.css: import trong .astro / .ts, @import trong CSS, <link href>.
@@ -199,15 +209,62 @@ await nhom('2 · chung.css ĐÚNG 13 BIẾN GỐC CỦA BẢNG MÀU CHỐT; cong
 });
 
 // ===========================================================================
-// Bảng màu thương hiệu Khánh chốt ngày 09/10/2026 (THUONG-HIEU.md mục 1) cùng các màu pha của trang
-// công khai (BANG_MAU_CHOT ở nhóm 6). Hình vẫn là nét gốc của PDF nhận diện; tao-bieu-tuong.py đổi mã
-// màu của PDF sang bảng này khi chép SVG. Thêm màu vào đây chỉ khi THUONG-HIEU.md đã có nó.
-const BANG_MAU = new Set(['#A70C0C', '#890607', '#F0E3D0', '#EBDCC6', '#E7D5BC', '#151008',
-  '#000', '#000000', '#FFF', '#FFFFFF', 'NONE', 'CURRENTCOLOR', 'TRANSPARENT']);
+// Bộ logo 21/10/2026: path gốc của BEEFTOWN_Brand_Guidelines.pdf, tách bằng web/cong-cu/thuong-hieu/tach-logo.mjs
+// (bieu-tuong.svg dựng bằng tao-bieu-tuong.py từ cùng path). Logo chỉ có ba màu của guideline: đỏ, đen,
+// trắng — viết 6 chữ số. Danh sách cho phép chỉ được BỚT (không thêm màu pha màn hình, không dạng 3 chữ số,
+// không currentColor / transparent: logo không đổi màu theo chỗ đặt).
+const BANG_MAU = new Set(['#BD0000', '#000000', '#FFFFFF', 'NONE']);
 const SVG = [...moiFile(join(WEB, 'public', 'thuong-hieu')).filter(f => f.endsWith('.svg')), join(WEB, 'public', 'bieu-tuong.svg')];
 
-await nhom(`3 · ${SVG.length} SVG THƯƠNG HIỆU SẠCH, MÀU TRONG BẢNG MÀU THƯƠNG HIỆU`, async () => {
-  ok('Có tài sản SVG thương hiệu (logo, đầu bò, rosemary, tem…)', SVG.length >= 10, `${SVG.length} file`);
+// Tập file đúng của web/public/thuong-hieu (quyet-dinh.md "Tài sản logo mới"): ba biến thể × ba bản màu,
+// nét đầu bò dựng biểu tượng app, và hai PNG tao-bieu-tuong.py dựng. So đúng tập tên, không "≥ N".
+const BIEN_THE_LOGO = {
+  // tên gốc → [viewBox rộng, cao]: khung hình đo trong PDF làm tròn LÊN số nguyên (tach-logo.mjs đặt hình giữa),
+  // để thẻ <img width height> số nguyên đúng tỷ lệ thật — lệch thì trang xô khi logo tải xong. Mọi bản màu cùng viewBox.
+  'logo-ngang': [579, 131],     // logo chính (lockup có tagline) — hình 578,148 × 130,406
+  'chu-beeftown': [430, 61],    // logo phụ (chữ BEEFTOWN, không tagline) — hình 429,191 × 60,52
+  'dau-bo': [177, 169],         // brandmark (ô bo góc + đầu bò) — hình 176,809 × 168,371
+};
+const BAN_MAU = ['do', 'den', 'trang'];
+const TAP_THUONG_HIEU = [
+  ...Object.keys(BIEN_THE_LOGO).flatMap(goc => BAN_MAU.map(b => `${goc}-${b}.svg`)),
+  'net-dau-bo.svg', 'chia-se-1200x630.png', 'bieu-tuong-180.png',
+].sort();
+// 14 file của bộ hình cũ (PDF nhận diện 09/10/2026) đã xoá — QĐ6 "bỏ hết hình của bộ nhận diện cũ". Hai tên
+// logo-ngang-do.svg, dau-bo-do.svg giữ tên nhưng nội dung mới (bộ màu kiểm ở dưới).
+const HINH_CU = ['chu-beeftown-nho.svg', 'dau-bo-kem.svg', 'hoa-van-chu.svg', 'huong-thao-1.svg', 'huong-thao-2.svg',
+  'huong-thao-3.svg', 'huong-thao-4.svg', 'huong-thao-5.svg', 'logo-ngang-kem.svg', 'steak-net-1.svg', 'steak-net-2.svg',
+  'tem-tron.svg', 'van-mo.svg', 'van-mo-gan.svg'];
+/** Bộ màu mong đợi của một file SVG theo hậu tố bản màu: bản đỏ / đen có đầu bò trắng; bản trắng chỉ trắng. */
+function boMauMongDoi(ten) {
+  if (ten === 'bieu-tuong.svg') return ['#BD0000', '#FFFFFF'];
+  if (ten === 'net-dau-bo.svg') return ['#FFFFFF'];
+  const ban = ten.match(/-(do|den|trang)\.svg$/)?.[1];
+  return { do: ['#BD0000', '#FFFFFF'], den: ['#000000', '#FFFFFF'], trang: ['#FFFFFF'] }[ban] ?? null;
+}
+/** Mọi màu tô / nét khai trong một SVG (thuộc tính và style), viết hoa, bỏ url(#…). */
+function mauTrongSvg(s) {
+  return [
+    ...[...s.matchAll(/\b(?:fill|stroke|stop-color|flood-color|lighting-color|color)\s*=\s*["']([^"']+)["']/gi)].map(m => m[1]),
+    ...[...s.matchAll(/\b(?:fill|stroke|stop-color|flood-color|color)\s*:\s*([^;"'}]+)/gi)].map(m => m[1]),
+  ].map(m => m.trim().toUpperCase()).filter(m => !/^URL\(#/.test(m));
+}
+
+await nhom(`3 · BỘ LOGO 21/10/2026: ĐÚNG TẬP FILE, ${SVG.length} SVG SẠCH, MỖI BẢN ĐÚNG BA MÀU CỦA GUIDELINE`, async () => {
+  const thuMuc = join(WEB, 'public', 'thuong-hieu');
+  const coSan = existsSync(thuMuc) ? readdirSync(thuMuc).filter(f => f !== '.DS_Store').sort() : [];
+  const thua = coSan.filter(f => !TAP_THUONG_HIEU.includes(f));
+  const thieu = TAP_THUONG_HIEU.filter(f => !coSan.includes(f));
+  ok(`web/public/thuong-hieu đúng ${TAP_THUONG_HIEU.length} file của bộ 21/10/2026: logo-ngang, chu-beeftown, dau-bo × {do, den, trang}, net-dau-bo.svg, chia-se-1200x630.png, bieu-tuong-180.png`,
+     thua.length === 0 && thieu.length === 0, [thua.length && `thừa: ${thua.join(', ')}`, thieu.length && `thiếu: ${thieu.join(', ')}`].filter(Boolean).join(' · '));
+  const conHinhCu = HINH_CU.filter(f => existsSync(join(thuMuc, f)));
+  ok(`Không còn file nào trong ${HINH_CU.length} file của bộ hình cũ (chu-beeftown-nho, dau-bo-kem, hoa-van-chu, huong-thao-1..5, logo-ngang-kem, steak-net-1..2, tem-tron, van-mo, van-mo-gan)`,
+     conHinhCu.length === 0, conHinhCu.join(', '));
+  // Mẫu tự kiểm: tập so đúng tên, nên một file thừa (dù đúng đuôi) hay thiếu một bản màu đều bị bắt.
+  const tapThu = [...TAP_THUONG_HIEU.filter(f => f !== 'dau-bo-den.svg'), 'tem-tron.svg'];
+  ok('…phép so tập file bắt được một file của bộ cũ còn sót và một bản màu bị thiếu',
+     tapThu.some(f => !TAP_THUONG_HIEU.includes(f)) && TAP_THUONG_HIEU.some(f => !tapThu.includes(f)));
+  ok('Có tài sản SVG thương hiệu (logo chính, logo phụ, brandmark ba bản màu, nét đầu bò, bieu-tuong.svg)', SVG.length >= 10, `${SVG.length} file`);
   for (const f of SVG) {
     const s = readFileSync(f, 'utf8');
     const ten = tuGoc(f);
@@ -221,13 +278,61 @@ await nhom(`3 · ${SVG.length} SVG THƯƠNG HIỆU SẠCH, MÀU TRONG BẢNG MÀ
     if (/(?:xlink:)?href\s*=\s*["']\s*(?:https?:|\/\/|javascript:|data:)/i.test(s)) loi.push('href ra ngoài');
     ok(`${ten}: có viewBox, không script / on… / text / image / href ra ngoài`, loi.length === 0, loi.join(', '));
 
-    const mau = [
-      ...[...s.matchAll(/\b(?:fill|stroke|stop-color|flood-color|lighting-color|color)\s*=\s*["']([^"']+)["']/gi)].map(m => m[1]),
-      ...[...s.matchAll(/\b(?:fill|stroke|stop-color|flood-color|color)\s*:\s*([^;"'}]+)/gi)].map(m => m[1]),
-    ].map(m => m.trim().toUpperCase()).filter(m => !/^URL\(#/.test(m));
+    const mau = mauTrongSvg(s);
     const la = [...new Set(mau.filter(m => !BANG_MAU.has(m)))];
-    ok(`${ten}: màu chỉ trong bảng màu thương hiệu (${[...new Set(mau)].join(' ') || 'không khai màu'})`, la.length === 0, la.join(', '));
+    ok(`${ten}: màu chỉ #BD0000, #000000, #FFFFFF (${[...new Set(mau)].join(' ') || 'không khai màu'})`, la.length === 0, la.join(', '));
+
+    // Mỗi bản đúng bộ màu của nó (guideline: đỏ trên trắng, đen trên xám nhạt — đầu bò trắng; trắng trên đỏ / đen —
+    // đầu bò khoét lộ nền). Bản trắng có thêm mảng màu thứ hai là sai: đầu bò phải là lỗ, không phải hình tô.
+    const tenFile = ten.split('/').pop();
+    const mong = boMauMongDoi(tenFile);
+    const coMau = [...new Set(mau)].sort();
+    ok(`${tenFile}: đúng bộ màu ${mong ? mong.join(' + ') : '(tên lạ)'}`, !!mong && JSON.stringify(coMau) === JSON.stringify([...mong].sort()),
+       coMau.join(' ') || 'không khai màu');
+    if (/-trang\.svg$/.test(tenFile)) {
+      ok(`${tenFile}: bản trắng khoét đầu bò bằng fill-rule="evenodd" (lộ nền đỏ / đen), không có hình tô thứ hai`,
+         /fill-rule\s*=\s*["']evenodd["']/.test(s) && coMau.length === 1);
+    }
+    const goc = Object.keys(BIEN_THE_LOGO).find(g => new RegExp(`^${g}-(?:do|den|trang)\\.svg$`).test(tenFile));
+    if (goc) {
+      const vb = s.match(/<svg\b[^>]*\sviewBox\s*=\s*["']([^"']+)["']/)?.[1].trim().split(/[\s,]+/).map(Number) ?? [];
+      const [rong, cao] = BIEN_THE_LOGO[goc];
+      ok(`${tenFile}: viewBox 0 0 ${String(rong).replace('.', ',')} × ${String(cao).replace('.', ',')} — ba bản màu của ${goc} cùng một hình`,
+         vb.length === 4 && vb[0] === 0 && vb[1] === 0 && Math.abs(vb[2] - rong) < 0.001 && Math.abs(vb[3] - cao) < 0.001, vb.join(' '));
+    }
   }
+  // bieu-tuong.svg (tab trình duyệt) là brandmark đỏ dựng từ đúng path của dau-bo-do.svg — không vẽ lại.
+  const duongCua = f => existsSync(f) ? [...readFileSync(f, 'utf8').matchAll(/\sd\s*=\s*"([^"]+)"/g)].map(m => m[1]) : [];
+  const [bieuTuongD, dauBoD] = [duongCua(join(WEB, 'public', 'bieu-tuong.svg')), duongCua(join(WEB, 'public', 'thuong-hieu', 'dau-bo-do.svg'))];
+  ok('bieu-tuong.svg: brandmark dựng từ đúng path của dau-bo-do.svg (ô #BD0000, đầu bò #FFFFFF)',
+     bieuTuongD.length > 0 && bieuTuongD.length === dauBoD.length && bieuTuongD.every(d => dauBoD.includes(d)),
+     `${bieuTuongD.length} path · dau-bo-do.svg ${dauBoD.length} path`);
+  // Mẫu tự kiểm cho phép so bộ màu: bản trắng có thêm đầu bò đỏ, bản đỏ thiếu đầu bò trắng đều phải bị bắt.
+  const saiBoMau = (tenFile, s) => JSON.stringify([...new Set(mauTrongSvg(s))].sort()) !== JSON.stringify([...boMauMongDoi(tenFile)].sort());
+  ok('…phép so bộ màu bắt được bản trắng có mảng đỏ và bản đỏ thiếu đầu bò trắng',
+     saiBoMau('logo-ngang-trang.svg', '<path fill="#FFFFFF"/><path fill="#BD0000"/>') && saiBoMau('dau-bo-do.svg', '<path fill="#BD0000"/>')
+     && !saiBoMau('dau-bo-den.svg', '<path fill="#000000"/><path fill="#FFFFFF"/>'));
+
+  // Thẻ <img> của logo ghi width / height ĐÚNG tỷ lệ viewBox (nhân chéo, số nguyên): lệch thì trước khi SVG tải
+  // trình duyệt giữ chỗ theo tỷ lệ của thẻ, tải xong theo tỷ lệ thật — trang xô lệch (phép "ảnh về trang không xô
+  // lệch" của kiem-tra/trinh-duyet.mjs đỏ ở 768px khi thẻ ghi 578 × 130 cho hình 578,148 × 130,406).
+  const viewBoxCua = ten => readFileSync(join(WEB, 'public', 'thuong-hieu', ten), 'utf8')
+    .match(/<svg\b[^>]*\sviewBox\s*=\s*["']([^"']+)["']/)?.[1].trim().split(/[\s,]+/).map(Number);
+  const theLogoLech = ma => [...ma.matchAll(/<img\b[^>]*>/g)].flatMap(([the]) => {
+    const ten = the.match(/\ssrc\s*=\s*["']\/thuong-hieu\/([a-z0-9-]+\.svg)["']/)?.[1];
+    if (!ten || !existsSync(join(WEB, 'public', 'thuong-hieu', ten))) return [];
+    const [w, h] = ['width', 'height'].map(a => Number(the.match(new RegExp(`\\s${a}\\s*=\\s*["'](\\d+)["']`))?.[1]));
+    const vb = viewBoxCua(ten);
+    return w && h && vb && w * vb[3] === h * vb[2] ? [] : [`${ten} ${w || '?'} × ${h || '?'} (viewBox ${vb?.[2]} × ${vb?.[3]})`];
+  });
+  const lechTrongMa = moiFile(join(WEB, 'src')).filter(f => /\.(astro|ts)$/.test(f))
+    .flatMap(f => theLogoLech(readFileSync(f, 'utf8')).map(l => `${relative(GOC, f)}: ${l}`));
+  ok('Mọi thẻ <img> logo /thuong-hieu/*.svg trong web/src ghi width / height đúng tỷ lệ viewBox (không xô trang khi logo tải)',
+     lechTrongMa.length === 0, lechTrongMa.join(' · '));
+  ok('…phép nhân chéo bắt được thẻ ghi 578 × 130 cho logo-ngang-do.svg và thẻ thiếu height',
+     theLogoLech('<img src="/thuong-hieu/logo-ngang-do.svg" width="578" height="130" alt="">').length === 1
+     && theLogoLech('<img src="/thuong-hieu/dau-bo-do.svg" width="177" alt="">').length === 1
+     && theLogoLech('<img alt="" width="579" height="131" src="/thuong-hieu/logo-ngang-do.svg">').length === 0);
 });
 
 // ===========================================================================
@@ -276,6 +381,28 @@ function coPng(f) {
   if (!chuKy || b.subarray(12, 16).toString('latin1') !== 'IHDR') return null;
   return { rong: b.readUInt32BE(16), cao: b.readUInt32BE(20) };
 }
+/** Bảng màu của PNG bảng màu (khối PLTE) → [[r, g, b], …]; PNG không có PLTE → null. */
+function bangMauPng(f) {
+  if (!existsSync(f)) return null;
+  const b = readFileSync(f);
+  for (let i = 8; i + 8 <= b.length;) {
+    const dai = b.readUInt32BE(i), loai = b.subarray(i + 4, i + 8).toString('latin1');
+    if (loai === 'PLTE') return Array.from({ length: dai / 3 }, (_, k) => [...b.subarray(i + 8 + 3 * k, i + 11 + 3 * k)]);
+    if (loai === 'IDAT' || loai === 'IEND') return null;
+    i += 12 + dai;
+  }
+  return null;
+}
+/**
+ * Màu c nằm trên đoạn pha giữa hai màu a và b (mép khử răng cưa của hình một màu đặt trên nền một màu), sai số
+ * `sai` mỗi kênh: tìm tỉ lệ pha t gần nhất rồi so từng kênh.
+ */
+function trenDoanPha(c, a, b, sai = 3) {
+  const huong = a.map((v, k) => b[k] - v);
+  const dai2 = huong.reduce((s, v) => s + v * v, 0);
+  const t = Math.min(1, Math.max(0, huong.reduce((s, v, k) => s + v * (c[k] - a[k]), 0) / dai2));
+  return c.every((v, k) => Math.abs(v - (a[k] + t * huong[k])) <= sai);
+}
 
 await nhom('5 · GIT THẤY MỌI FILE TÀI SẢN; ẢNH CHIA SẺ ĐÚNG CỠ', async () => {
   const tep = THU_MUC_TAI_SAN.flatMap(moiFile).filter(f => !BO_QUA(f)).map(tuGoc);
@@ -297,6 +424,17 @@ await nhom('5 · GIT THẤY MỌI FILE TÀI SẢN; ẢNH CHIA SẺ ĐÚNG CỠ',
   const chiaSe = coPng(join(WEB, 'public', 'thuong-hieu', 'chia-se-1200x630.png'));
   ok('chia-se-1200x630.png là PNG đúng 1200 × 630 (thẻ og:image khai đúng cỡ này)', chiaSe?.rong === 1200 && chiaSe?.cao === 630,
      JSON.stringify(chiaSe));
+  // Ảnh chia sẻ mới: nền #BD0000 phẳng, logo chính trắng giữa ảnh (guideline trang 4: trắng trên đỏ). Ảnh là PNG
+  // bảng màu (color type 3) — đọc khối PLTE: mọi màu nằm trên đoạn pha giữa trắng và đỏ (mép chữ khử răng cưa),
+  // có đủ hai đầu mút, không còn màu kem hay đỏ cũ của bảng 09/10/2026.
+  const bangPng = bangMauPng(join(WEB, 'public', 'thuong-hieu', 'chia-se-1200x630.png'));
+  const ngoaiDoan = (bangPng ?? []).filter(c => !trenDoanPha(c, [255, 255, 255], [189, 0, 0]));
+  ok(`chia-se-1200x630.png: bảng màu PNG (${bangPng?.length ?? 0} màu) có (189, 0, 0) và (255, 255, 255), mọi màu trên đoạn pha trắng–đỏ (±3) — không kem (240, 227, 208), không đỏ cũ (167, 12, 12)`,
+     !!bangPng && bangPng.some(c => c.join() === '189,0,0') && bangPng.some(c => c.join() === '255,255,255') && ngoaiDoan.length === 0,
+     bangPng ? ngoaiDoan.slice(0, 6).map(c => `(${c.join(', ')})`).join(' ') : 'không đọc được khối PLTE');
+  ok('…phép đoạn pha bắt được màu kem cũ, đỏ cũ, đen; nhận đỏ pha trắng giữa đoạn',
+     !trenDoanPha([240, 227, 208], [255, 255, 255], [189, 0, 0]) && !trenDoanPha([167, 12, 12], [255, 255, 255], [189, 0, 0])
+     && !trenDoanPha([0, 0, 0], [255, 255, 255], [189, 0, 0]) && trenDoanPha([232, 166, 166], [255, 255, 255], [189, 0, 0]));
   const bieuTuong = coPng(join(WEB, 'public', 'thuong-hieu', 'bieu-tuong-180.png'));
   ok('bieu-tuong-180.png là PNG 180 × 180 (apple-touch-icon)', bieuTuong?.rong === 180 && bieuTuong?.cao === 180, JSON.stringify(bieuTuong));
   const layout = readFileSync(join(SRC, 'layouts', 'Trang.astro'), 'utf8');
@@ -305,19 +443,29 @@ await nhom('5 · GIT THẤY MỌI FILE TÀI SẢN; ẢNH CHIA SẺ ĐÚNG CỠ',
 });
 
 // ===========================================================================
-// Bảng màu Khánh chốt ngày 09/10/2026 và các màu pha cho màn hình Khánh cho phép ngày 10/10/2026
-// (THUONG-HIEU.md mục 1 và 4). Chép tay ở đây, KHÔNG đọc từ file: sửa nhầm một mã ở cong-khai.css
-// thì phép thử này đỏ. /noi-bo và kho đọc :root của chung.css — cùng giá trị (nhóm 2 gác 13 biến gốc;
-// test-noi-bo-bang-mau.mjs gác đủ 14 biến màu và so hai khối với nhau).
+// Bảng 22/10/2026 (đỏ #BD0000, đen #000000, trắng #FFFFFF) và các màu pha cho màn hình Khánh duyệt ngày
+// 25/10/2026 (THUONG-HIEU.md mục 1 và 4). Chép tay ở đây, KHÔNG đọc từ file: sửa nhầm một mã ở cong-khai.css
+// thì phép thử này đỏ. /noi-bo và kho đọc :root của chung.css — cùng giá trị (nhóm 2 gác 11 biến gốc;
+// test-noi-bo-bang-mau.mjs gác đủ 12 biến màu và so hai khối với nhau). Tên biến giữ (--kem là trắng,
+// --than là đen); đổi tên là PR sau.
 const BANG_MAU_CHOT = {
-  '--do': '#A70C0C', '--kem': '#F0E3D0', '--than': '#151008', '--cuc-vang': '#F5AA14', '--da': '#B8A98C',
-  '--mu-tat': '#F5AA14',                                  // guideline chỉ có một vàng: hai tên, một mã
-  '--do-dam': '#890607', '--do-sau': '#890607',           // một đỏ đậm cho nút khi di chuột và chữ nhỏ
-  '--kem-sau': '#EBDCC6', '--kem-dam': '#E7D5BC', '--vien-o': '#7A7366',
-  '--muc-nhat': 'rgba(21, 16, 8, .68)', '--vach': 'rgba(21, 16, 8, .16)', '--vach-kem': 'rgba(240, 227, 208, .22)',
+  '--do': '#BD0000', '--kem': '#FFFFFF', '--than': '#000000', '--da': '#E2E2E2',   // --da: CHỈ chữ phụ trên nền đen
+  '--do-dam': '#8F0000', '--do-sau': '#8F0000',           // một đỏ đậm cho nút khi di chuột và chữ nhỏ: hai tên, một mã
+  '--kem-sau': '#F4F4F4', '--kem-dam': '#E2E2E2', '--vien-o': '#767676',
+  '--muc-nhat': '#555555', '--vach': '#E2E2E2', '--vach-kem': 'rgba(255, 255, 255, .22)',
 };
-// Mã của các bảng trước (PDF nhận diện, guideline tới bản 15), viết kiểu hex hoặc bộ ba số RGB.
-const MA_CU = /#(?:B23A2C|8F2C21|960F13|FBF4E1|F5ECD7|F1E4C2|1E160E|F2A900|F5C211|8C8577|A21E22|2A2016)\b|\b(?:30, ?22, ?14|251, ?244, ?225|178, ?58, ?44|150, ?15, ?19|143, ?44, ?33)\b/gi;
+// Mã của các bảng trước, viết kiểu hex hoặc bộ ba số RGB:
+//   · PDF nhận diện, guideline tới bản 15 (12 hex, 5 bộ ba trơn — giữ hết);
+//   · bảng 09/10/2026 cùng màu pha 10/10/2026 (11 hex) và tám màu trạng thái của /noi-bo (8 hex) — bỏ ngày 25/10/2026;
+//   · bộ ba của bảng 09/10/2026 trong rgb() / rgba(): có tiền tố rgba?( để không bắt nhầm số trong path SVG, nối bằng
+//     dấu phẩy hoặc dấu cách (rgb(21 16 8 / .16) cũng là màu cũ).
+const HEX_09_10 = ['A70C0C', '890607', 'F0E3D0', 'EBDCC6', 'E7D5BC', '151008', 'F5AA14', 'B8A98C', '7A7366', '211A10', 'FFFDF6'];
+const HEX_TRANG_THAI_CU = ['1A683F', 'D3E3C6', 'A3C597', '7A5200', 'F6DC9E', 'DDB65C', 'F2D6CE', 'DDA79C'];
+const BO_BA_09_10 = ['21,16,8', '240,227,208', '167,12,12', '137,6,7', '245,170,20', '184,169,140'];
+const MA_CU = new RegExp(
+  `#(?:B23A2C|8F2C21|960F13|FBF4E1|F5ECD7|F1E4C2|1E160E|F2A900|F5C211|8C8577|A21E22|2A2016|${[...HEX_09_10, ...HEX_TRANG_THAI_CU].join('|')})\\b`
+  + '|\\b(?:30, ?22, ?14|251, ?244, ?225|178, ?58, ?44|150, ?15, ?19|143, ?44, ?33)\\b'
+  + `|rgba?\\(\\s*(?:${BO_BA_09_10.map(b => b.split(',').join('[\\s,]+')).join('|')})\\b`, 'gi');
 // Khu nội bộ — cùng danh sách với test-cong-khai-dinh-chu.mjs. Mã cũ ở khu này do test-noi-bo-bang-mau.mjs quét.
 const NOI_BO = ['pages/noi-bo/', 'components/kho/', 'layouts/Kho.astro', 'layouts/NoiBo.astro',
   'components/SucKhoeHeThong.astro', 'components/BanDoChucNang.astro', 'components/OTimChucNang.astro'];
@@ -339,7 +487,7 @@ function phaTren(chu, nen, alpha) {
   return '#' + c.map((v, i) => Math.round(v * alpha + n[i] * (1 - alpha)).toString(16).padStart(2, '0')).join('');
 }
 
-await nhom('6 · BẢNG MÀU THƯƠNG HIỆU CHỐT 09/10/2026 Ở TRANG CÔNG KHAI', async () => {
+await nhom('6 · BẢNG 22/10/2026 Ở TRANG CÔNG KHAI', async () => {
   const ck = boChuThich(readFileSync(join(SRC, 'styles', 'cong-khai.css'), 'utf8'));
   const khoi = docQuyTac(ck).find(q => q.boChon === '.ck')?.trong ?? '';
   for (const [bien, giaTri] of Object.entries(BANG_MAU_CHOT)) {
@@ -349,6 +497,18 @@ await nhom('6 · BẢNG MÀU THƯƠNG HIỆU CHỐT 09/10/2026 Ở TRANG CÔNG K
        !!m && chuanHoa(m[1]) === chuanHoa(giaTri) && soLanKhai === 1,
        m ? `${m[1].trim()} · khai ${soLanKhai} lần` : 'không thấy trong khối .ck đầu tiên');
   }
+  for (const bien of BIEN_BO) {
+    const soLanKhai = (ck.match(new RegExp(`(?:^|[;{\\s])${bien}\\s*:`, 'g')) ?? []).length;
+    const soLanDung = (ck.match(new RegExp(`var\\(\\s*${bien}\\b`, 'g')) ?? []).length;
+    ok(`cong-khai.css không còn khai hay dùng ${bien} (biến vàng của bảng cũ)`, soLanKhai === 0 && soLanDung === 0, `khai ${soLanKhai} · dùng ${soLanDung} lần`);
+  }
+  // Mẫu tự kiểm của MA_CU: bắt mã 09/10/2026 và mã trạng thái ở mọi kiểu viết, không bắt số trong path SVG hay mã mới.
+  const BAT = ['#A70C0C', '#f0e3d0', '#1A683F', '#211A10', '#FFFDF6', 'rgba(21, 16, 8, .68)', 'rgb(21 16 8 / .16)', 'rgba(240,227,208,.22)',
+    'rgb(167, 12, 12)', 'rgba(245 170 20 / .5)', '#B23A2C', '30, 22, 14'];
+  const KHONG_BAT = ['#BD0000', '#8F0000', '#F4F4F4', 'rgba(0, 0, 0, .78)', 'rgba(255, 255, 255, .22)', 'M 21 16 8 L 240 227 208', '#E2E2E2'];
+  const lot = BAT.filter(m => !m.match(MA_CU)), batNham = KHONG_BAT.filter(m => m.match(MA_CU));
+  ok(`Bộ lọc mã cũ bắt được ${BAT.length} kiểu viết (hex 09/10/2026, màu trạng thái, bộ ba có dấu phẩy hay dấu cách) và không bắt nhầm ${KHONG_BAT.length} mã mới, số trong path`,
+     lot.length === 0 && batNham.length === 0, [...lot.map(m => `lọt: ${m}`), ...batNham.map(m => `bắt nhầm: ${m}`)].join(' | '));
 
   // Không file công khai nào còn mã của bảng cũ — kể cả trong chú thích: chú thích ghi mã cũ là
   // chỗ người sau chép lại.
@@ -370,45 +530,55 @@ await nhom('6 · BẢNG MÀU THƯƠNG HIỆU CHỐT 09/10/2026 Ở TRANG CÔNG K
 
   const layout = readFileSync(join(SRC, 'layouts', 'Trang.astro'), 'utf8');
   const mauThanh = layout.match(/<meta name="theme-color" content="([^"]+)"/)?.[1];
-  ok('Trang.astro: theme-color là màu kem của bảng màu chốt', mauThanh?.toUpperCase() === BANG_MAU_CHOT['--kem'], mauThanh ?? 'không thấy thẻ');
+  ok('Trang.astro: theme-color là màu đen của đầu trang (bảng 22/10/2026: đầu trang đen)', mauThanh?.toUpperCase() === BANG_MAU_CHOT['--than'], mauThanh ?? 'không thấy thẻ');
 
-  // Tương phản của hệ bề mặt (THIET-KE.md mục 2). Chữ thường cần 4,5 : 1; viền ô nhập cần 3 : 1.
+  // Tương phản của hệ bề mặt (THIET-KE.md mục 2). Chữ thường cần 4,5 : 1; viền ô nhập, hình mang nghĩa và chữ
+  // lớn (≥ 24px) cần 3 : 1. Số tính lại ở đây theo công thức WCAG 2.2, không chép.
   const M = BANG_MAU_CHOT;
-  const mucNhat = nen => phaTren(M['--than'], nen, 0.68);
   const CAP = [
-    ['chữ than trên kem', M['--than'], M['--kem'], 7],
-    ['chữ than trên kem đậm', M['--than'], M['--kem-dam'], 7],
-    ['chữ phụ (than 68 %) trên kem', mucNhat(M['--kem']), M['--kem'], 4.5],
-    ['chữ phụ (than 68 %) trên kem đậm', mucNhat(M['--kem-dam']), M['--kem-dam'], 4.5],
-    ['chữ đỏ trên kem', M['--do'], M['--kem'], 4.5],
-    ['chữ đỏ trên kem sau', M['--do'], M['--kem-sau'], 4.5],
-    ['chữ đỏ trên kem đậm', M['--do'], M['--kem-dam'], 4.5],
-    ['chữ đỏ đậm trên kem đậm', M['--do-sau'], M['--kem-dam'], 4.5],
-    ['chữ kem trên đỏ (nút chính, dải đỏ)', M['--kem'], M['--do'], 4.5],
-    ['chữ kem trên đỏ đậm (nút khi di chuột)', M['--kem'], M['--do-dam'], 4.5],
-    ['chữ đỏ đậm trên kem (nút trên dải đỏ)', M['--do-sau'], M['--kem'], 4.5],
-    ['chữ kem trên than', M['--kem'], M['--than'], 7],
-    ['chữ Warm Stone trên than', M['--da'], M['--than'], 4.5],
-    ['chữ vàng trên than', M['--mu-tat'], M['--than'], 4.5],
-    ['viền ô nhập trên kem', M['--vien-o'], M['--kem'], 3],
-    // Trang công khai không còn nền trắng (nhóm 7): ô nhập nền kem, đứng trong thẻ form nền kem sau.
-    ['viền ô nhập trên kem sau (thẻ form)', M['--vien-o'], M['--kem-sau'], 3],
+    ['chữ đen trên trắng (nền trang)', M['--than'], M['--kem'], 7],
+    ['chữ đen trên xám nhạt F4 (dải phụ, thẻ)', M['--than'], M['--kem-sau'], 7],
+    ['chữ đen trên xám E2 (di chuột, nhãn xám)', M['--than'], M['--kem-dam'], 7],
+    ['chữ phụ #555 trên trắng', M['--muc-nhat'], M['--kem'], 4.5],
+    ['chữ phụ #555 trên F4', M['--muc-nhat'], M['--kem-sau'], 4.5],
+    ['chữ đỏ trên trắng (nhãn, giá)', M['--do'], M['--kem'], 4.5],
+    ['chữ đỏ trên F4', M['--do'], M['--kem-sau'], 4.5],
+    ['chữ đỏ trên E2', M['--do'], M['--kem-dam'], 4.5],
+    ['chữ đỏ đậm trên E2 (nút phụ khi di chuột)', M['--do-sau'], M['--kem-dam'], 4.5],
+    ['chữ đỏ đậm trên trắng (nút trắng trên dải đỏ)', M['--do-sau'], M['--kem'], 4.5],
+    ['chữ trắng trên đỏ (nút chính, dải đỏ)', M['--kem'], M['--do'], 4.5],
+    ['chữ trắng trên đỏ đậm (nút khi di chuột)', M['--kem'], M['--do-dam'], 4.5],
+    ['chữ trắng trên đen (đầu trang, dải đen, chân trang)', M['--kem'], M['--than'], 7],
+    ['chữ phụ E2 trên đen (--da, dòng pháp nhân)', M['--da'], M['--than'], 4.5],
+    ['viền ô nhập trên trắng (nền của ô)', M['--vien-o'], M['--kem'], 3],
+    ['viền ô nhập trên F4 (thẻ form)', M['--vien-o'], M['--kem-sau'], 3],
+    ['chữ đỏ cỡ lớn (≥ 24px) trên đen', M['--do'], M['--than'], 3],
+    ['vòng focus trắng trên dải đỏ', M['--kem'], M['--do'], 3],
+    ['viền nút trên đầu trang đen (#767676)', M['--vien-o'], M['--than'], 3],
+    ['nhãn "Ảnh minh họa": chữ trắng trên đen 78 % phủ lên vùng ảnh trắng', M['--kem'], phaTren(M['--than'], M['--kem'], 0.78), 4.5],
   ];
   for (const [ten, chu, nen, can] of CAP) {
     const r = tuongPhan(chu, nen);
     ok(`Tương phản ${ten}: ${r.toFixed(2).replace('.', ',')} : 1 (cần ≥ ${String(can).replace('.', ',')} : 1)`, r >= can);
   }
-  // Vàng và Warm Stone không bao giờ làm chữ trên nền sáng: bề mặt sáng không được trỏ biến chữ vào chúng.
+  // Màu chữ theo bề mặt, hai chiều:
+  //   · bề mặt sáng không trỏ biến chữ vào ba xám trang trí (F4, E2) hay --da — chúng gần như vô hình trên trắng;
+  //   · bề mặt đen không lấy #555 làm chữ phụ, không lấy đỏ / đỏ đậm làm chữ nhấn — dưới ngưỡng chữ thường.
   const beSang = docQuyTac(ck).filter(q => /\.be-kem/.test(q.boChon) && !/\.be-(toi|do)/.test(q.boChon)).map(q => q.trong).join(';');
-  ok('Bề mặt sáng (.be-kem…) không dùng vàng hay Warm Stone làm màu chữ', !/--(chu-chinh|chu-phu|nhan|nhan-nho)\s*:\s*var\(--(mu-tat|cuc-vang|da)\)/.test(beSang));
-  ok(`Vàng trên kem chỉ ${tuongPhan(M['--cuc-vang'], M['--kem']).toFixed(2).replace('.', ',')} : 1, Warm Stone trên kem chỉ ${tuongPhan(M['--da'], M['--kem']).toFixed(2).replace('.', ',')} : 1 — đúng lý do của luật trên`,
-     tuongPhan(M['--cuc-vang'], M['--kem']) < 3 && tuongPhan(M['--da'], M['--kem']) < 3);
+  ok('Bề mặt sáng (.be-kem…) không trỏ --chu-chinh / --chu-phu / --nhan / --nhan-nho vào --kem-sau, --kem-dam, --vach, --da',
+     beSang.length > 0 && !/--(chu-chinh|chu-phu|nhan|nhan-nho)\s*:\s*var\(--(kem-sau|kem-dam|vach|da)\)/.test(beSang));
+  const beToi = docQuyTac(ck).filter(q => /\.be-toi(?![\w-])/.test(q.boChon)).map(q => q.trong).join(';');
+  ok('Bề mặt đen (.be-toi) không trỏ --chu-phu vào --muc-nhat, không trỏ --nhan / --nhan-nho vào --do, --do-dam, --do-sau',
+     beToi.length > 0 && !/--chu-phu\s*:\s*var\(--muc-nhat\)/.test(beToi) && !/--(nhan|nhan-nho)\s*:\s*var\(--do(?:-dam|-sau)?\)/.test(beToi));
+  const so = (a, b) => tuongPhan(a, b).toFixed(2).replace('.', ',');
+  ok(`Lý do của hai luật trên: E2 trên trắng chỉ ${so(M['--kem-dam'], M['--kem'])} : 1, #555 trên đen ${so(M['--muc-nhat'], M['--than'])} : 1 (dưới 3), đỏ trên đen ${so(M['--do'], M['--than'])} : 1 (dưới 4,5)`,
+     tuongPhan(M['--kem-dam'], M['--kem']) < 3 && tuongPhan(M['--muc-nhat'], M['--than']) < 3 && tuongPhan(M['--do'], M['--than']) < 4.5);
 });
 
 // ===========================================================================
 // Quy tắc thành phần của đợt redesign (plan 11/10/2026, mục 4). Số đo trên trang đã dựng nằm ở
 // web/kiem-tra/do-giao-dien.mjs; ở đây là phần đọc được từ mã — chạy trong npm test, không cần trình duyệt.
-await nhom('7 · THÀNH PHẦN VÀ KHUNG TRANG: KHÔNG NỀN TRẮNG, TƯƠNG PHẢN Ô NHẬP, CỠ CHỮ VÀ LƯỚI', async () => {
+await nhom('7 · THÀNH PHẦN VÀ KHUNG TRANG: MÃ MÀU CHỈ CỦA BẢNG 22/10/2026, TƯƠNG PHẢN Ô NHẬP, LOGO, CỠ CHỮ VÀ LƯỚI', async () => {
   const M = BANG_MAU_CHOT;
   const moiAstro = thu => readdirSync(join(SRC, thu), { withFileTypes: true }).flatMap(d => {
     const duong = thu ? `${thu}/${d.name}` : d.name;
@@ -419,10 +589,12 @@ await nhom('7 · THÀNH PHẦN VÀ KHUNG TRANG: KHÔNG NỀN TRẮNG, TƯƠNG PH
     join(SRC, 'styles', 'cong-khai.css'),
   ];
 
-  // --- Không nền trắng: mã màu viết thẳng trong file công khai chỉ được là mã của bảng ---------
-  // Bảng màu thương hiệu không có trắng. Mã được phép: 14 token của khối .ck và #211A10 (nền khung
-  // ảnh trên dải tối, THIET-KE.md mục 2). Ngoại lệ ghi từng cái, kèm lý do:
-  const MA_DUOC_PHEP = new Set([...Object.values(M).filter(v => v.startsWith('#')), '#211A10'].map(v => v.toUpperCase()));
+  // --- Mã màu viết thẳng trong file công khai chỉ được là mã của bảng 22/10/2026 -------------------
+  // Nền trang công khai là trắng (QĐ4, 25/10/2026) — nhưng trắng đi qua token --kem, mã #FFFFFF chỉ hợp lệ vì nó
+  // là mã của bảng. Mã được phép: đúng các mã 6 chữ số của khối .ck (#BD0000 #8F0000 #FFFFFF #F4F4F4 #E2E2E2
+  // #000000 #555555 #767676) — không trắng ngà, không kem cũ, không #211A10 (khung ảnh trên dải đen giờ là
+  // trắng 8 % bằng rgba). Ngoại lệ ghi từng cái, kèm lý do; danh sách ngoại lệ chỉ được bớt:
+  const MA_DUOC_PHEP = new Set(Object.values(M).filter(v => v.startsWith('#')).map(v => v.toUpperCase()));
   const NGOAI_LE = {
     // Bản in: giấy trắng, chữ đen — không phải màu trên màn hình. Đây là ngoại lệ DUY NHẤT: PR 3 đã dựng lại
     // thẻ "Đọc nhãn khay" (hết trắng ngà) và bỏ mặt nạ vân mỡ của dải "Đi cùng nhóm" (hết #000 của mặt nạ).
@@ -436,13 +608,13 @@ await nhom('7 · THÀNH PHẦN VÀ KHUNG TRANG: KHÔNG NỀN TRẮNG, TƯƠNG PH
       .filter(m => !MA_DUOC_PHEP.has(m) && !(NGOAI_LE[ten] ?? []).includes(m));
     return la.length ? [`${ten}: ${la.join(' ')}`] : [];
   });
-  ok(`${congKhai.length} file công khai: mã màu viết thẳng (hex 3, 4, 6, 8 chữ số) chỉ là mã của bảng màu (không trắng, không trắng ngà)`,
+  ok(`${congKhai.length} file công khai: mã màu viết thẳng (hex 3, 4, 6, 8 chữ số) chỉ là mã của bảng 22/10/2026 (không trắng ngà, không kem cũ)`,
      congKhai.length > 30 && maLa.length === 0, maLa.join(' | '));
   const css = congKhai.map(f => [tuGoc(f), boChuThich(f.endsWith('.css') ? readFileSync(f, 'utf8')
     : (readFileSync(f, 'utf8').match(/<style[^>]*>([\s\S]*?)<\/style>/g) ?? []).join('\n'))]);
   const tuKhoaTrang = css.filter(([, c]) => /(?:background|color|border|fill|stroke)[a-z-]*\s*:[^;{}]*\b(?:white|ivory|snow)\b/i.test(c)
     || /color-mix\([^)]*(?:#fff|white)/i.test(c)).map(([ten]) => ten);
-  ok('CSS của trang công khai không dùng từ khóa white / ivory / snow, không pha với trắng (color-mix)', tuKhoaTrang.length === 0, tuKhoaTrang.join(', '));
+  ok('CSS của trang công khai: trắng chỉ qua token --kem — không từ khóa white / ivory / snow, không pha với trắng (color-mix)', tuKhoaTrang.length === 0, tuKhoaTrang.join(', '));
   // Trắng còn viết được bằng nhiều cách khác ngoài mã hex và chữ white: rgb(255, 255, 255), hsl(0 0% 100%),
   // oklch(1 0 0), color(srgb 1 1 1), màu hệ thống Canvas… Quét từng khai báo CSS và từng thuộc tính màu trong
   // thẻ của mọi file công khai:
@@ -466,41 +638,44 @@ await nhom('7 · THÀNH PHẦN VÀ KHUNG TRANG: KHÔNG NỀN TRẮNG, TƯƠNG PH
   });
   ok('File công khai: rgb() / rgba() chỉ dùng bộ ba của bảng màu; không hsl(), oklch(), color()…; không tên màu CSS; màu hệ thống chỉ trong forced-colors',
      mauLaKhac.length === 0, mauLaKhac.join(' | '));
-  // Phép quét trên phải bắt được từng cách viết trắng — thử ngay trên chính nó, kẻo một lần sửa biểu thức
-  // làm nó thôi bắt mà không ai hay.
-  const CACH_VIET_TRANG = ['rgb(255, 255, 255)', 'rgb(255 255 255 / .9)', 'rgba(255,255,255,.5)', 'rgb(100% 100% 100%)', 'hsl(0 0% 100%)',
+  // Phép quét trên phải bắt được từng cách viết màu ngoài bảng — thử ngay trên chính nó, kẻo một lần sửa biểu
+  // thức làm nó thôi bắt mà không ai hay. Trắng viết bằng tên màu, phần trăm, hàm màu khác, màu hệ thống vẫn là
+  // ngoài bảng (chỉ token --kem hay bộ ba 255, 255, 255 trong rgb() mới là trắng của bảng); bộ ba của bảng
+  // 09/10/2026 và trắng ngà cũng thế.
+  const CACH_VIET_NGOAI_BANG = ['rgb(100% 100% 100%)', 'hsl(0 0% 100%)',
     'hsla(0, 0%, 100%, 1)', 'hwb(0 100% 0%)', 'lab(100 0 0)', 'oklch(1 0 0)', 'color(srgb 1 1 1)', 'white', 'WHITE', 'ivory', 'snow', 'ghostwhite',
-    'Canvas', 'Field', 'linear-gradient(white, var(--kem))', 'color-mix(in srgb, white 20%, var(--do))', 'light-dark(white, black)', 'rgb(from var(--kem) 255 255 255)'];
-  const khongBat = CACH_VIET_TRANG.filter(c => mauLaTrong(c, false).length === 0);
-  ok(`Phép quét bắt đủ ${CACH_VIET_TRANG.length} cách viết trắng khác nhau`, khongBat.length === 0, khongBat.join(' | '));
-  const CACH_VIET_DUNG = ['var(--kem)', 'rgba(21, 16, 8, .16)', 'rgb(240 227 208 / .22)', 'transparent', 'currentColor', '1px solid var(--vien-o)',
+    'Canvas', 'Field', 'linear-gradient(white, var(--kem))', 'color-mix(in srgb, white 20%, var(--do))', 'light-dark(white, black)', 'rgb(from var(--kem) 255 255 255)',
+    'rgb(240, 227, 208)', 'rgb(21 16 8 / .16)', 'rgba(245,170,20,.5)', 'rgb(255, 253, 246)', 'rgb(167, 12, 12)'];
+  const khongBat = CACH_VIET_NGOAI_BANG.filter(c => mauLaTrong(c, false).length === 0);
+  ok(`Phép quét bắt đủ ${CACH_VIET_NGOAI_BANG.length} cách viết màu ngoài bảng khác nhau (trắng không qua token, kem cũ, đỏ cũ, trắng ngà)`, khongBat.length === 0, khongBat.join(' | '));
+  const CACH_VIET_DUNG = ['var(--kem)', 'rgba(0, 0, 0, .16)', 'rgb(255 255 255 / .22)', 'rgb(255, 255, 255)', 'rgb(255 255 255 / .9)', 'rgba(255,255,255,.5)',
+    'transparent', 'currentColor', '1px solid var(--vien-o)',
     'color-mix(in srgb, var(--kem) 12%, var(--do))', 'background-color var(--nhanh), color var(--nhanh)', 'url("/thuong-hieu/white.svg") no-repeat', 'nowrap'];
   const batNham = CACH_VIET_DUNG.filter(c => mauLaTrong(c, false).length > 0);
-  ok(`…và không bắt nhầm ${CACH_VIET_DUNG.length} cách viết hợp lệ`, batNham.length === 0, batNham.join(' | '));
+  ok(`…và không bắt nhầm ${CACH_VIET_DUNG.length} cách viết hợp lệ (bộ ba của đen, trắng trong rgb() / rgba() là của bảng)`, batNham.length === 0, batNham.join(' | '));
   ok('…màu hệ thống trong @media (forced-colors: active) thì được', mauLaTrong('Canvas', true).length === 0 && mauLaTrong('2px solid Highlight', true).length === 0);
 
   const inRa = boChuThich(readFileSync(join(SRC, 'styles', 'cong-khai.css'), 'utf8'));
   const ngoaiIn = inRa.replace(/@media print\s*\{(?:[^{}]|\{[^{}]*\})*\}/g, '');
   ok('cong-khai.css: #fff và #000 chỉ nằm trong khối @media print', !/#(?:fff|000)\b/i.test(ngoaiIn) && /@media print/.test(inRa));
   const nenO = inRa.match(/input\[type='text'\][^{]*\{([^}]*)\}/)?.[1] ?? '';
-  ok('cong-khai.css: ô nhập nền var(--kem), viền var(--vien-o), chữ 16px, cao tối thiểu 48px',
+  ok('cong-khai.css: ô nhập nền trắng var(--kem), viền var(--vien-o), chữ 16px, cao tối thiểu 48px',
      /background:\s*var\(--kem\)/.test(nenO) && /border:\s*1px solid var\(--vien-o\)/.test(nenO)
        && /font-size:\s*16px/.test(nenO) && /min-height:\s*48px/.test(nenO), nenO.trim().replace(/\s+/g, ' '));
 
   // --- Tương phản của các cặp mới (tính lại theo công thức WCAG 2.2, không chép số) ---------------
-  const mucNhat = nen => phaTren(M['--than'], nen, 0.68);
   const CAP = [
     // [tên, màu chữ / viền, màu nền, ngưỡng, con số tài liệu ghi (THIET-KE.md mục 2)]
-    ['viền ô nhập trên Cream (nền của ô)', M['--vien-o'], M['--kem'], 3, '3,71'],
-    ['viền ô nhập trên kem sau (thẻ form quanh ô)', M['--vien-o'], M['--kem-sau'], 3, '3,49'],
-    ['chữ gõ trong ô (than) trên Cream', M['--than'], M['--kem'], 7, '14,96'],
-    ['câu lỗi (đỏ đậm) trên kem sau', M['--do-dam'], M['--kem-sau'], 4.5, '7,45'],
-    ['gợi ý dưới nhãn (than 68 %) trên kem sau', mucNhat(M['--kem-sau']), M['--kem-sau'], 4.5, '5,80'],
-    ['nút phụ: chữ đỏ trên Cream', M['--do'], M['--kem'], 4.5, '6,15'],
-    ['nút phụ khi di chuột: chữ đỏ đậm trên kem đậm', M['--do-dam'], M['--kem-dam'], 4.5, '7,00'],
-    ['nút phụ trên dải đỏ khi di chuột: chữ Cream trên đỏ pha 12 % Cream', M['--kem'], phaTren(M['--kem'], M['--do'], 0.12), 4.5, '5,27'],
-    ['ô giờ đang chọn: chữ Cream trên Beef Red', M['--kem'], M['--do'], 4.5, '6,15'],
-    ['dòng pháp nhân: Warm Stone trên Charcoal', M['--da'], M['--than'], 4.5, '8,19'],
+    ['viền ô nhập trên trắng (nền của ô)', M['--vien-o'], M['--kem'], 3, '4,54'],
+    ['viền ô nhập trên F4 (thẻ form quanh ô)', M['--vien-o'], M['--kem-sau'], 3, '4,13'],
+    ['chữ gõ trong ô (đen) trên trắng', M['--than'], M['--kem'], 7, '21,00'],
+    ['câu lỗi (đỏ đậm) trên F4', M['--do-dam'], M['--kem-sau'], 4.5, '8,81'],
+    ['gợi ý dưới nhãn (#555) trên F4', M['--muc-nhat'], M['--kem-sau'], 4.5, '6,78'],
+    ['nút phụ: chữ đỏ trên trắng', M['--do'], M['--kem'], 4.5, '6,64'],
+    ['nút phụ khi di chuột: chữ đỏ đậm trên E2', M['--do-dam'], M['--kem-dam'], 4.5, '7,48'],
+    ['nút phụ trên dải đỏ khi di chuột: chữ trắng trên đỏ pha 12 % trắng (#C51F1F)', M['--kem'], phaTren(M['--kem'], M['--do'], 0.12), 4.5, '5,85'],
+    ['ô giờ đang chọn: chữ trắng trên đỏ', M['--kem'], M['--do'], 4.5, '6,64'],
+    ['dòng pháp nhân: chữ E2 trên đen', M['--da'], M['--than'], 4.5, '16,21'],
   ];
   for (const [ten, chu, nen, can, ghi] of CAP) {
     const r = tuongPhan(chu, nen);
@@ -536,8 +711,55 @@ await nhom('7 · THÀNH PHẦN VÀ KHUNG TRANG: KHÔNG NỀN TRẮNG, TƯƠNG PH
   const chan = readFileSync(join(SRC, 'components', 'ChanTrang.astro'), 'utf8');
   ok('ChanTrang.astro: không còn hoa văn chữ BEEFTOWN (hoa-van-chu) sau chữ', !/hoa-van/.test(chan));
   ok('cong-khai.css: không còn lớp .hoa-van-chu (không trang nào dùng)', !/\.hoa-van-chu/.test(ck));
-  ok('ChanTrang.astro: logo Cream là file vector gốc, khai đúng cỡ 446 × 124',
-     chan.includes('<img src="/thuong-hieu/logo-ngang-kem.svg" width="446" height="124"'));
+  // Logo đặt trên trang công khai: đúng bản cho nền (guideline 21/10/2026 trang 4 — trắng trên đen), width / height
+  // khai đúng tỷ lệ viewBox của CHÍNH file (đọc từ file, không chép 446 / 124 của logo cũ) — khai sai tỷ lệ thì
+  // trình duyệt giữ chỗ sai cỡ trước khi SVG về, trang nhảy.
+  const viewBoxCua = ten => readFileSync(join(WEB, 'public', 'thuong-hieu', ten), 'utf8')
+    .match(/<svg\b[^>]*\sviewBox\s*=\s*["']([^"']+)["']/)?.[1].trim().split(/[\s,]+/).map(Number).slice(2) ?? null;
+  /** Thẻ <img> trỏ tới /thuong-hieu/<ten> trong một đoạn mã → { rong, cao } khai trong thẻ (thứ tự thuộc tính tùy ý). */
+  const theAnh = (ma, ten) => {
+    const the = ma.match(new RegExp(`<img\\b[^>]*\\ssrc="/thuong-hieu/${ten.replace(/[.-]/g, '\\$&')}"[^>]*>`))?.[0];
+    if (!the) return null;
+    return { rong: Number(the.match(/\swidth="(\d+(?:\.\d+)?)"/)?.[1]), cao: Number(the.match(/\sheight="(\d+(?:\.\d+)?)"/)?.[1]) };
+  };
+  /** Tỷ lệ width / height khai trong thẻ lệch tỷ lệ viewBox không quá 1 %. */
+  const dungTiLe = (the, ten) => {
+    const vb = existsSync(join(WEB, 'public', 'thuong-hieu', ten)) ? viewBoxCua(ten) : null;
+    return !!the && !!vb && the.rong > 0 && the.cao > 0 && Math.abs((the.rong / the.cao) / (vb[0] / vb[1]) - 1) <= 0.01;
+  };
+  const logoChan = theAnh(chan, 'logo-ngang-trang.svg');
+  ok('ChanTrang.astro: logo chính trắng logo-ngang-trang.svg trên dải đen, width / height đúng tỷ lệ viewBox (±1 %), width ≥ 160',
+     dungTiLe(logoChan, 'logo-ngang-trang.svg') && logoChan.rong >= 160, logoChan ? `${logoChan.rong} × ${logoChan.cao}` : 'không thấy <img src="/thuong-hieu/logo-ngang-trang.svg">');
+  ok('ChanTrang.astro: không còn tem tròn (tem-tron) cạnh logo — một bề mặt một dấu thương hiệu', !/tem-tron/.test(chan));
+  const dauTrangMa = readFileSync(join(SRC, 'components', 'DauTrang.astro'), 'utf8');
+  const [logoPhu, brandmark] = [theAnh(dauTrangMa, 'chu-beeftown-trang.svg'), theAnh(dauTrangMa, 'dau-bo-trang.svg')];
+  ok('DauTrang.astro: logo phụ trắng chu-beeftown-trang.svg (đầu trang đen), width / height đúng tỷ lệ viewBox (±1 %)',
+     dungTiLe(logoPhu, 'chu-beeftown-trang.svg'), logoPhu ? `${logoPhu.rong} × ${logoPhu.cao}` : 'không thấy <img src="/thuong-hieu/chu-beeftown-trang.svg">');
+  ok('DauTrang.astro: brandmark trắng dau-bo-trang.svg cho màn dưới 360px, width / height đúng tỷ lệ viewBox (±1 %)',
+     dungTiLe(brandmark, 'dau-bo-trang.svg'), brandmark ? `${brandmark.rong} × ${brandmark.cao}` : 'không thấy <img src="/thuong-hieu/dau-bo-trang.svg">');
+  ok('DauTrang.astro: không còn logo bản đỏ / đen trên đầu trang đen (logo-ngang-do, dau-bo-do…)',
+     !/\/thuong-hieu\/[a-z-]+-(?:do|den)\.svg/.test(dauTrangMa));
+  // Mẫu tự kiểm của phép tỷ lệ: 446 × 124 (tỷ lệ logo cũ) trên logo-ngang-trang.svg mới là sai; 446 × 101 là đúng.
+  ok('…phép tỷ lệ bắt được cỡ 446 × 124 của logo cũ trên logo-ngang-trang.svg và nhận 446 × 101',
+     !dungTiLe({ rong: 446, cao: 124 }, 'logo-ngang-trang.svg') && dungTiLe({ rong: 446, cao: 101 }, 'logo-ngang-trang.svg'));
+  // Trang.astro tải trước (preload) đúng logo đầu trang đang dùng — preload một file trang không hiện là tải thừa,
+  // còn logo thật thì về muộn.
+  const layoutTrang = readFileSync(join(SRC, 'layouts', 'Trang.astro'), 'utf8');
+  const preload = [...layoutTrang.matchAll(/<link\b[^>]*rel="preload"[^>]*href="(\/thuong-hieu\/[^"]+)"/g)].map(m => m[1]);
+  const logoDau = [...dauTrangMa.matchAll(/<img\b[^>]*class="dt-logo-day-du"[^>]*src="(\/thuong-hieu\/[^"]+)"/g)].map(m => m[1])
+    .concat([...dauTrangMa.matchAll(/<img\b[^>]*src="(\/thuong-hieu\/[^"]+)"[^>]*class="dt-logo-day-du"/g)].map(m => m[1]));
+  ok('Trang.astro: preload đúng file logo đầu trang đang dùng (dt-logo-day-du của DauTrang.astro)',
+     preload.length === 1 && logoDau.length === 1 && preload[0] === logoDau[0], `preload ${preload.join(', ') || 'không có'} · đầu trang ${logoDau.join(', ') || 'không thấy'}`);
+  // do-giao-dien.mjs chạy trong trang (không đọc được file) nên chép tay tỷ lệ của ba biến thể logo: hằng đó phải
+  // đúng viewBox của file — đổi logo mà quên hằng thì phép đo trình duyệt đo theo hình cũ.
+  const doGiaoDienMa = readFileSync(join(WEB, 'kiem-tra', 'do-giao-dien.mjs'), 'utf8');
+  for (const goc of Object.keys(BIEN_THE_LOGO)) {
+    const m = doGiaoDienMa.match(new RegExp(`'${goc}'\\s*:\\s*(\\d+(?:\\.\\d+)?)\\s*/\\s*(\\d+(?:\\.\\d+)?)`));
+    const vb = viewBoxCua(`${goc}-do.svg`);
+    ok(`do-giao-dien.mjs: hằng tỷ lệ của ${goc} (TI_LE_LOGO) khớp viewBox của ${goc}-do.svg`,
+       !!m && !!vb && Math.abs(Number(m[1]) - vb[0]) < 0.001 && Math.abs(Number(m[2]) - vb[1]) < 0.001,
+       m ? `chép ${m[1]} / ${m[2]}, viewBox ${vb?.join(' × ')}` : 'không thấy hằng TI_LE_LOGO cho biến thể này');
+  }
   const bieuTuong = readFileSync(join(SRC, 'components', 'BieuTuong.astro'), 'utf8');
   ok('BieuTuong.astro: lưới 24, nét 1,5, nét không co theo cỡ hiển thị (vector-effect="non-scaling-stroke")',
      /viewBox="0 0 24 24"/.test(bieuTuong) && /stroke-width="1\.5"/.test(bieuTuong) && /vector-effect="non-scaling-stroke"/.test(bieuTuong));
@@ -638,14 +860,14 @@ await nhom('7 · THÀNH PHẦN VÀ KHUNG TRANG: KHÔNG NỀN TRẮNG, TƯƠNG PH
   ok('DauTrang.astro: script nghe click ngay trên <details> — bấm lớp phủ (đích là chính <details>) thì đóng',
      /menu\.addEventListener\('click',\s*(?:\(e\)|e)\s*=>\s*\{\s*if\s*\(e\.target === menu\)\s*dong\(/.test(kichBan));
 
-  // Chrome tô nền ô tự điền bằng màu gần trắng của riêng nó (không ghi đè bằng background được): phủ lại
-  // bằng bóng trong màu Cream, chữ vẫn Charcoal.
+  // Chrome tô nền ô tự điền bằng màu xanh nhạt của riêng nó (không ghi đè bằng background được): phủ lại
+  // bằng bóng trong màu trắng của token --kem, chữ vẫn đen.
   const tuDien = docQuyTac(ck).filter(q => /:autofill/.test(q.boChon));
   const tuDienChinh = tuDien.find(q => /^\.ck :is\(input, select, textarea\):is\(:autofill, :-webkit-autofill\)$/.test(q.boChon.replace(/\s+/g, ' ')));
-  ok('cong-khai.css: ô tự điền (:autofill / :-webkit-autofill) phủ nền Cream bằng bóng trong, chữ var(--than)',
+  ok('cong-khai.css: ô tự điền (:autofill / :-webkit-autofill) phủ nền trắng var(--kem) bằng bóng trong, chữ var(--than)',
      !!tuDienChinh && /box-shadow:\s*inset 0 0 0 \d{3,}px var\(--kem\)/.test(tuDienChinh.trong) && /-webkit-text-fill-color:\s*var\(--than\)/.test(tuDienChinh.trong),
      tuDien.map(q => q.boChon).join(' | ') || 'không có quy tắc :autofill nào');
-  ok('cong-khai.css: ô tự điền đang báo lỗi vẫn giữ vòng đỏ đậm (bóng trong 1px var(--do-dam) nằm trên lớp Cream)',
+  ok('cong-khai.css: ô tự điền đang báo lỗi vẫn giữ vòng đỏ đậm (bóng trong 1px var(--do-dam) nằm trên lớp trắng)',
      tuDien.some(q => /aria-invalid/.test(q.boChon) && /box-shadow:\s*inset 0 0 0 1px var\(--do-dam\),\s*inset 0 0 0 \d{3,}px var\(--kem\)/.test(q.trong)));
 
   // h1 cùng một cỡ ở cả ba thứ tiếng (32 → 48px): không quy tắc nào co cỡ chữ h1 riêng cho một thứ tiếng.

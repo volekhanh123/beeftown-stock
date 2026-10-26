@@ -4,24 +4,25 @@
    Chỉ layouts/Trang.astro nạp file này (test-cong-khai-giao-dien.mjs kiểm), và
    mọi quy tắc nằm dưới body.ck — /noi-bo và kho không bị ảnh hưởng.
 
-   Tinh thần: trang như bước tới quầy Beeftown. Nền KEM như giấy gói tiệm thịt,
-   ĐỎ Beeftown làm nhãn, tem và nút; vài dải TỐI để thịt sáng lên; một chút vui
-   từ chính artwork của PDF nhận diện (vân mỡ trang 2, rosemary trang 3, tem tròn
-   và chữ lặp trang 11). Tỷ lệ gợi ý: kem ~60 %, tối ~25 %, đỏ ~12 %, vàng ~3 %.
+   Tinh thần: trang như bước tới quầy Beeftown. Nền TRẮNG, chữ đen; ĐEN làm điểm
+   nhấn (đầu trang, vài dải để thịt sáng lên, chân trang); ĐỎ Beeftown cho nút, nhãn
+   và giá. Không hình trang trí: khối màu phẳng và ảnh — dấu thương hiệu duy nhất là
+   logo / brandmark của bộ 21/10/2026 (web/public/thuong-hieu), không vẽ thêm gì quanh nó.
 
    Màu chữ theo BỀ MẶT, không theo từng chỗ: mỗi khối khai một bề mặt (.be-kem,
    .be-kem-dam, .be-toi, .be-do) và mọi thứ bên trong đọc biến của bề mặt đó.
    Độ tương phản đã tính (WCAG 2.2) — xem web/THIET-KE.md, mục "Màu theo vai":
-     chữ than / kem            14,96 : 1     chữ kem / đỏ           6,15 : 1
-     chữ phụ (--muc-nhat) / kem 5,92 : 1     chữ kem / than        14,96 : 1
-     đỏ / kem                   6,15 : 1     Warm Stone / than      8,19 : 1
-     đỏ đậm (--do-sau) / kem    7,93 : 1     Marigold / than        9,59 : 1
-   KHÔNG BAO GIỜ: Warm Stone, Marigold làm chữ trên nền kem (1,6–1,8 : 1).
+     chữ đen / trắng           21,00 : 1     chữ trắng / đỏ         6,64 : 1
+     chữ phụ (--muc-nhat) / trắng 7,46 : 1   chữ trắng / đen       21,00 : 1
+     đỏ / trắng                 6,64 : 1     chữ phụ (--da) / đen  16,21 : 1
+     đỏ đậm (--do-sau) / trắng  9,69 : 1     chữ trắng / đỏ đậm     9,69 : 1
+   KHÔNG BAO GIỜ: chữ đỏ thường trên nền đen (3,16 : 1), chữ phụ --muc-nhat trên nền
+   đen (2,82 : 1) — trên dải đen chữ nhấn là trắng, chữ phụ là --da.
 
-   KHÔNG CÓ MÀU TRẮNG: bảng màu thương hiệu không có trắng. Thẻ là kem sau trên nền
-   kem (hoặc Cream trên nền kem sau / kem đậm), ô nhập nền Cream — tách khỏi nền bằng
-   viền, không bằng một mảng trắng. Kiểm thử đo màu nền của mọi phần tử trên trang đã
-   dựng (web/kiem-tra/do-giao-dien.mjs).
+   NỀN TRẮNG (bảng 22/10/2026): thẻ xám nhạt --kem-sau trên nền trắng, tách khỏi nền bằng
+   viền mảnh --vach, không bằng bóng đổ; ô nhập nền trắng, viền --vien-o. Trắng luôn đi qua
+   token --kem, không viết mã thẳng. Kiểm thử đo màu nền của mọi phần tử trên trang đã dựng
+   (web/kiem-tra/do-giao-dien.mjs).
 
    SỐ ĐO CHUNG (plan redesign 11/10/2026, mục 4): chữ chạy 16/24px; h1 32/38px trên
    điện thoại → 48/56px trên máy tính; lề điện thoại 20px, khung tối đa 1200px; mọi
@@ -29,45 +30,42 @@
    ============================================================================= */
 
 .ck {
-  /* Bảng màu thương hiệu Khánh chốt ngày 09/10/2026 (THUONG-HIEU.md ở thư mục gốc).
-     Khai ở <body class="ck"> nên chỉ trang công khai đọc; /noi-bo và kho không có lớp
-     này và vẫn đọc :root của chung.css. Năm màu thương hiệu: */
-  --do:        #A70C0C;   /* Beef Red */
-  --kem:       #F0E3D0;   /* Cream */
-  --than:      #151008;   /* Charcoal — tên màu; Beeftown nướng vỉ gas */
-  --cuc-vang:  #F5AA14;   /* Marigold */
-  --da:        #B8A98C;   /* Warm Stone */
-  /* Guideline chỉ có một vàng: --mu-tat giữ tên cho các chỗ đang dùng, cùng mã với Marigold. */
-  --mu-tat:    #F5AA14;
-  /* Màu pha cho màn hình (Khánh cho phép ngày 10/10/2026): một đỏ đậm cho nút khi di chuột
-     và chữ nhỏ, hai nền kem đậm hơn để tách khối, một màu viền ô nhập. */
-  --do-dam:    #890607;
-  --do-sau:    #890607;
-  --kem-sau:   #EBDCC6;
-  --kem-dam:   #E7D5BC;
-  --vien-o:    #7A7366;   /* viền ô nhập: 3,71 : 1 với nền Cream của ô, 3,49 : 1 với thẻ kem sau quanh ô (WCAG 1.4.11 cần 3 : 1) */
-  --muc-nhat:  rgba(21, 16, 8, .68);
-  --vach:      rgba(21, 16, 8, .16);
-  --vach-kem:  rgba(240, 227, 208, .22);
+  /* Bảng 22/10/2026 (THUONG-HIEU.md mục 0): đỏ, đen, trắng. Khai ở <body class="ck"> nên
+     chỉ trang công khai đọc; /noi-bo và kho không có lớp này và đọc :root của chung.css
+     (cùng giá trị). Tên biến giữ từ bảng trước (--kem là trắng, --than là đen) — đổi tên là
+     PR sau. Ba màu thương hiệu và một xám cho chữ phụ trên nền đen: */
+  --do:        #BD0000;   /* Đỏ — nút chính, nhãn, giá, dải đỏ */
+  --kem:       #FFFFFF;   /* Trắng — nền trang, ô nhập; chữ trên đen và đỏ */
+  --than:      #000000;   /* Đen — chữ, đầu trang, dải đen, chân trang */
+  --da:        #E2E2E2;   /* Xám — CHỈ chữ phụ trên nền đen (16,21 : 1) */
+  /* Màu pha cho màn hình (Khánh duyệt ngày 25/10/2026): đỏ đậm, xám viền ô nhập, xám chữ
+     phụ, nền xám nhạt, vạch. */
+  --do-dam:    #8F0000;
+  --do-sau:    #8F0000;
+  --kem-sau:   #F4F4F4;
+  --kem-dam:   #E2E2E2;
+  --vien-o:    #767676;   /* viền ô nhập: 4,54 : 1 với nền trắng của ô, 4,13 : 1 với thẻ xám nhạt quanh ô (WCAG 1.4.11 cần 3 : 1) */
+  --muc-nhat:  #555555;
+  --vach:      #E2E2E2;
+  --vach-kem:  rgba(255, 255, 255, .22);
 
-  /* Bề mặt mặc định: kem */
+  /* Bề mặt mặc định: trắng */
   --nen:        var(--kem);
   --chu-chinh:  var(--than);
   --chu-phu:    var(--muc-nhat);
-  --nhan:       var(--do);        /* chữ nhấn cỡ thường: đỏ trên kem 6,15 : 1 */
-  --nhan-nho:   var(--do-sau);    /* chữ nhấn rất nhỏ (≤ 13px): 7,93 : 1 */
+  --nhan:       var(--do);        /* chữ nhấn cỡ thường: đỏ trên trắng 6,64 : 1 */
+  --nhan-nho:   var(--do-sau);    /* chữ nhấn rất nhỏ (≤ 13px): 9,69 : 1 */
   --vien:       var(--vach);
   --vong-focus: var(--than);
   --nut-nen:    var(--do);
   --nut-chu:    var(--kem);
   --nut-nen-di: var(--do-dam);
-  /* Nút phụ (.nut-vien) trên nền kem: nền Cream, chữ và viền Beef Red; di chuột thì nền kem đậm,
-     chữ và viền đỏ đậm (7,00 : 1). Trên dải đỏ / tối: viền và chữ Cream — khai ở từng bề mặt. */
+  /* Nút phụ (.nut-vien) trên nền trắng: nền trắng, chữ và viền đỏ; di chuột thì nền xám --kem-dam,
+     chữ và viền đỏ đậm (7,48 : 1). Trên dải đỏ / đen: viền và chữ trắng — khai ở từng bề mặt. */
   --nut-phu-nen:    var(--kem);
   --nut-phu-chu:    var(--do);
   --nut-phu-nen-di: var(--kem-dam);
   --nut-phu-chu-di: var(--do-dam);
-  --net-ve:     var(--do-sau);    /* màu nét artwork (rosemary, khung ảnh) */
 
   /* Chữ. Chữ chạy 16/24px ở mọi bề rộng. h1 32px (tới 390px) → 48px (từ 1280px); dòng 1,17
      cho 38px / 56px — vẫn trên mức 1,08 mà dấu chồng tiếng Việt (ễ, ậ) cần. */
@@ -118,37 +116,39 @@ html:has(body.ck) {
 @media (max-height: 500px) { html:has(body.ck) { scroll-padding-top: 12px; } }
 
 /* --- Bề mặt ---------------------------------------------------------------- */
-/* Bề mặt sáng đặt lại TOÀN BỘ biến chữ: một thẻ kem nằm trong dải đỏ / tối không
-   được mang theo chữ kem của dải ngoài (chữ kem trên nền kem thì vô hình). Thẻ (.the)
+/* Bề mặt sáng đặt lại TOÀN BỘ biến chữ: một thẻ trắng nằm trong dải đỏ / đen không
+   được mang theo chữ trắng của dải ngoài (chữ trắng trên nền trắng thì vô hình). Thẻ (.the)
    luôn là một bề mặt sáng, đặt ở đâu cũng vậy. */
 .ck :is(.be-kem, .be-kem-sau, .be-kem-dam, .the) {
   --chu-chinh: var(--than); --chu-phu: var(--muc-nhat);
   --nhan: var(--do); --nhan-nho: var(--do-sau);
-  --vien: var(--vach); --vong-focus: var(--than); --net-ve: var(--do-sau);
+  --vien: var(--vach); --vong-focus: var(--than);
   --nut-nen: var(--do); --nut-chu: var(--kem); --nut-nen-di: var(--do-dam);
   --nut-phu-nen: var(--kem); --nut-phu-chu: var(--do);
   --nut-phu-nen-di: var(--kem-dam); --nut-phu-chu-di: var(--do-dam);
 }
 .ck .be-kem     { --nen: var(--kem); }
 .ck .be-kem-sau { --nen: var(--kem-sau); }
-.ck .be-kem-dam { --nen: var(--kem-dam); --nhan: var(--do-sau); }
+/* Tên lớp giữ từ bảng trước: dải "đậm" giờ cùng nền xám nhạt với .be-kem-sau (một nền nhạt duy nhất
+   được duyệt); đỏ trên xám nhạt đã 6,03 : 1, không cần đổi màu nhấn. */
+.ck .be-kem-dam { --nen: var(--kem-sau); }
+/* Dải đen: chữ trắng, chữ phụ --da, chữ nhấn TRẮNG — đỏ trên đen chỉ 3,16 : 1 (đỏ đậm 2,17). Nút chính
+   vẫn đỏ chữ trắng (nền đỏ so với dải đen 3,16 : 1, đủ cho viền nút); vòng focus trắng. */
 .ck .be-toi {
   --nen: var(--than); --chu-chinh: var(--kem); --chu-phu: var(--da);
-  --nhan: var(--mu-tat); --nhan-nho: var(--mu-tat);
-  --vien: var(--vach-kem); --vong-focus: var(--cuc-vang);
+  --nhan: var(--kem); --nhan-nho: var(--kem);
+  --vien: var(--vach-kem); --vong-focus: var(--kem);
   --nut-phu-nen: transparent; --nut-phu-chu: var(--kem);
-  --nut-phu-nen-di: rgba(240, 227, 208, .12); --nut-phu-chu-di: var(--kem);
-  --net-ve: var(--kem);
+  --nut-phu-nen-di: rgba(255, 255, 255, .12); --nut-phu-chu-di: var(--kem);
 }
 .ck .be-do {
   --nen: var(--do); --chu-chinh: var(--kem); --chu-phu: var(--kem);
   --nhan: var(--kem); --nhan-nho: var(--kem);
-  --vien: rgba(240, 227, 208, .35); --vong-focus: var(--kem);
+  --vien: rgba(255, 255, 255, .35); --vong-focus: var(--kem);
   --nut-nen: var(--kem); --nut-chu: var(--do-sau); --nut-nen-di: var(--kem-dam);
-  /* Nút phụ trên dải đỏ: viền và chữ Cream; di chuột thì nền đỏ pha 12 % Cream (chữ Cream 5,27 : 1). */
+  /* Nút phụ trên dải đỏ: viền và chữ trắng; di chuột thì nền đỏ pha 12 % trắng (chữ trắng 5,85 : 1). */
   --nut-phu-nen: transparent; --nut-phu-chu: var(--kem);
-  --nut-phu-nen-di: rgba(240, 227, 208, .12); --nut-phu-chu-di: var(--kem);
-  --net-ve: var(--kem);
+  --nut-phu-nen-di: rgba(255, 255, 255, .12); --nut-phu-chu-di: var(--kem);
 }
 .ck :is(.be-kem, .be-kem-sau, .be-kem-dam, .be-toi, .be-do) {
   background: var(--nen);
@@ -157,7 +157,8 @@ html:has(body.ck) {
 
 /* --- Nền và chữ ------------------------------------------------------------ */
 .ck :focus-visible { outline: 3px solid var(--vong-focus); outline-offset: 3px; }
-.ck .bo-qua { background: var(--than); color: var(--kem); }
+/* Link "bỏ qua tới nội dung" hiện đè lên đầu trang đen: nền trắng, chữ và viền đen — đọc được trên cả hai nền. */
+.ck .bo-qua { background: var(--kem); color: var(--than); border: 2px solid var(--than); }
 
 .ck a { color: inherit; text-underline-offset: .2em; text-decoration-thickness: 1px; }
 /* Kiểu "di chuột" (:hover) của trang công khai LUÔN nằm trong @media (hover: hover): trên màn cảm ứng,
@@ -200,13 +201,11 @@ html:has(body.ck) {
 .ck .khung-hep { width: min(760px, 100% - 2 * var(--le)); margin-inline: auto; }
 
 .ck .muc { position: relative; padding-block: var(--muc-dem); }
-/* Khối cũ (tuyển dụng, quyền riêng tư) dùng .muc-sang cho dải sáng hơn. */
+/* Khối cũ (tuyển dụng, quyền riêng tư) dùng .muc-sang cho dải xám nhạt. */
 .ck .muc-sang { background: var(--kem-sau); }
-/* Khối có trang trí: cắt phần thừa thay vì làm trang tràn ngang. */
-.ck .co-trang-tri { overflow: clip; }
 
-/* Thẻ: kem sau trên nền kem, Cream trên nền kem sau / kem đậm / đỏ / tối. Tách khỏi nền bằng
-   viền mảnh — không bóng đổ, không nền trắng. Đệm 20px trên điện thoại, 24px từ 600px. */
+/* Thẻ: xám nhạt trên nền trắng; trắng trên dải xám nhạt / đỏ / đen. Tách khỏi nền bằng viền
+   mảnh --vach — không bóng đổ. Đệm 20px trên điện thoại, 24px từ 600px. */
 .ck .the {
   --nen: var(--kem-sau);
   border: 1px solid var(--vien); border-radius: var(--bo-anh);
@@ -231,9 +230,9 @@ html:has(body.ck) {
   transition: background-color var(--nhanh), color var(--nhanh), border-color var(--nhanh);
 }
 .ck .nut svg { width: 24px; height: 24px; flex: none; }
-/* Nút chính: nền Beef Red, chữ Cream (trên dải đỏ: nền Cream, chữ đỏ đậm). */
+/* Nút chính: nền đỏ, chữ trắng (trên dải đỏ: nền trắng, chữ đỏ đậm). */
 .ck .nut-chinh { background: var(--nut-nen); color: var(--nut-chu); }
-/* Nút phụ: nền Cream, chữ và viền Beef Red (trên dải đỏ / tối: viền và chữ Cream). */
+/* Nút phụ: nền trắng, chữ và viền đỏ (trên dải đỏ / đen: nền trong, viền và chữ trắng). */
 .ck .nut-vien { background: var(--nut-phu-nen); color: var(--nut-phu-chu); border-color: var(--nut-phu-chu); }
 /* Đang nhấn (mọi loại máy) và đang di chuột (chỉ máy có chuột): cùng một màu đậm hơn. */
 .ck .nut-chinh:active { background: var(--nut-nen-di); }
@@ -260,14 +259,14 @@ html:has(body.ck) {
   font-weight: 700; text-decoration: underline; text-decoration-thickness: 1.5px;
   text-underline-offset: .3em; color: var(--chu-chinh);
 }
-/* Biểu tượng theo màu nhấn của bề mặt: Beef Red trên kem, Cream trên đỏ. */
+/* Biểu tượng theo màu nhấn của bề mặt: đỏ trên nền sáng, trắng trên đỏ và đen. */
 .ck .lien-ket svg { width: 24px; height: 24px; flex: none; color: var(--nhan); transition: transform var(--nhanh); }
 @media (hover: hover) { .ck .lien-ket:hover svg { transform: translateX(3px); } }
 
 /* --- Dòng trạng thái (cổng nội dung: dong_trang_thai) ---------------------- */
 .ck .trang-thai {
   display: flex; align-items: flex-start; gap: var(--k-3);
-  border-left: 3px solid var(--mu-tat);
+  border-left: 3px solid var(--do);
   padding: 2px 0 2px var(--k-4);
   margin: 0; max-width: 60ch;
 }
@@ -278,7 +277,7 @@ html:has(body.ck) {
 .ck .vi-tri .nhan {
   align-self: flex-start;
   font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--do-sau); background: rgba(167, 12, 12, .1);
+  color: var(--do-sau); background: var(--kem-dam);   /* đỏ đậm trên xám E2: 7,48 : 1 */
   padding: 4px 10px; border-radius: 2px;
 }
 /* Hangul không giãn chữ (THIET-KE mục 3). */
@@ -295,28 +294,29 @@ html:has(body.ck) {
   background: var(--kem-dam);
 }
 @media (max-width: 599px) { .ck .anh { aspect-ratio: var(--ti-le-nho, var(--ti-le, 4 / 3)); } }
-.ck .anh.tren-toi { background: #211A10; }
+/* Trên dải đen: trắng 8 % — khác dải một chút để thấy chỗ ảnh sẽ về (đen tuyền thì khung biến mất). */
+.ck .anh.tren-toi { background: rgba(255, 255, 255, .08); }
 .ck .anh.tren-do  { background: var(--do-sau); }
 /* Ảnh tách nền (ảnh món của trang Thực đơn — DANH_MUC_ANH.tachNen): món đặt thẳng lên nền của dải như
    trong cuốn menu — khung trong suốt, không bo góc. Khung vẫn giữ đúng tỷ lệ từ trước khi ảnh về. */
 .ck .anh.tach-nen { background: transparent; border-radius: 0; }
 .ck .anh picture { display: block; width: 100%; height: 100%; }
 .ck .anh img { display: block; width: 100%; height: 100%; object-fit: cover; }
-/* "Ảnh minh họa": nhãn có nền riêng (Charcoal 78 %) nên đọc được trên vùng ảnh nào cũng vậy — chữ Cream
-   trên nền nhãn đặt lên vùng ảnh trắng tinh vẫn 7,58 : 1, trên vùng màu kem 8,29 : 1. Chữ 13px (sàn). */
+/* "Ảnh minh họa": nhãn có nền riêng (đen 78 %) nên đọc được trên vùng ảnh nào cũng vậy — chữ trắng
+   trên nền nhãn đặt lên vùng ảnh trắng tinh vẫn 11,73 : 1. Chữ 13px (sàn). */
 .ck .chu-thich-anh {
   position: absolute; left: 12px; bottom: 12px; margin: 0;
   padding: 3px 8px; border-radius: 3px;
   font-size: var(--co-ti); font-weight: 600; line-height: 1.4; letter-spacing: .02em;
-  color: var(--kem); background: rgba(21, 16, 8, .78);
+  color: var(--kem); background: rgba(0, 0, 0, .78);
 }
 /* Ảnh tách nền: nhãn sát đáy khung, giữa theo chiều ngang — nằm trong dải trống tao-co-anh.py chừa sẵn ở
    đáy khung (12–14 % chiều cao), tức là ngay dưới món (món nằm giữa khung), không đè lên món. Lệch nửa bề
    rộng bằng translate: nhãn tiếng Anh dài hay tiếng Hàn ngắn đều nằm giữa. */
 .ck .anh.tach-nen .chu-thich-anh { left: 50%; bottom: 0; transform: translateX(-50%); white-space: nowrap; }
 
-/* Khung ảnh chờ ảnh chụp thật: đúng tỷ lệ của ảnh sau này, có artwork — không
-   phải hộp xám. Thay bằng ảnh thật là thay một thẻ, không đổi bố cục. */
+/* Khung ảnh chờ ảnh chụp thật: đúng tỷ lệ của ảnh sau này, có nét vẽ của KhungAnh.astro
+   theo màu của bảng. Thay bằng ảnh thật là thay một thẻ, không đổi bố cục. */
 .ck .khung-anh {
   position: relative; overflow: clip;
   aspect-ratio: var(--ti-le, 4 / 3);
@@ -327,38 +327,9 @@ html:has(body.ck) {
 }
 /* Dưới 600px: tỷ lệ của khung ảnh điện thoại — đúng chỗ ảnh thật (khungNho) sẽ nằm. */
 @media (max-width: 599px) { .ck .khung-anh { aspect-ratio: var(--ti-le-nho, var(--ti-le, 4 / 3)); } }
-.ck .khung-anh.tren-toi { background: #211A10; color: var(--kem); }
+.ck .khung-anh.tren-toi { background: rgba(255, 255, 255, .08); color: var(--kem); }
 .ck .khung-anh.tren-do  { background: var(--do-sau); color: var(--kem); }
 .ck .khung-anh > svg { width: min(78%, 420px); height: auto; position: relative; }
-.ck .khung-anh::before {
-  /* một mảng vân mỡ ở góc — chất liệu trang 2 */
-  content: ''; position: absolute; inset: auto -18% -30% auto; width: 70%; aspect-ratio: 1;
-  background: currentColor; opacity: .07;
-  -webkit-mask: url('/thuong-hieu/van-mo-gan.svg') center / cover no-repeat;
-          mask: url('/thuong-hieu/van-mo-gan.svg') center / cover no-repeat;
-}
-
-/* --- Trang trí từ PDF ------------------------------------------------------ */
-.ck .trang-tri { position: absolute; pointer-events: none; user-select: none; }
-/* Nét một màu dùng mặt nạ: một file SVG, tô màu nào cũng được (--net-ve). */
-.ck .net {
-  display: block; background: var(--net-ve);
-  -webkit-mask: var(--hinh) center / contain no-repeat;
-          mask: var(--hinh) center / contain no-repeat;
-}
-.ck .net.huong-thao-1 { --hinh: url('/thuong-hieu/huong-thao-1.svg'); aspect-ratio: 55.5 / 78.2; }
-.ck .net.huong-thao-2 { --hinh: url('/thuong-hieu/huong-thao-2.svg'); aspect-ratio: 53.5 / 83.8; }
-.ck .net.huong-thao-3 { --hinh: url('/thuong-hieu/huong-thao-3.svg'); aspect-ratio: 68.2 / 46.7; }
-.ck .net.huong-thao-4 { --hinh: url('/thuong-hieu/huong-thao-4.svg'); aspect-ratio: 62.5 / 70; }
-.ck .net.huong-thao-5 { --hinh: url('/thuong-hieu/huong-thao-5.svg'); aspect-ratio: 105.8 / 93.3; }
-.ck .net.steak-1      { --hinh: url('/thuong-hieu/steak-net-1.svg');  aspect-ratio: 99.2 / 146; }
-.ck .net.steak-2      { --hinh: url('/thuong-hieu/steak-net-2.svg');  aspect-ratio: 114.3 / 141; }
-
-/* Mảng vân mỡ trang 2: đỏ Beeftown trên đỏ đậm. */
-.ck .nen-van-mo {
-  background: var(--do) url('/thuong-hieu/van-mo.svg') center / cover no-repeat;
-}
-@media (max-width: 399px) { .ck .an-khi-hep { display: none; } }
 
 /* --- Câu hỏi thường gặp ---------------------------------------------------- */
 .ck .cau-hoi { border-top: 1px solid var(--vien); }
@@ -408,7 +379,7 @@ html:has(body.ck) {
 }
 .ck .o em { font-style: normal; font-weight: 400; color: var(--chu-phu); }
 .ck .o > small { display: block; margin: -2px 0 8px; font-size: var(--co-nho); line-height: 1.45; color: var(--chu-phu); }
-/* Ô nền Cream, viền --vien-o (3,71 : 1 với nền ô; 3,49 : 1 với thẻ kem sau quanh ô). Cao 48px,
+/* Ô nền trắng, viền --vien-o (4,54 : 1 với nền ô; 4,13 : 1 với thẻ xám nhạt quanh ô). Cao 48px,
    chữ 16px (iPhone không tự phóng to khi chạm). Nhãn luôn ở trên ô — không dùng placeholder thay nhãn. */
 .ck :is(.o, .form-dat) :is(input[type='text'], input[type='tel'], input[type='email'], input[type='date'], select, textarea) {
   width: 100%; min-height: 48px; padding: 11px 14px;
@@ -422,16 +393,16 @@ html:has(body.ck) {
 .ck :is(.o, .form-dat) :is(input, select, textarea):focus-visible {
   outline: 3px solid var(--do); outline-offset: 1px; border-color: var(--do);
 }
-/* Ô trình duyệt tự điền (tên, số điện thoại đã lưu): Chrome và Safari tô nền ô bằng màu gần trắng của
-   riêng chúng và không cho ghi đè bằng background — phủ lại bằng một lớp bóng trong màu Cream, chữ và
-   con nháy vẫn Charcoal. :is() nhận cả hai cách viết; trình duyệt không hiểu cách nào thì bỏ qua cách đó. */
+/* Ô trình duyệt tự điền (tên, số điện thoại đã lưu): Chrome và Safari tô nền ô bằng màu nhạt của riêng
+   chúng và không cho ghi đè bằng background — phủ lại bằng một lớp bóng trong màu trắng của bảng, chữ và
+   con nháy vẫn đen. :is() nhận cả hai cách viết; trình duyệt không hiểu cách nào thì bỏ qua cách đó. */
 .ck :is(input, select, textarea):is(:autofill, :-webkit-autofill) {
   box-shadow: inset 0 0 0 1000px var(--kem);
   -webkit-text-fill-color: var(--than); caret-color: var(--than);
 }
-/* Ô đánh dấu: tự vẽ — ô của hệ thống nền trắng, mà bảng màu không có trắng. Chưa chọn: nền Cream,
-   viền --vien-o; đã chọn: nền Beef Red, dấu ✓ Cream (hai nét viền xoay 45°). Vẫn là <input> thật:
-   phím cách, nhãn bấm được, trình đọc màn hình không đổi. */
+/* Ô đánh dấu: tự vẽ — để đã chọn tô đỏ của bảng, dấu ✓ trắng (ô của hệ thống tô màu nhấn riêng của
+   từng máy). Chưa chọn: nền trắng, viền --vien-o; đã chọn: nền đỏ, dấu ✓ trắng (hai nét viền xoay 45°).
+   Vẫn là <input> thật: phím cách, nhãn bấm được, trình đọc màn hình không đổi. */
 .ck input[type='checkbox'] {
   -webkit-appearance: none; appearance: none;
   display: inline-grid; place-content: center;
@@ -453,9 +424,9 @@ html:has(body.ck) {
   .ck input[type='checkbox'] { -webkit-appearance: auto; appearance: auto; }
   .ck input[type='checkbox']::before { content: none; }
 }
-/* Lỗi: đỏ đậm #890607, luôn kèm câu chữ (.loi-o) — viền dày thêm 1px bằng vòng trong, ô không xê dịch. */
+/* Lỗi: đỏ đậm (--do-dam), luôn kèm câu chữ (.loi-o) — viền dày thêm 1px bằng vòng trong, ô không xê dịch. */
 .ck [aria-invalid='true'] { border-color: var(--do-dam) !important; box-shadow: inset 0 0 0 1px var(--do-dam); }
-/* Ô tự điền đang báo lỗi: vòng đỏ đậm nằm trên lớp Cream (bóng khai trước vẽ đè lên bóng khai sau). */
+/* Ô tự điền đang báo lỗi: vòng đỏ đậm nằm trên lớp trắng (bóng khai trước vẽ đè lên bóng khai sau). */
 .ck [aria-invalid='true']:is(:autofill, :-webkit-autofill) { box-shadow: inset 0 0 0 1px var(--do-dam), inset 0 0 0 1000px var(--kem); }
 .ck fieldset[aria-invalid='true'] { box-shadow: none; outline: 2px solid var(--do-dam); outline-offset: 2px; }
 .ck .loi-o { margin: 6px 0 0; font-size: 15px; font-weight: 600; color: var(--do-dam); }
@@ -463,24 +434,15 @@ html:has(body.ck) {
 .ck .loi-o::before { content: '! '; content: '! ' / ''; font-weight: 800; }
 
 /* --- In ------------------------------------------------------------------- */
-/* Chỗ DUY NHẤT có trắng và đen: bản in ra giấy. */
+/* Bản in ra giấy: dải đen, dải đỏ thành giấy trắng chữ đen (mã viết thẳng chỉ ở khối này). */
 @media print {
-  .ck .dau-trang, .ck .trang-tri, .ck .menu-gon, .ck .doi-ngon-ngu { display: none !important; }
+  .ck .dau-trang, .ck .menu-gon, .ck .doi-ngon-ngu { display: none !important; }
   .ck :is(.be-toi, .be-do) { background: #fff; color: #000; }
 }
 
 /* --- Đầu trang con (Thực đơn, Đến Beeftown, Hỏi bàn) ---------------------- */
+/* Chữ lớn trên nền trắng, nhãn .hieu đỏ — không nét trang trí bên phải: tiêu đề rộng tối đa 20ch,
+   dòng dẫn theo .dan (58ch) như mọi khối khác. */
 .ck .mo-dau-trang { position: relative; overflow: clip; padding-block: var(--k-8) var(--k-7); }
 .ck .mo-dau-trang h1 { max-width: 20ch; }
 .ck .mo-dau-trang .dan { margin-top: var(--k-5); }
-.ck .mo-dau-trang .net-goc {
-  position: absolute; right: max(var(--le), calc((100% - var(--rong-ck)) / 2)); top: 50%;
-  width: clamp(90px, 12vw, 170px); transform: translateY(-50%) rotate(-18deg); opacity: .9;
-}
-@media (max-width: 599px) { .ck .mo-dau-trang .net-goc { display: none; } }
-/* Từ 600px tới khoảng 1100px, tiêu đề và dòng dẫn dài chạy đè lên nét rosemary
-   ở mép phải — chừa đúng bề rộng của nét vẽ cộng một khoảng. */
-@media (min-width: 600px) {
-  .ck .mo-dau-trang h1 { max-width: min(20ch, 100% - clamp(90px, 12vw, 170px) - var(--k-6)); }
-  .ck .mo-dau-trang .dan { max-width: min(58ch, 100% - clamp(90px, 12vw, 170px) - var(--k-6)); }
-}

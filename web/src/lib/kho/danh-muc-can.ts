@@ -253,7 +253,8 @@ export async function hangChoCan(client: SupabaseClient, chiNhanhId: string, mat
 /** Máy quầy báo quá chừng này phút trước thì "trên cân" có thể đã cũ — nói rõ lần báo cuối. */
 export const PHUT_BAO_CAN_CU = 5;
 
-/** chua_xac_nhan (0090): đúng tên mới, nhưng máy quầy báo cân có thể đang khác dòng đó (lần gửi chưa xác nhận) — không xanh. */
+/** chua_xac_nhan (0090): đúng tên mới, nhưng máy quầy báo cân có thể đang khác dòng đó (lần gửi chưa xác nhận) — không
+    phải "Cân sẵn sàng". */
 export type MucCan = 'san_sang' | 'chua_xac_nhan' | 'ten_cu' | 'chua_len' | 'khong_biet';
 export interface DongCanO {
   giao_id: string; ten_hang: string; so_o: number; ma_can: string;

@@ -68,7 +68,7 @@ const day = thanhDayNoiBo(nhanSu?.vai_tro);
     <title>{tieuDe} — {t.tenTrang}</title>
     <meta name="robots" content="noindex, nofollow" />
     <link rel="icon" href="/bieu-tuong.svg" type="image/svg+xml" />
-    <meta name="theme-color" content="#151008" />
+    <meta name="theme-color" content="#000000" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -80,7 +80,7 @@ const day = thanhDayNoiBo(nhanSu?.vai_tro);
   <body class="nb-than">
     <header class="nb-dau">
       <div class="nb-khung nb-dau-hang">
-        <a href="/noi-bo" class="nb-hieu">BEEFTOWN<span>{t.noiBo}</span></a>
+        <a href="/noi-bo" class="nb-hieu"><img src="/thuong-hieu/chu-beeftown-trang.svg" width="430" height="61" alt="Beeftown" />{' '}<span>{t.noiBo}</span></a>
         <div class="nb-dau-phai">
           <a href={doiTieng.link} class="nb-nut-nho nb-doi-tieng" lang={doiTieng.nnKia} hreflang={doiTieng.nnKia}>{doiTieng.chu}</a>
           {nhanSu && (

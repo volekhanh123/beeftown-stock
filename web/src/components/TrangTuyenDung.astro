@@ -149,7 +149,7 @@ const tRieng = dich(ngonNgu, {
 ---
 
 {/* Đầu trang con chung của trang công khai (.mo-dau-trang, cong-khai.css):
-    nền kem, nhãn đỏ, nét rosemary bên phải. */}
+    nền trắng, nhãn đỏ, tiêu đề lớn — không nét trang trí. */}
 <section class="mo-dau-trang be-kem td-dau">
   <div class="khung">
     <p class="hieu">{t.tuyenDung}</p>
@@ -161,7 +161,6 @@ const tRieng = dich(ngonNgu, {
       </div>
     )}
   </div>
-  <span class="trang-tri net huong-thao-5 net-goc" aria-hidden="true"></span>
 </section>
 
 <section class="muc be-kem-sau">
@@ -521,10 +520,11 @@ const tRieng = dich(ngonNgu, {
   .td-kenh-cau { margin: 0; max-width: 56ch; }
   .td-kenh .hang-nut { margin-top: var(--k-5); }
 
-  /* Khung lỗi của máy chủ: chữ than trên nền nhuộm đỏ nhạt, vạch đỏ đậm bên trái. */
+  /* Khung lỗi của máy chủ: chữ đen trên nền xám --kem-dam, vạch đỏ đậm bên trái — không nền đỏ nhạt
+     (bảng 22/10/2026 không có màu nhạt nào); câu lỗi luôn có chữ, vạch là dấu thứ hai. */
   .td-loi {
     border-left: 4px solid var(--do-dam);
-    background: rgba(137, 6, 7, .08);
+    background: var(--kem-dam);
     padding: var(--k-3) var(--k-4);
     margin: 0 0 var(--k-5);
   }

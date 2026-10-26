@@ -268,10 +268,15 @@ const vungSo = nn === 'en' ? 'en-US' : 'vi-VN';
 
 <style>
   .dm-tom { margin: .5rem 0 1rem; }
-  .dm-chip { display: inline-block; font-size: .75rem; font-weight: 700; padding: .15rem .5rem; border-radius: 4px; white-space: nowrap; }
+  /* Chip mức lệch — chữ nói mức (TEN_MUC_LECH_NB), vẽ chỉ thêm, không chỉ khác bằng màu: vượt ngưỡng = nền đỏ chữ
+     trắng và dấu "!"; gần ngưỡng = nền xám E2; trong ngưỡng = viền đen và "✓"; chưa so được = chữ xám, không nền.
+     Lớp do / vang / xanh / xam là mã mức của lib, không phải màu trên màn hình. Dòng vượt: vạch đỏ 4px ở ô đầu. */
+  .dm-chip { display: inline-block; font-size: .75rem; font-weight: 700; padding: .15rem .5rem; border-radius: 4px; white-space: nowrap; border: 1.5px solid transparent; }
   .dm-chip.do { background: var(--do); color: var(--kem); }
-  .dm-chip.vang { background: var(--vang-nen); color: var(--vang-chu); }
-  .dm-chip.xanh { background: var(--xanh-nen); color: var(--xanh); }
-  .dm-chip.xam { background: var(--kem-sau); color: var(--muc-nhat); }
-  tr.dm-do td { background: var(--do-nen); }
+  .dm-chip.do::before { content: '! '; content: '! ' / ''; font-weight: 800; }
+  .dm-chip.vang { background: var(--kem-dam); color: var(--than); }
+  .dm-chip.xanh { background: transparent; color: var(--than); border: 1.5px solid var(--than); }
+  .dm-chip.xanh::before { content: '✓ '; content: '✓ ' / ''; }
+  .dm-chip.xam { background: transparent; color: var(--muc-nhat); }
+  tr.dm-do td:first-child { box-shadow: inset 4px 0 0 var(--do); }
 </style>

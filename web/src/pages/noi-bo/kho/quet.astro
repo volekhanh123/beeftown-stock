@@ -40,7 +40,8 @@ import { docGiaoOMaCan, docMaTrenNhan, type GiaoOMa } from '../../../lib/kho/o-m
 import { chuTang, docLoTang, soTangChu } from '../../../lib/kho/tang.ts';
 import { viecChoNhan } from '../../../lib/kho/quet-nhan.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, homNayVn, kqHai, laUuid, nhanKho, TEN_LOAI_VI_TRI_NB, type HaiThuTieng, type KetQua,
+  cauLoiKho, chuTinhTrangHan, dinhDangKg, dinhDangNgay, homNayVn, kqHai, laUuid, nhanKho, TEN_LOAI_VI_TRI_NB,
+  type HaiThuTieng, type KetQua,
 } from '../../../lib/kho/chung.ts';
 import { dichNB } from '../../../lib/ngon-ngu-noi-bo.ts';
 
@@ -60,9 +61,6 @@ const t = dichNB(nn, {
     en: (ma: string) => `The label is valid, but item code ${ma} is not linked to any item. Set this pack aside and tell the manager.`,
   },
   khongDoc: { vi: 'Không đọc được tồn kho.', en: 'Could not read the stock.' },
-  hetHan: { vi: 'Hết hạn', en: 'Expired' },
-  sapHet: { vi: 'Sắp hết hạn', en: 'Expiring soon' },
-  conHan: { vi: 'Còn hạn', en: 'In date' },
   goiNay: { vi: (dv: string, kg: string) => `${dv.charAt(0).toLocaleUpperCase('vi')}${dv.slice(1)} này: ${kg} kg`, en: (dv: string, kg: string) => `This ${dv}: ${kg} kg` },
   oTang: { vi: (o: number, tang: string) => `Ô ${o} · tảng ${tang}`, en: (o: number, tang: string) => `Slot ${o} · primal ${tang}` },
   chuaCoSo: { vi: 'chưa có số', en: 'without a number' },
@@ -187,7 +185,6 @@ const nhom = [...theoViTri.values()].sort((a, b) => Number(b.lo.some(laLoNhan)) 
 const tongGoi = ton.reduce((s, t) => s + t.so_goi, 0);
 const tongKg = ton.reduce((s, t) => s + t.so_kg, 0);
 const loGanNhat = [...ton].filter(t => t.tinh_trang_han !== 'het_han').sort((a, b) => a.han_dung.localeCompare(b.han_dung))[0];
-const TEN_HAN: Record<string, string> = { het_han: t.hetHan, sap_het: t.sapHet, con_han: t.conHan };
 
 // Nút lớn mở sẵn đúng lô (viecChoNhan ở trên): nhãn mã ô → lô của tảng trên nhãn khi lô đó còn hàng ở kho / quầy;
 // không thì Ra quầy lấy lô trong kho lạnh hạn gần nhất, Báo hủy lấy lô đã hết hạn (nếu có). Lô của nhãn đã hết hạn
@@ -241,7 +238,7 @@ const maGui = crypto.randomUUID();
           <ul>
             {g.lo.map(l => (
               <li class:list={[{ 'lo-nhan': laLoNhan(l) }]}>
-                <span class={`kho-han ${l.tinh_trang_han}`}>{TEN_HAN[l.tinh_trang_han]}</span>
+                <span class={`kho-han ${l.tinh_trang_han}`}>{chuTinhTrangHan(l.tinh_trang_han, nn)}</span>
                 <span>{t.hanDong(dinhDangNgay(l.han_dung), dinhDangNgay(l.ngay_dong_goi))}</span>
                 <b>{l.dem_goi ? `${l.so_goi} ${l.don_vi_goi} · ` : ''}{dinhDangKg(l.so_kg, nn)} kg</b>
                 {chuTang(soTangCua(l), nn) && <span class="quet-tang">{chuTang(soTangCua(l), nn)}{laLoNhan(l) ? ` · ${t.loNhan(dvNhan)}` : ''}</span>}

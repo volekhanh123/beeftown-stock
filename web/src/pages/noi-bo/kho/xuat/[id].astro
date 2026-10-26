@@ -73,8 +73,8 @@ import {
 import { linkAnh } from '../../../../lib/kho/anh.ts';
 import { huyTraHangChoTien } from '../../../../lib/kho/cong-no.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, donViChung, homNayVn, kqHai, laUuid, nhanKho, trangThaiKho,
-  TEN_LOAI_SO_CAI_NB, type HaiThuTieng, type KetQua, type NgonNguNB,
+  cauLoiKho, chuTinhTrangHan, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, donViChung, homNayVn, kqHai, laUuid, nhanKho,
+  trangThaiKho, TEN_LOAI_SO_CAI_NB, type HaiThuTieng, type KetQua, type NgonNguNB,
 } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../lib/cau-noi-bo.ts';
@@ -453,7 +453,7 @@ const monNhanh = moi && loai === 'xuat_bep'
 // Lệnh gửi lên
 // ---------------------------------------------------------------------------
 let bao: KetQua | null = k.bao;
-/** Dòng vàng dưới câu báo: nhãn không đọc được, ảnh chưa tải lên... */
+/** Dòng lưu ý (khung nb-bao luu-y) dưới câu báo: nhãn không đọc được, ảnh chưa tải lên... */
 const luuY: string[] = [];
 let dongA: DongXuatForm[] | null = null;
 let dongB: DongLoForm[] | null = null;
@@ -802,7 +802,7 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
                           <div class="dau">
                             <b>{t.ten_hang}</b>
                             <span class="kho-phu">{ch.lo} {t.ma_lo}{tangChu(t.lo_id) && <>{' · '}<strong>{tangChu(t.lo_id)}</strong></>} · {ch.conTruoc}{t.dem_goi ? `${t.so_goi} ${t.don_vi_goi} · ` : ''}{dinhDangKg(t.so_kg, nn)} kg{ch.conSau} ·{' '}
-                              <span class={`kho-han ${t.tinh_trang_han}`}>{ch.hsd} {dinhDangNgay(t.han_dung)}</span></span>
+                              <span class={`kho-han ${t.tinh_trang_han}`}>{chuTinhTrangHan(t.tinh_trang_han, nn)}{' · '}{ch.hsd} {dinhDangNgay(t.han_dung)}</span></span>
                           </div>
                           {khoa ? (
                             <p class="kho-phu" style="margin:.2rem 0 .6rem">{ch.chiBaoHuy}</p>

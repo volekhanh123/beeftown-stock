@@ -139,6 +139,8 @@ function thoatHtml(s: string): string {
  *
  * Không dùng khung NoiBo: trang này phải hiện được cả khi chính việc dựng
  * trang đang là thứ có vấn đề. Không JavaScript, không tài nguyên ngoài.
+ * Vì không nạp file CSS nào, màu của bảng 22/10/2026 viết thẳng: nền trắng, chữ
+ * đen, nút đỏ chữ trắng (6,64 : 1), chữ phụ #555555 (7,46 : 1).
  */
 export function trangQuaTai(nn: NgonNguNB, laPost: boolean, url: URL): Response {
   const c = (x: HaiThuTieng) => thoatHtml(x[nn]);
@@ -158,12 +160,12 @@ export function trangQuaTai(nn: NgonNguNB, laPost: boolean, url: URL): Response 
 ${laPost ? '' : `<meta http-equiv="refresh" content="${giay}">`}
 <title>${c(CAU_TRANG.tieuDe)} · Beeftown</title>
 <style>
-  body { margin: 0; background: #F0E3D0; color: #151008; font: 16px/1.55 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+  body { margin: 0; background: #FFFFFF; color: #000000; font: 16px/1.55 system-ui, -apple-system, 'Segoe UI', sans-serif; }
   main { width: min(560px, 100% - 32px); margin: 12vh auto; }
   h1 { font-size: 1.5rem; margin: 0 0 1rem; }
   a { display: inline-block; margin-top: .5rem; padding: .75rem 1.25rem; min-height: 48px; box-sizing: border-box;
-      background: #A70C0C; color: #F0E3D0; border-radius: 8px; text-decoration: none; font-weight: 600; }
-  .phu { color: rgba(21, 16, 8, .68); font-size: .9rem; margin-top: 1.5rem; }
+      background: #BD0000; color: #FFFFFF; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .phu { color: #555555; font-size: .9rem; margin-top: 1.5rem; }
 </style>
 </head>
 <body>

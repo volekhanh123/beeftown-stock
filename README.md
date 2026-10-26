@@ -10,7 +10,7 @@ Website và các tài liệu thiết kế dạng web của **Beeftown** — Beef
 
 Bò được cắt và **đóng sẵn trong khay skin-pack theo từng phần cắt**. Nhãn khay ghi tên phần cắt, giá mỗi 100g, trọng lượng, giá cuối (đã gồm VAT — chỉ nói về giá trên nhãn) và ngày đóng gói. Khách nhìn và chọn phần bò tại quầy như ở một tiệm thịt, có nhân viên tư vấn; cả bàn cùng nướng trên **vỉ gas đặt tại bàn**, và trong bữa có thể gọi nhân viên chọn thêm. Có quy trình ủ, nhưng chưa xác nhận số ngày, phương pháp, grade hay xuất xứ — không viết claim nào về những điều đó.
 
-- **Tagline trên web:** *Pick it. Grill it. Love it.* — descriptor *Beef Specialty Restaurant*. (Câu "Thịt chuẩn - Giá thật" chỉ có trên ảnh mockup của PDF nhận diện, không dùng trên web.)
+- **Tagline:** *Pick it, grill it, love it!* (dấu phẩy, chấm than — theo logo 21/10/2026, Khánh chốt 26/10/2026) — descriptor *Beef Specialty Restaurant*. (Câu "Thịt chuẩn - Giá thật" chỉ có trên mockup của PDF nhận diện cũ, không dùng.)
 - **Định vị:** cao cấp vừa tầm — không phải quán bình dân, cũng không phải nhà hàng sang trọng
 - **Khách chính:** người trưởng thành đi cùng gia đình, người thân; rồi bạn bè, nhóm văn phòng. Bữa tối và dịp tụ họp.
 
@@ -21,11 +21,11 @@ Bò được cắt và **đóng sẵn trong khay skin-pack theo từng phần c�
 | File | Nội dung |
 |---|---|
 | `web/` | **Website đang dùng.** Astro trên Cloudflare Workers, ba thứ tiếng Việt–Anh–Hàn (bản Anh và Hàn do máy dịch khi câu tiếng Việt đổi). Xem `web/README.md`. |
-| `web/THIET-KE.md` | **Hệ giao diện trang công khai** ("Quầy thịt ấm"): màu theo vai và tương phản, chữ, thành phần, manifest artwork (nguồn, vị trí, trạng thái từng tài sản), brief chụp ảnh / video, phần bàn giao. |
+| `web/THIET-KE.md` | **Hệ giao diện trang công khai** ("Quầy thịt ấm"): màu theo vai và tương phản, chữ, thành phần, manifest tài sản (logo bộ 21/10/2026, ảnh, khung ảnh), brief chụp ảnh / video, phần bàn giao. |
 | `crm/` | Database CRM và kho trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung, kho, bản dịch tự động — và **toàn bộ kiểm thử** (`crm/test/`). |
 | `CLAUDE.md` | **Quy trình kiểm thử bắt buộc** cho mọi tính năng mới: 9 mục "định nghĩa xong", cách chạy test, việc trước khi mở PR. |
 | `AGENTS.md` | Cùng quy trình đó cho Codex và các agent không phải Claude, kèm quy tắc rà soát PR (mục "Code Review Rules"). |
-| `THUONG-HIEU.md` | **Bảng màu mới Khánh chốt 22/10/2026** (đỏ `#BD0000`, đen, trắng; mục 0; Khánh duyệt đổi 25/10/2026, mã chưa đổi). **Bảng 09/10/2026 đang chạy**: giá trị đã áp dụng trên trang công khai, `/noi-bo` và kho; chỗ website còn khác guideline; thứ còn mang màu cũ hơn (Beeftown Cân, ảnh hướng dẫn kho). |
+| `THUONG-HIEU.md` | **Bộ nhận diện 21/10/2026** (logo chính, logo phụ, brandmark; đỏ `#BD0000`, đen, trắng — CMYK, Pantone, phông của logo); quyết định của Khánh 22, 25, 26/10/2026; token website (đã đổi ở PR 1 "Đổi nhận diện website"); chỗ website khác guideline; thứ còn mang nhận diện cũ (Beeftown Cân, ảnh hướng dẫn kho, logo PNG của Mini App); lịch sử bảng 09/10/2026. |
 | `mini-app/` | **Mini App Zalo** bán thịt mang về: khách chọn số khay của 6 phần thịt, app mở chat Zalo OA với tin đơn điền sẵn, khách tự bấm Gửi. Không máy chủ, không lưu dữ liệu khách. Xem `mini-app/README.md`. |
 | `.github/` | Kiểm thử tự động (GitHub Actions) mỗi PR, mỗi lần gộp và mỗi đêm 00:30 giờ VN; đóng gói `BeeftownCan.exe` (tải về không cần gõ lệnh: `can-app/README.md`, mục "Tải BeeftownCan.exe về"); mẫu PR; mẫu báo lỗi. |
 | `Beeftown_CRM_Design.html` | Thiết kế hệ thống CRM và thẻ thành viên — đặc tả nghiệp vụ của `crm/` (tỷ lệ tích điểm, ngưỡng, nhóm khách). |
@@ -67,34 +67,31 @@ Lưu ý khi sửa code phần mềm cân:
 
 ### Bảng màu
 
-> **Ngày 22/10/2026 Khánh chốt bảng màu mới: chỉ đỏ `#BD0000`, đen `#000000`, trắng `#FFFFFF`; bỏ Cream, Marigold, Warm Stone** (`THUONG-HIEU.md` mục 0). Ngày 25/10/2026 Khánh duyệt đổi và trả lời câu 1–3; từ đó thiết kế mới ngoài `web/` (bản mẫu, ấn phẩm, Mini App) dùng bảng mới. Mã chưa đổi: website và Beeftown Cân còn màu cũ tới PR đổi màu (mục 0, việc 3 và 7). Phần dưới đây tả bảng đang chạy.
->
-> **Cả website** dùng bảng màu thương hiệu Khánh chốt ngày 09/10/2026 (`THUONG-HIEU.md`): trang công khai đổi trước; `/noi-bo` và kho đổi ngày 12/10/2026. Còn mang màu cũ: Beeftown Cân (PR riêng, kèm phiên bản mới của chương trình) và 15 ảnh chụp trong trang hướng dẫn của kho (`web/public/kho/hd-*.png`), chờ chụp lại.
+> **Website dùng bảng 22/10/2026 từ PR 1 "Đổi nhận diện website"** (`THUONG-HIEU.md` mục 1 và 4): đỏ `#BD0000`, đen `#000000`, trắng `#FFFFFF` — ba màu của Brand Guidelines 21/10/2026 — cùng năm màu pha chỉ cho màn hình Khánh duyệt ngày 25/10/2026. Bỏ kem, vàng và xám ấm của bảng 09/10/2026. Còn màu cũ: Beeftown Cân (PR riêng, kèm phiên bản mới của chương trình — `THUONG-HIEU.md` mục 0, việc 7) và 15 ảnh chụp trong trang hướng dẫn của kho (`web/public/kho/hd-*.png`, việc 8), chờ chụp lại.
 
 | Tên | Mã | Token web | Dùng cho |
 |---|---|---|---|
-| Beef Red | `#A70C0C` | `--do` | Màu chủ đạo: nút chính, nhãn, dải đỏ, chữ nhấn trên kem; ở `/noi-bo` và kho là số báo việc và việc "làm ngay" |
-| Cream | `#F0E3D0` | `--kem` | Nền đọc; chữ trên nền tối và nền đỏ |
-| Charcoal | `#151008` | `--than` | Chữ chính, nền dải tối, đầu trang nội bộ (tên màu — Beeftown nướng vỉ gas, không than) |
-| Marigold | `#F5AA14` | `--cuc-vang`, `--mu-tat` | Điểm nhấn nhỏ, vòng focus trên nền tối; chữ chỉ trên nền tối |
-| Warm Stone | `#B8A98C` | `--da` | Chữ phụ **chỉ trên nền tối**; nét kẻ |
-| Đỏ đậm (màu pha) | `#890607` | `--do-dam`, `--do-sau` | Nút khi di chuột, chữ nhấn rất nhỏ trên kem, chữ nút trên nền đỏ, nét artwork trên kem |
-| Kem sau · kem đậm (màu pha) | `#EBDCC6` · `#E7D5BC` | `--kem-sau` · `--kem-dam` | Nền khối phụ trên trang sáng; kem sau là nền của thẻ ở trang công khai, nền trang của `/noi-bo` và kho; kem đậm là nền khi di chuột |
-| Viền ô nhập (màu pha) | `#7A7366` | `--vien-o` | Viền ô nhập của form (ô nền Cream ở cả website); ở `/noi-bo` và kho còn là viền nút phụ, ô đánh dấu |
+| Đỏ | `#BD0000` | `--do` | Nút chính, nhãn, giá, dải đỏ, chữ nhấn trên nền sáng; ở `/noi-bo` và kho là số báo việc và việc "làm ngay" |
+| Đen | `#000000` | `--than` | Chữ chính; đầu trang, vài dải, chân trang; vòng focus trên nền sáng; nhãn "nháp" |
+| Trắng | `#FFFFFF` | `--kem` | Nền trang công khai; thẻ, ô nhập ở `/noi-bo` và kho; chữ trên đen và đỏ; vòng focus trên nền tối |
+| Đỏ đậm (màu pha) | `#8F0000` | `--do-dam`, `--do-sau` | Nút khi di chuột / đang gửi, câu lỗi, chữ nhấn rất nhỏ, chữ nút trên dải đỏ |
+| Xám nhạt (màu pha) | `#F4F4F4` | `--kem-sau` | Dải phụ, thẻ trên nền trắng; nền trang `/noi-bo` và kho; đầu bảng |
+| Xám vạch (màu pha) | `#E2E2E2` | `--vach`, `--kem-dam`, `--da` | Viền thẻ, vạch ngăn; nền khi di chuột, nhãn "lưu ý"; `--da` **chỉ** làm chữ phụ trên nền đen |
+| Xám chữ phụ (màu pha) | `#555555` | `--muc-nhat` | Chữ phụ, gợi ý trong ô; vạch và vòng "!" của "lưu ý" |
+| Xám viền ô (màu pha) | `#767676` | `--vien-o` | Viền ô nhập, ô đánh dấu, nút phụ nội bộ; nét đứt "tắt"; viền nút trên đầu trang đen |
 
-Năm dòng đầu là năm màu của guideline. Ba dòng sau là màu pha cho màn hình, Khánh cho phép ngày 10/10/2026. Token khai ở **hai nơi cùng giá trị, chưa gộp** — khối `.ck` đầu tiên của `web/src/styles/cong-khai.css` (trang công khai) và hai khối `:root` của `web/src/styles/chung.css` (`/noi-bo`, kho). Đổi một mã là đổi mọi nơi đó trong cùng PR: `crm/test/test-cong-khai-giao-dien.mjs` (nhóm 2, 6) và `crm/test/test-noi-bo-bang-mau.mjs` gác từng mã.
+Ba dòng đầu là ba màu của guideline; năm dòng sau là màu pha chỉ cho màn hình (ấn phẩm chỉ ba màu). Tên biến cũ (`--kem` mang trắng, `--than` mang đen) giữ tới PR đổi tên (`THUONG-HIEU.md` mục 0, việc 4). Token khai ở **hai nơi cùng giá trị, chưa gộp** — khối `.ck` đầu tiên của `web/src/styles/cong-khai.css` (trang công khai) và hai khối `:root` của `web/src/styles/chung.css` (`/noi-bo`, kho). Đổi một mã là đổi mọi nơi đó trong cùng PR: `crm/test/test-cong-khai-giao-dien.mjs` (nhóm 2, 6) và `crm/test/test-noi-bo-bang-mau.mjs` gác từng mã.
 
-`/noi-bo` và kho có thêm **màu trạng thái** (xanh = xong, vàng = lưu ý, đỏ nhạt = làm ngay) — màu chức năng của công cụ, không thuộc năm màu thương hiệu, không dùng ở trang công khai. Mã và tương phản: `THUONG-HIEU.md`, mục 4. Beeftown Cân có màu trạng thái riêng trong file HTML của nó, theo bảng cũ.
+`/noi-bo` và kho **không có màu trạng thái** (Khánh bỏ xanh, vàng, đỏ nhạt ngày 25/10/2026): đỏ = làm ngay, đen = xong / nháp, xám = lưu ý / tắt; hai trạng thái cạnh nhau luôn khác nhau ở chữ, dấu hay nét — bảy kiểu K1–K7 ở `THUONG-HIEU.md` mục 4 (`crm/test/test-noi-bo-bang-mau.mjs` nhóm 7). Beeftown Cân còn màu trạng thái riêng theo bảng cũ.
 
-**Bảng màu không có trắng**, và website không có nền trắng: trang công khai thẻ nền kem sau trên nền Cream, ô nhập nền Cream (`test-cong-khai-giao-dien.mjs` nhóm 7 và `web/kiem-tra/do-giao-dien.mjs`); `/noi-bo` và kho thẻ Cream trên nền kem sau, ô nhập Cream, ô đánh dấu tự vẽ (`test-noi-bo-bang-mau.mjs` nhóm 3–4). Trắng chỉ còn trên giấy in.
+**Trang công khai nền trắng**, đen làm điểm nhấn (đầu trang, vài dải, chân trang), đỏ cho nút, nhãn, giá (Khánh quyết 25/10/2026). Thẻ xám nhạt trên nền trắng; ô nhập trắng viền `#767676` (`test-cong-khai-giao-dien.mjs` nhóm 7 và `web/kiem-tra/do-giao-dien.mjs`). `/noi-bo` và kho: nền trang xám nhạt, thẻ và ô nhập trắng, ô đánh dấu tự vẽ (`test-noi-bo-bang-mau.mjs` nhóm 3–4).
 
-Warm Stone và Marigold **không bao giờ** làm chữ trên nền sáng (tương phản 1,83 và 1,56 : 1 với kem; 1,71 và 1,46 : 1 với kem sau); không đặt chữ đỏ trên nền tối (2,43 : 1). Tỷ lệ trang công khai đang chạy: kem 60 % / tối 25 % / đỏ 12 % / vàng 3 % (ước lượng) — guideline ghi Cream 60 / Beef Red 25 / Charcoal 10 / Marigold dưới 5; **Khánh quyết ngày 11/10/2026: website giữ như đang chạy**, không đổi các dải tối sang kem. Vai từng màu theo bề mặt và bảng tương phản: `web/THIET-KE.md`, mục 2.
+Không đặt chữ thường màu đỏ trên nền đen (3,16 : 1), không chữ `#555555` trên nền đen (2,82 : 1). Các dải tối "Quầy chọn bò", "Bò tại quầy" ở lại (Khánh quyết 11/10/2026), nay là đen. Vai từng màu theo bề mặt và bảng tương phản: `web/THIET-KE.md`, mục 2.
 
 ### Phông chữ
 
-- **Montserrat** (400 / 600 / 700 / 800) — mọi chữ trên web: tiêu đề, nội dung, nút. Trang tiếng Hàn thêm Noto Sans KR cho chữ Hangul.
-- **Logo** là vector gốc trích từ PDF nhận diện — không gõ lại chữ BEEFTOWN bằng phông nào.
-- *Hypo-me Bold* (PDF trang 1) và *NVN Beloved Bold* (trang 6) **chưa có file và bản quyền** nên chưa dùng. Cần file phông kèm giấy phép web trước khi dùng cho điểm nhấn — xem `web/THIET-KE.md`, mục 3.
+- **Montserrat** (400 / 600 / 700 / 800) — mọi chữ trên web: tiêu đề, nội dung, nút. Trang tiếng Hàn thêm Noto Sans KR cho chữ Hangul. Khánh quyết 26/10/2026 giữ Montserrat: guideline 21/10/2026 chỉ ghi phông của logo (Figtree ExtraBold / SemiBold), mà Figtree thiếu chữ có dấu tiếng Việt.
+- **Logo** là SVG tách nguyên path từ PDF guideline 21/10/2026 (`web/cong-cu/thuong-hieu/tach-logo.mjs`) — không gõ lại chữ BEEFTOWN bằng phông nào, kể cả Figtree.
 
 ### Giọng văn
 
@@ -185,7 +182,7 @@ Mục 1, 2 và 4 nói về **bản nháp cũ** `Beeftown_Website/index.html` (kh
 - [ ] Đăng nhập `/noi-bo`, công bố địa chỉ và link Facebook. Trang chủ đổi ngay, không cần deploy lại.
 - [ ] Gọi `tao_tin_tuyen_dung_mau(<id chi nhánh>)` → 8 tin nháp. Sửa lại rồi chuyển sang `da_cong_bo`; **form ứng tuyển tự hiện ra** khi có tin đầu tiên được công bố.
 - [ ] Kiểm tra kho file bằng tay theo danh sách cuối `0014_storage_supabase.sql`, và bước thử ở đầu `0070_crm_policy_doc_tinh_mot_lan.sql` (thủ kho không còn xem được file của `beeftown-noi-bo`)
-- [ ] Mua bản quyền phông cho tên thương hiệu — hiện dùng Montserrat, **có chủ ý**, để không ai tưởng việc này đã xong
+- [x] Phông cho tên thương hiệu: không cần mua — tên thương hiệu là logo SVG của bộ 21/10/2026 (chữ của logo là path, phông Figtree có giấy phép OFL); chữ web là Montserrat (Khánh quyết 26/10/2026)
 
 ### Hai việc kỹ thuật dễ bị bỏ quên
 
@@ -301,7 +298,7 @@ npm run thu-tai -- --nguoi 150 --phut 10
 1. `crm/sao-luu/sao-luu.sh` — `supabase db dump` ra ba file (vai trò, cấu trúc, dữ liệu — gồm cả tài khoản đăng nhập), nén, **mã hoá AES-256** bằng mật khẩu của anh.
 2. File đã mã hoá lưu ở mục **Artifacts** của lượt chạy, **giữ 30 ngày**. File chưa mã hoá không bao giờ rời máy chạy.
 3. **Khôi phục thử** bản vừa tạo vào một Supabase dựng tạm ngay trong máy chạy (`crm/sao-luu/khoi-phuc.sh`): đủ số dòng từng bảng, sổ kho khớp tồn. Bản sao không khôi phục được thì coi như không có.
-4. Ghi kết quả vào database → đèn **"Sao lưu dữ liệu"** ở `/noi-bo` (chủ và quản lý thấy). "Bản dùng được" = sao lưu xong **và** khôi phục thử đạt. Xanh khi có bản dùng được trong 36 giờ; vàng khi lượt gần nhất hỏng hoặc không khôi phục thử được mà vẫn còn bản dùng được trong 36 giờ; **đỏ khi quá 36 giờ không có bản dùng được, hoặc chưa có bản nào**.
+4. Ghi kết quả vào database → đèn **"Sao lưu dữ liệu"** ở `/noi-bo` (chủ và quản lý thấy). "Bản dùng được" = sao lưu xong **và** khôi phục thử đạt. **Ổn** khi có bản dùng được trong 36 giờ; **Xem hôm nay** khi lượt gần nhất hỏng hoặc không khôi phục thử được mà vẫn còn bản dùng được trong 36 giờ; **Xử lý ngay khi quá 36 giờ không có bản dùng được, hoặc chưa có bản nào**.
 
 Lượt nào hỏng thì cũng **đỏ ở tab Actions, và GitHub gửi email** cho người đặt lịch.
 
@@ -314,7 +311,7 @@ Lượt nào hỏng thì cũng **đỏ ở tab Actions, và GitHub gửi email**
 3. [ ] GitHub → `beeftown-stock` → Settings → Secrets and variables → Actions → **New repository secret**, hai lần:
    - `SAO_LUU_DB_URL` = chuỗi ở bước 1
    - `SAO_LUU_MAT_KHAU` = mật khẩu ở bước 2
-4. [ ] Tab **Actions** → **Sao lưu database** → **Run workflow**. Sau khoảng 5–10 phút lượt chạy phải **xanh**, Summary có "💾 Bản sao …" và "✅ Khôi phục thử … đủ dòng từng bảng". Đèn "Sao lưu dữ liệu" ở `/noi-bo` chuyển xanh.
+4. [ ] Tab **Actions** → **Sao lưu database** → **Run workflow**. Sau khoảng 5–10 phút lượt chạy phải **xanh**, Summary có "💾 Bản sao …" và "✅ Khôi phục thử … đủ dòng từng bảng". Đèn "Sao lưu dữ liệu" ở `/noi-bo` chuyển sang **Ổn**.
 
 Chi phí: mỗi lượt chạy vài phút máy GitHub Actions (kho riêng). Gói GitHub Free có hạn mức phút mỗi tháng cho kho riêng — xem Settings → Billing and plans; bản sao lưu cũng tính vào dung lượng lưu trữ Actions.
 
@@ -355,7 +352,7 @@ Kiểm thử: `crm/test/test-sao-luu.mjs` (chính hai script, với `supabase` v
 
 - [ ] Dán link vào Zalo tự gửi cho mình → thấy **ảnh**, tiêu đề, một dòng mô tả. Không phải link xanh trơ.
 - [ ] Lặp lại với Messenger và ô soạn bài Facebook.
-- [ ] *Chưa công bố ảnh chụp thật 1200×630 thì link hiện ảnh dự phòng (vân mỡ + logo) — đúng như thiết kế. Chạy `select * from v_cong_bo_con_thieu` để xem còn thiếu gì.*
+- [ ] *Chưa công bố ảnh chụp thật 1200×630 thì link hiện ảnh dự phòng (logo chính trắng trên nền đỏ) — đúng như thiết kế. Chạy `select * from v_cong_bo_con_thieu` để xem còn thiếu gì.*
 
 **Soát nội dung — đọc thành tiếng, mở tài liệu thương hiệu bên cạnh**
 

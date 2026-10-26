@@ -133,5 +133,6 @@ const nhanTrangThai = (tt: string): [string, string] => {
 
 <style>
   .nh-lon { min-height: 56px; font-size: 1.05rem; }
-  .nh-ly-do { margin: .25rem 0 .5rem; padding: .45rem .6rem; border-radius: 8px; background: var(--do-nen); font-size: .9rem; }
+  /* Lý do bị trả về: vạch đỏ 4px bên trái, không nền màu nhạt — chữ (t.lyDoTraVe) nói trạng thái. */
+  .nh-ly-do { margin: .25rem 0 .5rem; padding: .45rem .6rem; background: transparent; border-left: 4px solid var(--do); font-size: .9rem; }
 </style>

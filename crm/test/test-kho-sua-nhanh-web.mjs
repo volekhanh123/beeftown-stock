@@ -218,6 +218,10 @@ await nhom('3 · CÔNG THỨC DẠNG LƯỚI — HÀM THUẦN', async () => {
     && mauTong(96.2) === 'xanh' && mauTong(90.5) === 'vang');
   ok('Câu tổng nói phần còn lại là hao hụt', /còn 9,5% coi là hao hụt/.test(cauTong(90.5)) && /vượt 100%/.test(cauTong(101))
     && /đủ 100%/.test(cauTong(100)));
+  // Màn hình không còn màu xanh / vàng (bảng 22/10/2026): mức "dưới 95%" trước chỉ khác bằng nền vàng — nay câu tổng nói bằng chữ.
+  ok('Câu tổng dưới 95% nói "dưới 95%" / "under 95%" bằng chữ (không chỉ khác màu); 95–100% thì không',
+    /dưới 95%/.test(cauTong(90.5)) && !/dưới 95%/.test(cauTong(97)) && /under 95%/.test(cauTong(90.5, 'en')) && !/under 95%/.test(cauTong(97, 'en')),
+    `${cauTong(90.5)} | ${cauTong(90.5, 'en')} | ${cauTong(97)}`);
   ok('tongTyLe làm tròn 2 số lẻ (0,1 + 0,2)', tongTyLe([{ ty_le_du_kien: 0.1 }, { ty_le_du_kien: 0.2 }]) === 0.3);
   const ct = { id: id(50), ten: 'Thăn', mat_hang_vao_id: id(9), ghi_chu: null, dang_dung: true,
     dong: [{ id: id(51), mat_hang_ra_id: id(1), ty_le_du_kien: 72.5, xu_ly: null, thu_tu: 2 },

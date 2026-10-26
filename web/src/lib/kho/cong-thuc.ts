@@ -3,9 +3,9 @@
  *
  * Mỗi công thức một lưới: phần cắt ra × tỷ lệ % (+ xử lý, thứ tự, ô "Bỏ").
  * Một form, ba nút:
- *   · "Tính lại"   — không lưu gì; máy chủ cộng tổng chạy từ chữ đã gõ:
- *                    xanh khi 95–100%, vàng dưới 95% (phần còn lại coi là
- *                    hao hụt), đỏ khi vượt 100%.
+ *   · "Tính lại"   — không lưu gì; máy chủ cộng tổng chạy từ chữ đã gõ và
+ *                    câu tổng nói mức: 95–100% là ổn, "dưới 95%" (phần còn
+ *                    lại coi là hao hụt), "vượt 100%".
  *   · "Thêm dòng"  — như Tính lại, thêm 3 dòng trống.
  *   · "Lưu công thức" — thay TOÀN BỘ phần ra (dòng trống / tích Bỏ là không
  *                    có). Form mang `phien_ban` = chuỗi phần ra lúc mở; database
@@ -120,7 +120,8 @@ export function tongChu(chu: ChuDongLuoi[]): number {
   }));
 }
 
-/** Màu tổng chạy: đỏ vượt 100%, xanh 95–100%, vàng dưới 95% (còn lại là hao hụt). */
+/** Mức của tổng chạy (mã dữ liệu, giữ tên): 'do' vượt 100%, 'xanh' 95–100%, 'vang' dưới 95% (còn lại là hao hụt).
+    Trên màn hình mức nói bằng câu (cauTong), không bằng màu. */
 export function mauTong(tong: number): 'xanh' | 'vang' | 'do' {
   if (tong > 100.005) return 'do';
   if (tong >= 95) return 'xanh';
@@ -134,8 +135,10 @@ export function cauTong(tong: number, nn: NgonNguNB = 'vi'): string {
   if (m === 'do') return { vi: `Tổng ${s}% — vượt 100%, giảm bớt tỷ lệ các phần.`, en: `Total ${s}% — over 100%, lower some of the percentages.` }[nn];
   const con = Math.round((100 - tong) * 100) / 100;
   const sCon = con.toLocaleString(vung, { maximumFractionDigits: 2 });
-  return con === 0 ? { vi: `Tổng ${s}% — đủ 100%.`, en: `Total ${s}% — exactly 100%.` }[nn]
-    : { vi: `Tổng ${s}% — còn ${sCon}% coi là hao hụt khi pha.`, en: `Total ${s}% — the remaining ${sCon}% counts as butchery loss.` }[nn];
+  if (con === 0) return { vi: `Tổng ${s}% — đủ 100%.`, en: `Total ${s}% — exactly 100%.` }[nn];
+  // Dưới 95%: câu tự nói mức — trước đây chỉ màu nền của ô tổng nói điều này.
+  if (m === 'vang') return { vi: `Tổng ${s}% — dưới 95%, còn ${sCon}% coi là hao hụt khi pha.`, en: `Total ${s}% — under 95%, the remaining ${sCon}% counts as butchery loss.` }[nn];
+  return { vi: `Tổng ${s}% — còn ${sCon}% coi là hao hụt khi pha.`, en: `Total ${s}% — the remaining ${sCon}% counts as butchery loss.` }[nn];
 }
 
 /** Chuỗi phần ra để chống ghi đè: đổi một con số ở đâu cũng khác. */

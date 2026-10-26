@@ -276,7 +276,8 @@ const xep = goiYXepQuay(ton, nn, soTang);
 </Kho>
 
 <style>
-  .nh-the.do { border-color: var(--do-vien); background: var(--do-nen); }
+  /* Quá giờ chưa nhận: viền đỏ 2px trên nền thẻ (K2), câu "quá giờ" có biểu tượng cảnh báo ở đầu thẻ. */
+  .nh-the.do { border: 2px solid var(--do); background: var(--nb-the); }
   .nh-dau { display: flex; flex-direction: column; gap: .2rem; margin-bottom: .25rem; }
   .nh-dau .chu-do { display: inline-flex; align-items: center; gap: .3rem; }
   .nh-lon { min-height: 56px; font-size: 1.05rem; }

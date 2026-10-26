@@ -29,7 +29,7 @@ Hệ quả cụ thể:
 | Đồ uống có cồn (`hien_do_uong_co_con`) | Không nhắc highball, soju, makgeolli, bia ở đâu cả; không món có cồn (ba ly signature), không dòng luật rượu. |
 | Form hỏi bàn (`form_dat_ban_dang_mo`) | Nút chính màn đầu là "Khám phá thực đơn" (`nutMoDau()` trong `lib/trang-cong-khai.ts`); trang Hỏi bàn nói chưa mở hỏi bàn trực tuyến. |
 | Ngày khai trương | Không ngày, không đếm ngược, không ưu đãi. |
-| Ảnh chia sẻ (`anh_chia_se`) | Dùng ảnh dự phòng `/thuong-hieu/chia-se-1200x630.png` — chỉ vân mỡ và logo của PDF nhận diện, không ảnh chụp, không ngày, không giá (Khánh duyệt 06/10/2026). Ảnh đó đi cùng bản build nên thẻ `og:image` không bao giờ trỏ tới ảnh hỏng — điều mà quy tắc cũ "chưa có ảnh thật thì không đặt thẻ" phòng, vì Facebook nhớ kết quả hỏng trong bộ nhớ đệm. Ảnh chụp thật công bố ở `anh_chia_se` được ưu tiên. Thẻ chỉ đặt khi có `SITE_URL`. |
+| Ảnh chia sẻ (`anh_chia_se`) | Dùng ảnh dự phòng `/thuong-hieu/chia-se-1200x630.png` — nền đỏ phẳng, logo chính trắng của bộ 21/10/2026, không ảnh chụp, không ngày, không giá (dựng lại ở PR "Đổi nhận diện website"; Khánh xem lại — `../THUONG-HIEU.md` mục 0, điểm B). Ảnh đó đi cùng bản build nên thẻ `og:image` không bao giờ trỏ tới ảnh hỏng — điều mà quy tắc cũ "chưa có ảnh thật thì không đặt thẻ" phòng, vì Facebook nhớ kết quả hỏng trong bộ nhớ đệm. Ảnh chụp thật công bố ở `anh_chia_se` được ưu tiên. Thẻ chỉ đặt khi có `SITE_URL`. |
 | Ảnh | Bảy ảnh minh họa (AI, có nhãn "Ảnh minh họa") đi cùng bản build — sáu ảnh của trang chủ và trang Thực đơn, cộng ảnh ba ly không cồn của phần Đồ uống — nên hai trang đó có ảnh cả khi chưa có database. Ảnh món (26 ảnh của cuốn menu bản sáng, cũng là ảnh minh họa) cũng đi cùng bản build nhưng chỉ hiện khi món được công bố. Ảnh nào chưa dựng cỡ thì component `<Anh>` hiện khung đồ họa (`KhungAnh`) đúng tỷ lệ — không thẻ `<img>` nào trỏ tới file không có. Xem mục "Trang công khai: giao diện, ảnh, thực đơn" bên dưới. |
 
 ---
@@ -49,8 +49,8 @@ Mở http://localhost:4321. Không cần Supabase.
 | `npm run kiem-tra` | Kiểm tra kiểu dữ liệu (`astro check`) |
 | `npm run deploy` | **Cổng kiểm thử** (`kiem-tra/truoc-deploy.mjs`: chỉ commit đã có CI xanh) → quét chữ cấm → build → đẩy lên Cloudflare |
 | `npm run deploy:khan-cap` | Như trên nhưng bỏ qua cổng kiểm thử — chỉ khi khẩn cấp |
-| `npm run thu-trinh-duyet` | Kiểm thử bằng trình duyệt thật (Chromium): 21 trang công khai ở 320 / 360 / 390 / 430 / 768 / 800 / 1024 / 1366 / 1440px — một `h1`, ảnh đủ kích thước và alt, tương phản, thành phần và khung trang (`kiem-tra/do-giao-dien.mjs`: vùng chạm ≥ 48px, đầu trang 64 / 80px, bộ chọn ngôn ngữ, không nền trắng, nút, thẻ, hàng câu hỏi ≥ 56px, biểu tượng 24px, chữ 16/24px và h1 32 → 48px, chân trang chữ ≥ 14px; ảnh AI có nhãn "Ảnh minh họa" và không bị gì đè lên, thẻ đọc nhãn khay thẳng và đủ 5 trường, màn đầu và các khối của trang chủ, trang Thực đơn), ảnh về chậm thì khung vẫn giữ chỗ và trang không xô lệch, trang Thực đơn bấm từng tab rồi đo lại ảnh và thành phần của phần vừa mở (ảnh `sot-cham` ở tab "Món ăn", `uong-khong-con-ba-ly` ở tab "Đồ uống" ẩn lúc tải trang), địa điểm (câu chỉ đường đúng từng chữ, JSON-LD, không còn địa chỉ nào khác ngoài dòng pháp nhân, không ghi phường hay quận, không chữ về cầu thang bộ — mẫu tìm chữ sai ở `kiem-tra/mau-dia-diem.mjs`), menu gọn chạy cả khi tắt JavaScript và đi lại được bằng bàn phím (Enter, Tab, Esc) — có JavaScript thì có lớp phủ tối và trang phía sau đứng yên, tắt JavaScript thì trang vẫn cuộn được; câu hỏi thường gặp mở / đóng bằng bàn phím; màn cảm ứng không giữ màu di chuột sau khi chạm; máy có thanh cuộn kiểu cổ điển mở danh mục không xô lệch trang; form không bao giờ báo thành công khi chưa ghi được; trang hỏi bàn không hứa "nhà hàng gọi lại" khi form đóng; trang 404 (mã 404, đúng thứ tiếng, link về `/`, `/en`, `/ko` — nhóm này chạy cả với `-- --url`); đường dẫn lạ dưới `/noi-bo` khi chưa đăng nhập về trang đăng nhập (đã đăng nhập thì hiện trang 404 nội bộ — kiểm ở `crm/test/test-noi-bo-khong-co.mjs`). Luôn build **không database** (đặt rỗng `PUBLIC_SUPABASE_*`, kể cả khi máy có sẵn hai biến này) — `npm run quet` cũng vậy |
-| `npm run thu-day-du` | Kiểm thử trang công khai ở trạng thái **đã nối database** (`kiem-tra/thu-day-du.mjs`): bật Supabase giả `kiem-tra/gia-supabase.mjs` cùng `astro dev`, rồi thử trạng thái đầy đủ (Facebook, Maps, thực đơn đã công bố, form mở), mô tả và đoạn mở đầu trang hỏi bàn khi form mở / đóng, bấm gửi hai lần (chỉ một yêu cầu), database báo lỗi 500, mạng đứt giữa chừng (không bao giờ "đã nhận", dữ liệu đã gõ còn nguyên), địa chỉ đã công bố trong `/noi-bo` (bản công bố tới được mọi chỗ in địa chỉ, màn đầu bỏ vế phường), thành phần của form hỏi bàn và form nộp hồ sơ (ô một dòng, kể cả ô ngày, cao đúng 48px nền Cream; ô giờ đang chọn; câu lỗi màu `#890607`), màn đầu trang chủ ở ba trạng thái của ngày khai trương — chưa có ngày, sắp mở (kịch bản `sap-mo`), đã mở (`da-mo`), kèm dòng trạng thái dài hai câu — ở 390 / 900 / 1024 / 1440px (câu chỉ đường dính dưới dòng địa chỉ, ngày trên một dòng, không tràn khung), trang Thực đơn theo cuốn menu bản sáng (kịch bản `day-du` trả đúng danh mục 11/10/2026 đã công bố; bấm từng tab ở 320 → 1440px: mọi món hiện đúng tên, ảnh món có alt và nhãn, món sống có cảnh báo, không số tiền; `khong-con-tat`: ba ly signature không hiện; `day-du` chỉ có đồ uống có cồn: tên các nhóm không cồn vẫn đứng cạnh ảnh ba ly không cồn; `thuc-don-thu-suc`: món không ảnh, tên và mô tả rất dài, nhóm lạ). Thêm `-- --chup` để chụp mọi trang ở 360 / 390 / 768 / 1024 / 1440px vào `kiem-tra/anh-chup/` (không commit); `-- --chi 3,6` chỉ chạy vài nhóm |
+| `npm run thu-trinh-duyet` | Kiểm thử bằng trình duyệt thật (Chromium): 21 trang công khai ở 320 / 360 / 390 / 430 / 768 / 800 / 1024 / 1366 / 1440px — một `h1`, ảnh đủ kích thước và alt, tương phản, thành phần và khung trang (`kiem-tra/do-giao-dien.mjs`: vùng chạm ≥ 48px, đầu trang 64 / 80px, bộ chọn ngôn ngữ, nền chỉ màu của bảng, logo đúng bản cho nền, nút, thẻ, hàng câu hỏi ≥ 56px, biểu tượng 24px, chữ 16/24px và h1 32 → 48px, chân trang chữ ≥ 14px; ảnh AI có nhãn "Ảnh minh họa" và không bị gì đè lên, thẻ đọc nhãn khay thẳng và đủ 5 trường, màn đầu và các khối của trang chủ, trang Thực đơn), ảnh về chậm thì khung vẫn giữ chỗ và trang không xô lệch, trang Thực đơn bấm từng tab rồi đo lại ảnh và thành phần của phần vừa mở (ảnh `sot-cham` ở tab "Món ăn", `uong-khong-con-ba-ly` ở tab "Đồ uống" ẩn lúc tải trang), địa điểm (câu chỉ đường đúng từng chữ, JSON-LD, không còn địa chỉ nào khác ngoài dòng pháp nhân, không ghi phường hay quận, không chữ về cầu thang bộ — mẫu tìm chữ sai ở `kiem-tra/mau-dia-diem.mjs`), menu gọn chạy cả khi tắt JavaScript và đi lại được bằng bàn phím (Enter, Tab, Esc) — có JavaScript thì có lớp phủ tối và trang phía sau đứng yên, tắt JavaScript thì trang vẫn cuộn được; câu hỏi thường gặp mở / đóng bằng bàn phím; màn cảm ứng không giữ màu di chuột sau khi chạm; máy có thanh cuộn kiểu cổ điển mở danh mục không xô lệch trang; form không bao giờ báo thành công khi chưa ghi được; trang hỏi bàn không hứa "nhà hàng gọi lại" khi form đóng; trang 404 (mã 404, đúng thứ tiếng, link về `/`, `/en`, `/ko` — nhóm này chạy cả với `-- --url`); đường dẫn lạ dưới `/noi-bo` khi chưa đăng nhập về trang đăng nhập (đã đăng nhập thì hiện trang 404 nội bộ — kiểm ở `crm/test/test-noi-bo-khong-co.mjs`). Luôn build **không database** (đặt rỗng `PUBLIC_SUPABASE_*`, kể cả khi máy có sẵn hai biến này) — `npm run quet` cũng vậy |
+| `npm run thu-day-du` | Kiểm thử trang công khai ở trạng thái **đã nối database** (`kiem-tra/thu-day-du.mjs`): bật Supabase giả `kiem-tra/gia-supabase.mjs` cùng `astro dev`, rồi thử trạng thái đầy đủ (Facebook, Maps, thực đơn đã công bố, form mở), mô tả và đoạn mở đầu trang hỏi bàn khi form mở / đóng, bấm gửi hai lần (chỉ một yêu cầu), database báo lỗi 500, mạng đứt giữa chừng (không bao giờ "đã nhận", dữ liệu đã gõ còn nguyên), địa chỉ đã công bố trong `/noi-bo` (bản công bố tới được mọi chỗ in địa chỉ, màn đầu bỏ vế phường), thành phần của form hỏi bàn và form nộp hồ sơ (ô một dòng, kể cả ô ngày, cao đúng 48px nền trắng; ô giờ đang chọn; câu lỗi màu `#8F0000`), màn đầu trang chủ ở ba trạng thái của ngày khai trương — chưa có ngày, sắp mở (kịch bản `sap-mo`), đã mở (`da-mo`), kèm dòng trạng thái dài hai câu — ở 390 / 900 / 1024 / 1440px (câu chỉ đường dính dưới dòng địa chỉ, ngày trên một dòng, không tràn khung), trang Thực đơn theo cuốn menu bản sáng (kịch bản `day-du` trả đúng danh mục 11/10/2026 đã công bố; bấm từng tab ở 320 → 1440px: mọi món hiện đúng tên, ảnh món có alt và nhãn, món sống có cảnh báo, không số tiền; `khong-con-tat`: ba ly signature không hiện; `day-du` chỉ có đồ uống có cồn: tên các nhóm không cồn vẫn đứng cạnh ảnh ba ly không cồn; `thuc-don-thu-suc`: món không ảnh, tên và mô tả rất dài, nhóm lạ). Thêm `-- --chup` để chụp mọi trang ở 360 / 390 / 768 / 1024 / 1440px vào `kiem-tra/anh-chup/` (không commit); `-- --chi 3,6` chỉ chạy vài nhóm |
 
 **Cổng deploy.** `npm run deploy` chỉ đưa lên commit mà GitHub Actions đã chạy xanh: nó hỏi kết quả
 workflow "Kiểm thử" của commit đang deploy bằng lệnh `gh`. Cài một lần trên máy deploy:
@@ -68,7 +68,7 @@ thì cổng cho qua kèm cảnh báo. Deploy xong chạy ngay `npm run quet -- -
 
 ```
 web/
-├─ THIET-KE.md         ← hệ giao diện trang công khai, manifest artwork, brief chụp ảnh
+├─ THIET-KE.md         ← hệ giao diện trang công khai, manifest tài sản, brief chụp ảnh
 ├─ THUC-DON.md         ← công bố món lên trang Thực đơn (SQL từng bước, có SQL thu hồi)
 ├─ kiem-tra/
 │  ├─ quet-chuoi-cam.mjs  ← quét chuỗi cấm trên trang ĐÃ RENDER (bản build, không database)
@@ -77,11 +77,11 @@ web/
 │  ├─ thu-day-du.mjs      ← trình duyệt thật, trạng thái ĐÃ nối database (Supabase giả)
 │  └─ gia-supabase.mjs    ← Supabase giả: trả lời đúng các hàm trang công khai gọi, theo kịch bản
 ├─ cong-cu/            ← script dựng tài sản, chạy bằng python3 -I (xem THIET-KE.md, mục 7)
-│  ├─ thuong-hieu/     ← tách logo, rosemary, vân mỡ, tem tròn từ PDF nhận diện; favicon, ảnh chia sẻ
+│  ├─ thuong-hieu/     ← tach-logo.mjs: tách logo chính, logo phụ, brandmark từ PDF guideline 21/10/2026; tao-bieu-tuong.py: favicon, biểu tượng, ảnh chia sẻ
 │  └─ anh/             ← tao-co-anh.py + danh-sach.json: cắt và xuất cỡ ảnh minh họa
 ├─ public/
 │  ├─ bieu-tuong.svg · favicon.ico   ← biểu tượng trình duyệt (kho và nội bộ dùng chung)
-│  ├─ thuong-hieu/     ← logo, đầu bò, rosemary, steak, vân mỡ, tem tròn, chữ lặp (SVG trích từ PDF), ảnh chia sẻ dự phòng
+│  ├─ thuong-hieu/     ← logo chính, logo phụ, brandmark (đỏ, đen, trắng), net-dau-bo (SVG tách từ PDF guideline); ảnh chia sẻ dự phòng, biểu tượng 180
 │  └─ anh/             ← ảnh minh họa đã dựng cỡ (avif + webp) — SINH bởi cong-cu/anh/tao-co-anh.py
 ├─ src/
 │  ├─ middleware.ts    ← chặn cửa /noi-bo. Một chỗ duy nhất.
@@ -110,7 +110,7 @@ web/
 │  │  ├─ Trang.astro   ← thẻ mô tả, JSON-LD, ảnh chia sẻ, đầu và chân trang (chỉ file này nạp cong-khai.css)
 │  │  └─ NoiBo.astro   ← khung giao diện nội bộ
 │  ├─ components/
-│  │  ├─ DauTrang.astro · ChanTrang.astro       ← logo gốc, bốn mục điều hướng, menu gọn; chân trang đỏ + pháp nhân
+│  │  ├─ DauTrang.astro · ChanTrang.astro       ← logo phụ trắng trên đầu trang đen, bốn mục điều hướng, menu gọn; chân trang đen (logo chính trắng) + pháp nhân
 │  │  ├─ TrangRaMat.astro  ← trang chủ, chỉ ghép các khối:
 │  │  │    KhoiMoDau · BaBuoc · QuayChonBo · BuaAnCungNhau · DiCungNhom · LenTang3 · CauHoi
 │  │  ├─ TrangThucDon.astro · TrangDenBeeftown.astro
@@ -124,7 +124,7 @@ web/
 │  └─ styles/
 │     ├─ chung.css     ← token màu (:root — /noi-bo và kho đọc; cùng giá trị với khối .ck của cong-khai.css), phông, nền chung
 │     ├─ cong-khai.css ← hệ giao diện trang công khai ("Quầy thịt ấm"), mọi quy tắc nằm dưới body.ck
-│     └─ noi-bo.css · kho.css · kho-khung.css   ← nội bộ và kho; màu trạng thái khai trên .nb-than (noi-bo.css)
+│     └─ noi-bo.css · kho.css · kho-khung.css   ← nội bộ và kho; trạng thái vẽ bằng chữ, dấu, nét (noi-bo.css, K1–K7)
 ```
 
 Tên file và biến đặt bằng tiếng Việt, khớp với tên cột trong database. Người đọc `dat_ban.trang_thai` rồi đọc tiếp mã nguồn không phải dịch qua lại.
@@ -133,7 +133,7 @@ Tên file và biến đặt bằng tiếng Việt, khớp với tên cột trong
 
 ## Trang công khai: giao diện, ảnh, thực đơn
 
-**Giao diện** — hướng "Quầy thịt ấm": nền kem, đỏ Beeftown làm nhãn và nút, vài dải tối, artwork lấy nguyên từ PDF nhận diện. Màu theo vai kèm tỷ lệ tương phản, chữ, khoảng cách, thành phần, manifest từng tài sản, brief chụp ảnh và phần bàn giao: [`THIET-KE.md`](THIET-KE.md). `src/styles/cong-khai.css` chỉ `layouts/Trang.astro` nạp và mọi quy tắc nằm dưới `body.ck`, nên `/noi-bo` và kho không bị ảnh hưởng.
+**Giao diện** — hướng "Quầy thịt ấm": nền trắng, đỏ Beeftown cho nút, nhãn, giá; đầu trang, vài dải, chân trang đen; logo bộ 21/10/2026, không hình trang trí. Màu theo vai kèm tỷ lệ tương phản, chữ, khoảng cách, thành phần, manifest từng tài sản, brief chụp ảnh và phần bàn giao: [`THIET-KE.md`](THIET-KE.md). `src/styles/cong-khai.css` chỉ `layouts/Trang.astro` nạp và mọi quy tắc nằm dưới `body.ck`, nên `/noi-bo` và kho không bị ảnh hưởng.
 
 **Thực đơn** — trang `/thuc-don` (`/en/menu`, `/ko/menu`) đọc món qua `thuc_don_cong_khai()`. Món chỉ hiện khi đã công bố. Sửa tên, mô tả, bản tiếng Anh và tiếng Hàn, công bố và gỡ từng món: màn `/noi-bo/thuc-don` (chủ nhà hàng, quản lý, marketing; thu ngân chỉ xem). Giá, mức cay, cờ món sống / có cồn và việc bật hai công tắc vẫn làm theo [`THUC-DON.md`](THUC-DON.md). Món đã công bố trình bày theo cuốn menu in "bản sáng" Khánh chốt 11/10/2026 (`ThucDonNhomAnh.astro`): tên nhóm chữ hoa như tiêu đề trang của cuốn, câu dưới tên nhóm (`CAU_NHOM` trong `src/lib/thuc-don.ts`), món dẫn đầu thẻ lớn, các món còn lại thành lưới thẻ có ảnh (`ANH_CUA_MON` trong `src/lib/anh.ts`, theo mã món) — dưới 600px món đứng sau món dẫn đầu là hàng gọn: ảnh nhỏ 128px bên trái, chữ bên phải (nhóm không có món dẫn đầu giữ thẻ to) — không giá, không độ cay. Chưa công bố món nào thì trang giới thiệu theo nhóm của cuốn. Bố cục và lý do: `THIET-KE.md`, mục 1, "Trang Thực đơn".
 
@@ -146,9 +146,9 @@ Tên file và biến đặt bằng tiếng Việt, khớp với tên cột trong
 
 Cỡ ảnh dựng sẵn bằng `python3 -I cong-cu/anh/tao-co-anh.py <thư-mục-ảnh-gốc> [<thư-mục-khác> …]` (cấu hình `cong-cu/anh/danh-sach.json`): sRGB, bỏ siêu dữ liệu, cắt theo tỷ lệ quanh điểm lấy nét — ảnh tách nền thì giữ kênh trong suốt, cắt sát phần có hình và đặt vào khung, chừa dải trống ở đáy cho nhãn —, AVIF + WebP nhiều bề rộng vào `public/anh/`, mỗi file ≤ 300 KB, tổng ≤ 8 MB, rồi ghi `src/lib/anh-tao-san.ts`. Ảnh nào chưa có trong file đó thì trang hiện `KhungAnh` thay vào. Ảnh gốc ở ngoài repo — `.gitignore` chặn `*.png`, `*.jpg` và chỉ mở `public/anh/*.avif`, `*.webp`. **Đã dựng 32 ảnh** (252 file, khoảng 6,7 MB — chừa khoảng 1,6 MB dưới trần 8 MB cho ảnh chụp thật; ngân sách và cách giữ: `THIET-KE.md` mục 7): sáu ảnh ChatGPT ở trang chủ và trang Thực đơn, 26 ảnh món của cuốn bản sáng (món ăn có thêm khung ảnh nhỏ cho hàng món gọn trên điện thoại); ảnh `bo-xeo-vi` là ảnh dự phòng, chưa đặt ở trang nào nên không dựng — không để file ảnh chết trong repo. Bảng từng ảnh, chỗ dùng, khung và cách dựng: `THIET-KE.md`, mục 7. Kiểm thử gác: `crm/test/test-cong-khai-anh.mjs` (danh mục, alt, nguồn, ảnh đã dựng khớp chỗ dùng, nhãn) và các phép đo `anh`, `nhanKhay`, `trangChu`, `thucDon` của `kiem-tra/do-giao-dien.mjs`.
 
-**Tài sản thương hiệu** — logo, đầu bò, rosemary, steak, vân mỡ, tem tròn trích nguyên vector từ PDF bằng `cong-cu/thuong-hieu/` (PDF không vào repo), đối chiếu từng điểm ảnh với PDF; favicon, biểu tượng 180px và ảnh chia sẻ dự phòng dựng từ chính các SVG đó.
+**Tài sản thương hiệu** — logo chính, logo phụ, brandmark (mỗi thứ ba bản đỏ / đen / trắng) tách nguyên path từ PDF Brand Guidelines 21/10/2026 bằng `cong-cu/thuong-hieu/tach-logo.mjs` (PDF không vào repo; script dừng khi số path lệch); favicon, biểu tượng 180 / 192 / 512 và ảnh chia sẻ dự phòng dựng từ chính các SVG đó bằng `cong-cu/thuong-hieu/tao-bieu-tuong.py`.
 
-**Ảnh chia sẻ link** — `og:image` là ảnh thật đã công bố ở khóa `anh_chia_se` nếu có, không thì ảnh dự phòng `public/thuong-hieu/chia-se-1200x630.png` (vân mỡ + logo, không ảnh chụp, không ngày, không giá).
+**Ảnh chia sẻ link** — `og:image` là ảnh thật đã công bố ở khóa `anh_chia_se` nếu có, không thì ảnh dự phòng `public/thuong-hieu/chia-se-1200x630.png` (logo chính trắng trên nền đỏ, không ảnh chụp, không ngày, không giá).
 
 ---
 
@@ -209,15 +209,15 @@ Mỗi trang kho lấy ngôn ngữ từ `k.nn` (`moTrangKho`). `crm/test/test-kho
 Chủ và quản lý mở `/noi-bo` là thấy ngay phần nào đang hỏng, thay vì đợi khách báo. Trước đây việc chạy nền 5 phút dừng (ví dụ mất bí mật Worker sau một lần deploy) thì chỉ có log của Worker biết.
 
 - **Database** (`suc_khoe_he_thong()`, migration `0055`) chỉ trả số đếm và mốc giờ, không bảng mới, không dữ liệu cá nhân, không câu lỗi thô. Chủ thấy mọi chi nhánh đang hoạt động, quản lý thấy chi nhánh của mình.
-- **Màu và câu vi/en** do `src/lib/suc-khoe.ts` quyết định; `src/components/SucKhoeHeThong.astro` chỉ vẽ. Ngưỡng so với mốc giờ (nhịp tim, lỗi mới, im lặng) nằm ở đầu file đó; ngưỡng đếm (2 / 24 giờ, 2 / 7 ngày, 30 phút tin kẹt) nằm trong SQL của `0055`.
+- **Mức và câu vi/en** do `src/lib/suc-khoe.ts` quyết định; `src/components/SucKhoeHeThong.astro` chỉ vẽ — mức bằng hình (tam giác đỏ, hình thoi xám, chấm đen, vòng rỗng) và nhãn chữ (**Xử lý ngay**, **Xem hôm nay**, **Ổn**, **Chưa bật**). Tên mức trong mã (`do`, `vang`, `xanh`, `tat`) giữ; bảng dưới gọi theo nhãn. Ngưỡng so với mốc giờ (nhịp tim, lỗi mới, im lặng) nằm ở đầu file đó; ngưỡng đếm (2 / 24 giờ, 2 / 7 ngày, 30 phút tin kẹt) nằm trong SQL của `0055`.
 
-| Đèn | Đỏ — xử lý ngay | Vàng — xem hôm nay |
+| Đèn | Xử lý ngay (mức `do`) | Xem hôm nay (mức `vang`) |
 |---|---|---|
 | Bộ gửi tin Zalo | quá 30 phút không có lượt gửi nào CHẠY XONG (tính từ lúc bật — `bat_luc`, không phải `updated_at`, vì lượt nào bắt đầu cũng làm mới nó); lượt gần nhất lỗi | chế độ thử — khách thật chưa nhận gì |
 | Bot Messenger | tin gần nhất của khách bị lỗi, trong 60 phút qua | có lỗi trong 7 ngày; bật mà 72 giờ không nhận được tin nào (tính từ tin gần nhất hoặc lúc bật — sửa lời chào không xóa cảnh báo) |
 | Máy dịch | — | ô máy tự dịch bị lỗi quá 15 phút (không tính dữ kiện công bố — nó có dòng việc riêng trên trang) |
 | Đặt bàn (từng chi nhánh) | yêu cầu đã qua giờ hẹn / chưa tới hẹn mà chờ quá 24 giờ; form mở mà chi nhánh chưa có bàn | chờ 2–24 giờ (ba nhóm không chồng nhau) |
-| iPOS | quá 30 phút không có lượt cron TỰ CHẠY XONG; đèn đỏ của màn Kết nối iPOS | chưa cấu hình đủ; đèn vàng của màn Kết nối iPOS |
+| iPOS | quá 30 phút không có lượt cron TỰ CHẠY XONG; khung **Mất kết nối** của màn Kết nối iPOS | chưa cấu hình đủ; khung **Cần xem** của màn Kết nối iPOS |
 | Sổ kho | lô có tồn lệch sổ kho (dữ liệu đã sai — báo người quản trị kỹ thuật) | — |
 | Tin Zalo | tin giao dịch đến hạn quá 30 phút mà chưa gửi | tin đến hạn trong 24 giờ qua mà hỏng / bị từ chối |
 | Hồ sơ ứng tuyển | chưa ai mở quá 7 ngày | chưa ai mở 2–7 ngày |
@@ -225,7 +225,7 @@ Chủ và quản lý mở `/noi-bo` là thấy ngay phần nào đang hỏng, th
 | Báo động (`0060`) | quá 30 phút không có lượt báo động nào chạy xong; lượt gần nhất lỗi (gửi hỏng, không đọc được số liệu) | có kênh mà 26 giờ không gửi được tin nào (tóm tắt 8 giờ sáng phải tới mỗi ngày) |
 | Dọn dữ liệu cá nhân (`0074`) | hồ sơ ứng tuyển quá hạn lưu 6 tháng **hơn 7 ngày** mà chưa ẩn danh (lời hứa trên trang quyền riêng tư) | hồ sơ vừa quá hạn (1–7 ngày); vé tải CV chưa dùng hết hạn quá 7 ngày (có thể còn CV mồ côi); dữ liệu đo lường quá 90 ngày + 7; database chưa chạy `0074` |
 
-Xám = chưa bật / chưa dùng. **Không đọc được số liệu thì bảng nói thẳng là không đọc được** — không bao giờ hiện "mọi thứ đang chạy tốt" khi không biết. Database chưa chạy `0055` thì bảng báo cần migration đó.
+**Chưa bật** (vòng rỗng xám) = chưa bật / chưa dùng. **Không đọc được số liệu thì bảng nói thẳng là không đọc được** — không bao giờ hiện "mọi thứ đang chạy tốt" khi không biết. Database chưa chạy `0055` thì bảng báo cần migration đó.
 
 Bảng chỉ hiện khi có người mở trang; việc tự báo khi đèn chuyển đỏ ở mục **Báo động** ngay dưới — nó đánh giá bằng chính `danhGiaSucKhoe()` nên cùng ngưỡng, cùng câu với bảng.
 
@@ -247,7 +247,7 @@ Việc chạy nền đọc đúng số liệu của bảng sức khỏe 5 phút 
 | Ban đêm 22:00–07:00 | Chỉ đèn **hệ thống** (Bộ gửi Zalo, Bot Messenger, iPOS, Sổ kho, Máy dịch, Sao lưu dữ liệu, không đọc được số liệu) báo ngay. Đèn **khách** (Đặt bàn, Hồ sơ, Tin Zalo, Dọn dữ liệu cá nhân) giữ lại; lượt đầu sau 07:00 gửi gộp nếu vẫn đỏ |
 | Hết đỏ | Chờ 15 phút liền mới đóng sự cố; đỏ lại trong 15 phút vẫn là sự cố cũ, không báo lại; đỏ lại sau khi đã hết đỏ đủ 15 phút là lần hỏng mới, được báo như thường (kể cả khi tin hết đỏ của lần trước đang giữ tới 07:00). Sự cố đã báo → "đã ổn lại" / "hết đỏ, còn cần xem hôm nay" / "đã tắt"; chi nhánh ngừng hoạt động → đóng im lặng. Ban đêm, đèn hệ thống chỉ báo hết đỏ ngay khi tin báo đỏ của nó cũng đến trong đêm đó (người nhận đã biết); còn lại — đèn khách, đèn đã báo đỏ từ trước 22:00 như Sao lưu ổn lại lúc 3 giờ sáng — đợi 07:00 |
 | Một đèn đỏ đi đỏ lại | Tối đa 5 tin "mới đỏ" mỗi đèn từ 8 giờ sáng tới 8 giờ sáng hôm sau; tin thứ 5 nói rõ sẽ không nhắn riêng nữa tới bản tóm tắt |
-| 8 giờ sáng mỗi ngày | Tóm tắt, **kể cả khi mọi thứ xanh** — không thấy tin sáng nghĩa là chính việc báo động đang hỏng. Lỡ 8 giờ thì gửi bù tới 22:00 |
+| 8 giờ sáng mỗi ngày | Tóm tắt, **kể cả khi mọi đèn Ổn** — không thấy tin sáng nghĩa là chính việc báo động đang hỏng. Lỡ 8 giờ thì gửi bù tới 22:00 |
 | Không đọc được số liệu | Không đóng sự cố nào (không có "đã ổn lại" giả); hai lượt liền → một tin "báo động đang mù" |
 | Gửi hỏng (mạng, 5xx, quá 10 giây) | Không đánh dấu "đã báo", đèn "Báo động" đỏ, lượt sau gửi lại. Gửi được mà ghi database hỏng → có thể lặp đúng một tin (thà lặp còn hơn mất) |
 | Chưa chọn kênh | Vẫn theo dõi, không gửi, không đánh dấu. Ngày có kênh: gửi ngay tin "đã nối kênh" liệt kê những gì đang đỏ — không dồn tin cũ |
@@ -543,14 +543,14 @@ grep -rq "$(grep PUBLIC_SUPABASE_URL .env | cut -d= -f2 | sed 's|https://||;s|\.
 
 **Dựng ở phía máy chủ (`output: 'server'`).** Thẻ mô tả và JSON-LD là **hàm của trạng thái database**, mà trình quét link của Facebook và Zalo không chạy JavaScript. Trang tĩnh thì hoặc thẻ mô tả bị đóng cứng (và lạc hậu ngay khi Khánh bật một công tắc), hoặc do JS viết ra và trình quét không thấy. Không có đường thứ ba.
 
-**Không dùng phông hiển thị nào cả.** Trang 1 của PDF nhận diện ghi Hypo-me Bold, trang 6 ghi NVN Beloved Bold; cả hai **chưa có bản quyền**, và chính tài liệu cũng chưa rõ đó có phải một phông hay không. Logo là **vector gốc trích từ PDF** (`public/thuong-hieu/`), không gõ lại bằng phông nào; mọi chữ còn lại là Montserrat — giấy phép OFL, không rủi ro. Quan trọng hơn: Montserrat sẽ không bao giờ bị nhầm là phông thương hiệu thật, nên không ai ở khâu sau tưởng câu chuyện phông đã xong. Cần gì để dùng phông display: `THIET-KE.md`, mục 3.
+**Một phông: Montserrat** (giấy phép OFL). Brand Guidelines 21/10/2026 chỉ ghi phông **của logo** — Figtree ExtraBold / SemiBold — mà Figtree thiếu chữ có dấu tiếng Việt, nên Figtree chỉ nằm trong logo (path, không phải phông). Logo là SVG tách từ PDF guideline (`public/thuong-hieu/`), không gõ lại bằng phông nào; mọi chữ còn lại là Montserrat (Khánh quyết 26/10/2026). Chi tiết: `THIET-KE.md`, mục 3.
 
 ---
 
 ## Đã làm và chưa làm
 
 **Trang công khai — 21 đường dẫn, ba thứ tiếng:**
-trang chủ · **thực đơn** · **đến Beeftown** · **hỏi bàn** · tuyển dụng · quyền riêng tư · xóa dữ liệu, mỗi trang một bản Việt, một bản Anh (`/en`) và một bản Hàn (`/ko`), cộng `robots.txt` và `sitemap.xml`. Đường dẫn lạ trả trang 404 của Beeftown (`src/pages/404.astro`): mã 404, thứ tiếng theo tiền tố đường dẫn (`/en/…`, `/ko/…`, còn lại tiếng Việt), link về trang chủ ba thứ tiếng, noindex, không đọc database — không vào `CAP_DUONG_DAN` hay sitemap. Chữ lấy từ database được máy dịch — xem mục "Bản dịch tự động". Giao diện "Quầy thịt ấm" và tài sản thương hiệu trích từ PDF nhận diện: `THIET-KE.md`.
+trang chủ · **thực đơn** · **đến Beeftown** · **hỏi bàn** · tuyển dụng · quyền riêng tư · xóa dữ liệu, mỗi trang một bản Việt, một bản Anh (`/en`) và một bản Hàn (`/ko`), cộng `robots.txt` và `sitemap.xml`. Đường dẫn lạ trả trang 404 của Beeftown (`src/pages/404.astro`): mã 404, thứ tiếng theo tiền tố đường dẫn (`/en/…`, `/ko/…`, còn lại tiếng Việt), link về trang chủ ba thứ tiếng, noindex, không đọc database — không vào `CAP_DUONG_DAN` hay sitemap. Chữ lấy từ database được máy dịch — xem mục "Bản dịch tự động". Giao diện "Quầy thịt ấm" và logo bộ 21/10/2026: `THIET-KE.md`.
 
 **Trang thực đơn công khai — đã có.** Phần Bò tại quầy luôn hiện; món ăn và đồ uống hiện khi Khánh công bố món (`THUC-DON.md`), đồ uống có cồn sau công tắc riêng. Không giá nào hiện khi chưa duyệt.
 

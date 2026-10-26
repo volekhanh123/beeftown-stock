@@ -28,7 +28,7 @@ Mọi trang kho bọc trong `layouts/Kho.astro`:
 
 Khung gồm:
 
-- **Thanh trên**: logo, tên chi nhánh (chủ đổi chi nhánh bằng `?cn=`; ở điện thoại ≤ 640px nút
+- **Thanh trên**: brandmark trắng (`public/thuong-hieu/dau-bo-trang.svg`), tên chi nhánh (chủ đổi chi nhánh bằng `?cn=`; ở điện thoại ≤ 640px nút
   "Đổi chi nhánh" nằm trong menu người dùng — trên thanh trên nó đè lên chữ "Kho"), nút "?",
   chuông có số chưa đọc, menu người dùng (các màn CRM mà vai đó được vào, Hướng dẫn, Đăng xuất).
 - **Màn ≥ 1024px**: cột trái — ô "Tìm chức năng" (gửi về trang Khác), rồi các mục **theo nhóm**
@@ -80,24 +80,29 @@ Biểu tượng: `lib/kho/bieu-tuong.ts` (đường vẽ SVG 24×24) + `componen
 Màu và khoảng cách: `styles/kho-khung.css` (giao diện sáng, token `--kho-*` dưới `.kho-than`).
 `styles/kho.css` giữ các lớp cũ của form và bảng.
 
-**Màu** là bảng màu thương hiệu Khánh chốt 09/10/2026 (`THUONG-HIEU.md` ở gốc repo; kho đổi ngày
-12/10/2026, cùng lúc với `/noi-bo`): nền trang kem sau, thẻ và ô nhập Cream, thanh trên Charcoal, đỏ
-dành cho số báo việc và nút chính. **Không có màu trắng** (bảng màu không có trắng), trừ trên giấy in.
+**Màu** là bảng 22/10/2026 (`THUONG-HIEU.md` ở gốc repo, mục 1 và 4; kho đổi ở PR "Đổi nhận diện
+website", cùng lúc với `/noi-bo`): nền trang xám nhạt `#F4F4F4`, thẻ và ô nhập trắng, thanh trên đen, đỏ
+dành cho số báo việc, nút chính và trạng thái "làm ngay".
 
-- Hai bề mặt khai trên `.nb-than` (`styles/noi-bo.css`): `--nb-nen` (kem sau, nền trang), `--nb-the`
-  (Cream: thẻ, bảng, thanh đáy, menu thả, hộp thoại). Ô của trình duyệt — ô nhập không lớp riêng, ô
-  đánh dấu, ô chọn một, nút "Chọn tệp" — đã có nền Cream sẵn; ô đánh dấu và ô chọn một tự vẽ. Trang chỉ
+- Hai bề mặt khai trên `.nb-than` (`styles/noi-bo.css`): `--nb-nen` (xám nhạt, nền trang), `--nb-the`
+  (trắng: thẻ, bảng, thanh đáy, menu thả, hộp thoại). Ô của trình duyệt — ô nhập không lớp riêng, ô
+  đánh dấu, ô chọn một, nút "Chọn tệp" — đã có nền trắng sẵn; ô đánh dấu và ô chọn một tự vẽ. Trang chỉ
   đặt cỡ ô, không đặt màu, không `accent-color`.
 - Token `--kho-*` không phải sắc riêng: `--kho-nen` là `--nb-nen`, `--kho-the` là `--nb-the`,
-  `--kho-vach` là `--vach` (Charcoal 16 %), `--kho-vach-dam` là Warm Stone.
-- Màu trạng thái (`--xanh`, `--xanh-nen`, `--vang-chu`, `--vang-nen`, `--do-nen`… — xanh = xong, vàng =
-  lưu ý, đỏ nhạt = làm ngay) khai một lần trên `.nb-than` của `styles/noi-bo.css`; kho đọc chung, không
-  khai lại.
-- Trang kho **chỉ dùng biến**, không gõ mã màu, không `var()` kèm mã dự phòng. Chữ "lưu ý" trên nền
-  sáng dùng `--vang-chu`: Marigold (`--mu-tat`) và Warm Stone trên thẻ Cream chỉ được 1,56 và 1,83 : 1,
-  không làm chữ hay biểu tượng. Viền ô nhập và nút phụ là `--vien-o`.
-- `crm/test/test-noi-bo-bang-mau.mjs` gác: mã của bảng, biến chưa khai, mã cũ còn sót, không trắng, ô
-  của trình duyệt, tương phản, viền ô nhập, bản in chỉ đen trắng.
+  `--kho-vach` là `--vach` (`#E2E2E2`), `--kho-vach-dam` là `--vien-o` (`#767676`).
+- **Không có màu trạng thái** (Khánh bỏ xanh, vàng, đỏ nhạt ngày 25/10/2026): trạng thái vẽ bằng bảy kiểu
+  K1–K7 trong `styles/noi-bo.css` (`THUONG-HIEU.md` mục 4) — đỏ đặc / viền đỏ = làm ngay, đen đặc = nháp,
+  viền đen + ✓ = xong, xám + vòng tròn "!" = lưu ý, nét đứt = tắt, viền mảnh = thuộc tính.
+- Trang kho **chỉ dùng biến**, không gõ mã màu, không `var()` kèm mã dự phòng. Hai trạng thái cạnh nhau
+  phải khác nhau ở chữ, dấu hay nét — đỏ với `#555555` chỉ chênh 1,12 : 1. Viền ô nhập và nút phụ là
+  `--vien-o`.
+- `crm/test/test-noi-bo-bang-mau.mjs` gác: mã của bảng, biến chưa khai, mã cũ còn sót, chỉ mã của bảng,
+  ô của trình duyệt, tương phản, viền ô nhập, bản in chỉ đen trắng, trạng thái không chỉ khác bằng màu
+  (nhóm 7); `crm/test/test-noi-bo-trang-thai.mjs` gác nhãn có chữ và câu không gọi tên màu.
+- Trong file này "câu vàng", "đèn đỏ / vàng / xanh / xám" là **mức** dữ liệu (`'do' | 'vang' | 'xanh' |
+  'tat'` hay `'xam'`); từ PR "Đổi nhận diện website" màn hình vẽ mức bằng chữ, dấu, nét: khung lưu ý
+  (vòng tròn "!"), **Xử lý ngay** (tam giác đỏ), **Xem hôm nay** (hình thoi xám), **Ổn** (chấm đen),
+  **Chưa bật** (vòng rỗng).
 
 ## 2. Số đỏ, chuông, việc cần làm (migration 0030)
 
@@ -145,7 +150,7 @@ migration.
 | Trang | Việc |
 |---|---|
 | `/noi-bo/kho` | Trang chủ **theo vai**: NV quầy "Quầy hôm nay" (hết hạn phải bỏ, **xếp ra bán trước**, quầy sắp hết); thủ kho "Việc hôm nay"; quản lý/chủ "Hôm nay" có thẻ `?tab=quan-tri` (chỉ số từ `kho_chi_so_quan_tri`); kế toán: công nợ |
-| `/noi-bo/kho/viec` | Việc cần làm: "Làm ngay" (đỏ) và "Nên làm sớm" (vàng), mỗi việc một nút |
+| `/noi-bo/kho/viec` | Việc cần làm: "Làm ngay" (viền đỏ, tam giác) và "Nên làm sớm" (vạch xám, vòng tròn "!"), mỗi việc một nút |
 | `/noi-bo/kho/thong-bao` | Chuông: sự kiện 7 ngày, gom cùng loại, chia thẻ Vận hành / Nhắc nhở / Hệ thống |
 | `/noi-bo/kho/duyet` | Hộp duyệt chung (quyền `duyet` hoặc `duyet_nhap`): phiếu nhập (điền giá rồi duyệt), báo hủy, kiểm kê — cũ nhất lên trước. Kế toán (`duyet_nhap`) chỉ thấy phiếu nhập. Duyệt xong quay về đây |
 | `/noi-bo/kho/nhan-hang` | Nhận hàng 3 bước của thủ kho (quyền `nhap`, **chỉ kg**, migration 0031): `moi` chụp hóa đơn + chọn người giao → `<id>` cân từng món → `<id>?buoc=gui` xem lại, gửi. Người có `nhap` mà không `xem_gia` mở `/noi-bo/kho/nhap/*` bị chuyển sang đây |
@@ -251,9 +256,9 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
   (`kho_can_giao_o_ma`) song song với tồn kho.
   - Ô đang giao cho một tảng đã chốt phiên lóc: dòng "Ô 1 · tảng #0001"; lô của tảng lên đầu danh sách, có vạch
     đỏ và chữ "khay vừa quét thuộc lô này"; **Ra quầy / Đưa bếp / Báo hủy** mở đúng lô đó khi lô còn hàng ở kho
-    hay quầy (NV quầy ưu tiên dòng ở quầy). Lô đó **đã hết hạn** → câu vàng "để riêng và báo hủy", chỉ còn nút
-    Báo hủy. Sổ không còn hàng của tảng ở kho / quầy → câu vàng nói rõ, các nút quay về lô hạn gần như nhãn thường.
-  - Ô đang giao cho phiên lóc **chưa chốt** → câu vàng "khay chưa vào sổ". "Thêm vào phiên pha" chỉ mời đúng
+    hay quầy (NV quầy ưu tiên dòng ở quầy). Lô đó **đã hết hạn** → khung lưu ý "để riêng và báo hủy", chỉ còn nút
+    Báo hủy. Sổ không còn hàng của tảng ở kho / quầy → khung lưu ý nói rõ, các nút quay về lô hạn gần như nhãn thường.
+  - Ô đang giao cho phiên lóc **chưa chốt** → khung lưu ý "khay chưa vào sổ". "Thêm vào phiên pha" chỉ mời đúng
     phiên đang giữ ô (database từ chối phiên khác); nhãn mã giảm thì không mời.
   - Ô không còn gắn với tảng nào → vẫn hiện món, kèm một câu nói rõ. Mã lạ → câu cũ "chưa gắn với món nào".
   - Chữ đếm theo đơn vị của món ("Khay này: 0,312 kg", "không còn khay nào"), không viết cứng "gói".
@@ -378,7 +383,7 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
 - **Tảng đem pha có số tảng, ngày mổ, tình trạng ủ**: mục chọn tảng ở bước 2 ghi "Lô … · tảng #0002", dòng dưới
   "mổ 01/10/2026 · Đang ủ còn 13 ngày" / "Sẵn sàng lóc" / "Chưa có bảng ủ" (`docNgayUTang` đọc `kho_lo`,
   `tinhTrangU` tính ở web theo `homNayVn()` — cùng luật với view `kho_v_tang`, test so thẳng). Tảng đã chọn mà
-  hôm nay còn đang ủ: câu vàng "Tảng #0001 còn đang ủ — ủ xong ngày 18/10/2026 (còn 7 ngày)." ở bước 2 và
+  hôm nay còn đang ủ: khung lưu ý "Tảng #0001 còn đang ủ — ủ xong ngày 18/10/2026 (còn 7 ngày)." ở bước 2 và
   bước 3 (`cauTangConU`). **Chỉ nhắc, không chặn** — nút Chốt vẫn bấm được. Màn xem phiên: bảng "Tảng đem
   pha" và cột "Lô mới" có số tảng. Không cái nào phụ thuộc quyền xem giá. Test: `test-kho-so-tang-lo.mjs`.
 - Nút −1 và câu "Đã bớt 1 khay." theo đơn vị của món (`doiDonViCau`, mục 3o).
@@ -590,8 +595,8 @@ diện màn đó đổi nhiều. Danh sách tên: `hd-trang-chu-thu-kho`, `hd-nh
 `hd-pha-loc`, `hd-quet`, `hd-quay-hom-nay`, `hd-yeu-cau`, `hd-dem-quay`, `hd-bao-huy`, `hd-hom-nay`,
 `hd-duyet`, `hd-dien-gia`, `hd-cong-no`, `hd-thiet-lap`, `hd-menu` (thanh đáy, 390×69).
 
-> **Cả 15 ảnh còn giao diện bảng màu cũ, thẻ trắng.** Kho đổi sang bảng màu chốt 09/10/2026 ngày
-> 12/10/2026; ảnh chụp trước ngày đó và chưa chụp lại. Trang hướng dẫn vì vậy đang hiện ảnh màu cũ cạnh giao diện màu
+> **Cả 15 ảnh còn giao diện bảng màu cũ, thẻ trắng.** Kho đổi bảng màu hai lần — ngày 12/10/2026 và ở PR
+> "Đổi nhận diện website" (bộ 21/10/2026); ảnh chụp trước cả hai lần và chưa chụp lại. Trang hướng dẫn vì vậy đang hiện ảnh màu cũ cạnh giao diện màu
 > mới — chụp lại cả bộ (cùng cỡ file, cùng tên) rồi xóa ghi chú này và dòng tương ứng ở
 > `THUONG-HIEU.md` mục 5.
 
@@ -737,7 +742,7 @@ không phải vị trí tồn; kho **không** tự trừ theo định lượng.
 | Trang | Ai | Việc |
 |---|---|---|
 | `/noi-bo/kho/cai-dat/dinh-luong` | `danh_muc` | Danh sách món (tìm tên / mã iPOS không dấu, chip "Chưa có định lượng", "Ngừng bán", 30 món một trang — mọi thứ trên URL). `?mon=<id>` mở lưới mặt hàng × gram. Nút "Lấy món từ iPOS", "+ Thêm một món", "Dán định lượng từ Excel" → Xem trước → Áp dụng |
-| `/noi-bo/kho/bao-cao/dinh-muc?tu=&den=` | `xem` (cột "Tiền lệch" chỉ `xem_gia`) | Theo mặt hàng: bếp nhận kg, lẽ ra dùng kg, lệch kg / %, số suất bán; màu đỏ / vàng / xanh / xám (`mucLech`). Mốc nhanh như trang Báo cáo. CSV `bao-cao/dinh-muc.csv` |
+| `/noi-bo/kho/bao-cao/dinh-muc?tu=&den=` | `xem` (cột "Tiền lệch" chỉ `xem_gia`) | Theo mặt hàng: bếp nhận kg, lẽ ra dùng kg, lệch kg / %, số suất bán; mức (`mucLech`, tên mức giữ) in bằng nhãn chữ `TEN_MUC_LECH_NB` (`lib/kho/dinh-luong.ts`): **Vượt ngưỡng** (nền đỏ, "!"), **Gần ngưỡng** (nền xám `#E2E2E2`), **Trong ngưỡng** (viền đen, ✓), **Chưa so được** (chữ xám, không nền). Mốc nhanh như trang Báo cáo. CSV `bao-cao/dinh-muc.csv` |
 
 **Dữ liệu** (0038, chi tiết trong comment đầu migration): `kho_mon` theo **chi nhánh** (mã món iPOS riêng từng
 máy), `kho_dinh_luong` (món × mặt hàng × gram, 0 < gram ≤ 10.000). Hai bảng không có cột tiền.
@@ -917,8 +922,8 @@ từ PostgREST — database ép lại `timestamptz` rồi so), `<ô>_<id>` chữ
   Thêm món, đổi tên / loại / mã / đơn vị: vẫn ở trang Mặt hàng.
 
 **Công thức dạng lưới** (`lib/kho/cong-thuc.ts`). Ô `mh_<i>`, `tl_<i>`, `xl_<i>`, `tt_<i>`, `bo_<i>`, `so_dong`.
-Tổng chạy tính **ở máy chủ** (`tongChu`) khi bấm Tính lại / Thêm dòng / lỗi: **xanh** 95–100%, **vàng** dưới 95%
-(phần còn lại coi là hao hụt), **đỏ** vượt 100% (`mauTong`, `cauTong`). Lưu = thay toàn bộ phần ra: upsert
+Tổng chạy tính **ở máy chủ** (`tongChu`) khi bấm Tính lại / Thêm dòng / lỗi: 95–100% là ổn; dưới 95% câu tổng ghi "dưới 95%"
+(phần còn lại coi là hao hụt); vượt 100% câu tổng ghi "vượt 100%" (`cauTong`; `mauTong` giữ tên mức `xanh` / `vang` / `do`). Lưu = thay toàn bộ phần ra: upsert
 (`cong_thuc_id, mat_hang_ra_id`) rồi xóa dòng không còn — không có hàm database riêng, `phien_ban` = chuỗi phần ra
 (`phienBanCongThuc`) so với bản đọc lại. "Gợi ý từ thực tế" (`docGoiYThucTe`): phiên `kho_phien_pha` đã chốt
 (`da_chot`) của đúng loại tảng, chi nhánh đang chọn, `ngay_pha` trong 30 ngày → Σ kg ra từng món ÷ Σ `tong_kg_vao`
@@ -1037,11 +1042,11 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   lô**, vào dòng lô của tảng trên nhãn, khi mọi nhãn của món trong lượt quét đều là nhãn mã ô, ô nào cũng
   đang giao cho một tảng có lô ở nơi lấy hàng, lô đủ tồn (tính cả số đã ghi ở dòng lô đó) và món chưa có
   số ở dòng theo món. Thiếu một điều → cả món ghi theo món (database lấy hàng hạn gần trước như nhãn
-  thường), có câu vàng nói vì sao: sổ chỉ còn N khay của tảng, tảng không còn hàng ở nơi lấy, phiên lóc
+  thường), có khung lưu ý nói vì sao: sổ chỉ còn N khay của tảng, tảng không còn hàng ở nơi lấy, phiên lóc
   chưa chốt, ô không còn gắn với tảng. Trộn nhãn mã ô với nhãn mã món / mã giảm của cùng món thì ghi theo
   món, không câu báo. Form vẫn giữ luật "một món chỉ ghi một phần" nên một lượt quét không bao giờ tách một
   món ra hai phần — không khay nào bị tính hai lần. Nhãn của lô **đã hết hạn** trên phiếu chỉ nhận hàng
-  còn hạn thì **không ghi vào đâu**, câu vàng bảo để riêng và báo hủy — kể cả khi sổ không còn lô đó ở nơi
+  còn hạn thì **không ghi vào đâu**, khung lưu ý bảo để riêng và báo hủy — kể cả khi sổ không còn lô đó ở nơi
   lấy (sổ lệch với kệ, lô đã sang chờ hủy): lúc đó so hạn dùng của lô mà ô đang gắn
   (`kho_can_giao_o_ma.han_dung`) với hôm nay giờ Việt Nam (`datLo.homNay` = `homNayVn()`); hạn đúng hôm nay
   thì chưa hết hạn. Lô hết hạn đó không ở nơi lấy thì chặn ở **mọi loại phiếu, kể cả báo hủy** (hủy theo món là
@@ -1190,12 +1195,12 @@ theo vai. Gửi xuống cân, sửa tem, tạo mã giảm: quản lý / chủ (`
   thường** (mã món, mã giảm) của phần cắt có ô trong phiên theo tảng; các máy báo trong 14 ngày. `tomTatCanPhien`
   (`lib/kho/danh-muc-can.ts`) soạn câu: "Cân sẵn sàng: <tên + số tảng> = PLU · phím" CHỈ khi cân có đúng tên mới
   (`tenTheoTang`, như danh mục gửi); 0090: dòng đúng tên mang cờ `chua_xac_nhan` → "chưa chắc cân đã có … — chưa in tem"
-  (vàng; dòng khác đúng tên không cờ thì vẫn sẵn sàng theo nó); "còn tên cũ" / "chưa lên cân" (chưa in tem); chưa máy nào báo → "không biết". Bước
+  (khung lưu ý; dòng khác đúng tên không cờ thì vẫn sẵn sàng theo nó); "còn tên cũ" / "chưa lên cân" (chưa in tem); chưa máy nào báo → "không biết". Bước
   Kết quả và màn Xem: "Cân in N tem mã …, phiên quét M". Nhãn mã thường vẫn cộng vào phiên như trước (`test-kho-o-ma`),
   chỉ cảnh báo — bán ra thì kho không biết thuộc tảng nào.
-- **Đèn "Beeftown Cân"** (`/noi-bo`, ô `can` của `suc_khoe_so_lieu`): xám khi chưa máy nào báo trong 14 ngày; đỏ khi
+- **Đèn "Beeftown Cân"** (`/noi-bo`, ô `can` của `suc_khoe_so_lieu`): **Chưa bật** khi chưa máy nào báo trong 14 ngày; **Xử lý ngay** khi
   trong giờ mở cửa (giờ ở Kết nối iPOS, mặc định 10–23) KHÔNG máy nào của chi nhánh báo quá 30 phút — tính từ lúc mở cửa
-  hôm nay; vàng (chỉ trong giờ mở cửa) khi một máy khác im (im quá 48 giờ mà máy khác vẫn báo → coi như đã thôi dùng), cân
+  hôm nay; **Xem hôm nay** (chỉ trong giờ mở cửa) khi một máy khác im (im quá 48 giờ mà máy khác vẫn báo → coi như đã thôi dùng), cân
   không trả lời quá 10 phút (giữ kết nối bật), kho đổi mà cân chưa nhận quá 15 phút (tính từ lúc mở cửa), 0090: lần gửi
   gần nhất cân chưa xác nhận quá 15 phút (kể cả khi không lệch kho), lần tự gửi gần nhất hỏng. Nhóm `he_thong` của báo động.
 - Kho chưa chạy 0061 mà Beeftown Cân 2.9 đã cập nhật: `docGiaoOMaCan` đọc view như 2.8 (quản lý vẫn gửi đủ tên ô).
@@ -1222,24 +1227,26 @@ bằng vai anon, hàm chỉ trả `het` / `sap_het` / `con` của từng phần 
 
 `public/kho/manifest.json`: mở `/noi-bo/kho?nguon=app`, trong phạm vi `/noi-bo/`, chạy như app riêng
 (không thanh địa chỉ). Có lối tắt Quét / Việc / Tồn kho khi nhấn giữ biểu tượng trên Android.
-`theme_color` là Charcoal `#151008` (màu thanh trên, cùng thẻ `theme-color` của `layouts/Kho.astro`),
-`background_color` là kem sau `#EBDCC6` (nền trang kho; hiện ở màn chờ lúc mở app) —
+`theme_color` là đen `#000000` (màu thanh trên, cùng thẻ `theme-color` của `layouts/Kho.astro`),
+`background_color` là xám nhạt `#F4F4F4` (nền trang kho; hiện ở màn chờ lúc mở app) —
 `test-noi-bo-bang-mau.mjs` nhóm 6 gác.
 
 - **Android (Chrome)**: menu ⋮ → "Cài đặt ứng dụng" / "Thêm vào màn hình chính".
 - **iPhone/iPad (Safari)**: nút Chia sẻ → "Thêm vào MH chính".
 
-Biểu tượng `public/kho/bieu-tuong-{180,192,512,maskable-512}.png` dựng từ brandmark thật
-(`public/thuong-hieu/dau-bo-kem.svg`, path gốc của PDF nhận diện) bằng Chromium:
+Biểu tượng `public/kho/bieu-tuong-{180,192,512,maskable-512}.png` dựng từ brandmark bộ 21/10/2026
+(`public/thuong-hieu/dau-bo-do.svg` và riêng đầu bò `public/thuong-hieu/net-dau-bo.svg` — path gốc của PDF
+guideline, tách bằng `cong-cu/thuong-hieu/tach-logo.mjs`) bằng Chromium:
 
 ```bash
-python3 -I web/cong-cu/thuong-hieu/tao-bieu-tuong.py --chi-bieu-tuong-app web/public   # không cần PDF
+python3 -I web/cong-cu/thuong-hieu/tao-bieu-tuong.py web/public   # đọc SVG đã tách, không cần PDF
 ```
 
-- **192, 512**: y hệt `public/bieu-tuong.svg`, ô đỏ bo góc, góc trong suốt.
-- **180** (iPhone): ô đỏ phủ kín, không điểm trong suốt. iPhone tự bo góc và tô đen chỗ trong suốt.
+- **192, 512**: y hệt `public/bieu-tuong.svg` — brandmark đỏ (ô đỏ bo góc, đầu bò trắng), góc trong suốt.
+- **180** (iPhone): đầu bò trắng cao 66 % cạnh trên nền đỏ phủ kín, không điểm trong suốt. iPhone tự bo góc và
+  tô đen chỗ trong suốt.
   Cùng file đó ghi luôn vào `public/thuong-hieu/bieu-tuong-180.png` cho trang công khai.
-- **maskable-512**: nền đỏ phủ kín. Cả khung bao của brandmark nằm trong hình tròn 78% cạnh, tức trong
+- **maskable-512**: nền đỏ phủ kín, đầu bò trắng. Cả khung bao của đầu bò nằm trong hình tròn 78% cạnh, tức trong
   vùng an toàn 80%, để Android cắt tròn không mất sừng.
 
 Test (`test-kho-giao-dien.mjs`, nhóm 7) đọc cỡ ảnh và từng điểm ảnh: phủ kín và vùng an toàn.
@@ -1311,7 +1318,7 @@ Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa th
 cd crm && npm test                    # toàn bộ; phần kho chạy qua test/chay-kho.mjs
 node test/chay-kho.mjs                # chỉ kho: tự tìm mọi test-kho-*.mjs
 node test/test-kho-giao-dien.mjs      # menu, link, hướng dẫn, manifest, JavaScript (không cần database)
-node test/test-noi-bo-bang-mau.mjs    # bảng màu của /noi-bo và kho: mã, biến, mã cũ còn sót, không trắng, tương phản
+node test/test-noi-bo-bang-mau.mjs    # bảng màu của /noi-bo và kho: mã, biến, mã cũ còn sót, chỉ mã của bảng, trạng thái không chỉ khác màu, tương phản
 node test/test-kho-viec.mjs           # số đỏ, thông báo, ngưỡng, chỉ số quản trị
 node test/test-kho-ipos.mjs           # đồng bộ iPOS: phần database
 node test/test-kho-ipos-callback.mjs  # iPOS đẩy hóa đơn (0042): bán theo kg / gói / suất, bắn trùng, mất kết nối — database

@@ -39,7 +39,7 @@ import { docMatHang, type MatHang } from '../../../lib/kho/danh-muc.ts';
 import { linkTheKho } from '../../../lib/kho/the-kho.ts';
 import { chuTang, docLoTang } from '../../../lib/kho/tang.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangNgayNgan, dinhDangTien, nhanKho,
+  cauLoiKho, chuTinhTrangHan, dinhDangKg, dinhDangNgay, dinhDangNgayNgan, dinhDangTien, nhanKho,
   TEN_LOAI_MAT_HANG_NB, TEN_LOAI_VI_TRI_NB,
 } from '../../../lib/kho/chung.ts';
 import { dichNB } from '../../../lib/ngon-ngu-noi-bo.ts';
@@ -101,7 +101,6 @@ const ch = dichNB(nn, {
   khongKhop: { vi: 'Không có lô nào khớp bộ lọc.', en: 'No lots match the filters.' },
   soLo: { vi: (n: number) => `${n} lô`, en: (n: number) => `${n} ${s(n, 'lot', 'lots')}` },
   hanSomNhat: { vi: 'Hạn sớm nhất', en: 'Earliest use-by' },
-  han: { vi: 'Hạn', en: 'Use by' },
   theKhoCua: { vi: (ten: string) => `Thẻ kho ${ten}`, en: (ten: string) => `Stock card for ${ten}` },
   theKho: { vi: 'Thẻ kho', en: 'Stock card' },
   cotHan: { vi: 'Hạn dùng', en: 'Use by' },
@@ -283,7 +282,7 @@ const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as con
         <span class="so">
           <b class="kho-so">{dinhDangKg(g.so_kg, nn)} kg</b>
           {g.dem_goi && <span class="kho-so"> · {g.so_goi} {g.don_vi_goi}</span>}
-          <br /><span class={`kho-han ${g.tinh_trang_xau_nhat}`} title={`${ch.hanSomNhat} ${dinhDangNgay(g.han_som_nhat)}`}>{ch.han} {dinhDangNgayNgan(g.han_som_nhat)}</span>
+          <br /><span class={`kho-han ${g.tinh_trang_xau_nhat}`} title={`${ch.hanSomNhat} ${dinhDangNgay(g.han_som_nhat)}`}>{chuTinhTrangHan(g.tinh_trang_xau_nhat, nn)}{' · '}{dinhDangNgayNgan(g.han_som_nhat)}</span>
         </span>
       </summary>
       <div class="kho-mh-lo ton-lo-khung">
@@ -304,7 +303,7 @@ const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as con
               return (
                 <tr class={`han-${t.tinh_trang_han}`}>
                   <td class="o-han" data-nhan={ch.cotHan}>
-                    <span class={`kho-han ${t.tinh_trang_han}`}>{dinhDangNgay(t.han_dung)}</span>{' '}
+                    <span class={`kho-han ${t.tinh_trang_han}`}>{chuTinhTrangHan(t.tinh_trang_han, nn)}{' · '}{dinhDangNgay(t.han_dung)}</span>{' '}
                     <span class="kho-phu">{conNgay(t)}</span>
                   </td>
                   <td class="o-noi" data-nhan={ch.oDau}>{t.ten_vi_tri}</td>

@@ -12,8 +12,8 @@
  *
  * Một thẻ duy nhất, là nội dung đọc được (không aria-hidden): đầu thẻ có logo và tiêu
  * đề, dưới là năm dòng theo đúng thứ tự in trên nhãn — số thứ tự, tên trường, lời giải
- * thích. Thẻ đặt THẲNG, PHẲNG (không nghiêng, không bóng đổ), nền Cream trên dải tối
- * nhờ lớp .the của hệ giao diện — không còn nền trắng ngà (bảng màu không có trắng).
+ * thích. Thẻ đặt THẲNG, PHẲNG (không nghiêng, không bóng đổ), nền trắng trên dải đen
+ * nhờ lớp .the của hệ giao diện — trắng của bảng (token --kem), không trắng ngà.
  * Dùng chung cho trang chủ (Quầy chọn bò) và trang Thực đơn (Bò tại quầy).
  */
 import { dich } from '../lib/chu';
@@ -42,7 +42,7 @@ const KHOA = ['ten', 'gia100', 'can', 'giaCuoi', 'ngay'] as const;
 <div class:list={['nhan-khay', lop]}>
   <div class="nk-the the">
     <div class="nk-dau">
-      <img src="/thuong-hieu/logo-ngang-do.svg" width="446" height="124" alt="" loading="lazy" decoding="async" />
+      <img src="/thuong-hieu/logo-ngang-do.svg" width="579" height="131" alt="" loading="lazy" decoding="async" />
       <h3 class="nk-tieu-de">{giai.tieuDe}</h3>
     </div>
     <ol class="nk-dong" role="list">
@@ -57,7 +57,8 @@ const KHOA = ['ten', 'gia100', 'can', 'giaCuoi', 'ngay'] as const;
   /* Thẻ rộng vừa đủ một dòng tên trường + lời giải thích; trên máy tính không kéo hết 1200px. */
   .nk-the { max-width: 880px; }
 
-  /* Đầu thẻ: logo (lockup rộng 160px — mức tối thiểu của guideline) và tiêu đề; nét đỏ như mép nhãn. */
+  /* Đầu thẻ: logo chính bản đỏ (đỏ trên nền trắng — guideline 21/10/2026 trang 4) rộng 160px, mức tối
+     thiểu của lockup (luật giữ từ bộ 09/10/2026), và tiêu đề; nét đỏ như mép nhãn. */
   .nk-dau {
     display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--k-3) var(--k-5);
     padding-bottom: var(--k-4); border-bottom: 2px solid var(--do);

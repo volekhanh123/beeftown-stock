@@ -230,8 +230,10 @@ const soLe = (x: number) => (nn === 'en' ? String(x) : String(x).replace('.', ',
 
 <style>
   .ncc-sao { font-size: 1.05rem; letter-spacing: .05em; white-space: nowrap; }
-  .ncc-sao.xanh { color: var(--xanh); }
-  .ncc-sao.vang { color: var(--vang-chu); }
+  /* Số sao nói mức (chuSao); màu chỉ thêm: sao tốt và vừa chữ đen, sao kém chữ đỏ. Lớp xanh / vang / do / xam là mã
+     của mucSao, không phải màu trên màn hình. */
+  .ncc-sao.xanh { color: var(--than); }
+  .ncc-sao.vang { color: var(--than); }
   .ncc-sao.do { color: var(--do); }
   .ncc-sao.xam { color: var(--muc-nhat); font-size: .8rem; }
 </style>

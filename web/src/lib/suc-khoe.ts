@@ -1,6 +1,6 @@
 /**
- * SỨC KHỎE HỆ THỐNG — đèn xanh / vàng / đỏ trên trang Tổng quan (/noi-bo)
- * =====================================================================
+ * SỨC KHỎE HỆ THỐNG — đèn trên trang Tổng quan (/noi-bo): mã đỏ / vàng / xanh / xám
+ * ==================================================================================
  *
  * Database (suc_khoe_he_thong, migration 0055; suc_khoe_sao_luu, 0058; 0060 thêm ô bao_dong; 0061 thêm ô can — đèn
  * Beeftown Cân của mỗi chi nhánh; 0074 thêm ô don_dep — đèn Dọn dữ liệu cá nhân) chỉ trả SỐ LIỆU: số đếm và mốc giờ. File này
@@ -14,11 +14,13 @@
  *     24 giờ, lỗi Messenger 7 ngày) — trong SQL của 0055. Câu chữ ở đây phải nói đúng con số
  *     đó; PHUT_TIN_KET được test đối chiếu với file migration.
  *
- * Nghĩa của màu (người đọc là chủ / quản lý, không phải lập trình viên):
- *   đỏ   — cần xử lý NGAY: có thứ đang hỏng, hoặc khách đang bị bỏ quên.
- *   vàng — cần xem trong hôm nay.
- *   xanh — ổn.
- *   xám  — chưa bật / chưa dùng: không có gì để hỏng.
+ * Nghĩa của từng mức (người đọc là chủ / quản lý, không phải lập trình viên). Tên mức là mã dữ liệu ('do', 'vang',
+ * 'xanh', 'tat' — giữ tên); trên màn hình mỗi mức một HÌNH và một nhãn chữ, không phân biệt bằng màu
+ * (SucKhoeHeThong.astro, Khánh bỏ màu trạng thái ngày 25/10/2026):
+ *   đỏ   — cần xử lý NGAY: có thứ đang hỏng, hoặc khách đang bị bỏ quên. Tam giác đỏ, nhãn "Xử lý ngay".
+ *   vàng — cần xem trong hôm nay. Hình thoi xám, nhãn "Xem hôm nay".
+ *   xanh — ổn. Chấm đen, "Ổn".
+ *   xám  — chưa bật / chưa dùng: không có gì để hỏng. Vòng rỗng, "Chưa bật".
  *
  * Không đọc được số liệu thì KHÔNG BAO GIỜ hiện "mọi thứ đang chạy tốt" — bảng nói thẳng là
  * không đọc được (xem docSucKhoe). Im lặng khi hỏng chính là thứ bảng này sinh ra để chặn.
@@ -171,7 +173,7 @@ export function laSucKhoeTho(v: unknown): v is SucKhoeTho {
 /**
  * Chính hàm `ten` chưa có (database chưa chạy migration của nó): PGRST202 của PostgREST hoặc 42883
  * của Postgres, VÀ câu lỗi nhắc đúng tên hàm. Chỉ xét mã thì một hàm CON bị đổi / xóa (42883
- * "function kho_ipos_trang_thai(uuid) does not exist") thành "chưa chạy migration" màu vàng,
+ * "function kho_ipos_trang_thai(uuid) does not exist") thành "chưa chạy migration" mức vàng ("Xem hôm nay"),
  * không log — hỏng thật bị giấu đi.
  */
 export function laThieuHam(e: { code?: string | null; message?: string | null } | null | undefined,
@@ -776,7 +778,7 @@ function denDonDep(d: Partial<DonDepTho> | undefined, laChu: boolean, nn: NgonNg
 // -----------------------------------------------------------------------------
 export type BangSucKhoe =
   | { loai: 'so_lieu'; mau: MauDen; tom: string; sk: SucKhoe }
-  /** Không có số liệu: không bao giờ mang màu xanh hay câu "đang chạy tốt". */
+  /** Không có số liệu: không bao giờ mang mức xanh ("Ổn") hay câu "đang chạy tốt". */
   | { loai: 'chua_co_ham' | 'khong_doc'; mau: 'vang' | 'do'; tom: string; sk: null };
 
 const CAU_BANG = {

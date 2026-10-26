@@ -344,9 +344,14 @@ await nhom('10 · CÂU CHỮ CỦA TIN', async () => {
   thoSang.dich.loi = 2;
   thoSang.chi_nhanh[0].so_kho.lech = 1;
   const doSang = tin(sang, kh(sang, [doLau(sang, { ma: 'so_kho', cn: CN1 })], { tomTatLuc: vn('08:00', '2026-09-28') }), { tho: thoSang });
-  ok('Tóm tắt có mục đỏ: tiêu đề đếm, liệt kê "Đang đỏ:", đếm mục vàng',
+  // Màn hình không còn màu vàng (bảng 22/10/2026): mục mức "vang" là nhãn "Xem hôm nay" — câu gọi theo việc phải làm, không
+  // gọi tên màu (mã dữ liệu 'vang' của database giữ).
+  ok('Tóm tắt có mục đỏ: tiêu đề đếm, liệt kê "Đang đỏ:", đếm mục cần xem hôm nay (không gọi "vàng")',
      doSang.vanBan.startsWith('Beeftown — tóm tắt 8 giờ sáng 29/09: 1 mục đang đỏ\nĐang đỏ:\n• Beeftown Q1 · Sổ kho:')
-     && doSang.vanBan.includes('\n1 mục vàng cần xem hôm nay.'), doSang.vanBan);
+     && doSang.vanBan.includes('\n1 mục cần xem hôm nay.') && !/vàng/.test(doSang.vanBan), doSang.vanBan);
+  const doSangEn = tin(sang, kh(sang, [doLau(sang, { ma: 'so_kho', cn: CN1 })], { tomTatLuc: vn('08:00', '2026-09-28') }), { tho: thoSang, nn: 'en' });
+  ok('Tóm tắt tiếng Anh: "1 item to check today." — không còn "yellow"',
+     doSangEn.vanBan.includes('\n1 item to check today.') && !/yellow/i.test(doSangEn.vanBan), doSangEn.vanBan);
   const noi = tin(luc, kh(luc, [], { kenhTuLuc: truoc(luc, 1), tomTatLuc: null }));
   ok('Tin "đã nối kênh": tên kênh, "hiện không có mục nào đỏ", giải thích tin 8 giờ sáng',
      noi.vanBan.startsWith('Beeftown — đã nối kênh báo động (Telegram)\nHiện không có mục nào đỏ.')

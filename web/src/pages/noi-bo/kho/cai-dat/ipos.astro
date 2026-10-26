@@ -525,7 +525,7 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
                   <td class="so">{l.so_hd}</td>
                   <td class="so">{l.so_dong}</td>
                   <td class="so">{l.so_da_ghi}</td>
-                  <td>{l.loi ? <span class="nb-nhan cho">{t.loi}</span> : l.ket_thuc_luc ? <span class="nb-nhan song">{t.xong}</span> : <span class="nb-nhan tat">{t.dangChayNhan}</span>}
+                  <td>{l.loi ? <span class="nb-nhan cho">{t.loi}</span> : l.ket_thuc_luc ? <span class="nb-nhan song">{t.xong}</span> : <span class="nb-nhan nhap">{t.dangChayNhan}</span>}
                     {l.loi && <> {dichLoiIpos(l.loi, nn)}</>}</td>
                 </tr>
               ))}

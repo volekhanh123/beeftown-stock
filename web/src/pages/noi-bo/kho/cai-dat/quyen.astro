@@ -40,6 +40,8 @@ const t = dichNB(nn, {
   thietLapNhanVien: { vi: 'Thiết lập → Nhân viên', en: 'Setup → Staff' },
   tomTat: { vi: 'Tóm tắt từng vai', en: 'Summary by role' },
   vaiCuaBan: { vi: 'vai của bạn', en: 'your role' },
+  // Cột vai của mình trong bảng chi tiết nói bằng chữ — trước đây chỉ màu nền của cột nói điều này.
+  banNgoac: { vi: ' (bạn)', en: ' (you)' },
   bangChiTiet: { vi: 'Bảng chi tiết', en: 'Full table' },
   viec: { vi: 'Việc', en: 'Task' },
   duoc: { vi: 'Được', en: 'Allowed' },
@@ -63,7 +65,7 @@ const t = dichNB(nn, {
   <h2>{t.tomTat}</h2>
   <ul class="q-tom">
     {vaiNguoi.map(v => (
-      <li class:list={{ 'q-toi': v === vaiToi }}>{tomTatVai(v, nn)}{v === vaiToi && <span class="nb-nhan song" style="margin-left:.4rem">{t.vaiCuaBan}</span>}</li>
+      <li class:list={{ 'q-toi': v === vaiToi }}>{tomTatVai(v, nn)}{v === vaiToi && <span class="nb-nhan thong-tin" style="margin-left:.4rem">{t.vaiCuaBan}</span>}</li>
     ))}
   </ul>
 
@@ -73,7 +75,7 @@ const t = dichNB(nn, {
       <thead>
         <tr>
           <th scope="col">{t.viec}</th>
-          {vaiNguoi.map(v => <th scope="col" class:list={['q-o', { 'q-toi': v === vaiToi }]}>{tenVai(v)}</th>)}
+          {vaiNguoi.map(v => <th scope="col" class:list={['q-o', { 'q-toi': v === vaiToi }]}>{tenVai(v)}{v === vaiToi && t.banNgoac}</th>)}
         </tr>
       </thead>
       <tbody>
@@ -107,7 +109,8 @@ const t = dichNB(nn, {
   .q-bang th[scope="row"] strong { display: block; }
   .q-bang th[scope="row"] .kho-phu { display: block; font-size: .8rem; }
   .q-o { text-align: center; white-space: nowrap; }
-  .q-toi { background: var(--vang-nen); }
-  .q-co { color: var(--xanh); font-weight: 700; font-size: 1.1rem; }
+  /* Vai của mình: nền xám E2 (đầu bảng là F4) và chữ "(bạn)" / nhãn "vai của bạn" — không chỉ nền. */
+  .q-toi { background: var(--kem-dam); }
+  .q-co { color: var(--than); font-weight: 700; font-size: 1.1rem; }
   .q-khong { color: var(--muc-nhat); }
 </style>

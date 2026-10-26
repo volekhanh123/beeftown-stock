@@ -17,7 +17,8 @@ interface Props {
   dn: DinhNghiaBaoCao;
   dong: Record<string, unknown>[];
   tong: DongTong[];
-  /** Dòng có khóa này = true thì mờ đi (vd khoản thanh toán đã hủy). */
+  /** Dòng có khóa này = true là dòng đã hủy (vd khoản thanh toán đã hủy): chữ phụ #555 (lớp kho-dong-huy). Không làm mờ
+      bằng opacity — #555 mờ 55 % trên trắng chỉ còn 2,57 : 1; cột "Tình trạng" của dòng ghi "Đã hủy". */
   khoaMo?: string;
 }
 const { dn, dong, tong, khoaMo } = Astro.props;
@@ -43,7 +44,7 @@ const hien = (c: CotBaoCao, v: unknown) => {
       <thead><tr>{dn.cot.map(c => <th class={c.kieu === 'chu' ? undefined : 'so'}>{c.ten}</th>)}</tr></thead>
       <tbody>
         {dong.map(d => (
-          <tr style={khoaMo && d[khoaMo] === true ? 'opacity:.55' : undefined}>
+          <tr class={khoaMo && d[khoaMo] === true ? 'kho-dong-huy' : undefined}>
             {dn.cot.map(c => <td class={c.kieu === 'chu' ? undefined : 'so'}>{hien(c, d[c.khoa])}</td>)}
           </tr>
         ))}

@@ -30,7 +30,9 @@ import {
   type CongNoNcc, type CongNoPhieu, type KhoanThanhToan, type DongSoCongNo,
 } from '../../../../lib/kho/cong-no.ts';
 import { docTimDs, linkDs } from '../../../../lib/kho/tim-ds.ts';
-import { congNgay, dinhDangNgay, dinhDangTien, homNayVn, laUuid, kqHai, nhanKho } from '../../../../lib/kho/chung.ts';
+import {
+  chuTinhTrangHan, congNgay, dinhDangNgay, dinhDangTien, homNayVn, laUuid, kqHai, nhanKho,
+} from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
@@ -333,19 +335,23 @@ const tenNccTheoDoi = ncc.find(n => n.nha_cung_cap_id === nccTheoDoi)?.ten_nha_c
               <table class="kho-bang">
                 <thead><tr><th>{t.nhaCungCap}</th><th class="so">{t.phaiTra}</th><th class="so">{t.daTra}</th><th class="so">{t.giamTru}</th><th class="so">{t.conNo}</th><th class="so">{t.quaHanCot}</th><th>{t.hanGanNhat}</th><th class="so">{t.chuaDoiChieuCot}</th></tr></thead>
                 <tbody>
-                  {nccTrang.ds.map(n => (
-                    <tr>
-                      <td><a href={`${DUONG}/${n.nha_cung_cap_id}`}><strong>{n.ten_nha_cung_cap}</strong></a><br />
-                        <span class="kho-phu">{t.dongNcc(n.so_phieu, n.so_phieu_con_no, n.so_phieu_hoa_don_gop)}</span></td>
-                      <td class="so">{dinhDangTien(n.tong_phai_tra, nn)}</td>
-                      <td class="so">{soTien(n.da_tra)}</td>
-                      <td class="so">{n.giam_tru > 0 ? dinhDangTien(n.giam_tru, nn) : '—'}</td>
-                      <td class="so"><strong>{n.con_no < 0 ? <span title={t.nccNoLai}>−{dinhDangTien(-n.con_no, nn)}</span> : dinhDangTien(n.con_no, nn)}</strong></td>
-                      <td class="so">{n.no_qua_han > 0 ? <strong style="color:var(--do)">{dinhDangTien(n.no_qua_han, nn)}</strong> : '—'}</td>
-                      <td>{n.han_gan_nhat ? <span class={`kho-han ${hanLop(n.han_gan_nhat)}`}>{dinhDangNgay(n.han_gan_nhat)}</span> : '—'}</td>
-                      <td class="so">{n.so_phieu_chua_doi_chieu > 0 ? n.so_phieu_chua_doi_chieu : '—'}</td>
-                    </tr>
-                  ))}
+                  {nccTrang.ds.map(n => {
+                    // Nhãn hạn trả tiền có chữ ("Quá hạn" / "Sắp đến hạn" / "Chưa đến hạn") — không chỉ màu của lớp.
+                    const lopHan = hanLop(n.han_gan_nhat);
+                    return (
+                      <tr>
+                        <td><a href={`${DUONG}/${n.nha_cung_cap_id}`}><strong>{n.ten_nha_cung_cap}</strong></a><br />
+                          <span class="kho-phu">{t.dongNcc(n.so_phieu, n.so_phieu_con_no, n.so_phieu_hoa_don_gop)}</span></td>
+                        <td class="so">{dinhDangTien(n.tong_phai_tra, nn)}</td>
+                        <td class="so">{soTien(n.da_tra)}</td>
+                        <td class="so">{n.giam_tru > 0 ? dinhDangTien(n.giam_tru, nn) : '—'}</td>
+                        <td class="so"><strong>{n.con_no < 0 ? <span title={t.nccNoLai}>−{dinhDangTien(-n.con_no, nn)}</span> : dinhDangTien(n.con_no, nn)}</strong></td>
+                        <td class="so">{n.no_qua_han > 0 ? <strong style="color:var(--do)">{dinhDangTien(n.no_qua_han, nn)}</strong> : '—'}</td>
+                        <td>{n.han_gan_nhat ? <span class={`kho-han ${lopHan}`}>{chuTinhTrangHan(lopHan, nn, 'thanh_toan')}{' · '}{dinhDangNgay(n.han_gan_nhat)}</span> : '—'}</td>
+                        <td class="so">{n.so_phieu_chua_doi_chieu > 0 ? n.so_phieu_chua_doi_chieu : '—'}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot>
                   <tr class="tong">
@@ -388,6 +394,7 @@ const tenNccTheoDoi = ncc.find(n => n.nha_cung_cap_id === nccTheoDoi)?.ten_nha_c
                 <tbody>
                   {phieu.ds.map(p => {
                     const lech = tienLech(p);
+                    const lopHan = hanLop(p.han_thanh_toan);
                     return (
                       <tr>
                         <td>
@@ -396,12 +403,12 @@ const tenNccTheoDoi = ncc.find(n => n.nha_cung_cap_id === nccTheoDoi)?.ten_nha_c
                           {lech !== 0 && <><br /><span class="nb-nhan cho" style="text-transform:none">{t.lech} {dinhDangLech(lech, nn)}</span></>}
                         </td>
                         <td>{p.ten_nha_cung_cap}</td>
-                        <td>{p.da_doi_chieu ? <>{p.so_hoa_don ?? '—'}{p.hoa_don_gop_id && <><br /><span class="nb-nhan nhap" style="text-transform:none">{t.hoaDonGop}</span></>}</> : <span class="kho-phu">{t.chuaDoiChieu}</span>}</td>
+                        <td>{p.da_doi_chieu ? <>{p.so_hoa_don ?? '—'}{p.hoa_don_gop_id && <><br /><span class="nb-nhan thong-tin" style="text-transform:none">{t.hoaDonGop}</span></>}</> : <span class="kho-phu">{t.chuaDoiChieu}</span>}</td>
                         <td class="so">{dinhDangTien(p.phai_tra, nn)}</td>
                         <td class="so">{soTien(p.da_tra)}</td>
                         <td class="so">{p.giam_tru > 0 ? dinhDangTien(p.giam_tru, nn) : '—'}</td>
                         <td class="so"><strong>{soTien(p.con_no)}</strong></td>
-                        <td>{p.han_thanh_toan ? <span class={`kho-han ${hanLop(p.han_thanh_toan)}`}>{dinhDangNgay(p.han_thanh_toan)}</span> : '—'}
+                        <td>{p.han_thanh_toan ? <span class={`kho-han ${lopHan}`}>{chuTinhTrangHan(lopHan, nn, 'thanh_toan')}{' · '}{dinhDangNgay(p.han_thanh_toan)}</span> : '—'}
                           {p.qua_han ? <><br /><strong style="color:var(--do)">{t.quaNgay(p.so_ngay_qua_han)}</strong></>
                             : p.con_no > 0 && p.han_thanh_toan && p.han_thanh_toan <= tuanToi ? <><br /><span class="kho-phu">{conNgay(p.han_thanh_toan) === 0 ? t.hanHomNay : t.conNgay(conNgay(p.han_thanh_toan) ?? 0)}</span></> : null}</td>
                         <td>
@@ -450,7 +457,7 @@ const tenNccTheoDoi = ncc.find(n => n.nha_cung_cap_id === nccTheoDoi)?.ten_nha_c
                 <thead><tr><th>{t.ngay}</th><th>{t.chungTu}</th><th>{t.nhaCungCap}</th><th>{t.loai}</th><th class="so">{t.soTien}</th><th>{t.ghiChu}</th></tr></thead>
                 <tbody>
                   {khoan.ds.map(kh => (
-                    <tr style={kh.trang_thai === 'da_huy' ? 'opacity:.55' : ''}>
+                    <tr>
                       <td>{dinhDangNgay(kh.ngay)}</td>
                       <td><strong>{kh.so_phieu}</strong>{kh.trang_thai === 'da_huy' && <><br /><span class="nb-nhan tat">{t.daHuy}</span></>}</td>
                       <td><a href={`${DUONG}/${kh.nha_cung_cap_id}#cac-khoan`}>{kh.ten_nha_cung_cap}</a></td>

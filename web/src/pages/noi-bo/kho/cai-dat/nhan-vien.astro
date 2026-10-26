@@ -300,7 +300,7 @@ const nhanVienDaKhoa = nhanVien.filter(n => !n.dang_lam);
         <form method="POST" class="nb-dong">
           <input type="hidden" name="viec" value="khoa_ns" />
           <input type="hidden" name="id" value={n.id} />
-          <div class="nb-dong-dau"><strong>{n.ho_ten}</strong><span class="nb-nhan nhap">{tenVai(n.vai_tro)}</span></div>
+          <div class="nb-dong-dau"><strong>{n.ho_ten}</strong><span class="nb-nhan thong-tin">{tenVai(n.vai_tro)}</span></div>
           <p class="kho-phu" style="margin:.35rem 0 0">
             {n.email ?? '—'} · {n.ten_chi_nhanh ?? '—'}
             {n.so_may > 0 && t.daGan(n.so_may)}

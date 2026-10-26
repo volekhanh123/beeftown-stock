@@ -236,7 +236,7 @@ async function docTenMon(
 // -----------------------------------------------------------------------------
 export interface KetQuaLuot extends KetQua {
   soNhan?: number;
-  /** Câu vàng cho các nhãn không cộng được (đã gom theo lỗi). */
+  /** Câu "lưu ý" cho các nhãn không cộng được (đã gom theo lỗi). */
   loiNhan?: string[];
   /** Các câu đó bằng tiếng Anh, cùng thứ tự. */
   loiNhanEn?: string[];

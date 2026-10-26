@@ -106,9 +106,10 @@ const t = dichNB(nn, {
   rongMua: { vi: 'Không có phiếu nhập mua nào được duyệt trong kỳ này.', en: 'No approved purchase receipts in this period.' },
   rongTt: { vi: 'Không có khoản trả tiền nào trong kỳ này.', en: 'No payments in this period.' },
   dongDau: { vi: (a: number, b: number) => ` (${a} dòng đầu / ${b})`, en: (a: number, b: number) => ` (first ${a} of ${b} lines)` },
-  nenVang: {
-    vi: 'Dòng nền vàng: thiếu mã MISA của nhà cung cấp hoặc mặt hàng (file vẫn xuất, cột cuối đánh dấu "x").',
-    en: 'Yellow lines: the supplier or item has no MISA code (the file is still exported, with an "x" in the last column).',
+  // Bảng xem trước không có cột "x" (chỉ file có) — câu gọi tên vạch xám ở ô đầu dòng (.misa-thieu-ma).
+  thieuMaGiai: {
+    vi: 'Dòng có vạch xám bên trái: thiếu mã MISA của nhà cung cấp hoặc mặt hàng (file vẫn xuất, cột cuối đánh dấu "x").',
+    en: 'Lines with a grey bar on the left: the supplier or item has no MISA code (the file is still exported, with an "x" in the last column).',
   },
   maThieu: { vi: 'Mã MISA còn thiếu', en: 'Missing MISA codes' },
   maThieuDem: {
@@ -228,14 +229,14 @@ const linkTai = `/noi-bo/kho/cong-no/misa.csv?tu=${loc.tu}&den=${loc.den}&loai=$
             : c.ten}</th>)}</tr></thead>
           <tbody>
             {dong.slice(0, XEM).map(d => (
-              <tr style={d.thieu_ma ? 'background:var(--vang-nen)' : undefined}>
+              <tr class={d.thieu_ma ? 'misa-thieu-ma' : undefined}>
                 {cot.map(c => <td class={c.kieu === 'tien' || c.kieu === 'so' || c.kieu === 'phan_tram' ? 'so' : undefined}>{oXem(d, c)}</td>)}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p class="kho-phu">{t.nenVang}</p>
+      <p class="kho-phu">{t.thieuMaGiai}</p>
     </>
   )}
 
@@ -291,6 +292,9 @@ const linkTai = `/noi-bo/kho/cong-no/misa.csv?tu=${loc.tu}&den=${loc.den}&loai=$
 <style>
   /* Xem trước: một dòng file một hàng, vuốt ngang để xem hết cột. */
   .misa-xem th, .misa-xem td { white-space: nowrap; }
+  /* Dòng thiếu mã MISA: vạch xám #767676 dày 4px ở ô đầu (khác vạch đỏ "làm ngay" của đặt hàng, nhận hàng), không nền
+     màu — câu thieuMaGiai dưới bảng gọi đúng vạch này. */
+  .misa-xem tr.misa-thieu-ma td:first-child { box-shadow: inset 4px 0 0 var(--vien-o); }
   .misa-thieu { margin-top: 1.5rem; scroll-margin-top: 5rem; }
   .misa-thieu > summary { cursor: pointer; font-weight: 700; font-size: 1.05rem; min-height: 44px; display: list-item; padding: .3rem 0; }
   /* Mỗi mặt hàng một hàng: tên · ô mã · nút; điện thoại tên một hàng, ô mã và nút hàng dưới. */

@@ -6,7 +6,7 @@
  *  1. BÒ TẠI QUẦY — luôn đầy đủ, kể cả khi chưa có database: khay skin-pack, nhãn
  *     khay (NhanKhay), nhân viên tư vấn, nướng trên vỉ gas tại bàn. KHÔNG BAO GIỜ
  *     có giá: trọng lượng và giá của khay thật chỉ có trên nhãn, tại quầy. Vẫn là
- *     DẢI TỐI (Khánh giữ ngày 11/10/2026). Ảnh bo-cat-lat là ảnh minh họa lát bò trên
+ *     DẢI ĐEN (Khánh giữ dải tối ngày 11/10/2026). Ảnh bo-cat-lat là ảnh minh họa lát bò trên
  *     đĩa — không phải ảnh khay hay quầy (hai thứ đó chờ ảnh chụp thật).
  *  2. MÓN ĂN và 3. ĐỒ UỐNG — món đọc từ thuc_don_cong_khai() (lib/thuc-don.ts), chỉ
  *     món đã công bố. Trình bày theo cuốn menu in "bản sáng" Khánh chốt 11/10/2026
@@ -193,7 +193,6 @@ const coKenh = coKenhHoiBan(nd);
     <h1 id="td-tieu-de">{c.tieuDe}</h1>
     <p class="dan">{c.dan}</p>
   </div>
-  <span class="trang-tri net huong-thao-5 net-goc" aria-hidden="true"></span>
 </section>
 
 <div class="td" data-td>
@@ -319,8 +318,9 @@ const coKenh = coKenhHoiBan(nd);
   </section>
 </div>
 
-{/* Cuối trang: mời hỏi bàn — chỉ khi có kênh thật để hỏi; không thì chỉ đường lên. */}
-<section class="muc be-do nen-van-mo td-moi" aria-labelledby="td-h-moi">
+{/* Cuối trang: mời hỏi bàn — chỉ khi có kênh thật để hỏi; không thì chỉ đường lên. Dải đỏ phẳng — không
+    hoa văn. */}
+<section class="muc be-do td-moi" aria-labelledby="td-h-moi">
   <div class="khung td-moi-luoi">
     <div class="td-moi-chu">
       <p class="hieu">{c.moiHieu}</p>
@@ -498,12 +498,14 @@ const coKenh = coKenhHoiBan(nd);
   .td-them {
     display: flex; gap: var(--k-3); align-items: flex-start;
     margin: var(--k-7) 0 0; padding: var(--k-2) 0 var(--k-2) var(--k-4);
-    border-left: 3px solid var(--mu-tat);
+    border-left: 3px solid var(--do);
     max-width: 60ch; font-size: var(--co-dan); line-height: 1.5; font-weight: 600;
   }
-  .td-them :global(svg) { width: 24px; height: 24px; flex: none; color: var(--mu-tat); margin-top: 3px; }
+  /* Trên dải đen: vạch đỏ là hình, không phải chữ (đỏ trên đen 3,16 : 1, đủ ngưỡng 3 : 1 của hình);
+     biểu tượng theo màu nhấn của bề mặt — trắng. */
+  .td-them :global(svg) { width: 24px; height: 24px; flex: none; color: var(--nhan); margin-top: 3px; }
   .td-quay-nhom { margin-top: var(--k-7); }
-  /* Nhóm gọi thêm có ảnh (Set 4 sốt) trong cột của dải tối: không cắt ngang giữa hai cột chữ. */
+  /* Nhóm gọi thêm có ảnh (Set 4 sốt) trong cột của dải đen: không cắt ngang giữa hai cột chữ. */
   .td-quay-nhom :global(.tdn) { break-inside: avoid; margin-bottom: var(--k-7); }
 
   /* --- 2 và 3. Món ăn, đồ uống: cột tiêu đề + cột thực đơn ------------------- */
@@ -583,10 +585,10 @@ const coKenh = coKenhHoiBan(nd);
   .td-moi-chu h2 { max-width: 22ch; }
   .td-moi-chu .cau { display: block; }
   .td-moi-chu .dan { margin-bottom: var(--k-6); }
-  /* Ngày cập nhật thực đơn: dòng nhỏ chữ kem cuối khối đỏ. */
+  /* Ngày cập nhật thực đơn: dòng nhỏ chữ trắng cuối khối đỏ. */
   .td-cap-nhat { margin: var(--k-6) 0 0; }
-  /* LenTang3 bản gọn là một thẻ Cream trên dải đỏ: .the (cong-khai.css) tự đặt lại
-     biến màu chữ và vòng focus của nền kem, ở đây giới hạn bề rộng. Viền trái đỏ của
+  /* LenTang3 bản gọn là một thẻ trắng trên dải đỏ: .the (cong-khai.css) tự đặt lại
+     biến màu chữ và vòng focus của nền sáng, ở đây giới hạn bề rộng. Viền trái đỏ của
      thẻ trùng màu dải đỏ nên mép thẻ trông như lùi vào 4px: đổi sang đỏ sậm. */
   .td-the-tang3 { max-width: 480px; }
   .td-the-tang3 :global(.lt3-gon.the) { border-left-color: var(--do-sau); }

@@ -312,14 +312,14 @@ export interface KetQuaQuetKiemKe {
   soNhanHong: number;
   /** Gói đọc được mã nhưng mã cân chưa gắn với món nào. */
   soGoiLa: number;
-  /** "5 gói Thăn ngoại (1,52 kg), 7 gói Nạc vai (2,1 kg)" — cho câu báo xanh. */
+  /** "5 gói Thăn ngoại (1,52 kg), 7 gói Nạc vai (2,1 kg)" — cho câu báo "xong" (khối .nb-bao.xong). */
   tomTat: string;
   /** Câu đó cho màn tiếng Anh (số kiểu 1.52, "and 2 more items"). */
   tomTatEn: string;
 }
 
 /**
- * Câu vàng cho nhãn không đọc được và gói lạ. Tách riêng để trang dựng lại
+ * Câu "lưu ý" (khối .nb-bao.luu-y) cho nhãn không đọc được và gói lạ. Tách riêng để trang dựng lại
  * được sau khi chuyển hướng (chỉ cần hai con số trên đường dẫn).
  * Quét ĐÈ số của món (xem apDungQuet), nên không bảo "quét lại gói đó" —
  * quét lại mỗi một gói thì món đó chỉ còn 1 gói.

@@ -143,7 +143,10 @@ export function soanTin(v: DauVaoTin): Tin {
   if (kh.tomTat !== null && doMuc.length === 0) giua.push((kh.tomTat === 'noi_kenh' ? CAU.khongDoNoi : CAU.khongDo)[nn]);
   const soVang = sk ? sk.soVang : 0;
   if (tomTat && soVang > 0) {
-    giua.push({ vi: `${so(soVang, nn)} mục vàng cần xem hôm nay.`, en: `${so(soVang, nn)} yellow item${s(soVang)} to check today.` }[nn]);
+    // Gọi theo nhãn "Xem hôm nay" của bảng sức khỏe (SucKhoeHeThong.astro), không theo màu: màn hình không vẽ mức này
+    // bằng màu nữa (hình thoi xám).
+    // soVang là mã dữ liệu của lib/suc-khoe.ts, giữ tên.
+    giua.push({ vi: `${so(soVang, nn)} mục cần xem hôm nay.`, en: `${so(soVang, nn)} item${s(soVang)} to check today.` }[nn]);
   }
   const cuoi: string[] = [];
   if (kh.tomTat === 'sang') cuoi.push(CAU.cuoiSang[nn]);

@@ -18,7 +18,9 @@
 // Khoét bằng fill-rule="evenodd" (ô + đầu bò chung một path), không dùng mask nên không có id.
 //
 // Không vẽ lại gì: mọi path là path gốc của PDF, chỉ dời gốc tọa độ (translate) và đổi màu tô.
-// Khung (viewBox) sát hình đo bằng getBBox() của Chromium; khoảng trống quanh logo do CSS lo.
+// Khung hình đo bằng getBBox() của Chromium, rồi làm tròn LÊN số nguyên (hình đặt giữa, chừa dưới một đơn vị
+// mỗi bên): thẻ <img width height> phải ghi số nguyên, và khi tỷ lệ của hai số đó lệch tỷ lệ thật của SVG thì
+// trang xô lệch lúc logo tải xong (kiểm thử trình duyệt bắt). Khoảng trống quanh logo theo guideline do CSS lo.
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
@@ -114,11 +116,13 @@ async function khung(cacD) {
 const so = v => String(Math.round(v * 1000) / 1000);
 
 function viet(ten, moTa, k, phan) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${so(k.w)} ${so(k.h)}" width="${so(k.w)}" height="${so(k.h)}">`
+  const rong = Math.ceil(k.w), cao = Math.ceil(k.h);
+  const dx = -k.x + (rong - k.w) / 2, dy = -k.y + (cao - k.h) / 2;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${rong} ${cao}" width="${rong}" height="${cao}">`
     + `<!-- ${moTa} — path gốc của BEEFTOWN_Brand_Guidelines.pdf (21/10/2026), tách bằng web/cong-cu/thuong-hieu/tach-logo.mjs -->`
-    + `<g transform="translate(${so(-k.x)} ${so(-k.y)})">${phan}</g></svg>\n`;
+    + `<g transform="translate(${so(dx)} ${so(dy)})">${phan}</g></svg>\n`;
   writeFileSync(join(congKhai, 'thuong-hieu', `${ten}.svg`), svg);
-  console.log(`thuong-hieu/${ten}.svg  ${so(k.w)} × ${so(k.h)}`);
+  console.log(`thuong-hieu/${ten}.svg  ${rong} × ${cao}  (hình ${so(k.w)} × ${so(k.h)})`);
 }
 
 // mau: màu của chữ và ô; dauBo: màu đầu bò, hoặc null = khoét (lộ nền).
@@ -131,9 +135,9 @@ function phanLogo({ chu, o, dauBo }, mau, mauDauBo) {
 }
 
 const BAN = [
-  ['do', DO, TRANG, 'chữ đỏ, đầu bò trắng — trên nền trắng, nền xám nhạt'],
-  ['den', DEN, TRANG, 'chữ đen, đầu bò trắng — trên nền trắng, nền xám nhạt'],
-  ['trang', TRANG, null, 'chữ trắng, đầu bò khoét lộ nền — trên nền đỏ, nền đen'],
+  ['do', DO, TRANG, 'bản đỏ, đầu bò trắng — trên nền trắng, nền xám nhạt'],
+  ['den', DEN, TRANG, 'bản đen, đầu bò trắng — trên nền trắng, nền xám nhạt'],
+  ['trang', TRANG, null, 'bản trắng, đầu bò khoét lộ nền — trên nền đỏ, nền đen'],
 ];
 for (const [nhomLogo, tenFile, tenMoTa] of [
   [LOGO_CHINH, 'logo-ngang', 'Logo chính Beeftown (lockup có tagline)'],

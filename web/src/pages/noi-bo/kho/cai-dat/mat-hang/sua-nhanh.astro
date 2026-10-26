@@ -231,10 +231,12 @@ const kieuNhap = (khoa: OSuaNhanh) => (khoa === 'ma_can' || khoa.endsWith('_goi'
   .sn-ten .kho-phu { display: block; font-weight: 400; font-size: .75rem; }
   .sn-bang input[type="text"], .sn-bang select { width: 100%; min-width: 5.5rem; font-size: 16px; min-height: 44px;
     padding: .35rem .45rem; border: 1px solid var(--vien-o); border-radius: 8px; background: var(--kem); }
-  .sn-bang .sn-sai { border: 2px solid var(--do); background: var(--do-nen); }
+  /* Ô sai: viền đỏ 2px trên nền trắng của ô; dòng lỗi: vạch đỏ 4px ở ô tên (giữ vạch phải của cột dính); câu lỗi: chữ
+     đỏ, không nền — không còn nền đỏ nhạt. */
+  .sn-bang .sn-sai { border: 2px solid var(--do); background: var(--kem); }
   .sn-tat td, .sn-tat .sn-ten strong { opacity: .6; }
-  .sn-dong-loi .sn-ten { background: var(--do-nen); }
-  .sn-cau td { background: var(--do-nen); color: var(--do); font-size: .88rem; }
+  .sn-dong-loi .sn-ten { box-shadow: inset 4px 0 0 var(--do), 1px 0 0 var(--kho-vach); }
+  .sn-cau td { color: var(--do); font-size: .88rem; }
   .sn-cau ul { margin: 0; padding-left: 1.1rem; }
   /* Dòng câu lỗi: chữ bám mép trái của khung khi cuộn ngang. */
   .sn-cau td ul { position: sticky; left: .5rem; max-width: 90vw; }

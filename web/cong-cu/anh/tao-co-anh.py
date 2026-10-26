@@ -33,7 +33,7 @@ Hai loại ảnh, hai đường:
   2. Cắt đúng tỷ lệ khung, tâm vùng cắt đặt ở điểm lấy nét (fx, fy) rồi đẩy vào trong mép ảnh.
 
   ẢNH TÁCH NỀN (mục "tach_nen" trong danh-sach.json — món đã tách khỏi nền, kênh trong suốt có sẵn bóng
-  đổ; trang đặt thẳng lên nền kem như ảnh món trong cuốn menu):
+  đổ; trang đặt thẳng lên nền trắng của trang công khai, như ảnh món trên nền trơn của cuốn menu):
   1. Mở như trên nhưng GIỮ kênh trong suốt (đổi màu sang sRGB chỉ trên ba kênh màu).
   2. Cắt sát phần có hình: hộp bao các điểm có độ đục > "nguong_alpha" (mặc định 8 trên 255 — bỏ viền gần
      như vô hình, giữ bóng đổ).
@@ -97,9 +97,9 @@ TOI_DA_MOT_FILE = 300 * 1024
 TOI_DA_TONG = 8 * 1024 * 1024
 # Vùng cắt nhỏ hơn bề rộng lớn nhất cần xuất: thêm đúng bề rộng vùng cắt khi nó lớn hơn cỡ đã giữ ≥ 15 %.
 THEM_CO_GOC_KHI = 1.15
-# Ảnh cắt (không khai "tach_nen") mà có nền trong suốt: đặt lên màu Cream của trang công khai trước khi
-# bỏ kênh alpha. Màu này cũng là nền để tính màu trung bình của ảnh tách nền.
-NEN_KEM = (0xF0, 0xE3, 0xD0, 255)
+# Ảnh cắt (không khai "tach_nen") mà có nền trong suốt: đặt lên nền trắng của trang công khai (bảng màu
+# 22/10/2026) trước khi bỏ kênh alpha. Màu này cũng là nền để tính màu trung bình của ảnh tách nền.
+NEN_TRANG = (0xFF, 0xFF, 0xFF, 255)
 # Ảnh tách nền: chất lượng bắt đầu (thay cho CHAT_LUONG) và chất lượng kênh trong suốt của WebP (100 = không
 # mất mát — bóng đổ mềm không cần tới mức đó). Lý do chọn: đầu file, bước 4.
 CHAT_LUONG_TACH_NEN = {'avif': 40, 'webp': 60}
@@ -237,7 +237,7 @@ def mo_anh_srgb(duong, canh_bao):
         anh = ImageOps.exif_transpose(nguon)
     icc = anh.info.get('icc_profile')
     if anh.mode in ('RGBA', 'LA', 'PA') or (anh.mode == 'P' and 'transparency' in anh.info):
-        tren_nen = Image.new('RGBA', anh.size, NEN_KEM)
+        tren_nen = Image.new('RGBA', anh.size, NEN_TRANG)
         tren_nen.alpha_composite(anh.convert('RGBA'))
         anh = tren_nen.convert('RGB')
     elif anh.mode not in ('RGB', 'CMYK', 'L'):
@@ -408,9 +408,9 @@ def dung_mot_khung(anh, id_anh, ten_khung, k, dong, tach_nen=None, chat_luong_ri
 # Đọc lại public/anh → anh-tao-san.ts
 # ---------------------------------------------------------------------------
 def mau_trung_binh(anh):
-    """Màu trung bình; ảnh có kênh trong suốt thì tính khi đặt lên nền Cream (như trên trang)."""
+    """Màu trung bình; ảnh có kênh trong suốt thì tính khi đặt lên nền trắng (như trên trang)."""
     if anh.mode in ('RGBA', 'LA', 'PA'):
-        tren_nen = Image.new('RGBA', anh.size, NEN_KEM)
+        tren_nen = Image.new('RGBA', anh.size, NEN_TRANG)
         tren_nen.alpha_composite(anh.convert('RGBA'))
         anh = tren_nen
     nho = anh.convert('RGB')

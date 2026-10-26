@@ -310,7 +310,7 @@ const hanTuDong = (n: NccNoDau | undefined) => congNgay(homNay, n?.so_ngay_no ??
           <div class="nb-dong">
             <div class="nb-dong-dau">
               <strong><a href={`/noi-bo/kho/cong-no/${p.nha_cung_cap_id}?mo=${p.id}#p-${p.id}`}>{p.ten_nha_cung_cap}</a> · {p.so_phieu}</strong>
-              <span class="nb-nhan nhap">{t.nhanNoDau}</span>
+              <span class="nb-nhan thong-tin">{t.nhanNoDau}</span>
             </div>
             <dl>
               <dt>{t.soTienNo}</dt><dd class="kho-so"><strong>{dinhDangTien(p.phai_tra, nn)}</strong></dd>

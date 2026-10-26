@@ -23,7 +23,7 @@
  *      cao ≥ 48px; chữ trên nền màu đặc đủ tương phản (≥ 4,5:1, chữ lớn ≥ 3:1).
  *      Thành phần và khung trang (đợt redesign, PR 2 — phép đo ở do-giao-dien.mjs): đầu
  *      trang 64 / 80px, bộ chọn ngôn ngữ đánh dấu thứ tiếng đang xem bằng chữ và nét,
- *      không nền trắng, nút và thẻ đúng quy tắc, hàng câu hỏi ≥ 56px, biểu tượng 24px,
+ *      màu nền trong bảng 22/10/2026, nút và thẻ đúng quy tắc, hàng câu hỏi ≥ 56px, biểu tượng 24px,
  *      chữ chạy 16/24px và h1 32/38 → 48/56px, chân trang không hoa văn và chữ ≥ 14px.
  *      Địa điểm (Khánh quyết 07/10 và 09/10/2026: tầng 3, 63 Hồ Tùng Mậu, lối vào
  *      riêng ngay cạnh GS25; có thang máy: Khánh xác nhận 11/10/2026): chân trang có "63 Hồ Tùng
@@ -545,7 +545,7 @@ try {
             ok(`${nhan}: đang mở thì nút là nút đóng, ghi "${NHAN_MENU[nn].dong}"`, await chuNut() === NHAN_MENU[nn].dong, await chuNut()),
           ];
           const gd = await page.evaluate(doGiaoDien);
-          for (const khoa of ['vungCham', 'ngonNgu', 'khongTrang', 'bieuTuong', 'the']) {
+          for (const khoa of ['vungCham', 'ngonNgu', 'nenTrongBang', 'bieuTuong', 'the']) {
             tot.push(ok(`${nhan}: danh mục đang mở — ${PHEP_DO[khoa]}`, gd[khoa]?.length === 0, (gd[khoa] ?? ['không đo được']).slice(0, 4).join(' | ')));
           }
           tot.push(ok(`${nhan}: danh mục đang mở không làm trang tràn ngang`,
@@ -567,8 +567,8 @@ try {
           const phu = await lopPhu(page);
           if (coJs) {
             // Có script: lớp phủ tối che phần trang dưới bảng, bấm vào là đóng; trang phía sau đứng yên.
-            tot.push(ok(`${nhan}: đang mở — có lớp phủ tối (Charcoal 50 %) dưới bảng, con trỏ bàn tay`,
-              phu.mau === 'rgba(21, 16, 8, 0.5)' && phu.conTro === 'pointer', JSON.stringify(phu)));
+            tot.push(ok(`${nhan}: đang mở — có lớp phủ tối (đen 50 %) dưới bảng, con trỏ bàn tay`,
+              phu.mau === 'rgba(0, 0, 0, 0.5)' && phu.conTro === 'pointer', JSON.stringify(phu)));
             const daCuon = await lanChuot(page);
             tot.push(ok(`${nhan}: đang mở — trang phía sau không cuộn`, phu.khoaCuon && daCuon === 0, `khoá ${phu.khoaCuon}, lăn chuột cuộn ${daCuon}px`));
             await page.keyboard.press('Escape');

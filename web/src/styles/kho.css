@@ -53,25 +53,53 @@
 .kho-tich input { width: 22px; height: 22px; margin: 0; flex-shrink: 0; }
 
 /* --- Ô số tổng quan ------------------------------------------------------- */
+/* Ô "làm ngay" (.gap, K2): viền đỏ 2px, số đỏ, tam giác đỏ "!" ở góc trên phải. Ô "lưu ý" (.luu-y, K5): viền #555
+   2px, vòng tròn "!" ở góc. Nền vẫn là thẻ trắng — tô F4 thì ô chìm vào nền trang. Dấu là ::after đặt tuyệt đối, một
+   lần mỗi ô: nhiều ô có 2–3 <span> (kiem-ke/index.astro), một ô là <form>. */
 .kho-o-so-luoi { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); margin-bottom: 1rem; }
 .kho-o-so {
+  position: relative;
   background: var(--nb-the); border: 1px solid var(--vach); border-radius: 10px;
   padding: .85rem 1rem; text-decoration: none; color: inherit; display: block;
 }
 .kho-o-so b { display: block; font-size: 1.6rem; line-height: 1.1; }
 .kho-o-so span { font-size: .8rem; color: var(--muc-nhat); }
-.kho-o-so.gap { border-color: var(--do); background: var(--do-nen); }
-.kho-o-so.luu-y { border-color: var(--mu-tat); background: var(--vang-nen); }
+.kho-o-so.gap, .kho-o-so.luu-y { padding-right: 2.5rem; }
+.kho-o-so.gap { border: 2px solid var(--do); background: var(--nb-the); }
+.kho-o-so.gap b { color: var(--do); }
+.kho-o-so.luu-y { border: 2px solid var(--muc-nhat); background: var(--nb-the); }
+.kho-o-so.gap::after, .kho-o-so.luu-y::after {
+  position: absolute; top: .7rem; right: .7rem;
+  display: grid; place-items: center; box-sizing: border-box;
+  width: 1.35rem; height: 1.35rem; font-size: .8rem; font-weight: 800; line-height: 1;
+}
+.kho-o-so.gap::after {
+  content: '!'; content: '!' / '';
+  width: 1.5rem; padding-top: .3rem;
+  background: var(--do); color: var(--kem); clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.kho-o-so.luu-y::after {
+  content: '!'; content: '!' / '';
+  background: var(--nb-the); color: var(--muc-nhat); border: 2px solid var(--muc-nhat); border-radius: 50%;
+}
 
 /* --- Nút nhanh ------------------------------------------------------------- */
 .kho-nut-nhanh { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); margin-bottom: 1.5rem; }
 .kho-nut-nhanh .nb-nut { width: 100%; }
 
 /* --- Nhãn hạn dùng ------------------------------------------------------- */
-.kho-han { display: inline-block; font-size: .72rem; font-weight: 700; padding: .15rem .45rem; border-radius: 4px; white-space: nowrap; }
+/* Nhãn luôn có chữ tình trạng (chuTinhTrangHan của lib/kho/chung.ts: "Hết hạn" / "Sắp hết hạn" / "Còn hạn") — không
+   bao giờ chỉ là ngày tô màu. Hết hạn K1: nền đỏ, dấu "!". Sắp hết K5: nền xám E2, chữ đen. Còn hạn K4: viền đen, ✓.
+   Viền trong suốt ở lớp gốc: chế độ tương phản cao vẽ thành khung; mọi nhãn cùng cỡ. */
+.kho-han {
+  display: inline-block; font-size: .72rem; font-weight: 700; padding: .15rem .45rem; border-radius: 4px; white-space: nowrap;
+  border: 1.5px solid transparent;
+}
 .kho-han.het_han { background: var(--do); color: var(--kem); }
-.kho-han.sap_het { background: var(--mu-tat); color: var(--than); }
-.kho-han.con_han { background: var(--xanh-nen); color: var(--xanh); }
+.kho-han.het_han::before { content: '! '; content: '! ' / ''; font-weight: 800; }
+.kho-han.sap_het { background: var(--kem-dam); color: var(--than); }
+.kho-han.con_han { background: transparent; color: var(--than); border-color: var(--than); }
+.kho-han.con_han::before { content: '✓ '; content: '✓ ' / ''; }
 
 /* --- Thẻ mặt hàng trong tồn kho ------------------------------------------ */
 .kho-mh { background: var(--nb-the); border: 1px solid var(--vach); border-radius: 10px; margin-bottom: .6rem; }
@@ -93,6 +121,8 @@
 .kho-bang th { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muc-nhat); background: var(--kem-sau); white-space: nowrap; }
 .kho-bang td.so, .kho-bang th.so { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .kho-bang tr.tong td { font-weight: 700; background: var(--kem-sau); }
+/* Dòng đã hủy (BangBaoCao khoaMo, vd sổ thanh toán): chữ phụ #555 (7,46 : 1) — cột tình trạng ghi "Đã hủy". */
+.kho-bang tr.kho-dong-huy td { color: var(--muc-nhat); }
 
 /* Báo cáo nhiều cột: cột tên mặt hàng đứng yên khi cuộn ngang. */
 .kho-bang.kho-bao-cao th:first-child,
@@ -135,7 +165,7 @@
    không thì iPhone thấy một nút camera bấm không ra gì. */
 .kho-quet [hidden] { display: none !important; }
 .kho-quet-hop { border: 0; border-radius: 12px; padding: 1rem; width: min(30rem, 94vw); background: var(--nb-the); color: var(--than); }
-.kho-quet-hop::backdrop { background: rgba(21, 16, 8, .6); }
+.kho-quet-hop::backdrop { background: rgba(0, 0, 0, .6); }
 .kho-quet-hop video { width: 100%; max-height: 55vh; object-fit: cover; border-radius: 8px; background: var(--than); display: block; }
 .kho-quet-hop p { margin: .75rem 0; font-size: .9rem; }
 .kho-quet-hop .nb-nut { width: 100%; }
@@ -159,7 +189,7 @@
 @media (max-width: 1023px) {
   .kho-thanh-nut.dinh {
     position: sticky; bottom: 0; background: var(--nb-nen); padding: .6rem 0; margin: 0;
-    box-shadow: 0 -6px 12px -8px rgba(21, 16, 8, .25); z-index: 5;
+    box-shadow: 0 -6px 12px -8px rgba(0, 0, 0, .25); z-index: 5;
   }
   body:has(.kho-day) .kho-thanh-nut.dinh {
     bottom: calc(var(--kho-day-cao, 4.25rem) + env(safe-area-inset-bottom));
@@ -169,4 +199,10 @@
 @media (max-width: 640px) {
   /* Bảng số liệu: giữ cột đủ rộng để đọc, vuốt ngang để xem hết. */
   .kho-bang-khung .kho-bang { min-width: 34rem; }
+}
+
+/* Tương phản cao (Windows): chế độ này ép nền về màu trang — tam giác đỏ của ô "làm ngay" chỉ còn chữ "!". Giữ hình
+   bằng màu hệ thống. */
+@media (forced-colors: active) {
+  .kho-o-so.gap::after { forced-color-adjust: none; background: CanvasText; color: Canvas; }
 }

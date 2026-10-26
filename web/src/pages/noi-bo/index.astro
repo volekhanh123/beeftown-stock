@@ -114,8 +114,8 @@ const anhBatBuocThieu = anhThieu?.filter(a => a.bat_buoc) ?? [];
 
 // v_mon_con_vuong trả về mọi món chưa công bố — kể cả món đã đủ mô tả, đã
 // duyệt giá, chỉ còn chờ bấm nút; cột vuong_gi của chúng là 'Sẵn sàng công
-// bố'. Đếm cả nhóm đó thì dòng việc dưới đây không bao giờ xanh được, đúng
-// ngược với tên của nó.
+// bố'. Đếm cả nhóm đó thì dòng việc dưới đây không bao giờ "xong" (dấu ✓) được,
+// đúng ngược với tên của nó.
 const monVuongThat = monVuong?.filter(m => m.vuong_gi !== 'Sẵn sàng công bố') ?? null;
 const monSanSang = monVuong?.filter(m => m.vuong_gi === 'Sẵn sàng công bố').length ?? 0;
 

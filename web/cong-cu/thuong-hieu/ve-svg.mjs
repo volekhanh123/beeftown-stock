@@ -1,10 +1,10 @@
-// Dựng SVG thành PNG bằng Chromium (Playwright) — để đối chiếu tài sản vừa tách
-// với chính trang PDF, và để xuất PNG (biểu tượng 180px, ảnh chia sẻ).
+// Dựng SVG thành PNG bằng Chromium (Playwright) — tao-bieu-tuong.py gọi để xuất PNG
+// (favicon, biểu tượng app, ảnh chia sẻ); cũng dùng tay để xem một logo trên nền nào đó.
 //
-//   node ve-svg.mjs <vao.svg|vao.html> <ra.png> [rộng] [cao] [--nen=#FBF4E1]
+//   node ve-svg.mjs <vao.svg|vao.html> <ra.png> [rộng] [cao] [--nen=#F4F4F4]
 //
 // Không có rộng/cao thì lấy theo viewBox của SVG. File HTML thì chụp đúng khung
-// rộng × cao đã cho.
+// rộng × cao đã cho. Không có --nen thì nền trong suốt.
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';

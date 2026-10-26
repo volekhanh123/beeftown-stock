@@ -364,7 +364,7 @@ export function docDongDinhMuc(raw: unknown): DongDinhMuc[] {
 }
 
 /**
- * Màu một dòng:
+ * Mức một dòng (mã dữ liệu, giữ tên; trên màn hình là nhãn chữ TEN_MUC_LECH_NB — "Vượt ngưỡng", "Gần ngưỡng"…):
  *   do   — lệch vượt ngưỡng (database quyết: vuot_nguong)
  *   vang — lệch quá nửa ngưỡng, chưa vượt
  *   xanh — trong ngưỡng

@@ -945,7 +945,7 @@ async function docPhienNhapCuaLo(client: SupabaseClient, chiNhanhId: string, loI
  *
  * Tự đọc lại tảng, chỗ lóc được, công thức, ô mã, mặt hàng ngừng dùng và phiên nháp của lô NGAY LÚC BẤM — không tin
  * danh sách trang đã đọc trước đó. Đọc hỏng bất kỳ lượt nào → không gọi hàm ghi nào, câu "Không đọc được … tải lại trang rồi bấm lại"
- * (không đoán "không có ô" rồi báo xanh, không mở phiên trùng).
+ * (không đoán "không có ô" rồi báo "xong", không mở phiên trùng).
  *
  * Bấm lại:
  *   · tảng đang nằm trong phiên nháp (bấm đúp, máy khác, trang tải lại) → trả phiên đó và GỌI LẠI giao ô (gọi lại

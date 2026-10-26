@@ -344,7 +344,7 @@ export async function donCvMoCoiVaVe(client: ClientKho, laChu: boolean, nn: Ngon
   const phanXoa = soDaXoa > 0 ? t.daXoaMoCoi(soDaXoa) : moCoi.length === 0 ? t.khongMoCoi : '';
   // Quét theo kho nên xóa vé không làm mất dấu CV mồ côi nào. Vẫn chỉ dọn vé khi kho đã sạch, vì số vé chưa
   // dùng đã cũ là thứ đèn "Dọn dữ liệu cá nhân" (ô ve_qua_han) dựa vào để nói "có thể còn CV mồ côi": dọn vé
-  // khi kho còn CV mồ côi thì đèn xanh mà file vẫn nằm đó.
+  // khi kho còn CV mồ côi thì đèn báo "Ổn" mà file vẫn nằm đó.
   if (conLai > 0) return { ok: false, cau: noi(phanXoa, t.conMoCoi(conLai, lyDo ? LY_DO[lyDo][nn] : '')) };
   if (docGoc.conNua) return { ok: false, cau: noi(phanXoa, t.khoQuaLon) };
 

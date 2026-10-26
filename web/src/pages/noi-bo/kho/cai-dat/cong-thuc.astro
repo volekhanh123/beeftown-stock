@@ -7,8 +7,9 @@
  * bắt buộc — pha lóc vẫn ghi được khi chưa có công thức nào.
  *
  * GĐ8c: mỗi công thức một LƯỚI phần cắt × tỷ lệ % trong một form (lib/kho/
- * cong-thuc.ts): "Tính lại" cộng tổng chạy ở máy chủ (xanh 95–100%, vàng dưới,
- * đỏ vượt 100%), "Lưu công thức" thay toàn bộ phần ra (phien_ban chống ghi đè),
+ * cong-thuc.ts): "Tính lại" cộng tổng chạy ở máy chủ — câu tổng (cauTong) nói mức:
+ * 95–100% ổn, "dưới 95%" (ô nền xám), "vượt 100%" (chữ đỏ, vạch đỏ trên) —
+ * "Lưu công thức" thay toàn bộ phần ra (phien_ban chống ghi đè),
  * "Nhân bản công thức", "Gợi ý từ thực tế" (?goi_y=1 — tỷ lệ TB 30 ngày từ các
  * phiên pha đã chốt, chỉ kg, điền vào cột Gợi ý để chép).
  */
@@ -279,7 +280,9 @@ const goiYThieu = goiY ? [...goiY.tyLe].filter(([mh]) => !luoiDung.some(d => d.m
   .ct-luoi td:first-child { min-width: 12rem; }
   .ct-luoi td.so input { max-width: 6rem; text-align: right; }
   .ct-tong td { font-weight: 700; }
-  .ct-tong.xanh td { color: var(--xanh); background: var(--xanh-nen); }
-  .ct-tong.vang td { color: var(--vang-chu); background: var(--vang-nen); }
-  .ct-tong.do td { color: var(--do); background: var(--do-nen); }
+  /* Mức của tổng nói bằng câu (cauTong); vẽ chỉ thêm: ổn = chữ đen; dưới 95% = nền xám E2; vượt 100% = chữ đỏ và vạch
+     đỏ 2px phía trên. Lớp xanh / vang / do là mã của mauTong, không phải màu trên màn hình. */
+  .ct-tong.xanh td { color: var(--than); }
+  .ct-tong.vang td { color: var(--than); background: var(--kem-dam); }
+  .ct-tong.do td { color: var(--do); border-top: 2px solid var(--do); }
 </style>
