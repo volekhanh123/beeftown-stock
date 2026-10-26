@@ -6,7 +6,8 @@
  *     đã duyệt — NV quầy, thủ kho chỉ thẻ Quầy; kế toán thêm Báo cáo; quản lý, chủ đủ năm thẻ; chưa đăng nhập kho thấy các mục
  *     làm với cân như 2.10. Quyền thật vẫn ở máy chủ (không đổi);
  *   - không còn câu chỉ tới thẻ cũ trong trang, hướng dẫn, mã nguồn (trừ "Mở lại thẻ Tem" — câu lỗi cũ kiểm thử khoá chữ);
- *   - README, hướng dẫn, câu web "chưa gán phím tắt" theo chỗ mới.
+ *   - README, hướng dẫn, câu web "chưa gán phím tắt" theo chỗ mới; mọi câu web (web/src/lib, web/src/pages/noi-bo) không chỉ
+ *     tới thẻ cũ, vi và en.
  * Lỗi lúc chạy (biến còn dùng mà bị xoá, mục không tải) do test/thu-trinh-duyet.ts bắt — file đó mở trang trong Chromium.
  *
  *     cd can-app && npx bun test/thu-giao-dien-gon.ts
@@ -149,6 +150,39 @@ export async function thuGiaoDienGon(ok: Ok): Promise<void> {
     + '"thẻ Mẫu tem", "Ba thẻ mới"…; bảng tra nói đúng các mục còn tên cũ nằm ở đâu',
     dangDung.every(d => d.length > 100) && cuMd.length === 0 && !/Ba thẻ mới/.test(rd) && !/của bản cũ bên dưới vẫn dùng tên thẻ cũ/.test(rd),
     cuMd.join(' | '));
+
+  // Câu của web chỉ người dùng tới Beeftown Cân (gộp nhánh thu ngân / FABi với 2.11: "Beeftown Cân → thẻ Tảng & ô",
+  // "thẻ **Gửi giá từ kho**" lọt vì phần trên chỉ quét can-app). Quét mã web của kho và nội bộ, cả bản tiếng Anh — tên thẻ cũ
+  // tiếng Anh chỉ có ở các câu web (Beeftown Cân không có bản tiếng Anh). "thẻ Giảm giá" vẫn là thẻ thật nên không bị bắt.
+  const THE_CU_EN = new RegExp('(?:Primals\\s*&(?:amp;)?\\s*slots|Send\\s+prices\\s+from\\s+stock|All\\s+items(?:\\s+\\(SKU\\))?|Labels?'
+    + '|Label\\s+template|Scale\\s*&(?:amp;)?\\s*settings|Keys|Scale\\s+log|Near-expiry\\s+discounts?)(?:<\\/b>|\\*\\*)?["”]?\\s+tab\\b', 'gu');
+  const WEB = path.join(GOC, '..', 'web', 'src');
+  const tepWeb = (thuMuc: string): string[] => fs.readdirSync(path.join(WEB, thuMuc), { withFileTypes: true }).flatMap(e =>
+    e.isDirectory() ? tepWeb(path.join(thuMuc, e.name)) : /\.(?:ts|astro)$/.test(e.name) ? [path.join(thuMuc, e.name)] : []);
+  const cacTepWeb = [...tepWeb('lib'), ...tepWeb(path.join('pages', 'noi-bo'))];
+  const cuWeb: string[] = [];
+  for (const f of cacTepWeb) {
+    fs.readFileSync(path.join(WEB, f), 'utf8').split('\n').forEach((dong, i) => {
+      for (const m of [...dong.matchAll(THE_CU_MD), ...dong.matchAll(THE_CU_EN)]) cuWeb.push(`web/src/${f}:${i + 1}: ${m[0]}`);
+    });
+  }
+  ok('2.11 Câu web (web/src/lib, web/src/pages/noi-bo) không chỉ tới thẻ cũ của Beeftown Cân, vi và en — "thẻ Tảng & ô", '
+    + '"thẻ Gửi giá từ kho", "Primals & slots tab", "Send prices from stock tab"… đổi theo chỗ mới (thẻ Quầy → mục Tảng & ô mã; thẻ Cân)',
+    cacTepWeb.some(f => f.endsWith('thu-ngan.ts')) && cacTepWeb.some(f => f.endsWith('huong-dan.ts')) && cuWeb.length === 0,
+    cuWeb.slice(0, 12).join(' | '));
+  const viTri = (tieuDe: string) => rd.indexOf(`\n${tieuDe}`);
+  ok('2.11 README: câu dẫn bảng tra nói đúng chỗ — "Dùng", "Thử bản 2.2 ở quán" ở trên mục 2.11; mục 2.4 ở dưới, sau 2.5 (không "ở trên")',
+    /"Dùng",\s+"Thử bản 2\.2 ở quán"\s+\(ở trên\)\s+và\s+mục\s+2\.4\s+\(cuối các mục phiên bản, sau 2\.5/.test(muc211)
+    && !/mục 2\.4 \(ở trên/.test(rd) && [viTri('## Dùng'), viTri('### Thử bản 2.2 ở quán')].every(v => v > 0 && v < viTri('## Bản 2.11'))
+    && viTri('## Bản 2.11') < viTri('## Bản 2.5') && viTri('## Bản 2.5') < viTri('## Bản 2.4'));
+  // Đoạn README tả dong-goi-can.yml phải theo đúng thứ tự bước của workflow: thu.ts → Chromium → đóng gói.
+  const wf = fs.readFileSync(path.join(GOC, '..', '.github', 'workflows', 'dong-goi-can.yml'), 'utf8');
+  const doanWf = rd.slice(rd.indexOf('- `.github/workflows/dong-goi-can.yml`:'), rd.indexOf('## Chưa làm'));
+  const theoThuTu = (chu: string, ...cum: string[]) => cum.every((c, i) => chu.indexOf(c) >= 0 && (i === 0 || chu.indexOf(c) > chu.indexOf(cum[i - 1])));
+  ok('2.11 README "Phát triển": dong-goi-can.yml chạy test/thu.ts → test/thu-trinh-duyet.ts (Chromium) → đóng gói, đúng thứ tự trong workflow',
+    doanWf.length > 100 && theoThuTu(doanWf, 'npx bun test/thu.ts', 'npx bun test/thu-trinh-duyet.ts', 'đóng gói → artifact')
+    && theoThuTu(wf, 'run: npx bun test/thu.ts', 'run: npx bun test/thu-trinh-duyet.ts', 'run: npx bun scripts/dong-goi.ts'),
+    doanWf.slice(0, 300));
   const bangAi = /<h3>Ai thấy thẻ nào<\/h3>([\s\S]*?)<\/table>/.exec(hd)?.[1] ?? '';
   const dongAi = [...bangAi.matchAll(/<tr><td>([^<]+)/g)].map(m => m[1].trim());
   ok('2.11 Hướng dẫn: bảng "Ai thấy thẻ nào" đúng năm thẻ; NV quầy, thủ kho chỉ thẻ Quầy; mục lục giữ mọi neo (#the-…)',

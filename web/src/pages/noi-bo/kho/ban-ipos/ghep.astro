@@ -243,7 +243,11 @@ const chuKieu = (m: MaIposDaGhep) => m.o_ma_id && oTheoId.has(m.o_ma_id)
   : m.kieu === 'goi_can' ? `${t.hangCanNhan}${m.mat_hang_id ? ` (${tenMon.get(m.mat_hang_id) ?? '—'})` : ''}`
   : `${tenMon.get(m.mat_hang_id ?? '') ?? '—'}${m.kieu === 'mon' && m.mat_hang_id && oMaTheoMon.has(m.mat_hang_id) ? t.khongO : ''}`;
 // Mã kho tự nhận (mã giảm, mã ô): mã giảm chỉ biết khi đọc được phần FABi — không biết thì thôi nhãn, form vẫn chặn.
-const ngGhep: NguCanhGhep = { oMa: cacO, maGiam: them?.maGiam ?? [] };
+// Ô / mã giảm của món đã ngừng dùng: kho không tự nhận (kho_ipos_ghi_dong 0054) — monDangDung để oThucDon hiện nút Ghép.
+const idDangDung = new Set(dangDung.map(m => m.id));
+const ngGhep: NguCanhGhep = { oMa: cacO, maGiam: them?.maGiam ?? [], monDangDung: idDangDung };
+// Chọn được trong form chỉ ô của món đang dùng — ô của món đã ngừng dùng thì kho_ipos_gan_o_ma (0051) luôn từ chối.
+const oDangDung = cacO.filter(o => idDangDung.has(o.mat_hang_id));
 const dsFabi: DongMonFabi[] = them
   ? monCanCoTrenFabi({ matHang, oMa: cacO, maGiam: them.maGiam, menu: them.menu, daGhep, soChuSo: them.soChuSo })
   : [];
@@ -272,7 +276,7 @@ const idMa = (ma: string) => `ma-${ma.replace(/[^A-Za-z0-9_-]/g, '_')}`;
         const gl = guiLai?.ma === m.ma_ipos ? guiLai : null;
         // Vừa bị từ chối → giữ đúng lựa chọn đã gửi; đang ghép (bấm Sửa) → chọn sẵn đúng cái đang ghép;
         // chưa ghép → gợi ý đầu tiên.
-        const oGoiY = goiYOMa(m, cacO);
+        const oGoiY = goiYOMa(m, oDangDung);
         const dangChon = !cu ? (gl ? gl.chon : oGoiY ? `o:${oGoiY.id}` : goiY[0]?.id ?? '')
           : gl ? gl.chon
           : cu.o_ma_id ? `o:${cu.o_ma_id}`
@@ -299,9 +303,9 @@ const idMa = (ma: string) => `ma-${ma.replace(/[^A-Za-z0-9_-]/g, '_')}`;
                     {goiY.map(g => <option value={g.id} selected={g.id === dangChon}>{g.ten} ({g.ma})</option>)}
                   </optgroup>
                 )}
-                {cacO.length > 0 && (
+                {oDangDung.length > 0 && (
                   <optgroup label={t.nhomOMa}>
-                    {cacO.map(o => <option value={`o:${o.id}`} selected={dangChon === `o:${o.id}`}>{t.oChu(o.ten, o.so_o, o.ma_can)}</option>)}
+                    {oDangDung.map(o => <option value={`o:${o.id}`} selected={dangChon === `o:${o.id}`}>{t.oChu(o.ten, o.so_o, o.ma_can)}</option>)}
                   </optgroup>
                 )}
                 <optgroup label={t.nhomKhac}>
@@ -315,7 +319,7 @@ const idMa = (ma: string) => `ma-${ma.replace(/[^A-Za-z0-9_-]/g, '_')}`;
             </label>
             <fieldset class="nb-o">
               <legend>{t.banTheo}</legend>
-              {cacO.length > 0 && <small>{t.oGiai}</small>}
+              {oDangDung.length > 0 && <small>{t.oGiai}</small>}
               {CHON_DON_VI_BAN_NB.map(c => (
                 <label class="kho-tich"><input type="radio" name="don_vi_ban" value={c.ma}
                     checked={(gl ? gl.donVi : (cu?.don_vi_ban ?? '')) === c.ma} />

@@ -213,8 +213,8 @@ cách nói với cân (WiFi / dây, tự gửi) không đổi.
 | Quản lý, chủ | Quầy, Cân, Giảm giá, Báo cáo, Thiết lập cân |
 | Chưa đăng nhập kho | Cân (khung đăng nhập, Tất cả hàng), Thiết lập cân — như các thẻ 2.10 hiện khi chưa đăng nhập |
 
-Thẻ cũ → chỗ mới. "Dùng", "Thử bản 2.2 ở quán" và mục 2.4 (ở trên, còn đang thử) đã nói theo chỗ mới; các mục "Thử ở quán"
-của 2.10 trở về 2.5 (ngay dưới mục này) vẫn dùng tên thẻ cũ — tra bảng này:
+Thẻ cũ → chỗ mới. "Dùng", "Thử bản 2.2 ở quán" (ở trên) và mục 2.4 (cuối các mục phiên bản, sau 2.5; còn đang thử) đã nói
+theo chỗ mới; các mục "Thử ở quán" của 2.10 trở về 2.5 (ngay dưới mục này) vẫn dùng tên thẻ cũ — tra bảng này:
 
 | Thẻ cũ (tới 2.10) | Từ 2.11 |
 |---|---|
@@ -245,6 +245,9 @@ của 2.10 trở về 2.5 (ngay dưới mục này) vẫn dùng tên thẻ cũ �
   CI chạy file này sau `test/thu.ts` ở `kiem-thu.yml` và `dong-goi-can.yml` (cài Chromium như job web).
 - Câu báo chỉ tới thẻ cũ đã đổi theo chỗ mới. Riêng câu lỗi "Mở lại thẻ Tem rồi sửa lại." (`src/tem.ts`) giữ nguyên chữ — kiểm
   thử khoá chữ của lỗi cũ. Trang pha lóc: "chưa gán phím tắt (gán ở mục Phím tắt của Beeftown Cân)" — đúng cả máy còn chạy 2.10.
+  Câu web của kho cũng theo chỗ mới: cách sửa "Lệch ô" ở Bán hàng iPOS chỉ tới thẻ Quầy → mục Tảng & ô mã; mẹo đổi giá ở
+  hướng dẫn kho chỉ tới thẻ Cân → **Gửi xuống cân** (hoặc Tự gửi). `test/thu-giao-dien-gon.ts` quét cả `web/src/lib` và
+  `web/src/pages/noi-bo` (vi và en) để câu web mới không chỉ tới thẻ đã bỏ.
 
 **Thử ở quán (2.11)** — sau khi bấm **Cập nhật**; không ghi gì xuống cân ngoài bước 4:
 1. Đăng nhập tài khoản NV quầy: chỉ thấy thẻ **Quầy**; cuối thẻ có dòng **Tảng & ô mã — …** (số ô đang dùng, ô có vấn đề). Có ô
@@ -829,7 +832,8 @@ npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói
 - Đóng gói trên Linux thì file .exe chưa có biểu tượng riêng (Bun chỉ gắn biểu tượng khi đóng gói trên Windows).
 - `dist/` và `node_modules/` không vào repo. File .exe quá lớn để để trong repo hoặc trên web (Cloudflare giới hạn 25 MB một file) — GitHub đóng gói và giữ nó (mục **Tải BeeftownCan.exe về** ở trên).
 - `.github/workflows/dong-goi-can.yml`: main đổi `can-app/` hoặc `web/src/lib/` (.exe gói cả mã dùng chung ở đó) →
-  `npx bun test/thu.ts` → đóng gói → artifact `BeeftownCan-<PHIEN_BAN>`, xoá artifact chính thức cũ; phiên bản chưa có
+  `npx bun test/thu.ts` → cài Playwright, Chromium (từ `web/`) → `npx bun test/thu-trinh-duyet.ts` (hỏng thì không đóng
+  gói, không Release) → đóng gói → artifact `BeeftownCan-<PHIEN_BAN>`, xoá artifact chính thức cũ; phiên bản chưa có
   Release thì tạo Release, tag `can-v<PHIEN_BAN>`. PR đụng cùng những chỗ đó chỉ đóng gói thử, không tải lên. Chạy tay: gõ số
   PR, hoặc để trống và chọn nhánh ở *Use workflow from* (nhánh đó phải có file workflow này). Muốn Release mới thì tăng
   `PHIEN_BAN` trong `src/main.ts`, giữ đúng dạng `const PHIEN_BAN = '2.1.0';` — workflow đọc dòng này (`test-quy-trinh.mjs` kiểm).

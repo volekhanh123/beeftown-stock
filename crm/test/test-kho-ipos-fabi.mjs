@@ -11,7 +11,8 @@
  *   · "Bán không biết tảng · 7 ngày" (Bán hàng iPOS): dòng đã trừ kho của món có ô mà không qua
  *     ô, không mã giảm; dòng lệch ô. Tách hôm nay / 7 ngày theo giờ Việt Nam.
  *   · Chặn ghép sai TRƯỚC khi gọi database: mã trùng mã giảm / mã ô thì không ghép như món
- *     thường; ghép món có ô mà không chọn ô thì phải xác nhận.
+ *     thường; ghép món có ô mà không chọn ô thì phải xác nhận. Mã ô / mã giảm của món đã ngừng
+ *     dùng thì database không tự nhận (dòng chưa khớp) → web cho ghép như mã thường (nhóm 10).
  *
  * Dựng như test-kho-ipos-o-ma.mjs: hai tảng thăn ngoại → ô 1 (10011), ô 2 (10012), mã giảm 30%
  * (90001), mã FABi "THAN" ghép món thường. Hóa đơn gửi qua kho_ipos_nhan_callback ở những mốc
@@ -372,7 +373,9 @@ await nhom('6 · CHẶN GHÉP SAI TRƯỚC KHI GỌI DATABASE', async () => {
   const fd = o => { const f = new FormData(); for (const [k, v] of Object.entries(o)) f.set(k, v); return f; };
   const ng = { oMa: [{ id: O[1], mat_hang_id: MH['C-THANNGOAI'].id, so_o: 1, ma_can: '10011' },
                      { id: O[2], mat_hang_id: MH['C-THANNGOAI'].id, so_o: 2, ma_can: '10012' }],
-               maGiam: [{ ma_can: '90001', phan_tram: 30 }, { ma_can: '90002', phan_tram: 50 }] };
+               maGiam: [{ ma_can: '90001', phan_tram: 30, mat_hang_id: MH['C-THANNGOAI'].id },
+                        { ma_can: '90002', phan_tram: 50, mat_hang_id: MH['C-THANNGOAI'].id }],
+               monDangDung: new Set([MH['C-THANNGOAI'].id, MH['T-THANNGOAI'].id]) };
   const ghep = o => docFormGhep(fd(o)).ghep;
   const c1 = kiemGhep(ghep({ ma_ipos: '90001', mat_hang_id: MH['C-THANNGOAI'].id, don_vi_ban: 'kg' }), ng, true);
   ok('Mã trùng mã giảm ghép như món thường → từ chối (vi / en), xác nhận cũng không qua', !!c1 && /giảm/.test(c1.cau.vi) && /discount/i.test(c1.cau.en) && !c1.canXacNhan,
@@ -410,6 +413,24 @@ await nhom('6 · CHẶN GHÉP SAI TRƯỚC KHI GỌI DATABASE', async () => {
      laMaKhoTuNhan('90001', ng)?.loai === 'giam' && laMaKhoTuNhan('90001', ng).phanTram === 30
      && laMaKhoTuNhan('010012', ng)?.loai === 'o' && laMaKhoTuNhan('010012', ng).soO === 2 && laMaKhoTuNhan('THAN', ng) === null);
 
+  // Ô / mã giảm của món đã NGỪNG DÙNG: database không tự nhận (kho_ipos_ghi_dong 0054 đọc món `and dang_dung` → dòng
+  // chưa khớp; kho_ipos_gan_o_ma 0051 từ chối "Món của ô mã đã ngừng dùng") → web coi như mã thường: nút Ghép, ghép được
+  // với món khác. Ô không xoá được khi đã từng giao tảng, nên tem cũ của món đã ngừng vẫn có thể bị quét.
+  const ngNghi = { ...ng, oMa: [...ng.oMa, { id: 'o-nghi', mat_hang_id: 'mon-nghi', so_o: 1, ma_can: '10031' }],
+                   maGiam: [...ng.maGiam, { ma_can: '90031', phan_tram: 30, mat_hang_id: 'mon-nghi' }] };
+  ok('laMaKhoTuNhan: mã ô 10031, mã giảm 90031 (kể cả 090031) của món đã ngừng dùng → null (database không tự nhận); ô / mã giảm của món đang dùng vẫn tự nhận',
+     laMaKhoTuNhan('10031', ngNghi) === null && laMaKhoTuNhan('90031', ngNghi) === null && laMaKhoTuNhan('090031', ngNghi) === null
+     && laMaKhoTuNhan('10011', ngNghi)?.loai === 'o' && laMaKhoTuNhan('90001', ngNghi)?.loai === 'giam',
+     JSON.stringify([laMaKhoTuNhan('10031', ngNghi), laMaKhoTuNhan('90031', ngNghi)]));
+  ok('Thực đơn: mã ô / mã giảm của món đã ngừng dùng → nút Ghép (không "kho tự nhận"); đã ghép như món thường → không nhắc Bỏ ghép',
+     oThucDon('10031', undefined, ngNghi).kieu === 'nut_ghep' && oThucDon('90031', undefined, ngNghi).kieu === 'nut_ghep'
+     && oThucDon('10031', { kieu: 'mon', o_ma_id: null }, ngNghi).ghepSai === false
+     && oThucDon('90031', { kieu: 'mon', o_ma_id: null }, ngNghi).ghepSai === false);
+  ok('Ghép mã ô / mã giảm của món đã ngừng dùng với món khác, hay "Không phải hàng kho" → được, không cần xác nhận "trùng mã"',
+     kiemGhep(ghep({ ma_ipos: '10031', mat_hang_id: MH['T-THANNGOAI'].id }), ngNghi, false) === null
+     && kiemGhep(ghep({ ma_ipos: '90031', mat_hang_id: MH['T-THANNGOAI'].id }), ngNghi, false) === null
+     && kiemGhep(ghep({ ma_ipos: '10031', mat_hang_id: 'bo_qua' }), ngNghi, false, false) === null);
+
   // Cột "Món kho" của bảng Thực đơn iPOS: nút Ghép hay nhãn "kho tự nhận" — hàm thuần, trang chỉ vẽ theo `kieu`.
   const tdO = oThucDon('10011', undefined, ng);
   const tdG = oThucDon('090001', undefined, ng);
@@ -417,7 +438,7 @@ await nhom('6 · CHẶN GHÉP SAI TRƯỚC KHI GỌI DATABASE', async () => {
      tdO.kieu === 'tu_nhan_o' && tdO.soO === 1 && tdO.oMaId === O[1] && tdG.kieu === 'tu_nhan_giam' && tdG.phanTram === 30
      && oThucDon('THAN', undefined, ng).kieu === 'nut_ghep', JSON.stringify([tdO, tdG]));
   ok('Thực đơn: thiếu mã giảm (phần FABi đọc lỗi) → mã giảm hiện nút Ghép như mã thường (form vẫn chặn ở kiemGhep)',
-     oThucDon('90001', undefined, { oMa: ng.oMa, maGiam: [] }).kieu === 'nut_ghep');
+     oThucDon('90001', undefined, { ...ng, maGiam: [] }).kieu === 'nut_ghep');
   ok('Thực đơn: đã ghép — mã ô ghép đúng ô, mã trùng đã xác nhận "Không phải hàng kho", mã thường → không nhắc; mã ô / mã giảm ghép như món thường → nhắc Bỏ ghép',
      oThucDon('10011', { kieu: 'mon', o_ma_id: O[1] }, ng).ghepSai === false
      && oThucDon('10011', { kieu: 'bo_qua', o_ma_id: null }, ng).ghepSai === false
@@ -443,6 +464,10 @@ await nhom('6 · CHẶN GHÉP SAI TRƯỚC KHI GỌI DATABASE', async () => {
   const k5 = await ganMaIpos(hong, cnA.id, fd({ ma_ipos: 'MOI', mat_hang_id: MH['T-THANNGOAI'].id, don_vi_ban: 'kg' }));
   ok('Mất mạng khi đọc ô mã → ok:false (vi / en), không gọi hàm ghép', !k5.ok && !!k5.cauEn && dem.rpc === 0 && (await maGhep('MOI')).length === 0,
      JSON.stringify(k5));
+  const { client: hongMh, dem: demMh } = clientHong(ql, ['kho_mat_hang']);
+  const k5b = await ganMaIpos(hongMh, cnA.id, fd({ ma_ipos: 'MOI', mat_hang_id: MH['T-THANNGOAI'].id, don_vi_ban: 'kg' }));
+  ok('Mất mạng khi đọc món đang dùng → ok:false (vi / en), không gọi hàm ghép', !k5b.ok && !!k5b.cauEn && demMh.rpc === 0
+     && (await maGhep('MOI')).length === 0, JSON.stringify(k5b));
   const k6 = await ganMaIpos(ql, cnA.id, fd({ ma_ipos: '90001', mat_hang_id: 'bo_ghep' }));
   ok('Bỏ ghép một mã chưa ghép vẫn qua kiểm (không bị chặn ở web)', typeof k6.ok === 'boolean' && !/giảm giá — để trống/.test(k6.cau));
   // Mã giảm đã tắt 90002 trùng một món khác trên FABi: "Không phải hàng kho" cần xác nhận, xác nhận rồi thì ghi.
@@ -591,6 +616,9 @@ await nhom('9 · TRANG, ROUTE, CÂU CHỮ', async () => {
      /id="mon-fabi"/.test(ghep) && /mon-fabi\.csv/.test(ghep) && /monCanCoTrenFabi\(/.test(ghep) && /docThemMonFabi\([^)]*\)\.catch|catch \(e\) \{ loiFabi/.test(ghep));
   ok('Ghép món: cột "Món kho" của thực đơn iPOS chọn bằng oThucDon (nút Ghép / "kho tự nhận" / nhắc Bỏ ghép), không tự tính lại',
      /oThucDon\(/.test(ghep) && /khoTuNhanGiam/.test(ghep) && /khoTuNhanO/.test(ghep) && !/laMaKhoTuNhan\(/.test(ghep));
+  ok('Ghép món: ngữ cảnh oThucDon có món đang dùng (monDangDung từ dangDung); nhóm Ô mã của form và ô gợi ý chỉ lấy ô của món đang dùng',
+     /monDangDung: idDangDung/.test(ghep) && /const idDangDung = new Set\(dangDung\.map\(m => m\.id\)\)/.test(ghep)
+     && /goiYOMa\(m, oDangDung\)/.test(ghep) && /oDangDung\.map\(o => <option value=\{`o:\$\{o\.id\}`\}/.test(ghep));
   ok('Ghép món: hiện ô xác nhận "món chung" (khong_o) và "trùng mã" (trung_ma) khi ganMaIpos đòi',
      /canXacNhanKhongO/.test(ghep) && /name="khong_o"/.test(ghep) && /canXacNhanTrungMa/.test(ghep) && /name="trung_ma"/.test(ghep));
   ok('Ghép món: mục FABi chọn nội dung bằng mucMonFabi (số món chỉ khi đọc đủ), thực đơn chưa đọc → câu "Chưa đọc được thực đơn iPOS"',
@@ -629,7 +657,44 @@ await nhom('9 · TRANG, ROUTE, CÂU CHỮ', async () => {
 });
 
 // ===========================================================================
-await nhom('10 · SỔ KHO', async () => {
+await nhom('10 · MÃ Ô / MÃ GIẢM CỦA MÓN ĐÃ NGỪNG DÙNG (database không tự nhận — web cho ghép như mã thường)', async () => {
+  // Lời gọi web còn xếp hàng từ nhóm trước (Promise.all dừng ở lần đọc hỏng đầu tiên, các lần đọc khác vẫn chạy) phải
+  // xong trước khi gọi thẳng duoi() — không thì hai lời gọi chen nhau trên cùng một database PGlite.
+  await hangDoi;
+  const [monA, monB] = (await db.query(`select * from kho_mat_hang where loai = 'phan_cat' and dang_dung
+    and ma not in ('C-THANNGOAI') and not exists (select 1 from kho_o_ma o where o.mat_hang_id = kho_mat_hang.id) order by ma limit 2`)).rows;
+  await duoi(UID.qlA, `update kho_mat_hang set gia_ban_kg = 800000 where id = $1`, [monA.id]);
+  const oA = await duoi(UID.qlA, `insert into kho_o_ma (mat_hang_id, so_o, ma_can) values ($1, 1, '10031') returning id`, [monA.id]);
+  const gA = await duoi(UID.qlA, `select kho_luu_ma_giam($1, 30, '90031') as v`, [monA.id]);
+  const ngung = await duoi(UID.qlA, `update kho_mat_hang set dang_dung = false where id = $1`, [monA.id]);
+  ok(`Dựng: ${monA.ma} có ô 1 (10031) và mã giảm 30% (90031), rồi ngừng dùng; ${monB.ma} là món thay`,
+     !!monA && !!monB && oA.loi === null && gA.loi === null && ngung.loi === null, oA.loi ?? gA.loi ?? ngung.loi ?? '');
+  const [dO] = await ban([{ ma: '10031', sl: 0.5 }], BAN_HOM_NAY);
+  const [dG] = await ban([{ ma: '90031', sl: 0.5 }], BAN_HOM_NAY);
+  ok('Bán mã 10031, 90031 (chưa ghép) → database không tự nhận: chua_khop "Chưa ghép mã iPOS với món trong kho"',
+     [dO, dG].every(x => x?.trang_thai === 'chua_khop' && /Chưa ghép mã iPOS/.test(x.ly_do ?? '')), JSON.stringify([dO, dG]));
+
+  const fd = o => { const f = new FormData(); for (const [k, v] of Object.entries(o)) f.set(k, v); return f; };
+  const ql = clientCua(UID.qlA);
+  const maGhep = async ma => (await db.query(`select * from kho_ipos_ma_hang where chi_nhanh_id = $1 and ma_ipos = $2`, [cnA.id, ma])).rows;
+  const dong = async id => (await db.query(`select * from kho_ipos_dong where id = $1`, [id])).rows[0];
+  const kO = await ganMaIpos(ql, cnA.id, fd({ ma_ipos: '10031', mat_hang_id: monB.id, don_vi_ban: 'kg' }));
+  const sauO = await dong(dO.id);
+  ok(`ganMaIpos ghép 10031 với ${monB.ma} như món thường → ghi (kieu mon), dòng chưa khớp được xử lý lại theo ${monB.ma}`,
+     kO.ok && (await maGhep('10031'))[0]?.kieu === 'mon' && sauO?.trang_thai !== 'chua_khop' && sauO?.mat_hang_id === monB.id,
+     `${JSON.stringify(kO)} · ${sauO?.trang_thai} ${sauO?.ly_do ?? ''}`);
+  const kG = await ganMaIpos(ql, cnA.id, fd({ ma_ipos: '90031', mat_hang_id: monB.id, don_vi_ban: 'kg' }));
+  const sauG = await dong(dG.id);
+  ok(`ganMaIpos ghép mã giảm 90031 của món đã ngừng với ${monB.ma} → ghi, dòng xử lý lại`,
+     kG.ok && (await maGhep('90031'))[0]?.kieu === 'mon' && sauG?.trang_thai !== 'chua_khop' && sauG?.mat_hang_id === monB.id,
+     `${JSON.stringify(kG)} · ${sauG?.trang_thai} ${sauG?.ly_do ?? ''}`);
+  const kChonO = await ganMaIpos(ql, cnA.id, fd({ ma_ipos: 'O-NGHI', mat_hang_id: `o:${oA.rows[0].id}`, don_vi_ban: '' }));
+  ok('Chọn ô của món đã ngừng dùng → database từ chối "Món của ô mã đã ngừng dùng", không ghi (vì vậy form chỉ liệt kê ô của món đang dùng)',
+     !kChonO.ok && /Món của ô mã đã ngừng dùng/.test(kChonO.cau) && (await maGhep('O-NGHI')).length === 0, JSON.stringify(kChonO));
+});
+
+// ===========================================================================
+await nhom('11 · SỔ KHO', async () => {
   const { rows } = await db.query(`select * from kho_doi_soat_ton()`);
   ok('Sổ kho: kho_doi_soat_ton() rỗng', rows.length === 0, JSON.stringify(rows));
 });

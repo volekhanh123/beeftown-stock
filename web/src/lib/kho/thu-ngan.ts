@@ -251,8 +251,8 @@ export const NGUYEN_NHAN_KHONG_BIET_TANG: Record<LoaiKhongBietTang, {
         en: 'A tray still carries an old label of a slot now given to another primal, or the wrong slot key was printed.' },
     ],
     sua: {
-      vi: 'Chốt phiên pha lóc trước khi bán; bấm nhận hàng mang ra quầy; kiểm tem ở quầy (Beeftown Cân → thẻ Tảng & ô).',
-      en: 'Close the butchery session before selling; confirm goods brought to the counter; check the labels at the counter (Beeftown Scale → Primals & slots tab).',
+      vi: 'Chốt phiên pha lóc trước khi bán; bấm nhận hàng mang ra quầy; kiểm tem ở quầy (Beeftown Cân → thẻ Quầy → mục Tảng & ô mã ở cuối thẻ).',
+      en: 'Close the butchery session before selling; confirm goods brought to the counter; check the labels at the counter (Beeftown Scale → Counter tab → Primals & slots section at the bottom).',
     },
   },
 };

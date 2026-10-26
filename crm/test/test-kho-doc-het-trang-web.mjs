@@ -19,7 +19,7 @@
  * Kiểm thử trên PGlite không thấy lỗi này — PGlite không đi qua PostgREST.
  */
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { taoBoDem } from './kho-chung.mjs';
@@ -170,12 +170,22 @@ await nhom('4 · Hàm rpc nhiều dòng — thẻ kho, công nợ theo kỳ, MIS
   ok('Thẻ kho 1.800 dòng → đủ, SỐ DƯ CUỐI là của dòng cuối thật (1.800 kg, không phải 1.000)',
      tk.length === 1800 && tk.at(-1).ton_kg === 1800, `${tk.length} dòng, dư cuối ${tk.at(-1)?.ton_kg}`);
   ok('…đọc rpc theo trang', lan(a.goi, 'kho_the_kho').length === 2 && lan(a.goi, 'kho_the_kho').every(x => x.rpc && x.khoang));
-  // Mọi hàm đọc dùng docTungTrang đều xin tổng số dòng — kiểm trên mã nguồn từng file.
-  for (const f of ['ton.ts', 'ban-ipos.ts', 'the-kho.ts', 'cong-no.ts', 'bao-cao.ts', 'kiem-ke.ts', 'dem-quay.ts', 'pha-loc.ts']) {
+  // Mọi hàm đọc dùng docTungTrang đều xin tổng số dòng — kiểm trên mã nguồn từng file. Danh sách file lấy từ thư mục (file
+  // mới gọi docTungTrang tự vào diện soát), và số lời gọi bộ dò bắt được phải BẰNG số lần docTungTrang( / docTungTrang<…>(
+  // xuất hiện: trước đây bộ dò bỏ sót lời gọi có tham số kiểu (`docTungTrang<{ id: string }>(…)` ở ban-ipos.ts) mà vẫn xanh.
+  const CO_SOAT = ['ton.ts', 'ban-ipos.ts', 'the-kho.ts', 'cong-no.ts', 'bao-cao.ts', 'kiem-ke.ts', 'dem-quay.ts', 'pha-loc.ts', 'thu-ngan.ts'];
+  const tepGoi = readdirSync(join(GOC, 'web', 'src', 'lib', 'kho'))
+    .filter(f => f.endsWith('.ts') && f !== 'chung.ts' && /docTungTrang\s*[<(]/.test(doc(f))).sort();
+  ok('Soát count: \'exact\' phủ MỌI file kho gọi docTungTrang (đọc từ thư mục, có đủ các file đã biết)',
+     CO_SOAT.every(f => tepGoi.includes(f)), tepGoi.join(', '));
+  for (const f of tepGoi) {
     const nguon = doc(f);
-    const lanGoi = [...nguon.matchAll(/docTungTrang\(\([^)]*\) =>[\s\S]*?\.range\(/g)].map(m => m[0]);
-    ok(`${f}: mọi lần docTungTrang xin count: 'exact'`, lanGoi.length > 0 && lanGoi.every(x => /count: 'exact'/.test(x)),
-       lanGoi.filter(x => !/count: 'exact'/.test(x)).map(x => x.slice(0, 80)).join(' | '));
+    const soLan = (nguon.match(/docTungTrang\s*[<(]/g) ?? []).length;
+    const lanGoi = [...nguon.matchAll(/docTungTrang(?:<(?:[^<>]|<[^<>]*>)*>)?\(\([^)]*\) =>[\s\S]*?\.range\(/g)].map(m => m[0]);
+    ok(`${f}: mọi lần docTungTrang (${soLan}) xin count: 'exact'`,
+       soLan > 0 && lanGoi.length === soLan && lanGoi.every(x => /count: 'exact'/.test(x)),
+       `bộ dò bắt ${lanGoi.length}/${soLan} lời gọi · thiếu count: `
+       + lanGoi.filter(x => !/count: 'exact'/.test(x)).map(x => x.slice(0, 80)).join(' | '));
   }
 
   const so = Array.from({ length: 1200 }, (_, i) => ({ thu_tu: i + 1, loai: 'nhap', so_du: String(i), tang: '1', giam: null }));

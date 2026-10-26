@@ -353,7 +353,9 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
   "Không chắc đã giao ô mã" — database có thể đã giao, xem khung Ô mã của tảng này). Nhiều công thức: không tự giao, câu
   nhắc chọn công thức. Tảng đang lóc dở bấm lại → trả phiên đó và gọi
   lại giao ô (tự lành); cùng `ma_gui` mà database báo đã có → đọc lại đúng phiên đó (đã hủy / đã chốt → "Trang đã cũ").
-  Nút chỉ có sau khi phiếu nhận được duyệt (lô sinh lúc duyệt). `test-kho-loc-tang-web.mjs`.
+  Nút chỉ có sau khi phiếu nhận được duyệt (lô sinh lúc duyệt). Một lô lóc một chạm thường có hai dòng vào (kho lạnh
+  và quầy), nên chỗ nào ghi "N lô" phải đếm số LÔ khác nhau: tóm tắt "Tảng đem pha" ở bước 2 đếm `loVaoPhien`, danh
+  sách phiên chưa chốt in `so_lo_vao` của `kho_v_phien_pha` (0098) — `so_dau_vao` là số dòng. `test-kho-loc-tang-web.mjs`.
 
 - **Dòng quét** (`kho_phien_pha_ra.tu_quet`): mỗi món một dòng, gói = số nhãn (món không đếm gói thì 0),
   kg = tổng kg trên nhãn, nơi để = `kho_mat_hang.noi_de_sau_pha` (trống = kho lạnh; chi nhánh không có
@@ -1128,7 +1130,8 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   `ngay_ban`, đếm dòng và hóa đơn, mỗi loại kèm nguyên nhân có thể và chỗ sửa; nội dung hộp chọn bằng
   `hopKhongBietTang` (thuần): đọc lỗi → chỉ câu lỗi, không số. (3) Chặn ghép sai trước khi gọi database (`kiemGhep`,
   `laMaKhoTuNhan`, `oThucDon` trong `lib/kho/ban-ipos.ts`, đọc ô mã + mã giảm ngay trước khi ghép, đọc lỗi thì không
-  ghép): mã trùng mã giảm (kể cả đã tắt) / mã ô không ghép được như món kho (mã ô chỉ với đúng ô đó); ghép "Không phải
+  ghép): mã trùng mã giảm (kể cả đã tắt) / mã ô không ghép được như món kho (mã ô chỉ với đúng ô đó) — trừ khi món của
+  mã giảm / ô đã ngừng dùng: database không tự nhận mã đó (dòng chưa khớp), nên web coi là mã thường; ghép "Không phải
   hàng kho" / suất / hàng cân nhãn phải tích "Mã này là món khác trên FABi" (lối thoát khi FABi có món khác trùng mã);
   ghép món có ô mà không chọn ô phải tích "Vẫn ghép món chung". Thực đơn iPOS hiện "Mã giảm — kho tự nhận" /
   "Ô n — kho tự nhận" thay nút Ghép. **Mã giảm cận date giữ trừ theo hạn gần nhất** (không theo ô): lô cận date ở quầy
