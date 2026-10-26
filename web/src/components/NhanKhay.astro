@@ -4,14 +4,17 @@
  *
  * Bò tại quầy được cắt và đóng sẵn trong khay skin-pack. Nhãn khay ghi năm thứ:
  * tên phần cắt, giá mỗi 100g, trọng lượng, giá cuối (đã gồm VAT) và ngày đóng gói
- * (brief 06/10/2026). Khối này giải thích cách đọc nhãn mà KHÔNG có con số nào:
- * giá thật của từng khay chỉ có ở quầy — không bịa giá, không dựng nhãn giả.
+ * (brief 06/10/2026). Thẻ này dạy cách đọc nhãn mà KHÔNG có con số nào: giá thật của
+ * từng khay chỉ có ở quầy — không bịa giá, không dựng nhãn giả, không mã vạch giả.
  *
  * "Đã gồm VAT" chỉ nói về giá cuối trên nhãn khay — không mở rộng thành cam kết
  * thuế / phí cho cả hóa đơn.
  *
- * Phần hình nhãn bên trái là trang trí (aria-hidden): mọi chữ có nghĩa nằm trong
- * danh sách bên phải, đọc được bằng trình đọc màn hình.
+ * Một thẻ duy nhất, là nội dung đọc được (không aria-hidden): đầu thẻ có logo và tiêu
+ * đề, dưới là năm dòng theo đúng thứ tự in trên nhãn — số thứ tự, tên trường, lời giải
+ * thích. Thẻ đặt THẲNG, PHẲNG (không nghiêng, không bóng đổ), nền Cream trên dải tối
+ * nhờ lớp .the của hệ giao diện — không còn nền trắng ngà (bảng màu không có trắng).
+ * Dùng chung cho trang chủ (Quầy chọn bò) và trang Thực đơn (Bò tại quầy).
  */
 import { dich } from '../lib/chu';
 import type { NgonNgu } from '../lib/noi-dung';
@@ -37,66 +40,51 @@ const giai = dich(ngonNgu, {
 const KHOA = ['ten', 'gia100', 'can', 'giaCuoi', 'ngay'] as const;
 ---
 <div class:list={['nhan-khay', lop]}>
-  <div class="nk-the" aria-hidden="true">
+  <div class="nk-the the">
     <div class="nk-dau">
       <img src="/thuong-hieu/logo-ngang-do.svg" width="446" height="124" alt="" loading="lazy" decoding="async" />
+      <h3 class="nk-tieu-de">{giai.tieuDe}</h3>
     </div>
-    <ol class="nk-dong">
+    <ol class="nk-dong" role="list">
       {KHOA.map((k, i) => (
-        <li class:list={{ 'nk-noi': k === 'giaCuoi' }}><span class="nk-so">{i + 1}</span><span class="nk-ten">{truong[k]}</span><span class="nk-gach"></span></li>
-      ))}
-    </ol>
-    <div class="nk-ma-vach"></div>
-  </div>
-
-  <div class="nk-giai">
-    <h3 class="nk-tieu-de">{giai.tieuDe}</h3>
-    <ol>
-      {KHOA.map((k, i) => (
-        <li><span class="nk-so" aria-hidden="true">{i + 1}</span><span><strong>{truong[k]}</strong> — {giai[k]}</span></li>
+        <li><span class="nk-so" aria-hidden="true">{i + 1}</span><strong class="nk-ten">{truong[k]}</strong>{' '}<span class="nk-giai">{giai[k]}</span></li>
       ))}
     </ol>
   </div>
 </div>
 
 <style>
-  .nhan-khay {
-    display: grid; gap: var(--k-6); align-items: center;
-    grid-template-columns: 1fr;
-  }
-  @media (min-width: 760px) { .nhan-khay { grid-template-columns: minmax(240px, 340px) 1fr; } }
+  /* Thẻ rộng vừa đủ một dòng tên trường + lời giải thích; trên máy tính không kéo hết 1200px. */
+  .nk-the { max-width: 880px; }
 
-  /* Hình nhãn: giấy nhãn trắng ngà, viền mảnh, hơi nghiêng như dán trên màng khay. */
-  .nk-the {
-    background: #FFFDF6; color: var(--than);
-    border-radius: 6px; padding: 16px 18px 14px;
-    box-shadow: 0 1px 0 rgba(21, 16, 8, .08), 0 18px 32px -20px rgba(21, 16, 8, .55);
-    transform: rotate(-2.2deg);
-    max-width: 340px; width: 100%; justify-self: center;
+  /* Đầu thẻ: logo (lockup rộng 160px — mức tối thiểu của guideline) và tiêu đề; nét đỏ như mép nhãn. */
+  .nk-dau {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--k-3) var(--k-5);
+    padding-bottom: var(--k-4); border-bottom: 2px solid var(--do);
   }
-  .nk-dau { border-bottom: 2px solid var(--do); padding-bottom: 10px; margin-bottom: 8px; }
-  .nk-dau img { height: 26px; width: auto; }
+  .nk-dau img { width: 160px; height: auto; flex: none; }
+  .nk-tieu-de { margin: 0; }
+
+  /* Năm trường, đọc từ trên xuống. Điện thoại: tên trường trên, lời giải thích dưới.
+     Từ 600px: số | tên trường | lời giải thích trên một hàng. */
   .nk-dong { list-style: none; margin: 0; padding: 0; }
   .nk-dong li {
-    display: grid; grid-template-columns: 22px auto 1fr; align-items: center; gap: 8px;
-    min-height: 34px; border-bottom: 1px dashed rgba(21, 16, 8, .22);
-    font-size: 14px; font-weight: 700;
+    display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: var(--k-3); align-items: start;
+    padding: var(--k-3) 0; border-bottom: 1px dashed var(--vien);
   }
-  .nk-dong li.nk-noi { font-size: 15px; }
-  .nk-gach { height: 10px; border-radius: 2px; background: rgba(21, 16, 8, .1); }
-  .nk-noi .nk-gach { background: rgba(167, 12, 12, .22); height: 14px; }
-  .nk-ma-vach {
-    height: 30px; margin-top: 12px;
-    background: repeating-linear-gradient(90deg, var(--than) 0 2px, transparent 2px 4px, var(--than) 4px 5px, transparent 5px 8px, var(--than) 8px 11px, transparent 11px 13px);
-    opacity: .75;
-  }
+  .nk-dong li:last-child { border-bottom: 0; padding-bottom: 0; }
   .nk-so {
-    display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
-    background: var(--do); color: var(--kem); font-size: 12px; font-weight: 800; flex: none;
+    grid-row: 1 / span 2;
+    display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+    background: var(--do); color: var(--kem); font-size: 14px; font-weight: 800; line-height: 1;
   }
-
-  .nk-tieu-de { margin-bottom: var(--k-4); }
-  .nk-giai ol { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--k-3); }
-  .nk-giai li { display: flex; gap: var(--k-3); align-items: flex-start; line-height: 1.5; }
-  .nk-giai .nk-so { margin-top: 1px; }
+  .nk-ten { grid-column: 2; font-size: 17px; font-weight: 700; line-height: 28px; }
+  .nk-giai { grid-column: 2; color: var(--chu-chinh); }
+  @media (min-width: 600px) {
+    .nk-dong li { grid-template-columns: 28px minmax(150px, 13em) minmax(0, 1fr); column-gap: var(--k-4); align-items: center; padding: var(--k-4) 0; }
+    .nk-so { grid-row: auto; }
+    .nk-giai { grid-column: 3; }
+  }
+  /* Tương phản cao (Windows): nền của số thứ tự bị ép mất — giữ vòng viền để vẫn thấy là một dấu số. */
+  @media (forced-colors: active) { .nk-so { border: 1px solid CanvasText; } }
 </style>

@@ -3,10 +3,25 @@
  * ẢNH CÓ NHIỀU CỠ — và dòng "Ảnh minh họa" khi ảnh là ảnh minh họa
  *
  * <picture> với avif rồi webp; khung riêng cho điện thoại (khungNho, vd. 4:5)
- * và cho màn rộng (khung, vd. 16:9). Luôn có width/height để trình duyệt giữ
- * chỗ trước khi ảnh về — trang không giật khi cuộn.
+ * và cho màn rộng (khung, vd. 4:3). Khung <figure> tự giữ đúng tỷ lệ của ảnh
+ * (--ti-le / --ti-le-nho, cong-khai.css → .anh) từ trước khi ảnh về — ảnh về chậm
+ * thì trang cũng không xô lệch; <img> vẫn có width / height.
  *
- * Ảnh hero: uuTien → tải ngay, fetchpriority="high". Mọi ảnh khác lazy.
+ * Nền chờ của khung (lúc ảnh chưa về) là màu của bảng màu, theo dải đặt ảnh
+ * (nenKhung: kem | toi | do) — không dùng màu trung bình của ảnh: mọi màu nền trên
+ * trang công khai phải thuộc bảng màu (kiem-tra/do-giao-dien.mjs → khongTrang).
+ *
+ * Ảnh màn đầu: uuTien → tải ngay, fetchpriority="high". Mọi ảnh khác lazy.
+ *
+ * Ảnh minh họa (ảnh AI): <figcaption> "Ảnh minh họa" nằm ngay trong khung, góc
+ * dưới trái — component tự gắn, nơi dùng không quên được. Không đặt logo hay chữ
+ * nào khác lên ảnh.
+ *
+ * Ảnh tách nền (DANH_MUC_ANH[id].tachNen — ảnh món của trang Thực đơn): khung thêm lớp
+ * .tach-nen — không nền chờ, không bo góc (món đặt thẳng lên nền của dải như trong cuốn
+ * menu); nhãn nằm GIỮA, sát đáy khung (cong-khai.css: .anh.tach-nen .chu-thich-anh), trong dải
+ * trống tao-co-anh.py chừa sẵn ở đáy khung — tức là ngay dưới món chứ không đè lên món. Ảnh nhỏ
+ * của hàng món gọn (ThucDonNhomAnh, dưới 600px) đặt lại đệm của nhãn, vẫn giữa đáy khung.
  *
  * Ảnh chưa dựng cỡ (anh-tao-san.ts chưa có) → KhungAnh `thayBang`, không bao giờ
  * là một thẻ <img> trỏ tới file không có.
@@ -26,14 +41,13 @@ interface Props {
   /** Thuộc tính sizes của <img>, vd. '(min-width: 900px) 50vw, 100vw'. */
   sizes?: string;
   uuTien?: boolean;
-  /** Ảnh phủ kín khung cha (object-fit: cover). */
-  phuKin?: boolean;
   thayBang?: LoaiKhung;
+  /** Dải đặt ảnh: quyết định màu nền chờ của khung (và nền của KhungAnh khi ảnh chưa dựng cỡ). */
   nenKhung?: 'kem' | 'toi' | 'do';
   class?: string;
 }
 const {
-  id, ngonNgu, khung, khungNho = khung, sizes = '100vw', uuTien = false, phuKin = false,
+  id, ngonNgu, khung, khungNho = khung, sizes = '100vw', uuTien = false,
   thayBang = 'ban-nuong', nenKhung = 'kem', class: lop,
 } = Astro.props;
 
@@ -42,12 +56,14 @@ const nho = coAnh(id, khungNho);
 const tiLe = (k: string) => k.replace('x', ' / ');
 const t = chu(ngonNgu);
 const minhHoa = DANH_MUC_ANH[id].minhHoa;
+const tachNen = DANH_MUC_ANH[id].tachNen === true;
 const doiKhung = khungNho !== khung && !!nho;
+const lopNen = tachNen ? 'tach-nen' : nenKhung === 'toi' ? 'tren-toi' : nenKhung === 'do' ? 'tren-do' : '';
 // Ảnh mặc định của <img>: bề rộng giữa danh sách, webp — trình duyệt nào cũng đọc được.
 const giua = lon ? lon.cac[Math.floor((lon.cac.length - 1) / 2)] : 0;
 ---
 {lon ? (
-  <figure class:list={['anh', { 'phu-kin': phuKin }, lop]} style={`background:${lon.mau}`}>
+  <figure class:list={['anh', lopNen, lop]} style={`--ti-le:${tiLe(khung)};--ti-le-nho:${tiLe(doiKhung ? khungNho : khung)}`}>
     <picture>
       {doiKhung && nho && (
         <>

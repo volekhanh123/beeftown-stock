@@ -86,9 +86,9 @@ Năm dòng đầu là năm màu của guideline. Ba dòng sau là màu pha cho m
 
 `/noi-bo` và kho có thêm **màu trạng thái** (xanh = xong, vàng = lưu ý, đỏ nhạt = làm ngay) — màu chức năng của công cụ, không thuộc năm màu thương hiệu, không dùng ở trang công khai. Mã và tương phản: `THUONG-HIEU.md`, mục 4. Beeftown Cân có màu trạng thái riêng trong file HTML của nó, theo bảng cũ.
 
-**Bảng màu không có trắng**, và website không có nền trắng: trang công khai thẻ nền kem sau trên nền Cream, ô nhập nền Cream (`test-cong-khai-giao-dien.mjs` nhóm 7 và `web/kiem-tra/do-giao-dien.mjs`); `/noi-bo` và kho thẻ Cream trên nền kem sau, ô nhập Cream, ô đánh dấu tự vẽ (`test-noi-bo-bang-mau.mjs` nhóm 3–4). Trắng chỉ còn trên giấy in và ở thẻ "Đọc nhãn khay" của trang công khai (chờ PR bố cục trang chủ).
+**Bảng màu không có trắng**, và website không có nền trắng: trang công khai thẻ nền kem sau trên nền Cream, ô nhập nền Cream (`test-cong-khai-giao-dien.mjs` nhóm 7 và `web/kiem-tra/do-giao-dien.mjs`); `/noi-bo` và kho thẻ Cream trên nền kem sau, ô nhập Cream, ô đánh dấu tự vẽ (`test-noi-bo-bang-mau.mjs` nhóm 3–4). Trắng chỉ còn trên giấy in.
 
-Warm Stone và Marigold **không bao giờ** làm chữ trên nền sáng (tương phản 1,83 và 1,56 : 1 với kem; 1,71 và 1,46 : 1 với kem sau); không đặt chữ đỏ trên nền tối (2,43 : 1). Tỷ lệ trang công khai đang chạy: kem 60 % / tối 25 % / đỏ 12 % / vàng 3 % — guideline ghi Cream 60 / Beef Red 25 / Charcoal 10 / Marigold dưới 5, Khánh chưa quyết theo bên nào. Vai từng màu theo bề mặt và bảng tương phản: `web/THIET-KE.md`, mục 2.
+Warm Stone và Marigold **không bao giờ** làm chữ trên nền sáng (tương phản 1,83 và 1,56 : 1 với kem; 1,71 và 1,46 : 1 với kem sau); không đặt chữ đỏ trên nền tối (2,43 : 1). Tỷ lệ trang công khai đang chạy: kem 60 % / tối 25 % / đỏ 12 % / vàng 3 % (ước lượng) — guideline ghi Cream 60 / Beef Red 25 / Charcoal 10 / Marigold dưới 5; **Khánh quyết ngày 11/10/2026: website giữ như đang chạy**, không đổi các dải tối sang kem. Vai từng màu theo bề mặt và bảng tương phản: `web/THIET-KE.md`, mục 2.
 
 ### Phông chữ
 
@@ -105,7 +105,7 @@ Warm Stone và Marigold **không bao giờ** làm chữ trên nền sáng (tươ
 **Không nên:**
 - ❌ Dùng chữ **"rẻ"** — thay bằng *hợp lý*, *xứng đáng*, *giá thật*
 - ❌ Dùng tiếng lóng giới trẻ hoặc chiêu câu tương tác
-- ❌ Hứa mâm banchan đầy đủ kiểu Hàn — Beeftown tập trung vào bò
+- ❌ Hứa mâm banchan đầy đủ kiểu Hàn — Beeftown tập trung vào bò. (Hai ảnh bữa ăn trên trang chủ có kim chi và mấy chén món phụ: đó là **ảnh minh họa** Khánh cho dùng ngày 11/10/2026, có nhãn "Ảnh minh họa"; câu chữ và alt của trang vẫn không kể tên, không hứa món phụ nào.)
 - ❌ Claim chưa xác nhận: số ngày ủ, phương pháp ủ, grade, xuất xứ, Wagyu; nướng than; phòng riêng; số bàn còn trống — danh sách đầy đủ kèm lý do ở `web/src/lib/chuoi-cam.js`
 
 ---
@@ -156,7 +156,7 @@ Mục 1, 2 và 4 nói về **bản nháp cũ** `Beeftown_Website/index.html` (kh
 
 5. **Không dùng emoji làm biểu tượng** — dùng SVG nét mảnh 1.5px cho thống nhất.
 
-6. **Ảnh trong bản nháp cũ là ảnh kho Unsplash** — không bao giờ đưa lên web thật. Website `web/` chỉ dùng ảnh minh họa món tạo bằng AI (trang luôn ghi "Ảnh minh họa") và khung đồ họa cho quầy, không gian, lối lên cho tới khi có ảnh chụp thật — brief chụp ở `web/THIET-KE.md`, mục 8.
+6. **Ảnh trong bản nháp cũ là ảnh kho Unsplash** — không bao giờ đưa lên web thật. Website `web/` chỉ dùng ảnh minh họa món và bữa ăn tạo bằng AI (trang luôn ghi "Ảnh minh họa"; bàn tay người thì được, mặt người thì không — Khánh quyết 11/10/2026) và khung đồ họa cho quầy, khay, không gian, lối vào, thang máy cho tới khi có ảnh chụp thật — brief chụp ở `web/THIET-KE.md`, mục 8.
 
 ---
 
@@ -361,7 +361,7 @@ Kiểm thử: `crm/test/test-sao-luu.mjs` (chính hai script, với `supabase` v
 
 - [ ] Mỗi câu trên trang, Khánh nói được nó lấy từ đâu. Câu nào không nói được thì xóa.
 - [ ] Tìm trong trang: giá, ngày, giờ, số điện thoại, và các từ *phòng riêng, Wagyu, than, rẻ, số một, duy nhất*. **Có một kết quả là fail.** Làm cả ở `/en` và `/ko` — bản dịch máy đã qua bộ lọc chữ cấm, nhưng mắt người vẫn là lần kiểm cuối.
-- [ ] Không ảnh nào là ảnh kho. Nếu có ảnh, Khánh nói được ai chụp và chụp khi nào.
+- [ ] Không ảnh nào là ảnh kho. Ảnh chụp thì Khánh nói được ai chụp và chụp khi nào; ảnh tạo bằng AI thì có nhãn "Ảnh minh họa" ngay trên ảnh và không cho thấy quầy, khay, không gian quán, lối vào, thang máy hay mặt người.
 
 **Trước khi bật form đặt bàn**
 

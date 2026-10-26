@@ -424,12 +424,9 @@ await nhom('7 · THÀNH PHẦN VÀ KHUNG TRANG: KHÔNG NỀN TRẮNG, TƯƠNG PH
   // ảnh trên dải tối, THIET-KE.md mục 2). Ngoại lệ ghi từng cái, kèm lý do:
   const MA_DUOC_PHEP = new Set([...Object.values(M).filter(v => v.startsWith('#')), '#211A10'].map(v => v.toUpperCase()));
   const NGOAI_LE = {
-    // Bản in: giấy trắng, chữ đen — không phải màu trên màn hình.
+    // Bản in: giấy trắng, chữ đen — không phải màu trên màn hình. Đây là ngoại lệ DUY NHẤT: PR 3 đã dựng lại
+    // thẻ "Đọc nhãn khay" (hết trắng ngà) và bỏ mặt nạ vân mỡ của dải "Đi cùng nhóm" (hết #000 của mặt nạ).
     'web/src/styles/cong-khai.css': ['#FFF', '#000'],
-    // Mặt nạ CSS (mask): #000 là "đục hoàn toàn" của mặt nạ, không phải màu vẽ ra.
-    'web/src/components/DiCungNhom.astro': ['#000'],
-    // Thẻ "Đọc nhãn khay": giấy nhãn trắng ngà, nghiêng, có bóng — PR 3 dựng lại thẻ này thì gỡ dòng này.
-    'web/src/components/NhanKhay.astro': ['#FFFDF6'],
   };
   const maLa = congKhai.flatMap(f => {
     const ten = tuGoc(f);

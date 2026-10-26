@@ -1,49 +1,57 @@
 {
   "_doc": [
-    "DANH SÁCH ẢNH MINH HỌA MÓN — đầu vào của tao-co-anh.py (đọc đầu file script).",
+    "DANH SÁCH ẢNH CỦA TRANG CÔNG KHAI — đầu vào của tao-co-anh.py (đọc đầu file script).",
     "Mỗi id phải có trong IdAnh (web/src/lib/anh.ts). 'goc' là tên file trong thư mục ảnh gốc (đuôi theo tỷ lệ lúc tạo ảnh);",
-    "một khung có 'goc' riêng thì dùng file đó (ảnh hero tạo riêng bản ngang và bản dọc).",
-    "fx, fy (0..1): điểm lấy nét — tâm của vùng cắt, tính trên ảnh gốc (0,0 là góc trên trái). Chỉnh sau khi xem ảnh thật.",
-    "rong: các bề rộng cần xuất; bề rộng lớn hơn vùng cắt của ảnh gốc thì bỏ (không phóng to).",
-    "nguon: lượt tạo trên Higgsfield (06/10/2026, mô hình nano_banana_2) — 'ung_vien' là các job id cho id này,",
-    "'da_chon' ghi job id của ảnh được dùng sau khi Khánh chọn. Ảnh tải về từ trang Higgsfield, đổi tên đúng 'goc'.",
-    "Toàn bộ là ẢNH MINH HỌA: trang luôn ghi 'Ảnh minh họa' (DANH_MUC_ANH.minhHoa = true). Danh sách tài sản: web/THIET-KE.md."
+    "một khung có 'goc' riêng thì dùng file đó (ảnh màn đầu tạo riêng bản ngang và bản dọc — hai file, cùng một cảnh).",
+    "fx, fy (0..1): điểm lấy nét — tâm của vùng cắt, tính trên ảnh gốc (0,0 là góc trên trái). Đã chỉnh sau khi xem ảnh đã cắt.",
+    "rong: các bề rộng cần xuất, không lớn hơn vùng cắt của ảnh gốc (script không phóng to; crm/test/test-cong-khai-anh.mjs kiểm).",
+    "tach_nen { le, duoi }: ảnh đã tách nền (kênh trong suốt) — KHÔNG cắt: script cắt sát phần có hình rồi đặt vào khung trong suốt đúng tỷ lệ,",
+    "chừa lề 'le' ở trên, trái, phải và dải trống 'duoi' ở đáy (phần của chiều cao khung) cho nhãn 'Ảnh minh họa' nằm ngay dưới món.",
+    "Một khung có thể khai 'tach_nen' riêng (le, duoi) đè lên mục chung: khung 1x1 bề rộng 200/320 của ảnh món là ảnh nhỏ 128px của hàng món gọn",
+    "trên điện thoại (dưới 600px) — dải đáy 20 % (≈ 26px) vừa nhãn một dòng (≈ 22px). Hai ảnh tartare (ảnh có nền) có khung 4x5 nhỏ cắt sát đáy ảnh:",
+    "nhãn nằm trên phần mặt bàn dưới đĩa.",
+    "Mục 'anh': ảnh đang đặt trên trang — script dựng cỡ. Mục 'du_phong': ảnh đã có file gốc nhưng CHƯA đặt ở trang nào —",
+    "script KHÔNG dựng cỡ (không để file ảnh chết trong repo). Đặt ảnh dự phòng lên trang: chuyển nó sang mục 'anh', khai khung, chạy lại script.",
+    "nguon, đợt 1 (bảy ảnh hero-vi-gas … bo-xeo-vi): ChatGPT tạo ngày 11/10/2026, gọi qua Codex CLI bằng gói Plus của Khánh; ảnh mẫu đưa cho",
+    "ChatGPT là ảnh minh họa trong Brand Guideline (bàn gỗ sáng, bát đĩa màu kem, ghế đỏ, vỉ gas viền thép). File PNG gốc nằm NGOÀI repo, trên máy",
+    "Khánh: thư mục Beeftown_Web_Redesign_2026-10-11/03_Anh-ChatGPT. Khánh cho đưa lên trang ngày 11/10/2026: bàn tay người thì được, mặt người thì không.",
+    "nguon, đợt 2 (26 ảnh mon-…, uong-… của trang Thực đơn): lấy từ artifact 'Beeftown — Menu' (cuốn menu in bản sáng, Cuốn C nền sáng, Version 45,",
+    "Khánh chốt 11/10/2026). Ảnh món ăn và ảnh ba ly không cồn là ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026 rồi tách nền; ba ly signature và",
+    "hai món tartare lấy từ menu chuẩn 29/09/2026 của quán (ghi chú dự án gọi là 'ảnh đã duyệt', CHƯA rõ ảnh chụp thật hay ảnh dựng). File gốc nằm NGOÀI repo.",
+    "Toàn bộ là ẢNH MINH HỌA: trang luôn ghi 'Ảnh minh họa' (DANH_MUC_ANH.minhHoa = true). Danh sách tài sản: web/THIET-KE.md, mục 7."
   ],
   "anh": {
     "hero-vi-gas": {
-      "mo_ta": "Bò có vân mỡ được gắp lên vỉ gas giữa bàn, chén sốt, rau — khối mở đầu trang chủ (KhoiMoDau)",
+      "mo_ta": "Bàn tay cầm kẹp đặt lát bò sống lên vỉ gas tròn viền thép giữa bàn gỗ sáng; đĩa bò sống, chén sốt, rau xà lách — màn đầu trang chủ (KhoiMoDau). Bản ngang và bản dọc cùng một cảnh: vỉ lưới thép, bàn tay từ bên trái; bản dọc tạo lại từ bản ngang làm ảnh mẫu.",
       "nguon": {
-        "cong_cu": "Higgsfield · nano_banana_2 · 06/10/2026",
-        "ung_vien": {
-          "16x9": ["80ec71d1-5907-4d5e-9681-471685eaa9cd", "27cbdc61-42d5-433e-a759-0272713c2875"],
-          "4x5": ["96e3e32d-2127-4c3f-b72a-4ccb5587d596", "3646a952-108f-4ba3-9545-77149be16044"]
-        },
-        "da_chon": { "16x9": null, "4x5": null }
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 11/10/2026",
+        "da_chon": {
+          "4x3": "bản ngang tạo lần hai (bản đầu có một đốm sáng cam dưới vỉ, đã bỏ)",
+          "4x5": "bản dọc tạo lần ba, dùng bản ngang làm ảnh mẫu: cùng vỉ lưới thép, vân mỡ vừa như bản ngang (bản đầu là vỉ rãnh, có thêm hai chén món phụ; bản hai vân mỡ dày hơn hẳn bản ngang; cả hai đã bỏ)"
+        }
       },
       "khung": {
-        "16x9": { "goc": "hero-vi-gas-16x9.png", "fx": 0.5, "fy": 0.55, "rong": [960, 1440, 1920] },
-        "4x5": { "goc": "hero-vi-gas-4x5.png", "fx": 0.5, "fy": 0.55, "rong": [480, 720, 960] }
+        "4x3": { "goc": "hero-vi-gas-16x9.png", "fx": 0.4, "fy": 0.5, "rong": [640, 960, 1254] },
+        "4x5": { "goc": "hero-vi-gas-4x5.png", "fx": 0.5, "fy": 0.5, "rong": [480, 720, 1121] }
       }
     },
     "bo-van-mo-can": {
-      "mo_ta": "Cận cảnh miếng bò sống có vân mỡ, hương thảo, muối hạt — dải tối Quầy chọn bò (QuayChonBo)",
+      "mo_ta": "Cận cảnh một miếng bò sống dày có vân mỡ, đặt trên giấy lót màu kem, mặt bàn gỗ sáng — dải tối Quầy chọn bò của trang chủ (QuayChonBo)",
       "nguon": {
-        "cong_cu": "Higgsfield · nano_banana_2 · 06/10/2026",
-        "ung_vien": ["1779e330-bd26-4e2d-8303-95a161f8275c", "1dae534d-6659-4ecf-927e-a9afb8035aff"],
-        "da_chon": null
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 11/10/2026",
+        "da_chon": "lần tạo duy nhất"
       },
       "goc": "bo-van-mo-can-4x5.png",
       "khung": {
-        "4x5": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] },
-        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] }
+        "4x5": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1121] },
+        "1x1": { "fx": 0.5, "fy": 0.535, "rong": [480, 800, 1122] }
       }
     },
     "bo-cat-lat": {
-      "mo_ta": "Lát bò sống có vân mỡ xếp trên đĩa đá tối — phần Bò tại quầy của trang Thực đơn",
+      "mo_ta": "Những lát bò sống có vân mỡ xếp trên đĩa sứ màu kem, cạnh chiếc kẹp gắp, mặt bàn gỗ sáng — phần Bò tại quầy của trang Thực đơn",
       "nguon": {
-        "cong_cu": "Higgsfield · nano_banana_2 · 06/10/2026",
-        "ung_vien": ["7a3dfd66-251c-44f9-a241-2f03c05e748f", "a9d76b07-297c-4990-b977-e8f10381ca81"],
-        "da_chon": null
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 11/10/2026",
+        "da_chon": "lần tạo duy nhất"
       },
       "goc": "bo-cat-lat-3x2.png",
       "khung": {
@@ -51,28 +59,409 @@
       }
     },
     "sot-cham": {
-      "mo_ta": "Bốn chén sốt chấm, rau xanh, kimchi cạnh vỉ nướng — khối Cả bữa (BuaAnCungNhau) và nhóm Món ăn của trang Thực đơn",
+      "mo_ta": "Ba chén sốt chấm đặt trước đĩa bò nướng cắt lát và lá xà lách, có đôi đũa gỗ — nhóm Món ăn của trang Thực đơn (alt trên trang KHÔNG ghi số chén: set sốt thật chưa chốt số loại)",
       "nguon": {
-        "cong_cu": "Higgsfield · nano_banana_2 · 06/10/2026",
-        "ung_vien": ["51f661ad-e440-414c-8d5e-e31c2e206789", "e713554d-ad32-4469-a8c1-a3bd8bb36c15"],
-        "da_chon": null
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 11/10/2026",
+        "da_chon": "lần tạo duy nhất"
       },
       "goc": "sot-cham-4x3.png",
       "khung": {
         "4x3": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] }
       }
     },
-    "bo-xeo-vi": {
-      "mo_ta": "Lát bò đang xèo trên vỉ gang, hơi nóng — ảnh dự phòng (chưa đặt chỗ nào), dùng cho bài đăng 1:1",
+    "mon-an-chia-se": {
+      "mo_ta": "Đĩa bò nướng cắt lát giữa bàn gỗ sáng, nhìn từ trên xuống; quanh là salad, cơm, canh, kim chi, hai chén rau trộn, hai chén sốt — khối Cả bữa của trang chủ (BuaAnCungNhau). Các món phụ là hình minh họa, trang không hứa món nào.",
       "nguon": {
-        "cong_cu": "Higgsfield · nano_banana_2 · 06/10/2026",
-        "ung_vien": ["73911c6a-9de9-4d33-96dc-b9425e0b6ab2", "d7cbd338-ae47-4357-92cd-0b3f37fe95b1"],
-        "da_chon": null
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 11/10/2026",
+        "da_chon": "lần tạo duy nhất"
+      },
+      "goc": "mon-an-chia-se-3x2.png",
+      "khung": {
+        "3x2": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] },
+        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] }
+      }
+    },
+    "bua-an-cung-ban": {
+      "mo_ta": "Nhiều bàn tay cùng gắp bò nướng trên vỉ gas tròn giữa bàn gỗ sáng, không thấy mặt ai; quanh là cơm, rau cuốn, kim chi, các chén món phụ và ba ly nước màu vàng nhạt — dải đỏ Rủ cả nhà, cả nhóm của trang chủ (DiCungNhom). Các món phụ là hình minh họa, trang không hứa món nào.",
+      "nguon": {
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 11/10/2026",
+        "da_chon": "lần tạo duy nhất"
+      },
+      "goc": "bua-an-cung-ban-3x2.png",
+      "khung": {
+        "3x2": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] },
+        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] }
+      }
+    },
+    "mon-tartare-bo-hoa-tuyet": {
+      "mo_ta": "Tartare bò hoa tuyết (F03): lát bò sống xếp như cánh hoa trên đĩa gốm kem, phủ phô mai bào, lòng đỏ ở giữa; ảnh chữ nhật đứng có nền bàn gỗ — cắt vuông quanh đĩa (bỏ phần nền phía trên); khung 4:5 nhỏ cho hàng món gọn trên điện thoại: cắt sát đáy ảnh để nhãn nằm trên mặt bàn, không đè lên món. Trang Thực đơn, nhóm Món đặc trưng",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-tartare-bo-hoa-tuyet.jpg",
+        "cong_cu": "lấy từ menu chuẩn 29/09/2026 của quán — ghi chú dự án gọi là \"ảnh đã duyệt\", CHƯA rõ là ảnh chụp thật hay ảnh dựng (vì vậy vẫn gắn nhãn \"Ảnh minh họa\")",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-tartare-bo-hoa-tuyet.jpg",
+      "khung": {
+        "1x1": { "fx": 0.5, "fy": 0.5, "rong": [480, 800] },
+        "4x5": { "fx": 0.5, "fy": 1, "rong": [200, 320] }
+      }
+    },
+    "mon-com-tron-tartare-bo-cay": {
+      "mo_ta": "Cơm trộn tartare bò cay (F19): bát gốm kem với cơm, bò sống băm phủ lòng đỏ, rau củ, sốt ớt; ảnh chữ nhật đứng có nền bàn gỗ — cắt vuông quanh bát; khung 4:5 nhỏ cho hàng món gọn trên điện thoại: cắt sát đáy ảnh để nhãn nằm trên mặt bàn, không đè lên món. Trang Thực đơn, nhóm Món đặc trưng",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-com-tron-tartare-bo-cay.jpg",
+        "cong_cu": "lấy từ menu chuẩn 29/09/2026 của quán — ghi chú dự án gọi là \"ảnh đã duyệt\", CHƯA rõ là ảnh chụp thật hay ảnh dựng (vì vậy vẫn gắn nhãn \"Ảnh minh họa\")",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-com-tron-tartare-bo-cay.jpg",
+      "khung": {
+        "1x1": { "fx": 0.5, "fy": 0.47, "rong": [480, 800] },
+        "4x5": { "fx": 0.5, "fy": 1, "rong": [200, 320] }
+      }
+    },
+    "mon-lau-kim-chi": {
+      "mo_ta": "Lẩu kim chi (F15) trong nồi inox — trang Thực đơn, nhóm Lẩu",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-lau-kim-chi.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-lau-kim-chi.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "mon-lau-bo-bulgogi": {
+      "mo_ta": "Lẩu bò bulgogi (F16) trong nồi inox — trang Thực đơn, nhóm Lẩu",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-lau-bo-bulgogi.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-lau-bo-bulgogi.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "mon-lau-nam": {
+      "mo_ta": "Lẩu nấm (F20) trong nồi inox — trang Thực đơn, nhóm Lẩu",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-lau-nam.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-lau-nam.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "mon-set-4-sot": {
+      "mo_ta": "Set 4 sốt (S01): khay đen với các chén sốt, rau cuốn, rau củ cắt que, kim chi — trang Thực đơn, dải Bò tại quầy (nhóm Gọi thêm tùy chọn). Alt không đếm số chén, không kể tên kim chi",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-set-4-sot.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-set-4-sot.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "mon-salad-nam": {
+      "mo_ta": "Salad nấm (F21) trong bát kem — trang Thực đơn, nhóm Salad",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-salad-nam.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-salad-nam.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "mon-caesar-salad": {
+      "mo_ta": "Caesar salad (F01) trong bát kem — trang Thực đơn, nhóm Salad",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-caesar-salad.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-caesar-salad.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "mon-mien-tron-han": {
+      "mo_ta": "Miến trộn Hàn (F10) trên chảo đen đặt trên đế gỗ — trang Thực đơn, nhóm Salad",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-mien-tron-han.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-mien-tron-han.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "mon-trung-hap-nui-lua": {
+      "mo_ta": "Trứng hấp núi lửa (F22) trong thố đá — trang Thực đơn, nhóm Món thêm",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-trung-hap-nui-lua.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-trung-hap-nui-lua.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "mon-khoai-tay-chien-sot-bo": {
+      "mo_ta": "Khoai tây chiên sốt bò (F23) kèm cốc sốt phô mai — trang Thực đơn, nhóm Món thêm",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-khoai-tay-chien-sot-bo.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-khoai-tay-chien-sot-bo.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "mon-banh-gao-chien-pho-mai": {
+      "mo_ta": "Bánh gạo chiên phô mai (F18) trên đĩa đen — trang Thực đơn, nhóm Món thêm",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-banh-gao-chien-pho-mai.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-banh-gao-chien-pho-mai.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "mon-canh-kim-chi": {
+      "mo_ta": "Canh kim chi (F12) trong thố đá — trang Thực đơn, nhóm Canh. Alt không viết chữ \"kim chi\" (luật alt không kể tên món phụ)",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-canh-kim-chi.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-canh-kim-chi.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "mon-dau-phu-ham": {
+      "mo_ta": "Đậu phụ hầm (F14) trong thố đá — trang Thực đơn, nhóm Canh",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-dau-phu-ham.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-dau-phu-ham.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "mon-canh-tuong-dau": {
+      "mo_ta": "Canh tương đậu (F13) trong thố đá — trang Thực đơn, nhóm Canh",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-canh-tuong-dau.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-canh-tuong-dau.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "mon-com-kim-chi-bo": {
+      "mo_ta": "Cơm kim chi bò (F06) trên đĩa kem, trứng ốp la — trang Thực đơn, nhóm Cơm",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-com-kim-chi-bo.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-com-kim-chi-bo.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "mon-com-tron-han": {
+      "mo_ta": "Cơm trộn Hàn (F05) trong bát đá, kèm chén tương ớt — trang Thực đơn, nhóm Cơm",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-com-tron-han.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-com-tron-han.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "mon-com-tron-trung-ca": {
+      "mo_ta": "Cơm trộn trứng cá (F04) trong bát đá — trang Thực đơn, nhóm Cơm",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-com-tron-trung-ca.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-com-tron-trung-ca.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "mon-mi-lanh-cay": {
+      "mo_ta": "Mì lạnh cay (F11) trong bát inox — trang Thực đơn, nhóm Mì",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-mi-lanh-cay.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-mi-lanh-cay.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "mon-mi-toowoomba": {
+      "mo_ta": "Mì Toowoomba (F08) trên đĩa đen — trang Thực đơn, nhóm Mì",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-mi-toowoomba.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-mi-toowoomba.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "mon-mi-carbonara": {
+      "mo_ta": "Mì carbonara (F07) trên đĩa đen — trang Thực đơn, nhóm Mì",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-mi-carbonara.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-mi-carbonara.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "mon-mi-bo-sot-ca": {
+      "mo_ta": "Mì bò sốt cà (F09) trên đĩa đen — trang Thực đơn, nhóm Mì",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-mi-bo-sot-ca.webp",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "mon-mi-bo-sot-ca.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
+      "khung": {
+        "4x3": { "rong": [400, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
+      }
+    },
+    "uong-milky-cloud-makgeolli": {
+      "mo_ta": "Milky Cloud Makgeolli (D13): ly chân thấp, thức uống trắng sữa, kẹo nghiền, bạc hà — trang Thực đơn, nhóm Signature (đồ uống có cồn, chỉ hiện khi công tắc hien_do_uong_co_con bật)",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file uong-milky-cloud-makgeolli.webp",
+        "cong_cu": "lấy từ menu chuẩn 29/09/2026 của quán — ghi chú dự án gọi là \"ảnh đã duyệt\", CHƯA rõ là ảnh chụp thật hay ảnh dựng (vì vậy vẫn gắn nhãn \"Ảnh minh họa\")",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "uong-milky-cloud-makgeolli.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.12 },
+      "khung": {
+        "4x5": { "rong": [400, 640] }
+      }
+    },
+    "uong-strawberry-crush": {
+      "mo_ta": "Strawberry Crush (D01): ly cao, nước hồng đỏ có ga, dâu sấy, bạc hà — trang Thực đơn, nhóm Signature (đồ uống có cồn)",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file uong-strawberry-crush.webp",
+        "cong_cu": "lấy từ menu chuẩn 29/09/2026 của quán — ghi chú dự án gọi là \"ảnh đã duyệt\", CHƯA rõ là ảnh chụp thật hay ảnh dựng (vì vậy vẫn gắn nhãn \"Ảnh minh họa\")",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "uong-strawberry-crush.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.12 },
+      "khung": {
+        "4x5": { "rong": [400, 640] }
+      }
+    },
+    "uong-berry-rouge-highball": {
+      "mo_ta": "Berry Rouge Highball (D14): ly cao, nước đỏ đậm có ga, bạc hà — trang Thực đơn, nhóm Signature (đồ uống có cồn)",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file uong-berry-rouge-highball.webp",
+        "cong_cu": "lấy từ menu chuẩn 29/09/2026 của quán — ghi chú dự án gọi là \"ảnh đã duyệt\", CHƯA rõ là ảnh chụp thật hay ảnh dựng (vì vậy vẫn gắn nhãn \"Ảnh minh họa\")",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "uong-berry-rouge-highball.webp",
+      "tach_nen": { "le": 0.04, "duoi": 0.12 },
+      "khung": {
+        "4x5": { "rong": [400, 640] }
+      }
+    },
+    "uong-khong-con-ba-ly": {
+      "mo_ta": "Ade chanh dây, ade chanh, nước cam đứng cạnh nhau — ảnh của cả phần Đồ uống trên trang Thực đơn (không gắn với một món; hiện cả khi chưa công bố món nào)",
+      "nguon": {
+        "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file uong-khong-con-ba-ly.png",
+        "cong_cu": "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền",
+        "da_chon": "ảnh của cuốn menu bản sáng"
+      },
+      "goc": "uong-khong-con-ba-ly.png",
+      "tach_nen": { "le": 0.03, "duoi": 0.14 },
+      "khung": {
+        "3x2": { "rong": [480, 800] }
+      }
+    }
+  },
+  "du_phong": {
+    "bo-xeo-vi": {
+      "mo_ta": "Những lát bò đang chín trên vỉ gas tròn viền thép, có một làn hơi nóng — ảnh dự phòng, chưa đặt ở trang nào",
+      "nguon": {
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 11/10/2026",
+        "da_chon": "lần tạo duy nhất"
       },
       "goc": "bo-xeo-vi-4x3.png",
       "khung": {
-        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] },
-        "1x1": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] }
+        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] }
       }
     }
   }

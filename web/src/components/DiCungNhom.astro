@@ -13,11 +13,17 @@
  *
  * Câu "nhóm từ 9 người" bảo khách NHẮN cho Beeftown, nên chỉ in khi có kênh nhắn
  * thật (Facebook, hotline, email) — form chỉ nhận tới 8 người.
+ *
+ * Ảnh bua-an-cung-ban là ẢNH MINH HỌA (Khánh cho dùng ngày 11/10/2026): nhiều bàn tay
+ * cùng gắp bò quanh vỉ gas, không thấy mặt ai. Nó thay hình vẽ bàn nướng của bản trước.
+ * Khung ảnh không bóng đổ; dải đỏ để phẳng — không mảng vân mỡ, không nét trang trí nào
+ * tranh với ảnh. Nút nằm ngay sau đoạn giải thích. Điện thoại: chữ → nút → ảnh; máy tính:
+ * ảnh bên trái, chữ bên phải (so le với khối "Cả bữa" ở trên).
  */
 import { chu, dich, duongDanTuongUng } from '../lib/chu';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import { coKenhHoiBan, formHoiBanMo, lienHe } from '../lib/trang-cong-khai';
-import KhungAnh from './KhungAnh.astro';
+import Anh from './Anh.astro';
 
 interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; }
 const { ngonNgu, noiDung: nd } = Astro.props;
@@ -53,8 +59,7 @@ const t = dich(ngonNgu, {
   },
 });
 ---
-<section class="muc be-do dcn co-trang-tri" aria-labelledby="dcn-tieu-de">
-  <div class="trang-tri nen-van-mo dcn-van" aria-hidden="true"></div>
+<section class="muc be-do dcn" aria-labelledby="dcn-tieu-de">
   <div class="khung dcn-luoi">
     <div class="dcn-chu">
       <p class="hieu">{t.hieu}</p>
@@ -66,28 +71,19 @@ const t = dich(ngonNgu, {
       </div>
     </div>
     <div class="dcn-hinh">
-      <KhungAnh loai="ban-nuong" tiLe="4 / 3" nen="do" />
-      <span class="trang-tri net huong-thao-2 dcn-la" aria-hidden="true"></span>
+      <Anh id="bua-an-cung-ban" ngonNgu={ngonNgu} khung="3x2" khungNho="4x3" thayBang="ban-nuong" nenKhung="do"
+           sizes="(min-width: 1280px) 620px, (min-width: 900px) 50vw, calc(100vw - 40px)" />
     </div>
   </div>
 </section>
 
 <style>
-  /* Mảng vân mỡ nửa phải: mép trái mờ dần thay vì một cạnh thẳng đứng cắt ngang góc khung ảnh. */
-  .dcn-van {
-    inset: 0 0 0 58%; opacity: 1; display: none;
-    -webkit-mask: linear-gradient(90deg, transparent, #000 18%);
-    mask: linear-gradient(90deg, transparent, #000 18%);
-  }
-  .dcn-luoi { position: relative; display: grid; gap: var(--k-7); align-items: center; grid-template-columns: 1fr; }
-  .dcn-chu .dan { color: var(--kem); margin-bottom: var(--k-6); }
+  .dcn-luoi { display: grid; gap: var(--k-6); align-items: center; grid-template-columns: minmax(0, 1fr); }
+  .dcn-chu .dan { color: var(--kem); margin-bottom: var(--k-5); }
   .dcn-chu .dan:has(+ .dcn-nho) { margin-bottom: var(--k-4); }
-  .dcn-nho { font-size: var(--co-nho); margin-bottom: var(--k-6); }
-  .dcn-hinh { position: relative; max-width: 520px; width: 100%; }
-  .dcn-la { width: 64px; left: -18px; bottom: -26px; transform: rotate(-30deg); }
+  .dcn-nho { font-size: var(--co-nho); margin: 0 0 var(--k-5); }
   @media (min-width: 900px) {
-    .dcn-van { display: block; }
-    .dcn-luoi { grid-template-columns: 6fr 5fr; gap: var(--k-8); }
-    .dcn-hinh :global(.khung-anh) { box-shadow: 0 30px 60px -32px rgba(21, 16, 8, .7); }
+    .dcn-luoi { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: var(--k-8); }
+    .dcn-hinh { order: -1; }
   }
 </style>
