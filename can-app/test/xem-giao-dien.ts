@@ -5,7 +5,8 @@
  *     cd can-app && npx bun test/xem-giao-dien.ts
  *
  * In ra đường dẫn; mở bằng trình duyệt. Ctrl+C để tắt.
- * `--vai nhan_vien_quay` (hoặc ke_toan, thu_kho…) để xem như vai đó; mặc định quản lý.
+ * `--vai nhan_vien_quay` (hoặc ke_toan, thu_kho, chu_so_huu…) để xem như vai đó; mặc định quản lý.
+ * `--chua-dang-nhap` (2.11): chưa đăng nhập kho — thấy khung Đăng nhập kho và các mục làm với cân.
  * `--can-doi-dia-chi`: cân giả "đổi địa chỉ" — lúc mở trang, Kiểm tra kết nối tự dò ra cân.
  * `--hai-can`: như trên nhưng WiFi có hai cân (127.0.0.1 và .5) — trang hiện nút chọn cân.
  * `--chua-co-goc`: chưa có file gốc (thấy bước Bắt đầu, có nút đọc từ cân qua WiFi).
@@ -14,15 +15,17 @@
  * `--khong-doc-lai`: cổng hai chiều không trả lời sau khi gửi → khung vàng "chưa kiểm được".
  * Dây RS232 dùng PowerShell giả: có cổng COM3, cân ở đầu dây luôn trả lời giờ (kiểm tra dây, gửi thử đều được).
  *
- * Bản 2.2: cân giả hai chiều (test/can-gia-hai-chieu.ts) trên 127.0.0.1 cho thẻ Cân & thông số, Nhật ký
+ * Bản 2.2: cân giả hai chiều (test/can-gia-hai-chieu.ts) trên 127.0.0.1 cho mục Cân & thông số, Nhật ký
  * cân (đọc qua WiFi), xoá qua WiFi; file gốc có nhật ký bán (REP) 7 ngày gần đây, đủ thông số và phím tắt;
  * kho có hạn dùng (HSD) để thấy cột HSD. Dữ liệu giả, không có tên / WiFi thật.
+ *
+ * 2.11: phần dựng nằm trong `moGiaoDienGia` — test/thu-trinh-duyet.ts mở trang này trong Chromium cho từng vai.
  */
 import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { UngDung, quyenCuaVai } from '../src/nghiep-vu.ts';
+import { UngDung, quyenCuaVai, type KhoTruyCap } from '../src/nghiep-vu.ts';
 import { LENH_DS, type ChayPs } from '../src/day-rs232.ts';
 import { taoKhoGia } from './kho-gia.ts';
 import { moMayChu } from '../src/may-chu.ts';
@@ -82,77 +85,135 @@ const file = new TextEncoder().encode(['ECS\tVER\tV3.14E8\t', '', 'DWL\tPLU\t', 
   'DWL\tINF\t', 'INA\t0\tUTF-8\t0\t0\t8388608\t7\t7\t', 'INM\t0023F01AECB1\t0023F01AECB1\t0\t', 'END\tINF\t', '',
   'END\tECS\t', ''].join('\r\n'));
 
-const can = net.createServer(s => { s.on('data', () => {}); s.on('end', () => s.end()); });
-await new Promise<void>(x => can.listen(0, '127.0.0.1', () => x()));
-const haiCan = process.argv.includes('--hai-can');
-if (haiCan) {
-  const can2 = net.createServer(s => { s.on('data', () => {}); s.on('end', () => s.end()); });
-  await new Promise<void>(x => can2.listen((can.address() as net.AddressInfo).port, '127.0.0.5', () => x()));
+/** Tuỳ chọn của trang xem thử — mỗi cờ dòng lệnh ở đầu file là một trường. */
+export interface TuyGiaoDienGia {
+  /** Vai kho của người đăng nhập (quan_ly, chu_so_huu, ke_toan, thu_kho, nhan_vien_quay); null = chưa đăng nhập kho. */
+  vai?: string | null;
+  chuaCoGoc?: boolean;
+  canDoiDiaChi?: boolean;
+  haiCan?: boolean;
+  canBoQua?: boolean;
+  khongDocLai?: boolean;
+  /**
+   * 2.11 — kiểm thử mất mạng: tên hàm kho (rpc) đang "không trả lời" — gọi thì ném lỗi mạng như fetch hỏng. Tập này đổi được
+   * trong lúc chạy (xoá tên = kho trả lời lại).
+   */
+  khoHong?: Set<string>;
 }
-// Cân giả hai chiều (cổng 33581 của hãng), cùng dữ liệu với file gốc, thêm 2 lần bán mới chưa đọc.
-const canHaiChieu = await moCanGia({ du: {
-  phan: { PLU: PLU.map(chuoiByte), TMS, SCP, LAB: MAU_TEM.map(chuoiByte), TMT: ['TMT\t0\tQUAN THU\t', 'TMT\t15\tWIFI-GIA\t', 'TMT\t16\tmat-khau-gia\t'] },
-  baoCao: [...NHAT_KY.map(chuoiByte), ...[29, 30].flatMap(fid => {
-    const d = new Date();
-    return [`REP\t${d.getFullYear() % 100}\t${d.getMonth() + 1}\t${d.getDate()}\t${hai(d.getHours())}\t0\t0\t${fid}\t${fid}\t0\t`,
-      `RES\t1\t253500,3\t1\t9\t9\t0,3\t300,3\t3\t0\t0,3\t\t\t\t\t845000,3\t0\t${chuoiByte('Lõi vai bò Mỹ')}\t`, 'REE\t'];
-  })],
-} });
 
-const tam = fs.mkdtempSync(path.join(os.tmpdir(), 'beeftown-can-xem-'));
-const iVai = process.argv.indexOf('--vai');
-const vai = iVai > 0 ? process.argv[iVai + 1] : 'quan_ly';
-const cn = { id: 'cn1', ma: 'q1', ten: 'Beeftown Hàm Nghi' };
-const doiDiaChi = haiCan || process.argv.includes('--can-doi-dia-chi');
-const chayPs: ChayPs = async (lenh, bien) => {
-  await Bun.sleep(600);
-  if (lenh === LENH_DS) return 'COM\tCOM1\r\nCOM\tCOM3\r\nTEN\tCổng Giao tiếp (COM1)\r\nTEN\tUSB-SERIAL CH340 (COM3)\r\nOK\r\n';
-  // Cân ở đầu dây trả lời mỗi lần hỏi giờ (bước DOC của kịch bản).
-  const b64 = (chu: string) => Buffer.from(chu, 'latin1').toString('base64');
-  const ra = (bien.BT_KICH_BAN ?? '').split(';').flatMap((b, i) => (b.startsWith('DOC:')
-    ? [`DONG\t${i}\t${b64('TIM\t26\t9\t29\t17\t5\t40\t')}`, `DONG\t${i}\t${b64('END\tTIM\t')}`] : []));
-  return [...ra, 'OK\t4096', ''].join('\r\n');
-};
-const canBoQua = process.argv.includes('--can-bo-qua');
-const khongDocLai = process.argv.includes('--khong-doc-lai');
-/** Cổng 33571 giả: cân hai chiều nhận các dòng PLU như cân thật (thêm / sửa theo số PLU, không xoá). */
-function canNhan(du: Uint8Array) {
-  const theoSo = new Map((canHaiChieu.du.phan.PLU ?? []).map(d => [Number(d.split('\t')[1]), d]));
-  for (const d of Buffer.from(du).toString('latin1').split(/\r?\n/)) if (d.startsWith('PLU\t')) theoSo.set(Number(d.split('\t')[1]), d);
-  canHaiChieu.du.phan.PLU = [...theoSo.entries()].sort((a, b) => a[0] - b[0]).map(x => x[1]);
+/**
+ * Dựng cân giả, kho giả, chương trình và máy chủ của nó (cổng ngẫu nhiên, 127.0.0.1) — trả địa chỉ trang và cách tắt hết.
+ * Chưa đăng nhập kho (vai null): không có kho giả; địa chỉ kho trỏ vào một máy chủ Supabase không có (fetch giả), nên
+ * chương trình thấy "chưa đăng nhập" mà không gọi mạng thật.
+ */
+export async function moGiaoDienGia(tuy: TuyGiaoDienGia = {}): Promise<{ url: string; ud: UngDung; dong: () => Promise<void> }> {
+  const vai = tuy.vai === undefined ? 'quan_ly' : tuy.vai;
+  const can = net.createServer(s => { s.on('data', () => {}); s.on('end', () => s.end()); });
+  await new Promise<void>(x => can.listen(0, '127.0.0.1', () => x()));
+  const haiCan = !!tuy.haiCan;
+  const can2 = haiCan ? net.createServer(s => { s.on('data', () => {}); s.on('end', () => s.end()); }) : null;
+  if (can2) await new Promise<void>(x => can2.listen((can.address() as net.AddressInfo).port, '127.0.0.5', () => x()));
+  // Cân giả hai chiều (cổng 33581 của hãng), cùng dữ liệu với file gốc, thêm 2 lần bán mới chưa đọc.
+  const canHaiChieu = await moCanGia({ du: {
+    phan: { PLU: PLU.map(chuoiByte), TMS, SCP, LAB: MAU_TEM.map(chuoiByte), TMT: ['TMT\t0\tQUAN THU\t', 'TMT\t15\tWIFI-GIA\t', 'TMT\t16\tmat-khau-gia\t'] },
+    baoCao: [...NHAT_KY.map(chuoiByte), ...[29, 30].flatMap(fid => {
+      const d = new Date();
+      return [`REP\t${d.getFullYear() % 100}\t${d.getMonth() + 1}\t${d.getDate()}\t${hai(d.getHours())}\t0\t0\t${fid}\t${fid}\t0\t`,
+        `RES\t1\t253500,3\t1\t9\t9\t0,3\t300,3\t3\t0\t0,3\t\t\t\t\t845000,3\t0\t${chuoiByte('Lõi vai bò Mỹ')}\t`, 'REE\t'];
+    })],
+  } });
+
+  const tam = fs.mkdtempSync(path.join(os.tmpdir(), 'beeftown-can-xem-'));
+  const cn = { id: 'cn1', ma: 'q1', ten: 'Beeftown Hàm Nghi' };
+  const doiDiaChi = haiCan || !!tuy.canDoiDiaChi;
+  const chayPs: ChayPs = async (lenh, bien) => {
+    await Bun.sleep(600);
+    if (lenh === LENH_DS) return 'COM\tCOM1\r\nCOM\tCOM3\r\nTEN\tCổng Giao tiếp (COM1)\r\nTEN\tUSB-SERIAL CH340 (COM3)\r\nOK\r\n';
+    // Cân ở đầu dây trả lời mỗi lần hỏi giờ (bước DOC của kịch bản).
+    const b64 = (chu: string) => Buffer.from(chu, 'latin1').toString('base64');
+    const ra = (bien.BT_KICH_BAN ?? '').split(';').flatMap((b, i) => (b.startsWith('DOC:')
+      ? [`DONG\t${i}\t${b64('TIM\t26\t9\t29\t17\t5\t40\t')}`, `DONG\t${i}\t${b64('END\tTIM\t')}`] : []));
+    return [...ra, 'OK\t4096', ''].join('\r\n');
+  };
+  /** Cổng 33571 giả: cân hai chiều nhận các dòng PLU như cân thật (thêm / sửa theo số PLU, không xoá). */
+  function canNhan(du: Uint8Array) {
+    const theoSo = new Map((canHaiChieu.du.phan.PLU ?? []).map(d => [Number(d.split('\t')[1]), d]));
+    for (const d of Buffer.from(du).toString('latin1').split(/\r?\n/)) if (d.startsWith('PLU\t')) theoSo.set(Number(d.split('\t')[1]), d);
+    canHaiChieu.du.phan.PLU = [...theoSo.entries()].sort((a, b) => a[0] - b[0]).map(x => x[1]);
+  }
+  // Chưa đăng nhập: kho-can.json giả trỏ vào Supabase không có (cổng 9 — đóng); phiên trống nên không hỏi mạng.
+  const fetchGia = (async (dau: Parameters<typeof fetch>[0]) => (String(dau).endsWith('/kho-can.json')
+    ? Response.json({ supabaseUrl: 'http://127.0.0.1:9', anonKey: 'khoa-gia' })
+    : new Response('Không có mạng trong trang xem thử', { status: 503 }))) as typeof fetch;
+  const khoGia = taoKhoGia().kho;
+  const khoHong = tuy.khoHong;
+  const kho: KhoTruyCap = !khoHong ? khoGia : {
+    ...khoGia,
+    rpc: async (ten, thamSo) => {
+      if (khoHong.has(ten)) throw new TypeError('fetch failed');
+      return khoGia.rpc(ten, thamSo);
+    },
+  };
+  const khoCuaVai = vai === null ? { fetch: fetchGia } : {
+    kho,
+    nguoi: { email: vai + '@beeftown.vn', hoTen: vai === 'quan_ly' ? 'Quản lý (xem thử)' : 'Nhân viên (xem thử)', vaiTro: vai,
+             chiNhanh: cn, cacChiNhanh: [cn], quyen: quyenCuaVai(vai) },
+    danhMuc: async () => ({ mauMaVach: '2XCCCCCWWWWWK', matHang: [
+      // HSD và nguồn HSD như danh-muc-can.ts đưa ra (số ngày còn lại của lô, tính cho hôm nay).
+      { ma: 'LOI-VAI', ma_can: '10001', ten: 'Lõi vai bò Mỹ', gia_ban_kg: 850000, dang_dung: true, han_dung_ngay: 3,
+        nguon_hsd: { vi: 'lô L0012 hết hạn trong 3 ngày', en: 'lot L0012' } },
+      { ma: 'GAU-BO', ma_can: '10003', ten: 'Gầu bò', gia_ban_kg: 695000, dang_dung: true, han_dung_ngay: 5,
+        nguon_hsd: { vi: 'lô L0007 hết hạn trong 5 ngày', en: 'lot L0007' } },
+      { ma: 'BA-CHI', ma_can: '10005', ten: 'Ba chỉ bò cuộn', gia_ban_kg: 516000, dang_dung: true, han_dung_ngay: null,
+        nguon_hsd: { vi: 'lô L0003 hết hạn hôm qua', en: 'lot L0003' },
+        canh_bao_hsd: { vi: 'Lô L0003 đã hết hạn — không in HSD lên tem. Xem thẻ Quầy: huỷ hay bán giảm giá lô này.', en: 'Lot L0003 expired.' } },
+      { ma: 'THAN-LUNG', ma_can: '10004', ten: 'Thăn lưng bò Úc', gia_ban_kg: 990000, dang_dung: true, han_dung_ngay: 4,
+        nguon_hsd: { vi: 'theo hạn dùng của món (chưa có lô)', en: 'from the item shelf life (no lot yet)' } },
+      { ma: 'NAM-BO', ma_can: '10006', ten: 'Nạm bò', gia_ban_kg: null, dang_dung: true },
+    ] }),
+  };
+  const ud = new UngDung({ cauHinh: path.join(tam, 'a'), duLieu: path.join(tam, 'd') }, {
+    gui: async (_ip, _cong, du) => {
+      if (!tuy.canBoQua) canNhan(du);
+      if (tuy.khongDocLai) canHaiChieu.hong = { loai: 'dong-giua-chung', khi: 'PLU' };
+    },
+    choXacNhanMs: [0, 300],
+    // Dò mạng giả 127.0.0.0/24 (máy "ở" .254) — cân giả nằm ở 127.0.0.1.
+    mang: [{ ip: '127.0.0.254', mask: '255.255.255.0' }],
+    mac: async () => null,
+    chayPs,
+    ...khoCuaVai,
+  });
+  ud.luuCauHinh({ ipCan: doiDiaChi ? '127.0.0.2' : '127.0.0.1', congCan: (can.address() as net.AddressInfo).port, congHaiChieu: canHaiChieu.cong,
+    ...(vai === null ? { diaChiKho: 'http://127.0.0.1:9' } : {}) });
+  if (!tuy.chuaCoGoc) {
+    ud.ghiNhanFileTuCan(file);
+    fs.writeFileSync(ud.fileHsdNgay, congNgay(homNayVn(), -1) + '\r\n');   // HSD trên cân tính cho hôm qua
+  }
+  const ma = 'xem';
+  const mc = moMayChu(ud, { ma, phienBan: 'xem thử', khiCoNhip: () => {}, khiDong: () => {} });
+  return {
+    url: `http://127.0.0.1:${mc.port}/?t=${ma}`,
+    ud,
+    async dong() {
+      mc.stop(true);
+      ud.dongNen();
+      await canHaiChieu.dong();
+      for (const may of [can, can2]) if (may) await new Promise<void>(x => may.close(() => x()));
+      fs.rmSync(tam, { recursive: true, force: true });
+    },
+  };
 }
-const ud = new UngDung({ cauHinh: path.join(tam, 'a'), duLieu: path.join(tam, 'd') }, {
-  gui: async (_ip, _cong, du) => {
-    if (!canBoQua) canNhan(du);
-    if (khongDocLai) canHaiChieu.hong = { loai: 'dong-giua-chung', khi: 'PLU' };
-  },
-  choXacNhanMs: [0, 300],
-  // Dò mạng giả 127.0.0.0/24 (máy "ở" .254) — cân giả nằm ở 127.0.0.1.
-  mang: [{ ip: '127.0.0.254', mask: '255.255.255.0' }],
-  mac: async () => null,
-  chayPs,
-  kho: taoKhoGia().kho,
-  nguoi: { email: vai + '@beeftown.vn', hoTen: vai === 'quan_ly' ? 'Quản lý (xem thử)' : 'Nhân viên (xem thử)', vaiTro: vai,
-           chiNhanh: cn, cacChiNhanh: [cn], quyen: quyenCuaVai(vai) },
-  danhMuc: async () => ({ mauMaVach: '2XCCCCCWWWWWK', matHang: [
-    // HSD và nguồn HSD như danh-muc-can.ts đưa ra (số ngày còn lại của lô, tính cho hôm nay).
-    { ma: 'LOI-VAI', ma_can: '10001', ten: 'Lõi vai bò Mỹ', gia_ban_kg: 850000, dang_dung: true, han_dung_ngay: 3,
-      nguon_hsd: { vi: 'lô L0012 hết hạn trong 3 ngày', en: 'lot L0012' } },
-    { ma: 'GAU-BO', ma_can: '10003', ten: 'Gầu bò', gia_ban_kg: 695000, dang_dung: true, han_dung_ngay: 5,
-      nguon_hsd: { vi: 'lô L0007 hết hạn trong 5 ngày', en: 'lot L0007' } },
-    { ma: 'BA-CHI', ma_can: '10005', ten: 'Ba chỉ bò cuộn', gia_ban_kg: 516000, dang_dung: true, han_dung_ngay: null,
-      nguon_hsd: { vi: 'lô L0003 hết hạn hôm qua', en: 'lot L0003' },
-      canh_bao_hsd: { vi: 'Lô L0003 đã hết hạn — không in HSD lên tem. Xem thẻ Quầy: huỷ hay bán giảm giá lô này.', en: 'Lot L0003 expired.' } },
-    { ma: 'THAN-LUNG', ma_can: '10004', ten: 'Thăn lưng bò Úc', gia_ban_kg: 990000, dang_dung: true, han_dung_ngay: 4,
-      nguon_hsd: { vi: 'theo hạn dùng của món (chưa có lô)', en: 'from the item shelf life (no lot yet)' } },
-    { ma: 'NAM-BO', ma_can: '10006', ten: 'Nạm bò', gia_ban_kg: null, dang_dung: true },
-  ] }),
-});
-ud.luuCauHinh({ ipCan: doiDiaChi ? '127.0.0.2' : '127.0.0.1', congCan: (can.address() as net.AddressInfo).port, congHaiChieu: canHaiChieu.cong });
-if (!process.argv.includes('--chua-co-goc')) {
-  ud.ghiNhanFileTuCan(file);
-  fs.writeFileSync(ud.fileHsdNgay, congNgay(homNayVn(), -1) + '\r\n');   // HSD trên cân tính cho hôm qua
+
+if (import.meta.main) {
+  const iVai = process.argv.indexOf('--vai');
+  const g = await moGiaoDienGia({
+    vai: process.argv.includes('--chua-dang-nhap') ? null : iVai > 0 ? process.argv[iVai + 1] : 'quan_ly',
+    chuaCoGoc: process.argv.includes('--chua-co-goc'),
+    canDoiDiaChi: process.argv.includes('--can-doi-dia-chi'),
+    haiCan: process.argv.includes('--hai-can'),
+    canBoQua: process.argv.includes('--can-bo-qua'),
+    khongDocLai: process.argv.includes('--khong-doc-lai'),
+  });
+  console.log(`Mở: ${g.url}`);
 }
-const ma = 'xem';
-const mc = moMayChu(ud, { ma, phienBan: 'xem thử', khiCoNhip: () => {}, khiDong: () => {} });
-console.log(`Mở: http://127.0.0.1:${mc.port}/?t=${ma}`);

@@ -343,6 +343,20 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
 | `/noi-bo/kho/pha-loc/<id>?buoc=ket-qua` | `pha_loc` | Bước 3: 4 số lớn — thu hồi, dự kiến (theo công thức / trung bình 30 ngày), trung bình 30 ngày, hao hụt. **Nút Chốt chỉ ở đây.** Thấp quá ngưỡng thì báo trước khi chốt (chốt vẫn được). Bảng giá vốn chỉ với `xem_gia` |
 | `/noi-bo/kho/pha-loc/<id>?buoc=xong` | `pha_loc` | Sau chốt: "Chuyển N khay ra quầy ngay" (đơn vị đếm của món; các lô khác đơn vị thì chữ chung "gói" — `goiRaQuay` trả `donVi`) — mỗi lô mới còn ở kho lạnh một nút `/noi-bo/kho/xuat/moi?loai=chuyen&tu=…&lo=…` |
 
+- **Lóc một chạm "Lóc #0142" (món theo dõi theo tảng, không migration)**: mục **Tảng lóc được** ở `/pha-loc/moi` và nút
+  **Lóc** dưới số tảng ở Tảng · ủ (vai `pha_loc`) — cùng luật `tangLocDuoc`: có số tảng, không còn đang ủ, còn chỗ lóc
+  được (bỏ chờ hủy, đang mang ra quầy), chưa nằm trong phiên nháp. Bấm (`viec=loc_tang`; từ Tảng · ủ thêm `ve=tang`) →
+  `locMotTang` tự đọc lại tảng, chỗ lóc được, công thức, ô mã, mặt hàng ngừng dùng, phiên nháp của lô (đọc hỏng → không
+  ghi gì), mở phiên với đúng lô đó ở mọi chỗ lóc được (`kho_luu_phien_pha`, `ma_gui` theo nút), gắn công thức khi loại
+  tảng có một công thức và gọi `kho_giao_o_ma` khi công thức có phần cắt mang ô còn dùng (cùng luật `m.dang_dung` của hàm)
+  → vào thẳng bước 2, kể cả khi giao ô hỏng (database từ chối: câu đỏ "chưa giao được ô mã"; mất mạng / ném: câu đỏ
+  "Không chắc đã giao ô mã" — database có thể đã giao, xem khung Ô mã của tảng này). Nhiều công thức: không tự giao, câu
+  nhắc chọn công thức. Tảng đang lóc dở bấm lại → trả phiên đó và gọi
+  lại giao ô (tự lành); cùng `ma_gui` mà database báo đã có → đọc lại đúng phiên đó (đã hủy / đã chốt → "Trang đã cũ").
+  Nút chỉ có sau khi phiếu nhận được duyệt (lô sinh lúc duyệt). Một lô lóc một chạm thường có hai dòng vào (kho lạnh
+  và quầy), nên chỗ nào ghi "N lô" phải đếm số LÔ khác nhau: tóm tắt "Tảng đem pha" ở bước 2 đếm `loVaoPhien`, danh
+  sách phiên chưa chốt in `so_lo_vao` của `kho_v_phien_pha` (0098) — `so_dau_vao` là số dòng. `test-kho-loc-tang-web.mjs`.
+
 - **Dòng quét** (`kho_phien_pha_ra.tu_quet`): mỗi món một dòng, gói = số nhãn (món không đếm gói thì 0),
   kg = tổng kg trên nhãn, nơi để = `kho_mat_hang.noi_de_sau_pha` (trống = kho lạnh; chi nhánh không có
   quầy thì về kho lạnh — `kho_vi_tri_sau_pha`, bản web `viTriSauPha`). `kho_luu_phien_pha` chỉ thay các
@@ -633,6 +647,7 @@ từng nhãn**; hai dòng cùng item_id là hai dòng. `raw` bỏ `membership_*`
 | `/noi-bo/kho/cai-dat/ipos` | Kết nối iPOS: đèn, **lần nhận hóa đơn gần nhất**, **địa chỉ nhận hóa đơn** (chủ thấy đủ khóa, người khác thấy che), 4 việc nhờ iPOS, "Cập nhật ngay" (= thử lại hàng chờ + đọc lại thực đơn, phiên người bấm, `dong_bo_ban`, giới hạn 60 giây), cấu hình (không còn ô đường dẫn hóa đơn; có "báo mất kết nối sau … giờ"), chuyển nguồn số bán |
 | `/noi-bo/kho/ban-ipos` | Hàng đợi: Chưa khớp → Ghép món; Thiếu hàng → Thử lại / Hàng ngoài sổ / Bỏ qua (`kho_ipos_xu_ly_dong`) |
 | `/noi-bo/kho/ban-ipos/ghep` | Ghép món + **Bán theo** kg / gói (+ "mỗi gói = … kg") / suất (món chế biến) → `kho_ipos_gan_ma_v2`; **Thực đơn iPOS** (`kho_ipos_menu`, tìm + chia trang GĐ4b) để ghép trước khi bán |
+| `/noi-bo/kho/ban-ipos/mon-fabi.csv` | Danh sách món cần có trên FABi (`danh_muc`) — `taoTepMonFabi` (`lib/kho/thu-ngan.ts`) |
 
 **Tại sao chặn /hook/ipos ở worker.ts.** Astro bật `security.checkOrigin`: POST có `content-type`
 kiểu form (`text/plain`, `x-www-form-urlencoded`, `multipart/form-data`) hoặc không có `content-type` mà
@@ -951,9 +966,42 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
 - **Nhận hàng**: mỗi dòng là **một tảng** (`so_goi = 1`), cân riêng, có `ngay_mo`. Vẫn giữ luật
   "một dòng phiếu nhập = một lô", nên duyệt, huỷ, trả NCC, công nợ, kiểm kê không phải sửa. Thêm một tảng
   xong, form điền sẵn món và ngày mổ cho tảng sau (`?tiep=&mo=`).
-- **Duyệt**: lô tảng mang `so_tang` (tăng dần theo chi nhánh, bộ đếm `kho_so_thu_tu` loại `T`, hiện
-  "#0142"), `ngay_mo`, `ngay_u_xong = ngày nhận + kho_so_ngay_u(món, ngày nhận − ngày mổ)`. Phiếu mua có
-  dòng tảng chưa tách / thiếu ngày mổ (ví dụ tạo từ đơn đặt hàng) thì chưa duyệt được.
+- **Số tảng cấp lúc lưu dòng (0097, Khánh chốt 25/10/2026)**: `kho_ghi_dong_phieu_nhap` cấp số (bộ đếm
+  `kho_so_thu_tu` loại `T`, tăng dần theo chi nhánh, hiện "#0142") cho dòng tảng ngay khi thủ kho lưu — túi
+  có số trước khi vào tủ ủ. Số ghi ở `kho_phieu_nhap_dong.so_tang` và sổ `kho_so_tang_cap` (số → phiếu, người
+  cấp, lúc cấp). Hai hàm lưu xoá hết dòng rồi ghi lại, nên số đi theo **khóa `so_tang`** của từng dòng: web
+  gửi lại số database đã cấp (`dongLuuTuPhieu`, `ghepDongNhan`, ô ẩn `d{i}_so_tang` của màn Phiếu nhập) —
+  database chỉ nhận số của chính phiếu đó, chưa bỏ, không trùng dòng; không gửi thì cấp số mới. Thêm tảng
+  xong chuyển về `?tiep=&mo=&vua=<chỉ số dòng>&pb=<phien_ban của chính lần lưu>`: form hiện to số để viết lên
+  túi (`soTangVuaThem` — chỉ khi phiếu đọc lại đúng phiên bản đó). Bấm đúp "+ Thêm dòng": nhánh "đã thêm từ
+  lần bấm trước" chỉ nhận dòng cuối khi số của nó do chính tài khoản này cấp (`so_tang_toi_cap` của
+  `kho_doc_phieu_nhap_kg`), không hiện to số, câu chỉ số ở dòng cuối; tảng giống hệt mà tài khoản khác vừa thêm
+  thì báo "máy khác" như thường. Lần bấm trước nhận ra theo **form** (phiếu đọc lại hơn form đúng một phiên bản, và
+  đúng một dòng hơn số dòng lúc form hiện — lấy từ ô ẩn `so_dong` của form, `docSoDongForm`), không theo phiếu mà lần
+  bấm sau đọc — lần sau có thể đọc phiếu khi lần trước đã ghi xong. Không suy số dòng lúc form hiện từ phiếu đọc lúc
+  bấm: máy khác lưu chen mà không thêm dòng (sửa đầu phiếu, thêm ảnh, sửa / bỏ dòng khác) cũng làm phiếu lên đúng
+  một phiên bản, rồi dòng mới giống hệt dòng cuối sẽ bị báo "đã thêm" khi database không ghi gì. Thiếu ô `so_dong`
+  (form mở trước khi có ô) thì chỉ nhận khi phiếu đọc lúc bấm cùng phiên bản form; không thì "máy khác". Sửa dòng: câu và chuyển hướng do `ketQuaSauSuaDong` chọn (tảng chưa số → tảng: "Tảng
+  này vừa được cấp số", khác món thường → tảng: "Dòng này giờ là một tảng"). Bấm đúp "Lưu dòng này": id dòng đổi sau
+  mỗi lần lưu nên lần sau không còn `dong_id` — trang chuyển về form thêm **trống** với câu `ketQuaDongSuaKhongCon`
+  ("có thể đã được lưu ở lần bấm trước" khi phiếu hơn form đúng một phiên bản), không hiện lại chữ đã gõ (form sẽ
+  thành form thêm điền sẵn, bấm nữa là thêm tảng thừa có số mới). Bản in phiếu nhập in số của dòng khi chưa có lô.
+- **Tảng lưu trước 0097** (chưa có số, hay món bật theo tảng sau khi lưu): lần lưu nào đầu tiên (thêm ảnh, sửa
+  đầu phiếu, thêm / sửa / bỏ dòng) cũng cấp số cho mọi tảng đó. `luuPhieuNhan` đọc lại phiếu và câu báo kể các
+  số vừa cấp (`soTangMoiCap`, `noiCauTangMoi`) để viết lên túi; đọc lại hỏng thì vẫn báo đã lưu, kèm câu "có thể
+  vừa được cấp số — tải lại trang".
+- **Số bỏ trống**: dòng tảng bị bỏ, đổi sang món thường, web cũ không gửi lại số → `bo_luc` trong sổ, không
+  bao giờ cấp lại; màn nhận hàng báo "gạch số trên túi" (`cauSoTangBo`) và liệt kê `so_tang_bo` của
+  `kho_doc_phieu_nhap_kg` dưới "Hàng đã cân" (gồm số của phiếu đã hủy mà chưa thành lô). Người duyệt cũng
+  thấy: màn Phiếu nhập / điền giá (`nhap/[id]`, cả bản in) hiện "Số tảng đã bỏ" dưới dòng trạng thái
+  (`docSoTangBo`) — từ 0097 `kho_doc_phieu_nhap_kg` nhận quyền `nhap` **hoặc** `duyet_nhap` (kế toán; hàm không
+  trả tiền). Chỉ ghi sổ, không chuông. Dãy số lô vì thế có chỗ hở — sổ giải thích từng chỗ.
+- **Duyệt**: lô tảng mang đúng `so_tang` của dòng (bộ đếm không tăng lúc duyệt), `ngay_mo`,
+  `ngay_u_xong = ngày nhận + kho_so_ngay_u(món, ngày nhận − ngày mổ)`; dòng đã duyệt mang đúng số của lô.
+  Dòng chưa có số (tồn đầu kỳ dạng lưới, phiếu lưu trước 0097, món bật theo tảng sau khi lưu) thì duyệt
+  sinh như cũ và ghi sổ; dòng có số mà món đã tắt theo tảng thì số ghi bỏ, lô không số. Phiếu mua có dòng
+  tảng chưa tách / thiếu ngày mổ (ví dụ tạo từ đơn đặt hàng) thì chưa duyệt được — tách thành từng tảng (lưu)
+  là có số.
 - **Bảng ủ** `kho_bang_u` (dùng chung toàn thương hiệu, sửa bằng quyền danh mục): gõ dạng
   `5:18, 10:14, 10` ở form mặt hàng (`docChuBangU` / `chuBangU` trong `lib/kho/tang.ts`; `soNgayU` cùng
   luật với `kho_so_ngay_u`, test so từng tuổi).
@@ -1046,7 +1094,9 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   kg NCC → sau repack → vào lóc → thịt / phụ phẩm / bỏ / hao hụt; giá NCC → giá vốn sau repack → giá vốn
   thịt ra; các lô cắt ra (ô mã, đã bán, bếp, huỷ, còn ở đâu); phiếu huỷ của tảng. Mở bằng lô tảng hoặc
   bất kỳ lô cắt ra. Màn Tảng · ủ: số tảng là link, ô **Tìm tảng theo số** (`?tim=142` / `#0142`), mục
-  **Đã lóc** (tảng nhận trong 90 ngày). Từ 0089, đã bán / bếp / huỷ của tảng và của từng lô cắt là **số ròng**:
+  **Đã lóc** (tảng nhận trong 90 ngày). Ô tìm chỉ tìm trong lô (có sau khi duyệt); số cấp lúc nhận hàng (0097) mà
+  phiếu chưa duyệt thì câu `cauKhongThayTang` nói rõ số đó chỉ hiện ở đây sau khi phiếu nhận được duyệt (chỉ vai
+  `nhap` được chỉ sang Nhận hàng, cả câu lẫn link — màn đó chuyển hướng vai khác như kế toán, nhân viên quầy) — không đọc dòng phiếu để tìm thêm, vì thủ kho / thợ lóc không đọc được dòng phiếu (có giá). Từ 0089, đã bán / bếp / huỷ của tảng và của từng lô cắt là **số ròng**:
   dòng sổ `dao_nguoc` (hoá đơn iPOS sửa / huỷ, phiên lóc mở lại) xét theo dòng nó đảo nên tự triệt; ngày bán cuối
   của lô là lần bán còn hiệu lực.
 - **Huỷ cả tảng** (`kho_huy_ca_tang`, quyền van_hanh): mỗi vị trí còn hàng của tảng (kể cả tảng chưa lóc
@@ -1065,6 +1115,27 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   **lúc bán** (`kho_ipos_lo_cua_o`) và trừ đúng lô đó ở quầy (`kho_ipos_lay_lo_cua_lo`); lô không đủ / ô chưa
   gắn lô → trừ theo hạn gần nhất như cũ, `kho_ipos_dong.lech_o` + câu lý do, màn Bán hàng iPOS hiện "Lệch ô".
   Ghép lại bằng `kho_ipos_gan_ma_v2` bỏ ô. `kho_v_ipos_dong` thêm `so_o`, `ma_can_o`, `so_tang`, `lech_o`.
+- **Thu ngân / FABi** (chỉ web, `lib/kho/thu-ngan.ts`, không migration; `test-kho-ipos-fabi.mjs`): kho chỉ biết tảng
+  khi dòng hóa đơn mang mã ô. (1) Ghép món → **Món cần có trên FABi** (`#mon-fabi`, `danh_muc`): mỗi ô mã của món đang
+  dùng + mỗi mã giảm đang bật một món — tên gợi ý "<tên món> ô <số>" (mã giảm: tên như trên cân), mã món = mã vạch
+  (đệm đủ số chữ `C` của mẫu) = mã ô / mã giảm, bán theo kg, giá/kg = giá kho (mã giảm: `giaGiam`). Đối chiếu
+  `kho_ipos_menu` (chỉ có mã món — nhãn "có" nói mã vạch phải thử bằng một tem; ô ghép tay mã khác cũng tính);
+  thực đơn rỗng → "Chưa đọc được thực đơn iPOS", không kết luận; kèm giờ đọc thực đơn; mã dài hơn số chữ `C` của mẫu
+  → cảnh báo cân không in được tem; nội dung mục chọn bằng `mucMonFabi` (thuần). Tải
+  `/noi-bo/kho/ban-ipos/mon-fabi.csv` (link thường, không `download` — 403 / 500 mở trang có câu lỗi) (`taoTepMonFabi`: `taoCsv`, không lách bằng "=", tên file ASCII giờ VN; vai khác
+  403; đọc lỗi 500 kèm câu, không file rỗng). (2) Bán hàng iPOS → hộp **Bán không biết tảng · 7 ngày** (`xem_gia`,
+  `docBanKhongBietTang`): dòng `da_ghi` của món có ô mà không ô, không mã giảm (`khong_qua_o` — không xét "lúc bán ô
+  có giữ tảng không": ô không tự đóng khi tảng bán hết) và dòng `lech_o` — lọc ở database (hai lần đọc, `is null` /
+  `lech_o = true`, `thoi_diem_ban >=` 00:00 giờ VN ngày đầu; dòng bán qua ô không về web); hôm nay / 7 ngày theo
+  `ngay_ban`, đếm dòng và hóa đơn, mỗi loại kèm nguyên nhân có thể và chỗ sửa; nội dung hộp chọn bằng
+  `hopKhongBietTang` (thuần): đọc lỗi → chỉ câu lỗi, không số. (3) Chặn ghép sai trước khi gọi database (`kiemGhep`,
+  `laMaKhoTuNhan`, `oThucDon` trong `lib/kho/ban-ipos.ts`, đọc ô mã + mã giảm ngay trước khi ghép, đọc lỗi thì không
+  ghép): mã trùng mã giảm (kể cả đã tắt) / mã ô không ghép được như món kho (mã ô chỉ với đúng ô đó) — trừ khi món của
+  mã giảm / ô đã ngừng dùng: database không tự nhận mã đó (dòng chưa khớp), nên web coi là mã thường; ghép "Không phải
+  hàng kho" / suất / hàng cân nhãn phải tích "Mã này là món khác trên FABi" (lối thoát khi FABi có món khác trùng mã);
+  ghép món có ô mà không chọn ô phải tích "Vẫn ghép món chung". Thực đơn iPOS hiện "Mã giảm — kho tự nhận" /
+  "Ô n — kho tự nhận" thay nút Ghép. **Mã giảm cận date giữ trừ theo hạn gần nhất** (không theo ô): lô cận date ở quầy
+  gần như luôn là lô lóc sớm nhất, nên vẫn trúng tảng; mã giảm theo ô sẽ nhân số mã, số PLU và số món FABi phải sửa giá.
 
 ## 3p. Máy quầy — Beeftown Cân: bảng quầy · mã giảm giá cận date · tảng & ô · báo cáo (migration 0054)
 
@@ -1254,6 +1325,7 @@ node test/test-kho-cong-no-v2-web.mjs # công nợ v2: misa.ts, form Trả tiề
 node test/test-kho-sua-nhanh.mjs      # sửa hàng loạt, báo cáo tháng, mua hàng, sổ thanh toán — database (0041)
 node test/test-kho-sua-nhanh-web.mjs  # sửa nhanh, lưới công thức, vị trí + lý do, trung tâm báo cáo — web
 node test/test-kho-tieng-anh.mjs      # tiếng Anh: chữ Việt ngoài { vi, en }, trang quên truyền nn, câu database, chữ dính khi xuống dòng
+node test/test-kho-so-tang-luc-nhap.mjs # số tảng cấp lúc lưu dòng nhận hàng (0097): giữ số, số bỏ, duyệt dùng số của dòng, quyền, web
 cd ../web && npm run kiem-tra && npm run quet && npm run build
 ```
 

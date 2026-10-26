@@ -17,6 +17,10 @@
  * thành một hàng gập "Túi giữ lạnh · 3 dòng · 75.000 đ" có MỘT nút Ghép món; bấm mở ra từng hóa đơn
  * (mỗi dòng vẫn đủ nút Thử lại / Bỏ qua / Hàng ngoài sổ của nó). Món chỉ một dòng thì hiện như cũ.
  *
+ * Hộp "Bán không biết tảng · 7 ngày" (lib/kho/thu-ngan.ts, chỉ khi xem_gia — view chỉ trả dòng cho
+ * vai đó): dòng đã trừ kho của món có ô mà không qua ô / không mã giảm, và dòng lệch ô; hôm nay và 7
+ * ngày (giờ VN), mỗi loại kèm nguyên nhân có thể và chỗ sửa. Đọc riêng — lỗi thì in câu lỗi, không in 0.
+ *
  * Quản lý, chủ (duyet). Có tiền (thành tiền dòng) — view kho_v_ipos_dong chỉ
  * trả dòng cho vai xem_gia; cột tiền chỉ hiện khi xem_gia.
  */
@@ -27,12 +31,15 @@ import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
 import PhanTrang from '../../../../components/kho/PhanTrang.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { docTimDs, catTrang, dangTim, linkDs } from '../../../../lib/kho/tim-ds.ts';
-import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, dinhDangTien, type KetQua } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, dinhDangTien, type KetQua } from '../../../../lib/kho/chung.ts';
 import {
   docDongIpos, docTrangThaiIpos, docThe, gomDongIpos, xuLyDongIpos, lopDen, trangThaiDong, THE_DONG_NB,
   type DongIpos, type TrangThaiIpos,
 } from '../../../../lib/kho/ban-ipos.ts';
 import { soTangChu } from '../../../../lib/kho/tang.ts';
+import {
+  docBanKhongBietTang, hopKhongBietTang, NGUYEN_NHAN_KHONG_BIET_TANG, type TomTatKhongBietTang,
+} from '../../../../lib/kho/thu-ngan.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
@@ -99,6 +106,29 @@ const t = dichNB(nn, {
   soLuongIpos: { vi: '(số lượng trên iPOS)', en: '(quantity on iPOS)' },
   soDong: { vi: (n: number) => `${n} dòng`, en: (n: number) => `${n} lines` },
   ghepMonCua: { vi: (ten: string) => `Ghép món ${ten}`, en: (ten: string) => `Match dish ${ten}` },
+  tangTieuDe: { vi: 'Bán không biết tảng · 7 ngày', en: 'Sold without knowing the primal · 7 days' },
+  tangKy: {
+    vi: (tu: string, den: string) => `Từ ${tu} đến hôm nay ${den} (giờ Việt Nam). Kho vẫn trừ đủ — chỉ không biết khay thuộc tảng nào.`,
+    en: (tu: string, den: string) => `From ${tu} to today ${den} (Vietnam time). Stock is still deducted in full — only the primal of the tray is unknown.`,
+  },
+  khongDocTang: { vi: 'Không đọc được số bán không biết tảng — chưa biết có dòng nào cần xem.', en: 'Could not read the sales without a known primal — it is not known whether any line needs a look.' },
+  chuaCoO: {
+    vi: 'Chưa món nào có ô mã — kho chưa theo tảng ở quầy, chưa có gì để đếm.',
+    en: 'No item has rotating codes yet — the counter is not tracked per primal, so there is nothing to count.',
+  },
+  khongCoTang: { vi: 'Không có dòng nào cần xem trong 7 ngày qua.', en: 'No lines need a look in the last 7 days.' },
+  demTang: {
+    vi: (hn: number, hnHd: number, bn: number, bnHd: number) => `Hôm nay ${hn} dòng (${hnHd} hóa đơn) · 7 ngày ${bn} dòng (${bnHd} hóa đơn)`,
+    en: (hn: number, hnHd: number, bn: number, bnHd: number) =>
+      `Today ${hn} ${hn === 1 ? 'line' : 'lines'} (${hnHd} ${hnHd === 1 ? 'invoice' : 'invoices'}) · 7 days ${bn} ${bn === 1 ? 'line' : 'lines'} (${bnHd} ${bnHd === 1 ? 'invoice' : 'invoices'})`,
+  },
+  coTheDo: { vi: 'Có thể do:', en: 'Possible causes:' },
+  suaO: { vi: 'Sửa:', en: 'Fix:' },
+  moMonFabi: { vi: 'Món cần có trên FABi →', en: 'Dishes needed on FABi →' },
+  cotMon: { vi: 'Món kho', en: 'Stock item' },
+  cotMaFabi: { vi: 'Mã món FABi đã dùng', en: 'FABi dish codes used' },
+  cotDong: { vi: 'Dòng · hóa đơn', en: 'Lines · invoices' },
+  cotLanCuoi: { vi: 'Lần cuối', en: 'Last' },
 });
 
 let bao: KetQua | null = k.bao;
@@ -113,6 +143,8 @@ const tim = docTimDs(sp);
 let hien: DongIpos[] = [];
 let coSau = false;
 let tt: TrangThaiIpos | null = null;
+let tang: TomTatKhongBietTang | null = null;
+let loiTang: string | null = null;
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   try {
@@ -123,6 +155,10 @@ if (k.chiNhanh && k.daKhoiTao) {
     ]);
     ({ ds: hien, coSau } = catTrang(trang));
   } catch (e) { loiDoc = cauLoiKho(e, t.khongDoc); }
+  // Bán không biết tảng: chỉ vai xem giá (view không trả dòng cho vai khác — số 0 sẽ là nói sai).
+  if (xemGia) {
+    try { tang = await docBanKhongBietTang(k.client, k.chiNhanh.id); } catch (e) { loiTang = cauLoiKho(e, t.khongDocTang); }
+  }
 }
 const soThe: Record<string, number | null> = tt
   ? { chua_khop: tt.dem.chua_khop + tt.dem.loi, thieu_hang: tt.dem.thieu_hang, da_ghi: null, bo_qua: null }
@@ -132,6 +168,8 @@ const kgGoi = (d: DongIpos) => [
   d.so_kg !== null ? `${dinhDangKg(d.so_kg, nn)} kg` : '',
 ].filter(Boolean).join(' · ') || (d.so_luong !== null ? `${dinhDangKg(d.so_luong, nn)} ${t.soLuongIpos}` : '—');
 const theDau = THE_DONG_NB[0].ma;
+// Hộp "Bán không biết tảng": nội dung chọn bằng hàm thuần (lỗi → chỉ câu lỗi, không số nào để in).
+const hop = xemGia ? hopKhongBietTang(tang, loiTang) : null;
 ---
 <Kho k={k} tieuDe={t.tieuDe} huongDan="ban-ipos" rong>
   <TheTrangCon k={k} cha="bao_cao" />
@@ -146,6 +184,51 @@ const theDau = THE_DONG_NB[0].ma;
   )}
 
   <p class="nb-dan">{t.dan}</p>
+
+  {hop && (
+    <section class={`nb-bao ${hop.lop}`} aria-labelledby="ban-tang">
+      <h2 id="ban-tang" style="margin-top:0">{t.tangTieuDe}</h2>
+      {hop.kieu === 'loi' ? (
+        <p style="margin:0">{dichCau(nn, hop.cau)}</p>
+      ) : hop.kieu === 'chua_co_o' ? (
+        <p style="margin:0">{t.chuaCoO}</p>
+      ) : (
+        <>
+          <p class="kho-phu" style="margin:0 0 .5rem">{t.tangKy(dinhDangNgay(hop.tuNgay), dinhDangNgay(hop.homNay))}</p>
+          {hop.kieu === 'khong_co' ? (
+            <p style="margin:0">{t.khongCoTang}</p>
+          ) : hop.loai.map(({ loai, homNay: hn, bayNgay: bn, nhom: ds }) => {
+            const nn7 = NGUYEN_NHAN_KHONG_BIET_TANG[loai];
+            return (
+              <div class="ip-tang">
+                <p style="margin:0"><strong>{nn7.ten[nn]}</strong> — {t.demTang(hn.dong, hn.hoaDon, bn.dong, bn.hoaDon)}</p>
+                <p class="kho-phu" style="margin:.25rem 0">{nn7.giai[nn]}</p>
+                <p style="margin:.25rem 0 0">{t.coTheDo}</p>
+                <ul style="margin:.25rem 0">{nn7.nguyenNhan.map(c => <li>{c[nn]}</li>)}</ul>
+                <p style="margin:.25rem 0">{t.suaO} {nn7.sua[nn]}
+                  {loai === 'khong_qua_o' && k.duoc('danh_muc') && <> <a href="/noi-bo/kho/ban-ipos/ghep#mon-fabi">{t.moMonFabi}</a></>}</p>
+                <div class="kho-bang-khung">
+                  <table class="kho-bang">
+                    <thead><tr><th>{t.cotMon}</th><th>{t.cotMaFabi}</th><th>{t.cotDong}</th><th>{t.cotLanCuoi}</th></tr></thead>
+                    <tbody>
+                      {ds.map(x => (
+                        <tr>
+                          <td>{x.ten || '—'}</td>
+                          <td>{x.maIpos.length === 0 ? '—' : x.maIpos.map((ma, i) => <>{i > 0 && ', '}<a href={linkDs(DUONG, new URLSearchParams(), { the: 'da_ghi', q: ma })}><code>{ma}</code></a></>)}</td>
+                          <td class="so">{x.soDong} · {x.soHoaDon}</td>
+                          <td>{dinhDangThoiDiem(x.lanCuoi)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+        </>
+      )}
+    </section>
+  )}
 
   <nav class="kho-dh" aria-label={t.locTrangThai}>
     {THE_DONG_NB.map(th => (
@@ -261,4 +344,6 @@ const theDau = THE_DONG_NB[0].ma;
   .ip-nhom-ten { flex: 1 1 14rem; }
   .ip-ghep { min-height: 44px; }
   .ip-nhom-than { border-top: 1px solid var(--vach); padding: .5rem .75rem 0; }
+  /* Hộp "Bán không biết tảng": mỗi loại một khối, vạch ngăn giữa các khối. */
+  .ip-tang + .ip-tang { border-top: 1px solid var(--vach); margin-top: .75rem; padding-top: .75rem; }
 </style>

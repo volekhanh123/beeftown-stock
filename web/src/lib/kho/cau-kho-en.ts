@@ -753,6 +753,12 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
   //   · ghi chú phiếu huỷ khi huỷ cả tảng
   { vi: 'Huỷ cả tảng #%: %', en: 'Write-off of whole primal #{1}: {2}' },
   { vi: 'Huỷ cả tảng #%', en: 'Write-off of whole primal #{1}' },
+  // 0097 — cấp số tảng lúc nhận hàng
+  { vi: 'Dòng % (%): số tảng không hợp lệ', en: 'Line {1} ({2}): the primal number is not valid' },
+  { vi: 'Dòng % (%): số tảng #% không phải số của phiếu này (hoặc đã bỏ) — tải lại trang',
+    en: 'Line {1} ({2}): primal #{3} is not a number of this note (or it was dropped) — reload the page' },
+  { vi: 'Dòng % (%): số tảng #% đã có ở dòng khác của phiếu',
+    en: 'Line {1} ({2}): primal #{3} is already on another line of this note' },
   // 0048 — theo dõi theo tảng
   { vi: 'Dòng % (%): ngày mổ không hợp lệ', en: 'Line {1} ({2}): the slaughter date is not valid' },
   { vi: 'Dòng % (%): ngày mổ không được sau ngày nhận hàng', en: 'Line {1} ({2}): the slaughter date cannot be after the receiving date' },

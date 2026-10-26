@@ -442,6 +442,8 @@ const buoc = phien ? buocPhien(phien.trang_thai, soanDuoc, q.get('buoc')) : 'xem
 // 0049: món theo tảng — ô mã đang giao cho phiên và số tảng đem pha.
 let oMaPhien: GiaoOMa[] = [];
 let soTangPhien = '';
+// Một lô có thể có nhiều dòng vào (mỗi vị trí một dòng — Lóc một chạm lấy cả kho lạnh và quầy): đếm lô thì dùng loVaoPhien,
+// không dùng vaoDb.length (tóm tắt "Tảng đem pha", khung ô mã).
 const loVaoPhien = [...new Set(vaoDb.map(v => v.lo_id))];
 // 0061: ô đã lên cân chưa (máy quầy báo), tem cân in / nhãn quét, nhãn mã thường. Không đọc được → null: không vẽ gì.
 let tomTatCan: TomTatCan | null = null;
@@ -637,7 +639,7 @@ const tenNguon = (ma: string) => nhanKho(TEN_NGUON_DU_KIEN_NB, ma, nn);
             <summary style="cursor:pointer;font-weight:600">
               {t.tangPha}{tangTruoc
                 ? t.chuaChonTang
-                : t.loKg(vaoDb.length, kgs(vaoDb.reduce((s, v) => s + v.so_kg, 0)))}
+                : t.loKg(loVaoPhien.length, kgs(vaoDb.reduce((s, v) => s + v.so_kg, 0)))}
             </summary>
             {dongVao.length === 0 ? (
               <p class="nb-rong">{t.khongConLo(mhVao?.ten ?? '')}</p>

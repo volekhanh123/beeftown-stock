@@ -192,6 +192,10 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/kho/danh-muc-can.ts',
   // Mã giảm giá cận date (0054): đọc kho_ma_giam — chỉ gọi qua hangChoCan ở trên, cùng client đã đăng nhập.
   'web/src/lib/kho/ma-giam.ts',
+  // Thu ngân / FABi: món cần có trên FABi (kho_ipos_menu, kho_ma_giam, kho_cai_dat, mặt hàng, ô mã), bán không biết
+  // tảng (kho_v_ipos_dong — RLS xem_gia) — chỉ gọi từ /noi-bo/kho/ban-ipos, ban-ipos/ghep và mon-fabi.csv, bằng client
+  // của nhân sự đã đăng nhập. Chỉ đọc.
+  'web/src/lib/kho/thu-ngan.ts',
   // Gửi tin Zalo ZBS (0047): cron (src/worker.ts) đăng nhập tài khoản máy may_zalo (client anon
   // riêng + signInWithPassword, sau đó là authenticated) rồi mới gọi các RPC zalo_* của máy.
   // Không bao giờ chạy vai anon: thiếu tài khoản máy thì không gọi database nào.

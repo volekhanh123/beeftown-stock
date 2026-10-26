@@ -17,10 +17,12 @@
   bàn phím có 63 phím chữ (phím tắt trang 0 tới phím 73). Tem 28: "Ngày đóng gói" in ngày in tem (Sale Info
   Print Date); ô HSD (Item 15) và chữ "HSD" đều "Luôn in" (Print=1).
 
-  Đã đối chiếu với giao diện 2.2 (giao-dien.html): tên thẻ "Cân & thông số", "Phím tắt", "Nhật ký cân", nút
-  "Hướng dẫn" ở đầu trang, nút "Chỉ in HSD khi hàng có hạn dùng" ở thẻ Mẫu tem; nút "Đọc dữ liệu từ cân qua
-  WiFi" ở khung Bắt đầu và thẻ Cân & thông số (mục 3); "Xoá hẳn qua WiFi (thử)" trong khung đỏ của thẻ Gửi giá
-  từ kho và mục 4 của thẻ Cân & thông số; ô "Cổng hai chiều" ở Cài đặt. Nút của 2.1 trích nguyên văn.
+  Đã đối chiếu với giao diện 2.11 (giao-dien.html): năm thẻ Quầy, Cân, Giảm giá, Báo cáo, Thiết lập cân — mục gập
+  "Tảng & ô mã" ở cuối thẻ Quầy; "Gửi giá từ kho" và mục gập "Tất cả hàng" ở thẻ Cân; "Mẫu tem", "Cân & thông số",
+  "Phím tắt", "Nhật ký cân" là mục gập của thẻ Thiết lập cân. Nút "Hướng dẫn" ở đầu trang, nút "Chỉ in HSD khi hàng
+  có hạn dùng" ở mục Mẫu tem; nút "Đọc dữ liệu từ cân qua WiFi" ở khung Bắt đầu và mục Cân & thông số (phần 3); "Xoá
+  hẳn qua WiFi (thử)" trong khung đỏ của Gửi giá từ kho và phần 4 của mục Cân & thông số; ô "Cổng hai chiều" ở Cài
+  đặt. Nút của 2.1 trích nguyên văn. Số mục 13–22 và neo #the-… giữ như 2.10 để liên kết cũ vẫn đúng.
 -->
 <style>
   :root {
@@ -218,15 +220,15 @@
   <ol start="12">
     <li><a href="#mo-chuong-trinh">Mở chương trình, đăng nhập, ai thấy thẻ nào</a></li>
     <li><a href="#the-quay">Thẻ Quầy</a></li>
-    <li><a href="#the-tang-o">Thẻ Tảng &amp; ô mã</a></li>
-    <li><a href="#the-giam">Thẻ Giảm giá cận date</a></li>
+    <li><a href="#the-tang-o">Thẻ Quầy — Tảng &amp; ô mã</a></li>
+    <li><a href="#the-giam">Thẻ Giảm giá</a></li>
     <li><a href="#the-bao-cao">Thẻ Báo cáo</a></li>
-    <li><a href="#the-gui-gia">Thẻ Gửi giá từ kho</a></li>
-    <li><a href="#the-hang">Thẻ Tất cả hàng (SKU)</a></li>
-    <li><a href="#the-tem">Thẻ Mẫu tem</a></li>
-    <li><a href="#the-thong-so">Thẻ Cân &amp; thông số</a></li>
-    <li><a href="#the-phim">Thẻ Phím tắt</a></li>
-    <li><a href="#the-nhat-ky">Thẻ Nhật ký cân</a></li>
+    <li><a href="#the-gui-gia">Thẻ Cân — Gửi giá từ kho</a></li>
+    <li><a href="#the-hang">Thẻ Cân — Tất cả hàng (SKU)</a></li>
+    <li><a href="#the-tem">Thẻ Thiết lập cân — Mẫu tem</a></li>
+    <li><a href="#the-thong-so">Thẻ Thiết lập cân — Cân &amp; thông số</a></li>
+    <li><a href="#the-phim">Thẻ Thiết lập cân — Phím tắt</a></li>
+    <li><a href="#the-nhat-ky">Thẻ Thiết lập cân — Nhật ký cân</a></li>
     <li><a href="#hsd-kho">HSD trên tem và hạn dùng trong kho</a></li>
     <li><a href="#doi-dia-chi">Khi chương trình báo cân đổi địa chỉ</a></li>
     <li><a href="#usb-du-phong">Nạp bằng USB — đường dự phòng, từng bước</a></li>
@@ -257,7 +259,7 @@
     <tr><td class="ma">Mã FABi</td><td>5 số của mã cân nằm trong mã vạch trên tem. Trùng ô "mã vạch" của món trên FABi.</td><td>Máy tính tiền FABi đọc mã này và trọng lượng để tính tiền.</td></tr>
   </tbody>
 </table></div>
-<p>Xem cả ba mã của mọi hàng ở thẻ <b>Tất cả hàng (SKU)</b> trong chương trình (<a href="#the-hang">mục 18</a>).</p>
+<p>Xem cả ba mã của mọi hàng ở thẻ <b>Cân</b> → <b>Tất cả hàng (SKU)</b> trong chương trình (<a href="#the-hang">mục 18</a>; quản lý, chủ).</p>
 <div class="hop luu-y">
   <p><b>FABi không đọc giá in trên tem.</b> FABi tính tiền theo mã và trọng lượng trong mã vạch, với giá của món trên FABi. Vì vậy gõ giá khác trên cân chỉ làm tem in sai giá, quầy thu tiền vẫn thu giá cũ.</p>
 </div>
@@ -323,7 +325,7 @@
       <li>Đặt một gói hàng lên rồi nhấc ra: số về lại <span class="mh">0.000</span>.</li>
       <li>Mở chương trình Beeftown Cân trên máy tính. Ô <b>Cân</b> có chấm xanh. Chấm đỏ → <a href="#doi-dia-chi">mục 24</a>.</li>
       <li>Mở thẻ <b>Quầy</b>: bỏ riêng gói hết hạn và tạo phiếu huỷ; xếp gói cận date ra trước; gửi yêu cầu lấy hàng cho món dưới mức (<a href="#the-quay">mục 13</a>).</li>
-      <li><b>Trước khi đóng gói, in tem:</b> quản lý gửi xuống cân — thẻ <b>Gửi giá từ kho</b> → <span class="n">Gửi xuống cân</span>, hoặc bật tự gửi và để chương trình mở. HSD trên tem là số ngày còn lại của lô <b>tính cho ngày gửi</b>: chưa gửi hôm nay thì HSD in ra muộn hơn hạn thật. Dưới ba ô trên cùng có khung đỏ <b>"HSD trên cân tính cho ngày …"</b> là hôm nay chưa gửi (<a href="#hsd-kho">mục 23</a>). Kho vừa đổi giá, thêm món, lóc tảng mới: cũng gửi như vậy.</li>
+      <li><b>Trước khi đóng gói, in tem:</b> quản lý gửi xuống cân — thẻ <b>Cân</b> → <span class="n">Gửi xuống cân</span>, hoặc bật tự gửi và để chương trình mở. HSD trên tem là số ngày còn lại của lô <b>tính cho ngày gửi</b>: chưa gửi hôm nay thì HSD in ra muộn hơn hạn thật. Dưới ba ô trên cùng có khung đỏ <b>"HSD trên cân tính cho ngày …"</b> là hôm nay chưa gửi (<a href="#hsd-kho">mục 23</a>). Kho vừa đổi giá, thêm món, lóc tảng mới: cũng gửi như vậy.</li>
     </ul>
   </div>
   <div class="o-trang">
@@ -331,7 +333,7 @@
     <ul class="kiem">
       <li>Không còn hàng trên khay. Bấm <kbd class="p">Cancel</kbd> vài lần cho về màn hình bán hàng.</li>
       <li>Gói hết hạn trong ngày đã bỏ riêng, đã có phiếu huỷ.</li>
-      <li>Quán dùng thẻ <b>Nhật ký cân</b>: quản lý đọc nhật ký của ngày trước khi tắt cân (<a href="#the-nhat-ky">mục 22</a>).</li>
+      <li>Quán dùng <b>Nhật ký cân</b> (thẻ Thiết lập cân): quản lý đọc nhật ký của ngày trước khi tắt cân (<a href="#the-nhat-ky">mục 22</a>).</li>
       <li>Lau khay và thân cân bằng khăn khô hoặc hơi ẩm. <b>Không xịt nước, không dội nước.</b></li>
       <li>Tắt cân bằng công tắc (không rút điện khi cân đang in hay đang nạp USB). Rút USB nếu có.</li>
       <li>Đóng cửa sổ chương trình trên máy tính (đóng cửa sổ là chương trình tắt; tự gửi cũng dừng).</li>
@@ -353,13 +355,13 @@
   <li>Bấm <kbd class="p">PLU</kbd>. Đèn <b>Single</b> sáng, ô 3 hiện đơn giá của hàng.</li>
   <li>Gõ sai: <kbd class="p">Back</kbd> xoá số, <kbd class="p">Cancel</kbd> bỏ hàng vừa gọi.</li>
 </ol>
-<p class="phu">Số PLU của mỗi hàng: xem cột PLU ở thẻ Tất cả hàng. Gói cận date: số PLU của mã giảm giá hiện ở thẻ Quầy.</p>
+<p class="phu">Số PLU của mỗi hàng: cột PLU ở thẻ Cân → Tất cả hàng (quản lý, chủ — nút <span class="n">Tải danh sách (Excel)</span> để in cho quầy). Gói cận date: số PLU của mã giảm giá hiện ở thẻ Quầy.</p>
 
 <h3>Gọi hàng bằng phím tắt</h3>
 <ul>
   <li>Hàng ở <b>tầng 1</b>: bấm phím chữ của hàng.</li>
   <li>Hàng ở <b>tầng 2</b>: bấm <kbd class="p">Shift</kbd> rồi phím chữ.</li>
-  <li>Phím nào là hàng nào: cột <b>Phím</b> ở thẻ Tất cả hàng, hoặc thẻ <b>Phím tắt</b> (<a href="#the-phim">mục 21</a>). Nên dán tên hàng lên phím.</li>
+  <li>Phím nào là hàng nào: quản lý xem cột <b>Phím</b> ở thẻ Cân → Tất cả hàng, hoặc thẻ Thiết lập cân → <b>Phím tắt</b> (<a href="#the-phim">mục 21</a>). Nên dán tên hàng lên phím.</li>
 </ul>
 
 <h3>Cân và in tem</h3>
@@ -409,7 +411,7 @@
 <h2 id="tem-hsd"><span class="so">4.</span>Tem, ngày đóng gói và HSD <span class="nhan nv">NV quầy</span> <span class="nhan ql">Quản lý</span></h2>
 
 <h3>Trên tem có gì</h3>
-<p>Mẫu tem cân đang dùng (58×40 mm) in: <b>tên hàng</b> (dòng to trên cùng), <b>số PLU</b> (góc trên bên phải), <b>trọng lượng</b>, <b>đơn giá</b>, <b>thành tiền</b>, <b>mã vạch</b> (cho FABi), <b>ngày đóng gói</b>, <b>HSD</b>, và vài dòng chữ cố định. Quản lý sửa chữ và chọn ô in ở thẻ <b>Mẫu tem</b> (<a href="#the-tem">mục 19</a>).</p>
+<p>Mẫu tem cân đang dùng (58×40 mm) in: <b>tên hàng</b> (dòng to trên cùng), <b>số PLU</b> (góc trên bên phải), <b>trọng lượng</b>, <b>đơn giá</b>, <b>thành tiền</b>, <b>mã vạch</b> (cho FABi), <b>ngày đóng gói</b>, <b>HSD</b>, và vài dòng chữ cố định. Quản lý sửa chữ và chọn ô in ở thẻ Thiết lập cân → <b>Mẫu tem</b> (<a href="#the-tem">mục 19</a>).</p>
 
 <h3>HSD là gì</h3>
 <ul>
@@ -423,7 +425,7 @@
 <p>Kiểm tra mỗi sáng bằng phím <kbd class="p">Time</kbd>. Chỉnh giờ: <a href="#ngay-gio">mục 6</a>.</p>
 
 <h3>Cách đọc ngày trên tem</h3>
-<p>Cân đang in ngày kiểu <b>năm.tháng.ngày</b>: <span class="mh">2026.10.02</span> là ngày 2 tháng 10 năm 2026 (năm đứng trước, ngày đứng sau). Quản lý có thể đổi sang kiểu ngày/tháng/năm <span class="mh">02/10/26</span> ở thẻ Cân &amp; thông số (<a href="#the-thong-so">mục 20</a>). Cân không có kiểu ngày/tháng/năm với năm đủ 4 số.</p>
+<p>Cân đang in ngày kiểu <b>năm.tháng.ngày</b>: <span class="mh">2026.10.02</span> là ngày 2 tháng 10 năm 2026 (năm đứng trước, ngày đứng sau). Quản lý có thể đổi sang kiểu ngày/tháng/năm <span class="mh">02/10/26</span> ở thẻ Thiết lập cân → Cân &amp; thông số (<a href="#the-thong-so">mục 20</a>). Cân không có kiểu ngày/tháng/năm với năm đủ 4 số.</p>
 
 <div class="hop luu-y">
   <p class="tieu-de">Quy tắc HSD ở quầy</p>
@@ -494,7 +496,7 @@
   <li>Bấm <kbd class="p">Sale</kbd> về bán hàng (báo <span class="mh">E2.05</span> thì bấm <kbd class="p">Cancel</kbd> vài lần). Bấm <kbd class="p">Time</kbd> xem lại.</li>
 </ol>
 <p class="phu">Số sau chữ W là thứ trong tuần: <span class="mh">W-0</span> Chủ nhật, <span class="mh">W-1</span> thứ Hai … <span class="mh">W-6</span> thứ Bảy.</p>
-<p>Từ bản 2.2 quản lý còn chỉnh được giờ cân từ chương trình (thẻ Cân &amp; thông số, <a href="#the-thong-so">mục 20</a>) — <span class="nhan chua">Chưa thử trên cân thật</span>. Chỉnh xong, luôn bấm <kbd class="p">Time</kbd> trên cân xem lại.</p>
+<p>Từ bản 2.2 quản lý còn chỉnh được giờ cân từ chương trình (thẻ Thiết lập cân → Cân &amp; thông số, <a href="#the-thong-so">mục 20</a>) — <span class="nhan chua">Chưa thử trên cân thật</span>. Chỉnh xong, luôn bấm <kbd class="p">Time</kbd> trên cân xem lại.</p>
 <p class="phu">Cân báo <span class="mh">E7.40</span> (lỗi đồng hồ) là pin đồng hồ trong cân yếu: gọi thợ. Trong lúc chờ, kiểm tra giờ mỗi sáng.</p>
 
 <!-- ================================================================== -->
@@ -570,7 +572,7 @@
 
 <!-- ================================================================== -->
 <h2 id="bao-cao-can"><span class="so">9.</span>Báo cáo in từ cân <span class="nhan ql">Quản lý</span> <span class="nhan sach">Theo sách của hãng</span></h2>
-<p>Quán xem doanh thu ở thẻ <b>Báo cáo</b> (theo iPOS) và nhật ký của cân ở thẻ <b>Nhật ký cân</b>. Báo cáo in từ cân chỉ để đối chiếu khi cần.</p>
+<p>Quán xem doanh thu ở thẻ <b>Báo cáo</b> (theo iPOS) và nhật ký của cân ở thẻ Thiết lập cân → <b>Nhật ký cân</b>. Báo cáo in từ cân chỉ để đối chiếu khi cần.</p>
 <div class="khung-bang"><table>
   <thead><tr><th>Báo cáo</th><th>Phím</th></tr></thead>
   <tbody>
@@ -653,19 +655,30 @@
 <p><span class="nhan moi">Mới 2.5</span> Có bản mới thì cạnh chữ "phiên bản" ở trên cùng hiện nút vàng <span class="n">Có bản mới … — Cập nhật</span>: bấm là chương trình tự tải và tự mở lại (<a href="#cap-nhat">mục 26</a>).</p>
 
 <h3>Ai thấy thẻ nào</h3>
+<p><span class="nhan moi">Mới 2.11</span> Chương trình còn <b>năm thẻ</b>. Phần ít dùng là <b>mục gập</b>: bấm vào tiêu đề có dấu ▸ để mở, bấm lần nữa để gập; mở ra chương trình mới đọc dữ liệu của mục đó.</p>
 <div class="khung-bang"><table>
   <thead><tr><th>Thẻ</th><th class="giua">NV quầy, thủ kho</th><th class="giua">Kế toán</th><th class="giua">Quản lý, chủ</th></tr></thead>
   <tbody>
     <tr><td>Quầy</td><td class="giua">✓</td><td class="giua">✓</td><td class="giua">✓</td></tr>
-    <tr><td>Tảng &amp; ô mã</td><td class="giua">✓</td><td class="giua">✓</td><td class="giua">✓</td></tr>
-    <tr><td>Giảm giá cận date</td><td class="giua">xem</td><td class="giua">xem</td><td class="giua">xem, tạo, bật / tắt mã</td></tr>
+    <tr><td>Cân</td><td class="giua">—</td><td class="giua">—</td><td class="giua">✓ Gửi giá từ kho, Tất cả hàng (SKU)</td></tr>
+    <tr><td>Giảm giá</td><td class="giua">—</td><td class="giua">—</td><td class="giua">xem, tạo, bật / tắt mã</td></tr>
     <tr><td>Báo cáo</td><td class="giua">—</td><td class="giua">✓</td><td class="giua">✓</td></tr>
-    <tr><td>Tất cả hàng (SKU)</td><td class="giua">✓</td><td class="giua">✓</td><td class="giua">✓</td></tr>
-    <tr><td>Gửi giá từ kho, Mẫu tem</td><td class="giua">—</td><td class="giua">—</td><td class="giua">✓</td></tr>
-    <tr><td>Cân &amp; thông số, Phím tắt, Nhật ký cân <span class="nhan moi">Mới 2.2</span></td><td class="giua">—</td><td class="giua">—</td><td class="giua">✓ (việc ghi xuống cân)</td></tr>
+    <tr><td>Thiết lập cân</td><td class="giua">—</td><td class="giua">—</td><td class="giua">✓ Mẫu tem, Cân &amp; thông số, Phím tắt, Nhật ký cân</td></tr>
   </tbody>
 </table></div>
-<p class="phu">Thẻ Tất cả hàng, Gửi giá từ kho, Mẫu tem chỉ hiện khi chương trình đã có file gốc của cân (bước "Bắt đầu"). Mọi việc ghi xuống cân (gửi giá, tem, thông số, giờ, phím, xoá) chỉ quản lý hoặc chủ làm, và chạy lần lượt từng việc, không chồng nhau.</p>
+<p class="phu">Thẻ Quầy có mục gập <b>Tảng &amp; ô mã</b> ở cuối thẻ (<a href="#the-tang-o">mục 14</a>). Mã giảm giá của gói cận date hiện ngay ở thẻ Quầy. Gửi giá, Tất cả hàng, Mẫu tem, Phím tắt chỉ hiện khi chương trình đã có file gốc của cân (bước "Bắt đầu"). Chưa đăng nhập kho thì chỉ có thẻ Cân (khung đăng nhập và Tất cả hàng) và Thiết lập cân. Mọi việc ghi xuống cân (gửi giá, tem, thông số, giờ, phím, xoá) chỉ quản lý hoặc chủ làm, và chạy lần lượt từng việc, không chồng nhau — 2.11 chỉ đổi chỗ trên màn hình, quyền không đổi.</p>
+<div class="khung-bang"><table>
+  <thead><tr><th>Thẻ cũ (tới 2.10)</th><th>Từ 2.11 ở đâu</th></tr></thead>
+  <tbody>
+    <tr><td>Quầy</td><td>Thẻ Quầy</td></tr>
+    <tr><td>Tảng &amp; ô mã</td><td>Thẻ Quầy → mục gập Tảng &amp; ô mã ở cuối thẻ (tự mở khi có ô cân chưa đổi tên)</td></tr>
+    <tr><td>Giảm giá cận date</td><td>Thẻ Giảm giá (quản lý, chủ)</td></tr>
+    <tr><td>Báo cáo</td><td>Thẻ Báo cáo</td></tr>
+    <tr><td>Gửi giá từ kho</td><td>Thẻ Cân, phần trên</td></tr>
+    <tr><td>Tất cả hàng (SKU)</td><td>Thẻ Cân → mục gập Tất cả hàng</td></tr>
+    <tr><td>Mẫu tem, Cân &amp; thông số, Phím tắt, Nhật ký cân</td><td>Thẻ Thiết lập cân → mục gập cùng tên</td></tr>
+  </tbody>
+</table></div>
 
 <h3 id="bat-dau">Bước "Bắt đầu" — cho chương trình biết cân đang có gì <span class="nhan ql">Quản lý</span></h3>
 <p>Làm một lần, khi chương trình chưa có file gốc:</p>
@@ -674,11 +687,12 @@
   <li>Cắm USB vào máy tính. Trong khung "Bắt đầu" của chương trình, chọn file <b>JHSCALE\A_000.TMS</b>.</li>
   <li>Chương trình báo "Đã ghi nhận file của cân: … hàng". Các thẻ hiện ra.</li>
 </ol>
-<p><span class="nhan moi">Mới 2.2</span> Chương trình đọc được thẳng từ cân qua WiFi, khỏi cần USB: nút <span class="n">Đọc dữ liệu từ cân qua WiFi</span> ngay trong khung "Bắt đầu" (và ở thẻ Cân &amp; thông số) — <span class="nhan chua">Chưa thử trên cân thật</span>. Không được thì dùng USB như trên.</p>
+<p><span class="nhan moi">Mới 2.2</span> Chương trình đọc được thẳng từ cân qua WiFi, khỏi cần USB: nút <span class="n">Đọc dữ liệu từ cân qua WiFi</span> ngay trong khung "Bắt đầu" (và ở thẻ Thiết lập cân → Cân &amp; thông số) — <span class="nhan chua">Chưa thử trên cân thật</span>. Không được thì dùng USB như trên.</p>
 <p class="phu">Khi nào làm lại: có người sửa cân không qua chương trình (nạp USB từ nơi khác, sửa giá, phím, tem ngay trên cân). Làm lại bằng mục Cài đặt → "Cập nhật file gốc từ cân" (<a href="#cai-dat">mục 26</a>).</p>
 
 <!-- ================================================================== -->
 <h2 id="the-quay"><span class="so">13.</span>Thẻ Quầy <span class="nhan nv">Mọi vai</span></h2>
+<p>Thẻ mở sẵn khi đăng nhập. <span class="nhan moi">Mới 2.11</span> NV quầy, thủ kho chỉ có thẻ này. Cuối thẻ là mục gập <b>Tảng &amp; ô mã</b> (<a href="#the-tang-o">mục 14</a>).</p>
 <p>Việc cần làm ngay ở quầy. Tự tải lại mỗi phút; nút <span class="n">Tải lại</span> để tải ngay.</p>
 <p>Bốn ô trên cùng: <b>Hết hạn — phải huỷ</b>, <b>Cận date — bán trước</b>, <b>Dưới mức — lấy thêm</b>, <b>Yêu cầu đang chờ</b>. Không có việc gì thì trang báo "Quầy ổn".</p>
 
@@ -706,7 +720,8 @@
 <p>Bên dưới: <b>Tồn quầy</b> từng món (có ô tìm), và <b>Đang chờ</b>: yêu cầu lấy hàng, hàng đang mang ra, phiếu huỷ chờ duyệt.</p>
 
 <!-- ================================================================== -->
-<h2 id="the-tang-o"><span class="so">14.</span>Thẻ Tảng &amp; ô mã <span class="nhan nv">Mọi vai</span></h2>
+<h2 id="the-tang-o"><span class="so">14.</span>Thẻ Quầy — Tảng &amp; ô mã <span class="nhan nv">Mọi vai</span></h2>
+<p><span class="nhan moi">Mới 2.11</span> Mục gập ở cuối thẻ Quầy. Dòng tiêu đề nêu ô có vấn đề cả khi đang gập: số ô đang dùng, <b>ô cân chưa đổi tên</b> (tên món và số ô), ô bán hết chờ trả ô, số lần lệch ô. Có ô cân chưa đổi tên thì mục tự mở. Chương trình đọc lại cùng lúc với thẻ Quầy (mỗi phút); nút <span class="n">Tải lại</span> trong mục để đọc ngay. Không đọc lại được (mất mạng) thì dòng tiêu đề nói <b>chưa đọc lại được</b> và giờ của lần đọc cuối — số trên dòng là của lúc đó.</p>
 <p>Mỗi <b>ô mã</b> là một hàng trên cân (ví dụ các mã 10011 tới 10019 của một phần cắt). Khi bếp lóc một tảng, kho giao một ô trống cho tảng đó. Lần gửi xuống cân sau, tên hàng của ô đổi theo tảng (tên kèm số tảng, ví dụ "… #0142") — tem in ra có số tảng, FABi bán theo mã ô, kho trừ đúng lô của tảng.</p>
 <div class="khung-bang"><table>
   <thead><tr><th>Cột</th><th>Nghĩa</th></tr></thead>
@@ -717,20 +732,21 @@
     <tr><td>Trên cân</td><td><b>Đúng</b> = tên trên cân đã theo tảng. <b>Cân chưa đổi</b> = cân vẫn in tên cũ (tem sẽ sai số tảng). "chưa lên cân" = ô chưa có trên cân.</td></tr>
   </tbody>
 </table></div>
-<p>Thấy "Cân chưa đổi": quản lý mở thẻ <b>Gửi giá từ kho</b> và gửi xuống cân, hoặc bật tự gửi ở Cài đặt. Nhân viên: báo quản lý, và cân gói của tảng đó bằng đúng ô.</p>
+<p>Thấy "Cân chưa đổi": quản lý mở thẻ <b>Cân</b> và gửi xuống cân, hoặc bật tự gửi ở Cài đặt. Nhân viên: báo quản lý, và cân gói của tảng đó bằng đúng ô.</p>
 
 <!-- ================================================================== -->
-<h2 id="the-giam"><span class="so">15.</span>Thẻ Giảm giá cận date</h2>
+<h2 id="the-giam"><span class="so">15.</span>Thẻ Giảm giá <span class="nhan ql">Quản lý, chủ</span></h2>
 <p>FABi không đọc giá trên tem — tem chỉ có mã hàng và trọng lượng. Nên <b>mỗi mức giảm là một mã cân riêng</b>, và trên FABi phải có món cùng mã, cùng giá đã giảm.</p>
 <h3>Quản lý tạo mã <span class="nhan ql">Quản lý, chủ</span></h3>
 <ol class="buoc">
   <li>Ở khung "Tạo mã giảm giá": chọn món, chọn mức (−10% tới −50%), để trống ô mã cân (chương trình tự lấy mã từ 90001), bấm <span class="n">Tạo</span>. Giá đã giảm làm tròn tới nghìn đồng.</li>
   <li>Trên FABi tạo món <b>mã món = mã cân</b>, bán theo kg, <b>giá = giá đã giảm</b>. Nút <span class="n">Tải danh sách cho FABi (Excel)</span> cho sẵn bảng.</li>
-  <li>Thẻ <b>Gửi giá từ kho</b> → <span class="n">Gửi xuống cân</span>. Cột "Trên cân" chuyển từ "Chưa gửi" sang "Đã lên cân".</li>
+  <li>Thẻ <b>Cân</b> → <span class="n">Gửi xuống cân</span>. Cột "Trên cân" chuyển từ "Chưa gửi" sang "Đã lên cân".</li>
   <li>Không dùng nữa: bấm <span class="n">Tắt</span> (bật lại được).</li>
 </ol>
 <p class="phu">Đổi giá món trong kho thì giá giảm đổi theo — sửa cả món giảm giá trên FABi.</p>
 <h3>Nhân viên quầy dùng mã <span class="nhan nv">NV quầy</span></h3>
+<p class="phu">Từ 2.11 NV quầy không có thẻ Giảm giá: mã giảm của gói cận date hiện ngay ở thẻ Quầy ("Cân lại bằng PLU …").</p>
 <p>Gói cận date → đặt lên cân → gọi hàng mã giảm (số PLU hiện ở thẻ Quầy) → in tem mới → dán theo <a href="#tem-hsd">quy tắc HSD ở mục 4</a>. Kho tự biết gói đó bán giảm giá. Bán mã giảm cho gói còn hạn xa sẽ bị báo "giảm sớm" ở Báo cáo.</p>
 
 <!-- ================================================================== -->
@@ -744,10 +760,10 @@
 </ul>
 
 <!-- ================================================================== -->
-<h2 id="the-gui-gia"><span class="so">17.</span>Thẻ Gửi giá từ kho <span class="nhan ql">Quản lý, chủ</span></h2>
+<h2 id="the-gui-gia"><span class="so">17.</span>Thẻ Cân — Gửi giá từ kho <span class="nhan ql">Quản lý, chủ</span></h2>
 <p>Đưa <b>mã cân, tên, giá bán/kg</b> từ Mặt hàng trong kho xuống cân qua WiFi, kèm <b>HSD</b> = số ngày còn lại của lô, tính cho hôm nay (<a href="#hsd-kho">mục 23</a>). Muốn đổi giá hay tên thì sửa trong kho trước.</p>
 <ol class="buoc">
-  <li>Mở thẻ. Chương trình lấy danh mục từ kho và hiện bảng thay đổi. Nút <span class="n">Xem lại thay đổi từ kho</span> để lấy lại.</li>
+  <li>Mở thẻ <b>Cân</b>. Chương trình lấy danh mục từ kho và hiện bảng thay đổi ở phần trên của thẻ. Nút <span class="n">Xem lại thay đổi từ kho</span> để lấy lại.</li>
   <li>Đọc bảng. Mỗi dòng có nhãn:
     <ul>
       <li><b>Thêm</b>: hàng mới lên cân. <b>Sửa</b>: đổi tên / giá (dòng nhỏ ghi giá trị cũ). <b>Giữ nguyên</b>: không đổi.</li>
@@ -780,25 +796,27 @@
 <p class="phu">Gửi hỏng giữa chừng (đã nối được cân) thì chương trình không tự gửi lại — người bấm quyết. Bấm gửi lại; hỏng mãi thì dùng USB.</p>
 
 <!-- ================================================================== -->
-<h2 id="the-hang"><span class="so">18.</span>Thẻ Tất cả hàng (SKU)</h2>
+<h2 id="the-hang"><span class="so">18.</span>Thẻ Cân — Tất cả hàng (SKU) <span class="nhan ql">Quản lý, chủ</span></h2>
+<p><span class="nhan moi">Mới 2.11</span> Mục gập dưới phần Gửi giá của thẻ Cân: bấm tiêu đề để mở (chưa đăng nhập kho thì mở sẵn).</p>
 <p>Mọi hàng đang có trên cân: <b>PLU</b>, <b>Phím</b> (phím tắt trên bàn phím cân), <b>Mã cân</b>, <b>Mã FABi</b>, <b>Tên trên cân</b>, <b>Giá/kg</b>, <b>Bán</b> (Cân ký / Theo gói), <b>Tình trạng</b>. <span class="nhan moi">Mới 2.2</span> thêm cột HSD (trên cân, kho muốn, và HSD lấy từ lô nào); khung đỏ khi HSD trên cân tính cho ngày trước hôm nay.</p>
 <ul>
   <li>Ô tìm: theo tên, mã cân, số PLU. Nút lọc theo tình trạng:
     <b>Khớp kho</b> · <b>Khác kho</b> (tên hoặc giá khác kho) · <b>Kho không có</b> · <b>Còn nằm lại</b> (đã bỏ khỏi kho, cân chưa xoá) · <b>Chưa lên cân</b> · <b>Không lên được</b>
     · <span class="nhan moi">Mới 2.7</span> <b>PLU trống</b> (số PLU đã gỡ hàng bằng ghi đè — dòng "KHÔNG DÙNG", hàng mới sẽ dùng lại số này; không tính là hàng).</li>
   <li><span class="n">Tải danh sách (Excel)</span>: tải bảng đang lọc. <span class="n">Tải lại</span>: đọc lại.</li>
-  <li>Muốn cân khớp kho: sang thẻ Gửi giá từ kho.</li>
+  <li>Muốn cân khớp kho: <span class="n">Gửi xuống cân</span> ở phần trên của thẻ Cân.</li>
 </ul>
 
 <!-- ================================================================== -->
-<h2 id="the-tem"><span class="so">19.</span>Thẻ Mẫu tem <span class="nhan ql">Quản lý, chủ</span></h2>
+<h2 id="the-tem"><span class="so">19.</span>Thẻ Thiết lập cân — Mẫu tem <span class="nhan ql">Quản lý, chủ</span></h2>
+<p><span class="nhan moi">Mới 2.11</span> Thẻ Thiết lập cân có bốn mục gập: Mẫu tem, Cân &amp; thông số, Phím tắt, Nhật ký cân. Bấm tiêu đề để mở; phím mũi tên dời ô tem chỉ khi mục Mẫu tem đang mở.</p>
 <p>Bên trái là sơ đồ tem đang dùng (gần đúng, vẽ với một hàng mẫu nặng 0,215 kg). Bên phải là danh sách các ô in trên tem.</p>
 <ul>
   <li><b>Bỏ chọn</b> một ô = không in ô đó. Chọn lại = in lại đúng chỗ cũ (chương trình nhớ).</li>
   <li><b>Ô chữ cố định</b> (tên quán, "Đơn giá", "HSD"…): sửa chữ ngay trong ô.</li>
   <li><span class="n">Gửi tem xuống cân</span> → trên cân cân thử một món, in một tem xem đã đổi chưa.</li>
-  <li>Nếu tem chưa đổi: bấm <span class="n">Lưu file nạp USB</span> ở thẻ Mẫu tem (<b>không cần sửa lại</b> — file đã có tem vừa gửi) rồi nạp USB (<a href="#usb-du-phong">mục 25</a>). Qua WiFi cân có nhận phần tem hay không — <span class="nhan chua">Chưa thử trên cân thật</span>; nạp USB thì cân nhận chắc chắn.</li>
-  <li>Đang gửi thì các nút và sơ đồ tem khoá lại tới khi xong. Tem trên máy đã đổi từ lúc mở thẻ (vừa gửi, vừa cập nhật file gốc) thì chương trình báo "Tem trên máy đã đổi" — mở lại thẻ rồi sửa lại.</li>
+  <li>Nếu tem chưa đổi: bấm <span class="n">Lưu file nạp USB</span> ở mục Mẫu tem (<b>không cần sửa lại</b> — file đã có tem vừa gửi) rồi nạp USB (<a href="#usb-du-phong">mục 25</a>). Qua WiFi cân có nhận phần tem hay không — <span class="nhan chua">Chưa thử trên cân thật</span>; nạp USB thì cân nhận chắc chắn.</li>
+  <li>Đang gửi thì các nút và sơ đồ tem khoá lại tới khi xong. Tem trên máy đã đổi từ lúc mở mục (vừa gửi, vừa cập nhật file gốc) thì chương trình báo "Tem trên máy đã đổi" — gập mục Mẫu tem, mở lại rồi sửa lại.</li>
   <li><span class="n">Bỏ thay đổi</span>: về như tem đang dùng.</li>
 </ul>
 <h3>Sửa tem kỹ hơn <span class="nhan moi">Mới 2.2</span></h3>
@@ -813,12 +831,12 @@
 <div class="hop luu-y"><p>Mọi lần đổi tem: <b>in thử một tem trước khi bán</b> — cả một món cân ký và một món theo gói nếu có. Xem mã vạch còn đọc được ở FABi.</p></div>
 
 <!-- ================================================================== -->
-<h2 id="the-thong-so"><span class="so">20.</span>Thẻ Cân &amp; thông số <span class="nhan moi">Mới 2.2</span> <span class="nhan ql">Quản lý, chủ</span></h2>
-<p>Thông số là các cài đặt bên trong cân. Thẻ này chỉ cho sửa vài thông số an toàn, có tả bằng tiếng Việt. Thông số khác chỉ xem.</p>
+<h2 id="the-thong-so"><span class="so">20.</span>Thẻ Thiết lập cân — Cân &amp; thông số <span class="nhan moi">Mới 2.2</span> <span class="nhan ql">Quản lý, chủ</span></h2>
+<p>Thông số là các cài đặt bên trong cân. Mục này chỉ cho sửa vài thông số an toàn, có tả bằng tiếng Việt. Thông số khác chỉ xem.</p>
 <div class="hop chua-thu"><p><span class="nhan chua">Chưa thử trên cân thật</span> Đọc qua cổng hai chiều đã chạy ở quán (03/10/2026); <b>ghi</b> (giờ, thông số, chữ, phím, tem, gỡ hàng) thì chưa thử. <span class="nhan moi">Mới 2.7</span> Mọi việc ghi đi qua cổng hai chiều rồi chương trình <b>đọc lại cân để kiểm</b>: khung xanh <b>"Cân đã nhận …"</b> chỉ khi đọc lại khớp; khung đỏ <b>"… cân CHƯA nhận"</b> thì chương trình không ghi nhận gì (gửi lại được); khung vàng <b>"chưa kiểm được"</b> khi không đọc lại được. Sau mỗi việc vẫn nên xem trên cân (bấm <kbd class="p">Time</kbd>, in thử một tem). Không được thì dùng USB hoặc làm trên cân.</p></div>
 
 <h3 id="chan-doan">Chẩn đoán WiFi <span class="nhan moi">Mới 2.7</span></h3>
-<p>Nút đầu thẻ. Làm <b>đầu tiên</b> khi gửi qua WiFi không được, hay khi người sửa chương trình nhờ. Chương trình chạy lần lượt các phép thử an toàn, hiện từng bước Đạt / Hỏng / Bỏ qua kèm kết luận, và lưu kết quả ra file trong <code>Tài liệu\Beeftown Can\chan-doan</code> — gửi file đó cho người sửa chương trình. File không có tên hay mật khẩu WiFi.</p>
+<p>Nút đầu mục. Làm <b>đầu tiên</b> khi gửi qua WiFi không được, hay khi người sửa chương trình nhờ. Chương trình chạy lần lượt các phép thử an toàn, hiện từng bước Đạt / Hỏng / Bỏ qua kèm kết luận, và lưu kết quả ra file trong <code>Tài liệu\Beeftown Can\chan-doan</code> — gửi file đó cho người sửa chương trình. File không có tên hay mật khẩu WiFi.</p>
 <ul>
   <li><b>Mặc định chỉ đọc</b>, không ghi gì xuống cân: bắt tay qua cổng hai chiều (mã máy, loại máy), đọc giờ cân, đọc danh sách hàng và so với chương trình.</li>
   <li>Tích <b>"Thử cả ghi"</b> — làm <b>ngoài giờ bán</b>, có người đứng ở cân, cân ở màn hình bán hàng: ghi lại y hệt một hàng đang có (không đổi gì); thêm hàng thử <b>"THỬ WIFI"</b> ở <b>PLU 9999</b> (mã 99998), sửa nó; gửi thử một file nhỏ qua cổng 33571; cuối cùng gỡ hàng thử — PLU 9999 thành <b>PLU trống</b>. Hàng đang bán không đổi. PLU 9999 đang có hàng thật thì chương trình bỏ qua các bước ghi thử.</li>
@@ -856,11 +874,11 @@
 </ul>
 
 <h3 id="chu-chung">Chữ cài đặt chung <span class="nhan moi">Mới 2.4</span></h3>
-<p>Mục 6 của thẻ: các dòng chữ lưu trong cân, dùng chung cho mọi hàng.</p>
+<p>Phần 6 của mục: các dòng chữ lưu trong cân, dùng chung cho mọi hàng.</p>
 <ul>
   <li><b>Tên quán</b>, <b>Tên cân</b> (ví dụ "Cân quầy 1"). Không để trống.</li>
   <li><b>Chữ trước / sau số tiền</b>: ví dụ "VND" hay "đ" sau số tiền. Chỉ in khi cân bật in đơn vị.</li>
-  <li><b>Ghi chú cân 1–8</b>: dòng chữ tự đặt — số điện thoại, địa chỉ, "Giữ lạnh 0–4 độ". In trên tem khi mẫu tem có ô "Ghi chú cân" đó; dòng nhỏ dưới ô chữ cho biết mẫu tem nào có ô in chữ này. Mẫu tem chưa có ô thì thêm ô ở thẻ Mẫu tem.</li>
+  <li><b>Ghi chú cân 1–8</b>: dòng chữ tự đặt — số điện thoại, địa chỉ, "Giữ lạnh 0–4 độ". In trên tem khi mẫu tem có ô "Ghi chú cân" đó; dòng nhỏ dưới ô chữ cho biết mẫu tem nào có ô in chữ này. Mẫu tem chưa có ô thì thêm ô ở mục Mẫu tem.</li>
   <li><b>Chữ tuỳ ý 1–8</b>: chữ hiện trên màn hình cân lúc chờ (nếu cân chọn hiện chữ này). Không in trên tem.</li>
   <li>Tối đa 40 ký tự (chữ trước / sau số tiền: 8). Tiếng Việt có dấu được; biểu tượng cảm xúc thì không.</li>
   <li><b>Tên WiFi, mật khẩu WiFi không hiện và không sửa ở đây</b>: sửa sai là cân rời WiFi. Cần đổi thì làm trên cân (<kbd class="p">Prog</kbd> → 1 → 3).</li>
@@ -868,7 +886,7 @@
 </ul>
 
 <!-- ================================================================== -->
-<h2 id="the-phim"><span class="so">21.</span>Thẻ Phím tắt <span class="nhan moi">Mới 2.2</span> <span class="nhan ql">Quản lý, chủ</span></h2>
+<h2 id="the-phim"><span class="so">21.</span>Thẻ Thiết lập cân — Phím tắt <span class="nhan moi">Mới 2.2</span> <span class="nhan ql">Quản lý, chủ</span></h2>
 <p>Xem và đổi phím chữ nào gọi hàng nào.</p>
 <ul>
   <li><b>Tầng 1</b> (bấm thẳng phím) và <b>tầng 2</b> (bấm <kbd class="p">Shift</kbd> trước). Cân còn một tầng thứ ba, chưa rõ cách gọi trên bàn phím — không dùng.</li>
@@ -881,7 +899,7 @@
 <p class="phu">Đổi phím ngay trên cân (<kbd class="p">F-Prog</kbd> + phím) thì chương trình không biết. Đổi ở đây thôi.</p>
 
 <!-- ================================================================== -->
-<h2 id="the-nhat-ky"><span class="so">22.</span>Thẻ Nhật ký cân <span class="nhan moi">Mới 2.2</span> <span class="nhan ql">Quản lý</span></h2>
+<h2 id="the-nhat-ky"><span class="so">22.</span>Thẻ Thiết lập cân — Nhật ký cân <span class="nhan moi">Mới 2.2</span> <span class="nhan ql">Quản lý</span></h2>
 <p>Cân tự ghi mỗi lần in tem, và cả những lần cân mà không in tem. Chương trình đọc nhật ký này từ file lưu ra USB (file gốc), hoặc qua WiFi (<span class="nhan chua">Chưa thử trên cân thật</span>), rồi gộp vào file <b>nhat-ky-can.tsv</b> trong thư mục dữ liệu. Đọc nhiều lần không bị trùng dòng.</p>
 <ul>
   <li>Mỗi dòng: giờ (theo đồng hồ của cân), số PLU, tên, mã cân, loại (<b>Bán</b>, <b>Trả hàng</b>, <b>Cân chưa in tem</b>…), số kg hoặc số cái, đơn giá, thành tiền.</li>
@@ -917,16 +935,16 @@
   <p class="tieu-de">Mỗi sáng, trước khi đóng gói</p>
   <ol>
     <li>Bấm <kbd class="p">Time</kbd> trên cân: ngày đúng không (<a href="#ngay-gio">mục 6</a>). Đồng hồ cân sai một ngày là HSD sai một ngày.</li>
-    <li>Mở Beeftown Cân. Đã bật tự gửi (Cài đặt) thì trong một phút chương trình tự gửi HSD mới. Chưa bật: thẻ <b>Gửi giá từ kho</b> → <span class="n">Gửi xuống cân</span>.</li>
+    <li>Mở Beeftown Cân. Đã bật tự gửi (Cài đặt) thì trong một phút chương trình tự gửi HSD mới. Chưa bật: thẻ <b>Cân</b> → <span class="n">Gửi xuống cân</span> (quản lý, chủ).</li>
     <li>Dưới ba ô trên cùng không còn khung đỏ "HSD trên cân tính cho ngày …" thì mới đóng gói, in tem.</li>
   </ol>
   <p>Khung đỏ còn đó dù đã bật tự gửi: đọc dòng "Tự gửi" ở ô Cân — kho bật / tắt in HSD của một hàng (lô hết hạn, món mới có hạn) thì tự gửi dừng, chờ quản lý xem trước rồi bấm Gửi.</p>
 </div>
 <ul>
-  <li>Chương trình ghi HSD trên cân tính cho ngày nào (Tài liệu › Beeftown Can › hsd-tinh-ngay.txt): khi gửi đủ danh sách thành công, xoá qua WiFi đọc lại khớp, nạp USB file lưu ở thẻ Gửi giá (ngày lúc <b>lưu file</b>, không phải lúc nạp), hay khi xem trước thấy HSD trên cân đã đúng số hôm nay. Gửi hỏng thì không ghi.</li>
+  <li>Chương trình ghi HSD trên cân tính cho ngày nào (Tài liệu › Beeftown Can › hsd-tinh-ngay.txt): khi gửi đủ danh sách thành công, xoá qua WiFi đọc lại khớp, nạp USB file lưu ở thẻ Cân (ngày lúc <b>lưu file</b>, không phải lúc nạp), hay khi xem trước thấy HSD trên cân đã đúng số hôm nay. Gửi hỏng thì không ghi.</li>
   <li>Nạp USB file từ màn Đồng bộ cân trên web: HSD tính cho ngày tải file — nạp trong ngày. Cập nhật file gốc từ cân mà HSD khác bản chương trình đã gửi (đặt tay trên cân): chương trình không biết ngày tính, báo đỏ tới lần gửi sau.</li>
   <li>Hàng kho không đưa lên cân được (thiếu giá…) và hàng giữ lại ngoài kho: HSD trên cân của các hàng này không được đếm ngược — đừng bật HSD tay cho chúng.</li>
-  <li>Tem vẫn in chữ "HSD" cho hàng không có hạn: thẻ Mẫu tem → nút <span class="n">Chỉ in HSD khi hàng có hạn dùng</span>.</li>
+  <li>Tem vẫn in chữ "HSD" cho hàng không có hạn: thẻ Thiết lập cân → Mẫu tem → nút <span class="n">Chỉ in HSD khi hàng có hạn dùng</span>.</li>
   <li>Muốn ngày dễ đọc: đổi kiểu ngày sang ngày/tháng/năm (<a href="#the-thong-so">mục 20</a>).</li>
 </ul>
 <p><span class="nhan chua">Chưa thử trên cân thật</span> Cân in HSD ra sao (đúng ngày không, ô trống trông thế nào) phải xem trên tem thật: in một tem món có lô, so HSD với hạn của lô trong kho.</p>
@@ -966,7 +984,7 @@
 </ul>
 <h3>Trên máy tính</h3>
 <ol class="buoc">
-  <li>Bấm <span class="n">Lưu file để nạp USB</span> (thẻ Gửi giá từ kho, trong khung đỏ) hoặc <span class="n">Lưu file nạp USB</span> (thẻ Mẫu tem, Cân &amp; thông số, Phím tắt). Tem vừa gửi mà chưa đổi: bấm ở thẻ Mẫu tem, không cần sửa lại — file đã có tem vừa gửi. Ở thẻ Cân &amp; thông số và Phím tắt, file có cả thay đổi đang sửa trên màn hình. Chương trình lưu file và hiện đường dẫn (thư mục <b>cho-usb</b>).</li>
+  <li>Bấm <span class="n">Lưu file để nạp USB</span> (thẻ Cân, trong khung đỏ) hoặc <span class="n">Lưu file nạp USB</span> (thẻ Thiết lập cân: mục Mẫu tem, Cân &amp; thông số, Phím tắt). Tem vừa gửi mà chưa đổi: bấm ở mục Mẫu tem, không cần sửa lại — file đã có tem vừa gửi. Ở mục Cân &amp; thông số và Phím tắt, file có cả thay đổi đang sửa trên màn hình. Chương trình lưu file và hiện đường dẫn (thư mục <b>cho-usb</b>).</li>
   <li>Bấm <span class="n">Mở thư mục chứa file</span> (hoặc <span class="n">Tải file về</span>).</li>
   <li>Cắm USB (FAT32). Trên USB, mở thư mục <b>JHSCALE</b> (chưa có thì tạo thư mục tên JHSCALE).</li>
   <li>Muốn giữ bản cũ trên USB: chép <b>A_000.TMS</b> cũ ra máy tính trước.</li>
@@ -1000,7 +1018,7 @@
     <tr><td><span class="nhan moi">Mới 2.8</span> Tự chỉnh giờ cân</td><td>Bật sẵn. Xem <a href="#tu-dat-gio">mục 20 — Giờ cân</a>.</td></tr>
     <tr><td><span class="nhan moi">Mới 2.8</span> Nghe tín hiệu cân phát (UDP)</td><td>Tắt sẵn. Bật khi cân hay đổi địa chỉ và chưa giữ cố định được trong router. Xem <a href="#nghe-udp">mục 24</a> (hộp hỏi tường lửa).</td></tr>
     <tr><td>Chi nhánh</td><td>Tài khoản có nhiều chi nhánh: chọn đúng chi nhánh của quầy.</td></tr>
-    <tr><td>Cập nhật file gốc từ cân</td><td>Cân bị sửa không qua chương trình. Lưu cân ra USB (<a href="#usb-tren-can">mục 8</a>), chọn file ở đây. <span class="nhan moi">Mới 2.2</span> Hoặc thẻ Cân &amp; thông số → <span class="n">Đọc dữ liệu từ cân qua WiFi</span> (<span class="nhan chua">Chưa thử trên cân thật</span>).</td></tr>
+    <tr><td>Cập nhật file gốc từ cân</td><td>Cân bị sửa không qua chương trình. Lưu cân ra USB (<a href="#usb-tren-can">mục 8</a>), chọn file ở đây. <span class="nhan moi">Mới 2.2</span> Hoặc thẻ Thiết lập cân → Cân &amp; thông số → <span class="n">Đọc dữ liệu từ cân qua WiFi</span> (<span class="nhan chua">Chưa thử trên cân thật</span>).</td></tr>
     <tr><td>Dây RS232</td><td>Dây cáp nối thẳng máy tính với cân. <span class="n">Kiểm tra dây</span> đã chạy trên cân thật. <span class="nhan moi">Mới 2.10</span> <span class="n">Dùng dây làm đường chính</span> (quản lý, chủ): mọi việc với cân (gửi giá, đọc hàng, gỡ hàng, thông số, tem, giờ, nhật ký) đi qua dây, không qua WiFi. <b>Mỗi lần gửi hay đọc, trên cân bấm <kbd class="p">Prog</kbd> → <kbd class="p">4</kbd> → <kbd class="p">3</kbd> trước</b> (cân chỉ nghe dây ở màn hình đó), xong bấm <kbd class="p">Sale</kbd> để bán tiếp. Cân không ở đó: chương trình báo, không gửi gì. Khi dùng dây không có giữ kết nối, tự chỉnh giờ, tự đọc nhật ký. <span class="n">Về lại WiFi</span>: như trước. Gửi / đọc qua dây <span class="nhan chua">Chưa thử trên cân thật</span>.</td></tr>
     <tr><td>Phiên bản: <span class="n">Kiểm tra bản mới</span>, <span class="n">Cập nhật</span> <span class="nhan moi">Mới 2.5</span></td><td>Xem có bản mới không, cập nhật chương trình. Xem ngay dưới bảng này.</td></tr>
     <tr><td><span class="n">Mở thư mục dữ liệu</span></td><td>Xem các file của chương trình.</td></tr>
@@ -1038,16 +1056,16 @@
     <tr><td>"Cân nhận dữ liệu quá chậm", "Mất kết nối với cân khi đang gửi", "Cân đóng kết nối trước khi nhận hết"</td><td>Gửi lại. Cân phải ở màn hình bán hàng. Hỏng mãi: USB (<a href="#usb-du-phong">mục 25</a>).</td></tr>
     <tr><td>Đã gửi mà cân vẫn giá cũ</td><td>Gọi lại hàng trên cân (gõ số PLU rồi <kbd class="p">PLU</kbd>). Vẫn cũ: gửi lại; không được thì USB.</td></tr>
     <tr><td><span class="nhan moi">Mới 2.6</span> "Đã gửi … hàng qua WiFi nhưng đọc lại thấy cân CHƯA nhận …"</td><td>Cân ở màn hình bán hàng (đèn Sale sáng, không ở menu Prog), không ai đang bấm cân → bấm Gửi xuống cân thêm một lần. Vẫn vậy: Lưu file để nạp USB rồi nạp (<a href="#usb-du-phong">mục 25</a>), sau đó Cài đặt → Cập nhật file gốc từ cân. Tự gửi chờ tới lúc gửi được.</td></tr>
-    <tr><td><span class="nhan moi">Mới 2.6</span> "Đã gửi … hàng, nhưng chưa kiểm được cân đã nhận chưa"</td><td>Gọi thử một PLU vừa đổi trên cân. Đúng giá mới: được. Giá cũ: gửi lại hoặc USB. Muốn chương trình biết chắc: thẻ Cân &amp; thông số → Đọc dữ liệu từ cân qua WiFi, hoặc lưu cân ra USB rồi Cập nhật file gốc từ cân.</td></tr>
+    <tr><td><span class="nhan moi">Mới 2.6</span> "Đã gửi … hàng, nhưng chưa kiểm được cân đã nhận chưa"</td><td>Gọi thử một PLU vừa đổi trên cân. Đúng giá mới: được. Giá cũ: gửi lại hoặc USB. Muốn chương trình biết chắc: thẻ Thiết lập cân → Cân &amp; thông số → Đọc dữ liệu từ cân qua WiFi, hoặc lưu cân ra USB rồi Cập nhật file gốc từ cân.</td></tr>
     <tr><td>"… hàng sẽ còn nằm trên cân"</td><td>WiFi không xoá được. USB (<a href="#usb-du-phong">mục 25</a>).</td></tr>
     <tr><td>"Chưa đăng nhập kho, hoặc phiên đăng nhập đã hết"</td><td>Đăng nhập lại.</td></tr>
     <tr><td>"Không mở được … Máy tính có vào mạng internet không?", "Mất kết nối mạng"</td><td>Máy tính mất internet. Kiểm tra WiFi / internet rồi thử lại.</td></tr>
     <tr><td>"Chương trình không trả lời (mã …). Mở lại chương trình."</td><td>Đóng cửa sổ, mở lại BeeftownCan.exe.</td></tr>
     <tr><td>"Chưa có file gốc của cân"</td><td>Làm bước "Bắt đầu" (<a href="#bat-dau">mục 12</a>).</td></tr>
     <tr><td>"… chỉ dành cho quản lý hoặc chủ"</td><td>Nhờ quản lý đăng nhập làm việc đó.</td></tr>
-    <tr><td>Thẻ Tảng &amp; ô mã: "Cân chưa đổi"</td><td>Quản lý gửi giá từ kho.</td></tr>
-    <tr><td>Gửi tem xong, tem in ra chưa đổi</td><td>Thẻ Mẫu tem → <span class="n">Lưu file nạp USB</span> (không cần sửa lại — file đã có tem vừa gửi) → nạp USB.</td></tr>
-    <tr><td>"Tem trên máy đã đổi. Mở lại thẻ Tem rồi sửa lại."</td><td>Tem đã đổi từ lúc mở thẻ (vừa gửi, thẻ khác gửi, vừa cập nhật file gốc). Mở lại thẻ Mẫu tem, sửa lại.</td></tr>
+    <tr><td>Thẻ Quầy, mục Tảng &amp; ô mã: "Cân chưa đổi"</td><td>Quản lý gửi giá từ kho (thẻ Cân → Gửi xuống cân), hoặc bật tự gửi.</td></tr>
+    <tr><td>Gửi tem xong, tem in ra chưa đổi</td><td>Thẻ Thiết lập cân → Mẫu tem → <span class="n">Lưu file nạp USB</span> (không cần sửa lại — file đã có tem vừa gửi) → nạp USB.</td></tr>
+    <tr><td>"Tem trên máy đã đổi. Mở lại thẻ Tem rồi sửa lại."</td><td>Tem đã đổi từ lúc mở mục Mẫu tem (vừa gửi, mục khác gửi, vừa cập nhật file gốc). Câu báo dùng tên cũ của mục Mẫu tem: gập mục Mẫu tem (thẻ Thiết lập cân), mở lại, sửa lại.</td></tr>
     <tr><td>"Cân ở … có mã máy …, không phải cân chương trình vẫn dùng"</td><td>Cân ở địa chỉ đó là cân khác. Không làm gì thêm; xem <a href="#doi-dia-chi">mục 24</a>. Vừa thay cân: Cài đặt → gõ lại địa chỉ cân → <span class="n">Lưu cài đặt</span>.</td></tr>
     <tr><td>Khung đỏ "Hàng trên cân chưa rõ"</td><td>Lần xoá qua WiFi trước hỏng sau khi đã gửi lệnh xoá — cân có thể thiếu hàng. Nạp USB ngay (<a href="#usb-du-phong">mục 25</a>), hoặc bấm <span class="n">Gửi xuống cân</span> để gửi lại cả danh sách.</td></tr>
     <tr><td>Việc qua WiFi của bản 2.2 báo không được</td><td>Đọc câu báo, làm theo đường USB chương trình chỉ. Không bấm đi bấm lại.</td></tr>
@@ -1081,11 +1099,11 @@
     <tr><td><span class="nhan moi">Mới 2.7</span> <b>Gỡ khỏi cân (ghi đè)</b>: số PLU còn nằm lại thành dòng trống "KHÔNG DÙNG (PLU trống)", phím gọi số đó được bỏ</td><td>Chương trình báo đã đọc lại và khớp. Trên cân: gọi số PLU đó ra "KHÔNG DÙNG", giá 0.</td><td>Bấm lại (ghi đè lần nữa không hại gì), hay nạp USB.</td></tr>
     <tr><td><b>Xoá hẳn qua WiFi</b> (chỉ khi có hàng "Còn nằm lại"; bấm <span class="n">Đọc thông tin cân</span> một lần trước để chương trình nhớ mã máy của cân): chương trình đọc danh sách trên cân — cân có hàng chương trình không biết thì dừng, chưa xoá — lưu một bản sao vào <b>da-gui</b>, xoá cả danh sách, gửi lại đúng danh sách đã xem trước, rồi đọc lại để so. <span class="nhan moi">Mới 2.7</span> Hỏng giữa chừng: tự gửi lại cả danh sách (tới 3 lần) rồi đọc lại.</td><td>Chương trình báo đã đọc lại và khớp. Trên cân: số PLU của hàng đã bỏ không còn; các hàng đang bán vẫn gọi được.</td><td>Báo "nạp USB ngay" (tự gửi lại vẫn chưa đủ hàng): nạp USB <b>ngay</b> (<a href="#usb-du-phong">mục 25</a>).</td></tr>
     <tr><td><b>Đọc giờ cân và chỉnh giờ cân</b> theo giờ Việt Nam</td><td>Bấm <kbd class="p">Time</kbd> trên cân thấy đúng giờ.</td><td>Chỉnh trên cân (<a href="#ngay-gio">mục 6</a>).</td></tr>
-    <tr><td><b>Đọc nhật ký bán qua WiFi</b></td><td>Thẻ Nhật ký cân có dòng mới của hôm nay, khớp với số tem đã in.</td><td>Lưu cân ra USB, chọn file — chương trình đọc nhật ký trong file đó.</td></tr>
+    <tr><td><b>Đọc nhật ký bán qua WiFi</b></td><td>Mục Nhật ký cân (thẻ Thiết lập cân) có dòng mới của hôm nay, khớp với số tem đã in.</td><td>Lưu cân ra USB, chọn file — chương trình đọc nhật ký trong file đó.</td></tr>
     <tr><td><b>Thông tin cân</b> (tên máy, mã máy, phiên bản)</td><td>Hiện ra đúng phiên bản V3.14E8.</td><td>Không ảnh hưởng việc bán.</td></tr>
     <tr><td><span class="nhan moi">Mới 2.8</span> <b>Giữ kết nối với cân</b>: một đường nối giữ mở, hỏi giờ cân mỗi 30 giây; mọi việc đi trên đường đó</td><td>Ô Cân xanh, dòng "Đang nối cân … cân trả lời lúc …" đổi giờ mỗi lần làm mới; gửi giá vẫn báo "cân đã nhận".</td><td>Ô Cân đỏ mãi dù cân bật, hay gửi giá báo lỗi mà trước đây không: bỏ đánh dấu "Giữ kết nối với cân" ở Cài đặt (về cách của 2.7), báo người lo chương trình.</td></tr>
-    <tr><td><span class="nhan moi">Mới 2.8</span> <b>Tự đọc nhật ký khi cân báo in tem</b> (thông số 58)</td><td>In một tem; trong chừng 10 giây ô Cân ghi "tự đọc lúc … (cân báo vừa in tem), 1 dòng mới"; thẻ Nhật ký cân có dòng đó.</td><td>Không thấy: cân không tự báo — bấm <span class="n">Đọc qua WiFi</span> ở thẻ Nhật ký cân như trước.</td></tr>
-    <tr><td><span class="nhan moi">Mới 2.8</span> <b>Tự chỉnh giờ cân</b> mỗi ngày</td><td>Ô Cân ghi "Đã tự chỉnh giờ cân theo giờ Việt Nam …"; bấm <kbd class="p">Time</kbd> trên cân thấy đúng giờ.</td><td>Chỉnh tay ở thẻ Cân &amp; thông số hay trên cân (<a href="#ngay-gio">mục 6</a>); bỏ đánh dấu "Tự chỉnh giờ cân".</td></tr>
+    <tr><td><span class="nhan moi">Mới 2.8</span> <b>Tự đọc nhật ký khi cân báo in tem</b> (thông số 58)</td><td>In một tem; trong chừng 10 giây ô Cân ghi "tự đọc lúc … (cân báo vừa in tem), 1 dòng mới"; mục Nhật ký cân có dòng đó.</td><td>Không thấy: cân không tự báo — bấm <span class="n">Đọc qua WiFi</span> ở mục Nhật ký cân (thẻ Thiết lập cân) như trước.</td></tr>
+    <tr><td><span class="nhan moi">Mới 2.8</span> <b>Tự chỉnh giờ cân</b> mỗi ngày</td><td>Ô Cân ghi "Đã tự chỉnh giờ cân theo giờ Việt Nam …"; bấm <kbd class="p">Time</kbd> trên cân thấy đúng giờ.</td><td>Chỉnh tay ở thẻ Thiết lập cân → Cân &amp; thông số hay trên cân (<a href="#ngay-gio">mục 6</a>); bỏ đánh dấu "Tự chỉnh giờ cân".</td></tr>
     <tr><td><span class="nhan moi">Mới 2.8</span> <b>Nghe tín hiệu cân phát</b> (UDP 33584)</td><td>Ô Cân ghi "Nghe tín hiệu cân: 192.168.1.… lúc …".</td><td>"Chưa nghe thấy cân phát": tường lửa đang chặn, hay cân không phát — chương trình dò WiFi như trước.</td></tr>
   </tbody>
 </table></div>
@@ -1101,8 +1119,8 @@
 
 <h3>Việc khác chưa thử trên cân thật</h3>
 <ul>
-  <li><b>Gửi tem qua WiFi</b> (thẻ Mẫu tem, cả phần sửa tem mới của 2.2; 2.7: qua cổng hai chiều, đọc lại để kiểm): cân có nhận phần tem không. Biết bằng khung xanh và in thử một tem. Không được: USB.</li>
-  <li><b>Gửi thông số, chữ cài đặt chung và phím tắt qua WiFi</b> (thẻ Cân &amp; thông số, Phím tắt; 2.7: qua cổng hai chiều, đọc lại để kiểm): biết bằng khung xanh, in thử tem (kiểu ngày, ô Ghi chú cân), bấm thử phím. Không được: USB.</li>
+  <li><b>Gửi tem qua WiFi</b> (mục Mẫu tem, cả phần sửa tem mới của 2.2; 2.7: qua cổng hai chiều, đọc lại để kiểm): cân có nhận phần tem không. Biết bằng khung xanh và in thử một tem. Không được: USB.</li>
+  <li><b>Gửi thông số, chữ cài đặt chung và phím tắt qua WiFi</b> (mục Cân &amp; thông số, Phím tắt; 2.7: qua cổng hai chiều, đọc lại để kiểm): biết bằng khung xanh, in thử tem (kiểu ngày, ô Ghi chú cân), bấm thử phím. Không được: USB.</li>
   <li><b>HSD in trên tem</b>: in đúng ngày không, ô HSD của món không có hạn trông thế nào. <b>HSD đếm ngược theo lô</b>: gửi mỗi ngày, HSD in ra có đúng hạn của lô trong kho không.</li>
   <li><b>Kiểu ngày ngày/tháng/năm</b>: in ra đúng như bảng ở <a href="#the-thong-so">mục 20</a> không.</li>
   <li><b>Nạp USB cần bấm <kbd class="p">Accu/Confirm</kbd> lần thứ ba</b> hay không (<a href="#nap-usb">mục 8</a>). Ai nạp lần tới, ghi lại đúng số lần bấm.</li>
@@ -1117,7 +1135,7 @@
   <thead><tr><th>Chữ trên cân / trong tài liệu</th><th>Nghĩa</th></tr></thead>
   <tbody>
     <tr><td>PLU</td><td>Một hàng trên cân; số PLU = số thứ tự của hàng</td></tr>
-    <tr><td>SKU</td><td>Một mặt hàng (tên thẻ "Tất cả hàng (SKU)")</td></tr>
+    <tr><td>SKU</td><td>Một mặt hàng (mục "Tất cả hàng (SKU)" ở thẻ Cân)</td></tr>
     <tr><td>Accu/Confirm</td><td>Cộng dồn / xác nhận</td></tr>
     <tr><td>Amend</td><td>Sửa / lưu</td></tr>
     <tr><td>Cancel</td><td>Huỷ / thoát</td></tr>

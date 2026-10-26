@@ -12,6 +12,13 @@
  * Mỗi nút một form, một ma_gui riêng: bấm hai lần không mở hai phiên.
  * Còn phiên nháp đang dở thì hiện lên trước — làm tiếp, khỏi mở phiên mới.
  *
+ * MÓN THEO DÕI THEO TẢNG — "LÓC #0142" MỘT CHẠM: mục "Tảng lóc được" (tảng có
+ * số, không còn đang ủ, còn chỗ lóc được, chưa nằm trong phiên nháp nào —
+ * tangLocDuoc, cùng luật với nút "Lóc" ở Tảng · ủ) mỗi tảng một nút. Bấm
+ * (viec=loc_tang, cả từ Tảng · ủ) → locMotTang mở phiên với ĐÚNG lô đó, gắn
+ * công thức khi loại tảng có một công thức, giao ô mã luôn → vào thẳng bước 2,
+ * kể cả khi giao ô hỏng (câu đỏ). Không mở được thì báo ở trang đã bấm.
+ *
  * Chỉ kg và số tảng — không tiền (thủ kho không thấy tiền, 0031).
  */
 import Kho from '../../../../layouts/Kho.astro';
@@ -20,8 +27,10 @@ import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.t
 import { docCongThuc, type CongThuc } from '../../../../lib/kho/danh-muc.ts';
 import { docTon, type DongTon } from '../../../../lib/kho/ton.ts';
 import {
-  docDanhSachPhienPha, taoPhienPha, tomTatTang, vaoMacDinh, type PhienPhaTom,
+  choLocTheoLo, congThucMot, docDanhSachPhienPha, docLoCuaPhien, locMotTang, taoPhienPha, tangLocDuoc, tomTatTang, vaoMacDinh,
+  type PhienPhaTom,
 } from '../../../../lib/kho/pha-loc.ts';
+import { cauConU, docTangTon, soTangChu, type TangTon } from '../../../../lib/kho/tang.ts';
 import { cauLoiKho, dinhDangKg, dinhDangNgay, kqHai, laUuid, type HaiThuTieng, type KetQua } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
@@ -53,34 +62,60 @@ const ch = dichNB(nn, {
     en: 'One type of primal per session. If you cut two types, make two sessions — so their yields do not get mixed up.',
   },
   veDanhSach: { vi: '← Danh sách phiên pha lóc', en: '← Butchery sessions' },
+  tangLoc: { vi: (n: number) => `Tảng lóc được · ${n} tảng`, en: (n: number) => `Primals you can cut · ${n}` },
+  tangLocGoiY: {
+    vi: 'Bấm tảng sắp lóc: phiên mở đúng tảng đó, khỏi chọn lô; ô mã giao luôn khi tảng có một công thức.',
+    en: 'Press the primal you are about to cut: the session opens with that primal, no lot to choose; rotating codes are assigned right away when it has one recipe.',
+  },
+  loc: { vi: 'Lóc', en: 'Cut' },
+  khongDocTang: {
+    vi: 'Chưa đọc được danh sách tảng lóc được — tải lại trang. Vẫn mở phiên được bằng nút loại tảng ở dưới.',
+    en: 'Could not read the primals you can cut — reload the page. You can still open a session with the primal type buttons below.',
+  },
 });
 
 let bao: KetQua | null = k.bao;
+const form = await docFormGui(Astro);
+const viec = form ? String(form.get('viec') ?? '') : '';
+// "Lóc #0142" (mục Tảng lóc được ở đây, nút Lóc ở Tảng · ủ): locMotTang tự đọc lại đúng tảng đó, công thức, ô mã và
+// phiên nháp ngay lúc bấm — không dùng danh sách trang đọc để hiện; đọc hỏng thì không ghi gì. Có id phiên (kể cả khi
+// giao ô hỏng: câu đỏ) → vào thẳng bước 2. Không thì báo ở trang đã bấm: ve chỉ nhận đúng "tang" (Tảng · ủ).
+if (form && viec === 'loc_tang') {
+  const kq = await locMotTang(k.client, cn.id, { maGui: String(form.get('ma_gui') ?? ''), loId: String(form.get('lo_id') ?? '') });
+  if (kq.id) return chuyenHuong(Astro, `/noi-bo/kho/pha-loc/${kq.id}`, kq);
+  if (form.get('ve') === 'tang') return chuyenHuong(Astro, '/noi-bo/kho/tang', kq);
+  bao = kq;
+}
+
 let loiDoc = k.loiDoc;
 let ton: DongTon[] = [];
 let congThuc: CongThuc[] = [];
 let dangDo: PhienPhaTom[] = [];
+// Tảng lóc được: đọc hỏng (null) thì không hiện nút nào, có câu "chưa đọc được" — nút theo loại tảng vẫn dùng được.
+let tangTon: TangTon[] | null = null;
 try {
-  [ton, congThuc, dangDo] = await Promise.all([
+  [ton, congThuc, dangDo, tangTon] = await Promise.all([
     docTon(k.client, cn.id), docCongThuc(k.client), docDanhSachPhienPha(k.client, cn.id, 'nhap'),
+    docTangTon(k.client, cn.id).catch(() => null),
   ]);
 } catch (e) {
   loiDoc = cauLoiKho(e, ch.khongDoc);
 }
 const tang = tomTatTang(ton);
+// Tảng đang nằm trong phiên nháp không có nút mới — phiên đó đã có ở "Phiên đang dở".
+const loNhap = tangTon && !loiDoc ? await docLoCuaPhien(k.client, dangDo).catch(() => null) : null;
+const tangLoc = tangTon && loNhap ? tangLocDuoc(tangTon, choLocTheoLo(ton), loNhap) : [];
+const loiTangLoc = !loiDoc && (!tangTon || !loNhap);
 
-const form = await docFormGui(Astro);
-if (form) {
-  const viec = String(form.get('viec') ?? '');
+if (form && viec !== 'loc_tang') {
   const mhId = String(form.get('mat_hang_vao_id') ?? '');
   if (viec !== 'tao' || !laUuid(mhId)) {
     bao = kqHai(false, CAU.viecSai);
   } else {
     // Đúng một công thức đang dùng → gắn luôn. Nhiều công thức: để trống,
     // database tự lấy công thức đầu tiên khi tính thu hồi dự kiến.
-    const ct = congThuc.filter(c => c.mat_hang_vao_id === mhId && c.dang_dung);
     const kq = await taoPhienPha(k.client, cn.id, String(form.get('ma_gui') ?? ''), mhId,
-      ct.length === 1 ? ct[0].id : null, vaoMacDinh(ton, mhId));
+      congThucMot(congThuc, mhId), vaoMacDinh(ton, mhId));
     if (kq.ok && kq.id) return chuyenHuong(Astro, `/noi-bo/kho/pha-loc/${kq.id}`, kq);
     bao = kq;
   }
@@ -105,6 +140,29 @@ if (form) {
       </div>
     </section>
   )}
+
+  {tangLoc.length > 0 && (
+    <section class="nb-the" id="tang-loc">
+      <h2 style="margin-top:0">{ch.tangLoc(tangLoc.length)}</h2>
+      <p class="nb-dan" style="margin-top:0">{ch.tangLocGoiY}</p>
+      <div class="pl-luoi">
+        {tangLoc.map(x => (
+          <form method="POST">
+            <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
+            <input type="hidden" name="lo_id" value={x.lo_id} />
+            <button type="submit" name="viec" value="loc_tang" class="nb-nut phu pl-nut">
+              <b>{ch.loc}{' '}{soTangChu(x.so_tang)}</b>
+              <span>
+                {x.ten_hang}{' · '}{dinhDangKg(x.kg_loc, nn)}{' kg'}
+                {cauConU(x, nn) && <>{' · '}{cauConU(x, nn)}</>}
+              </span>
+            </button>
+          </form>
+        ))}
+      </div>
+    </section>
+  )}
+  {loiTangLoc && <div class="nb-bao luu-y" role="status"><p>{ch.khongDocTang}</p></div>}
 
   <h2>{ch.chonTang}</h2>
   {tang.length === 0 ? (

@@ -188,7 +188,7 @@ export const THONG_SO: MucThongSo[] = [
   {
     id: 0, ten: 'Mẫu tem mặc định', nhom: 'In tem', kieu: 'so', toiThieu: 0, toiDa: 99, chiXem: true,
     moTa: 'Số mẫu tem cân dùng để in tem hàng khi mặt hàng không chọn mẫu riêng. 0 = không in tem.',
-    canhBao: 'Chỉ xem: sửa tem ở thẻ Mẫu tem. Đặt sai số thì cân in theo mẫu khác hoặc không in tem.',
+    canhBao: 'Chỉ xem: sửa tem ở thẻ Thiết lập cân → Mẫu tem. Đặt sai số thì cân in theo mẫu khác hoặc không in tem.',
   },
   {
     id: 5, ten: 'Mẫu tem tổng', nhom: 'In tem', kieu: 'so', toiThieu: 0, toiDa: 99, chiXem: true,
