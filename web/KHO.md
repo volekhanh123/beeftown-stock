@@ -343,6 +343,18 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
 | `/noi-bo/kho/pha-loc/<id>?buoc=ket-qua` | `pha_loc` | Bước 3: 4 số lớn — thu hồi, dự kiến (theo công thức / trung bình 30 ngày), trung bình 30 ngày, hao hụt. **Nút Chốt chỉ ở đây.** Thấp quá ngưỡng thì báo trước khi chốt (chốt vẫn được). Bảng giá vốn chỉ với `xem_gia` |
 | `/noi-bo/kho/pha-loc/<id>?buoc=xong` | `pha_loc` | Sau chốt: "Chuyển N khay ra quầy ngay" (đơn vị đếm của món; các lô khác đơn vị thì chữ chung "gói" — `goiRaQuay` trả `donVi`) — mỗi lô mới còn ở kho lạnh một nút `/noi-bo/kho/xuat/moi?loai=chuyen&tu=…&lo=…` |
 
+- **Lóc một chạm "Lóc #0142" (món theo dõi theo tảng, không migration)**: mục **Tảng lóc được** ở `/pha-loc/moi` và nút
+  **Lóc** dưới số tảng ở Tảng · ủ (vai `pha_loc`) — cùng luật `tangLocDuoc`: có số tảng, không còn đang ủ, còn chỗ lóc
+  được (bỏ chờ hủy, đang mang ra quầy), chưa nằm trong phiên nháp. Bấm (`viec=loc_tang`; từ Tảng · ủ thêm `ve=tang`) →
+  `locMotTang` tự đọc lại tảng, chỗ lóc được, công thức, ô mã, mặt hàng ngừng dùng, phiên nháp của lô (đọc hỏng → không
+  ghi gì), mở phiên với đúng lô đó ở mọi chỗ lóc được (`kho_luu_phien_pha`, `ma_gui` theo nút), gắn công thức khi loại
+  tảng có một công thức và gọi `kho_giao_o_ma` khi công thức có phần cắt mang ô còn dùng (cùng luật `m.dang_dung` của hàm)
+  → vào thẳng bước 2, kể cả khi giao ô hỏng (database từ chối: câu đỏ "chưa giao được ô mã"; mất mạng / ném: câu đỏ
+  "Không chắc đã giao ô mã" — database có thể đã giao, xem khung Ô mã của tảng này). Nhiều công thức: không tự giao, câu
+  nhắc chọn công thức. Tảng đang lóc dở bấm lại → trả phiên đó và gọi
+  lại giao ô (tự lành); cùng `ma_gui` mà database báo đã có → đọc lại đúng phiên đó (đã hủy / đã chốt → "Trang đã cũ").
+  Nút chỉ có sau khi phiếu nhận được duyệt (lô sinh lúc duyệt). `test-kho-loc-tang-web.mjs`.
+
 - **Dòng quét** (`kho_phien_pha_ra.tu_quet`): mỗi món một dòng, gói = số nhãn (món không đếm gói thì 0),
   kg = tổng kg trên nhãn, nơi để = `kho_mat_hang.noi_de_sau_pha` (trống = kho lạnh; chi nhánh không có
   quầy thì về kho lạnh — `kho_vi_tri_sau_pha`, bản web `viTriSauPha`). `kho_luu_phien_pha` chỉ thay các
