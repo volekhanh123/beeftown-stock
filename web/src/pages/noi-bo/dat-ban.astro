@@ -66,8 +66,9 @@ const t = dichNB(nn, {
   locTatCa:    { vi: 'Tất cả', en: 'All' },
   rongCho:     { vi: 'Không có yêu cầu nào đang chờ gọi.', en: 'No requests waiting for a call.' },
   rong:        { vi: 'Không có yêu cầu nào trong mục này.', en: 'No requests in this view.' },
-  rongPhu:     { vi: 'Trống cũng có thể nghĩa là form đặt bàn chưa được bật. Kiểm tra công tắc ',
-                 en: 'Empty can also mean the booking form is not switched on. Check the switch ' },
+  rongPhu:     { vi: 'Trống cũng có thể nghĩa là chưa bật nhận đặt bàn. Bật ở màn ',
+                 en: 'Empty can also mean online bookings are not switched on. Turn them on in ' },
+  caiDat:      { vi: 'Cài đặt', en: 'Settings' },
   chuaTen:     { vi: 'Khách chưa cho tên', en: 'Guest gave no name' },
   dienThoai:   { vi: 'Điện thoại', en: 'Phone' },
   khiNao:      { vi: 'Khi nào', en: 'When' },
@@ -161,7 +162,7 @@ const BO_LOC = [
         {loc === 'cho' ? t.rongCho : t.rong}
       </p>
       <p style="margin:.5rem 0 0;font-size:.85rem">
-        {t.rongPhu}<a href="/noi-bo/noi-dung"><code>form_dat_ban_dang_mo</code></a>.
+        {t.rongPhu}<a href="/noi-bo/cai-dat">{t.caiDat}</a>.
       </p>
     </div>
   )}

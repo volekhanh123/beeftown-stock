@@ -335,14 +335,13 @@ function denTat(ma: MaDen, cau: Cau, di: string | null, nn: NgonNguNB): Den {
 
 // --- Đặt bàn -----------------------------------------------------------------
 function denDatBan(d: Partial<ChiNhanhTho['dat_ban']> | undefined, nn: NgonNguNB): Den {
-  const formMo = d?.form_mo === true, soBan = so(d?.so_ban), cho = so(d?.cho);
+  // so_ban không còn là việc phải làm: chi nhánh chưa nhập bàn thì database không tính sức chứa (0100).
+  const formMo = d?.form_mo === true, cho = so(d?.cho);
   const qua2 = so(d?.cho_qua_2_gio), qua24 = so(d?.cho_qua_24_gio), quaHen = so(d?.qua_gio_hen);
   const di = '/noi-bo/dat-ban';
-  if (!formMo && cho === 0) return denTat('dat_ban', { vi: 'Form đặt bàn đang đóng.', en: 'The booking form is closed.' }, di, nn);
+  // Đóng mà không ai chờ: việc duy nhất là bật lại — nút bật ở màn Cài đặt.
+  if (!formMo && cho === 0) return denTat('dat_ban', { vi: 'Form đặt bàn đang đóng.', en: 'The booking form is closed.' }, '/noi-bo/cai-dat', nn);
   const v: VanDe[] = [];
-  if (formMo && soBan === 0) v.push({ muc: 'do', cau: {
-    vi: 'Form đặt bàn đang mở nhưng chi nhánh chưa có bàn nào — mọi yêu cầu đều bị báo hết bàn. Thêm bàn ở màn Cài đặt.',
-    en: 'The booking form is open but this branch has no tables — every request is told it is fully booked. Add tables on the Settings screen.' } });
   if (quaHen > 0) v.push({ muc: 'do', cau: {
     vi: `${quaHen} yêu cầu đã qua giờ hẹn mà chưa ai xác nhận`,
     en: `${quaHen} request${s(quaHen)} past the booked time with nobody confirming` } });
@@ -355,7 +354,7 @@ function denDatBan(d: Partial<ChiNhanhTho['dat_ban']> | undefined, nn: NgonNguNB
   const khiTot: Cau = cho > 0
     ? { vi: `${cho} yêu cầu mới đang chờ gọi lại (chưa quá 2 giờ).`, en: `${cho} new request${s(cho)} waiting for a call back (under 2 hours).` }
     : { vi: 'Không có yêu cầu nào đang chờ.', en: 'No request is waiting.' };
-  return denTu('dat_ban', v, khiTot, formMo && soBan === 0 && v.length === 1 ? '/noi-bo/cai-dat' : di, nn);
+  return denTu('dat_ban', v, khiTot, di, nn);
 }
 
 // --- Hồ sơ ứng tuyển ---------------------------------------------------------

@@ -301,7 +301,8 @@ export function maGui() {
 
 /**
  * Client Supabase giả chạy trên chính database PGlite, dưới danh nghĩa một vai — để gọi THẲNG các hàm
- * đọc / ghi của web/src/lib/kho (from().select().eq().in().is().gte().order().limit().range(), maybeSingle(), rpc())
+ * đọc / ghi của web/src/lib/kho (from().select().eq().in().is().gte().order().limit().range(), maybeSingle(), rpc(),
+ * from().update().eq(), from().insert())
  * và thấy đúng RLS, đúng quyền hàm như trên Supabase thật. select(cột, { count: 'exact' }) trả thêm
  * `count` (tổng số dòng khớp điều kiện, như PostgREST) — docTungTrang (chung.ts) dựa vào nó để biết đã
  * đọc đủ trang.
@@ -343,9 +344,14 @@ export async function taoClientPg({ db, duoi, duoiAnon }) {
         return chay(h.tra === 'void' ? `select null::jsonb as r from (select ${goi}) x` : `select to_jsonb(${goi}) as r`, gt);
       },
       from(bang) {
-        const q = { cot: '*', dk: [], gt: [], sap: [], gioiHan: null, boQua: 0, demTong: false };
+        const q = { cot: '*', dk: [], gt: [], sap: [], gioiHan: null, boQua: 0, demTong: false, sua: null };
         const dieuKien = () => (q.dk.length ? ` where ${q.dk.join(' and ')}` : '');
         const chayBang = async () => {
+          // update(dòng).eq(…)[.select(cột)]: data là các dòng đã sửa — RLS chặn thì mảng rỗng, không lỗi (như PostgREST).
+          if (q.sua) {
+            return chay(`with x as (update ${bang} set ${q.sua}${dieuKien()} returning ${q.cot})
+                         select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) as r from x`, q.gt);
+          }
           const kq = await chay(
             `select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) as r from (select ${q.cot} from ${bang}`
             + `${dieuKien()}${q.sap.length ? ` order by ${q.sap.join(', ')}` : ''}`
@@ -356,6 +362,20 @@ export async function taoClientPg({ db, duoi, duoiAnon }) {
         };
         const b = {
           select(cot, tuy) { q.cot = cot; q.demTong = tuy?.count === 'exact'; return b; },
+          // Gọi update() TRƯỚC eq(): giá trị của set đánh số trước giá trị của where.
+          update(dong) {
+            q.sua = Object.entries(dong).map(([k, v]) => { q.gt.push(v); return `${k} = $${q.gt.length}`; }).join(', ');
+            return b;
+          },
+          // insert(dòng | [dòng]): RLS chặn thì lỗi "violates row-level security policy", như Postgres.
+          insert(dong) {
+            const ds = Array.isArray(dong) ? dong : [dong];
+            const cot = Object.keys(ds[0]);
+            const gt = [];
+            const hang = ds.map(d => `(${cot.map(k => { gt.push(d[k] ?? null); return `$${gt.length}`; }).join(', ')})`);
+            return chay(`with x as (insert into ${bang} (${cot.join(', ')}) values ${hang.join(', ')} returning 1)
+                         select null::jsonb as r from (select count(*) from x) y`, gt);
+          },
           eq(k, v) { q.gt.push(v); q.dk.push(`${k} = $${q.gt.length}`); return b; },
           in(k, ds) { q.gt.push(`{${ds.join(',')}}`); q.dk.push(`${k}::text = any($${q.gt.length}::text[])`); return b; },
           // is(cột, null | true | false), gte(cột, giá trị) — như PostgREST "is.null" / "gte.".

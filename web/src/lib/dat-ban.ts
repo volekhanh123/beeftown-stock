@@ -4,16 +4,16 @@
  *
  * HAI CÔNG TẮC, KHÔNG PHẢI MỘT.
  *
- * Công tắc thứ nhất là form_dat_ban_dang_mo, do người bật. Công tắc thứ hai
- * là THỰC TẾ: chi nhánh có tồn tại không, giờ phục vụ đã chốt chưa, và bảng
- * ban_an đã có bàn nào chưa.
+ * Công tắc thứ nhất là form_dat_ban_dang_mo, do người bật (/noi-bo/cai-dat).
+ * Công tắc thứ hai là THỰC TẾ: chi nhánh có tồn tại không, có khung giờ nào
+ * không, và còn chỗ không.
  *
- * Vì sao cần cả hai: migration 0010 seed form_dat_ban_dang_mo = true để tám
- * kiểm tra đặt bàn cũ không hỏng. Trên một database vừa cài xong, bảng ban_an
- * TRỐNG. Chỉ tin công tắc thứ nhất thì form hiện ra, khách điền xong, và
- * tao_dat_ban() trả về "Khung giờ ... đã hết bàn" — một câu nói SAI về một
- * nhà hàng chưa mở cửa, và sai theo cách tệ nhất: nó nghe như nhà hàng đông
- * khách, nên khách không báo cho ai cả.
+ * Vì sao cần cả hai: chỉ tin công tắc thứ nhất thì một database không có khung
+ * giờ nào (sai mã chi nhánh) hay kín chỗ suốt hai tuần vẫn dựng form, khách
+ * điền xong rồi nhận "Khung giờ ... đã hết bàn" — một câu nghe như nhà hàng
+ * đông khách, nên khách không báo cho ai cả. Bảng ban_an trống không còn là
+ * nguyên nhân: từ 0100 chi nhánh chưa có bàn nào thì database không tính sức
+ * chứa.
  *
  * Nên trước khi dựng form, hàm dưới đây hỏi thẳng database: có khung giờ nào
  * còn chỗ trong 14 ngày tới không. Không có thì trang nói "chưa mở đặt bàn"
@@ -97,8 +97,8 @@ export async function tinhTrangDatBan(
     }
 
     // Ngày đang xem có thể hết chỗ thật. Nên nhìn rộng ra 14 ngày trước khi
-    // kết luận "chưa mở": một nhà hàng kín bàn suốt hai tuần liền, kể cả
-    // những khung giờ chưa tới, thì gần như chắc chắn là bảng ban_an trống.
+    // kết luận "chưa mở": kín bàn suốt hai tuần liền, kể cả những khung giờ
+    // chưa tới, thì gần như chắc chắn là số bàn nhập vào ban_an quá ít.
     const coChoODauDo =
       khung.some(k => k.con_cho && !k.da_qua) ||
       (await Promise.all(
@@ -109,7 +109,7 @@ export async function tinhTrangDatBan(
       return {
         ...rong,
         khung,
-        viSao: 'Không còn chỗ ở bất kỳ khung giờ nào trong 14 ngày tới — nhiều khả năng bảng ban_an chưa có bàn nào.',
+        viSao: 'Không còn chỗ ở bất kỳ khung giờ nào trong 14 ngày tới — kiểm tra số bàn ở /noi-bo/cai-dat.',
       };
     }
 

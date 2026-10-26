@@ -438,8 +438,9 @@ await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-
   ok('Q1 đặt bàn đỏ: 2 qua giờ hẹn, 1 chờ quá 24 giờ, 1 chờ quá 2 giờ — mỗi yêu cầu đếm một lần', q1('dat_ban')?.mau === 'do'
      && /^2 yêu cầu đã qua giờ hẹn/.test(q1('dat_ban')?.cau) && /1 yêu cầu chờ quá 24 giờ/.test(q1('dat_ban')?.cau)
      && /1 yêu cầu chờ quá 2 giờ/.test(q1('dat_ban')?.cau), tom(q1('dat_ban')));
-  ok('Q7 đặt bàn đỏ: form mở mà chi nhánh chưa có bàn', q7('dat_ban')?.mau === 'do' && /chưa có bàn nào/.test(q7('dat_ban')?.cau),
-     tom(q7('dat_ban')));
+  // Q7 chưa có bàn: từ 0100 không còn là lỗi (database không tính sức chứa). Đèn đỏ vì yêu cầu chờ quá 24 giờ.
+  ok('Q7 đặt bàn đỏ vì 1 yêu cầu chờ quá 24 giờ — chưa có bàn không còn là lỗi (0100)', q7('dat_ban')?.mau === 'do'
+     && /^1 yêu cầu chờ quá 24 giờ/.test(q7('dat_ban')?.cau) && !/bàn nào/.test(q7('dat_ban')?.cau), tom(q7('dat_ban')));
   ok('Q1 hồ sơ đỏ: 1 hồ sơ quá 7 ngày, 1 hồ sơ quá 2 ngày', q1('tuyen_dung')?.mau === 'do'
      && /^1 hồ sơ chưa ai mở quá 7 ngày/.test(q1('tuyen_dung')?.cau) && /1 hồ sơ chưa ai mở quá 2 ngày/.test(q1('tuyen_dung')?.cau),
      tom(q1('tuyen_dung')));

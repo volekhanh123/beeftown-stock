@@ -100,7 +100,8 @@ trong `/noi-bo`.
     dùng cho hồ sơ xác minh trên Meta; đổi hay không là việc Khánh quyết. Đừng "sửa cho khớp" với địa chỉ quán, và đừng chép dòng đó
     ra chỗ khác.
   - Địa chỉ trên trang có hai nguồn: bản công bố trong `/noi-bo` (khóa `dia_chi_hien_thi`, nhóm "Liên
-    hệ") thắng bản trong mã. Tên chi nhánh và địa chỉ trong `/noi-bo/cai-dat` là thứ bot Messenger đọc.
+    hệ") thắng bản trong mã. Bot Messenger đọc bản công bố đó trước; chưa công bố thì lùi về cột
+    `dia_chi` của dòng `chi_nhanh` (từ 26/10/2026 không còn ô sửa ở `/noi-bo/cai-dat` — chỉ sửa bằng SQL).
     Đổi địa điểm trong mã mà không xem lại hai nơi đó thì khách vẫn thấy chữ cũ.
   - Luật vẫn giữ: trang nói về đường đến hay hỏi bàn phải nói cách lên tầng 3 **trước** khi khách gửi
     yêu cầu.
