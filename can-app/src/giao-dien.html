@@ -1726,31 +1726,38 @@
 
   // ---- Tảng & ô mã (2.11: mục gập ở cuối thẻ Quầy) ------------------------------
   // daTuMoTangO: đã tự mở mục vì có ô cân chưa đổi tên — người gập lại thì không mở lại tới khi hết ô đó (dòng gập vẫn nêu).
-  let tangO = null, daTuMoTangO = false;
+  // tangOLuc: giờ VN (HH:MM) của lần đọc Tảng & ô được gần nhất — dòng gập nêu khi lượt đọc lại hỏng.
+  let tangO = null, daTuMoTangO = false, tangOLuc = '';
   /**
-   * imLang: lần tự tải lại mỗi phút của thẻ Quầy — đang có bảng thì giữ bảng, hỏng thì để lần sau (như taiQuay). Chưa có bảng
-   * (lần trước hỏng) thì đọc như thường: dòng gập nói "chưa đọc được", không im.
+   * imLang: lần tự tải lại mỗi phút của thẻ Quầy — đang có bảng thì giữ bảng (không chớp "Đang đọc…"). Hỏng thì vẫn giữ bảng,
+   * nhưng dòng gập nói "chưa đọc lại được" kèm giờ lần đọc cuối: dòng gập là thứ NV quầy nhìn khi mục gập, số cũ không được
+   * trông như đang đúng (taiQuay hỏng thì hiện khung lỗi; ở đây khung lỗi sẽ thay mất bảng). Lượt sau đọc được thì câu đó mất.
+   * Chưa có bảng (lần trước hỏng) thì đọc như thường: dòng gập nói "chưa đọc được", không im.
    */
   async function taiTangO(imLang) {
     const lang = !!imLang && !!tangO && !tangO.dang;
-    const cho = { dang: true };
+    const cu = tangO, cho = { dang: true };
     if (!lang) {
       tangO = cho;   // chỗ giữ chỗ — mở mục lúc đang đọc không đọc lần hai
       $('tang-o-noi-dung').innerHTML = '<p class="dang-lam">Đang đọc ô mã…</p>';
       $('tang-o-tom-tat').textContent = '— đang đọc…';
     }
-    try { tangO = await goi('/api/tang-o'); veTangO(); }
+    try { tangO = await goi('/api/tang-o'); tangOLuc = gioPhut(Date.now()); veTangO(); }
     catch (err) {
       if (tangO === cho) tangO = null;   // lần sau (mở mục, Tải lại, lượt mỗi phút) đọc lại
       if (!lang) { bao($('tang-o-noi-dung'), 'loi', e(err.message)); $('tang-o-tom-tat').textContent = '— chưa đọc được, mở ra xem'; }
+      // Bảng vẫn là của lần đọc trước (không ai đọc lại / xoá trong lúc chờ): nói rõ số trên dòng gập là của lúc nào.
+      else if (tangO === cu) $('tang-o-tom-tat').innerHTML = tomTatTangO(cu, tangOLuc);
     }
   }
   /**
    * Dòng gập của Tảng & ô: số ô đang dùng, và ô có vấn đề — cân chưa đổi tên theo tảng (tem in ra sai số tảng), bán hết chờ
-   * trả ô, lệch ô. Nằm ngoài phần gập: NV quầy thấy cả khi mục đang gập.
+   * trả ô, lệch ô. Nằm ngoài phần gập: NV quầy thấy cả khi mục đang gập. cuLuc: lượt đọc lại vừa hỏng — đứng đầu dòng là câu
+   * "chưa đọc lại được" và giờ của lần đọc d.
    */
-  function tomTatTangO(d) {
-    if (!d.nhom.length) return '— chưa có món dùng ô mã';
+  function tomTatTangO(d, cuLuc) {
+    const dau = cuLuc ? `<b style="color:var(--do)">chưa đọc lại được — số sau là của lần đọc lúc ${e(cuLuc)}</b> · ` : '';
+    if (!d.nhom.length) return '— ' + dau + 'chưa có món dùng ô mã';
     const ten = (n, o) => `${e(n.ten)} ô ${o.so_o}`;
     const chuaDoi = [], het = [];
     let dangDung = 0, tong = 0, lech = 0;
@@ -1767,7 +1774,7 @@
     if (het.length) phan.push(`${het.length} ô bán hết — chờ trả ô: ${het.join(', ')}`);
     if (lech) phan.push(`<b style="color:var(--do)">${lech} lần lệch ô</b>`);
     if (d.coFileGoc && !chuaDoi.length && !het.length && !lech) phan.push('không có ô nào cần xem');
-    return '— ' + phan.join(' · ');
+    return '— ' + dau + phan.join(' · ');
   }
   function veTangO() {
     const d = tangO;

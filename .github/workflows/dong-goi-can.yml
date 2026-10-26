@@ -129,14 +129,19 @@ jobs:
         run: npx bun test/thu.ts
       # 2.11 — giao diện trong Chromium thật cho từng vai, TRƯỚC khi đóng gói: bản .exe tự cập nhật xuống máy quầy, trang vỡ
       # (mọi vai chỉ thấy khung lỗi) không được lên Release. Playwright lấy từ web/ như kiem-thu.yml.
+      # Bản thử PR (chạy tay, gõ số PR) lấy workflow này của main nhưng mã của PR: PR mở trước 2.11 chưa có file kiểm thử
+      # này — bỏ qua hai bước, cảnh báo ở Summary, vẫn ra bản thử (kiem-thu.yml của PR đó đã chạy kiểm thử của nó).
+      - name: Bản thử PR chưa có kiểm thử giao diện trong Chromium
+        if: github.event_name != 'pull_request' && hashFiles('can-app/test/thu-trinh-duyet.ts') == ''
+        run: echo "::warning::Mã này chưa có can-app/test/thu-trinh-duyet.ts (PR mở trước Beeftown Cân 2.11) — bỏ qua kiểm thử giao diện trong Chromium. Gộp main vào PR để có."
       - name: Cài Playwright và Chromium (web/)
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && hashFiles('can-app/test/thu-trinh-duyet.ts') != ''
         working-directory: web
         run: |
           npm ci --no-audit --no-fund
           npx playwright install --with-deps chromium
       - name: Kiểm thử giao diện Beeftown Cân trong Chromium (từng vai)
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && hashFiles('can-app/test/thu-trinh-duyet.ts') != ''
         working-directory: can-app
         run: npx bun test/thu-trinh-duyet.ts
       - name: Đóng gói BeeftownCan.exe (Bun tự tải bộ chạy cho Windows)

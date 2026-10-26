@@ -847,7 +847,8 @@ console.log('6d · Bản 2.2: cổng hai chiều, nhật ký cân, thông số, 
   const soTruocTuGui = nhan.length;
   const tgH = await ud9.tuGuiMotLan();
   ok('Tự gửi thấy kho đổi HSD → không gửi, báo mở thẻ Cân (2.11; trước là thẻ Gửi giá từ kho)', !tgH.daGui && nhan.length === soTruocTuGui
-    && /hạn dùng \(HSD\) của 1 hàng/.test(tgH.cau) && /chưa thử trên cân thật/.test(tgH.cau), tgH.cau);
+    && /hạn dùng \(HSD\) của 1 hàng/.test(tgH.cau) && /chưa thử trên cân thật/.test(tgH.cau)
+    && /Mở thẻ Cân \(quản lý, chủ\), xem lại rồi bấm Gửi xuống cân/.test(tgH.cau) && !/Gửi giá từ kho/.test(tgH.cau), tgH.cau);
   const soKhoiHsd = can2.khoi.length;
   const gHsd = await ud9.guiXuongCan();
   const khoiHsd = can2.khoi.slice(soKhoiHsd).filter(k => k.lenh === 'DWL' && k.ten === 'PLU');
@@ -1740,6 +1741,8 @@ console.log('6g · 2.6: gửi xong đọc lại cân để kiểm');
     const lanTuGui = await u.tuGuiMotLan();
     ok('HỒI QUY 03/10: tự gửi tạm dừng sau lần cân chưa nhận — không gửi lại mỗi phút', !lanTuGui.daGui && /Tự gửi tạm dừng/.test(lanTuGui.cau)
       && soKhoiPlu() === 1 && c.soLan === 0, lanTuGui.cau);
+    ok('2.11: câu "Tự gửi tạm dừng" chỉ tới thẻ Cân (quản lý, chủ) — không còn thẻ Gửi giá từ kho',
+      /Mở thẻ Cân \(quản lý, chủ\), để cân ở màn hình bán hàng rồi bấm Gửi xuống cân/.test(lanTuGui.cau) && !/Gửi giá từ kho/.test(lanTuGui.cau), lanTuGui.cau);
     fs.writeFileSync(u.fileCanChuaRo, JSON.stringify({ luc: new Date().toISOString(), cau: 'Xoá qua WiFi hỏng (thử).' }));
     const lanCoXoaHong = await u.tuGuiMotLan();
     fs.rmSync(u.fileCanChuaRo);

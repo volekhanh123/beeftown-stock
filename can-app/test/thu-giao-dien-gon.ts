@@ -138,6 +138,17 @@ export async function thuGiaoDienGon(ok: Ok): Promise<void> {
     rd.includes('## Bản 2.11 — gọn còn 5 thẻ') && rd.indexOf('## Bản 2.11') < rd.indexOf('## Bản 2.10') && muc211.includes('Thử ở quán (2.11)')
     && ['Quầy', 'Tảng & ô mã', 'Giảm giá cận date', 'Báo cáo', 'Gửi giá từ kho', 'Tất cả hàng (SKU)', 'Mẫu tem', 'Cân & thông số', 'Phím tắt', 'Nhật ký cân']
       .every(t => muc211.includes(`| ${t} |`)), muc211.slice(0, 300));
+  // Phần README còn đang dùng: "Dùng" và mục 2.2 (bước 6 của "Dùng" và "Chưa làm" trỏ tới "Thử bản 2.2 ở quán"), mục 2.4 (thử
+  // sau bước 6), "Chưa làm" — nói theo chỗ mới. Chỉ các mục "Thử ở quán" của bản cũ khác (sau mục 2.11) giữ tên thẻ cũ, tra bảng.
+  // Như THE_CU, thêm chữ đậm Markdown và tên thẻ gãy dòng ("thẻ Tất cả⏎   hàng").
+  const THE_CU_MD = new RegExp(THE_CU.source.replace('(?:<b>)?', '(?:<b>|\\*\\*)?').replace(/ /g, '\\s+'), 'giu');
+  const doan = (tu: string, den: string) => rd.slice(rd.indexOf(tu), den ? rd.indexOf(den) : undefined);
+  const dangDung = [doan('## Dùng', '## Bản 2.11'), doan('## Bản 2.4', '## Cân đổi địa chỉ'), doan('## Chưa làm', '')];
+  const cuMd = dangDung.flatMap(d => [...d.matchAll(THE_CU_MD)].map(m => m[0]));
+  ok('2.11 README: "Dùng", mục 2.2 (cả "Thử bản 2.2 ở quán"), mục 2.4 và "Chưa làm" chỉ tới chỗ mới — không "thẻ Cân & thông số", '
+    + '"thẻ Mẫu tem", "Ba thẻ mới"…; bảng tra nói đúng các mục còn tên cũ nằm ở đâu',
+    dangDung.every(d => d.length > 100) && cuMd.length === 0 && !/Ba thẻ mới/.test(rd) && !/của bản cũ bên dưới vẫn dùng tên thẻ cũ/.test(rd),
+    cuMd.join(' | '));
   const bangAi = /<h3>Ai thấy thẻ nào<\/h3>([\s\S]*?)<\/table>/.exec(hd)?.[1] ?? '';
   const dongAi = [...bangAi.matchAll(/<tr><td>([^<]+)/g)].map(m => m[1].trim());
   ok('2.11 Hướng dẫn: bảng "Ai thấy thẻ nào" đúng năm thẻ; NV quầy, thủ kho chỉ thẻ Quầy; mục lục giữ mọi neo (#the-…)',

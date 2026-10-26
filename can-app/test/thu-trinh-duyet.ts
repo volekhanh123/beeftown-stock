@@ -12,7 +12,10 @@
  *   2. bấm từng thẻ: đúng các mục hiện; mục gập đóng sẵn (trừ chỗ tự mở); mở từng mục gập — nội dung tải xong;
  *   3. không lỗi JavaScript, không dòng lỗi nào ở console suốt lượt.
  * Thêm: Tảng & ô mã tự mở khi có ô cân chưa đổi tên và dòng gập nêu ô đó (kho giả: ô 1 Ribeye giữ tảng #0150, cân còn tên
- * #0142); phím mũi tên chỉ dời ô tem khi mục Mẫu tem đang mở.
+ * #0142); phím mũi tên chỉ dời ô tem khi mục Mẫu tem đang mở. Lượt đọc lại mỗi phút (đồng hồ giả page.clock): gập Tảng & ô thì
+ * không tự mở lại; đọc lại hỏng thì dòng gập nói "chưa đọc lại được" kèm giờ lần đọc cuối, không đứng im như đang đúng.
+ * Đăng xuất / đăng nhập (trang-thai đổi người, page.route): thanh thẻ đổi theo, Tất cả hàng mở khi vừa đăng xuất, gập khi
+ * vừa đăng nhập.
  *
  * Thư viện playwright lấy từ web/node_modules (cài web/ trước: cd web && npm ci) — cùng bản job web của kiem-thu.yml.
  * Chromium: cd web && npx playwright install chromium. CI: kiem-thu.yml (job database-va-can) và dong-goi-can.yml cài
@@ -29,8 +32,14 @@ type Ok = (ten: string, dieuKien: boolean, chiTiet?: string) => void;
 
 /** Phần của Playwright file này dùng (can-app không có kiểu của thư viện — thư viện nằm ở web/). */
 interface TinConsole { type(): string; text(): string }
+interface PhanHoiPw { json(): Promise<unknown> }
+interface DuongPw { fetch(): Promise<PhanHoiPw>; fulfill(tuy: { response?: PhanHoiPw; json?: unknown }): Promise<void> }
 interface TrangPw {
   goto(url: string): Promise<unknown>;
+  /** Đồng hồ giả của trang: install trước goto; runFor chạy nhanh các hẹn giờ (setInterval mỗi phút) trong ms đó. */
+  clock: { install(): Promise<void>; runFor(ms: number): Promise<void> };
+  route(khop: (url: URL) => boolean, xuLy: (d: DuongPw) => Promise<void>): Promise<void>;
+  fill(chon: string, giaTri: string): Promise<void>;
   on(suKien: 'console', f: (m: TinConsole) => void): void;
   on(suKien: 'pageerror', f: (e: Error) => void): void;
   waitForFunction<A>(f: (a: A) => unknown, a: A, tuy?: { timeout?: number }): Promise<unknown>;
@@ -55,7 +64,13 @@ async function moChromium(): Promise<TrinhDuyetPw> {
   for (const f of noi) {
     let pw: Playwright;
     try { pw = createRequire(f)('playwright') as Playwright; } catch (e) { loi.push(`${f}: ${String(e).split('\n')[0]}`); continue; }
-    try { return await pw.chromium.launch(); } catch (e) { loi.push(`${f}: ${String(e).split('\n')[0]}`); }
+    try {
+      const trinhDuyet = await pw.chromium.launch();
+      // In ra bản đã dùng: máy làm việc có thể rơi về bản cài chung (web/ chưa tải Chromium) — báo cáo phải nói đúng bản nào.
+      const banPw = (createRequire(f)('playwright/package.json') as { version: string }).version;
+      console.log(`      Chromium qua playwright ${banPw} (${f === noi[0] ? 'của web/' : 'cài chung của máy — web/ chưa có Chromium cho bản của nó'})`);
+      return trinhDuyet;
+    } catch (e) { loi.push(`${f}: ${String(e).split('\n')[0]}`); }
   }
   throw new Error('Không mở được Chromium — cài web/ trước (cd web && npm ci) rồi npx playwright install chromium. ' + loi.join(' · '));
 }
@@ -104,6 +119,8 @@ export async function thuTrinhDuyet(ok: Ok): Promise<void> {
   try {
     for (const kb of KICH_BAN) await thuMotVai(ok, trinhDuyet, kb);
     await thuMatMang(ok, trinhDuyet);
+    await thuDocLaiMoiPhut(ok, trinhDuyet);
+    await thuDangXuatDangNhap(ok, trinhDuyet);
   } finally {
     await trinhDuyet.close();
   }
@@ -207,6 +224,141 @@ async function thuMatMang(ok: Ok, trinhDuyet: TrinhDuyetPw): Promise<void> {
         && /cân chưa đổi tên/.test(tt2) && loi.length === 0, JSON.stringify({ tt1, gap, khungLoi: khungLoi.slice(0, 160), tt2, loi }));
   } catch (e) {
     ok('Mất mạng khi đọc Tảng & ô: trang không hỏng giữa chừng', false, String(e) + (loi.length ? ' · console: ' + loi.slice(0, 3).join(' | ') : ''));
+  } finally {
+    await trang.close();
+    await g.dong();
+  }
+}
+
+/** Theo dõi lỗi JavaScript và dòng lỗi ở console của một trang. */
+function ghiLoi(trang: TrangPw): string[] {
+  const loi: string[] = [];
+  trang.on('console', m => { if (m.type() === 'error') loi.push(m.text()); });
+  trang.on('pageerror', e => loi.push('Lỗi JavaScript: ' + e.message));
+  return loi;
+}
+const chuTomTat = (trang: TrangPw) => trang.evaluate(() => (document.getElementById('tang-o-tom-tat')?.textContent ?? '').replace(/\s+/g, ' ').trim(), null);
+/**
+ * Đánh dấu bảng Tảng & ô đang hiện, chạy đồng hồ giả qua một lượt mỗi phút, chờ bảng được vẽ lại (veTangO thay cả bảng — bảng
+ * mới không còn dấu). Trả false nếu không vẽ lại trong thời hạn.
+ */
+async function quaMotPhut(trang: TrangPw, choVeLai: boolean): Promise<boolean> {
+  await trang.evaluate(() => { const b = document.querySelector<HTMLElement>('#tang-o-noi-dung table'); if (b) b.dataset.cu = '1'; }, null);
+  await trang.clock.runFor(61000);
+  if (!choVeLai) return true;
+  try {
+    await trang.waitForFunction(() => !!document.querySelector('#tang-o-noi-dung table') && !document.querySelector('#tang-o-noi-dung table[data-cu]'),
+      null, { timeout: 10000 });
+    return true;
+  } catch { return false; }
+}
+
+/**
+ * Lượt đọc lại Tảng & ô mỗi phút (cùng thẻ Quầy), đồng hồ giả:
+ *  · tự mở MỘT lần: NV gập mục lại, lượt đọc sau (còn ô cân chưa đổi tên) không bung mục ra;
+ *  · đọc lại hỏng (kho_can_o_ma không trả lời): giữ bảng, nhưng dòng gập nói "chưa đọc lại được" kèm giờ lần đọc cuối — không
+ *    đứng im như số đang đúng (mat-mang); kho trả lời lại thì lượt sau xoá câu đó.
+ */
+async function thuDocLaiMoiPhut(ok: Ok, trinhDuyet: TrinhDuyetPw): Promise<void> {
+  const khoHong = new Set<string>();
+  const g = await moGiaoDienGia({ vai: 'nhan_vien_quay', khoHong });
+  const trang = await trinhDuyet.newPage({ viewport: { width: 1180, height: 860 } });
+  const loi = ghiLoi(trang);
+  try {
+    await trang.clock.install();
+    await trang.goto(g.url);
+    await trang.waitForSelector('#tang-o-noi-dung table', { state: 'visible', timeout: 15000 });
+    const tuMo = await dangMo(trang, 'tang-o');
+    await trang.click('#the-tang-o > summary', { timeout: 5000 });   // NV gập lại
+    const veLai = await quaMotPhut(trang, true);
+    const vanGap = !(await dangMo(trang, 'tang-o'));
+    const tt0 = await chuTomTat(trang);
+    ok('Tảng & ô tự mở MỘT lần: NV gập lại, lượt đọc lại mỗi phút (vẫn còn ô cân chưa đổi tên) không mở lại',
+      tuMo && veLai && vanGap && /cân chưa đổi tên/.test(tt0), JSON.stringify({ tuMo, veLai, vanGap, tt0 }));
+
+    khoHong.add('kho_can_o_ma');
+    await quaMotPhut(trang, false);
+    let baoCu = true;
+    try {
+      await trang.waitForFunction(() => /chưa đọc lại được/.test(document.getElementById('tang-o-tom-tat')?.textContent ?? ''), null, { timeout: 10000 });
+    } catch { baoCu = false; }
+    const tt1 = await chuTomTat(trang);
+    const conBang = await trang.evaluate(() => !!document.querySelector('#tang-o-noi-dung table'), null);
+    ok('HỒI QUY rà soát 2.11: lượt đọc lại mỗi phút của Tảng & ô hỏng → dòng gập nói "chưa đọc lại được" kèm giờ lần đọc cuối '
+      + '(không đứng im như số đang đúng); vẫn giữ bảng và tóm tắt cũ',
+      baoCu && /chưa đọc lại được/.test(tt1) && /lúc \d{2}:\d{2}/.test(tt1) && /cân chưa đổi tên/.test(tt1) && conBang && !(await dangMo(trang, 'tang-o')),
+      JSON.stringify({ tt0, tt1, conBang }));
+
+    khoHong.delete('kho_can_o_ma');
+    const veLai2 = await quaMotPhut(trang, true);
+    const tt2 = await chuTomTat(trang);
+    await trang.waitForTimeout(300);
+    ok('Kho trả lời lại: lượt đọc sau xoá câu "chưa đọc lại được", dòng gập lại nêu ô cân chưa đổi tên; không lỗi JavaScript',
+      veLai2 && !/chưa đọc lại được/.test(tt2) && /cân chưa đổi tên/.test(tt2) && loi.length === 0, JSON.stringify({ tt2, loi }));
+  } catch (e) {
+    ok('Đọc lại Tảng & ô mỗi phút: trang không hỏng giữa chừng', false, String(e) + (loi.length ? ' · console: ' + loi.slice(0, 3).join(' | ') : ''));
+  } finally {
+    await trang.close();
+    await g.dong();
+  }
+}
+
+/**
+ * Đăng xuất rồi đăng nhập lại trên cùng trang (quản lý). Kho giả luôn coi là đã đăng nhập, nên trang-thai được sửa trên đường
+ * (page.route): sau khi bấm Đăng xuất kho thì người = null; /api/dang-nhap trả ok mà không gọi kho. Kiểm:
+ *  · vừa đăng xuất: thanh thẻ thành [Cân, Thiết lập cân], chọn thẻ Cân, Tất cả hàng mở sẵn và ra bảng;
+ *  · vừa đăng nhập: đủ năm thẻ, vẫn ở thẻ Cân, Tất cả hàng gập lại (không đọc /api/hang khi chưa mở), Gửi giá ra bảng xem trước.
+ */
+async function thuDangXuatDangNhap(ok: Ok, trinhDuyet: TrinhDuyetPw): Promise<void> {
+  const g = await moGiaoDienGia({ vai: 'quan_ly' });
+  const trang = await trinhDuyet.newPage({ viewport: { width: 1180, height: 860 } });
+  const loi = ghiLoi(trang);
+  const gia = { dangXuat: false };
+  let docHang = 0;
+  try {
+    await trang.route(u => u.pathname === '/api/trang-thai', async d => {
+      const ph = await d.fetch();
+      const j = await ph.json() as { nguoi: unknown };
+      if (gia.dangXuat) j.nguoi = null;
+      await d.fulfill({ response: ph, json: j });
+    });
+    await trang.route(u => u.pathname === '/api/dang-nhap', d => d.fulfill({ json: { ok: true } }));
+    await trang.route(u => u.pathname === '/api/hang', async d => { docHang++; const ph = await d.fetch(); await d.fulfill({ response: ph }); });
+    const daTai = (chuKho: string) => trang.waitForFunction((c) => {
+      const o = document.getElementById('o-kho')?.textContent ?? '';
+      return c === 'chua' ? o === 'Chưa đăng nhập' : o !== '…' && o !== 'Chưa đăng nhập';
+    }, chuKho, { timeout: 15000 });
+    await trang.goto(g.url);
+    await daTai('co');
+    const the0 = await theDangHien(trang), hang0 = await dangMo(trang, 'hang');
+
+    gia.dangXuat = true;
+    await trang.click('details:has(#nut-dang-xuat) > summary', { timeout: 5000 });   // nút nằm trong "Cài đặt và việc khác"
+    await trang.click('#nut-dang-xuat', { timeout: 5000 });
+    await daTai('chua');
+    let bangHang = true;
+    try { await trang.waitForSelector('#bang-hang table', { state: 'visible', timeout: 15000 }); } catch { bangHang = false; }
+    const the1 = await theDangHien(trang), hang1 = await dangMo(trang, 'hang');
+    const chon1 = await trang.evaluate(() => document.querySelector('#thanh-tab button.chon')?.textContent?.trim() ?? null, null);
+    ok('Quản lý bấm Đăng xuất kho: thanh thẻ thành [Cân, Thiết lập cân], chọn thẻ Cân, Tất cả hàng mở sẵn và ra bảng',
+      JSON.stringify(the0) === JSON.stringify(NAM_THE) && hang0 === false && JSON.stringify(the1) === JSON.stringify(['Cân', 'Thiết lập cân'])
+        && chon1 === 'Cân' && hang1 && bangHang, JSON.stringify({ the0, hang0, the1, chon1, hang1, bangHang }));
+
+    gia.dangXuat = false;
+    await trang.fill('#form-dang-nhap input[name="email"]', 'quan_ly@beeftown.vn');
+    await trang.fill('#form-dang-nhap input[name="matKhau"]', 'mat-khau-gia');
+    const docHangTruoc = docHang;
+    await trang.click('#form-dang-nhap button[type="submit"]', { timeout: 5000 });
+    await daTai('co');
+    await trang.waitForSelector('#ket-qua-xem #nut-gui', { state: 'visible', timeout: 15000 });
+    await trang.waitForTimeout(300);
+    const the2 = await theDangHien(trang), hang2 = await dangMo(trang, 'hang');
+    const chon2 = await trang.evaluate(() => document.querySelector('#thanh-tab button.chon')?.textContent?.trim() ?? null, null);
+    ok('Đăng nhập lại: đủ năm thẻ, vẫn ở thẻ Cân, Tất cả hàng gập lại và không đọc /api/hang, Gửi giá ra bảng xem trước; không lỗi JavaScript',
+      JSON.stringify(the2) === JSON.stringify(NAM_THE) && chon2 === 'Cân' && hang2 === false && docHang === docHangTruoc && loi.length === 0,
+      JSON.stringify({ the2, chon2, hang2, docHang: docHang - docHangTruoc, loi }));
+  } catch (e) {
+    ok('Đăng xuất / đăng nhập: trang không hỏng giữa chừng', false, String(e) + (loi.length ? ' · console: ' + loi.slice(0, 3).join(' | ') : ''));
   } finally {
     await trang.close();
     await g.dong();
