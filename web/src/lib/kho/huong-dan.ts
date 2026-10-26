@@ -468,6 +468,8 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
         en: 'Once approved, each primal gets a **primal number** (for example **#0142**). Write it on the primal\'s bag or tag.' },
       { vi: 'Mở **Tồn kho** → thẻ **Tảng · ủ** để xem tảng nào **sẵn sàng lóc**, tảng nào còn ủ mấy ngày.',
         en: 'Open **Stock on hand** → the **Primals · aging** tab to see which primals are **ready to cut** and how many days the others have left.' },
+      { vi: 'Đem lóc: bấm **Lóc** dưới số tảng — phiên mở đúng tảng đó, ô mã giao luôn khi tảng có một công thức. Nút hiện khi phiếu nhận đã được duyệt và tảng không còn đang ủ.',
+        en: 'To cut one, press **Cut** under its number — the session opens with that primal, and rotating codes are assigned right away when it has one recipe. The button appears once the receiving note is approved and the primal has finished aging.' },
     ],
     meo: [
       { vi: 'Ngày ủ xong = ngày nhận + số ngày ủ tra theo tuổi thịt lúc nhận (ngày nhận − ngày mổ).',
@@ -508,8 +510,8 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
     tomTat: { vi: 'Tảng thịt → các gói phần cắt. Gói nào cũng có nhãn cân, nên chỉ cần quét.',
               en: 'Primal → packs of cuts. Every pack has a scale label, so you just scan.' },
     buoc: [
-      { vi: 'Bấm **Pha lóc** → **Bước 1:** bấm loại tảng đem pha. Mỗi phiên một loại tảng.',
-        en: 'Press **Butchery** → **Step 1:** press the type of primal you are cutting. One type of primal per session.' },
+      { vi: 'Bấm **Pha lóc** → **Bước 1:** bấm loại tảng đem pha. Mỗi phiên một loại tảng. Món theo dõi theo tảng: bấm **Lóc #0142** ở mục **Tảng lóc được** — khỏi chọn lô, ô mã giao sẵn khi tảng có một công thức.',
+        en: 'Press **Butchery** → **Step 1:** press the type of primal you are cutting. One type of primal per session. Items tracked per primal: press **Cut #0142** under **Primals you can cut** — no lot to tick, and rotating codes are already assigned when it has one recipe.' },
       { vi: '**Bước 2 · Cân & quét:** mục **Tảng đem pha** đứng đầu trang khi chưa chọn — tích lô tảng đem pha. Lấy cả lô thì để trống số kg; lấy một phần thì ghi số kg cân được (và số tảng, số gói nếu món đếm gói).',
         en: '**Step 2 · Weigh & scan:** the **Primal cut** section is at the top of the page until you choose — tick the primal lots you are cutting. Whole lot: leave the kg empty; only part of one: enter the kg you weighed (and the number of primals or packs if the item is counted that way).' },
       { vi: 'Cắt, cân, in nhãn từng gói rồi quét nhãn vào ô **Quét nhãn cân**, bấm **Cộng nhãn vào phiên**. Số gói, số kg tự cộng — quét nhiều đợt cũng được.',

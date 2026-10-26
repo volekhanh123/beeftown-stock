@@ -9,6 +9,13 @@
  * 0050: bấm số tảng để truy vết (tang/[lo_id]); ô tìm "#0142" (?tim=) mở thẳng
  * tảng đó; mục "Đã lóc" (tảng nhận trong 90 ngày, đã lóc) cho biết bán được
  * bao nhiêu, còn bao nhiêu — đọc bằng kho_bao_cao_tang.
+ *
+ * Lóc một chạm (vai pha_loc): dưới số tảng có nút "Lóc" — cùng luật tangLocDuoc
+ * với mục "Tảng lóc được" ở Pha lóc mới (có số tảng, không còn đang ủ, còn chỗ
+ * lóc được, chưa nằm trong phiên nháp). Nút gửi về /pha-loc/moi (viec=loc_tang,
+ * ve=tang): mở được phiên thì vào thẳng bước 2, không thì quay lại đây kèm câu
+ * báo. Tảng đang nằm trong phiên nháp: link "Đang lóc · PL…" tới phiên đó. Không
+ * thêm cột (bảng giữ 5 cột). Đọc hỏng thì không có nút nào, trang vẫn hiện.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import TheTrangCon from '../../../../components/kho/TheTrangCon.astro';
@@ -19,6 +26,7 @@ import {
   cauConU, docBaoCaoTang, docTangTon, soTangChu, timTangTheoSo, TINH_TRANG_BAN_NB, TINH_TRANG_U_NB,
   type DongTang, type TangTon, type TinhTrangU,
 } from '../../../../lib/kho/tang.ts';
+import { docChoLocTang, docDanhSachPhienPha, docLoCuaPhien, tangLocDuoc } from '../../../../lib/kho/pha-loc.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
@@ -56,6 +64,13 @@ const t = dichNB(nn, {
   daBan: { vi: 'Đã bán', en: 'Sold' },
   con: { vi: 'Còn', en: 'Left' },
   tinhTrang: { vi: 'Tình trạng', en: 'Status' },
+  loc: { vi: 'Lóc', en: 'Cut' },
+  locTang: { vi: (so: string) => `Lóc tảng ${so}`, en: (so: string) => `Cut primal ${so}` },
+  dangLoc: { vi: (sp: string) => `Đang lóc · ${sp}`, en: (sp: string) => `Being cut · ${sp}` },
+  khongDocLoc: {
+    vi: 'Chưa đọc được tảng nào đang lóc — nút Lóc tạm ẩn, tải lại trang.',
+    en: 'Could not read which primals are being cut — the Cut buttons are hidden; reload the page.',
+  },
 });
 
 let ds: TangTon[] = [];
@@ -72,6 +87,20 @@ if (tim) {
   const loId = timTangTheoSo([...ds, ...daLoc], tim);
   if (loId) return Astro.redirect(`/noi-bo/kho/tang/${loId}`, 302);
 }
+// Nút "Lóc" (vai pha_loc): tảng lóc được theo đúng luật của Pha lóc mới; tảng đang nằm trong phiên nháp → link tới phiên.
+const locDuoc = new Set<string>();
+let dangLoc = new Map<string, { id: string; so_phieu: string }>();
+let loiLoc = false;
+if (cn && ds.length > 0 && k.duoc('pha_loc') && k.daKhoiTao) {
+  try {
+    const [nhap, cho] = await Promise.all([docDanhSachPhienPha(k.client, cn.id, 'nhap'), docChoLocTang(k.client, cn.id, ds.map(x => x.lo_id))]);
+    dangLoc = await docLoCuaPhien(k.client, nhap);
+    for (const x of tangLocDuoc(ds, cho, dangLoc)) locDuoc.add(x.lo_id);
+  } catch {
+    dangLoc = new Map();
+    loiLoc = true;
+  }
+}
 const daLocHien = daLoc.filter(d => d.ngay_loc !== null);
 const NHOM: TinhTrangU[] = ['san_sang', 'dang_u', 'chua_co_bang_u'];
 const theoNhom = NHOM.map(tt => ({ tt, ds: ds.filter(x => x.tinh_trang_u === tt) })).filter(x => x.ds.length);
@@ -87,6 +116,7 @@ const noiChinh = phoBienNhat(ds.map(x => x.vi_tri));
   <p><a href="/noi-bo/kho/bao-cao/theo-tang">{t.baoCao}</a></p>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
   {tim && <div class="nb-bao loi" role="alert"><p>{t.khongThay(tim)}</p></div>}
+  {loiLoc && <div class="nb-bao luu-y" role="status"><p>{t.khongDocLoc}</p></div>}
 
   <form method="GET" action="/noi-bo/kho/tang" class="kho-thanh-nut">
     <label class="nb-o" style="margin:0"><span>{t.tim}</span>
@@ -108,7 +138,19 @@ const noiChinh = phoBienNhat(ds.map(x => x.vi_tri));
           <tbody>
             {g.ds.map(x => (
               <tr>
-                <td><a href={`/noi-bo/kho/tang/${x.lo_id}`}><strong>{soTangChu(x.so_tang) || x.ma_lo}</strong></a></td>
+                <td>
+                  <a href={`/noi-bo/kho/tang/${x.lo_id}`}><strong>{soTangChu(x.so_tang) || x.ma_lo}</strong></a>
+                  {dangLoc.has(x.lo_id) ? (
+                    <><br /><a class="kho-phu" href={`/noi-bo/kho/pha-loc/${dangLoc.get(x.lo_id)?.id}`}>{t.dangLoc(dangLoc.get(x.lo_id)?.so_phieu ?? '')}</a></>
+                  ) : locDuoc.has(x.lo_id) && (
+                    <form method="POST" action="/noi-bo/kho/pha-loc/moi" style="margin:.35rem 0 0">
+                      <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
+                      <input type="hidden" name="lo_id" value={x.lo_id} />
+                      <input type="hidden" name="ve" value="tang" />
+                      <button type="submit" name="viec" value="loc_tang" class="nb-nut phu" aria-label={t.locTang(soTangChu(x.so_tang))}>{t.loc}</button>
+                    </form>
+                  )}
+                </td>
                 <td>{x.ten_hang}{x.vi_tri && x.vi_tri !== noiChinh && <><br /><span class="kho-phu">{x.vi_tri}</span></>}</td>
                 <td class="so">{x.tuoi_ngay === null ? '—' : t.ngay(x.tuoi_ngay)}</td>
                 <td>{x.ngay_u_xong ? dinhDangNgay(x.ngay_u_xong) : '—'}{cauConU(x, nn) && <><br /><span class="kho-phu">{cauConU(x, nn)}</span></>}</td>

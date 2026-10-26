@@ -11,6 +11,10 @@
  *
  * PHA LÓC 3 BƯỚC (GĐ5c, migration 0033):
  *   1. /pha-loc/moi — nút lớn theo từng loại tảng đang có → tạo phiên nháp.
+ *      Món theo dõi theo tảng còn có đường MỘT CHẠM "Lóc #0142" (mục "Tảng lóc
+ *      được" ở đây, nút "Lóc" dưới số tảng ở Tảng · ủ): locMotTang mở phiên với
+ *      đúng lô đó và giao ô mã luôn — không migration, dùng lại kho_luu_phien_pha
+ *      (cùng ma_gui trả phiên cũ) và kho_giao_o_ma (bấm lại không lấy thêm ô).
  *   2. /pha-loc/<id> "Cân & quét" — gói cắt ra nào cũng có nhãn cân: QUÉT
  *      NHÃN (kho_quet_phien_pha, mỗi lần gửi là một lượt, cùng ma_gui không
  *      cộng đôi — y như đếm quầy 0032). Mỗi món thành một dòng ra tu_quet:
@@ -36,11 +40,15 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, docKg, docNgay, docSoNguyen, docTungTrang, donViChung, homNayVn, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { cauLoiKho, dinhDangKg, docKg, docNgay, docSoNguyen, docTungTrang, donViChung, homNayVn, kqHai, kqLoi, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
 import { maTuO, cauLoiNhan, cauQuaNhieuNhan, cauBoLuot, TOI_DA_MOT_LUOT } from './dem-quay.ts';
 import type { DongTon } from './ton.ts';
-import type { CongThuc } from './danh-muc.ts';
+import { docCongThuc, type CongThuc } from './danh-muc.ts';
+// Một chiều: tang.ts và o-ma.ts không import file này.
+import { cauConU, soTangChu, type TangTon } from './tang.ts';
+import { docOMa, giaoOMa } from './o-ma.ts';
+import { dichCau } from '../cau-noi-bo.ts';
 
 export interface PhienPhaTom {
   id: string;
@@ -512,12 +520,13 @@ export function xacNhanPhien(client: SupabaseClient, id: string, ghiChu: string 
 /**
  * Bước 1 (0033): bấm nút một loại tảng → tạo phiên nháp ngay, chưa có phần
  * ra. vao: lô đem pha điền sẵn (vaoMacDinh) — tảng chỉ có một lô thì khỏi
- * chọn. ma_gui cố định theo nút: bấm hai lần không mở hai phiên.
+ * chọn. ma_gui cố định theo nút: bấm hai lần không mở hai phiên. daCo: phiên
+ * này đã có từ lần bấm trước cùng ma_gui (database không ghi gì thêm).
  */
 export async function taoPhienPha(
   client: SupabaseClient, chiNhanhId: string, maGui: string,
   matHangVaoId: string, congThucId: string | null, vao: { lo_id: string; vi_tri_id: string }[],
-): Promise<KetQua & { id?: string }> {
+): Promise<KetQua & { id?: string; daCo?: boolean }> {
   if (!laUuid(maGui) || !laUuid(matHangVaoId)) return kqHai(false, CAU_PHA.trangCuChon);
   const { data, error } = await client.rpc('kho_luu_phien_pha', {
     p_id: null,
@@ -534,7 +543,7 @@ export async function taoPhienPha(
   if (error) return { ok: false, cau: cauLoiKho(error) };
   const kq = (Array.isArray(data) ? data[0] : data) as { phien_id: string; da_co: boolean } | undefined;
   if (!kq) return kqHai(false, CAU_PHA.khongChacMo);
-  return { ...kqHai(true, kq.da_co ? CAU_PHA.daMoTruoc : CAU_PHA.daMo), id: kq.phien_id };
+  return { ...kqHai(true, kq.da_co ? CAU_PHA.daMoTruoc : CAU_PHA.daMo), id: kq.phien_id, daCo: !!kq.da_co };
 }
 
 // -----------------------------------------------------------------------------
@@ -709,6 +718,295 @@ export function tomTatTang(ton: DongTon[]): TangCo[] {
 export function vaoMacDinh(ton: DongTon[], matHangVaoId: string): { lo_id: string; vi_tri_id: string }[] {
   const ds = ton.filter(t => t.mat_hang_id === matHangVaoId && laChoPha(t));
   return ds.length === 1 ? [{ lo_id: ds[0].lo_id, vi_tri_id: ds[0].vi_tri_id }] : [];
+}
+
+// -----------------------------------------------------------------------------
+// LÓC MỘT CHẠM — "Lóc #0142" (món theo dõi theo tảng; test-kho-loc-tang-web.mjs)
+// -----------------------------------------------------------------------------
+// Trước đây lóc một tảng phải: chọn loại tảng → sang bước 2 → mở "Tảng đem pha" → tích đúng lô trong nhiều lô →
+// Lưu → bấm "Giao ô mã". Một chạm làm cả chuỗi đó cho ĐÚNG lô đã bấm. Không hàm database mới: kho_luu_phien_pha
+// (cùng ma_gui trả phiên cũ — 0033) và kho_giao_o_ma (bấm lại không lấy thêm ô — 0049) đều gọi lại an toàn; sổ kho chỉ
+// bị đụng lúc chốt, và chốt tự kiểm tồn. Tạo phiên rồi giao ô là hai lệnh: hỏng ở giữa thì còn một phiên nháp hợp lệ,
+// bấm lại thì giao ô lần nữa (tự lành).
+
+/** Một chỗ (lô × vị trí) của tảng đem lóc được. */
+export interface ChoLoc { lo_id: string; vi_tri_id: string; so_kg: number }
+
+/**
+ * Tồn → các chỗ lóc được của từng lô — cùng luật laChoPha: bỏ chỗ chờ huỷ, hàng đang mang ra quầy, kg 0. Một lô có
+ * thể nằm vài chỗ (kho lạnh và quầy — trigger kho_phien_pha_vao_mot_tang của 0049 cho phép, vẫn là một tảng).
+ */
+export function choLocTheoLo(ton: Pick<DongTon, 'lo_id' | 'vi_tri_id' | 'loai_vi_tri' | 'so_kg'>[]): Map<string, ChoLoc[]> {
+  const ra = new Map<string, ChoLoc[]>();
+  for (const t of ton) {
+    if (!laChoPha(t)) continue;
+    ra.set(t.lo_id, [...(ra.get(t.lo_id) ?? []), { lo_id: t.lo_id, vi_tri_id: t.vi_tri_id, so_kg: Number(t.so_kg) }]);
+  }
+  return ra;
+}
+
+/** Đầu vào của phiên một chạm: mọi chỗ lóc được của đúng lô đó, lấy hết (không gửi kg — database lấy cả lô ở chỗ đó). */
+export function vaoCuaTang(cho: Map<string, ChoLoc[]>, loId: string): { lo_id: string; vi_tri_id: string }[] {
+  return (cho.get(loId) ?? []).map(c => ({ lo_id: c.lo_id, vi_tri_id: c.vi_tri_id }));
+}
+
+/** Cộng kg theo gam: 0,1 + 0,2 = 0,3 chứ không 0,30000000000000004. */
+const kgCong = (ds: readonly { so_kg: number }[]) => ds.reduce((s, c) => s + Math.round(c.so_kg * 1000), 0) / 1000;
+
+/**
+ * Tảng hiện nút "Lóc #0142" — MỘT luật cho Pha lóc mới và Tảng · ủ:
+ *   · có số tảng (lô nhận nhiều tảng một dòng, lô nhận trước khi bật "Theo dõi theo tảng" thì không — đi nút loại tảng);
+ *   · không còn đang ủ (sẵn sàng lóc hoặc chưa có bảng ủ; lóc sớm đi nút loại tảng, bước 2 có câu nhắc tảng còn ủ);
+ *   · còn chỗ lóc được (tảng chỉ còn ở chỗ chờ huỷ thì không);
+ *   · chưa nằm trong phiên nháp nào (phiên đó đã có ở "Phiên đang dở").
+ * kg_loc: kg ở các chỗ lóc được, cộng theo gam.
+ */
+export function tangLocDuoc<T extends Pick<TangTon, 'lo_id' | 'so_tang' | 'tinh_trang_u'>>(
+  tang: readonly T[], cho: Map<string, ChoLoc[]>, dangLoc: { has(loId: string): boolean },
+): (T & { kg_loc: number })[] {
+  return tang
+    .filter(t => t.so_tang !== null && t.so_tang !== undefined && t.tinh_trang_u !== 'dang_u'
+      && (cho.get(t.lo_id)?.length ?? 0) > 0 && !dangLoc.has(t.lo_id))
+    .map(t => ({ ...t, kg_loc: kgCong(cho.get(t.lo_id) ?? []) }));
+}
+
+/** Loại tảng có ĐÚNG một công thức đang dùng → id công thức đó (gắn sẵn vào phiên); không có hoặc nhiều → null. */
+export function congThucMot(congThuc: readonly Pick<CongThuc, 'id' | 'mat_hang_vao_id' | 'dang_dung'>[], matHangVaoId: string): string | null {
+  const ds = congThuc.filter(c => c.mat_hang_vao_id === matHangVaoId && c.dang_dung);
+  return ds.length === 1 ? ds[0].id : null;
+}
+
+/**
+ * Công thức đang dùng của tảng (chỉ công thức congThucId khi có) có phần cắt nào mang ô mã không — cùng cách
+ * kho_giao_o_ma (0049) chọn phần cắt. Không có thì KHÔNG gọi giao ô: món theo tảng không dùng ô mã không phải nhận câu
+ * đỏ "Chưa có phần cắt nào có ô mã".
+ */
+export function coOMaTrongCongThuc(
+  congThuc: readonly Pick<CongThuc, 'id' | 'mat_hang_vao_id' | 'dang_dung' | 'dong'>[], matHangVaoId: string,
+  congThucId: string | null, oMa: Map<string, readonly unknown[]>,
+): boolean {
+  return congThuc.some(c => c.mat_hang_vao_id === matHangVaoId && c.dang_dung && (congThucId === null || c.id === congThucId)
+    && c.dong.some(d => (oMa.get(d.mat_hang_ra_id)?.length ?? 0) > 0));
+}
+
+/** moi: vừa mở · da_co: cùng ma_gui đã mở từ lần bấm trước · dang_do: tảng đang nằm trong một phiên nháp. */
+export type CachLoc = 'moi' | 'da_co' | 'dang_do';
+
+const CAU_LOC = {
+  khongDoc: {
+    vi: 'Không đọc được tảng, công thức hoặc ô mã — chưa mở phiên nào. Tải lại trang rồi bấm lại.',
+    en: 'Could not read the primal, recipes or rotating codes — no session was opened. Reload the page and press again.',
+  },
+  khongDocPhien: {
+    vi: 'Không đọc được phiên của lần bấm trước — tải lại trang rồi bấm lại.',
+    en: 'Could not read the session from the previous press — reload the page and press again.',
+  },
+  khongCon: { vi: 'Tảng này không còn trong kho — tải lại trang.', en: 'This primal is no longer in stock — reload the page.' },
+  khongSo: {
+    vi: 'Lô này không có số tảng — mở phiên bằng nút loại tảng ở Pha lóc mới.',
+    en: 'This lot has no primal number — open the session with the primal type button in New butchery session.',
+  },
+  chonCongThuc: {
+    vi: 'Tảng này có nhiều công thức: chọn công thức ở mục "Thêm: ngày pha, ghi chú, công thức", bấm Lưu rồi bấm "Giao ô mã cho phần cắt" — chưa giao ô thì chưa in tem bằng phím ô.',
+    en: 'This primal has several recipes: choose one under "More: butchery date, note, recipe", press Save, then press "Assign rotating codes to the cuts" — do not print with the slot keys until the codes are assigned.',
+  },
+} satisfies Record<string, HaiThuTieng>;
+
+/**
+ * Câu báo của "Lóc #0142" — nói đúng việc đã xảy ra, không có chữ "thành công". Giao ô hỏng → ok FALSE (câu đỏ):
+ * phiên đã mở nhưng CHƯA giao được ô mã, chưa in tem bằng phím ô. Số kiểu Việt ("6,2 kg"), tiếng Anh "6.2 kg".
+ */
+export function cauLocTang(a: {
+  soTang: number | null; kg: number; cach: CachLoc; soPhieu?: string; giao: KetQua | null; nhacChon?: boolean;
+}): KetQua {
+  const so = soTangChu(a.soTang);
+  const sp = a.soPhieu ?? '';
+  const dau: HaiThuTieng = a.cach === 'dang_do'
+    ? { vi: `Tảng ${so} đang lóc dở ở phiên ${sp} — làm tiếp phiên này.`,
+        en: `Primal ${so} is already being cut in session ${sp} — carry on with that session.` }
+    : a.cach === 'da_co'
+      ? { vi: `Phiên lóc tảng ${so} đã mở từ lần bấm trước.`, en: `The session for primal ${so} was already opened by the previous press.` }
+      : { vi: `Đã mở phiên lóc tảng ${so} — lấy cả tảng (${dinhDangKg(a.kg, 'vi')} kg); lấy một phần thì sửa số kg ở mục Tảng đem pha.`,
+          en: `Butchery session opened for primal ${so} — the whole primal (${dinhDangKg(a.kg, 'en')} kg); to cut only part of it, change the kg under Primal to cut.` };
+  const g = a.giao;
+  if (g && !g.ok) {
+    const bo = (s: string) => s.trim().replace(/[\s.]+$/, '');
+    return kqHai(false, {
+      vi: `${dau.vi} Nhưng chưa giao được ô mã: ${bo(g.cau)}. Sửa xong bấm "Giao ô mã cho phần cắt" — chưa in tem bằng phím ô.`,
+      en: `${dau.en} But the rotating codes are not assigned yet: ${bo(g.cauEn ?? dichCau('en', g.cau))}. Once fixed, press "Assign rotating codes to the cuts" — do not print with the slot keys yet.`,
+    });
+  }
+  if (g) return { ok: true, cau: `${dau.vi} ${g.cau}`, cauEn: `${dau.en} ${g.cauEn ?? dichCau('en', g.cau)}` };
+  if (a.nhacChon) return { ok: true, cau: `${dau.vi} ${CAU_LOC.chonCongThuc.vi}`, cauEn: `${dau.en} ${CAU_LOC.chonCongThuc.en}` };
+  return kqHai(true, dau);
+}
+
+/** Mỗi lượt `.in(…)` không quá ngần này mã — như tang.ts (150 mã ≈ 5.500 ký tự trên đường dẫn). */
+const MA_MOI_LUOT = 150;
+function chiaLuotMa(ma: readonly unknown[]): string[][] {
+  const ids = [...new Set(ma.filter(laUuid))];
+  const luot: string[][] = [];
+  for (let i = 0; i < ids.length; i += MA_MOI_LUOT) luot.push(ids.slice(i, i + MA_MOI_LUOT));
+  return luot;
+}
+
+/**
+ * Lô nào đang nằm trong phiên nháp nào (kho_phien_pha_vao — RLS: pha_loc, xem_gia). `phien`: phiên nháp đã đọc
+ * (docDanhSachPhienPha … 'nhap'); một lô ở hai phiên thì lấy phiên đứng trước trong danh sách. Không có phiên nào →
+ * Map rỗng, không gọi database. Đọc hỏng thì ném — trang tự bắt và không hiện nút nào.
+ */
+export async function docLoCuaPhien(
+  client: SupabaseClient, phien: readonly Pick<PhienPhaTom, 'id' | 'so_phieu'>[],
+): Promise<Map<string, { id: string; so_phieu: string }>> {
+  const ra = new Map<string, { id: string; so_phieu: string }>();
+  const luot = chiaLuotMa(phien.map(p => p.id));
+  if (luot.length === 0) return ra;
+  const kq = await Promise.all(luot.map(ds => client.from('kho_phien_pha_vao').select('phien_pha_id, lo_id').in('phien_pha_id', ds)));
+  const loCua = new Map<string, Set<string>>();
+  for (const { data, error } of kq) {
+    if (error) throw error;
+    for (const r of data ?? []) loCua.set(r.phien_pha_id as string, (loCua.get(r.phien_pha_id as string) ?? new Set()).add(r.lo_id as string));
+  }
+  for (const p of phien) {
+    for (const lo of loCua.get(p.id) ?? []) if (!ra.has(lo)) ra.set(lo, { id: p.id, so_phieu: p.so_phieu });
+  }
+  return ra;
+}
+
+/**
+ * Chỗ lóc được của ĐÚNG các lô đang hiện (kho_v_ton lọc theo lô, không đọc cả tồn chi nhánh) — cho nút "Lóc" ở
+ * Tảng · ủ và cho locMotTang. Nhiều lô → vài lượt song song. Đọc hỏng thì ném.
+ */
+export async function docChoLocTang(client: SupabaseClient, chiNhanhId: string, loIds: readonly unknown[]): Promise<Map<string, ChoLoc[]>> {
+  const kq = await Promise.all(chiaLuotMa(loIds).map(ds => client.from('kho_v_ton')
+    .select('lo_id, vi_tri_id, loai_vi_tri, so_kg').eq('chi_nhanh_id', chiNhanhId).in('lo_id', ds)));
+  const dong: Pick<DongTon, 'lo_id' | 'vi_tri_id' | 'loai_vi_tri' | 'so_kg'>[] = [];
+  for (const { data, error } of kq) {
+    if (error) throw error;
+    for (const r of data ?? []) dong.push({ lo_id: r.lo_id, vi_tri_id: r.vi_tri_id, loai_vi_tri: r.loai_vi_tri, so_kg: Number(r.so_kg) });
+  }
+  return choLocTheoLo(dong);
+}
+
+type TangLoc = Pick<TangTon, 'lo_id' | 'so_tang' | 'mat_hang_id' | 'tinh_trang_u' | 'con_ngay_u'>;
+
+/** Một tảng còn tồn của chi nhánh (kho_v_tang) — null khi lô không còn tồn, không phải tảng, hay của chi nhánh khác. */
+async function docMotTang(client: SupabaseClient, chiNhanhId: string, loId: string): Promise<TangLoc | null> {
+  const { data, error } = await client.from('kho_v_tang')
+    .select('lo_id, so_tang, mat_hang_id, tinh_trang_u, con_ngay_u').eq('chi_nhanh_id', chiNhanhId).eq('lo_id', loId);
+  if (error) throw error;
+  const r = (data ?? [])[0];
+  if (!r) return null;
+  return {
+    lo_id: r.lo_id, mat_hang_id: r.mat_hang_id, tinh_trang_u: r.tinh_trang_u,
+    so_tang: r.so_tang === null || r.so_tang === undefined ? null : Number(r.so_tang),
+    con_ngay_u: r.con_ngay_u === null || r.con_ngay_u === undefined ? null : Number(r.con_ngay_u),
+  };
+}
+
+interface PhienLoc { id: string; so_phieu: string; cong_thuc_id: string | null }
+
+/** Phiên NHÁP của chi nhánh đang có lô này (cũ nhất trước). Hai bảng, không join — đọc hỏng thì ném. */
+async function docPhienNhapCuaLo(client: SupabaseClient, chiNhanhId: string, loId: string): Promise<PhienLoc[]> {
+  const { data: vao, error: e1 } = await client.from('kho_phien_pha_vao').select('phien_pha_id').eq('lo_id', loId);
+  if (e1) throw e1;
+  const ids = [...new Set((vao ?? []).map(v => v.phien_pha_id as string))];
+  if (ids.length === 0) return [];
+  const { data, error } = await client.from('kho_phien_pha').select('id, so_phieu, cong_thuc_id, created_at')
+    .in('id', ids).eq('chi_nhanh_id', chiNhanhId).eq('trang_thai', 'nhap').order('created_at');
+  if (error) throw error;
+  return (data ?? []).map(p => ({ id: p.id, so_phieu: p.so_phieu, cong_thuc_id: p.cong_thuc_id ?? null }));
+}
+
+/**
+ * "Lóc #0142": mở phiên nháp với đúng lô đã bấm (mọi chỗ lóc được: kho lạnh, quầy — lấy cả tảng), gắn công thức khi
+ * loại tảng có đúng một công thức đang dùng, rồi giao ô mã khi công thức đó có phần cắt mang ô. Trả id phiên khi phiên
+ * đã mở — KỂ CẢ khi giao ô hỏng (ok false, câu đỏ): trang vào thẳng bước 2, nơi có nút "Giao ô mã cho phần cắt".
+ *
+ * Tự đọc lại tảng, chỗ lóc được, công thức, ô mã và phiên nháp của lô NGAY LÚC BẤM — không tin danh sách trang đã
+ * đọc trước đó. Đọc hỏng bất kỳ lượt nào → không gọi hàm ghi nào, câu "Không đọc được … tải lại trang rồi bấm lại"
+ * (không đoán "không có ô" rồi báo xanh, không mở phiên trùng).
+ *
+ * Bấm lại:
+ *   · tảng đang nằm trong phiên nháp (bấm đúp, máy khác, trang tải lại) → trả phiên đó và GỌI LẠI giao ô (gọi lại
+ *     không lấy thêm ô; lần trước giao hỏng thì lần này tự lành);
+ *   · cùng ma_gui mà lần đọc không thấy phiên (hai lần bấm song song: lần sau đọc trước khi lần đầu ghi xong) →
+ *     database trả phiên cũ (da_co) → đọc lại ĐÚNG phiên đó: còn nháp và có lô này thì đi tiếp như trên; đã huỷ / đã
+ *     chốt (form cũ) → "Trang đã cũ", không giao ô.
+ *
+ * Nhiều công thức đang dùng mà phiên chưa chọn: KHÔNG tự giao — kho_giao_o_ma sẽ giao ô cho phần cắt của mọi công
+ * thức và giữ tới lúc chốt. Câu báo nhắc chọn công thức rồi bấm "Giao ô mã cho phần cắt".
+ *
+ * Quyền: trang chỉ cho vai pha_loc; database tự kiểm lần nữa (kho_luu_phien_pha, kho_giao_o_ma — pha_loc của đúng
+ * chi nhánh). Người khác đọc không thấy tảng (RLS) hoặc bị hàm từ chối — không có phiên nào được mở.
+ */
+export async function locMotTang(
+  client: SupabaseClient, chiNhanhId: string, a: { maGui: string; loId: string },
+): Promise<KetQua & { id?: string }> {
+  if (!laUuid(a.maGui) || !laUuid(a.loId) || !laUuid(chiNhanhId)) return kqHai(false, CAU_PHA.trangCuChon);
+  let tang: TangLoc | null, cho: Map<string, ChoLoc[]>, congThuc: CongThuc[], oMa: Map<string, unknown[]>, dangDo: PhienLoc[];
+  try {
+    [tang, cho, congThuc, oMa, dangDo] = await Promise.all([
+      docMotTang(client, chiNhanhId, a.loId), docChoLocTang(client, chiNhanhId, [a.loId]), docCongThuc(client),
+      docOMa(client), docPhienNhapCuaLo(client, chiNhanhId, a.loId),
+    ]);
+  } catch {
+    return kqHai(false, CAU_LOC.khongDoc);
+  }
+  if (!tang) return kqHai(false, CAU_LOC.khongCon);
+  if (tang.so_tang === null) return kqHai(false, CAU_LOC.khongSo);
+  const t = tang;
+  const so = soTangChu(t.so_tang);
+
+  /** Phiên đã có (mới mở, mở từ lần bấm trước, hay đang lóc dở) → giao ô khi nên giao, rồi câu báo. */
+  const xong = async (phien: PhienLoc, cach: CachLoc, kg: number): Promise<KetQua & { id: string }> => {
+    const ds = congThuc.filter(c => c.mat_hang_vao_id === t.mat_hang_id && c.dang_dung);
+    // Phiên đã gắn công thức: giao cho phần cắt của công thức đó. Chưa gắn mà loại tảng chỉ có một công thức: database
+    // giao theo công thức đó. Nhiều công thức mà chưa chọn: không tự giao (xem chú thích hàm).
+    const theoCt = phien.cong_thuc_id ?? (ds.length === 1 ? ds[0].id : null);
+    let giao: KetQua | null = null;
+    if (theoCt && coOMaTrongCongThuc(congThuc, t.mat_hang_id, theoCt, oMa)) {
+      try { giao = await giaoOMa(client, phien.id); } catch (e) { giao = kqLoi(e); }
+    }
+    const nhacChon = !theoCt && ds.length > 1 && coOMaTrongCongThuc(congThuc, t.mat_hang_id, null, oMa);
+    return { ...cauLocTang({ soTang: t.so_tang, kg, cach, soPhieu: phien.so_phieu, giao, nhacChon }), id: phien.id };
+  };
+
+  if (dangDo.length > 0) return xong(dangDo[0], 'dang_do', 0);
+  if (t.tinh_trang_u === 'dang_u') {
+    const [vi, en] = [cauConU(t, 'vi'), cauConU(t, 'en')];
+    return kqHai(false, {
+      vi: `Tảng ${so} còn đang ủ${vi ? ` (${vi})` : ''} — lóc sớm thì bấm loại tảng ở Pha lóc mới.`,
+      en: `Primal ${so} is still aging${en ? ` (${en})` : ''} — to cut it early, press the primal type in New butchery session.`,
+    });
+  }
+  const vao = vaoCuaTang(cho, a.loId);
+  if (vao.length === 0) {
+    return kqHai(false, {
+      vi: `Tảng ${so} đang chờ huỷ hoặc đang mang ra quầy — không đem lóc được.`,
+      en: `Primal ${so} is waiting for write-off or on its way to the counter — it cannot be cut.`,
+    });
+  }
+
+  const ct = congThucMot(congThuc, t.mat_hang_id);
+  let tao: Awaited<ReturnType<typeof taoPhienPha>>;
+  try {
+    tao = await taoPhienPha(client, chiNhanhId, a.maGui, t.mat_hang_id, ct, vao);
+  } catch {
+    // Mạng đứt sau khi đã gửi: database có thể đã ghi — không nói "chưa mở".
+    return kqHai(false, CAU_PHA.khongChacMo);
+  }
+  if (!tao.ok || !tao.id) return tao;
+  if (!tao.daCo) return xong({ id: tao.id, so_phieu: '', cong_thuc_id: ct }, 'moi', kgCong(cho.get(a.loId) ?? []));
+
+  let doc: Awaited<ReturnType<typeof docPhienPha>>;
+  try {
+    doc = await docPhienPha(client, tao.id);
+  } catch {
+    return kqHai(false, CAU_LOC.khongDocPhien);
+  }
+  if (!doc || doc.phien.trang_thai !== 'nhap' || !doc.vao.some(v => v.lo_id === a.loId)) return kqHai(false, CAU_PHA.trangCuChon);
+  return xong({ id: doc.phien.id, so_phieu: doc.phien.so_phieu, cong_thuc_id: doc.phien.cong_thuc_id }, 'da_co', 0);
 }
 
 /** Một món đã quét nhãn trong phiên — danh sách chạy ở "Cân & quét". */
