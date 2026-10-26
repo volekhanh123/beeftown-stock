@@ -24,7 +24,8 @@ const nd = await docNoiDung('ko');
         않아요.</p>
       <p>데이터는 Beeftown이 계약해 사용하는 데이터베이스 서비스인 Supabase에
         저장돼요. Supabase 외에 다른 업체나 기관은 이 데이터를 읽을 수 없어요.
-        다만 Messenger로 보내신 메시지는 Meta를 거쳐 전달돼요(아래 내용 참고).</p>
+        다만 Messenger로 보내신 메시지는 Meta를, Zalo로 보내신 주문 메시지는
+        Zalo를 거쳐 전달돼요(아래 내용 참고).</p>
 
       <h2>Messenger로 Beeftown에 메시지를 보내실 때</h2>
       <p>Beeftown Facebook 페이지로 보내신 메시지는 Meta의 서비스인 Messenger를
@@ -40,6 +41,16 @@ const nd = await docNoiDung('ko');
         이름이나 전화번호, 메시지 내용은 포함하지 않아요. Beeftown은 Messenger로
         광고를 보내지 않아요.</p>
       <p>데이터 삭제 방법은 <a href="/ko/data-deletion">데이터 삭제 안내</a>를 확인해 주세요.</p>
+
+      <h2>Zalo로 포장 구매 주문을 보내실 때</h2>
+      <p>포장 구매 페이지는 <strong>주문을 저장하지 않으며</strong> 이름, 전화번호,
+        주소를 묻지 않아요. 주문 보기를 누르시면 고르신 팩이 주문 메시지를 만들기
+        위해 페이지 주소를 통해 페이지 서버로 전달돼요. 이 주소에 개인정보는 들어
+        있지 않으며, Beeftown은 주문을 저장하지 않아요.</p>
+      <p>메시지는 직접 Beeftown의 Zalo 채팅창에 붙여 넣고 보내기를 누르셔야 해요.
+        이 메시지는 Zalo를 거쳐 전달되며, Zalo는 Zalo의 개인정보 처리방침에 따라
+        처리해요. Beeftown은 주문을 확인해 드리기 위해 Zalo OA 채팅함에서 메시지를
+        읽어요.</p>
 
       <h2>이용 목적</h2>
       <p>예약 정보는 매장에서 전화로 확인해 드리는 데 쓰여요. 입사 지원서는

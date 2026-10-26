@@ -88,6 +88,12 @@ export const NHOM: Record<string, { ten: HaiThuTieng; dan: HaiThuTieng }> = {
     ten: { vi: 'Khối nội dung', en: 'Content blocks' },
     dan: { vi: 'Các phần lớn của trang.', en: 'The big sections of the site.' },
   },
+  // Mua thịt về (0101): công tắc hien_mua_thit_ve là công tắc HIỆU LỰC — trang chỉ mở khi đủ ba điều kiện (mô tả khóa).
+  mua_thit: {
+    ten: { vi: 'Mua thịt về', en: 'Take-home orders' },
+    dan: { vi: 'Chữ và công tắc của trang Mua thịt về. Chưa công bố thì trang ẩn phần đó hoặc hiện câu mặc định. Không ghi số tiền vào các ô chữ.',
+           en: 'Text and switches of the Take home page. Until published, the page hides that part or shows the default sentence. Do not write amounts of money in the text fields.' },
+  },
 };
 
 export async function docBangCongTac(client: SupabaseClient): Promise<HangCongTac[]> {

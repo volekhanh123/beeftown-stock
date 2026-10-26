@@ -112,6 +112,9 @@ await nhom('1 · QUYỀN THỰC THI HÀM (lỗ hổng 1 và 4)', async () => {
     // Mini App Zalo hỏi qua website (0093): chỉ trả het / sap_het / con của từng phần thịt, không số khay,
     // không dữ liệu khách; tắt theo công tắc mini_app_hien_con_hang. test-mini-app-con-hang.mjs.
     'mini_app_con_hang',
+    // Mua thịt về (0101): gói đang bán có giá chủ đã chốt, không mã nội bộ, không số tồn; rỗng khi kênh chưa mở.
+    // test-mua-thit-ve.mjs.
+    'mua_thit_ve_cong_khai',
     'noi_dung_cong_khai',
     'nop_ho_so_ung_tuyen',
     'tao_dat_ban',

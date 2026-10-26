@@ -41,6 +41,7 @@
 
 import { timChuoiCam } from '../src/lib/chuoi-cam.js';
 import { batMayChuBanBuild, tatMayChu } from './may-chu-ban-build.mjs';
+import { chuHienRa, boTienDaChot } from './chu-hien-ra.mjs';
 
 // -----------------------------------------------------------------------------
 // DANH SÁCH CẤM — nằm ở src/lib/chuoi-cam.js
@@ -51,44 +52,15 @@ import { batMayChuBanBuild, tatMayChu } from './may-chu-ban-build.mjs';
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// LẤY PHẦN CHỮ KHÁCH ĐỌC ĐƯỢC
+// LẤY PHẦN CHỮ KHÁCH ĐỌC ĐƯỢC — chu-hien-ra.mjs
 // -----------------------------------------------------------------------------
-// Bỏ script, style và chú thích HTML — ba thứ này có trong file nhưng không
-// bao giờ hiện thành chữ. Giữ lại nội dung thẻ mô tả: chúng KHÔNG nằm trên
-// trang, nhưng hiện ra ở kết quả tìm kiếm và ô xem trước khi chia sẻ link,
-// nên với khách chúng cũng là chữ đọc được.
+// chuHienRa: bỏ script, style, chú thích; giữ tiêu đề, thẻ meta, JSON-LD.
+// boTienDaChot: chỗ miễn duy nhất của luật "không số tiền nào" — số tiền đúng
+// dạng "400.000 đ" trong phần tử data-tien, chỉ trên ba đường dẫn Mua thịt về
+// (giá gói chủ đã chốt, migration 0101). Mọi số tiền khác vẫn bị báo. Hai hàm
+// nằm riêng vì file này tự chạy main() khi nạp — kiểm thử của chúng
+// (crm/test/test-cong-khai-quet-gia.mjs) phải nạp được mà không bật máy chủ.
 // -----------------------------------------------------------------------------
-function chuHienRa(html) {
-  const than = html
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<!--[\s\S]*?-->/g, ' ');
-
-  const phan = [];
-
-  const tieuDe = than.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  if (tieuDe) phan.push(tieuDe[1]);
-
-  for (const m of than.matchAll(/<meta\b[^>]*\bcontent\s*=\s*"([^"]*)"[^>]*>/gi)) {
-    phan.push(m[1]);
-  }
-
-  // JSON-LD nằm trong <script> nên đã bị bỏ ở trên. Lấy lại riêng: Google đọc
-  // nó và đưa lên kết quả tìm kiếm, nên nó cũng là chữ khách đọc được.
-  for (const m of html.matchAll(
-    /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
-    phan.push(m[1]);
-  }
-
-  phan.push(than.replace(/<[^>]+>/g, ' '));
-
-  return phan.join(' \n ')
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ')
-    .replace(/[ \t]+/g, ' ');
-}
-
-const quet = timChuoiCam;
 
 // -----------------------------------------------------------------------------
 // DANH SÁCH TRANG — lấy từ sitemap, vì sitemap là thứ ta khai với Google
@@ -101,11 +73,11 @@ const quet = timChuoiCam;
 const TRANG_KHONG_CO = ['/khong-co-trang-nay', '/en/khong-co-trang-nay', '/ko/khong-co-trang-nay'];
 
 async function danhSachTrang(goc) {
-  // Đủ 21 trang công khai (7 trang × vi/en/ko) — sitemap hỏng thì vẫn quét hết.
+  // Đủ 24 trang công khai (8 trang × vi/en/ko) — sitemap hỏng thì vẫn quét hết.
   const luon_co = [
-    '/', '/thuc-don', '/den-beeftown', '/dat-ban', '/tuyen-dung', '/quyen-rieng-tu', '/xoa-du-lieu',
-    '/en', '/en/menu', '/en/visit', '/en/book', '/en/jobs', '/en/privacy', '/en/data-deletion',
-    '/ko', '/ko/menu', '/ko/visit', '/ko/book', '/ko/jobs', '/ko/privacy', '/ko/data-deletion',
+    '/', '/thuc-don', '/mua-thit-ve', '/den-beeftown', '/dat-ban', '/tuyen-dung', '/quyen-rieng-tu', '/xoa-du-lieu',
+    '/en', '/en/menu', '/en/buy-meat', '/en/visit', '/en/book', '/en/jobs', '/en/privacy', '/en/data-deletion',
+    '/ko', '/ko/menu', '/ko/buy-meat', '/ko/visit', '/ko/book', '/ko/jobs', '/ko/privacy', '/ko/data-deletion',
   ];
   const bo = new Set([...luon_co, ...TRANG_KHONG_CO].map(d => new URL(d, goc).href));
   try {
@@ -158,7 +130,8 @@ async function main() {
         continue;
       }
 
-      const thay = quet(chuHienRa(html));
+      // Trang Mua thịt về: số tiền đã chốt trong data-tien được bỏ trước khi quét (chu-hien-ra.mjs).
+      const thay = timChuoiCam(chuHienRa(boTienDaChot(html, duong)));
       if (thay.length === 0) {
         console.log(`  ✓ ${duong.padEnd(18)} sạch`);
       } else {

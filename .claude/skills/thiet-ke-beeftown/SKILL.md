@@ -325,7 +325,7 @@ với khách công ty. Chi tiết và ví dụ: [tham-khao/cau-chu.md](tham-khao
   nhận; hết giờ chờ thì nói "không chắc đã ghi nhận". Không bao giờ dựng câu báo thành công cho đặt bàn.
 - **Không claim chưa xác nhận:** số ngày ủ, phương pháp ủ, grade, xuất xứ, Wagyu; nướng than; phòng
   riêng; số bàn còn trống; so sánh nhất; lấy giá làm mồi câu. Không giá, ngày, ưu đãi, đếm ngược khi
-  chưa công bố. Danh sách máy chặn kèm lý do: `web/src/lib/chuoi-cam.js` (kiểm thử và `npm run quet`).
+  chưa công bố (giá gói Mua thịt về là giá chủ đã chốt ở `/noi-bo/ban-le`). Danh sách máy chặn kèm lý do: `web/src/lib/chuoi-cam.js` (kiểm thử và `npm run quet`).
 - Không dùng chữ **"rẻ"** — thay bằng *hợp lý*, *xứng đáng*, *giá thật*. Máy chỉ chặn "rẻ hơn"; chữ
   trơn thì người viết tự giữ.
 - **Đủ thứ tiếng**: trang công khai vi / en / ko, nội bộ và kho vi / en — không câu Việt nào nằm ngoài

@@ -32,7 +32,7 @@
  *      JSON-LD ghi streetAddress "Tầng 3, 63 Hồ Tùng Mậu", không có tên phường; ngoài
  *      dòng pháp nhân, cả trang không còn địa chỉ nào khác và không ghi tên phường,
  *      quận nào; không còn chữ về cầu thang bộ. Mẫu tìm chữ sai: mau-dia-diem.mjs.
- *   2. Trang đặt bàn / tuyển dụng chưa có database: KHÔNG có form nào, không có chữ
+ *   2. Trang đặt bàn / tuyển dụng / Mua thịt về chưa có database: KHÔNG có form nào, không có chữ
  *      "thành công" / "success" / "성공". Trang hỏi bàn: meta description, og:description
  *      và đoạn mở đầu không hứa "gửi yêu cầu, nhà hàng gọi lại" khi form đóng.
  *   3. Gửi thẳng form đặt bàn (không qua giao diện): trang quay về báo lỗi, không bao
@@ -108,9 +108,9 @@ async function nhom(ten, fn) {
 const batMayChu = () => batMayChuBanBuild({ cong: CONG, khongBuild: process.argv.includes('--khong-build') });
 
 async function danhSachTrang(goc) {
-  const bo = new Set(['/', '/thuc-don', '/den-beeftown', '/dat-ban', '/tuyen-dung', '/quyen-rieng-tu', '/xoa-du-lieu',
-    '/en', '/en/menu', '/en/visit', '/en/book', '/en/jobs', '/en/privacy', '/en/data-deletion',
-    '/ko', '/ko/menu', '/ko/visit', '/ko/book', '/ko/jobs', '/ko/privacy', '/ko/data-deletion']);
+  const bo = new Set(['/', '/thuc-don', '/mua-thit-ve', '/den-beeftown', '/dat-ban', '/tuyen-dung', '/quyen-rieng-tu', '/xoa-du-lieu',
+    '/en', '/en/menu', '/en/buy-meat', '/en/visit', '/en/book', '/en/jobs', '/en/privacy', '/en/data-deletion',
+    '/ko', '/ko/menu', '/ko/buy-meat', '/ko/visit', '/ko/book', '/ko/jobs', '/ko/privacy', '/ko/data-deletion']);
   try {
     const xml = await (await fetch(new URL('/sitemap.xml', goc))).text();
     for (const m of xml.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/g)) bo.add(new URL(m[1]).pathname);
@@ -131,7 +131,9 @@ const dongPhapNhan = nn => [
   `CÔNG TY TNHH SLK GROUP · ${NHAN_MA_SO_THUE[nn]}: 0319712805`,
   'Tầng 3, 11-13-15-17-19-21 Hàm Nghi, Phường Sài Gòn, TP. Hồ Chí Minh',
 ];
-const TRANG_FORM = ['/dat-ban', '/en/book', '/ko/book', '/tuyen-dung', '/en/jobs', '/ko/jobs'];
+// Trang Mua thịt về: chưa nối database là trạng thái "chưa mở" — không form chọn gói, không giá (bản thiết kế PR 2,
+// mục 2.5). Trang có form khi mở kiểm ở thu-day-du.mjs nhóm 12 (Supabase giả).
+const TRANG_FORM = ['/dat-ban', '/en/book', '/ko/book', '/tuyen-dung', '/en/jobs', '/ko/jobs', '/mua-thit-ve', '/en/buy-meat', '/ko/buy-meat'];
 const TRANG_HOI_BAN = ['/dat-ban', '/en/book', '/ko/book'];
 const CHU_THANH_CONG = /thành công|\bsuccess|성공/i;
 // Lời hứa của form hỏi bàn: gửi yêu cầu trên trang, nhà hàng gọi lại. Form đóng thì mô tả và đoạn
@@ -881,7 +883,7 @@ try {
           ok(`${nhan}: noindex, không canonical, không hreflang, không JSON-LD (dựng không database — sẽ khai sai)`,
              /noindex/.test(kq.robots) && kq.soCanonical === 0 && kq.soHreflang === 0 && kq.soJsonLd === 0,
              `robots «${kq.robots}», ${kq.soCanonical} canonical, ${kq.soHreflang} hreflang, ${kq.soJsonLd} JSON-LD`),
-          // Cùng các phép đo thành phần và khung trang với 21 trang ở nhóm 1 (do-giao-dien.mjs).
+          // Cùng các phép đo thành phần và khung trang với 24 trang ở nhóm 1 (do-giao-dien.mjs).
           ...Object.entries(PHEP_DO).map(([khoa, ten]) =>
             ok(`${nhan}: ${ten}`, giaoDien[khoa]?.length === 0, (giaoDien[khoa] ?? ['không đo được']).slice(0, 4).join(' | '))),
           ok(`${nhan}: tương phản chữ ≥ 4,5:1 (chữ lớn ≥ 3:1)`, !them.tuongPhan.length, them.tuongPhan.slice(0, 3).join(' | ')),

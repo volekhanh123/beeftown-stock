@@ -8,6 +8,7 @@
  * một nút dẫn tới hư không tệ hơn là không có nút.
  */
 import { DIA_CHI_NHA_HANG, DIA_CHI_PHAN, chu, duongDanTuongUng } from './chu.ts';
+import { muaThitVeMo } from './dich-dat-hang.ts';
 import type { NgonNgu, NoiDung } from './noi-dung.ts';
 
 /**
@@ -170,6 +171,16 @@ export function moTaTrangHoiBan(ngonNgu: NgonNgu, moDuoc: boolean): string {
   return moDuoc ? t.moTaHoiBan : t.moTaHoiBanChuaMo;
 }
 
+/**
+ * Mô tả (meta description, og:description) của trang Mua thịt về. `mo` do file vỏ tính: trạng thái trang là 'mo'
+ * hoặc 'het_quay' (trang liệt kê gói kèm giá). Chưa mở, chưa nối database hay đọc menu lỗi thì mô tả nói đúng điều
+ * trang nói — chưa mở — không hứa gửi đơn (khuôn moTaTrangHoiBan).
+ */
+export function moTaTrangMuaThit(ngonNgu: NgonNgu, mo: boolean): string {
+  const t = chu(ngonNgu);
+  return mo ? t.moTaMuaThit : t.moTaMuaThitChuaMo;
+}
+
 export interface Nut {
   url: string;
   chu: string;
@@ -194,14 +205,23 @@ export function nutMoDau(nd: NoiDung, ngonNgu: NgonNgu): Nut[] {
   return [{ ...thucDon, kieu: 'chinh' }, { ...phu, kieu: 'vien' }];
 }
 
-/** Bốn mục điều hướng chính, theo thứ tự của brief. */
-export function dieuHuong(ngonNgu: NgonNgu): { url: string; chu: string; duong: string }[] {
+/**
+ * Mục điều hướng chính, theo thứ tự của brief. Bốn mục; năm khi trang Mua thịt về mở (công tắc hiệu lực của
+ * database, dich-dat-hang.ts) — "Mua thịt về" đứng ngay sau "Thực đơn", "Hỏi bàn" vẫn là mục cuối. Không có `nd`
+ * (trang không đọc nội dung) thì bốn mục: điều hướng không bao giờ dẫn tới một trang đang "chưa mở".
+ */
+export function dieuHuong(ngonNgu: NgonNgu, nd?: NoiDung): { url: string; chu: string; duong: string }[] {
   const t = chu(ngonNgu);
   const trangChu = duongDanTuongUng('/', ngonNgu);
+  const muc = (duongViet: string, chuMuc: string) => {
+    const duong = duongDanTuongUng(duongViet, ngonNgu);
+    return { url: duong, chu: chuMuc, duong };
+  };
   return [
     { url: `${trangChu}#trai-nghiem`, chu: t.traiNghiem, duong: trangChu },
-    { url: duongDanTuongUng('/thuc-don', ngonNgu), chu: t.thucDon, duong: duongDanTuongUng('/thuc-don', ngonNgu) },
-    { url: duongDanTuongUng('/den-beeftown', ngonNgu), chu: t.denBeeftown, duong: duongDanTuongUng('/den-beeftown', ngonNgu) },
-    { url: duongDanTuongUng('/dat-ban', ngonNgu), chu: t.datBan, duong: duongDanTuongUng('/dat-ban', ngonNgu) },
+    muc('/thuc-don', t.thucDon),
+    ...(nd && muaThitVeMo(nd) ? [muc('/mua-thit-ve', t.muaThitVe)] : []),
+    muc('/den-beeftown', t.denBeeftown),
+    muc('/dat-ban', t.datBan),
   ];
 }

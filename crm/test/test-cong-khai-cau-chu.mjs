@@ -17,7 +17,7 @@
  *      phòng riêng, "đặt bàn thành công", còn N bàn…
  *   3. Không chữ ghi chú cho người duyệt lọt lên trang: chờ duyệt, đang cập nhật, placeholder,
  *      TBD, coming soon, lorem, 승인 대기…
- *   4. Trang hỏi bàn, form ứng tuyển, trang tuyển dụng không có "thành công" / "success" / "성공"
+ *   4. Trang hỏi bàn, form ứng tuyển, trang tuyển dụng, trang Mua thịt về không có "thành công" / "success" / "성공"
  *      — gửi yêu cầu là "đã nhận", không phải "xong".
  *   5. Bản tiếng Anh và tiếng Hàn không lẫn chữ Việt, trừ tên riêng (Hồ Tùng Mậu…).
  *   7. Địa điểm: không câu nào kể chuyện đổi địa điểm, nhắc cầu thang bộ hay địa chỉ khác; không ghi
@@ -53,7 +53,8 @@ const CHU_VIET = /[ăâđêôơưàáạảãầấậẩẫằắặẳẵèé�
 const TEN_RIENG = [/Hồ Tùng Mậu/g, /TP\. Hồ Chí Minh/g, /Hồ Chí Minh/g,
   /CÔNG TY TNHH SLK GROUP/g, /Tiếng Việt/g];
 const boTenRieng = s => TEN_RIENG.reduce((x, re) => x.replace(re, ''), s);
-const FILE_FORM = ['TrangDatBan.astro', 'FormUngTuyen.astro', 'TrangTuyenDung.astro'];
+// Trang Mua thịt về: gửi tin đơn qua Zalo là YÊU CẦU, quán còn liên hệ lại xác nhận — không phải "xong" (PR 2, 26/10/2026).
+const FILE_FORM = ['TrangDatBan.astro', 'FormUngTuyen.astro', 'TrangTuyenDung.astro', 'TrangMuaThitVe.astro'];
 
 // ---------------------------------------------------------------------------
 // File công khai: tìm theo đồ thị import, không liệt kê tay — component mới tự được quét.
@@ -194,7 +195,7 @@ await nhom('3 · KHÔNG CHỮ CẤM, KHÔNG CHỮ GHI CHÚ REVIEW — KỂ CẢ 
 });
 
 // ===========================================================================
-await nhom('4 · HỎI BÀN, ỨNG TUYỂN, TUYỂN DỤNG: KHÔNG "THÀNH CÔNG" / "SUCCESS" / "성공"', async () => {
+await nhom('4 · HỎI BÀN, ỨNG TUYỂN, TUYỂN DỤNG, MUA THỊT VỀ: KHÔNG "THÀNH CÔNG" / "SUCCESS" / "성공"', async () => {
   for (const f of FILE_FORM) {
     const d = DOC.get(join(SRC, 'components', f));
     if (!d) { ok(`${f} có mặt`, false); continue; }

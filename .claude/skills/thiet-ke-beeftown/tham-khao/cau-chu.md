@@ -56,15 +56,15 @@ con số cụ thể **khi con số đã được xác nhận**.
 | So sánh nhất | số một, ngon nhất, the best, #1, 최고 | Không chứng minh được, vi phạm quảng cáo |
 | Báo giữ bàn | câu xác nhận đặt bàn, "booking confirmed", 예약 확정 | Chỉ nói "đã nhận yêu cầu" |
 | Khan hiếm | "còn 2 bàn", "only 3 seats left" | Số bàn trống không bao giờ tới trình duyệt |
-| Số tiền | `125.000đ`, `450,000 ₫` | Chưa món nào có giá đã duyệt |
+| Số tiền | `125.000đ`, `450,000 ₫` | Chưa món nào có giá đã duyệt. Ngoại lệ duy nhất: giá gói đã chốt trên trang Mua thịt về, trong `data-tien` (bộ quét chỉ miễn dạng "400.000 đ" ở đúng chỗ đó, trên ba đường dẫn của trang) |
 
 Danh sách thật, kèm mẫu tiếng Anh, tiếng Hàn: `web/src/lib/chuoi-cam.js`. Máy quét chạy trên trang đã
 dựng (`npm run quet`), trên bản dịch máy, và trong các kiểm thử câu chữ — không quét file `.md`. Thêm
 một luật mới: thêm vào đó **kèm lý do** và bản tiếng Anh của lý do.
 
-Ngoài danh sách máy chặn, cũng **không viết**: giờ mở cửa, ngày khai trương, giá, ưu đãi, đếm ngược,
-số bàn, "Thịt chuẩn - Giá thật", ghế trẻ em, món ngoài thực đơn đã công bố — khi chưa được công bố
-trong `/noi-bo`.
+Ngoài danh sách máy chặn, cũng **không viết**: giờ mở cửa, ngày khai trương, giá (trừ giá gói đã chốt
+của trang Mua thịt về), ưu đãi, đếm ngược, số bàn, "Thịt chuẩn - Giá thật", ghế trẻ em, món ngoài thực
+đơn đã công bố — khi chưa được công bố trong `/noi-bo`.
 
 ## Dữ kiện cố định
 

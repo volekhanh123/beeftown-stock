@@ -1222,6 +1222,11 @@ bằng vai anon, hàm chỉ trả `het` / `sap_het` / `con` của từng phần 
   hàm trả rỗng và Mini App hiện mọi phần như trước khi nối kho. Chỉ bật khi quầy quét khay ra vào kho đúng lúc.
 - Website lưu đệm 60 giây; hỏng bất kỳ cách nào (chưa có database, chưa chạy 0093, lỗi, hết giờ) đều trả `{}` — không bao giờ tự
   ra "hết". Kiểm thử: `crm/test/test-mini-app-con-hang.mjs` (database), `test-mini-app-con-hang-web.mjs` (thư viện, đường JSON).
+- **Trang Mua thịt về của website** (migration 0101) có công tắc riêng cùng điều kiện: `mua_thit_hien_tam_het` ở màn Nội dung
+  (chỉ chủ), **mặc định tắt**. Bật thì gói hết ở quầy (`con_hang = 'het'` của menu bán lẻ, lô còn hạn theo giờ VN) ghi "Tạm hết ở
+  quầy" và khách không chọn được gói đó — chỉ khi số tồn ở quầy tin được (chi nhánh trừ kho theo iPOS). Chỉ bật khi chi nhánh đã
+  trừ kho theo iPOS và quầy ghi hàng ra vào đúng lúc: kho ghi thiếu thì khách thấy "tạm hết" khi quầy còn hàng. Tắt hay hỏng bất kỳ
+  cách nào thì không gói nào bị ghi tạm hết. Kiểm thử: `crm/test/test-mua-thit-ve.mjs`.
 
 ## 4. Cài như app (PWA)
 

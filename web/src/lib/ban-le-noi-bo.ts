@@ -3,8 +3,10 @@
  *
  * Thịt bò mang về và kim chi (0099). Quầy cân thịt theo gram ở giá mỗi kg của mặt hàng kho
  * (kho_mat_hang.gia_ban_kg — Beeftown Cân tự gửi xuống cân); online bán gói cố định 200 g / 400 g; kim
- * chi bán theo hộp, giá cố định. Mini App Zalo và website sẽ đọc menu này ở bước sau (PR riêng) — màn
- * này và mọi câu của nó không bao giờ nói hai nơi đó đã đọc.
+ * chi bán theo hộp, giá cố định. Website đọc menu này qua mua_thit_ve_cong_khai (0101, trang Mua thịt về):
+ * chỉ sản phẩm Đang bán, kênh website, đã chốt giá — giá trên trang là giá trong ảnh chụp gia_chot, giá kg đổi
+ * sau lần chốt thì trang vẫn giữ giá đã chốt cho tới khi chủ chốt lại. Mini App Zalo đọc ở bước sau (PR riêng).
+ * Màn này và mọi câu của nó vẫn không nói gì về website hay Mini App (crm/test/test-ban-le-web.mjs).
  *
  * QUYỀN DO DATABASE QUYẾT ĐỊNH, KHÔNG PHẢI FILE NÀY
  *

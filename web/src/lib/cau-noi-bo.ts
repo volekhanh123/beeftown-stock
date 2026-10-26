@@ -231,6 +231,10 @@ export const CAU_EN: Readonly<Record<string, string>> = {
   'Mã FABi phải có ít nhất một chữ cái — mã toàn số dễ trùng mã cân.':
     'A FABi code must contain at least one letter — an all-digit code can clash with scale codes.',
   'Mã vạch phải gồm 8 đến 14 chữ số.': 'A barcode must have 8 to 14 digits.',
+
+  // 0101 — trigger zalo_oa_url_kiem_tra: link Zalo OA (khóa chỉ chủ, đích đơn Mua thịt về) chỉ nhận https://zalo.me/<mã>
+  'Link Zalo OA phải có dạng https://zalo.me/ và mã OA, không thêm gì phía sau.':
+    'The Zalo OA link must be https://zalo.me/ followed by the OA ID, with nothing after it.',
 };
 
 /**
@@ -250,7 +254,7 @@ export const MO_TA_KHOA_EN: Readonly<Record<string, string>> = {
   hotline:              'Restaurant phone number. Publish only when a real person answers during the published hours.',
   instagram_url:        'Official Instagram page.',
   tiktok_url:           'Official TikTok channel.',
-  zalo_oa_url:          'Official Zalo OA.',
+  zalo_oa_url:          'Official Zalo OA, as https://zalo.me/<OA ID> (Beeftown Hồ Tùng Mậu OA: https://zalo.me/3030027075662095415). Owner only (from 0101): the Take home page sends orders — and customers get the transfer QR code — through exactly this link.',
   ngay_khai_truong:     'Official opening date. Do NOT publish until it is confirmed in writing — changing the date after it is out is the biggest risk of the whole project.',
   ngay_treo_bang_ron:   'Date the construction banner goes up. Used to schedule when the address block goes live.',
   anh_chia_se:          'Image shown when the link is shared. Without it, a link pasted into Zalo shows only a bare line of blue text.',
@@ -264,6 +268,18 @@ export const MO_TA_KHOA_EN: Readonly<Record<string, string>> = {
   hien_thuc_don:        'Show the menu block.',
   hien_tiec_nhom:       'Show the group and company dining block.',
   hien_tuyen_dung:      'Show the careers section.',
+  // Mua thịt về (0101). Tám khóa văn bản kết bằng cùng một câu dặn không ghi số tiền (KHONG_TIEN của
+  // crm/test/test-mua-thit-ve.mjs).
+  hien_mua_thit_ve:     'Opens the Take home page and its menu item: customers choose packs and the site writes an order message for them to send on Zalo OA. The page ONLY opens when all three hold: this switch is on, zalo_oa_url is published (an https://zalo.me/… link), and at least one product is On sale, on the website channel, with prices confirmed by the owner in Retail. The page shows the confirmed pack prices; if a price per kg changes in Warehouse, the page keeps the confirmed price until the owner confirms again — Zalo OA staff always recalculate the total from FABi when confirming, never from the numbers in the message (customers can edit it). Name and description edits in Retail show at once. Turn it on only when someone answers orders on the Zalo OA, copying the order was tested on a real phone, and the lawyer has advised on labelling fixed-price packs by weight.',
+  mua_thit_hien_tam_het: 'The Take home page says "Sold out at the counter for now" from counter stock in the warehouse. ONLY turn it on once the branch deducts stock from iPOS and the counter records goods in and out on time — if the warehouse shows too little, customers see "sold out" while the counter still has stock.',
+  mua_thit_gio_nhan:    'Pickup and delivery hours for take-home orders, as customers read them. Until published, the page says we agree the time when we confirm the order. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
+  mua_thit_giao_hang:   'Publishing this key OPENS delivery on the Take home page: delivery area and how the fee works, as customers read them. Until published, the page offers pickup only. Publish only once who delivers, how far and cold bags are settled. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
+  mua_thit_thue:        'One sentence about VAT for prices on the Take home page. Until published, the page says nothing about tax. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
+  mua_thit_bao_quan_mat: 'How to store chilled beef at home: temperature and how many days to use it. Until published, chilled cuts have no Storage section. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
+  mua_thit_bao_quan_dong_lanh: 'How to store and thaw frozen beef at home. Until published, frozen cuts have no Storage section. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
+  mua_thit_can_lech:    'How a pack is charged when its real weight is a few grams off the weight on the page. Until published, the page does not show this question. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
+  mua_thit_hang_loi:    'A problem with a take-home order: how soon to tell us and what we do. Until published, the page only says to message us on Zalo OA with a photo of the pack. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
+  mua_thit_doi_huy:     'Changing or cancelling a take-home order before and after we confirm it. Until published, the page only says to message us in the same Zalo chat. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
 };
 
 /** Tên khung ảnh bắt buộc (v_anh_con_thieu, 0009) ở tiếng Anh, tra theo mã khung. */

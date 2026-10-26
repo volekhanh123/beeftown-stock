@@ -1,0 +1,20 @@
+---
+/* Trang Mua thịt về — vỏ: đọc nội dung và menu song song, tính trạng thái trang rồi giao cho TrangMuaThitVe.
+   Trạng thái theo công tắc HIỆU LỰC của database (muaThitVeMo, lib/dich-dat-hang.ts) và menu đọc được; chưa nối
+   database thì trang vẫn dựng được, ở trạng thái "chưa mở". duongDan là chuỗi cố định: canonical và hreflang không
+   mang chuỗi truy vấn của giỏ. Sửa bản này thì sửa cả /en/buy-meat và /ko/buy-meat. */
+import Trang from '../layouts/Trang.astro';
+import TrangMuaThitVe from '../components/TrangMuaThitVe.astro';
+import { docNoiDung } from '../lib/noi-dung';
+import { docMuaThitVe, trangThaiMuaThit } from '../lib/mua-thit-ve';
+import { muaThitVeMo } from '../lib/dich-dat-hang';
+import { moTaTrangMuaThit } from '../lib/trang-cong-khai';
+
+const [noiDung, menu] = await Promise.all([docNoiDung('vi'), docMuaThitVe('vi')]);
+const trangThai = trangThaiMuaThit(muaThitVeMo(noiDung), menu);
+---
+<Trang ngonNgu="vi" noiDung={noiDung} duongDan="/mua-thit-ve" tieuDe="Mua thịt về — Beeftown"
+       moTa={moTaTrangMuaThit('vi', trangThai === 'mo' || trangThai === 'het_quay')}>
+  <TrangMuaThitVe ngonNgu="vi" noiDung={noiDung} menu={menu} trangThai={trangThai}
+                  thamSo={[...Astro.url.searchParams]} duongDan="/mua-thit-ve" />
+</Trang>

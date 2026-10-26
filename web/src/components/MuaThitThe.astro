@@ -1,0 +1,212 @@
+---
+/**
+ * THẺ MỘT SẢN PHẨM CỦA TRANG MUA THỊT VỀ (TrangMuaThitVe.astro dựng)
+ *
+ * Một article.the: tên, nhãn bảo quản bằng chữ, mô tả, rồi từng gói một hàng — nhãn gói ("Gói khoảng 200 g",
+ * quyết định 2 của Khánh 26/10/2026), giá gói quán đã công bố (giá chủ đã chốt, quyết định 1) và ô chọn số gói.
+ * Không giá theo cân hay theo trăm gam (quyết định 3). Chưa có ảnh chụp thật của khay: KhungAnh loai="khay".
+ *
+ *  · Ô số gói là <select> 0–10 thật, tên ô là khoaGoi (mã sản phẩm + số gam, chỉ ASCII): form GET chạy cả khi tắt
+ *    JavaScript. Hai nút −/+ chỉ chạy nhờ script của trang nên ra trang với hidden; script hiện chúng. Nút −/+ không
+ *    mang lớp .nut (phép đo .nut đòi đệm ngang 20px) — vuông 48px, viền --vien-o.
+ *  · Gói "Tạm hết ở quầy": giá vẫn hiện, chữ tạm hết thay cụm chọn — không ô, không nút.
+ *  · coOChon = false (trạng thái mọi gói tạm hết): không ô chọn nào.
+ *  · Số tiền chỉ qua dinhDangTien, chỉ trong phần tử có data-tien (bộ quét chữ cấm miễn đúng chỗ đó).
+ *  · Cách nướng / cách dùng, bảo quản nằm trong details đóng sẵn: phần đọc thêm, không chen vào hàng gói.
+ * Kiểm thử: crm/test/test-cong-khai-mua-thit-ve.mjs.
+ */
+import { dich } from '../lib/chu';
+import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+import { SO_GOI_TOI_DA, dinhDangTien, nhanGoi, type SanPhamMua } from '../lib/don-mua-thit';
+import BieuTuong from './BieuTuong.astro';
+import KhungAnh from './KhungAnh.astro';
+
+interface Props {
+  sanPham: SanPhamMua;
+  ngonNgu: NgonNgu;
+  noiDung: NoiDung;
+  gio: Map<string, number>;
+  coOChon: boolean;
+}
+const { sanPham, ngonNgu, noiDung: nd, gio, coOChon } = Astro.props;
+
+const c = dich(ngonNgu, {
+  bqMat: { vi: 'Thịt mát', en: 'Chilled', ko: '냉장' },
+  bqDong: { vi: 'Đông lạnh', en: 'Frozen', ko: '냉동' },
+  bqGiu: { vi: 'Giữ lạnh', en: 'Keep cold', ko: '냉장 보관' },
+  tamHet: { vi: 'Tạm hết ở quầy', en: 'Sold out at the counter for now', ko: '지금은 매장에 재고가 없어요' },
+  // Nhãn đọc cho trình đọc màn hình — cùng một chữ cho gói thịt và hộp kim chi.
+  soGoi: {
+    vi: (goi: string, ten: string) => `Số lượng: ${goi}, ${ten}`,
+    en: (goi: string, ten: string) => `Quantity: ${goi}, ${ten}`,
+    ko: (goi: string, ten: string) => `${ten} ${goi} 수량`,
+  },
+  bot: {
+    vi: (goi: string, ten: string) => `Bớt một: ${goi}, ${ten}`,
+    en: (goi: string, ten: string) => `Remove one: ${goi}, ${ten}`,
+    ko: (goi: string, ten: string) => `${ten} ${goi} 하나 빼기`,
+  },
+  them: {
+    vi: (goi: string, ten: string) => `Thêm một: ${goi}, ${ten}`,
+    en: (goi: string, ten: string) => `Add one: ${goi}, ${ten}`,
+    ko: (goi: string, ten: string) => `${ten} ${goi} 하나 추가`,
+  },
+  cachNuong: { vi: 'Cách nướng', en: 'How to grill', ko: '굽는 법' },
+  cachDungBaoQuan: { vi: 'Cách dùng, bảo quản', en: 'Serving and storage', ko: '드시는 법과 보관' },
+  baoQuan: { vi: 'Bảo quản', en: 'Storage', ko: '보관' },
+});
+
+/** Chữ đã công bố, bỏ khoảng trắng hai đầu; chưa công bố hay trống → null. */
+const coChu = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null);
+
+const laKimChi = sanPham.loai === 'kim_chi';
+const nhanBaoQuan = sanPham.baoQuan === 'dong_lanh' ? c.bqDong : sanPham.baoQuan === 'giu_lanh' ? c.bqGiu : c.bqMat;
+// Phần đọc thêm. Thịt: cách nướng (cột cách dùng của sản phẩm) và bảo quản (khóa công bố theo loại bảo quản —
+// thịt đông lạnh một câu, thịt mát và giữ lạnh một câu). Kim chi: cách dùng, bảo quản là một ô.
+const baoQuanThit = laKimChi ? null : coChu(sanPham.baoQuan === 'dong_lanh' ? nd.mua_thit_bao_quan_dong_lanh : nd.mua_thit_bao_quan_mat);
+const phanThem = laKimChi
+  ? (sanPham.cachDung ? [{ tieuDe: c.cachDungBaoQuan, chu: sanPham.cachDung }] : [])
+  : [
+      ...(sanPham.cachDung ? [{ tieuDe: c.cachNuong, chu: sanPham.cachDung }] : []),
+      ...(baoQuanThit ? [{ tieuDe: c.baoQuan, chu: baoQuanThit }] : []),
+    ];
+const SO_CHON = Array.from({ length: SO_GOI_TOI_DA + 1 }, (_, i) => i);
+---
+<article class:list={['the', 'mtv-the', { 'mtv-the-ngang': laKimChi }]}>
+  <div class="mtv-the-dau">
+    <div class="mtv-the-chu">
+      {/* Tên chưa có bản dịch thì là tên tiếng Việt: trình đọc màn hình đọc đúng giọng. */}
+      <h3 lang={ngonNgu !== 'vi' && sanPham.ten === sanPham.tenVi ? 'vi' : undefined}>{sanPham.ten}</h3>
+      <p class="nhan-mon mtv-bao-quan">{nhanBaoQuan}</p>
+      {sanPham.moTa && <p class="mtv-mo-ta">{sanPham.moTa}</p>}
+    </div>
+    <div class="mtv-anh">
+      <KhungAnh loai="khay" tiLe="4 / 3" tiLeNho="1 / 1" />
+    </div>
+  </div>
+
+  <div class="mtv-cac-goi">
+    {sanPham.goi.map(goi => {
+      const nhan = nhanGoi(sanPham.donVi, goi.soGam, ngonNgu);
+      const idO = `mtv-o-${goi.khoa}`;
+      return (
+        <div class="mtv-goi">
+          <span class="mtv-nhan-goi">{nhan}</span>
+          <span class="mtv-gia" data-tien>{dinhDangTien(goi.gia)}</span>
+          {goi.tamHet ? (
+            <span class="mtv-tam-het" data-mtv-tam-het>{c.tamHet}</span>
+          ) : coOChon && (
+            <span class="mtv-chon">
+              <label class="an-chu" for={idO}>{c.soGoi(nhan, sanPham.ten)}</label>
+              <button type="button" class="mtv-buoc" data-mtv-buoc="-1" hidden><BieuTuong ten="tru" /><span class="an-chu">{c.bot(nhan, sanPham.ten)}</span></button>
+              <select name={goi.khoa} id={idO} class="mtv-so">
+                {SO_CHON.map(so => <option value={String(so)} selected={so === (gio.get(goi.khoa) ?? 0)}>{so}</option>)}
+              </select>
+              <button type="button" class="mtv-buoc" data-mtv-buoc="1" hidden><BieuTuong ten="cong" /><span class="an-chu">{c.them(nhan, sanPham.ten)}</span></button>
+            </span>
+          )}
+        </div>
+      );
+    })}
+  </div>
+
+  {phanThem.length > 0 && (
+    <details class="mtv-them">
+      <summary><span>{phanThem.map(p => p.tieuDe).join(' · ')}</span><BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
+      <dl class="mtv-them-chu">
+        {phanThem.map(p => <><dt>{p.tieuDe}</dt><dd>{p.chu}</dd></>)}
+      </dl>
+    </details>
+  )}
+</article>
+
+<style>
+  /* Nút chỉ chạy nhờ JavaScript ra trang với hidden; display của lớp riêng không được đè lên hidden. Viết trơn,
+     không đặt lớp của body phía trước: Astro gắn phạm vi cho mọi bộ chọn, body không mang dấu phạm vi đó. */
+  [hidden] { display: none !important; }
+
+  .mtv-the { display: grid; gap: var(--k-4); align-content: start; }
+  /* Điện thoại: chữ trái, ảnh vuông 96px phải. Từ 600px: ảnh trên, chữ dưới (thẻ trong lưới hai cột). */
+  .mtv-the-dau { display: grid; grid-template-columns: minmax(0, 1fr) 96px; gap: var(--k-4); align-items: start; }
+  .mtv-anh { grid-column: 2; grid-row: 1; }
+  .mtv-the-chu { grid-column: 1; grid-row: 1; min-width: 0; }
+  @media (min-width: 600px) {
+    .mtv-the-dau { grid-template-columns: minmax(0, 1fr); }
+    .mtv-anh { grid-column: 1; grid-row: 1; }
+    .mtv-the-chu { grid-row: 2; }
+    /* Kim chi: thẻ nằm ngang — ảnh trái, chữ và gói phải. */
+    .mtv-the-ngang { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); column-gap: var(--k-6); }
+    .mtv-the-ngang .mtv-the-dau { display: contents; }
+    .mtv-the-ngang .mtv-anh { grid-column: 1; grid-row: 1 / span 3; }
+    .mtv-the-ngang .mtv-the-chu, .mtv-the-ngang .mtv-cac-goi, .mtv-the-ngang .mtv-them { grid-column: 2; }
+    .mtv-the-ngang .mtv-the-chu { grid-row: 1; }
+  }
+  .mtv-the h3 { margin: 0 0 var(--k-2); overflow-wrap: anywhere; }
+  .mtv-bao-quan { margin: 0; }
+  .mtv-mo-ta { margin: var(--k-3) 0 0; color: var(--chu-phu); max-width: 60ch; }
+
+  /* Hàng gói. Thẻ hẹp: nhãn gói và giá một dòng, cụm −/ô/+ dòng dưới căn phải. Thẻ rộng (phần gói từ 440px): một
+     hàng. Đo theo bề ngang của thẻ, không theo màn: từ 600px thẻ đứng hai cột, một hàng cần chừng 430px (nhãn gói,
+     giá, −/ô/+ rộng 176px) — theo màn thì nhãn gói bị ép còn vài chục px. */
+  .mtv-cac-goi { container-type: inline-size; border-top: 1px solid var(--vien); }
+  .mtv-goi {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--k-2) var(--k-3);
+    padding: var(--k-3) 0; border-bottom: 1px solid var(--vien);
+  }
+  .mtv-nhan-goi { font-weight: 600; }
+  .mtv-gia { white-space: nowrap; font-weight: 700; color: var(--nhan); justify-self: end; }
+  .mtv-chon, .mtv-tam-het { grid-column: 1 / -1; justify-self: end; }
+  @container (min-width: 440px) {
+    .mtv-goi { grid-template-columns: minmax(0, 1fr) auto auto; }
+    .mtv-chon, .mtv-tam-het { grid-column: auto; }
+  }
+  .mtv-tam-het { font-size: var(--co-nho); font-weight: 700; color: var(--chu-chinh); text-align: right; }
+
+  .mtv-chon { display: inline-flex; align-items: center; gap: var(--k-1); }
+  /* Ô số gói: như ô chọn của form (.o, cong-khai.css) nhưng hẹp 72px. Chữ 16px: iPhone không tự phóng to. */
+  .mtv-so {
+    width: 72px; min-height: 48px; padding: 11px 8px;
+    font: inherit; font-size: 16px; line-height: 1.5; text-align: center;
+    color: var(--than); background: var(--kem);
+    border: 1px solid var(--vien-o); border-radius: var(--bo);
+  }
+  .mtv-so:focus-visible { outline: 3px solid var(--do); outline-offset: 1px; border-color: var(--do); }
+  .mtv-buoc {
+    /* font: inherit — nút của trình duyệt không kế thừa phông: chữ ẩn cho trình đọc màn hình (.an-chu) sẽ là Arial. */
+    font: inherit;
+    display: inline-grid; place-items: center; width: 48px; min-height: 48px; padding: 0;
+    color: var(--nhan); background: var(--kem);
+    border: 1px solid var(--vien-o); border-radius: var(--bo);
+    cursor: pointer; transition: background-color var(--nhanh);
+  }
+  .mtv-buoc :global(svg) { width: 24px; height: 24px; }
+  .mtv-buoc:active { background: var(--kem-dam); }
+  @media (hover: hover) { .mtv-buoc:hover { background: var(--kem-dam); } }
+
+  /* Dưới 1024px thanh dưới (64px) dính đáy màn hình: Tab tới ô chọn thì ô dừng trên thanh, không nằm dưới nó. */
+  @media (max-width: 1023.98px) {
+    .mtv-so, .mtv-buoc, .mtv-the summary { scroll-margin-bottom: calc(64px + var(--k-3)); }
+  }
+
+  /* Phần đọc thêm: cả hàng là vùng bấm, cao tối thiểu 48px; dấu cộng khi đóng, dấu trừ khi mở. */
+  .mtv-them summary {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--k-3);
+    min-height: 48px; padding: var(--k-2) 0;
+    font-weight: 700; cursor: pointer; list-style: none;
+  }
+  .mtv-them summary::-webkit-details-marker { display: none; }
+  .mtv-them summary :global(svg) { width: 24px; height: 24px; flex: none; color: var(--nhan); }
+  .mtv-them summary :global(.bt-dong), .mtv-them[open] > summary :global(.bt-mo) { display: none; }
+  .mtv-them[open] > summary :global(.bt-dong) { display: block; }
+  .mtv-them summary:active { color: var(--nhan); }
+  @media (hover: hover) { .mtv-them summary:hover { color: var(--nhan); } }
+  .mtv-them-chu { margin: 0 0 var(--k-2); }
+  .mtv-them-chu dt { font-weight: 700; margin-top: var(--k-3); }
+  .mtv-them-chu dt:first-child { margin-top: 0; }
+  .mtv-them-chu dd { margin: var(--k-1) 0 0; max-width: 60ch; }
+
+  /* Tương phản cao (Windows): giữ viền nút −/+ thấy được bằng màu hệ thống. */
+  @media (forced-colors: active) {
+    .mtv-buoc { border: 1px solid ButtonText; }
+  }
+</style>

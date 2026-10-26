@@ -14,7 +14,10 @@
  *    Đã nối database mà lỗi thì ghi ĐÚNG MỘT dòng log "[thuc-don]".
  *
  * Quy tắc chữ cấm (chuoi-cam.js) chặn mọi số tiền trên trang công khai, vì CHƯA
- * món nào có giá duyệt. PR nào duyệt giá đầu tiên phải sửa luôn quy tắc đó.
+ * món nào có giá duyệt. PR nào duyệt giá món đầu tiên phải sửa luôn quy tắc đó.
+ * Trang Mua thịt về (0101) là trang duy nhất hiện giá: giá gói chủ đã chốt, trong
+ * phần tử data-tien; bộ quét miễn đúng chỗ đó — web/kiem-tra/chu-hien-ra.mjs.
+ * Thực đơn vẫn không số tiền nào.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { taoClient, type NgonNgu } from './noi-dung.ts';

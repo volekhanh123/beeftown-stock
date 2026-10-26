@@ -138,6 +138,8 @@ await nhom('0 · TIỀN ĐỀ — enum, chữ ký, quyền gọi hàm', async ()
     'zalo_rut_tham_so', 'zalo_mau_tin_tham_so', 'zalo_du_lieu_goc', 'zalo_loc_tham_so', 'zalo_dien_noi_dung',
     'zalo_nhat_ky_tin_dien', 'zalo_luc_hen', 'zalo_du_lieu_dat_ban', 'zalo_xep_tin_mot', 'zalo_xep_tin_dat_ban',
     'zalo_sau_dat_ban', 'zalo_sach_loi', 'zalo_khach_theo_nhom',
+    // 0101: hàm trigger chỉ nhận link https://zalo.me/<mã> cho khóa zalo_oa_url (Nội dung, không phải gửi tin)
+    'zalo_oa_url_kiem_tra',
   ].sort();
   const ds = await q(`select p.proname, has_function_privilege('authenticated', p.oid, 'execute') as goi,
                              has_function_privilege('anon', p.oid, 'execute') as anon, p.prosecdef as dinh

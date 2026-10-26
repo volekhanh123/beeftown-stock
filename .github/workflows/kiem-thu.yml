@@ -161,7 +161,8 @@ jobs:
       && !(github.event_name == 'pull_request' && github.event.pull_request.draft)
       && (github.event_name != 'schedule' || needs.co-doi.outputs.chay != 'khong') }}
     runs-on: ubuntu-24.04
-    # 7 cỡ màn hình × 21 trang (thu-trinh-duyet) và trạng thái có database (thu-day-du, astro dev).
+    # 9 cỡ màn hình × 24 trang (thu-trinh-duyet) và trạng thái có database (thu-day-du, astro dev — nhóm 12 là trang
+    # Mua thịt về: chọn gói, tin đơn, chép đơn, tắt JavaScript, mất mạng, nhiều bề rộng).
     timeout-minutes: 30
     # KHÔNG có web/.env: trang công khai phải đúng và đủ khi chưa nối database (README của web).
     env:

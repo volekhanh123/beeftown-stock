@@ -1,0 +1,819 @@
+---
+/**
+ * TRANG MUA THỊT VỀ — /mua-thit-ve · /en/buy-meat · /ko/buy-meat
+ * ==============================================================
+ *
+ * Khách chọn gói thịt bò (và hộp kim chi) của quầy, thấy giá từng gói, rồi gửi tin đơn cho quán. Bốn trạng thái —
+ * ba file vỏ tính bằng trangThaiMuaThit(muaThitVeMo(noiDung), menu) (bản thiết kế PR 2, mục 2.5):
+ *   · chua_mo  — chưa nối database (CI), công tắc tắt, chưa có link Zalo OA hợp lệ hay chưa gói nào: chỉ tiêu đề,
+ *                một câu và link Thực đơn. Không mời nhắn, không nút kênh, không giá, không form.
+ *   · loi      — trang đang mở mà đọc menu lỗi / hết giờ: câu "chưa tải được", nút nhắn Zalo OA, link Thực đơn.
+ *   · mo       — danh sách gói có giá, form GET chọn số gói, "Đơn của bạn", khối "Xem lại đơn" có tin đơn.
+ *   · het_quay — mọi gói "Tạm hết ở quầy": vẫn liệt kê gói và giá, không form, câu tạm hết và nút nhắn Zalo OA.
+ *
+ * GIÁ (Khánh 26/10/2026): giá trên trang là giá gói quán đã công bố — giá chủ đã chốt ở /noi-bo/ban-le, database
+ * giữ nguyên tới lần chốt sau. Quán xác nhận tổng tiền khi liên hệ lại; trang nói đúng như vậy (giaCongBo ở thẻ Nhận
+ * hàng, khối Đơn của bạn và hỏi đáp 3). Không giá theo cân, không giá quầy. Gói thịt ghi "khoảng" (nhanGoi).
+ *
+ * ĐÍCH ĐẶT HÀNG — TẠM (Khánh 26/10/2026: "Mốt đổi Mini App link trực tiếp đặt chứ không gửi tin nhắn nữa"): khách chép
+ * tin đơn tiếng Việt, mở chat Zalo OA, dán và bấm Gửi. Link, cách chuyển giỏ và chữ của bước gửi chỉ đến từ
+ * web/src/lib/dich-dat-hang.ts (dichDatHang, linkGuiDon, CHU_DICH). Component không tự viết link Zalo; script nhận đích
+ * qua đúng một thuộc tính data-dich. PR đổi sang Mini App chỉ sửa file lib đó (và chữ ghi trong chú thích đầu file đó).
+ *
+ * MỘT NGUỒN SỰ THẬT CHO HAI ĐƯỜNG: máy chủ đọc giỏ từ địa chỉ trang (form GET — chạy cả khi tắt JavaScript), script
+ * đọc giỏ từ form mỗi lần khách đổi số; cả hai tính bằng docGio → tinhDon → taoTinDon của don-mua-thit.ts.
+ * Bấm "Xem đơn và gửi qua Zalo" luôn là form GET: máy chủ đọc lại menu (giá mới nhất) và dựng khối "Xem lại đơn".
+ *
+ * Luật dựng (crm/test/test-cong-khai-mua-thit-ve.mjs giữ):
+ *   · Số tiền chỉ qua dinhDangTien, chỉ trong phần tử có data-tien — bộ quét chữ cấm miễn đúng chỗ đó.
+ *   · Thứ chỉ chạy nhờ script (nút Chép đơn, nút −/+, thanh dưới) ra trang với hidden.
+ *   · Không ô nào hỏi tên, số điện thoại, địa chỉ: form GET đưa mọi ô vào địa chỉ trang.
+ *   · Đúng hai vùng thông báo: tạm tính (đọc lại sau mỗi lần bấm −/+) và câu báo chép đơn.
+ *   · Không khối kêu gọi cuối trang: trang có một hành động chính là gửi đơn.
+ */
+// dich() của chu.ts đổi tên thành dichCau: tên "dich" là đích đặt hàng (dichDatHang) — hợp đồng với script và kiểm thử.
+import { chu, dich as dichCau, duongDanTuongUng } from '../lib/chu';
+import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+import { diaChi, lienHe } from '../lib/trang-cong-khai';
+import { coGiaoHang, type LoaiNhom, type MenuMuaThit, type TrangThaiTrang } from '../lib/mua-thit-ve';
+import { CHU_DON, dinhDangTien, docGio, nhanGoi, rutGonMenu, taoTinDon, tinhDon } from '../lib/don-mua-thit';
+import { CHU_DICH, dichDatHang, linkGuiDon } from '../lib/dich-dat-hang';
+import BieuTuong from './BieuTuong.astro';
+import MuaThitThe from './MuaThitThe.astro';
+
+interface Props {
+  ngonNgu: NgonNgu;
+  noiDung: NoiDung;
+  menu: MenuMuaThit;
+  trangThai: TrangThaiTrang;
+  thamSo: [string, string][];
+  duongDan: string;
+}
+const { ngonNgu: nn, noiDung: nd, menu, trangThai: trangThaiVao, thamSo, duongDan } = Astro.props;
+const t = chu(nn);
+const lh = lienHe(nd);
+const dich = dichDatHang(nd);
+const chuDich = dich ? CHU_DICH[dich.cach] : null;
+// Trang mở (mo, het_quay) luôn có đích đặt hàng — muaThitVeMo đã đòi điều đó. Phòng hờ: thiếu thì như chưa mở.
+const trangThai: TrangThaiTrang = (trangThaiVao === 'mo' || trangThaiVao === 'het_quay') && !dich ? 'chua_mo' : trangThaiVao;
+const choGiao = coGiaoHang(nd);
+const { gio, cachNhan, boTamHet } = docGio(thamSo, menu.sanPham, choGiao);
+const don = tinhDon(gio, cachNhan, menu.sanPham, boTamHet);
+// Giờ soạn của bản máy chủ (không JavaScript); script soạn lại với giờ của máy khách. Không cộng giờ ở đây:
+// gioSoanVn của don-mua-thit.ts đổi sang giờ Việt Nam.
+const msSoan = Date.now();
+const gioRong = don.dong.length === 0;
+
+/** Chữ đã công bố, bỏ khoảng trắng hai đầu; chưa công bố hay trống → null. */
+const coChu = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null);
+const giaoHang = coChu(nd.mua_thit_giao_hang);
+const gioNhan = coChu(nd.mua_thit_gio_nhan);
+const thue = coChu(nd.mua_thit_thue);
+const baoQuanMat = coChu(nd.mua_thit_bao_quan_mat);
+const baoQuanDong = coChu(nd.mua_thit_bao_quan_dong_lanh);
+const canLech = coChu(nd.mua_thit_can_lech);
+const hangLoi = coChu(nd.mua_thit_hang_loi);
+const doiHuy = coChu(nd.mua_thit_doi_huy);
+
+const c = dichCau(nn, {
+  hieu: { vi: 'Mua thịt về', en: 'Take home', ko: '포장 구매' },
+  h1: {
+    vi: 'Không cần rành bò. Chọn theo gu, thấy giá trước.',
+    en: 'No need to know your beef. Choose by taste, see the price first.',
+    ko: '소고기를 잘 몰라도 괜찮아요. 취향대로 고르고, 가격은 먼저 확인하세요.',
+  },
+  danQuay: {
+    vi: 'Thịt bò của quầy Beeftown chia gói để mang về, nhận tại quầy.',
+    en: 'Beef from the Beeftown counter in packs to take home, picked up at the counter.',
+    ko: 'Beeftown 매장의 소고기를 팩으로 포장해 드려요. 매장에서 받아 가세요.',
+  },
+  danGiao: {
+    vi: 'Thịt bò của quầy Beeftown chia gói để mang về. Nhận tại quầy hoặc giao tận nơi.',
+    en: 'Beef from the Beeftown counter in packs to take home. Pick it up at the counter or have it delivered.',
+    ko: 'Beeftown 매장의 소고기를 팩으로 포장해 드려요. 매장에서 받으시거나 배달로 받으실 수 있어요.',
+  },
+  coKimChi: { vi: 'Có cả kim chi theo hộp.', en: 'Kimchi by the box, too.', ko: '김치도 통으로 판매해요.' },
+
+  // --- Ba bước -------------------------------------------------------------------
+  baBuoc: { vi: 'Mua thế nào', en: 'How it works', ko: '구매 방법' },
+  buoc1: { vi: 'Chọn gói', en: 'Choose your packs', ko: '팩 고르기' },
+  buoc3: {
+    vi: 'Quán liên hệ lại để xác nhận tổng tiền và giờ nhận',
+    en: 'We contact you to confirm the total and the time',
+    ko: '매장에서 연락드려 총액과 받으실 시간을 확인해요',
+  },
+
+  // --- Nhận hàng và trả tiền ---------------------------------------------------------
+  nhanHang: { vi: 'Nhận hàng và trả tiền', en: 'Getting your order and paying', ko: '받는 방법과 결제' },
+  tomTatQuay: {
+    vi: 'Tại quầy · trả khi nhận hoặc chuyển khoản',
+    en: 'At the counter · pay on pickup or by transfer',
+    ko: '매장 픽업 · 받으실 때 결제 또는 계좌이체',
+  },
+  tomTatGiao: {
+    vi: 'Tại quầy hoặc giao tận nơi · trả khi nhận hoặc chuyển khoản',
+    en: 'At the counter or delivered · pay on receipt or by transfer',
+    ko: '매장 픽업 또는 배달 · 받으실 때 결제 또는 계좌이체',
+  },
+  dtQuay: { vi: 'Nhận tại quầy', en: 'Pick up at the counter', ko: '매장 픽업' },
+  dtGiao: { vi: 'Giao tận nơi', en: 'Delivery', ko: '배달' },
+  dtTraTien: { vi: 'Trả tiền', en: 'Payment', ko: '결제' },
+  dtGio: { vi: 'Giờ nhận', en: 'Time', ko: '받는 시간' },
+  dtGia: { vi: 'Giá', en: 'Prices', ko: '가격' },
+  dtThue: { vi: 'Thuế', en: 'Tax', ko: '세금' },
+  traTien: {
+    vi: 'Trả khi nhận hàng, hoặc chuyển khoản theo mã QR quán gửi trong Zalo. Website chưa thu tiền.',
+    en: 'Pay when you receive your order, or by bank transfer with the QR code we send on Zalo. The website does not take payment.',
+    ko: '받으실 때 결제하시거나, Zalo로 보내 드리는 QR 코드로 계좌이체해 주세요. 웹사이트에서는 결제하지 않아요.',
+  },
+  gioMacDinh: {
+    vi: 'Quán hẹn giờ nhận với bạn khi xác nhận đơn.',
+    en: 'We agree the time with you when we confirm your order.',
+    ko: '주문을 확인할 때 받으실 시간을 함께 정해요.',
+  },
+  // Quyết định 1 (Khánh 26/10/2026): giá trên trang là giá quán đã công bố; tổng tiền quán xác nhận khi liên hệ lại.
+  giaCongBo: {
+    vi: 'Giá từng gói là giá quán đã công bố. Quán xác nhận tổng tiền khi liên hệ lại với bạn.',
+    en: "Each pack's price is the price we have published. We confirm the total when we get back to you.",
+    ko: '팩별 가격은 매장에서 공지한 가격이에요. 총액은 매장에서 연락드릴 때 확인해 드려요.',
+  },
+
+  // --- Danh sách, đơn ----------------------------------------------------------------
+  nhomMat: { vi: 'Thịt mát', en: 'Chilled beef', ko: '냉장 소고기' },
+  nhomDong: { vi: 'Thịt đông lạnh', en: 'Frozen beef', ko: '냉동 소고기' },
+  nhomKimChi: { vi: 'Kim chi', en: 'Kimchi', ko: '김치' },
+  donCuaBan: { vi: 'Đơn của bạn', en: 'Your order', ko: '주문 내역' },
+  cachNhan: { vi: 'Cách nhận', en: 'How you get it', ko: '받는 방법' },
+  nhanQuay: { vi: 'Nhận tại quầy', en: 'Pick up at the counter', ko: '매장 픽업' },
+  nhanGiao: { vi: 'Giao tận nơi', en: 'Delivery', ko: '배달' },
+  chuaGomGiao: {
+    vi: 'Giao tận nơi: tạm tính chưa gồm phí giao.',
+    en: 'Delivery: the subtotal does not include the delivery fee.',
+    ko: '배달: 소계에 배달비는 포함되지 않아요.',
+  },
+  xemDon: { vi: 'Xem đơn', en: 'View order', ko: '주문 보기' },
+  xemLaiDon: { vi: 'Xem lại đơn', en: 'Review your order', ko: '주문 다시 보기' },
+  chonThem: { vi: 'Chọn thêm', en: 'Add more', ko: '더 고르기' },
+  boTamHet: {
+    vi: 'Có gói vừa tạm hết ở quầy nên không có trong đơn.',
+    en: 'A pack you chose is sold out at the counter for now, so it is not in the order.',
+    ko: '고르신 팩 중 지금 매장에 재고가 없는 팩은 주문에서 빠졌어요.',
+  },
+  khungTin: { vi: 'Tin đơn của bạn', en: 'Your order message', ko: '주문 메시지' },
+  // Tin đơn luôn tiếng Việt (nhân viên trực Zalo OA đọc): trang en / ko nói vì sao. Bản vi rỗng — không dựng.
+  tinTiengViet: {
+    vi: '',
+    en: 'The message is in Vietnamese so our staff can read it quickly: your packs, quantities, subtotal and how you get your order.',
+    ko: '직원이 바로 읽을 수 있도록 메시지는 베트남어로 적혀 있어요. 팩, 수량, 소계, 받는 방법이 들어 있어요.',
+  },
+  khongZalo: { vi: 'Không dùng Zalo? Gọi Beeftown:', en: "Don't use Zalo? Call Beeftown:", ko: 'Zalo를 쓰지 않으시나요? Beeftown 전화:' },
+
+  // --- Chưa mở, lỗi, tạm hết ---------------------------------------------------------
+  chuaMoH1: {
+    vi: 'Beeftown chưa mở mua thịt về qua website',
+    en: 'Take-home orders on the website are not open yet',
+    ko: 'Beeftown은 아직 웹사이트에서 포장 구매를 받지 않아요',
+  },
+  chuaMoDan: {
+    vi: 'Bạn vẫn xem được thực đơn của Beeftown.',
+    en: 'You can still look at the Beeftown menu.',
+    ko: 'Beeftown 메뉴는 지금도 보실 수 있어요.',
+  },
+  loiH1: { vi: 'Chưa tải được danh sách gói', en: 'We could not load the packs right now', ko: '지금은 팩 목록을 불러오지 못했어요' },
+  loiCau: {
+    vi: 'Bạn tải lại trang sau ít phút, hoặc nhắn Beeftown qua Zalo OA để mua thịt mang về.',
+    en: 'Please reload in a few minutes, or message Beeftown on Zalo OA to buy beef to take home.',
+    ko: '몇 분 뒤에 페이지를 새로 고치시거나, Zalo OA로 Beeftown에 메시지를 보내 포장 구매를 문의해 주세요.',
+  },
+  hetQuay: {
+    vi: 'Các gói đang tạm hết ở quầy. Bạn xem lại sau, hoặc nhắn Beeftown qua Zalo OA để hỏi.',
+    en: 'Every pack is sold out at the counter for now. Check again later, or message Beeftown on Zalo OA to ask.',
+    ko: '지금은 모든 팩이 매장에 재고가 없어요. 나중에 다시 보시거나, Zalo OA로 Beeftown에 메시지를 보내 문의해 주세요.',
+  },
+  nutNhanZalo: { vi: 'Nhắn Beeftown qua Zalo OA', en: 'Message Beeftown on Zalo OA', ko: 'Zalo OA로 메시지 보내기' },
+  xemThucDon: { vi: 'Xem thực đơn', en: 'See the menu', ko: '메뉴 보기' },
+
+  // --- Hỏi đáp -----------------------------------------------------------------------
+  hoiDap: { vi: 'Hỏi đáp', en: 'Questions', ko: '자주 묻는 질문' },
+  hoiDapDan: { vi: 'Chưa thấy câu của bạn?', en: "Can't find your question?", ko: '찾는 질문이 없나요?' },
+  hoiDapNhan: { vi: 'Nhắn cho quán qua Zalo OA.', en: 'Message us on our Zalo OA.', ko: 'Zalo OA로 메시지를 보내 주세요.' },
+  cauHoi1: { vi: 'Website có thu tiền không?', en: 'Does the website take payment?', ko: '웹사이트에서 결제하나요?' },
+  traLoi1: {
+    vi: 'Chưa. Bạn trả khi nhận hàng, hoặc chuyển khoản theo mã QR quán gửi trong Zalo sau khi xác nhận đơn.',
+    en: 'No. You pay when you receive your order, or by bank transfer with the QR code we send on Zalo after confirming the order.',
+    ko: '아니요. 받으실 때 결제하시거나, 주문을 확인한 뒤 Zalo로 보내 드리는 QR 코드로 계좌이체해 주세요.',
+  },
+  cauHoi2: {
+    vi: 'Gửi tin đơn xong là đã mua được chưa?',
+    en: 'Is my order placed once I send the message?',
+    ko: '주문 메시지를 보내면 주문이 끝난 건가요?',
+  },
+  traLoi2: {
+    vi: 'Chưa. Tin đơn là yêu cầu của bạn. Quán kiểm hàng ở quầy rồi liên hệ lại để xác nhận tổng tiền và giờ nhận.',
+    en: 'Not yet. The message is your request. We check the counter, then contact you to confirm the total and the time.',
+    ko: '아직이에요. 메시지는 주문 요청이에요. 매장에서 재고를 확인한 뒤 연락드려 총액과 받으실 시간을 확인해 드려요.',
+  },
+  cauHoi3: {
+    vi: 'Giá trên trang có phải tổng tiền cuối cùng không?',
+    en: 'Is the price on this page the final total?',
+    ko: '이 페이지의 가격이 최종 금액인가요?',
+  },
+  traLoi3: {
+    vi: 'Giá từng gói là giá quán đã công bố. Tổng tiền cuối cùng quán báo khi liên hệ lại xác nhận đơn, trước khi bạn trả tiền.',
+    en: "Each pack's price is the price we have published. We tell you the final total when we get back to you to confirm the order, before you pay.",
+    ko: '팩별 가격은 매장에서 공지한 가격이에요. 최종 금액은 주문을 확인하려고 연락드릴 때, 결제하시기 전에 알려 드려요.',
+  },
+  cauHoi4: { vi: 'Có cần tạo tài khoản không?', en: 'Do I need an account?', ko: '회원 가입이 필요한가요?' },
+  traLoi4: {
+    vi: 'Không. Bạn chọn gói trên trang này rồi gửi tin đơn bằng Zalo của mình.',
+    en: 'No. Choose your packs here, then send the order message from your own Zalo.',
+    ko: '아니요. 여기서 팩을 고르고 본인 Zalo로 주문 메시지를 보내 주세요.',
+  },
+  cauHoi5: { vi: 'Giao tới đâu, phí bao nhiêu?', en: 'Where do you deliver, and what does it cost?', ko: '어디까지 배달하고 배달비는 얼마인가요?' },
+  cauHoi6: { vi: 'Mấy giờ nhận được?', en: 'When can I get my order?', ko: '언제 받을 수 있나요?' },
+  cauHoi7: { vi: 'Bảo quản thế nào?', en: 'How should I store it?', ko: '어떻게 보관하나요?' },
+  cauHoi8: { vi: 'Gói cân thật lệch vài gam thì tính sao?', en: 'What if a pack weighs a few grams off?', ko: '팩 무게가 몇 그램 다르면 어떻게 하나요?' },
+  cauHoi9: { vi: 'Hàng có vấn đề thì báo ở đâu?', en: 'Something is wrong with my order. Who do I tell?', ko: '주문에 문제가 있으면 어디로 알려야 하나요?' },
+  hangLoiMacDinh: {
+    vi: 'Nhắn cho quán qua Zalo OA, kèm ảnh gói hàng.',
+    en: 'Message us on our Zalo OA with a photo of the pack.',
+    ko: '팩 사진과 함께 Zalo OA로 메시지를 보내 주세요.',
+  },
+  cauHoi10: { vi: 'Muốn đổi hoặc hủy đơn?', en: 'Want to change or cancel your order?', ko: '주문을 바꾸거나 취소하고 싶으신가요?' },
+  doiHuyMacDinh: {
+    vi: 'Nhắn trong cùng khung chat Zalo với quán.',
+    en: 'Message us in the same Zalo chat.',
+    ko: '주문을 보내신 Zalo 채팅창으로 메시지를 보내 주세요.',
+  },
+  cauHoi11: { vi: 'Cần nhiều hơn 10 gói một loại?', en: 'Need more than 10 of one pack?', ko: '한 팩을 10개보다 많이 원하시나요?' },
+  traLoi11: {
+    vi: 'Trên trang này mỗi gói chọn được tối đa 10. Cần nhiều hơn, bạn ghi thêm vào tin trong Zalo để quán kiểm hàng.',
+    en: 'You can choose up to 10 of each pack here. For more, add it to your Zalo message and we will check the counter.',
+    ko: '이 페이지에서는 팩마다 최대 10개까지 고를 수 있어요. 더 필요하시면 Zalo 메시지에 적어 주시면 재고를 확인해 드려요.',
+  },
+  cauHoi12: { vi: 'Mua thịt về khác Hỏi bàn thế nào?', en: 'How is this different from asking for a table?', ko: '포장 구매와 테이블 문의는 어떻게 다른가요?' },
+  traLoi12: {
+    vi: 'Mua thịt về là mua thịt bò chưa nấu, theo gói, để bạn tự nấu ở nhà. Muốn ăn tại Beeftown thì dùng trang Hỏi bàn.',
+    en: 'Take home is uncooked beef in packs for you to cook at home. To eat at Beeftown, use Ask for a table.',
+    ko: '포장 구매는 집에서 직접 요리하실 수 있도록 익히지 않은 소고기를 팩으로 판매해요. Beeftown에서 식사하시려면 테이블 문의를 이용해 주세요.',
+  },
+  cauHoi13: { vi: 'Không dùng Zalo thì sao?', en: "Don't use Zalo?", ko: 'Zalo를 쓰지 않으시나요?' },
+  traLoi13: { vi: 'Bạn gọi Beeftown theo số', en: 'Call Beeftown on', ko: 'Beeftown에 전화해 주세요:' },
+});
+
+const TEN_NHOM: Record<LoaiNhom, string> = { mat: c.nhomMat, dong_lanh: c.nhomDong, kim_chi: c.nhomKimChi };
+const coKimChi = menu.nhom.some(n => n.loai === 'kim_chi');
+const dan = [choGiao ? c.danGiao : c.danQuay, coKimChi ? c.coKimChi : ''].filter(Boolean).join(' ');
+const tomTat = choGiao ? c.tomTatGiao : c.tomTatQuay;
+const nhanHienTai = `${c.cachNhan}: ${cachNhan === 'giao' ? c.nhanGiao : c.nhanQuay}`;
+---
+{trangThai === 'chua_mo' && (
+  <section class="mo-dau-trang be-kem" aria-labelledby="mtv-tieu-de">
+    <div class="khung">
+      <p class="hieu">{c.hieu}</p>
+      <h1 id="mtv-tieu-de">{c.chuaMoH1}</h1>
+      <p class="dan">{c.chuaMoDan}</p>
+      <p><a class="lien-ket" href={duongDanTuongUng('/thuc-don', nn)}>{c.xemThucDon}<BieuTuong ten="mui-ten" /></a></p>
+    </div>
+  </section>
+)}
+
+{trangThai === 'loi' && (
+  <section class="mo-dau-trang be-kem" aria-labelledby="mtv-tieu-de">
+    <div class="khung">
+      <p class="hieu">{c.hieu}</p>
+      <h1 id="mtv-tieu-de">{c.loiH1}</h1>
+      <p class="dan">{c.loiCau}</p>
+      <div class="hang-nut mtv-hang-nut-dau">
+        {lh.zalo && (<a class="nut nut-chinh" href={lh.zalo}>{c.nutNhanZalo}</a>)}
+        <a class="lien-ket" href={duongDanTuongUng('/thuc-don', nn)}>{c.xemThucDon}<BieuTuong ten="mui-ten" /></a>
+      </div>
+    </div>
+  </section>
+)}
+
+{(trangThai === 'mo' || trangThai === 'het_quay') && dich && chuDich && (
+  <>
+    <section class="mo-dau-trang be-kem" aria-labelledby="mtv-tieu-de">
+      <div class="khung">
+        <p class="hieu">{c.hieu}</p>
+        <h1 id="mtv-tieu-de">{c.h1}</h1>
+        <p class="dan">{dan}</p>
+      </div>
+    </section>
+
+    <section class="muc be-toi mtv-khoi-buoc" aria-labelledby="mtv-ba-buoc">
+      <div class="khung">
+        <h2 id="mtv-ba-buoc">{c.baBuoc}</h2>
+        <ol class="mtv-ba-buoc">
+          <li>{c.buoc1}</li>
+          <li>{chuDich.buocGui[nn]}</li>
+          <li>{c.buoc3}</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="chon-goi" class="muc be-kem mtv-chon-goi">
+      <div class="khung">
+        {trangThai === 'mo' ? (
+          <form method="get" action={duongDan + '#xem-don'} autocomplete="off" class="mtv-form" data-mtv-form data-nn={nn}
+                data-menu={JSON.stringify(rutGonMenu(menu.sanPham))} data-giao={choGiao ? '1' : '0'} data-dich={JSON.stringify(dich)}
+                data-da-chep={chuDich.daChep[nn]} data-chep-loi={chuDich.chepLoi[nn]}>
+            <div class="mtv-luoi">
+              <details class="the mtv-nhan">
+                <summary><span class="mtv-nhan-ten">{c.nhanHang}</span><span class="mtv-nhan-tom">{tomTat}</span><BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
+                <dl class="mtv-nhan-chu">
+                  <dt>{c.dtQuay}</dt>
+                  <dd><span lang="vi">{diaChi(nd)}</span>. {t.loiLen}</dd>
+                  <dd><a class="lien-ket" href={duongDanTuongUng('/den-beeftown', nn)}>{t.xemDuongLen}<BieuTuong ten="mui-ten" /></a></dd>
+                  {choGiao && (<><dt>{c.dtGiao}</dt><dd>{giaoHang}</dd></>)}
+                  <dt>{c.dtTraTien}</dt>
+                  <dd>{c.traTien}</dd>
+                  <dt>{c.dtGio}</dt>
+                  <dd>{gioNhan ?? c.gioMacDinh}</dd>
+                  <dt>{c.dtGia}</dt>
+                  <dd>{c.giaCongBo}</dd>
+                  {thue && (<><dt>{c.dtThue}</dt><dd>{thue}</dd></>)}
+                </dl>
+              </details>
+
+              <div class="mtv-danh-sach">
+                {menu.nhom.map(n => (
+                  <div class="mtv-nhom">
+                    <h2>{TEN_NHOM[n.loai]}</h2>
+                    <div class:list={['mtv-luoi-the', { 'mtv-luoi-ngang': n.loai === 'kim_chi' }]}>
+                      {n.sanPham.map(sp => <MuaThitThe sanPham={sp} ngonNgu={nn} noiDung={nd} gio={gio} coOChon={true} />)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div class="the mtv-don">
+                <h2>{c.donCuaBan}</h2>
+                {choGiao && (
+                  <div class="mtv-cach-nhan">
+                    <label for="mtv-nhan">{c.cachNhan}</label>
+                    <select id="mtv-nhan" name="nhan" class="mtv-so-nhan">
+                      <option value="quay" selected={cachNhan === 'quay'}>{c.nhanQuay}</option>
+                      <option value="giao" selected={cachNhan === 'giao'}>{c.nhanGiao}</option>
+                    </select>
+                  </div>
+                )}
+                <ul class="mtv-dong-don" data-mtv-dong-don>
+                  {don.dong.map(d => <li>{CHU_DON.dongDau[nn](d.sanPham.ten, nhanGoi(d.sanPham.donVi, d.goi.soGam, nn), d.soLuong)}<span data-tien>{dinhDangTien(d.thanhTien)}</span></li>)}
+                </ul>
+                <p class="mtv-trong" data-mtv-trong hidden={!gioRong}>{CHU_DON.donTrong[nn]}</p>
+                <p class="mtv-dem" data-mtv-dem hidden={gioRong}>{CHU_DON.dem[nn](don.soGoi, don.soHop)}</p>
+                <p class="mtv-tam-tinh" aria-live="polite" aria-atomic="true" data-mtv-tam-tinh><span class="an-chu" data-mtv-vua-doi></span>{CHU_DON.tamTinh[nn]}: <span data-tien>{dinhDangTien(don.tamTinh)}</span></p>
+                {choGiao && (<p class="mtv-ghi">{c.chuaGomGiao}</p>)}
+                <p class="mtv-ghi mtv-gia-cong-bo">{c.giaCongBo}</p>
+                <div class="hang-nut">
+                  <button class="nut nut-chinh" type="submit">{chuDich.nutXemDon[nn]}</button>
+                </div>
+                <p class="mtv-ghi">{chuDich.buocSau[nn]}</p>
+              </div>
+            </div>
+
+            <div class="mtv-thanh be-toi" data-mtv-thanh hidden>
+              <p class="mtv-thanh-chu" data-mtv-thanh-chu>{gioRong ? CHU_DON.donTrong[nn] : `${CHU_DON.dem[nn](don.soGoi, don.soHop)} · ${CHU_DON.tamTinh[nn]}: `}{!gioRong && <span data-tien>{dinhDangTien(don.tamTinh)}</span>}</p>
+              <a class="nut nut-chinh" href="#xem-don" data-mtv-thanh-xem hidden>{c.xemDon}</a>
+            </div>
+          </form>
+        ) : (
+          <div class="mtv-luoi">
+            <details class="the mtv-nhan">
+              <summary><span class="mtv-nhan-ten">{c.nhanHang}</span><span class="mtv-nhan-tom">{tomTat}</span><BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
+              <dl class="mtv-nhan-chu">
+                <dt>{c.dtQuay}</dt>
+                <dd><span lang="vi">{diaChi(nd)}</span>. {t.loiLen}</dd>
+                <dd><a class="lien-ket" href={duongDanTuongUng('/den-beeftown', nn)}>{t.xemDuongLen}<BieuTuong ten="mui-ten" /></a></dd>
+                {choGiao && (<><dt>{c.dtGiao}</dt><dd>{giaoHang}</dd></>)}
+                <dt>{c.dtTraTien}</dt>
+                <dd>{c.traTien}</dd>
+                <dt>{c.dtGio}</dt>
+                <dd>{gioNhan ?? c.gioMacDinh}</dd>
+                <dt>{c.dtGia}</dt>
+                <dd>{c.giaCongBo}</dd>
+                {thue && (<><dt>{c.dtThue}</dt><dd>{thue}</dd></>)}
+              </dl>
+            </details>
+
+            <div class="mtv-danh-sach">
+              {menu.nhom.map(n => (
+                <div class="mtv-nhom">
+                  <h2>{TEN_NHOM[n.loai]}</h2>
+                  <div class:list={['mtv-luoi-the', { 'mtv-luoi-ngang': n.loai === 'kim_chi' }]}>
+                    {n.sanPham.map(sp => <MuaThitThe sanPham={sp} ngonNgu={nn} noiDung={nd} gio={gio} coOChon={false} />)}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div class="the mtv-het" data-mtv-het-quay>
+              <p>{c.hetQuay}</p>
+              <div class="hang-nut">
+                {lh.zalo && (<a class="nut nut-chinh" href={lh.zalo}>{c.nutNhanZalo}</a>)}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {trangThai === 'mo' && (
+          <div class="mtv-xem-don" data-mtv-xem-don hidden={gioRong}>
+            <h2 id="xem-don" tabindex="-1">{c.xemLaiDon}</h2>
+            <ul class="mtv-dong-don" data-mtv-xem-dong>
+              {don.dong.map(d => <li>{CHU_DON.dongDau[nn](d.sanPham.ten, nhanGoi(d.sanPham.donVi, d.goi.soGam, nn), d.soLuong)}<span data-tien>{dinhDangTien(d.thanhTien)}</span></li>)}
+            </ul>
+            <p class="mtv-tam-tinh" data-mtv-xem-tam-tinh>{CHU_DON.tamTinh[nn]}: <span data-tien>{dinhDangTien(don.tamTinh)}</span></p>
+            <p data-mtv-xem-nhan data-quay={`${c.cachNhan}: ${c.nhanQuay}`} data-giao={`${c.cachNhan}: ${c.nhanGiao}`}>{nhanHienTai}</p>
+            {boTamHet > 0 && (<p class="mtv-ghi">{c.boTamHet}</p>)}
+            <p><a class="lien-ket" href="#chon-goi">{c.chonThem}<BieuTuong ten="mui-ten" /></a></p>
+            {dich.coBuocChep && (
+              <div class="mtv-chep">
+                <label class="mtv-nhan-tin" for="mtv-tin">{c.khungTin}</label>
+                {c.tinTiengViet && (<p class="mtv-ghi">{c.tinTiengViet}</p>)}
+                <textarea id="mtv-tin" class="mtv-tin" readonly rows="10" lang="vi" data-tien aria-describedby="mtv-chep-tay">{taoTinDon(don, nn, msSoan)}</textarea>
+                <p id="mtv-chep-tay" class="mtv-ghi" data-mtv-chep-tay>{chuDich.chepTay[nn]}</p>
+              </div>
+            )}
+            <div class="hang-nut">
+              {dich.coBuocChep && (<button class="nut nut-vien" type="button" data-mtv-chep hidden><BieuTuong ten="sao-chep" />{chuDich.nutChep[nn]}</button>)}
+              <a class="nut nut-chinh" href={linkGuiDon(dich, gio, cachNhan)} rel="noopener" data-mtv-gui><BieuTuong ten="tin-nhan" />{chuDich.nutGui[nn]}</a>
+            </div>
+            <p class="mtv-bao" role="status" data-mtv-bao></p>
+            <p class="mtv-ghi">{chuDich.sauNut[nn]}</p>
+            {lh.goi && (<p class="mtv-ghi" data-mtv-khong-zalo>{c.khongZalo} <a href={lh.goi}>{lh.hotline}</a></p>)}
+          </div>
+        )}
+      </div>
+    </section>
+
+    <section class="muc be-kem-sau" aria-labelledby="mtv-hoi-dap">
+      <div class="khung mtv-hoi-dap">
+        <div class="mtv-hoi-dap-dau">
+          <h2 id="mtv-hoi-dap">{c.hoiDap}</h2>
+          <p class="dan">{c.hoiDapDan} {lh.zalo ? (<a href={lh.zalo}>{c.hoiDapNhan}</a>) : c.hoiDapNhan}</p>
+        </div>
+        <div class="cau-hoi">
+          <details>
+            <summary>{c.cauHoi1}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
+            <div class="tra-loi"><p>{c.traLoi1}</p></div>
+          </details>
+          <details>
+            <summary>{c.cauHoi2}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
+            <div class="tra-loi"><p>{c.traLoi2}</p></div>
+          </details>
+          <details>
+            <summary>{c.cauHoi3}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
+            <div class="tra-loi"><p>{c.traLoi3}</p></div>
+          </details>
+          <details>
+            <summary>{c.cauHoi4}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
+            <div class="tra-loi"><p>{c.traLoi4}</p></div>
+          </details>
+          {choGiao && (
+            <details>
+              <summary>{c.cauHoi5}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
+              <div class="tra-loi"><p>{giaoHang}</p></div>
+            </details>
+          )}
+          <details>
+            <summary>{c.cauHoi6}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
+            <div class="tra-loi"><p>{gioNhan ?? c.gioMacDinh}</p></div>
+          </details>
+          {(baoQuanMat || baoQuanDong) && (
+            <details>
+              <summary>{c.cauHoi7}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
+              <div class="tra-loi">
+                {baoQuanMat && (<p><strong>{c.nhomMat}:</strong> {baoQuanMat}</p>)}
+                {baoQuanDong && (<p><strong>{c.nhomDong}:</strong> {baoQuanDong}</p>)}
+              </div>
+            </details>
+          )}
+          {canLech && (
+            <details>
+              <summary>{c.cauHoi8}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
+              <div class="tra-loi"><p>{canLech}</p></div>
+            </details>
+          )}
+          <details>
+            <summary>{c.cauHoi9}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
+            <div class="tra-loi"><p>{hangLoi ?? c.hangLoiMacDinh}</p></div>
+          </details>
+          <details>
+            <summary>{c.cauHoi10}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
+            <div class="tra-loi"><p>{doiHuy ?? c.doiHuyMacDinh}</p></div>
+          </details>
+          <details>
+            <summary>{c.cauHoi11}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
+            <div class="tra-loi"><p>{c.traLoi11}</p></div>
+          </details>
+          <details>
+            <summary>{c.cauHoi12}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
+            <div class="tra-loi">
+              <p>{c.traLoi12}</p>
+              <p><a class="lien-ket" href={duongDanTuongUng('/dat-ban', nn)}>{t.datBan}<BieuTuong ten="mui-ten" /></a></p>
+            </div>
+          </details>
+          {lh.goi && (
+            <details>
+              <summary>{c.cauHoi13}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
+              <div class="tra-loi"><p>{c.traLoi13} <a href={lh.goi}>{lh.hotline}</a></p></div>
+            </details>
+          )}
+        </div>
+      </div>
+    </section>
+  </>
+)}
+
+<script>
+  // Script chỉ THÊM vào trang (không có nó trang vẫn đủ: form GET, máy chủ dựng "Xem lại đơn"): nút −/+, "Đơn của
+  // bạn" đổi ngay khi chọn, thanh dưới trên điện thoại, nút Chép đơn. Tính đơn bằng chính các hàm máy chủ dùng
+  // (don-mua-thit.ts); link nút gửi bằng linkGuiDon (dich-dat-hang.ts) — đích đặt hàng đọc từ data-dich, không tự đặt.
+  import { CHU_DON, SO_GOI_TOI_DA, dinhDangTien, docGio, nhanGoi, taoTinDon, tinhDon, type Don, type SanPhamMua } from '../lib/don-mua-thit';
+  import { linkGuiDon, type DichDatHang } from '../lib/dich-dat-hang';
+
+  type ThuTieng = keyof typeof CHU_DON.tamTinh;
+  const THU_TIENG: readonly ThuTieng[] = ['vi', 'en', 'ko'];
+
+  /** Số tiền in ra trang: luôn trong một span có data-tien (bộ quét chữ cấm miễn đúng chỗ đó). */
+  function oTien(n: number): HTMLSpanElement {
+    const o = document.createElement('span');
+    o.dataset.tien = '';
+    o.textContent = dinhDangTien(n);
+    return o;
+  }
+
+  /** Các dòng đơn, dựng bằng nút DOM (tên sản phẩm đến từ database: không ghép thành mã HTML). */
+  function dongCua(don: Don, nn: ThuTieng): HTMLLIElement[] {
+    return don.dong.map(d => {
+      const li = document.createElement('li');
+      li.append(CHU_DON.dongDau[nn](d.sanPham.ten, nhanGoi(d.sanPham.donVi, d.goi.soGam, nn), d.soLuong), oTien(d.thanhTien));
+      return li;
+    });
+  }
+
+  // "Nhận hàng" mở sẵn trên màn rộng (cột phải còn chỗ); điện thoại để đóng — món đầu tiên lên sớm. Không script thì
+  // đóng, khách bấm để mở.
+  const nhanHang = document.querySelector<HTMLDetailsElement>('details.mtv-nhan');
+  const manRong = window.matchMedia('(min-width: 1024px)');
+  const moNhanHang = () => { if (nhanHang && manRong.matches) nhanHang.open = true; };
+  moNhanHang();
+  manRong.addEventListener('change', moNhanHang);
+
+  const form = document.querySelector<HTMLFormElement>('[data-mtv-form]');
+  if (form) khoiDong(form);
+
+  function khoiDong(form: HTMLFormElement) {
+    let menuVao: unknown;
+    let dichVao: unknown;
+    try {
+      menuVao = JSON.parse(form.dataset.menu ?? '[]');
+      dichVao = JSON.parse(form.dataset.dich ?? 'null');
+    } catch {
+      return;   // dữ liệu hỏng: trang vẫn là form GET thường
+    }
+    if (!Array.isArray(menuVao) || !dichVao || typeof dichVao !== 'object') return;
+    const menu = menuVao as SanPhamMua[];
+    const dich = dichVao as DichDatHang;
+    const nn: ThuTieng = THU_TIENG.find(x => x === form.dataset.nn) ?? 'vi';
+    const choGiao = form.dataset.giao === '1';
+    const daChep = form.dataset.daChep ?? '';
+    const chepLoi = form.dataset.chepLoi ?? '';
+
+    const dongDon = form.querySelector<HTMLUListElement>('[data-mtv-dong-don]');
+    const trong = form.querySelector<HTMLElement>('[data-mtv-trong]');
+    const demGoi = form.querySelector<HTMLElement>('[data-mtv-dem]');
+    const tamTinh = form.querySelector<HTMLElement>('[data-mtv-tam-tinh]');
+    const vuaDoi = form.querySelector<HTMLElement>('[data-mtv-vua-doi]');
+    const thanh = form.querySelector<HTMLElement>('[data-mtv-thanh]');
+    const thanhChu = form.querySelector<HTMLElement>('[data-mtv-thanh-chu]');
+    const thanhXem = form.querySelector<HTMLElement>('[data-mtv-thanh-xem]');
+    const xemDon = document.querySelector<HTMLElement>('[data-mtv-xem-don]');
+    const xemDong = document.querySelector<HTMLUListElement>('[data-mtv-xem-dong]');
+    const xemTamTinh = document.querySelector<HTMLElement>('[data-mtv-xem-tam-tinh]');
+    const xemNhan = document.querySelector<HTMLElement>('[data-mtv-xem-nhan]');
+    const tin = document.querySelector<HTMLTextAreaElement>('#mtv-tin');
+    const gui = document.querySelector<HTMLAnchorElement>('a[data-mtv-gui]');
+    const nutChep = document.querySelector<HTMLButtonElement>('[data-mtv-chep]');
+    const chepTay = document.querySelector<HTMLElement>('[data-mtv-chep-tay]');
+    const bao = document.querySelector<HTMLElement>('[data-mtv-bao]');
+
+    // Tên và nhãn gói theo tên ô chọn — cho câu đọc sau mỗi lần bấm −/+.
+    const theoKhoa = new Map<string, { ten: string; nhan: string }>();
+    for (const sp of menu) for (const g of sp.goi) theoKhoa.set(g.khoa, { ten: sp.ten, nhan: nhanGoi(sp.donVi, g.soGam, nn) });
+
+    let donHienTai: Don | null = null;
+
+    /** Đọc giỏ từ form, tính đơn, cập nhật mọi chỗ in đơn và link nút gửi. */
+    function capNhat() {
+      const cap: [string, string][] = [];
+      for (const [ten, giaTri] of new FormData(form)) if (typeof giaTri === 'string') cap.push([ten, giaTri]);
+      const { gio, cachNhan, boTamHet } = docGio(cap, menu, choGiao);
+      const don = tinhDon(gio, cachNhan, menu, boTamHet);
+      donHienTai = don;
+      const rong = don.dong.length === 0;
+      const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
+
+      dongDon?.replaceChildren(...dongCua(don, nn));
+      if (trong) trong.hidden = !rong;
+      if (demGoi) { demGoi.textContent = dem; demGoi.hidden = rong; }
+      tamTinh?.querySelector<HTMLElement>('[data-tien]')?.replaceWith(oTien(don.tamTinh));
+
+      if (thanh) thanh.hidden = false;
+      thanhChu?.replaceChildren(...(rong ? [CHU_DON.donTrong[nn]] : [`${dem} · ${CHU_DON.tamTinh[nn]}: `, oTien(don.tamTinh)]));
+      if (thanhXem) thanhXem.hidden = rong;
+
+      if (xemDon) xemDon.hidden = rong;
+      xemDong?.replaceChildren(...dongCua(don, nn));
+      xemTamTinh?.querySelector<HTMLElement>('[data-tien]')?.replaceWith(oTien(don.tamTinh));
+      if (xemNhan) xemNhan.textContent = (cachNhan === 'giao' ? xemNhan.dataset.giao : xemNhan.dataset.quay) ?? xemNhan.textContent;
+      if (tin) tin.value = taoTinDon(don, nn, Date.now());
+      if (gui) gui.href = linkGuiDon(dich, gio, cachNhan);
+      if (bao) bao.textContent = '';
+    }
+
+    // Nút −/+: đổi ô chọn trong 0…10 rồi phát change như khi khách tự chọn. Bấm − ở 0 (hay + ở 10) không làm gì.
+    form.querySelectorAll<HTMLButtonElement>('[data-mtv-buoc]').forEach(nut => { nut.hidden = false; });
+    let tuNut = false;
+    form.addEventListener('click', e => {
+      const nut = e.target instanceof Element ? e.target.closest<HTMLButtonElement>('[data-mtv-buoc]') : null;
+      const o = nut?.parentElement?.querySelector<HTMLSelectElement>('select.mtv-so');
+      if (!nut || !o) return;
+      const cu = Number(o.value) || 0;
+      const moi = Math.min(SO_GOI_TOI_DA, Math.max(0, cu + (Number(nut.dataset.mtvBuoc) || 0)));
+      if (moi === cu) return;
+      o.value = String(moi);
+      const goi = theoKhoa.get(o.name);
+      if (vuaDoi && goi) vuaDoi.textContent = CHU_DON.vuaDoi[nn](goi.ten, goi.nhan, moi);
+      tuNut = true;
+      o.dispatchEvent(new Event('change', { bubbles: true }));
+      tuNut = false;
+    });
+    form.addEventListener('change', () => {
+      if (!tuNut && vuaDoi) vuaDoi.textContent = '';   // khách tự chọn: ô chọn đã tự đọc số
+      capNhat();
+    });
+
+    // Địa chỉ ngắn: bỏ các ô bằng "0" khỏi lần gửi. Ô vẫn bấm được khi khách bấm Back (trang lấy lại từ bộ nhớ đệm).
+    form.addEventListener('formdata', e => {
+      for (const [ten, giaTri] of [...e.formData]) if (giaTri === '0') e.formData.delete(ten);
+    });
+    // Giỏ rỗng: không gửi, đưa con trỏ về ô chọn đầu. Có giỏ: để form GET chạy — máy chủ đọc lại menu, dựng "Xem lại đơn".
+    form.addEventListener('submit', e => {
+      capNhat();
+      if (donHienTai && donHienTai.dong.length > 0) return;
+      e.preventDefault();
+      form.querySelector<HTMLSelectElement>('select.mtv-so')?.focus();
+    });
+
+    // Chép đơn: chỉ khi trình duyệt có clipboard; câu "Đã chép đơn." chỉ ghi sau khi lệnh chép xong.
+    if (nutChep && tin && typeof navigator.clipboard?.writeText === 'function') {
+      nutChep.hidden = false;
+      if (chepTay) chepTay.hidden = true;
+      nutChep.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(tin.value);
+          if (bao) bao.textContent = daChep;
+        } catch {
+          if (bao) bao.textContent = chepLoi;
+          if (chepTay) chepTay.hidden = false;
+          tin.focus();
+          tin.setSelectionRange(0, tin.value.length);
+        }
+      });
+    }
+
+    // Đúng ngay khi trang hiện: lúc tải (kể cả tải lại có tham số), và khi bấm Back trở lại trang này.
+    capNhat();
+    window.addEventListener('pageshow', capNhat);
+  }
+</script>
+
+<style>
+  /* Thứ chỉ chạy nhờ JavaScript ra trang với hidden; display của .nut và của lớp riêng không được đè lên hidden.
+     Viết trơn, không đặt lớp của body phía trước: Astro gắn phạm vi cho mọi bộ chọn, body không mang dấu đó. */
+  [hidden] { display: none !important; }
+
+  .mtv-hang-nut-dau { margin-top: var(--k-6); }
+
+  /* --- Ba bước: dải đen, số trong ô trắng ------------------------------------------------- */
+  .mtv-khoi-buoc h2 { margin-bottom: var(--k-6); }
+  .mtv-ba-buoc {
+    list-style: none; margin: 0; padding: 0; counter-reset: buoc;
+    display: grid; gap: var(--k-5); grid-template-columns: minmax(0, 1fr);
+  }
+  @media (min-width: 900px) { .mtv-ba-buoc { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--k-7); } }
+  .mtv-ba-buoc li {
+    counter-increment: buoc;
+    display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: var(--k-4); align-items: center;
+    font-size: var(--co-dan); font-weight: 700; line-height: 1.35; color: var(--chu-chinh);
+  }
+  .mtv-ba-buoc li::before {
+    content: counter(buoc);
+    content: counter(buoc) / '';
+    display: grid; place-items: center; width: 48px; height: 48px;
+    background: var(--kem); color: var(--than); border-radius: var(--bo);
+    font-size: 24px; font-weight: 800; line-height: 1;
+  }
+
+  /* --- Lưới: danh sách trái; Nhận hàng và Đơn của bạn ở cột phải từ 1024px ---------------- */
+  .mtv-luoi { display: grid; gap: var(--k-7); grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 1024px) {
+    .mtv-luoi { grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: auto 1fr; column-gap: var(--k-7); row-gap: var(--k-5); align-items: start; }
+    details.mtv-nhan { grid-column: 2; grid-row: 1; }
+    .mtv-danh-sach { grid-column: 1; grid-row: 1 / span 2; }
+    .mtv-don, .mtv-het { grid-column: 2; grid-row: 2; }
+  }
+  @media (min-width: 1280px) { .mtv-luoi { grid-template-columns: minmax(0, 1fr) 360px; } }
+  @media (min-width: 1024px) and (min-height: 760px) {
+    .mtv-don { position: sticky; top: calc(var(--cao-dau) + var(--k-5)); }
+  }
+
+  /* --- Nhận hàng và trả tiền: details đóng sẵn, cả hàng tóm tắt là vùng bấm (thẻ giữ đệm của .the) ------- */
+  .mtv-nhan > summary {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--k-3); align-items: center;
+    min-height: 48px; padding: 0;
+    cursor: pointer; list-style: none;
+  }
+  .mtv-nhan > summary::-webkit-details-marker { display: none; }
+  .mtv-nhan-ten { grid-column: 1; font-weight: 700; font-size: var(--co-h3); line-height: 1.3; }
+  .mtv-nhan-tom { grid-column: 1; margin-top: var(--k-1); font-size: var(--co-nho); color: var(--chu-phu); }
+  .mtv-nhan > summary :global(svg) { grid-column: 2; grid-row: 1 / span 2; width: 24px; height: 24px; color: var(--nhan); }
+  .mtv-nhan > summary :global(.bt-dong), .mtv-nhan[open] > summary :global(.bt-mo) { display: none; }
+  .mtv-nhan[open] > summary :global(.bt-dong) { display: block; }
+  .mtv-nhan > summary:active .mtv-nhan-ten { color: var(--nhan); }
+  @media (hover: hover) { .mtv-nhan > summary:hover .mtv-nhan-ten { color: var(--nhan); } }
+  .mtv-nhan-chu { margin: var(--k-4) 0 0; padding-top: var(--k-4); border-top: 1px solid var(--vien); }
+  .mtv-nhan-chu dt { font-weight: 700; margin-top: var(--k-4); }
+  .mtv-nhan-chu dt:first-child { margin-top: 0; }
+  .mtv-nhan-chu dd { margin: var(--k-1) 0 0; }
+
+  /* --- Danh sách gói ------------------------------------------------------------------------ */
+  .mtv-danh-sach { display: grid; gap: var(--k-7); min-width: 0; }
+  .mtv-nhom h2 { margin-bottom: var(--k-4); }
+  .mtv-luoi-the { display: grid; gap: var(--k-4); grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 600px) {
+    .mtv-luoi-the { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .mtv-luoi-the.mtv-luoi-ngang { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  /* --- Đơn của bạn ---------------------------------------------------------------------------- */
+  .mtv-don h2, .mtv-xem-don h2 { font-size: var(--co-h3); line-height: 1.3; margin-bottom: var(--k-4); }
+  .mtv-cach-nhan { margin-bottom: var(--k-4); }
+  .mtv-cach-nhan label { display: block; margin-bottom: 6px; font-weight: 700; font-size: 15px; }
+  .mtv-so-nhan {
+    width: 100%; min-height: 48px; padding: 11px 14px;
+    font: inherit; font-size: 16px; line-height: 1.5;
+    color: var(--than); background: var(--kem);
+    border: 1px solid var(--vien-o); border-radius: var(--bo);
+  }
+  .mtv-so-nhan:focus-visible { outline: 3px solid var(--do); outline-offset: 1px; border-color: var(--do); }
+  .mtv-dong-don { list-style: none; margin: 0; padding: 0; }
+  .mtv-dong-don li { padding: var(--k-2) 0; border-bottom: 1px solid var(--vien); }
+  .mtv-dong-don [data-tien], .mtv-tam-tinh [data-tien], .mtv-thanh-chu [data-tien] { white-space: nowrap; font-weight: 700; }
+  .mtv-trong { margin: 0; color: var(--chu-phu); }
+  .mtv-dem { margin: var(--k-3) 0 0; font-weight: 600; }
+  .mtv-tam-tinh { margin: var(--k-2) 0 0; font-size: var(--co-dan); font-weight: 700; }
+  .mtv-ghi { margin: var(--k-3) 0 0; font-size: var(--co-nho); color: var(--chu-phu); max-width: 60ch; }
+  .mtv-don .hang-nut { margin-top: var(--k-5); }
+  .mtv-don .hang-nut .nut { width: 100%; }
+  .mtv-het p { margin: 0 0 var(--k-5); }
+
+  /* --- Thanh dưới (điện thoại): đen, dính đáy màn hình khi đang ở trong form; dừng trước "Xem lại đơn" ---- */
+  .mtv-thanh {
+    position: sticky; bottom: 0; z-index: 30; min-height: 64px;
+    display: flex; align-items: center; justify-content: space-between; gap: var(--k-3);
+    margin: var(--k-7) calc(-1 * var(--le)) 0; padding: var(--k-3) var(--le);
+  }
+  .mtv-thanh-chu { margin: 0; font-size: var(--co-nho); font-weight: 600; line-height: 1.4; }
+  .mtv-thanh .nut { flex: none; }
+  @media (min-width: 1024px) { .mtv-thanh { display: none; } }
+  @media (max-height: 500px) { .mtv-thanh { display: none; } }
+
+  /* --- Xem lại đơn ---------------------------------------------------------------------------- */
+  .mtv-xem-don { max-width: 760px; margin-top: var(--k-8); padding-top: var(--k-7); border-top: 1px solid var(--vach); }
+  .mtv-xem-don > p { margin: var(--k-3) 0 0; }
+  .mtv-chep { margin-top: var(--k-5); }
+  .mtv-nhan-tin { display: block; margin-bottom: 6px; font-weight: 700; font-size: 15px; }
+  .mtv-tin {
+    display: block; width: 100%; min-height: 48px; margin-top: var(--k-2); padding: 11px 14px;
+    font: inherit; font-size: 16px; line-height: 1.5; white-space: pre-wrap; resize: vertical;
+    color: var(--than); background: var(--kem);
+    border: 1px solid var(--vien-o); border-radius: var(--bo);
+  }
+  .mtv-tin:focus-visible { outline: 3px solid var(--do); outline-offset: 1px; border-color: var(--do); }
+  .mtv-xem-don .hang-nut { margin-top: var(--k-5); }
+  .mtv-bao { font-weight: 700; }
+  .mtv-bao:empty { margin: 0; }
+
+  /* --- Hỏi đáp ---------------------------------------------------------------------------------- */
+  .mtv-hoi-dap { display: grid; gap: var(--k-6); grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 900px) { .mtv-hoi-dap { grid-template-columns: 4fr 7fr; gap: var(--k-8); align-items: start; } }
+
+  /* Tương phản cao (Windows): nền đen của thanh dưới bị ép mất — giữ đường viền trên để thanh tách khỏi trang. */
+  @media (forced-colors: active) {
+    .mtv-thanh { border-top: 1px solid CanvasText; }
+  }
+</style>

@@ -31,7 +31,8 @@ const { ngonNgu, noiDung: nd, duongDan = '' } = Astro.props;
 const laTrangTuyenDung = duongDan.replace(/\/$/, '') === duongDanTuongUng('/tuyen-dung', ngonNgu);
 const t = chu(ngonNgu);
 const lh = lienHe(nd);
-const muc = dieuHuong(ngonNgu);
+// Cùng danh sách với đầu trang: năm mục khi trang Mua thịt về mở, bốn mục khi chưa.
+const muc = dieuHuong(ngonNgu, nd);
 const mangXaHoi = [
   { url: lh.facebook, ten: 'Facebook' },
   { url: lh.instagram, ten: 'Instagram' },
