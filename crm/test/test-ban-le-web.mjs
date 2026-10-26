@@ -225,6 +225,11 @@ await nhom('3 · cau-chu: câu sau khi lưu chỉ nói điều đã xảy ra', a
   ok('Giá 1.050.000 đ/kg (quá 999.999) → đúng câu gia_qua_can của thư viện (cùng câu với thẻ, trang sửa, đối chiếu), không câu "gửi giá mới"',
      c2.includes(CAU_QUA_CAN('1001')) && !c2.includes('gửi giá mới') && !c2.includes(CAN), c2);
   ok('Đúng 999.999 đ/kg → vẫn câu Beeftown Cân (trong cửa sổ)', BL.cauDaLuu(kq({ gia_kho_doi: true, mat_hang: mh(999999) }), {}, false).includes(CAN));
+  // canh_bao giá cân của database đi theo SẢN PHẨM (chỉ theo_can), còn cân bỏ qua dòng theo MẶT HÀNG: cùng lần
+  // lưu đổi cách bán sang hộp thì không có gia_qua_can — câu vẫn phải theo giá thật của mặt hàng.
+  const c7 = BL.cauDaLuu(kq({ gia_kho_doi: true, mat_hang: mh(1050000), canh_bao: [] }), { gia_ban_kg: 1050000, cach_ban: 'theo_hop' }, false, 'vi');
+  ok('Giá vừa đổi lên 1.050.000 mà database không kèm gia_qua_can (đổi cách bán cùng lần) → vẫn câu gia_qua_can, KHÔNG câu "gửi giá mới"',
+     !c7.includes(CAN) && c7.includes(BL.cauCanhBao('gia_qua_can', 'vi', { mat_hang: mh(1050000) })), c7);
   ok('Giá vừa đổi nhưng mặt hàng chưa có mã cân → không câu Beeftown Cân', !BL.cauDaLuu(kq({ gia_kho_doi: true, mat_hang: mh(990000, null) }), {}, false).includes(CAN));
   ok('Giá vừa đổi nhưng mặt hàng đã ngừng dùng → không câu Beeftown Cân', !BL.cauDaLuu(kq({ gia_kho_doi: true, mat_hang: mh(990000, '1001', false) }), {}, false).includes(CAN));
   ok('Giá không đổi lần này → không câu Beeftown Cân', !BL.cauDaLuu(kq({ mat_hang: mh(990000) }), {}, true).includes(CAN));

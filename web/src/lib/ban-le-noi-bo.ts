@@ -792,8 +792,11 @@ export function cauDaLuu(r: KetQuaHamLuu, duLieu: DuLieuLuu, doiFabi: boolean, n
   const mh = r.mat_hang;
   const canh = Array.isArray(r.canh_bao) ? r.canh_bao : [];
 
+  // Cân bỏ qua dòng theo giá của MẶT HÀNG (can-tma.ts kiemHang), còn canh_bao của database đi theo sản phẩm
+  // (chỉ theo_can) — nên xét cả giá thật vừa ghi, không chỉ mã cảnh báo.
   if (r.gia_kho_doi && mh?.dang_dung && mh.ma_can) {
-    phan.push(canh.includes('gia_qua_can') ? cauTheoMa('gia_qua_can', nn, mh.ma_can, false) : t.beeftownCan);
+    const quaCan = canh.includes('gia_qua_can') || !(Number(mh.gia_ban_kg) >= 1 && Number(mh.gia_ban_kg) <= GIA_TOI_DA);
+    phan.push(quaCan ? cauTheoMa('gia_qua_can', nn, mh.ma_can, false) : t.beeftownCan);
   }
 
   if (doiFabi || r.gia_kho_doi) phan.push(t.fabiSuaTay);
@@ -1020,8 +1023,10 @@ export function cauViecDoiChieu(d: DongDoiChieu, nn: NgonNguNB = 'vi'): string[]
   const t = dichNB(nn, CAU_VIEC);
   return d.viec.map(v => {
     switch (v) {
-      case 'tao_mon': return d.gia_phai_dat != null && d.gia_phai_dat > 0
-        ? t.tao_mon(d.ma_fabi ?? d.ma_can ?? '—', giaPhaiDat(d, nn)) : t.tao_mon_chua_gia(d.ma_fabi ?? d.ma_can ?? '—');
+      case 'tao_mon': {
+        const ma = d.ma_fabi ?? d.ma_can ?? '—';
+        return d.gia_phai_dat != null ? t.tao_mon(ma, giaPhaiDat(d, nn)) : t.tao_mon_chua_gia(ma);
+      }
       case 'ghep': return t.ghep(moTaGhep(d.mong_doi, nn));
       case 'sua_ghep': return t.sua_ghep(moTaGhep(d.ghep, nn), moTaGhep(d.mong_doi, nn));
       case 'dat_gia': return t.dat_gia(giaPhaiDat(d, nn));

@@ -1518,7 +1518,7 @@ begin
     loop
       v_ma := q.ma_can;
       -- Giá phải đặt chỉ khi có thật: giá mỗi kg trống / 0 đ (hay giá giảm làm tròn ra 0) → null.
-      v_gia := case when r.gia_ban_kg > 0 and q.gia > 0 then q.gia end;
+      v_gia := case when q.gia > 0 then q.gia end;
       v_tren := jsonb_build_object('loai_dong', q.loai_dong, 'so_o', q.so_o, 'phan_tram', q.phan_tram, 'don_vi', null);
       v_menu := null;
       select * into v_menu from kho_ipos_menu mn
