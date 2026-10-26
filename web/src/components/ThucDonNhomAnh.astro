@@ -1,0 +1,201 @@
+---
+/**
+ * MỘT NHÓM MÓN THEO KIỂU CUỐN MENU BẢN SÁNG — tên nhóm như tiêu đề trang, câu của nhóm, thẻ món có ảnh
+ *
+ * Khánh chốt cuốn menu in "bản sáng" ngày 11/10/2026 và bảo đưa lên trang Thực đơn. Không đưa nguyên
+ * trang cuốn (giá dummy, chữ chờ chốt, ảnh khay AI): món vẫn đọc từ thuc_don_cong_khai() và chỉ món ĐÃ
+ * CÔNG BỐ mới tới đây; component này chỉ mượn cách trình bày của cuốn:
+ *  · tên nhóm chữ hoa, đậm 800, màu nhấn của bề mặt (Beef Red trên kem, đỏ đậm trên kem đậm; Marigold
+ *    trên dải tối — không bao giờ chữ đỏ trên nền tối), cỡ --co-nhom (28 → 40px: to hơn h2, không to
+ *    hơn h1);
+ *  · ngay dưới là câu của nhóm (CAU_NHOM, khóa theo MÃ NHÓM, đậm, màu chữ chính) — nhóm không có câu
+ *    (Món đặc trưng, nhóm đồ uống, nhóm mới) thì không in gì;
+ *  · kieu 'dan-dau' (món ăn): món đầu tiên database trả là món dẫn đầu. Như trang của cuốn: tên nhóm,
+ *    câu và chữ của món dẫn đầu ở cột trái, ảnh lớn của món ở cột phải (từ 768px; điện thoại xếp dọc,
+ *    ảnh trên chữ dưới). Các món còn lại thành lưới thẻ nhỏ hơn, ảnh trên chữ dưới, thẳng lề trái: 2 cột
+ *    từ 600px, 3 cột từ 1024px khi còn từ ba món (còn hai món thì hai cột, như trang Salad của cuốn; ảnh
+ *    của thẻ hai cột tối đa 460px để thẻ nhỏ vẫn nhỏ hơn thẻ dẫn đầu). Nhóm đúng hai món: hai thẻ ngang
+ *    nhau (như tờ kẹp Món đặc trưng). Nhóm một món: chỉ phần dẫn đầu.
+ *    Dưới 600px các món còn lại là HÀNG GỌN: ảnh nhỏ 128px (--k-10) bên trái, chữ bên phải — thẻ ảnh to
+ *    xếp một cột làm tab Món ăn dài hơn 12.000px ở 390px (đo 13/10/2026). Ảnh nhỏ dùng khung riêng
+ *    ANH_CUA_MON[mã].gon (món tách nền 1:1, dải đáy 20 % cho nhãn; tartare 4:5 cắt sát đáy ảnh, nhãn trên
+ *    mặt bàn) qua khungNho của <Anh>, nên từ 600px trở lên vẫn đúng khung cũ. Nhãn "Ảnh minh họa" của ảnh
+ *    nhỏ: giữa, sát đáy khung, đệm hẹp — tiếng Anh (≈ 124px) vừa một dòng trong 128px; phông dự phòng rộng
+ *    hơn thì xuống dòng nhưng vẫn trong khung. Nhóm KHÔNG có món dẫn đầu (đúng hai món — Món đặc trưng)
+ *    giữ thẻ to trên điện thoại: hai món đó là chính nhóm; thành hàng gọn thì hai món đặc trưng nhỏ hơn
+ *    ảnh dẫn đầu của nhóm Lẩu (chỉ bán buổi trưa) — sai thứ bậc (rà soát 13/10/2026).
+ *  · kieu 'deu' (ba ly signature): mọi món cùng cỡ, ảnh trên chữ dưới — như trang Có cồn của cuốn.
+ *
+ * Món dẫn đầu nằm ngoài danh sách <ul> của các món còn lại (cột trái của nó còn có tên nhóm — một <li>
+ * không chứa được tiêu đề của chính danh sách); danh sách vẫn mang tên nhóm qua aria-labelledby.
+ *
+ * Tên món chữ thường, đậm 700 — không chữ hoa như cuốn: tên món là thứ khách đọc kỹ, tên dài ("Cơm trộn
+ * tartare bò cay", "Signature spicy cold noodles") viết hoa khó đọc và cần dòng cao hơn cho dấu chồng;
+ * tiếng Hàn không có chữ hoa nên ba thứ tiếng cùng một nhịp. Chữ hoa chỉ dành cho tên nhóm.
+ *
+ * Ảnh: ANH_CUA_MON (lib/anh.ts) theo MÃ MÓN; món không có trong bảng thì thẻ không có ảnh (không khung
+ * thay thế). Mọi ảnh món là ảnh minh họa: <Anh> tự gắn nhãn "Ảnh minh họa" — ảnh tách nền thì nhãn nằm
+ * trong dải trống ngay dưới món. Giá, nhãn, câu cảnh báo: ThucDonMon.astro.
+ */
+import { ANH_CUA_MON } from '../lib/anh';
+import { CAU_NHOM, type NhomMon } from '../lib/thuc-don';
+import type { NgonNgu } from '../lib/noi-dung';
+import Anh from './Anh.astro';
+import ThucDonMon from './ThucDonMon.astro';
+
+interface Props {
+  nhom: NhomMon;
+  ngonNgu: NgonNgu;
+  /** 'dan-dau' (mặc định): món đầu là món dẫn đầu, các món còn lại thành lưới; 'deu': mọi món cùng cỡ. */
+  kieu?: 'dan-dau' | 'deu';
+  /** Một dòng nhỏ dưới tên nhóm, vd. "Không bắt buộc, gọi thêm khi bạn muốn." */
+  ghiChu?: string;
+  /** Tên nhóm cỡ tiêu đề nhỏ (như ThucDonNhom) thay cho kiểu tiêu đề trang — dải "Bò tại quầy". */
+  tieuDeNho?: boolean;
+  /** Dải đặt nhóm — nền chờ của ảnh có nền (ảnh tách nền thì không có nền chờ). */
+  nenKhung?: 'kem' | 'toi';
+  khongGia?: boolean;
+}
+const { nhom, ngonNgu, kieu = 'dan-dau', ghiChu, tieuDeNho = false, nenKhung = 'kem', khongGia = false } = Astro.props;
+const id = `tdn-${nhom.ma.replace(/[^a-z0-9-]/gi, '-')}`;
+const cau = CAU_NHOM[nhom.ma]?.[ngonNgu] ?? null;
+const haiMon = kieu === 'dan-dau' && nhom.mon.length === 2;
+const danDau = kieu === 'dan-dau' && !haiMon ? nhom.mon[0] : null;
+const anhDau = danDau ? ANH_CUA_MON[danDau.ma] ?? null : null;
+const conLai = danDau ? nhom.mon.slice(1) : nhom.mon;
+// Từ ba thẻ cùng cỡ trở lên thì ba cột ở màn rộng; hai thẻ thì hai cột.
+const baCot = conLai.length >= 3;
+
+// sizes của <img> — bề rộng ảnh thật sự hiện ra (khung 1200px, lề 20–40px):
+//  · ảnh dẫn đầu từ 768px: cột phải, tối đa 560px; dải tối: cột nhóm ≤ 640px chia đôi;
+//  · lưới ba cột: một phần ba khung; lưới hai cột: một nửa, tối đa 460px; dưới 600px: hết bề ngang;
+//  · ly signature: một phần ba cột thực đơn (7/11 khung từ 1024px), điện thoại tối đa 220px;
+//  · hàng gọn: dưới 600px ảnh nhỏ 128px — cùng chuỗi lưới cho từ 600px trở lên.
+const SIZES = {
+  lon: tieuDeNho ? '(min-width: 768px) 300px, calc(100vw - 40px)' : '(min-width: 1280px) 560px, (min-width: 768px) 46vw, calc(100vw - 40px)',
+  baCot: '(min-width: 1280px) 380px, (min-width: 1024px) 30vw, (min-width: 600px) 46vw, calc(100vw - 40px)',
+  haiCot: '(min-width: 1024px) 460px, (min-width: 600px) 46vw, calc(100vw - 40px)',
+  ly: '(min-width: 1280px) 220px, (min-width: 1024px) 18vw, (min-width: 600px) 30vw, 220px',
+};
+const sizesNho = kieu === 'deu' ? SIZES.ly : baCot ? SIZES.baCot : SIZES.haiCot;
+const sizesGon = sizesNho.replace(/calc\(100vw - 40px\)$/, '128px');
+---
+<div class:list={['tdn', `tdn-${kieu}`, { 'tdn-tieu-de-nho': tieuDeNho }]}>
+  <div class:list={['tdn-mo', { 'tdn-mo-co-anh': !!anhDau }]}>
+    <div class="tdn-dau">
+      <h3 class="tdn-ten" id={id}>{nhom.ten}</h3>
+      {cau && <p class="tdn-cau">{cau}</p>}
+      {ghiChu && <p class="tdn-ghi">{ghiChu}</p>}
+    </div>
+    {danDau && (
+      <div class="tdn-lon tdn-mon">
+        <ThucDonMon mon={danDau} ngonNgu={ngonNgu} lon khongGia={khongGia} />
+      </div>
+    )}
+    {anhDau && (
+      <div class="tdn-lon-anh">
+        <Anh id={anhDau.id} ngonNgu={ngonNgu} khung={anhDau.khung} sizes={SIZES.lon} nenKhung={nenKhung} />
+      </div>
+    )}
+  </div>
+  {conLai.length > 0 && (
+    <ul class:list={['tdn-luoi', { 'tdn-ba-cot': baCot }]} role="list" aria-labelledby={id}>
+      {conLai.map(m => {
+        const anh = ANH_CUA_MON[m.ma];
+        // Hàng gọn dưới 600px: chỉ món đứng sau một món dẫn đầu (nhóm hai món và ly signature giữ thẻ ảnh
+        // trên chữ dưới) và ảnh có khung gọn.
+        const gon = !!danDau && !!anh?.gon;
+        return (
+          <li class:list={['tdn-mon', { 'tdn-gon': gon }]}>
+            <ThucDonMon mon={m} ngonNgu={ngonNgu} khongGia={khongGia} />
+            {anh && (
+              <div class="tdn-anh">
+                <Anh id={anh.id} ngonNgu={ngonNgu} khung={anh.khung} khungNho={gon ? anh.gon : undefined} sizes={gon ? sizesGon : sizesNho} nenKhung={nenKhung} />
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  )}
+</div>
+
+<style>
+  /* --- Mở đầu nhóm: tên nhóm, câu, món dẫn đầu ---------------------------------------------------- */
+  /* Điện thoại: tên nhóm → ảnh món dẫn đầu → chữ của món (ảnh trên chữ dưới như mọi thẻ). */
+  .tdn-mo { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: var(--k-6); }
+  .tdn-dau { max-width: 760px; }
+  .tdn-mo-co-anh .tdn-lon-anh { order: 1; }
+  .tdn-mo-co-anh > .tdn-lon { order: 2; margin-top: calc(-1 * var(--k-3)); }
+  /* Từ 768px: tên nhóm, câu và chữ của món dẫn đầu ở cột trái; ảnh lớn ở cột phải, cân giữa theo chiều dọc. */
+  @media (min-width: 768px) {
+    .tdn-mo-co-anh {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--k-7); row-gap: var(--k-7);
+      grid-template-areas: 'dau anh' 'chu anh'; grid-template-rows: auto 1fr; align-items: start;
+    }
+    .tdn-mo-co-anh .tdn-dau { grid-area: dau; }
+    .tdn-mo-co-anh > .tdn-lon { grid-area: chu; margin-top: 0; }
+    .tdn-mo-co-anh .tdn-lon-anh { grid-area: anh; align-self: center; justify-self: end; width: min(100%, 560px); }
+  }
+  .tdn-mo + .tdn-luoi { margin-top: var(--k-7); }
+
+  .tdn-ten {
+    margin: 0;
+    font-size: var(--co-nhom); font-weight: 800; line-height: 1.14; letter-spacing: -.01em;
+    text-transform: uppercase; text-wrap: balance;
+    color: var(--nhan);
+  }
+  .tdn-ten:lang(ko) { letter-spacing: 0; }
+  .tdn-cau { margin: var(--k-3) 0 0; font-size: var(--co-dan); font-weight: 700; line-height: 1.4; color: var(--chu-chinh); }
+  .tdn-ghi { margin: var(--k-3) 0 0; font-size: var(--co-nho); color: var(--chu-phu); }
+  /* Dải "Bò tại quầy": tên nhóm cỡ tiêu đề nhỏ, nét gạch dưới — như ThucDonNhom bên cạnh. */
+  .tdn-tieu-de-nho .tdn-ten {
+    padding-bottom: var(--k-3); border-bottom: 2px solid var(--chu-chinh);
+    font-size: var(--co-h3); font-weight: 700; line-height: 1.3; text-transform: none; color: var(--chu-chinh);
+  }
+  @media (min-width: 768px) {
+    .tdn-tieu-de-nho .tdn-mo-co-anh { grid-template-areas: 'dau dau' 'chu anh'; grid-template-rows: auto auto; column-gap: var(--k-6); row-gap: var(--k-5); }
+    .tdn-tieu-de-nho .tdn-mo-co-anh .tdn-lon-anh { width: 100%; }
+  }
+
+  /* --- Lưới các món còn lại -------------------------------------------------------------------------- */
+  .tdn-luoi {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--k-7) var(--k-6);
+  }
+  @media (min-width: 600px) { .tdn-luoi { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 1024px) { .tdn-luoi.tdn-ba-cot { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  /* Ba ly signature: ba thẻ ngang nhau từ 600px (cột thực đơn đủ chỗ cho ba ly). */
+  @media (min-width: 600px) { .tdn-deu .tdn-luoi.tdn-ba-cot { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+  /* Thẻ nhỏ: ảnh trên, chữ dưới, thẳng lề trái. Chữ đứng trước ảnh trong mã (trình đọc màn hình đọc tên
+     món trước), ảnh lên trên bằng order. */
+  .tdn-luoi .tdn-mon { display: flex; flex-direction: column; gap: var(--k-4); min-width: 0; }
+  .tdn-anh { order: -1; }
+  /* Hai cột: ảnh tối đa 460px — thẻ nhỏ vẫn nhỏ hơn ảnh dẫn đầu (560px). */
+  .tdn-luoi:not(.tdn-ba-cot) .tdn-anh { width: min(100%, 460px); }
+  /* Ly signature trên điện thoại: ly cao — ảnh không chiếm hết bề ngang (khung vẫn ≥ 150px để nhãn
+     "Ảnh minh họa" tiếng Anh nằm gọn trong khung). */
+  @media (max-width: 599px) { .tdn-deu .tdn-luoi .tdn-anh { width: min(100%, 220px); } }
+
+  /* --- Hàng gọn dưới 600px ------------------------------------------------------------------------- */
+  /* Ảnh nhỏ 128px (--k-10) bên trái, tên, mô tả, nhãn món sống và câu cảnh báo bên phải. Món không có ảnh
+     thì vẫn là chữ hết bề ngang (không lớp tdn-gon). Đặt cuối khối để thắng quy tắc bề rộng ảnh của thẻ. */
+  @media (max-width: 599px) {
+    .tdn-dan-dau .tdn-luoi { row-gap: var(--k-6); }
+    .tdn-luoi .tdn-gon {
+      display: grid; grid-template-columns: var(--k-10) minmax(0, 1fr); column-gap: var(--k-4); align-items: start;
+    }
+    .tdn-luoi .tdn-gon .tdn-anh { grid-column: 1; grid-row: 1; width: var(--k-10); }
+    .tdn-luoi .tdn-gon > :global(.tdm) { grid-column: 2; grid-row: 1; }
+    /* Nhãn của ảnh nhỏ: giữa, sát đáy khung (ảnh tách nền: trong dải trống dưới món; tartare: trên mặt bàn,
+       cách đáy 6px cho khỏi góc bo), đệm hẹp, xuống dòng được nhưng không bao giờ ra ngoài khung. Thêm .tdn
+       ở đầu: thắng .ck .anh.tach-nen .chu-thich-anh của cong-khai.css (nowrap) dù thứ tự nạp CSS thế nào. */
+    .tdn .tdn-luoi .tdn-gon .tdn-anh :global(.chu-thich-anh) {
+      left: 50%; right: auto; bottom: 0; transform: translateX(-50%);
+      width: max-content; max-width: 100%; padding: 2px 4px; letter-spacing: 0;
+      white-space: normal; text-align: center;
+    }
+    .tdn .tdn-luoi .tdn-gon .tdn-anh :global(.anh:not(.tach-nen) .chu-thich-anh) { bottom: 6px; }
+  }
+</style>

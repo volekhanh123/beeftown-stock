@@ -6,8 +6,10 @@
  * gas tại bàn. Đúng sự thật của brief: KHÔNG nói khách phải mang khay về bàn,
  * KHÔNG nói có nhân viên nướng riêng suốt bữa; trong bữa gọi nhân viên để chọn thêm.
  *
- * Trên điện thoại ba bước xếp dọc — hiểu cả quy trình mà không phải vuốt ngang.
- * Nhánh rosemary (nét trang 3 của PDF) nằm giữa các bước như dấu nối, tiết chế.
+ * Trên điện thoại ba bước xếp dọc, cách nhau 24px — hiểu cả quy trình mà không phải
+ * vuốt ngang. Trên máy tính là ba cột; một nét kẻ mảnh chạy từ biểu tượng của bước này
+ * sang bước sau làm dấu nối (thay cho nhánh rosemary của bản trước — nó đứng sát con số
+ * và đọc thành "~02"). Số thứ tự vừa phải: không lấn tiêu đề của bước.
  */
 import { THUONG_HIEU, dich } from '../lib/chu';
 import type { NgonNgu } from '../lib/noi-dung';
@@ -58,7 +60,6 @@ const BUOC: { ten: string; chu: string; bieuTuong: TenBieuTuong }[] = [
           </div>
           <h3>{b.ten}</h3>
           <p>{b.chu}</p>
-          {i < BUOC.length - 1 && <span class:list={['trang-tri', 'net', i === 0 ? 'huong-thao-4' : 'huong-thao-1', 'bb-la']} aria-hidden="true"></span>}
         </li>
       ))}
     </ol>
@@ -66,37 +67,40 @@ const BUOC: { ten: string; chu: string; bieuTuong: TenBieuTuong }[] = [
 </section>
 
 <style>
-  .bb-dau { margin-bottom: var(--k-7); }
+  .bb-dau { margin-bottom: var(--k-6); }
   .bb-dau h2 { max-width: 18ch; margin: 0; }
 
   .bb-buoc {
     list-style: none; margin: 0; padding: 0;
-    display: grid; gap: var(--k-7);
-    counter-reset: buoc;
+    display: grid; gap: var(--k-5);
   }
-  .bb-buoc li { position: relative; max-width: 38ch; }
-  .bb-so-hang { display: flex; align-items: flex-end; gap: var(--k-4); margin-bottom: var(--k-4); }
+  .bb-buoc li { max-width: 38ch; }
+  .bb-so-hang { display: flex; align-items: center; gap: var(--k-3); margin-bottom: var(--k-3); }
   .bb-so {
-    font-size: var(--co-so); font-weight: 800; line-height: .82; letter-spacing: -.05em;
+    font-size: var(--co-so); font-weight: 800; line-height: 1; letter-spacing: -.04em;
     color: var(--do);
   }
   .bb-bieu-tuong {
-    display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 50%;
-    border: 1.5px solid var(--do-sau); color: var(--do-sau); margin-bottom: 4px;
+    display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; flex: none;
+    border: 1.5px solid var(--do-sau); color: var(--do-sau);
   }
   .bb-bieu-tuong :global(svg) { width: 24px; height: 24px; }
   .bb-buoc h3 { margin-bottom: var(--k-2); text-wrap: balance; }
   .bb-buoc p { margin: 0; color: var(--chu-chinh); }
 
-  /* Nhánh rosemary: chỉ trên màn rộng, nằm GIỮA khe 64px giữa hai bước (36px, cách mỗi
-     bên ~14px) — sát mép bước sau thì nó dính vào số "02" / "03" thành một ký tự "~02". */
-  .bb-la { display: none; }
+  /* Máy tính bảng dọc (600–899px): mỗi bước một hàng — số và biểu tượng bên trái, chữ bên phải. Ba cột thì
+     mỗi cột chỉ còn ~200px, chữ gãy vụn; xếp như điện thoại thì nửa phải màn hình trống. */
+  @media (min-width: 600px) and (max-width: 899.98px) {
+    .bb-buoc li { display: grid; grid-template-columns: 152px minmax(0, 46ch); column-gap: var(--k-5); align-items: start; max-width: none; }
+    .bb-so-hang { grid-row: 1 / span 2; margin-bottom: 0; }
+    .bb-buoc h3 { margin-top: var(--k-2); }
+  }
 
   @media (min-width: 900px) {
-    .bb-buoc { grid-template-columns: repeat(3, 1fr); gap: var(--k-8); }
-    .bb-la {
-      display: block; opacity: .85; left: auto; bottom: auto;
-      right: calc(-1 * var(--k-8) / 2 - 18px); top: 22px; width: 36px; transform: rotate(8deg);
-    }
+    .bb-dau { margin-bottom: var(--k-7); }
+    .bb-buoc { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--k-7); }
+    .bb-so-hang { gap: var(--k-4); margin-bottom: var(--k-4); }
+    /* Dấu nối: nét kẻ mảnh từ biểu tượng tới mép cột, hướng sang bước sau. Bước cuối không có. */
+    .bb-buoc li:not(:last-child) .bb-so-hang::after { content: ''; flex: 1; height: 1px; background: var(--vien); }
   }
 </style>

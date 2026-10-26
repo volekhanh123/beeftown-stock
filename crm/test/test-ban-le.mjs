@@ -1,5 +1,5 @@
 /**
- * BEEFTOWN — MENU BÁN LẺ: THỊT BÒ MANG VỀ VÀ KIM CHI (0097)
+ * BEEFTOWN — MENU BÁN LẺ: THỊT BÒ MANG VỀ VÀ KIM CHI (0099)
  * =========================================================
  *
  *     node test/test-ban-le.mjs
@@ -38,7 +38,7 @@ import {
   dungDatabase, taoBoDem, datGioDatabase, traGioDatabase, maGui, themMayIpos, UID, UID_MAY_IPOS,
 } from './kho-chung.mjs';
 
-const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — MENU BÁN LẺ (0097)');
+const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — MENU BÁN LẺ (0099)');
 const { db, cnA, cnB, duoi, duoiAnon, phaiLoi } = await dungDatabase();
 await duoi(UID.qlA, `select kho_khoi_tao($1)`, [cnA.id]);
 await duoi(UID.qlB, `select kho_khoi_tao($1)`, [cnB.id]);

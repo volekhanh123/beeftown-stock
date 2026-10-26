@@ -225,3 +225,10 @@ giao diện thì tăng `PHIEN_BAN` trong `can-app/src/main.ts`. **Phông hệ th
 mạng. Khi sửa: giữ bảng màu app đang dùng, đừng thêm phông tải từ mạng, việc chính dùng nút to sẵn có
 (`button.to`). Hai chỗ app khác web — đừng chép sang web: nút lọc bo tròn kiểu viên thuốc, nút khóa mờ
 đi (`opacity: .5`) thay vì tối đi.
+
+**Từ 2.11 có năm thẻ** (Quầy · Cân · Giảm giá · Báo cáo · Thiết lập cân), chủ duyệt 25/10/2026. Mỗi thẻ gồm vài mục
+(id `the-…`); phần ít dùng là mục gập `<details class="the">` có tiêu đề `h2` trên dòng gập, chỉ tải dữ liệu khi mở.
+Thẻ nào hiện cho vai nào nằm một chỗ: hàm `mucDuocThay` trong khối "THẺ THEO VAI" của `can-app/src/giao-dien.html`
+(NV quầy, thủ kho chỉ thẻ Quầy). Phần mới: tìm chỗ trong thẻ có sẵn trước (bản 2.11 gom từ mười thẻ để gọn); câu chỉ
+đường viết "thẻ Thiết lập cân → Mẫu tem". Kiểm thử: `can-app/test/thu-giao-dien-gon.ts` (đọc mã) và `can-app/test/thu-trinh-duyet.ts`
+(mở trang trong Chromium cho từng vai).

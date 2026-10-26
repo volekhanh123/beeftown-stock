@@ -1,10 +1,12 @@
 ---
 /**
- * QUẦY CHỌN BÒ — dải tối, để thịt sáng lên
+ * QUẦY CHỌN BÒ — dải tối, để thịt sáng lên (Khánh giữ dải tối ngày 11/10/2026)
  *
  * Khay skin-pack, nhãn khay, nhân viên tư vấn. Ảnh ở đây là ảnh minh họa không
- * khí món (cận cảnh vân thịt) — KHÔNG phải ảnh quầy: quầy thật và khay thật chỉ
- * được dùng ảnh chụp tại Beeftown (web/THIET-KE.md, brief chụp).
+ * khí món (bo-van-mo-can: cận cảnh vân thịt trên giấy lót, có nhãn "Ảnh minh họa")
+ * — KHÔNG phải ảnh quầy hay ảnh khay: quầy thật và khay skin-pack thật chỉ được dùng
+ * ảnh chụp tại Beeftown (web/THIET-KE.md, brief chụp). Khối này không cần thêm hình
+ * khay: cách đọc nhãn khay đã có thẻ NhanKhay ngay dưới.
  *
  * "Có quy trình ủ" là sự thật đã xác nhận; số ngày, phương pháp, grade, xuất xứ
  * thì CHƯA — nên câu chỉ dừng ở chỗ có quy trình.
@@ -42,8 +44,8 @@ const t = dich(ngonNgu, {
   <div class="khung">
     <div class="qcb-dau">
       <div class="qcb-anh">
-        <Anh id="bo-van-mo-can" ngonNgu={ngonNgu} khung="4x5" khungNho="4x3" thayBang="khay" nenKhung="toi"
-             sizes="(min-width: 900px) 40vw, 100vw" />
+        <Anh id="bo-van-mo-can" ngonNgu={ngonNgu} khung="4x5" khungNho="1x1" thayBang="khay" nenKhung="toi"
+             sizes="(min-width: 1280px) 516px, (min-width: 900px) 42vw, (min-width: 600px) 520px, calc(100vw - 40px)" />
       </div>
       <div class="qcb-chu">
         <p class="hieu">{t.hieu}</p>
@@ -59,24 +61,25 @@ const t = dich(ngonNgu, {
 
 <style>
   .qcb-dau {
-    display: grid; gap: var(--k-7); align-items: center;
+    display: grid; gap: var(--k-6); align-items: center;
     grid-template-columns: 1fr;
-    margin-bottom: var(--k-8);
+    margin-bottom: var(--k-7);
   }
-  @media (min-width: 900px) { .qcb-dau { grid-template-columns: 5fr 6fr; gap: var(--k-8); } }
+  @media (min-width: 900px) { .qcb-dau { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: var(--k-8); margin-bottom: var(--k-8); } }
   .qcb-anh { max-width: 520px; width: 100%; }
   .qcb-chu .dan { color: var(--kem); }
   .qcb-u { color: var(--da); font-size: var(--co-nho); border-top: 1px solid var(--vach-kem); padding-top: var(--k-4); margin: var(--k-5) 0 0; }
 
   .qcb-steak { width: clamp(90px, 14vw, 170px); right: -2%; top: var(--k-7); transform: rotate(-12deg); opacity: .16; }
   /* Hai cột (≥ 900px): ở trên thì nét steak nằm đúng mép phải cột chữ, các dòng đoạn dẫn
-     chạy đè lên. Từ 1200px nó xuống góc dưới, cạnh danh sách nhãn khay — còn ≥ 50px trống
-     ở cả ba thứ tiếng. Từ 900 đến 1199px danh sách nhãn khay lấp kín bề ngang, không còn
-     chỗ nào không chạm chữ: bỏ hẳn nét vẽ. */
+     chạy đè lên. Từ 1200px nó xuống góc dưới, bên phải thẻ đọc nhãn khay (thẻ rộng tối đa
+     880px, khung 1200px: còn trống hơn 300px). Từ 900 đến 1199px thẻ lấp gần hết bề ngang,
+     không còn chỗ nào không chạm thẻ: bỏ hẳn nét vẽ. */
   @media (min-width: 900px) and (max-width: 1199.98px) { .qcb-steak { display: none; } }
   /* Dưới 700px khung ảnh chiếm gần hết bề ngang: nét vẽ đè lên góc khung. */
   @media (max-width: 699.98px) { .qcb-steak { display: none; } }
   @media (min-width: 1200px) { .qcb-steak { top: auto; bottom: var(--k-8); right: 3%; } }
 
   .qcb :global(.qcb-nhan) { border-top: 1px solid var(--vach-kem); padding-top: var(--k-7); }
+  @media (min-width: 900px) { .qcb :global(.qcb-nhan) { padding-top: var(--k-8); } }
 </style>

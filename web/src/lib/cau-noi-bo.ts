@@ -182,7 +182,11 @@ export const CAU_EN: Readonly<Record<string, string>> = {
   'Đặt bàn mới chỉ ở trạng thái chờ gọi hoặc đã xác nhận': 'A new booking can only be waiting for a call or already confirmed',
   'Mẫu tin khác mẫu của chiến dịch': 'The message template differs from the campaign template',
 
-  // 0097 — menu bán lẻ (ban_le_*). Câu có % ở MAU_EN.
+  // 0096 — khối chặn chạy lại migration thực đơn khi đã công bố / duyệt / ghi mô tả (hiện ở SQL Editor)
+  'Thực đơn đã có món công bố, giá hoặc độ cay đã duyệt, hoặc mô tả đã ghi: chạy lại 0096 sẽ xóa hết. Không chạy lại file này.':
+    'The menu already has published dishes, approved prices or spice levels, or written descriptions: running 0096 again would erase them all. Do not run this file again.',
+
+  // 0099 — menu bán lẻ (ban_le_*). Câu có % ở MAU_EN.
   'Tài khoản này không xem được menu bán lẻ.': 'This account cannot view the retail menu.',
   'Chỉ chủ và quản lý được sửa menu bán lẻ.': 'Only the owner and managers can edit the retail menu.',
   'Chỉ chủ được chốt giá bán lẻ.': 'Only the owner can confirm retail prices.',
@@ -343,7 +347,7 @@ export const MAU_EN: ReadonlyArray<readonly [RegExp, (m: RegExpMatchArray) => st
   [/^Bảng (.+?) không nhận bản dịch qua hàm này$/, m => `Table ${m[1]} does not accept translations through this function`],
   [/^Ô (.+?) không nằm trong danh sách dịch của bảng (.+)$/, m => `Field ${m[1]} is not in the translation list of table ${m[2]}`],
   [/^Trạng thái bản dịch không hợp lệ: (.+)$/, m => `Invalid translation status: ${m[1]}`],
-  // 0097 — menu bán lẻ
+  // 0099 — menu bán lẻ
   [/^Hai gói cùng trọng lượng (.+) g\.$/, m => `Two packs have the same weight of ${m[1]} g.`],
   [/^Không nhận ô "(.+?)" — tải lại trang\.$/, m => `The field "${m[1]}" is not accepted — reload the page.`],
   [/^Ô "(.+?)" phải là Có hoặc Không\.$/, m => `The field "${m[1]}" must be Yes or No.`],

@@ -82,6 +82,7 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     "TEN_PLU_TRONG = 'KHÔNG DÙNG (PLU trống)'",                          // can-tma.ts: tên dòng trống ghi xuống cân (in trên tem), không phải câu màn hình
     "throw new RangeError(`Số PLU của dòng riêng phải từ 1 đến ${PLU_RIENG_TOI_DA}.`)", // can-tma.ts: lỗi lập trình — goHangConLai kiểm số PLU trước khi gọi
     ".replace(/(đ|d|vnd)$/i, '')",              // đọc ô tiền: "450.000đ", "450.000 đ"
+    "`${ten.trim()} ô ${soO}`",                  // thu-ngan.ts: tên món trên FABi ("Thăn ngoại ô 1") — dữ liệu thu ngân đọc, tiếng Việt ở mọi màn
     ".replace(/đ/g, 'd').replace(/Đ/g, 'D')",   // bỏ dấu khi sinh mã / tìm không dấu
     // gói máy & iPOS — câu cho máy / log, không hiện trên màn nào:
     // lib/kho/ipos-dong-bo.ts — nhãn câu đăng nhập tài khoản máy (câu ghép ở lib/tai-khoan-may.ts,
@@ -162,7 +163,7 @@ nhom('2 · CÂU LỖI DATABASE CỦA KHO CÓ BẢN TIẾNG ANH');
   // Gói "câu database" bật cờ này khi lib/kho/cau-kho-en.ts đã đủ câu.
   const DA_DICH_DU = true;
   // Giữ giống hệt danh sách ở test-noi-bo-tieng-anh.mjs — bên đó kiểm các migration còn lại.
-  const KHO = /^(0017|0018|0019|0020|0021|0022|0023|0024|0029_kho|0030|0031|0032|0033|0034|0035|0037|0038|0039|0040|0041|0042|0044_kho|0048_kho|0049_kho|0050_kho|0051_kho|0054_kho|0061_kho|0072_kho|0088_kho|0089_kho|0090_kho|0092_kho)/;
+  const KHO = /^(0017|0018|0019|0020|0021|0022|0023|0024|0029_kho|0030|0031|0032|0033|0034|0035|0037|0038|0039|0040|0041|0042|0044_kho|0048_kho|0049_kho|0050_kho|0051_kho|0054_kho|0061_kho|0072_kho|0088_kho|0089_kho|0090_kho|0092_kho|0097_kho|0098_kho)/;
   const tep = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql') && KHO.test(f)).sort();
   // Quên thêm migration kho vào KHO thì câu hàm kho trả về của nó không ai kiểm (0048–0051, 0054 đã lọt).
   const sotKho = readdirSync(MIGRATIONS_DIR).filter(f => /^\d{4}_kho_.*\.sql$/.test(f) && !KHO.test(f));

@@ -14,7 +14,7 @@
  * nhất: README gốc — "form chưa sẵn sàng thì ẩn hẳn", "không bao giờ báo đã nhận khi
  * chưa ghi được". Bất biến:
  *
- *   1. Mọi trang công khai (sitemap + danh sách cố định) ở 320, 360, 390, 768, 800, 1024,
+ *   1. Mọi trang công khai (sitemap + danh sách cố định) ở 320, 360, 390, 430, 768, 800, 1024,
  *      1366, 1440 px: trả 200, không lỗi JavaScript, không tải hỏng tài nguyên của chính
  *      trang, không tràn ngang, đúng thuộc tính lang; chân trang có pháp nhân (tên công
  *      ty, mã số thuế, địa chỉ) bằng chữ, ngay dưới dòng ©. Thêm (brief 06/10/2026):
@@ -58,6 +58,17 @@
  *      đúng thứ tiếng theo tiền tố, có link về /, /en, /ko, chân trang công khai, không
  *      tràn ngang, noindex và không canonical / hreflang / JSON-LD, cùng các phép đo
  *      thành phần của nhóm 1 (do-giao-dien.mjs). Chạy cả với --url.
+ *  10. Ảnh (PR 3 của đợt redesign đưa ảnh lên trang chủ và trang Thực đơn): ảnh về chậm
+ *      thì khung vẫn giữ sẵn đúng chỗ, đúng cỡ — ảnh về trang không xô lệch; mọi ảnh
+ *      tải về được và dùng đúng khung của cỡ màn hình (điện thoại / màn rộng). Nhãn
+ *      "Ảnh minh họa", thẻ đọc nhãn khay, bố cục màn đầu và các khối của trang chủ,
+ *      trang Thực đơn: bốn phép đo anh, nhanKhay, trangChu, thucDon của do-giao-dien.mjs,
+ *      chạy ở mục 1 trên mọi trang × chín cỡ màn hình.
+ *  11. Trang Thực đơn chia ba phần thành tab: lúc tải trang chỉ phần đầu hiện, nên mục 1
+ *      không bao giờ thấy ảnh và thành phần của hai phần còn lại. Bấm từng tab như khách
+ *      (390 và 1440 px, ba thứ tiếng) rồi đo lại: phần vừa mở có đúng các ảnh của nó, ảnh
+ *      tải về được, đủ nhãn "Ảnh minh họa", không gì đè lên ảnh, đúng khung — và giấu nhãn
+ *      của ảnh trong phần vừa mở đi thì phép đo phải đỏ (phép đo thật sự nhìn thấy ảnh đó).
  *
  * Hỏng thì ảnh chụp màn hình nằm ở kiem-tra/anh-loi/ (CI tải lên thành artifact).
  */
@@ -137,6 +148,9 @@ const CO_MAN_HINH = [
   { ten: 'điện thoại nhỏ', width: 320, height: 568 },
   { ten: 'điện thoại', width: 360, height: 740 },
   { ten: 'điện thoại lớn', width: 390, height: 844 },
+  // 430px: điện thoại rộng nhất đang bán. Từ 400px lề hai bên không còn là 20px mà lớn dần theo 5 % bề rộng
+  // (--le: clamp(20px, 5vw, 40px)) — cỡ này giữ cho phép đo và trang không lệch nhau ở khoảng 400–599px.
+  { ten: 'điện thoại rộng', width: 430, height: 932 },
   { ten: 'máy tính bảng dọc', width: 768, height: 1024 },
   { ten: 'máy tính bảng', width: 800, height: 1280 },
   { ten: 'máy tính bảng ngang', width: 1024, height: 768 },
@@ -277,7 +291,7 @@ try {
   };
 
   // =========================================================================
-  await nhom(`1 · ${trang.length} TRANG CÔNG KHAI Ở 3 CỠ MÀN HÌNH`, async () => {
+  await nhom(`1 · ${trang.length} TRANG CÔNG KHAI Ở ${CO_MAN_HINH.length} CỠ MÀN HÌNH`, async () => {
     for (const co of CO_MAN_HINH) {
       const ctx = await trinhDuyet.newContext({ viewport: { width: co.width, height: co.height } });
       for (const duong of trang) {
@@ -892,6 +906,152 @@ try {
     ok('/en/book (trang thường): vẫn có canonical, đủ 4 hreflang, JSON-LD, không noindex',
        thuong.robots === 0 && thuong.soCanonical === 1 && thuong.soHreflang === 4 && thuong.soJsonLd === 1, JSON.stringify(thuong));
     await ctx.close();
+  });
+
+  // =========================================================================
+  // Ảnh về chậm (3G, máy yếu): khung ảnh phải giữ sẵn đúng chỗ của ảnh — không thì cả trang xô xuống khi ảnh
+  // về, khách đang đọc bị trượt mất dòng. Giữ mọi file /anh/ lại ở máy chủ giả (chưa trả), đo từng khung; thả
+  // ra, cuộn hết trang cho ảnh lazy về, đo lại: khung nào cũng phải đứng nguyên chỗ, nguyên cỡ.
+  await nhom('10 · ẢNH VỀ CHẬM: KHUNG GIỮ SẴN CHỖ, TRANG KHÔNG XÔ LỆCH; ẢNH VỀ ĐỦ, ĐÚNG KHUNG TỪNG CỠ MÀN HÌNH', async () => {
+    // Chờ phông chữ xong (tối đa 5 giây) rồi mới đo: phông về sau thì chữ xuống dòng khác đi, vị trí các khung
+    // đổi mà không phải do ảnh. Không dùng document.fonts.ready: Chromium giữ lời hứa đó tới khi trang tải
+    // xong, mà ở lần đo đầu ảnh màn đầu đang bị giữ lại — trang chưa bao giờ "tải xong".
+    const doKhung = page => page.evaluate(async () => {
+      for (let i = 0; i < 50 && document.fonts.status !== 'loaded'; i++) await new Promise(r => setTimeout(r, 100));
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      return {
+        caoTrang: document.documentElement.scrollHeight,
+        soPhong: [...document.fonts].filter(f => f.status === 'loaded').length,
+        khung: [...document.querySelectorAll('figure.anh')].map(f => {
+          const k = f.getBoundingClientRect();
+          const a = f.querySelector('img');
+          return {
+            id: (a?.getAttribute('src') ?? '').replace(/^.*\/anh\//, '').replace(/-\d+x\d+-\d+\.\w+$/, ''),
+            trai: Math.round(k.left * 2) / 2, tren: Math.round((k.top + scrollY) * 2) / 2, rong: Math.round(k.width * 2) / 2, cao: Math.round(k.height * 2) / 2,
+            hien: f.checkVisibility(), daVe: !!a && a.complete && a.naturalWidth > 0,
+            file: (a?.currentSrc ?? '').replace(/^.*\/anh\//, ''),
+            tiLeFile: a && a.naturalHeight ? a.naturalWidth / a.naturalHeight : null,
+          };
+        }),
+      };
+    });
+    // Khung của từng ảnh theo bề rộng màn hình: dưới 600px dùng khung điện thoại (khungNho), từ 600px khung chính.
+    const KHUNG_MONG = {
+      'hero-vi-gas': ['4x5', '4x3'], 'bo-van-mo-can': ['1x1', '4x5'], 'bo-cat-lat': ['3x2', '3x2'], 'sot-cham': ['4x3', '4x3'],
+      'mon-an-chia-se': ['4x3', '3x2'], 'bua-an-cung-ban': ['4x3', '3x2'], 'uong-khong-con-ba-ly': ['3x2', '3x2'],
+    };
+    for (const [rong, cao] of [[390, 844], [768, 1024], [1440, 900]]) {
+      for (const duong of ['/', '/ko', '/thuc-don']) {
+        const ctx = await trinhDuyet.newContext({ viewport: { width: rong, height: cao } });
+        const page = await ctx.newPage();
+        const nhan = `${duong} · ${rong}px`;
+        let tha;
+        const giu = new Promise(xong => { tha = xong; });
+        const hong = [];
+        page.on('response', r => { if (/\/anh\//.test(r.url()) && r.status() >= 400) hong.push(`${r.url()} HTTP ${r.status()}`); });
+        await page.route('**/anh/**', async r => { await giu; await r.continue().catch(() => {}); });
+        try {
+          await page.goto(goc + duong, { waitUntil: 'domcontentloaded', timeout: 30000 });
+          const truoc = await doKhung(page);
+          tha();
+          await page.waitForLoadState('load');
+          await page.evaluate(async () => {
+            for (let y = 0; y < document.documentElement.scrollHeight; y += 500) { scrollTo({ top: y, behavior: 'instant' }); await new Promise(r => setTimeout(r, 60)); }
+            scrollTo({ top: 0, behavior: 'instant' });
+          });
+          await page.waitForFunction(() => [...document.querySelectorAll('figure.anh img')].filter(a => a.checkVisibility()).every(a => a.complete && a.naturalWidth > 0), null, { timeout: 15000 }).catch(() => {});
+          const sau = await doKhung(page);
+          const hienRa = sau.khung.filter(k => k.hien);
+          const tot = [
+            ok(`${nhan}: trang có ảnh (${hienRa.length} ảnh đang hiện), lúc ảnh chưa về chưa ảnh nào tải xong`,
+               hienRa.length >= 1 && truoc.khung.length === sau.khung.length && truoc.khung.every(k => !k.daVe), JSON.stringify(truoc.khung.map(k => [k.id, k.daVe]))),
+            // Vị trí theo chiều dọc và chiều cao trang chỉ so khi phông chữ không đổi giữa hai lần đo (phông về
+            // muộn làm chữ xuống dòng khác — không phải lỗi của ảnh); bề rộng, chiều cao của khung thì luôn so.
+            ok(`${nhan}: ảnh chưa về mà khung đã giữ sẵn đúng chỗ, đúng cỡ — ảnh về trang không xô lệch (cao trang ${truoc.caoTrang}px → ${sau.caoTrang}px)`,
+               truoc.khung.every((k, i) => ['trai', 'rong', 'cao'].every(c => k[c] === sau.khung[i][c]))
+                 && (truoc.soPhong !== sau.soPhong || (truoc.caoTrang === sau.caoTrang && truoc.khung.every((k, i) => k.tren === sau.khung[i].tren)))
+                 && hienRa.every(k => k.rong > 100 && k.cao > 60),
+               truoc.khung.map((k, i) => `${k.id} ${k.rong}×${k.cao}@${k.tren} → ${sau.khung[i]?.rong}×${sau.khung[i]?.cao}@${sau.khung[i]?.tren}`).join(' | ')),
+            ok(`${nhan}: mọi ảnh đang hiện đều tải về được, không file nào hỏng`, hienRa.every(k => k.daVe) && hong.length === 0,
+               [...hienRa.filter(k => !k.daVe).map(k => `${k.id} chưa về`), ...hong].join(' | ')),
+            ok(`${nhan}: mỗi ảnh dùng đúng khung của cỡ màn hình này, khung hiện đúng tỷ lệ của file`,
+               hienRa.every(k => k.file.startsWith(`${k.id}-${KHUNG_MONG[k.id]?.[rong < 600 ? 0 : 1]}-`) && Math.abs(k.rong / k.cao - k.tiLeFile) < 0.02),
+               hienRa.map(k => `${k.file} trong khung ${k.rong}×${k.cao}`).join(' | ')),
+          ];
+          if (tot.includes(false)) await chupLoi(page, `anh-cham${duong}-${rong}`);
+        } finally {
+          tha();
+          await ctx.close();
+        }
+      }
+    }
+  });
+
+  // =========================================================================
+  // Trang Thực đơn: ba phần (Bò tại quầy / Món ăn / Đồ uống) là ba tab. Lúc tải trang chỉ tab đầu hiện, và
+  // do-giao-dien.mjs bỏ qua ảnh đang ẩn — nên ở mục 1 ảnh sot-cham của tab "Món ăn" chưa bao giờ được đo: giấu
+  // nhãn "Ảnh minh họa" của nó, chèn chữ đè lên, bóp méo khung… phép đo vẫn đạt. Ở đây bấm từng tab như khách
+  // rồi đo lại trên phần vừa mở.
+  await nhom('11 · TRANG THỰC ĐƠN: BẤM TỪNG TAB RỒI ĐO LẠI ẢNH VÀ THÀNH PHẦN CỦA PHẦN VỪA MỞ Ở 390 VÀ 1440 PX', async () => {
+    // Ảnh của từng phần lúc CHƯA công bố món (CI không có database) — chép tay theo TrangThucDon.astro; phần không
+    // có ảnh thì để []. Ảnh món (đã công bố) đo ở thu-day-du.mjs nhóm 11.
+    const ANH_CUA_PHAN = { 'bo-tai-quay': ['bo-cat-lat'], 'mon-an': ['sot-cham'], 'do-uong': ['uong-khong-con-ba-ly'] };
+    for (const [rong, cao] of [[390, 844], [1440, 900]]) {
+      const ctx = await trinhDuyet.newContext({ viewport: { width: rong, height: cao } });
+      const page = await ctx.newPage();
+      for (const duong of ['/thuc-don', '/en/menu', '/ko/menu']) {
+        await page.goto(goc + duong, { waitUntil: 'load', timeout: 30000 });
+        // Bấm theo thứ tự khách hay bấm: sang "Món ăn", sang "Đồ uống", rồi quay về "Bò tại quầy".
+        for (const phan of ['mon-an', 'do-uong', 'bo-tai-quay']) {
+          const anhMong = ANH_CUA_PHAN[phan];
+          const nhan = `${duong} · ${rong}px · tab #${phan}`;
+          await page.locator(`#td-tab-${phan}`).click();
+          // Ảnh của phần vừa mở là ảnh lazy: cuộn tới từng ảnh cho nó tải, chờ tải xong, rồi về đầu trang.
+          const thay = await page.evaluate(async phan => {
+            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+            const khoi = document.getElementById(phan);
+            const anh = [...khoi.querySelectorAll('figure.anh')].filter(f => f.checkVisibility());
+            for (const f of anh) {
+              f.scrollIntoView({ block: 'center', behavior: 'instant' });
+              const a = f.querySelector('img');
+              for (let i = 0; i < 100 && !(a.complete && a.naturalWidth > 0); i++) await new Promise(r => setTimeout(r, 100));
+            }
+            scrollTo({ top: 0, behavior: 'instant' });
+            return {
+              tabDangChon: [...document.querySelectorAll('.td-tab a[aria-selected="true"]')].map(a => a.id),
+              phanHien: [...document.querySelectorAll('.td-phan')].filter(p => p.checkVisibility()).map(p => p.id),
+              anhHien: anh.map(f => (f.querySelector('img')?.getAttribute('src') ?? '').replace(/^.*\/anh\//, '').replace(/-\d+x\d+-\d+\.\w+$/, '')),
+              anhVe: anh.every(f => { const a = f.querySelector('img'); return a.complete && a.naturalWidth > 0; }),
+              nhanAnh: anh.map(f => f.querySelector('figcaption')?.checkVisibility() ? f.querySelector('figcaption').textContent.trim() : ''),
+              hash: location.hash,
+            };
+          }, phan);
+          const gd = await page.evaluate(doGiaoDien);
+          const saiKhac = Object.keys(PHEP_DO).filter(k => k !== 'anh').flatMap(k => (gd[k] ?? ['không đo được']).map(c => `[${k}] ${c}`));
+          const tot = [
+            ok(`${nhan}: bấm tab → đúng phần này hiện (hai phần kia ẩn), tab được đánh dấu đang chọn, địa chỉ trang thành #${phan}`,
+               thay.phanHien.join() === phan && thay.tabDangChon.join() === `td-tab-${phan}` && thay.hash === `#${phan}`,
+               `hiện: ${thay.phanHien.join(', ') || 'không phần nào'} · tab: ${thay.tabDangChon.join(', ')} · ${thay.hash}`),
+            ok(`${nhan}: phần vừa mở ${anhMong.length ? `có đúng ảnh ${anhMong.join(', ')}, ảnh tải về được, nhãn "Ảnh minh họa" đang hiện` : 'không có ảnh nào'}`,
+               thay.anhHien.join() === anhMong.join() && thay.anhVe && thay.nhanAnh.every(n => n.length > 0),
+               `ảnh: ${thay.anhHien.join(', ') || 'không'} · tải xong: ${thay.anhVe} · nhãn: ${JSON.stringify(thay.nhanAnh)}`),
+            ok(`${nhan}: ${PHEP_DO.anh}`, gd.anh?.length === 0, (gd.anh ?? ['không đo được']).slice(0, 4).join(' | ')),
+            ok(`${nhan}: ${Object.keys(PHEP_DO).length - 1} phép đo còn lại của do-giao-dien.mjs vẫn đạt trên phần vừa mở`, saiKhac.length === 0, saiKhac.slice(0, 5).join(' | ')),
+          ];
+          // Phép đo phải thật sự NHÌN THẤY ảnh của phần vừa mở: giấu nhãn của ảnh đó đi thì phải đỏ. Không có bước
+          // này thì một lần sửa làm phép đo lại bỏ qua tab (hay bỏ qua cả ảnh) vẫn xanh.
+          if (anhMong.length) {
+            const kieuGiau = await page.addStyleTag({ content: `#${phan} figure.anh figcaption { display: none !important; }` });
+            const gdGiau = await page.evaluate(doGiaoDien);
+            await kieuGiau.evaluate(e => e.remove());
+            tot.push(ok(`${nhan}: giấu nhãn "Ảnh minh họa" của ${anhMong.join(', ')} thì phép đo ảnh đỏ — phép đo có nhìn thấy ảnh của tab này`,
+              (gdGiau.anh?.length ?? 0) > 0 && gdGiau.anh.some(c => anhMong.some(id => c.includes(id))), (gdGiau.anh ?? []).slice(0, 3).join(' | ') || 'phép đo vẫn đạt'));
+          }
+          if (tot.includes(false)) await chupLoi(page, `tab${duong}-${phan}-${rong}`);
+        }
+      }
+      await ctx.close();
+    }
   });
 } catch (e) {
   ok('Chạy được đến cuối', false, e.stack || e.message);

@@ -1,7 +1,7 @@
 /**
  * MENU BÁN LẺ — đọc, thêm, lưu, xác nhận giá, đối chiếu FABi (màn /noi-bo/ban-le)
  *
- * Thịt bò mang về và kim chi (0097). Quầy cân thịt theo gram ở giá mỗi kg của mặt hàng kho
+ * Thịt bò mang về và kim chi (0099). Quầy cân thịt theo gram ở giá mỗi kg của mặt hàng kho
  * (kho_mat_hang.gia_ban_kg — Beeftown Cân tự gửi xuống cân); online bán gói cố định 200 g / 400 g; kim
  * chi bán theo hộp, giá cố định. Mini App Zalo và website sẽ đọc menu này ở bước sau (PR riêng) — màn
  * này và mọi câu của nó không bao giờ nói hai nơi đó đã đọc.
@@ -25,7 +25,7 @@
  * đã đổi — đọc lại, database đang giữ đúng bản vừa gửi thì đó là "Đã lưu.", không phải "người khác sửa".
  *
  * Kiểm thử: crm/test/test-ban-le-web.mjs (thư viện trên database thật), test-noi-bo-ban-le.mjs (hợp đồng
- * với database, trang). Database: crm/supabase/migrations/0097_ban_le_menu.sql, test-ban-le.mjs.
+ * với database, trang). Database: crm/supabase/migrations/0099_ban_le_menu.sql, test-ban-le.mjs.
  */
 
 import type { AstroCookies } from 'astro';
@@ -306,7 +306,7 @@ export function tenKieu(loai: string, cachBan: string, nn: NgonNguNB = 'vi'): st
 }
 
 /**
- * Các ô có bản dịch, theo thứ tự trên màn hình — khớp ba dòng ban_le_san_pham của cot_ban_dich() (0097).
+ * Các ô có bản dịch, theo thứ tự trên màn hình — khớp ba dòng ban_le_san_pham của cot_ban_dich() (0099).
  * toiDa: giới hạn độ dài bản en / ko người GÕ TAY (database không giới hạn cột en / ko — máy dịch ghi từng ô
  * trong một vòng lặp, một bản quá dài sẽ kẹt mãi; nên giới hạn nằm ở form này).
  */
@@ -417,7 +417,7 @@ export function dongGiaDeChot(sp: Pick<SanPhamBanLe, 'gia_de_chot' | 'goi'>): { 
 // -----------------------------------------------------------------------------
 /**
  * Giá gói từ giá mỗi kg, tròn tới 1.000 đ; 0 → null (0 đ không bao giờ là giá). Bản sinh đôi của
- * ban_le_gia_goi (0097) — sửa thì sửa cả hai; test-ban-le-web.mjs so hai bản trên một bảng ca.
+ * ban_le_gia_goi (0099) — sửa thì sửa cả hai; test-ban-le-web.mjs so hai bản trên một bảng ca.
  */
 export function giaGoi(giaKg: number | null | undefined, soGam: number | null | undefined): number | null {
   if (giaKg == null || soGam == null || !Number.isFinite(giaKg) || !Number.isFinite(soGam)) return null;

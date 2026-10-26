@@ -1,8 +1,8 @@
 /**
- * BEEFTOWN CÂN — MÁY QUẦY (0054): phần tính cho các thẻ Quầy, Tảng & ô,
- * Giảm giá, Báo cáo. Hàm thuần — kiểm thử bằng test/thu.ts.
+ * BEEFTOWN CÂN — MÁY QUẦY (0054): phần tính cho thẻ Quầy (cả Tảng & ô mã ở
+ * cuối thẻ — 2.11), Giảm giá, Báo cáo. Hàm thuần — kiểm thử bằng test/thu.ts.
  *
- * Dữ liệu lấy từ kho bằng một lần gọi mỗi thẻ (kho_bang_quay, kho_can_o_ma,
+ * Dữ liệu lấy từ kho bằng một lần gọi mỗi mục (kho_bang_quay, kho_can_o_ma,
  * kho_bao_cao_ban_gio, kho_bao_cao_tang); ở đây chỉ gộp, xếp, gợi ý:
  *   · Quầy: việc cần làm ngay — gói HẾT HẠN phải huỷ; gói CẬN DATE thì cân
  *     lại bằng mã giảm (nếu món có) và xếp ra trước; món DƯỚI MỨC thì gửi yêu
@@ -203,7 +203,7 @@ export function dongHuy(ds: unknown, lo: Map<string, LoQuay>, monCo: Map<string,
 }
 
 // -----------------------------------------------------------------------------
-// THẺ TẢNG & Ô (kho_can_o_ma — 0054)
+// MỤC TẢNG & Ô Ở CUỐI THẺ QUẦY (kho_can_o_ma — 0054; 2.11)
 // -----------------------------------------------------------------------------
 export interface OMaKho {
   o_ma_id: string; mat_hang_id: string; ten: string; so_o: number; ma_can: string;

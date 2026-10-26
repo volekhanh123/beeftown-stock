@@ -1,5 +1,5 @@
 -- =============================================================================
--- BEEFTOWN — 0097 · MENU BÁN LẺ (THỊT BÒ MANG VỀ VÀ KIM CHI) — CHỈ NỘI BỘ
+-- BEEFTOWN — 0099 · MENU BÁN LẺ (THỊT BÒ MANG VỀ VÀ KIM CHI) — CHỈ NỘI BỘ
 -- =============================================================================
 -- PHẢI CHẠY SAU 0036 (bản dịch tự động: cot_ban_dich, v_viec_dich, ghi_ban_dich, ghi_so_ban_dich),
 -- 0019 / 0020 (kho_mat_hang, kho_vi_tri, kho_lo, kho_ton, kho_cai_dat), 0037 / 0042 / 0049 / 0051 / 0054
@@ -37,7 +37,7 @@
 -- File có câu `delete` (bỏ gói trong ban_le_luu_san_pham): chạy bằng SQL Editor hoặc psql, KHÔNG bằng
 -- apply_migration / execute_sql của Supabase MCP — công cụ đó chờ người bấm xác nhận câu có delete, hết 60
 -- giây thì không chạy gì (CLAUDE.md mục 8). Chỉ chạy lên production sau khi PR được gộp, rồi
--- `npm run doi-chieu` phải báo KHỚP (0097 là file cuối định nghĩa cot_ban_dich, ghi_ban_dich, v_viec_dich).
+-- `npm run doi-chieu` phải báo KHỚP (0099 là file cuối định nghĩa cot_ban_dich, ghi_ban_dich, v_viec_dich).
 -- =============================================================================
 
 
@@ -101,7 +101,7 @@ create table ban_le_san_pham (
 );
 
 comment on table ban_le_san_pham is
-  'Menu bán lẻ mang về (0097): phần thịt bò bán theo cân ở quầy và theo gói online, kim chi theo hộp. Cả thương hiệu. Đọc: bốn vai CRM; ghi: các hàm ban_le_* (chủ, quản lý); ô dịch en / ko: máy dịch (ghi_ban_dich).';
+  'Menu bán lẻ mang về (0099): phần thịt bò bán theo cân ở quầy và theo gói online, kim chi theo hộp. Cả thương hiệu. Đọc: bốn vai CRM; ghi: các hàm ban_le_* (chủ, quản lý); ô dịch en / ko: máy dịch (ghi_ban_dich).';
 comment on column ban_le_san_pham.mat_hang_id is
   'Mặt hàng kho của sản phẩm theo cân: giá mỗi kg (gia_ban_kg), mã cân, tồn ở quầy. KHÔNG khóa ngoại (script dọn kho truncate bảng kho_*); kiểm bằng trigger khi đổi, chỗ đọc chịu được mặt hàng mất hoặc ngừng dùng.';
 comment on column ban_le_san_pham.gia_chot is
@@ -147,7 +147,7 @@ create table ban_le_goi (
 create index ban_le_goi_san_pham_idx on ban_le_goi (san_pham_id);
 
 comment on table ban_le_goi is
-  'Gói online / hộp của một sản phẩm bán lẻ (0097): trọng lượng, giá riêng hoặc tự tính, mã FABi, mã vạch, mặt hàng kho của hộp / gói đóng sẵn.';
+  'Gói online / hộp của một sản phẩm bán lẻ (0099): trọng lượng, giá riêng hoặc tự tính, mã FABi, mã vạch, mặt hàng kho của hộp / gói đóng sẵn.';
 comment on column ban_le_goi.gia_rieng is
   'Giá cố định của gói (tròn nghìn). Trống = tự tính từ giá mỗi kg của mặt hàng kho (ban_le_gia_goi), chỉ với sản phẩm theo cân.';
 
@@ -306,7 +306,7 @@ with dong as (
   from noi_dung_cong_bo n
   where n.trang_thai = 'da_cong_bo' and n.kieu = 'van_ban'
   union all
-  -- 0097 · Cả sản phẩm tạm ngưng: phải dịch xong TRƯỚC khi chuyển sang Đang bán.
+  -- 0099 · Cả sản phẩm tạm ngưng: phải dịch xong TRƯỚC khi chuyển sang Đang bán.
   select 'ban_le_san_pham', s.id, to_jsonb(s)
   from ban_le_san_pham s
 ),
@@ -446,7 +446,7 @@ as $$
 $$;
 
 comment on function ban_le_gia_goi is
-  'Giá gói p_so_gam gam từ giá mỗi kg, tròn 1.000 đ; 0 → null (0097). Giống giaGoi của web/src/lib/ban-le-noi-bo.ts.';
+  'Giá gói p_so_gam gam từ giá mỗi kg, tròn 1.000 đ; 0 → null (0099). Giống giaGoi của web/src/lib/ban-le-noi-bo.ts.';
 
 -- Giá bán của một gói: giá riêng, không thì tự tính (chỉ sản phẩm theo cân, từ giá mỗi kg DÙNG ĐƯỢC — mặt hàng
 -- mất hay ngừng dùng thì p_gia_kg là null). 0 không bao giờ là giá.
@@ -807,7 +807,7 @@ end;
 $$;
 
 comment on function ban_le_danh_sach(uuid, uuid) is
-  'Menu bán lẻ cho /noi-bo/ban-le (0097). Vai: chủ, quản lý, thu ngân, marketing. Tồn ở quầy chỉ khi xem được kho chi nhánh đó.';
+  'Menu bán lẻ cho /noi-bo/ban-le (0099). Vai: chủ, quản lý, thu ngân, marketing. Tồn ở quầy chỉ khi xem được kho chi nhánh đó.';
 
 -- -----------------------------------------------------------------------------
 -- 5.2 · ban_le_tao_san_pham — thêm sản phẩm (bấm hai lần = một sản phẩm)
@@ -883,7 +883,7 @@ end;
 $$;
 
 comment on function ban_le_tao_san_pham(uuid, text, text, text, text) is
-  'Thêm sản phẩm bán lẻ (0097), chủ / quản lý. Cùng p_ma_gui → trả sản phẩm đã có (da_co). Mới: Tạm ngưng; thịt theo cân có gói 200 g, 400 g.';
+  'Thêm sản phẩm bán lẻ (0099), chủ / quản lý. Cùng p_ma_gui → trả sản phẩm đã có (da_co). Mới: Tạm ngưng; thịt theo cân có gói 200 g, 400 g.';
 
 -- -----------------------------------------------------------------------------
 -- 5.3 · ban_le_luu_san_pham — lưu form sửa sản phẩm
@@ -1300,7 +1300,7 @@ end;
 $$;
 
 comment on function ban_le_luu_san_pham(uuid, timestamptz, jsonb) is
-  'Lưu sản phẩm bán lẻ (0097), chủ / quản lý: mọi kiểm tra trước lần ghi đầu; nguoi_khac_sua / gia_kho_vua_doi trả ok:false không ghi gì. Có thể sửa gia_ban_kg của mặt hàng kho (danh_muc).';
+  'Lưu sản phẩm bán lẻ (0099), chủ / quản lý: mọi kiểm tra trước lần ghi đầu; nguoi_khac_sua / gia_kho_vua_doi trả ok:false không ghi gì. Có thể sửa gia_ban_kg của mặt hàng kho (danh_muc).';
 
 -- -----------------------------------------------------------------------------
 -- 5.4 · ban_le_chot_gia — chủ xác nhận giá, bỏ chữ "Giá thử"
@@ -1356,7 +1356,7 @@ end;
 $$;
 
 comment on function ban_le_chot_gia(uuid, timestamptz, jsonb) is
-  'Chủ chốt giá bán lẻ (0097): ghi ảnh chụp giá vào gia_chot. ok:false khi người khác vừa sửa hoặc giá vừa đổi so với trang đã hiện.';
+  'Chủ chốt giá bán lẻ (0099): ghi ảnh chụp giá vào gia_chot. ok:false khi người khác vừa sửa hoặc giá vừa đổi so với trang đã hiện.';
 
 -- -----------------------------------------------------------------------------
 -- 5.5 · ban_le_doi_chieu — việc phải làm trên FABi của một chi nhánh
@@ -1743,7 +1743,7 @@ end;
 $$;
 
 comment on function ban_le_doi_chieu(uuid) is
-  'Đối chiếu menu bán lẻ với FABi của một chi nhánh (0097), danh_muc: mã cân, ô mã, mã giảm, gói; việc phải làm trên FABi. Không đọc giá FABi (không lưu ở đâu).';
+  'Đối chiếu menu bán lẻ với FABi của một chi nhánh (0099), danh_muc: mã cân, ô mã, mã giảm, gói; việc phải làm trên FABi. Không đọc giá FABi (không lưu ở đâu).';
 
 
 

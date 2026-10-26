@@ -5,7 +5,7 @@
  *     node test/test-noi-bo-ban-le.mjs
  *
  * Màn Menu bán lẻ (web/src/lib/ban-le-noi-bo.ts, web/src/pages/noi-bo/ban-le/) chỉ ẩn nút cho gọn mắt; database
- * (0097) mới là luật. File này giữ hai bên nói cùng một thứ tiếng (thư viện chạy trên database thật ở
+ * (0099) mới là luật. File này giữ hai bên nói cùng một thứ tiếng (thư viện chạy trên database thật ở
  * test-ban-le-web.mjs). Bất biến:
  *
  *   1. Vai: VAI_SUA_BAN_LE = mảng vai trong thân ban_le_luu_san_pham / ban_le_tao_san_pham (KHÔNG so với policy

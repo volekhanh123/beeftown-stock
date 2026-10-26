@@ -175,7 +175,7 @@ const sapXep = [...ds].sort((a, b) => (a.trang_thai === 'nhap' ? 0 : 1) - (b.tra
               {p.trang_thai === 'da_chot' ? (
                 <>{t.vaoRa(dinhDangKg(p.tong_kg_vao, nn), dinhDangKg(p.tong_kg_thit, nn))}<strong>{dinhDangPhanTram(p.ty_le_thu_hoi, 1, nn)}</strong>{p.ty_le_du_kien !== null && <>{t.duKien(dinhDangPhanTram(p.ty_le_du_kien, 1, nn))}</>}</>
               ) : (
-                <>{t.loVao(p.so_dau_vao, dinhDangKg(p.kg_vao_nhap, nn))} · {t.phanRa(p.so_dau_ra, dinhDangKg(p.kg_ra_nhap, nn))}</>
+                <>{t.loVao(p.so_lo_vao, dinhDangKg(p.kg_vao_nhap, nn))} · {t.phanRa(p.so_dau_ra, dinhDangKg(p.kg_ra_nhap, nn))}</>
               )}
             </p>
           </a>

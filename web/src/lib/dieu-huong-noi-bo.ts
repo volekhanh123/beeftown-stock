@@ -80,7 +80,7 @@ export const MUC_NOI_BO: readonly MucNoiBo[] = [
     ten: { vi: 'Thực đơn', en: 'Menu' }, ngan: { vi: 'Thực đơn', en: 'Menu' },
     vai: VAI_CRM, bieuTuong: 'bep', nhom: 'website',
     tuKhoa: { vi: 'món ăn đồ uống mô tả công bố bản dịch', en: 'dish drink description publish translation' } },
-  // Bốn vai CRM như policy ban_le_san_pham_doc (0097): thu ngân, marketing chỉ xem; chủ, quản lý sửa (VAI_SUA_BAN_LE).
+  // Bốn vai CRM như policy ban_le_san_pham_doc (0099): thu ngân, marketing chỉ xem; chủ, quản lý sửa (VAI_SUA_BAN_LE).
   { ma: 'ban_le', link: '/noi-bo/ban-le',
     ten: { vi: 'Menu bán lẻ', en: 'Retail menu' }, ngan: { vi: 'Bán lẻ', en: 'Retail' },
     vai: VAI_CRM, bieuTuong: 'mat_hang', nhom: 'nha_hang',

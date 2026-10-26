@@ -97,7 +97,7 @@ await db.query(`insert into nhat_ky_tra_cuu (ip, ma_thu, thanh_cong) values ('1.
 await db.query(`insert into tep_anh (bucket, duong_dan, loai, nguon_that)
                 values ('beeftown-noi-bo', 'thu/anh.jpg', enum_first(null::loai_tep), enum_first(null::anh_thuc_te))`);
 await db.query(`insert into phien_ban_thuc_don (ma, ngay_hieu_luc) values ('v-thu', hom_nay_vn())`);
-// 0097 · menu bán lẻ — bảng có policy tạo sau 0070 (SAU_0070 bên dưới): một sản phẩm, một gói.
+// 0099 · menu bán lẻ — bảng có policy tạo sau 0070 (SAU_0070 bên dưới): một sản phẩm, một gói.
 const { rows: [spBanLe] } = await db.query(
   `insert into ban_le_san_pham (ma, ten_vi, loai, cach_ban) values ('ribeye', 'Ribeye', 'thit', 'theo_can') returning id`);
 await db.query(`insert into ban_le_goi (san_pham_id, so_gam) values ($1, 200)`, [spBanLe.id]);
@@ -177,7 +177,7 @@ const DOI_NGHIA = ['khoa_cong_bo.khoa_cong_bo_doc', 'khung_anh.khung_anh_doc', '
 // có — và mục 2 so từng dòng, từng kiểu người y như với CU: cổng "không thêm không bớt" vẫn bắt policy lạ hay policy
 // đổi nghĩa. Phép thử từ chối từng vai của bảng nằm ở file test của bảng đó.
 const SAU_0070 = {
-  // 0097 — menu bán lẻ (test-ban-le.mjs nhóm 1): đọc = bốn vai CRM; sửa thẳng = vai biên tập, chỉ các ô dịch en / ko
+  // 0099 — menu bán lẻ (test-ban-le.mjs nhóm 1): đọc = bốn vai CRM; sửa thẳng = vai biên tập, chỉ các ô dịch en / ko
   // và sổ ban_dich (quyền cột) — đường ghi của máy dịch.
   'ban_le_goi.ban_le_goi_doc': [SPEC_CRM, null],
   'ban_le_san_pham.ban_le_san_pham_doc': [SPEC_CRM, null],

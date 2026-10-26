@@ -37,6 +37,7 @@ node test/test-zalo.mjs             # một file
 npm run kiem-migration              # gác số migration (so với origin/main)
 npm run so-migration                # số migration kế tiếp — tính trên MỌI nhánh origin/*
 cd ../can-app && npx bun test/thu.ts                     # Beeftown Cân
+npx bun test/thu-trinh-duyet.ts                          # Beeftown Cân trong Chromium: thẻ theo từng vai (CI cũng chạy)
 cd ../web && npx astro check && npm run quet && npm run thu-trinh-duyet -- --khong-build   # quet vừa build (không database)
 cd ../mini-app && npm ci && npm run kiem-tra && npx tsc --noEmit && npx vite build       # Mini App Zalo
 ```

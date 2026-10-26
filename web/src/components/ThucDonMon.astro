@@ -1,0 +1,51 @@
+---
+/**
+ * CHỮ CỦA MỘT MÓN (thẻ món kiểu cuốn menu bản sáng) — tên, mô tả, khẩu phần, nhãn, câu cảnh báo
+ *
+ * ThucDonNhomAnh dùng cho cả thẻ dẫn đầu (lon: tên to hơn, mô tả màu chữ chính) và thẻ nhỏ của lưới.
+ * Chỉ trình bày đúng những gì thuc_don_cong_khai() trả (lib/thuc-don.ts):
+ *  · tên món chữ thường đậm 700 (lý do: đầu ThucDonNhomAnh.astro);
+ *  · giá CHỈ khi mon.gia !== null — null nghĩa là chưa duyệt: không phần tử giá, không "Liên hệ";
+ *  · không độ cay, không sao "Nên thử" (số trong cuốn là số giả lập);
+ *  · hai nhãn có căn cứ trong database (Món sống, Có cồn) — không tự thêm chay, cay, dị ứng;
+ *  · món sống luôn đi kèm câu cảnh báo của chính món đó (thuc-don.ts đã bỏ món sống thiếu câu cảnh báo).
+ */
+import { NHAN_MON, dinhDangGia, type Mon } from '../lib/thuc-don';
+import type { NgonNgu } from '../lib/noi-dung';
+import BieuTuong from './BieuTuong.astro';
+
+interface Props {
+  mon: Mon;
+  ngonNgu: NgonNgu;
+  /** Thẻ dẫn đầu của nhóm: tên to hơn, mô tả màu chữ chính. */
+  lon?: boolean;
+  khongGia?: boolean;
+}
+const { mon: m, ngonNgu, lon = false, khongGia = false } = Astro.props;
+---
+<div class:list={['tdm', { 'tdm-lon': lon }]}>
+  <p class="tdm-ten">{m.ten}</p>
+  {!khongGia && m.gia !== null && <p class="mon-gia">{dinhDangGia(m.gia)}</p>}
+  {m.moTa && <p class="tdm-mo-ta">{m.moTa}</p>}
+  {m.khauPhan && <p class="tdm-khau-phan">{m.khauPhan}</p>}
+  {(m.laMonSong || m.coCon) && (
+    <ul class="mon-nhan" role="list">
+      {m.laMonSong && <li class="nhan-mon"><BieuTuong ten="mon-song" /><span>{NHAN_MON.monSong[ngonNgu]}</span></li>}
+      {m.coCon && <li class="nhan-mon"><BieuTuong ten="co-con" /><span>{NHAN_MON.coCon[ngonNgu]}</span></li>}
+    </ul>
+  )}
+  {m.laMonSong && m.canhBao && <p class="canh-bao-mon">{m.canhBao}</p>}
+</div>
+
+<style>
+  .tdm { min-width: 0; }
+  .tdm-ten { margin: 0; font-size: var(--co-h3); font-weight: 700; line-height: 1.3; color: var(--chu-chinh); }
+  .tdm-mo-ta { margin: var(--k-2) 0 0; max-width: 60ch; color: var(--chu-phu); }
+  .tdm-khau-phan { margin: var(--k-1) 0 0; font-size: var(--co-nho); color: var(--chu-phu); }
+  .tdm :global(.mon-nhan) { margin-top: var(--k-3); }
+  .tdm :global(.canh-bao-mon) { margin-top: var(--k-2); max-width: 60ch; }
+  .tdm :global(.mon-gia) { margin: var(--k-1) 0 0; }
+  /* Thẻ dẫn đầu: tên một bậc trên tên món thường (1,25 lần --co-h3: 22,5 → 25px), mô tả màu chữ chính. */
+  .tdm-lon .tdm-ten { font-size: calc(var(--co-h3) * 1.25); line-height: 1.25; }
+  .tdm-lon .tdm-mo-ta { color: var(--chu-chinh); }
+</style>
