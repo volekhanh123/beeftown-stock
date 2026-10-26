@@ -1071,14 +1071,18 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   dùng + mỗi mã giảm đang bật một món — tên gợi ý "<tên món> ô <số>" (mã giảm: tên như trên cân), mã món = mã vạch
   (đệm đủ số chữ `C` của mẫu) = mã ô / mã giảm, bán theo kg, giá/kg = giá kho (mã giảm: `giaGiam`). Đối chiếu
   `kho_ipos_menu` (chỉ có mã món — nhãn "có" nói mã vạch phải thử bằng một tem; ô ghép tay mã khác cũng tính);
-  thực đơn rỗng → "Chưa đọc được thực đơn iPOS", không kết luận; kèm giờ đọc thực đơn. Tải
-  `/noi-bo/kho/ban-ipos/mon-fabi.csv` (`taoTepMonFabi`: `taoCsv`, không lách bằng "=", tên file ASCII giờ VN; vai khác
+  thực đơn rỗng → "Chưa đọc được thực đơn iPOS", không kết luận; kèm giờ đọc thực đơn; mã dài hơn số chữ `C` của mẫu
+  → cảnh báo cân không in được tem; nội dung mục chọn bằng `mucMonFabi` (thuần). Tải
+  `/noi-bo/kho/ban-ipos/mon-fabi.csv` (link thường, không `download` — 403 / 500 mở trang có câu lỗi) (`taoTepMonFabi`: `taoCsv`, không lách bằng "=", tên file ASCII giờ VN; vai khác
   403; đọc lỗi 500 kèm câu, không file rỗng). (2) Bán hàng iPOS → hộp **Bán không biết tảng · 7 ngày** (`xem_gia`,
   `docBanKhongBietTang`): dòng `da_ghi` của món có ô mà không ô, không mã giảm (`khong_qua_o` — không xét "lúc bán ô
-  có giữ tảng không": ô không tự đóng khi tảng bán hết) và dòng `lech_o`; hôm nay / 7 ngày theo `ngay_ban`, đếm dòng
-  và hóa đơn, mỗi loại kèm nguyên nhân có thể và chỗ sửa; đọc lỗi → câu lỗi, không in 0. (3) Chặn ghép sai trước khi
-  gọi database (`kiemGhep`, `laMaKhoTuNhan` trong `lib/kho/ban-ipos.ts`, đọc ô mã + mã giảm ngay trước khi ghép, đọc
-  lỗi thì không ghép): mã trùng mã giảm (kể cả đã tắt) chỉ được Bỏ ghép; mã trùng mã ô chỉ được ghép với đúng ô đó;
+  có giữ tảng không": ô không tự đóng khi tảng bán hết) và dòng `lech_o` — lọc ở database (hai lần đọc, `is null` /
+  `lech_o = true`, `thoi_diem_ban >=` 00:00 giờ VN ngày đầu; dòng bán qua ô không về web); hôm nay / 7 ngày theo
+  `ngay_ban`, đếm dòng và hóa đơn, mỗi loại kèm nguyên nhân có thể và chỗ sửa; nội dung hộp chọn bằng
+  `hopKhongBietTang` (thuần): đọc lỗi → chỉ câu lỗi, không số. (3) Chặn ghép sai trước khi gọi database (`kiemGhep`,
+  `laMaKhoTuNhan`, `oThucDon` trong `lib/kho/ban-ipos.ts`, đọc ô mã + mã giảm ngay trước khi ghép, đọc lỗi thì không
+  ghép): mã trùng mã giảm (kể cả đã tắt) / mã ô không ghép được như món kho (mã ô chỉ với đúng ô đó); ghép "Không phải
+  hàng kho" / suất / hàng cân nhãn phải tích "Mã này là món khác trên FABi" (lối thoát khi FABi có món khác trùng mã);
   ghép món có ô mà không chọn ô phải tích "Vẫn ghép món chung". Thực đơn iPOS hiện "Mã giảm — kho tự nhận" /
   "Ô n — kho tự nhận" thay nút Ghép. **Mã giảm cận date giữ trừ theo hạn gần nhất** (không theo ô): lô cận date ở quầy
   gần như luôn là lô lóc sớm nhất, nên vẫn trúng tảng; mã giảm theo ô sẽ nhân số mã, số PLU và số món FABi phải sửa giá.

@@ -680,17 +680,33 @@ export function laMaKhoTuNhan(
 
 /**
  * Chặn ghép sai TRƯỚC khi gọi database (thuần). null = được ghép.
- *   · Mã trùng mã giảm: chỉ được Bỏ ghép — ghép kiểu nào cũng làm dòng mất dấu giảm giá (kho chỉ nhận
- *     mã giảm khi mã CHƯA ghép, 0054).
- *   · Mã trùng mã ô: chỉ được Bỏ ghép hoặc ghép với đúng ô đó.
- *   · Ghép món có ô mã như món thường (không chọn ô): phải xác nhận "món chung" — bán mã đó kho trừ
- *     theo hạn gần nhất, không biết tảng (canXacNhan).
+ *   · Mã trùng mã giảm / mã ô, ghép như món kho (kiểu 'mon'): từ chối, không xác nhận nào mở được —
+ *     mã giảm ghép vào thì dòng mất dấu giảm giá (kho chỉ nhận mã giảm khi mã CHƯA ghép, 0054); mã ô
+ *     chỉ được ghép với đúng ô đó.
+ *   · Mã trùng mã giảm / mã ô, ghép "Không phải hàng kho", Bán theo suất hay hàng cân nhãn: phải xác
+ *     nhận "trùng mã" (canXacNhan 'trung_ma') — lối thoát khi FABi có sẵn món KHÁC mang đúng mã đó
+ *     (để trống thì kho tự nhận là món ô / món giảm và trừ sai), hoặc mã của món đã ngừng dùng.
+ *   · Ghép món có ô mã như món thường (không chọn ô): phải xác nhận "món chung" (canXacNhan 'khong_o')
+ *     — bán mã đó kho trừ theo hạn gần nhất, không biết tảng.
  */
 export function kiemGhep(
-  ghep: GhepGui, ng: NguCanhGhep, daXacNhanKhongO: boolean,
-): { cau: HaiThuTieng; canXacNhan: boolean } | null {
+  ghep: GhepGui, ng: NguCanhGhep, daXacNhanKhongO: boolean, daXacNhanTrungMa = false,
+): { cau: HaiThuTieng; canXacNhan: false | 'khong_o' | 'trung_ma' } | null {
   if (ghep.kieu === null) return null;
   const tu = laMaKhoTuNhan(ghep.ma, ng);
+  if (tu && ghep.kieu !== 'mon') {
+    if (daXacNhanTrungMa) return null;
+    const ten = tu.loai === 'giam'
+      ? { vi: `mã giảm giá ${tu.phanTram}%`, en: `the ${tu.phanTram}% discount code` }
+      : { vi: `mã của ô ${tu.soO}`, en: `the code of slot ${tu.soO}` };
+    const doiMa = tu.loai === 'giam'
+      ? { vi: 'đổi mã giảm ở Beeftown Cân → thẻ Giảm giá', en: 'change the discount code in Beeftown Scale → Discounts tab' }
+      : { vi: 'đổi mã ô trong Mặt hàng', en: 'change the slot code under Items' };
+    return { canXacNhan: 'trung_ma', cau: {
+      vi: `Mã "${ghep.ma}" trùng ${ten.vi} — để trống thì kho tự nhận. Chỉ ghép kiểu này khi món FABi mang mã đó là món khác (nên ${doiMa.vi}). Đúng là món khác thì tích "Mã này là món khác trên FABi — vẫn ghép" rồi bấm Ghép lần nữa.`,
+      en: `Code "${ghep.ma}" is the same as ${ten.en} — left unmatched, stock recognises it by itself. Match it this way only if the FABi dish with that code is a different dish (better: ${doiMa.en}). If it really is a different dish, tick "This code is a different dish on FABi — match anyway" and press Match again.`,
+    } };
+  }
   if (tu?.loai === 'giam') {
     return { canXacNhan: false, cau: {
       vi: `Mã "${ghep.ma}" là mã giảm giá ${tu.phanTram}% — để trống, kho tự nhận. Ghép vào thì báo cáo mất dấu giảm giá. Mã này đang ghép thì bấm Bỏ ghép.`,
@@ -705,7 +721,7 @@ export function kiemGhep(
   }
   if (ghep.kieu === 'mon' && !ghep.oMa && ghep.matHang && !daXacNhanKhongO
       && ng.oMa.some(o => o.mat_hang_id === ghep.matHang)) {
-    return { canXacNhan: true, cau: {
+    return { canXacNhan: 'khong_o', cau: {
       vi: 'Món này là phần cắt theo tảng, có ô mã. Ghép như món thường thì bán mã này kho trừ theo hạn gần nhất, không biết tảng. Món ô trên FABi: chọn đúng ô ở nhóm Ô mã. Đây đúng là món chung: tích "Vẫn ghép món chung" rồi bấm Ghép lần nữa.',
       en: 'This item is a per-primal cut with rotating codes. Matched as a regular dish, selling this code deducts by nearest expiry and the primal is unknown. For a slot dish on FABi, choose the slot in the Rotating codes group. If this really is the general dish, tick "Match as the general dish anyway" and press Match again.',
     } };
@@ -713,8 +729,33 @@ export function kiemGhep(
   return null;
 }
 
-/** Kết quả ghép: canXacNhanKhongO = trang hiện ô xác nhận "món chung" cho mã vừa gửi. */
-export type KetQuaGhep = KetQua & { canXacNhanKhongO?: boolean };
+/** Cột "Món kho" của một mã trên bảng Thực đơn iPOS — trang chỉ vẽ theo `kieu` (thuần, có kiểm thử). */
+export type OThucDon =
+  /** Đã ghép. ghepSai: mã giảm / mã ô ghép như món kho mà không đúng ô → nhắc Bỏ ghép. Ghép "Không phải
+   *  hàng kho" / suất / hàng cân nhãn là lối thoát đã xác nhận "trùng mã" — không nhắc. */
+  | { kieu: 'da_ghep'; ghepSai: boolean }
+  /** Chưa ghép, mã trùng mã giảm / mã ô: kho tự nhận — không mời ghép. */
+  | { kieu: 'tu_nhan_giam'; phanTram: number }
+  | { kieu: 'tu_nhan_o'; soO: number; oMaId: string }
+  | { kieu: 'nut_ghep' };
+
+export function oThucDon(
+  ma: string, daGhep: { kieu: string | null; o_ma_id?: string | null } | null | undefined, ng: NguCanhGhep,
+): OThucDon {
+  const tu = laMaKhoTuNhan(ma, ng);
+  if (daGhep) {
+    return { kieu: 'da_ghep', ghepSai: !!tu && daGhep.kieu === 'mon' && !(tu.loai === 'o' && daGhep.o_ma_id === tu.oMaId) };
+  }
+  if (tu?.loai === 'giam') return { kieu: 'tu_nhan_giam', phanTram: tu.phanTram };
+  if (tu?.loai === 'o') return { kieu: 'tu_nhan_o', soO: tu.soO, oMaId: tu.oMaId };
+  return { kieu: 'nut_ghep' };
+}
+
+/**
+ * Kết quả ghép: trang hiện ô xác nhận cho mã vừa gửi — canXacNhanKhongO = "Vẫn ghép món chung",
+ * canXacNhanTrungMa = "Mã này là món khác trên FABi — vẫn ghép".
+ */
+export type KetQuaGhep = KetQua & { canXacNhanKhongO?: boolean; canXacNhanTrungMa?: boolean };
 
 const CHUA_KIEM_GHEP: HaiThuTieng = {
   vi: 'Chưa kiểm được mã này có phải mã giảm giá hay mã ô không — chưa ghép. Thử lại sau ít phút.',
@@ -733,8 +774,10 @@ export async function ganMaIpos(client: SupabaseClient, chiNhanhId: string, form
     } catch {
       return kqHai(false, CHUA_KIEM_GHEP);
     }
-    const chan = kiemGhep(ghep, ng, form.get('khong_o') === 'co');
-    if (chan) return { ...kqHai(false, chan.cau), canXacNhanKhongO: chan.canXacNhan };
+    const chan = kiemGhep(ghep, ng, form.get('khong_o') === 'co', form.get('trung_ma') === 'co');
+    if (chan) {
+      return { ...kqHai(false, chan.cau), canXacNhanKhongO: chan.canXacNhan === 'khong_o', canXacNhanTrungMa: chan.canXacNhan === 'trung_ma' };
+    }
   }
   if (ghep.oMa) {
     const { data, error } = await client.rpc('kho_ipos_gan_o_ma', {

@@ -19,8 +19,10 @@
  * ?ma=<mã> (từ nút "Ghép món" ở màn Bán hàng iPOS / thực đơn) đưa mã đó lên đầu.
  *
  * Chặn ghép sai TRƯỚC khi gọi database (kiemGhep trong lib/kho/ban-ipos.ts): mã trùng mã giảm / mã ô
- * thì thực đơn hiện "kho tự nhận" thay nút Ghép, và form từ chối ghép kiểu món thường cho mã đó; ghép
- * món có ô mà không chọn ô thì trang dựng lại form với ô "Vẫn ghép món chung" (giữ lựa chọn đã gửi).
+ * thì thực đơn hiện "kho tự nhận" thay nút Ghép (oThucDon), và form từ chối ghép kiểu món kho cho mã đó;
+ * ghép "Không phải hàng kho" / suất / hàng cân nhãn thì phải tích "Mã này là món khác trên FABi" (FABi có
+ * món khác trùng mã). Ghép món có ô mà không chọn ô thì trang dựng lại form với ô "Vẫn ghép món chung".
+ * Hai ô xác nhận chỉ hiện khi ganMaIpos đòi, form giữ đúng lựa chọn đã gửi.
  *
  * Món cần có trên FABi (#mon-fabi, lib/kho/thu-ngan.ts): mỗi ô mã + mỗi mã giảm đang bật một món,
  * đối chiếu thực đơn iPOS (rỗng → không kết luận), tải CSV mon-fabi.csv. Đọc riêng — lỗi chỉ báo
@@ -35,11 +37,11 @@ import { docMatHang, type MatHang } from '../../../../lib/kho/danh-muc.ts';
 import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, dinhDangTien, type KetQua } from '../../../../lib/kho/chung.ts';
 import { docTimDs, catTrang, linkDs } from '../../../../lib/kho/tim-ds.ts';
 import {
-  docMaChuaGhep, docMaDaGhep, docMenuIpos, docMonMenu, ganMaIpos, goiYMatHang, goiYOMa, laMaKhoTuNhan, tenDonViBan, CHON_DON_VI_BAN_NB,
+  docMaChuaGhep, docMaDaGhep, docMenuIpos, docMonMenu, ganMaIpos, goiYMatHang, goiYOMa, oThucDon, tenDonViBan, CHON_DON_VI_BAN_NB,
   type MaChuaGhep, type MaIposDaGhep, type MonMenuIpos, type NguCanhGhep,
 } from '../../../../lib/kho/ban-ipos.ts';
 import { docOMa, type DongOMa } from '../../../../lib/kho/o-ma.ts';
-import { docThemMonFabi, monCanCoTrenFabi, nhanTrenFabi, type DongMonFabi, type ThemMonFabi } from '../../../../lib/kho/thu-ngan.ts';
+import { docThemMonFabi, monCanCoTrenFabi, mucMonFabi, nhanTrenFabi, type DongMonFabi, type ThemMonFabi } from '../../../../lib/kho/thu-ngan.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
@@ -133,6 +135,10 @@ const t = dichNB(nn, {
     vi: 'Vẫn ghép món chung — bán mã này kho trừ theo hạn gần nhất, không biết tảng',
     en: 'Match as the general dish anyway — selling this code deducts by nearest expiry, primal unknown',
   },
+  vanGhepTrungMa: {
+    vi: 'Mã này là món khác trên FABi — vẫn ghép (kho thôi tự nhận mã này là món ô / món giảm)',
+    en: 'This code is a different dish on FABi — match anyway (stock stops recognising it as a slot / discount dish)',
+  },
   khoTuNhanGiam: {
     vi: (pt: number) => `Mã giảm ${pt}% — kho tự nhận, đừng ghép`,
     en: (pt: number) => `${pt}% discount code — recognised automatically, do not match`,
@@ -171,7 +177,7 @@ const t = dichNB(nn, {
 
 let bao: KetQua | null = k.bao;
 /** Lần ghép vừa bị từ chối: dựng lại form của mã đó với đúng lựa chọn đã gửi (và ô xác nhận nếu cần). */
-let guiLai: { ma: string; chon: string; donVi: string; kg: string; canXacNhanKhongO: boolean } | null = null;
+let guiLai: { ma: string; chon: string; donVi: string; kg: string; canXacNhanKhongO: boolean; canXacNhanTrungMa: boolean } | null = null;
 const form = await docFormGui(Astro);
 if (form && k.chiNhanh && String(form.get('viec')) === 'ghep') {
   const kq = await ganMaIpos(k.client, k.chiNhanh.id, form);
@@ -179,7 +185,7 @@ if (form && k.chiNhanh && String(form.get('viec')) === 'ghep') {
   bao = kq;
   const chu = (x: string) => String(form.get(x) ?? '').trim();
   guiLai = { ma: chu('ma_ipos').slice(0, 100), chon: chu('mat_hang_id'), donVi: chu('don_vi_ban'), kg: chu('kg_moi_don_vi'),
-             canXacNhanKhongO: kq.canXacNhanKhongO === true };
+             canXacNhanKhongO: kq.canXacNhanKhongO === true, canXacNhanTrungMa: kq.canXacNhanTrungMa === true };
 }
 const maChon = guiLai?.ma || (sp.get('ma') ?? '').trim().slice(0, 100);
 
@@ -241,6 +247,8 @@ const ngGhep: NguCanhGhep = { oMa: cacO, maGiam: them?.maGiam ?? [] };
 const dsFabi: DongMonFabi[] = them
   ? monCanCoTrenFabi({ matHang, oMa: cacO, maGiam: them.maGiam, menu: them.menu, daGhep, soChuSo: them.soChuSo })
   : [];
+// Mục FABi in gì (hàm thuần): lỗi → chỉ câu lỗi; chưa đọc đủ → không số, không kết luận.
+const mucFabi = mucMonFabi(them, loiFabi, dsFabi.length);
 const chuBanTheo = (m: MaIposDaGhep) => m.kieu === 'bo_qua' && m.don_vi_ban !== 'suat' ? '—'
   : `${tenDonViBan(m.don_vi_ban, nn)}${m.kg_moi_don_vi ? t.motGoi(dinhDangKg(m.kg_moi_don_vi, nn)) : ''}`;
 const idMa = (ma: string) => `ma-${ma.replace(/[^A-Za-z0-9_-]/g, '_')}`;
@@ -323,6 +331,10 @@ const idMa = (ma: string) => `ma-${ma.replace(/[^A-Za-z0-9_-]/g, '_')}`;
               <label class="kho-tich"><input type="checkbox" name="khong_o" value="co" />
                 <span>{t.vanGhepMonChung}</span></label>
             )}
+            {gl?.canXacNhanTrungMa && (
+              <label class="kho-tich"><input type="checkbox" name="trung_ma" value="co" />
+                <span>{t.vanGhepTrungMa}</span></label>
+            )}
             <button type="submit" class="nb-nut">{t.ghep}</button>
           </form>
         );
@@ -358,22 +370,22 @@ const idMa = (ma: string) => `ma-${ma.replace(/[^A-Za-z0-9_-]/g, '_')}`;
         </div>
       )}
 
-      <h2 id="mon-fabi">{t.monFabi}{them ? ` · ${dsFabi.length}` : ''}</h2>
+      <h2 id="mon-fabi">{t.monFabi}{mucFabi.kieu === 'co' ? ` · ${mucFabi.soMon}` : ''}</h2>
       <p class="kho-phu">{t.monFabiGiai}</p>
-      {loiFabi ? (
-        <p class="nb-bao loi">{dichCau(nn, loiFabi)}</p>
-      ) : docDuChinh && them && (
+      {mucFabi.kieu === 'loi' ? (
+        <p class="nb-bao loi">{dichCau(nn, mucFabi.cau)}</p>
+      ) : mucFabi.kieu === 'co' && (
         <>
-          {them.menu.length === 0 ? (
+          {mucFabi.chuaDocMenu ? (
             <p class="nb-bao luu-y">{t.chuaDocMenuFabi} <a href="/noi-bo/kho/cai-dat/ipos">{t.ketNoiIpos}</a>.</p>
           ) : (
-            <p class="kho-phu">{t.menuDocLuc(dinhDangThoiDiem(them.menuLuc), them.menu.length)}</p>
+            <p class="kho-phu">{t.menuDocLuc(dinhDangThoiDiem(mucFabi.menuLuc), mucFabi.soMonMenu)}</p>
           )}
           {dsFabi.length === 0 ? (
             <p class="nb-rong">{t.khongCanMonFabi}</p>
           ) : (
             <>
-              <p><a class="nb-nut phu" href="/noi-bo/kho/ban-ipos/mon-fabi.csv" download>{t.taiFabi}</a></p>
+              <p><a class="nb-nut phu" href="/noi-bo/kho/ban-ipos/mon-fabi.csv">{t.taiFabi}</a></p>
               <div class="kho-bang-khung">
                 <table class="kho-bang">
                   <thead><tr><th>{t.tenMonFabi}</th><th>{t.maMon}</th><th>{t.maVach}</th><th>{t.giaKg}</th><th>{t.trenFabi}</th></tr></thead>
@@ -419,21 +431,19 @@ const idMa = (ma: string) => `ma-${ma.replace(/[^A-Za-z0-9_-]/g, '_')}`;
             <tbody>
               {menu.map(m => {
                 const g = daGhepTheoMa.get(m.ma_ipos);
-                // Mã giảm / mã ô: kho tự nhận khi để trống — không mời ghép; đã lỡ ghép (sai) thì nhắc Bỏ ghép.
-                const tuNhan = laMaKhoTuNhan(m.ma_ipos, ngGhep);
-                const ghepSai = !!g && !!tuNhan && !(tuNhan.loai === 'o' && g.o_ma_id === tuNhan.oMaId);
+                // Mã giảm / mã ô: kho tự nhận khi để trống — không mời ghép; đã lỡ ghép như món kho thì nhắc Bỏ ghép.
+                const o = oThucDon(m.ma_ipos, g, ngGhep);
                 return (
                   <tr>
                     <td><code>{m.ma_ipos}</code></td>
                     <td>{m.ten_ipos ?? '—'}{!m.dang_ban && <> <span class="nb-nhan tat">{t.ngungBan}</span></>}</td>
                     <td>{m.loai ?? '—'}</td>
-                    <td>{g
+                    <td>{o.kieu === 'da_ghep' && g
                       ? <>{chuKieu(g)}{g.don_vi_ban && g.don_vi_ban !== 'suat' ? ` · ${tenDonViBan(g.don_vi_ban, nn).toLowerCase()}` : ''}
-                          {ghepSai && <> <span class="nb-nhan nhap">{t.nenBoGhep}</span></>}</>
-                      : tuNhan
-                        ? <span class="nb-nhan song">{tuNhan.loai === 'giam' ? t.khoTuNhanGiam(tuNhan.phanTram)
-                            : t.khoTuNhanO(tuNhan.soO, oTheoId.get(tuNhan.oMaId)?.ten ?? '')}</span>
-                        : <a class="nb-nut phu" href={`${DUONG}?ma=${encodeURIComponent(m.ma_ipos)}#${idMa(m.ma_ipos)}`}>{t.ghep}</a>}</td>
+                          {o.ghepSai && <> <span class="nb-nhan nhap">{t.nenBoGhep}</span></>}</>
+                      : o.kieu === 'tu_nhan_giam' ? <span class="nb-nhan song">{t.khoTuNhanGiam(o.phanTram)}</span>
+                      : o.kieu === 'tu_nhan_o' ? <span class="nb-nhan song">{t.khoTuNhanO(o.soO, oTheoId.get(o.oMaId)?.ten ?? '')}</span>
+                      : <a class="nb-nut phu" href={`${DUONG}?ma=${encodeURIComponent(m.ma_ipos)}#${idMa(m.ma_ipos)}`}>{t.ghep}</a>}</td>
                   </tr>
                 );
               })}

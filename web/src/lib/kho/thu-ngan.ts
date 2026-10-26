@@ -17,11 +17,12 @@
  * Chỉ đọc. Gọi từ /noi-bo/kho bằng client mang token của nhân sự: RLS quyết định (kho_v_ipos_dong
  * chỉ trả dòng cho vai xem_gia, đúng chi nhánh). Đọc lỗi thì NÉM lỗi — không bao giờ trả danh sách
  * rỗng như thể không có gì (trang in câu lỗi, không in số 0; CSV trả 500, không file rỗng).
- * Hàm thuần (phân loại, tóm tắt, dựng danh sách món) test bằng Node: crm/test/test-kho-ipos-fabi.mjs.
+ * Hàm thuần (phân loại, tóm tắt, dựng danh sách món, chọn nội dung hộp / mục cho trang: hopKhongBietTang,
+ * mucMonFabi) test bằng Node: crm/test/test-kho-ipos-fabi.mjs.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { cauLoiKho, docTungTrang, duoc, LOI_KHO_CHUNG, type HaiThuTieng, type NgonNguNB } from './chung.ts';
-import { congNgay, gioVnTuMs, homNayVn } from '../gio-vn.ts';
+import { congNgay, docGioVnDiaPhuong, gioVnTuMs, homNayVn } from '../gio-vn.ts';
 import { docOMa, type DongOMa } from './o-ma.ts';
 import { docMaGiam, giaGiam, tenGiam, type DongMaGiam } from './ma-giam.ts';
 import { soChuSoMa } from './can-tma.ts';
@@ -140,28 +141,76 @@ export function tomTatKhongBietTang(
 }
 
 /**
- * Đọc hộp "Bán không biết tảng" của chi nhánh, hôm nay theo giờ Việt Nam (homNayVn). Chỉ đọc dòng
- * đã trừ kho của món có ô mã trong 7 ngày (đủ trang). Lỗi ở bất kỳ lần đọc nào → ném.
+ * 00:00 giờ Việt Nam của một ngày ("YYYY-MM-DD", từ congNgay — luôn có thật) dạng ISO UTC — mốc lọc cột
+ * thoi_diem_ban. Lỡ ngày hỏng thì mốc là 1970: đọc dư, tomTatKhongBietTang vẫn bỏ dòng ngoài 7 ngày.
+ */
+function dauNgayVnUtc(ngay: string): string {
+  return new Date(docGioVnDiaPhuong(`${ngay}T00:00`) ?? 0).toISOString();
+}
+
+/**
+ * Đọc hộp "Bán không biết tảng" của chi nhánh, hôm nay theo giờ Việt Nam (homNayVn). Lọc ở database,
+ * chỉ dòng cần đếm — dòng bán bình thường qua ô không về web: dòng đã trừ kho của món có ô mã, từ
+ * 00:00 giờ VN của ngày đầu (cột thoi_diem_ban — không lọc cột tính ngay_ban của view), hoặc không ô
+ * + không mã giảm, hoặc lệch ô (hai lần đọc, đủ trang). Lỗi ở bất kỳ lần đọc nào → ném.
  */
 export async function docBanKhongBietTang(client: SupabaseClient, chiNhanhId: string): Promise<TomTatKhongBietTang> {
   const homNay = homNayVn();
   const oMa = await docOMa(client);
   const monCoO = new Set(oMa.keys());
   if (monCoO.size === 0) return tomTatKhongBietTang([], monCoO, homNay);
-  const dong = await docTungTrang<Record<string, unknown>>((tu, den) => client.from('kho_v_ipos_dong')
-    .select('id, hoa_don_id, thoi_diem_ban, ngay_ban, ma_ipos, ten_ipos, mat_hang_id, ten_mat_hang, o_ma_id, so_o, lech_o, ma_giam_id, so_kg', { count: 'exact' })
-    .eq('chi_nhanh_id', chiNhanhId)
-    .eq('trang_thai', 'da_ghi')
-    .in('mat_hang_id', [...monCoO])
-    .in('ngay_ban', bayNgayQua(homNay))
-    .order('thoi_diem_ban', { ascending: false })
-    .order('id')
-    .range(tu, den));
+  const tuLuc = dauNgayVnUtc(bayNgayQua(homNay)[0]);
+  const doc = (loc: 'khong_qua_o' | 'lech_o') => docTungTrang<Record<string, unknown>>((tu, den) => {
+    const q = client.from('kho_v_ipos_dong')
+      .select('id, hoa_don_id, thoi_diem_ban, ngay_ban, ma_ipos, ten_ipos, mat_hang_id, ten_mat_hang, o_ma_id, so_o, lech_o, ma_giam_id, so_kg', { count: 'exact' })
+      .eq('chi_nhanh_id', chiNhanhId)
+      .eq('trang_thai', 'da_ghi')
+      .in('mat_hang_id', [...monCoO])
+      .gte('thoi_diem_ban', tuLuc);
+    return (loc === 'lech_o' ? q.eq('lech_o', true) : q.is('o_ma_id', null).is('ma_giam_id', null))
+      .order('thoi_diem_ban', { ascending: false })
+      .order('id')
+      .range(tu, den);
+  });
+  const [khongO, lech] = await Promise.all([doc('khong_qua_o'), doc('lech_o')]);
+  // Một dòng không thể vừa không ô vừa lệch ô (lệch ô luôn mang ô) — vẫn gộp theo id cho chắc.
+  const dong = [...new Map([...khongO, ...lech].map(r => [String(r.id), r])).values()];
   return tomTatKhongBietTang(dong.map(r => ({
     ...(r as unknown as DongBanTang),
     lech_o: r.lech_o === true,
     so_kg: r.so_kg === null || r.so_kg === undefined ? null : Number(r.so_kg),
   })), monCoO, homNay);
+}
+
+/** Một khối của hộp: một loại có dòng trong 7 ngày, số hôm nay / 7 ngày và các món. */
+export interface KhoiKhongBietTang {
+  loai: LoaiKhongBietTang;
+  homNay: DemKhongBietTang;
+  bayNgay: DemKhongBietTang;
+  nhom: NhomKhongBietTang[];
+}
+
+/**
+ * Hộp "Bán không biết tảng" in gì — chọn ở đây (thuần, có kiểm thử), trang chỉ vẽ theo `kieu`, `lop` là
+ * lớp nb-bao. Đọc lỗi → 'loi' chỉ mang câu lỗi, KHÔNG mang số (không có số 0 nào để lỡ in). null = không
+ * vẽ hộp (vai không xem giá: trang không đọc).
+ */
+export type HopKhongBietTang =
+  | { kieu: 'loi'; lop: 'loi'; cau: string }
+  | { kieu: 'chua_co_o'; lop: 'xong' }
+  | { kieu: 'khong_co'; lop: 'xong'; tuNgay: string; homNay: string }
+  | { kieu: 'co_dong'; lop: 'luu-y'; tuNgay: string; homNay: string; loai: KhoiKhongBietTang[] };
+
+export function hopKhongBietTang(tang: TomTatKhongBietTang | null, loi: string | null): HopKhongBietTang | null {
+  if (loi) return { kieu: 'loi', lop: 'loi', cau: loi };
+  if (!tang) return null;
+  if (!tang.coMonO) return { kieu: 'chua_co_o', lop: 'xong' };
+  const loai = LOAI_KHONG_BIET_TANG.filter(l => tang.dem.bayNgay[l].dong > 0).map(l => ({
+    loai: l, homNay: tang.dem.homNay[l], bayNgay: tang.dem.bayNgay[l], nhom: tang.nhom.filter(x => x.loai === l),
+  }));
+  return loai.length === 0
+    ? { kieu: 'khong_co', lop: 'xong', tuNgay: tang.tuNgay, homNay: tang.homNay }
+    : { kieu: 'co_dong', lop: 'luu-y', tuNgay: tang.tuNgay, homNay: tang.homNay, loai };
 }
 
 /** Mỗi loại: tên, nghĩa, nguyên nhân có thể và chỗ sửa — không loại nào là "lỗi thu ngân" chắc chắn. */
@@ -261,6 +310,24 @@ const BO_GHEP_O: HaiThuTieng = {
   vi: 'Mã ô này đang ghép như món thường hoặc với ô khác — bấm Bỏ ghép (kho tự nhận) hoặc ghép lại với đúng ô.',
   en: 'This slot code is matched as a regular dish or with another slot — press Unmatch (stock recognises it by itself) or match it again with the right slot.',
 };
+/** Mã đã ghép "Không phải hàng kho" / suất / hàng cân nhãn — người ghép đã xác nhận FABi có món KHÁC mang mã này. */
+const MA_LA_MON_KHAC: Record<'o' | 'giam', HaiThuTieng> = {
+  o: {
+    vi: 'Mã ô này đang ghép là món khác trên FABi (Không phải hàng kho, suất hoặc hàng cân nhãn) — món ô cần mã riêng: đổi mã ô trong Mặt hàng rồi tạo món FABi theo mã mới.',
+    en: 'This slot code is matched as a different FABi dish (not a stock item, portion or scale-labelled goods) — the slot dish needs its own code: change the slot code under Items, then create the FABi dish with the new code.',
+  },
+  giam: {
+    vi: 'Mã giảm này đang ghép là món khác trên FABi (Không phải hàng kho, suất hoặc hàng cân nhãn) — món giảm cần mã riêng: đổi mã giảm ở Beeftown Cân → thẻ Giảm giá rồi tạo món FABi theo mã mới.',
+    en: 'This discount code is matched as a different FABi dish (not a stock item, portion or scale-labelled goods) — the discount dish needs its own code: change the discount code in Beeftown Scale → Discounts tab, then create the FABi dish with the new code.',
+  },
+};
+/** Mã dài hơn số chữ C của mẫu mã vạch: cân từ chối in (can-tma.ts — "Mã cân … dài quá … số"). */
+const maDaiQua = (loai: 'o' | 'giam', ma: string, n: number): HaiThuTieng => ({
+  vi: `Mã ${ma} dài quá ${n} số — cân không in được tem mang mã này (mẫu mã vạch chỉ chứa ${n} số). ${
+    loai === 'o' ? 'Đổi mã ô trong Mặt hàng.' : 'Đổi mã giảm ở Beeftown Cân → thẻ Giảm giá.'}`,
+  en: `Code ${ma} is longer than ${n} digits — the scale cannot print a label with it (the barcode pattern holds only ${n} digits). ${
+    loai === 'o' ? 'Change the slot code under Items.' : 'Change the discount code in Beeftown Scale → Discounts tab.'}`,
+});
 
 /**
  * Mỗi ô mã của món đang dùng và mỗi mã giảm đang bật của món đang dùng → một món cần có trên FABi.
@@ -278,6 +345,10 @@ export function monCanCoTrenFabi(du: DuLieuMonFabi): DongMonFabi[] {
   const trangThai = (ma: string): TrenFabi => !daDoc ? 'chua_doc'
     : menu.has(bo0(ma)) ? (menu.get(bo0(ma)) ? 'co' : 'ngung_ban') : 'chua_thay';
   const ghepTheoMa = new Map(du.daGhep.map(g => [bo0(g.ma_ipos), g]));
+  const dai = (loai: 'o' | 'giam', ma: string) => bo0(ma).length > du.soChuSo ? [maDaiQua(loai, bo0(ma), du.soChuSo)] : [];
+  /** Mã ô / mã giảm đang ghép: như món kho (sai) → bảo Bỏ ghép; kiểu khác (đã xác nhận món khác) → bảo đổi mã. */
+  const ghepCanhBao = (loai: 'o' | 'giam', g: DuLieuMonFabi['daGhep'][number] | undefined) =>
+    !g ? [] : g.kieu === 'mon' ? [loai === 'o' ? BO_GHEP_O : BO_GHEP_GIAM] : [MA_LA_MON_KHAC[loai]];
 
   const ra: DongMonFabi[] = [];
   for (const o of [...du.oMa].sort((a, b) => a.so_o - b.so_o)) {
@@ -291,7 +362,7 @@ export function monCanCoTrenFabi(du: DuLieuMonFabi): DongMonFabi[] {
       loai: 'o', mat_hang_id: m.id, tenMonKho: m.ten, so_o: o.so_o, phan_tram: null,
       tenGoiY: tenMonFabiO(m.ten, o.so_o), maMon: o.ma_can, maVach: maVachFabi(o.ma_can, du.soChuSo),
       giaKg: m.gia_ban_kg, trenFabi: tt, maDaGhep: tay?.ma_ipos ?? null,
-      canhBao: ghep && ghep.o_ma_id !== o.id ? [BO_GHEP_O] : [],
+      canhBao: [...dai('o', o.ma_can), ...(ghep && ghep.o_ma_id !== o.id ? ghepCanhBao('o', ghep) : [])],
     });
   }
   for (const g of [...du.maGiam].sort((a, b) => a.phan_tram - b.phan_tram)) {
@@ -301,7 +372,7 @@ export function monCanCoTrenFabi(du: DuLieuMonFabi): DongMonFabi[] {
       loai: 'giam', mat_hang_id: m.id, tenMonKho: m.ten, so_o: null, phan_tram: g.phan_tram,
       tenGoiY: tenGiam(m.ten, g.phan_tram).normalize('NFC'), maMon: g.ma_can, maVach: maVachFabi(g.ma_can, du.soChuSo),
       giaKg: m.gia_ban_kg === null ? null : giaGiam(m.gia_ban_kg, g.phan_tram), trenFabi: trangThai(g.ma_can), maDaGhep: null,
-      canhBao: ghepTheoMa.has(bo0(g.ma_can)) ? [BO_GHEP_GIAM] : [],
+      canhBao: [...dai('giam', g.ma_can), ...ghepCanhBao('giam', ghepTheoMa.get(bo0(g.ma_can)))],
     });
   }
   const thuTu = new Map([...mon.values()].map(m => [m.id, m.ten]));
@@ -348,6 +419,22 @@ export async function docThemMonFabi(client: SupabaseClient, chiNhanhId: string)
     maGiam,
     soChuSo: soChuSoMa((caiDat.data as { mau_ma_vach?: string | null } | null)?.mau_ma_vach ?? null),
   };
+}
+
+/**
+ * Mục "Món cần có trên FABi" ở trang Ghép món in gì — chọn ở đây (thuần, có kiểm thử), trang chỉ vẽ theo
+ * `kieu`. 'loi': chỉ câu lỗi; 'an': phần chính của trang chưa đọc được (trang đã báo lỗi ở đầu) — không
+ * số, không kết luận; 'co': số món cần có (tiêu đề "· N" chỉ khi này), thực đơn rỗng thì chuaDocMenu.
+ */
+export type MucMonFabi =
+  | { kieu: 'loi'; cau: string }
+  | { kieu: 'an' }
+  | { kieu: 'co'; soMon: number; chuaDocMenu: boolean; menuLuc: string | null; soMonMenu: number };
+
+export function mucMonFabi(them: ThemMonFabi | null, loi: string | null, soMon: number): MucMonFabi {
+  if (loi) return { kieu: 'loi', cau: loi };
+  if (!them) return { kieu: 'an' };
+  return { kieu: 'co', soMon, chuaDocMenu: them.menu.length === 0, menuLuc: them.menuLuc, soMonMenu: them.menu.length };
 }
 
 /** Đủ dữ liệu cho file CSV: món, ô, mã đã ghép, thực đơn, mã giảm. Lỗi → ném. */

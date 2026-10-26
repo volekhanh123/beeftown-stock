@@ -28,8 +28,9 @@ import { fileURLToPath } from 'node:url';
 import {
   loaiKhongBietTang, tomTatKhongBietTang, docBanKhongBietTang, bayNgayQua, NGUYEN_NHAN_KHONG_BIET_TANG,
   monCanCoTrenFabi, docMonFabi, docThemMonFabi, maVachFabi, tenMonFabiO, nhanTrenFabi, taoTepMonFabi,
+  hopKhongBietTang, mucMonFabi, dongCsvMonFabi,
 } from '../../web/src/lib/kho/thu-ngan.ts';
-import { ganMaIpos, kiemGhep, laMaKhoTuNhan, docFormGhep } from '../../web/src/lib/kho/ban-ipos.ts';
+import { ganMaIpos, kiemGhep, laMaKhoTuNhan, docFormGhep, oThucDon } from '../../web/src/lib/kho/ban-ipos.ts';
 import { giaGiam } from '../../web/src/lib/kho/ma-giam.ts';
 import { homNayVn, congNgay } from '../../web/src/lib/gio-vn.ts';
 import { timChuoiCam } from '../../web/src/lib/chuoi-cam.js';
@@ -106,7 +107,7 @@ function clientHong(goc, hong) {
   const dem = { rpc: 0 };
   const builderHong = () => {
     const b = {
-      select: () => b, eq: () => b, in: () => b, order: () => b, range: () => b, limit: () => b,
+      select: () => b, eq: () => b, in: () => b, is: () => b, gte: () => b, order: () => b, range: () => b, limit: () => b,
       maybeSingle: () => Promise.resolve(loi),
       then: (xong, that) => Promise.resolve(loi).then(xong, that),
     };
@@ -117,6 +118,34 @@ function clientHong(goc, hong) {
     client: {
       rpc: (...a) => { dem.rpc++; return goc.rpc(...a); },
       from: bang => (hong.includes(bang) ? builderHong() : goc.from(bang)),
+    },
+  };
+}
+
+/** Client bọc: ghi lại mọi lời gọi trên bảng / view (tên hàm + tham số) và mọi dòng web nhận về từ kho_v_ipos_dong. */
+function clientGhi(goc) {
+  const ghi = { goi: [], dong: [] };
+  return {
+    ghi,
+    client: {
+      rpc: (...a) => goc.rpc(...a),
+      from: bang => {
+        const b = goc.from(bang);
+        const p = new Proxy(b, {
+          get(t, k) {
+            if (k === 'then') {
+              return (xong, hong) => t.then(kq => {
+                if (bang === 'kho_v_ipos_dong' && Array.isArray(kq?.data)) ghi.dong.push(...kq.data);
+                return kq;
+              }).then(xong, hong);
+            }
+            const v = t[k];
+            if (typeof v !== 'function') return v;
+            return (...a) => { ghi.goi.push([bang, String(k), ...a]); const r = v.apply(t, a); return r === t ? p : r; };
+          },
+        });
+        return p;
+      },
     },
   };
 }
@@ -254,6 +283,28 @@ await nhom('3 · BÁN KHÔNG BIẾT TẢNG — PHÂN LOẠI THUẦN', async () =
   ok('Mỗi loại có tên, giải thích, nguyên nhân có thể và chỗ sửa — đủ vi / en',
      Object.values(NGUYEN_NHAN_KHONG_BIET_TANG).every(x => [x.ten, x.giai, x.sua, ...x.nguyenNhan].every(c => c.vi && c.en && c.vi !== c.en))
      && NGUYEN_NHAN_KHONG_BIET_TANG.khong_qua_o.nguyenNhan.length >= 3 && NGUYEN_NHAN_KHONG_BIET_TANG.lech_o.nguyenNhan.length >= 2);
+
+  // Hộp trên trang in gì — chọn bằng hàm thuần, trang chỉ vẽ theo `kieu`.
+  const loiMang = 'Mất kết nối tới máy chủ.';
+  const hLoi = hopKhongBietTang(tt, loiMang);
+  ok('Hộp: đọc lỗi → kiểu "loi", chỉ có câu lỗi — không có số nào để in (kể cả khi lỡ có số cũ)',
+     hLoi?.kieu === 'loi' && hLoi.lop === 'loi' && hLoi.cau === loiMang
+     && Object.keys(hLoi).sort().join() === 'cau,kieu,lop', JSON.stringify(hLoi));
+  ok('Hộp: đọc lỗi mà không có số → vẫn "loi"; không lỗi, không số (vai không xem giá) → không vẽ hộp',
+     hopKhongBietTang(null, loiMang)?.kieu === 'loi' && hopKhongBietTang(null, null) === null);
+  const hChuaO = hopKhongBietTang(tomTatKhongBietTang([], new Set(), '2026-03-01'), null);
+  ok('Hộp: chưa món nào có ô → "chua_co_o", không số 0', hChuaO?.kieu === 'chua_co_o' && !('loai' in hChuaO), JSON.stringify(hChuaO));
+  const hRong = hopKhongBietTang(tomTatKhongBietTang([d({ o_ma_id: 'o1', ngay_ban: '2026-03-01' })], coO, '2026-03-01'), null);
+  ok('Hộp: có ô mà 7 ngày không dòng nào cần xem → "khong_co" kèm khoảng ngày (23/02 → 01/03), lớp xong',
+     hRong?.kieu === 'khong_co' && hRong.lop === 'xong' && hRong.tuNgay === '2026-02-23' && hRong.homNay === '2026-03-01', JSON.stringify(hRong));
+  const hCo = hopKhongBietTang(tt, null);
+  ok('Hộp: có dòng → "co_dong", lớp lưu ý; khối "không qua ô" trước "lệch ô", mỗi khối số hôm nay / 7 ngày và đúng nhóm món',
+     hCo?.kieu === 'co_dong' && hCo.lop === 'luu-y' && hCo.loai.map(x => x.loai).join() === 'khong_qua_o,lech_o'
+     && hCo.loai[0].homNay.dong === 2 && hCo.loai[0].bayNgay.dong === 3 && hCo.loai[0].bayNgay.hoaDon === 2
+     && hCo.loai[1].bayNgay.dong === 1 && hCo.loai[1].nhom.every(x => x.loai === 'lech_o'), JSON.stringify(hCo));
+  const chiLech = hopKhongBietTang(tomTatKhongBietTang([d({ id: '9', hoa_don_id: 'h9', ngay_ban: '2026-03-01', o_ma_id: 'o', lech_o: true })], coO, '2026-03-01'), null);
+  ok('Hộp: loại không có dòng trong 7 ngày thì không có khối (chỉ lệch ô)',
+     chiLech?.kieu === 'co_dong' && chiLech.loai.map(x => x.loai).join() === 'lech_o', JSON.stringify(chiLech));
 });
 
 // ===========================================================================
@@ -279,6 +330,20 @@ await nhom('4 · BÁN KHÔNG BIẾT TẢNG — ĐỌC DATABASE, GIỜ VIỆT NAM
   const c = await docLuc(luc(congNgay(D1, 1), '00:10'));
   ok('Sang ngày D+2: lần bán D−5 thành ngày thứ 8 → rơi khỏi 7 ngày (còn 3 dòng, 2 hóa đơn); hôm nay 0',
      c.dem.bayNgay.khong_qua_o.dong === 3 && c.dem.bayNgay.khong_qua_o.hoaDon === 2 && c.dem.homNay.khong_qua_o.dong === 0, JSON.stringify(c.dem));
+
+  // Lọc ở database, không kéo mọi dòng đã qua ô về web rồi mới lọc: chỉ dòng không ô + không mã giảm, hoặc
+  // lệch ô; mốc ngày theo cột thoi_diem_ban (00:00 giờ VN của ngày đầu), không theo cột tính ngay_ban.
+  const { client: soi, ghi } = clientGhi(clientCua(UID.qlA));
+  const s = await docLuc(luc(D1, '00:10'), soi);
+  const tuNgay = congNgay(D, -5);
+  const mocUtc = new Date(`${tuNgay}T00:00:00+07:00`).toISOString();
+  const goiView = ghi.goi.filter(g => g[0] === 'kho_v_ipos_dong');
+  ok('Đọc hộp: web chỉ nhận dòng không qua ô (không ô, không mã giảm) hoặc lệch ô — không nhận dòng bán qua ô, dòng mã giảm',
+     ghi.dong.length === 5 && ghi.dong.every(r => r.lech_o === true || (r.o_ma_id === null && r.ma_giam_id === null))
+     && s.dem.bayNgay.khong_qua_o.dong === 4, JSON.stringify(ghi.dong.map(r => [r.ma_ipos, r.o_ma_id, r.ma_giam_id, r.lech_o])));
+  ok(`Đọc hộp: lọc ngày bằng thoi_diem_ban >= ${mocUtc} (00:00 giờ VN ngày ${tuNgay}), không lọc theo cột tính ngay_ban`,
+     goiView.some(g => g[1] === 'gte' && g[2] === 'thoi_diem_ban' && g[3] === mocUtc)
+     && !goiView.some(g => g[2] === 'ngay_ban' && g[1] !== 'select'), JSON.stringify(goiView.filter(g => g[1] !== 'select')));
 });
 
 // ===========================================================================
@@ -312,8 +377,24 @@ await nhom('6 · CHẶN GHÉP SAI TRƯỚC KHI GỌI DATABASE', async () => {
   const c1 = kiemGhep(ghep({ ma_ipos: '90001', mat_hang_id: MH['C-THANNGOAI'].id, don_vi_ban: 'kg' }), ng, true);
   ok('Mã trùng mã giảm ghép như món thường → từ chối (vi / en), xác nhận cũng không qua', !!c1 && /giảm/.test(c1.cau.vi) && /discount/i.test(c1.cau.en) && !c1.canXacNhan,
      JSON.stringify(c1));
-  ok('Mã giảm đã tắt (90002), mã có số 0 đầu (090001) → vẫn từ chối',
-     !!kiemGhep(ghep({ ma_ipos: '90002', mat_hang_id: 'bo_qua' }), ng, false) && !!kiemGhep(ghep({ ma_ipos: '090001', mat_hang_id: 'goi_can' }), ng, false));
+  ok('Mã giảm đã tắt (90002), mã có số 0 đầu (090001) ghép như món thường → vẫn từ chối, xác nhận nào cũng không qua',
+     kiemGhep(ghep({ ma_ipos: '90002', mat_hang_id: MH['C-THANNGOAI'].id }), ng, true, true)?.canXacNhan === false
+     && kiemGhep(ghep({ ma_ipos: '090001', mat_hang_id: `o:${O[1]}` }), ng, true, true)?.canXacNhan === false);
+  // Trùng mã thật (FABi có sẵn món khác mang mã 10011 / 90002, hoặc mã của món đã ngừng dùng): lối thoát
+  // "Không phải hàng kho" / Bán theo suất / Hàng cân nhãn vẫn còn, nhưng phải xác nhận.
+  const tm = [
+    ['90002', { mat_hang_id: 'bo_qua' }], ['090001', { mat_hang_id: 'goi_can' }],
+    ['10011', { mat_hang_id: 'bo_qua' }], ['10012', { mat_hang_id: '', don_vi_ban: 'suat' }],
+  ];
+  const chuaXn = tm.map(([ma, o]) => kiemGhep(ghep({ ma_ipos: ma, ...o }), ng, false, false));
+  ok('Mã trùng mã ô / mã giảm ghép "Không phải hàng kho", hàng cân nhãn, suất, chưa xác nhận → dừng, cần xác nhận "trùng mã" (vi / en)',
+     chuaXn.every(c => c?.canXacNhan === 'trung_ma' && /món khác/.test(c.cau.vi) && /different dish/.test(c.cau.en)),
+     JSON.stringify(chuaXn));
+  ok('… đã xác nhận "trùng mã" → được ghép (lối thoát cho mã trùng thật)',
+     tm.every(([ma, o]) => kiemGhep(ghep({ ma_ipos: ma, ...o }), ng, false, true) === null));
+  ok('Xác nhận "trùng mã" không mở khóa ghép mã ô như món thường; xác nhận "món chung" không mở khóa "Không phải hàng kho" cho mã ô',
+     kiemGhep(ghep({ ma_ipos: '10011', mat_hang_id: MH['C-THANNGOAI'].id }), ng, true, true)?.canXacNhan === false
+     && kiemGhep(ghep({ ma_ipos: '10011', mat_hang_id: 'bo_qua' }), ng, true, false)?.canXacNhan === 'trung_ma');
   ok('Bỏ ghép mã giảm → được', kiemGhep(ghep({ ma_ipos: '90001', mat_hang_id: 'bo_ghep' }), ng, false) === null);
   const c2 = kiemGhep(ghep({ ma_ipos: '10011', mat_hang_id: MH['C-THANNGOAI'].id }), ng, true);
   ok('Mã trùng mã ô ghép như món thường → từ chối, nói ô 1', !!c2 && /ô 1/.test(c2.cau.vi) && /slot 1/.test(c2.cau.en), JSON.stringify(c2));
@@ -328,6 +409,23 @@ await nhom('6 · CHẶN GHÉP SAI TRƯỚC KHI GỌI DATABASE', async () => {
   ok('laMaKhoTuNhan: 90001 → mã giảm 30%; 010012 → ô 2; THAN → không',
      laMaKhoTuNhan('90001', ng)?.loai === 'giam' && laMaKhoTuNhan('90001', ng).phanTram === 30
      && laMaKhoTuNhan('010012', ng)?.loai === 'o' && laMaKhoTuNhan('010012', ng).soO === 2 && laMaKhoTuNhan('THAN', ng) === null);
+
+  // Cột "Món kho" của bảng Thực đơn iPOS: nút Ghép hay nhãn "kho tự nhận" — hàm thuần, trang chỉ vẽ theo `kieu`.
+  const tdO = oThucDon('10011', undefined, ng);
+  const tdG = oThucDon('090001', undefined, ng);
+  ok('Thực đơn: mã ô chưa ghép → "Ô 1 — kho tự nhận" (không nút Ghép); mã giảm chưa ghép → "Mã giảm 30%"; mã thường → nút Ghép',
+     tdO.kieu === 'tu_nhan_o' && tdO.soO === 1 && tdO.oMaId === O[1] && tdG.kieu === 'tu_nhan_giam' && tdG.phanTram === 30
+     && oThucDon('THAN', undefined, ng).kieu === 'nut_ghep', JSON.stringify([tdO, tdG]));
+  ok('Thực đơn: thiếu mã giảm (phần FABi đọc lỗi) → mã giảm hiện nút Ghép như mã thường (form vẫn chặn ở kiemGhep)',
+     oThucDon('90001', undefined, { oMa: ng.oMa, maGiam: [] }).kieu === 'nut_ghep');
+  ok('Thực đơn: đã ghép — mã ô ghép đúng ô, mã trùng đã xác nhận "Không phải hàng kho", mã thường → không nhắc; mã ô / mã giảm ghép như món thường → nhắc Bỏ ghép',
+     oThucDon('10011', { kieu: 'mon', o_ma_id: O[1] }, ng).ghepSai === false
+     && oThucDon('10011', { kieu: 'bo_qua', o_ma_id: null }, ng).ghepSai === false
+     && oThucDon('THAN', { kieu: 'mon', o_ma_id: null }, ng).ghepSai === false
+     && oThucDon('10011', { kieu: 'mon', o_ma_id: null }, ng).ghepSai === true
+     && oThucDon('10011', { kieu: 'mon', o_ma_id: O[2] }, ng).ghepSai === true
+     && oThucDon('90001', { kieu: 'mon', o_ma_id: null }, ng).ghepSai === true
+     && oThucDon('90001', { kieu: 'mon', o_ma_id: null }, ng).kieu === 'da_ghep');
 
   // Qua ganMaIpos với database thật: bị chặn thì không có dòng ghép nào được ghi.
   const ql = clientCua(UID.qlA);
@@ -347,6 +445,17 @@ await nhom('6 · CHẶN GHÉP SAI TRƯỚC KHI GỌI DATABASE', async () => {
      JSON.stringify(k5));
   const k6 = await ganMaIpos(ql, cnA.id, fd({ ma_ipos: '90001', mat_hang_id: 'bo_ghep' }));
   ok('Bỏ ghép một mã chưa ghép vẫn qua kiểm (không bị chặn ở web)', typeof k6.ok === 'boolean' && !/giảm giá — để trống/.test(k6.cau));
+  // Mã giảm đã tắt 90002 trùng một món khác trên FABi: "Không phải hàng kho" cần xác nhận, xác nhận rồi thì ghi.
+  const k7 = await ganMaIpos(ql, cnA.id, fd({ ma_ipos: '90002', mat_hang_id: 'bo_qua' }));
+  ok('ganMaIpos mã giảm "90002" là "Không phải hàng kho", chưa xác nhận → ok:false, canXacNhanTrungMa, không ghi',
+     !k7.ok && k7.canXacNhanTrungMa === true && k7.canXacNhanKhongO === false && !!k7.cauEn && (await maGhep('90002')).length === 0,
+     JSON.stringify(k7));
+  const k8 = await ganMaIpos(ql, cnA.id, fd({ ma_ipos: '90002', mat_hang_id: 'bo_qua', trung_ma: 'co' }));
+  ok('ganMaIpos mã giảm "90002" là "Không phải hàng kho", đã xác nhận trùng mã → ghi kiểu bo_qua',
+     k8.ok && (await maGhep('90002'))[0]?.kieu === 'bo_qua', JSON.stringify(k8));
+  const k9 = await ganMaIpos(ql, cnA.id, fd({ ma_ipos: '10011', mat_hang_id: MH['C-THANNGOAI'].id, don_vi_ban: 'kg', khong_o: 'co', trung_ma: 'co' }));
+  ok('ganMaIpos mã ô "10011" như món thường, tích cả hai ô xác nhận → vẫn từ chối, không ghi',
+     !k9.ok && !k9.canXacNhanTrungMa && (await maGhep('10011')).length === 0, JSON.stringify(k9));
 });
 
 // ===========================================================================
@@ -383,6 +492,32 @@ await nhom('7 · MÓN CẦN CÓ TRÊN FABi — THUẦN', async () => {
   ok('Mã giảm / mã ô đã ghép như món thường → cảnh báo bỏ ghép (vi / en)',
      ghepSai[2].canhBao.length === 1 && /Bỏ ghép/.test(ghepSai[2].canhBao[0].vi) && /Unmatch/.test(ghepSai[2].canhBao[0].en)
      && ghepSai[0].canhBao.length === 1, JSON.stringify(ghepSai.map(x => x.canhBao)));
+  const trungMa = co([], [{ ma_ipos: '10012', kieu: 'bo_qua', mat_hang_id: null, o_ma_id: null }]);
+  ok('Mã ô đã ghép "Không phải hàng kho" (đã xác nhận là món khác trên FABi) → không bảo Bỏ ghép mà bảo đổi mã ô (vi / en)',
+     trungMa[1].canhBao.length === 1 && !/Bỏ ghép/.test(trungMa[1].canhBao[0].vi) && /đổi mã ô/i.test(trungMa[1].canhBao[0].vi)
+     && /change the slot code/i.test(trungMa[1].canhBao[0].en), JSON.stringify(trungMa[1].canhBao));
+  const dai = monCanCoTrenFabi({
+    matHang: [mon], menu: [], daGhep: [], soChuSo: 5,
+    oMa: [{ id: 'o6', mat_hang_id: 'm', so_o: 1, ma_can: '100111' }, { id: 'o5', mat_hang_id: 'm', so_o: 2, ma_can: '10012' }],
+    maGiam: [{ id: 'g6', mat_hang_id: 'm', phan_tram: 30, ma_can: '900001', dang_dung: true }],
+  });
+  ok('Mã ô / mã giảm dài hơn số chữ C của mẫu mã vạch (6 > 5) → cảnh báo cân không in được tem, chỉ chỗ đổi mã (vi / en)',
+     /dài quá 5 số/.test(dai[0].canhBao[0]?.vi ?? '') && /Mặt hàng/.test(dai[0].canhBao[0].vi) && /longer than 5 digits/.test(dai[0].canhBao[0].en)
+     && /dài quá 5 số/.test(dai[2].canhBao[0]?.vi ?? '') && /Giảm giá/.test(dai[2].canhBao[0].vi) && /Discounts/.test(dai[2].canhBao[0].en)
+     && dai[1].canhBao.length === 0, JSON.stringify(dai.map(x => [x.maMon, x.canhBao])));
+  ok('CSV ghi chú có cảnh báo mã dài', dongCsvMonFabi(dai, 'vi')[0].ghiChu.includes('dài quá 5 số'));
+
+  // Mục "Món cần có trên FABi" in gì — hàm thuần, trang chỉ vẽ theo `kieu`.
+  const them = (menu, menuLuc = null) => ({ menu, menuLuc, maGiam: [], soChuSo: 5 });
+  const mLoi = mucMonFabi(them([]), 'Không đọc được.', 3);
+  ok('Mục FABi: đọc lỗi → "loi", không số món, không kết luận', mLoi.kieu === 'loi' && Object.keys(mLoi).sort().join() === 'cau,kieu', JSON.stringify(mLoi));
+  ok('Mục FABi: phần chính chưa đọc được (trang đã báo lỗi ở đầu) → "an", không số', mucMonFabi(null, null, 0).kieu === 'an');
+  const mChua = mucMonFabi(them([]), null, 3);
+  ok('Mục FABi: thực đơn rỗng → số món cần có, kèm "chưa đọc thực đơn" (không kết luận)',
+     mChua.kieu === 'co' && mChua.soMon === 3 && mChua.chuaDocMenu === true, JSON.stringify(mChua));
+  const mCo = mucMonFabi(them([{ ma_ipos: 'A', dang_ban: true }], '2026-10-26T01:00:00Z'), null, 3);
+  ok('Mục FABi: có thực đơn → giờ đọc và số món thực đơn', mCo.kieu === 'co' && !mCo.chuaDocMenu && mCo.menuLuc === '2026-10-26T01:00:00Z'
+     && mCo.soMonMenu === 1, JSON.stringify(mCo));
   ok('Nhãn "trên FABi" đủ vi / en; nhãn "có" nói phải thử mã vạch bằng một tem',
      ['co', 'ngung_ban', 'chua_thay', 'chua_doc'].every(k => nhanTrenFabi(k)[0].vi && nhanTrenFabi(k)[0].en)
      && /mã vạch phải thử bằng một tem/.test(nhanTrenFabi('co')[0].vi) && /test label/.test(nhanTrenFabi('co')[0].en));
@@ -454,14 +589,17 @@ await nhom('9 · TRANG, ROUTE, CÂU CHỮ', async () => {
   const route = doc('web/src/pages/noi-bo/kho/ban-ipos/mon-fabi.csv.ts');
   ok('Ghép món: mục "Món cần có trên FABi" (id mon-fabi), link tải mon-fabi.csv, đọc thêm riêng (lỗi không làm hỏng trang)',
      /id="mon-fabi"/.test(ghep) && /mon-fabi\.csv/.test(ghep) && /monCanCoTrenFabi\(/.test(ghep) && /docThemMonFabi\([^)]*\)\.catch|catch \(e\) \{ loiFabi/.test(ghep));
-  ok('Ghép món: thực đơn iPOS thay nút Ghép bằng "kho tự nhận" cho mã giảm / mã ô (laMaKhoTuNhan)',
-     /laMaKhoTuNhan\(/.test(ghep) && /khoTuNhanGiam/.test(ghep) && /khoTuNhanO/.test(ghep));
-  ok('Ghép món: hiện ô xác nhận "món chung" khi ganMaIpos đòi (canXacNhanKhongO, name="khong_o")',
-     /canXacNhanKhongO/.test(ghep) && /name="khong_o"/.test(ghep));
-  ok('Ghép món: thực đơn chưa đọc → câu "Chưa đọc được thực đơn iPOS", có giờ đọc thực đơn khi có',
-     /chuaDocMenuFabi/.test(ghep) && /menuLuc/.test(ghep));
-  ok('Bán hàng iPOS: hộp "Bán không biết tảng · 7 ngày" chỉ khi xem giá, lỗi đọc → câu lỗi (không in 0)',
-     /docBanKhongBietTang\(/.test(banIpos) && /xemGia/.test(banIpos) && /loiTang/.test(banIpos) && /NGUYEN_NHAN_KHONG_BIET_TANG/.test(banIpos));
+  ok('Ghép món: cột "Món kho" của thực đơn iPOS chọn bằng oThucDon (nút Ghép / "kho tự nhận" / nhắc Bỏ ghép), không tự tính lại',
+     /oThucDon\(/.test(ghep) && /khoTuNhanGiam/.test(ghep) && /khoTuNhanO/.test(ghep) && !/laMaKhoTuNhan\(/.test(ghep));
+  ok('Ghép món: hiện ô xác nhận "món chung" (khong_o) và "trùng mã" (trung_ma) khi ganMaIpos đòi',
+     /canXacNhanKhongO/.test(ghep) && /name="khong_o"/.test(ghep) && /canXacNhanTrungMa/.test(ghep) && /name="trung_ma"/.test(ghep));
+  ok('Ghép món: mục FABi chọn nội dung bằng mucMonFabi (số món chỉ khi đọc đủ), thực đơn chưa đọc → câu "Chưa đọc được thực đơn iPOS"',
+     /mucMonFabi\(/.test(ghep) && /chuaDocMenuFabi/.test(ghep) && /mucFabi\.kieu === 'co' \? ` · \$\{mucFabi\.soMon\}`/.test(ghep));
+  ok('Ghép món: nút tải không dùng thuộc tính download (403 / 500 thì trình duyệt mở trang có câu lỗi, không phải "tải hỏng")',
+     /href="\/noi-bo\/kho\/ban-ipos\/mon-fabi\.csv"/.test(ghep) && !/mon-fabi\.csv"[^>]*\bdownload\b/.test(ghep));
+  ok('Bán hàng iPOS: hộp "Bán không biết tảng · 7 ngày" chỉ khi xem giá, nội dung chọn bằng hopKhongBietTang — trang không đọc số thẳng từ tang.dem',
+     /docBanKhongBietTang\(/.test(banIpos) && /xemGia \? hopKhongBietTang\(tang, loiTang\) : null/.test(banIpos)
+     && !/tang!?\.dem\b/.test(banIpos) && /NGUYEN_NHAN_KHONG_BIET_TANG/.test(banIpos));
   ok('mon-fabi.csv.ts: mở bằng moKhoTai, gọi taoTepMonFabi, tên file ASCII, no-store',
      /await moKhoTai\(/.test(route) && /taoTepMonFabi\(/.test(route) && /no-store/.test(route) && /\[\^a-zA-Z0-9\._-\]/.test(route));
   const thuNgan = doc('web/src/lib/kho/thu-ngan.ts');
@@ -476,6 +614,18 @@ await nhom('9 · TRANG, ROUTE, CÂU CHỮ', async () => {
      && /đổi giá/i.test(muc) && /Bán không biết tảng/.test(muc) && /13 digits/.test(muc) && /change a price/i.test(muc));
   ok('Hướng dẫn / KHO.md: lý do giữ mã giảm trừ theo hạn gần nhất (lô cận date là lô lóc sớm nhất)',
      /lóc sớm nhất/.test(muc) && /lóc sớm nhất/.test(doc('web/KHO.md')));
+  // Hai mẹo trong cùng mục không được nói ngược nhau: mã món = mã ô thì KHÔNG ghép (kho tự nhận) — chỉ ghép
+  // với ô khi FABi tự sinh mã khác. Và mục FABi nằm ngay trên bảng Thực đơn iPOS, không phải "cuối trang".
+  const meo = [...muc.matchAll(/vi: '((?:[^'\\]|\\.)*)'/g)].map(m => m[1]);
+  const meoEn = [...muc.matchAll(/en: '((?:[^'\\]|\\.)*)'/g)].map(m => m[1]);
+  ok('Hướng dẫn ban-ipos: không mẹo nào vừa nói "mã món = mã ô" vừa bảo "rồi ở Ghép món chọn đúng ô" (ngược mẹo "không ghép")',
+     meo.length > 5 && !meo.some(c => /mã món = mã ô/.test(c) && /rồi ở \*\*Ghép món\*\* chọn đúng ô/.test(c))
+     && !meoEn.some(c => /dish code = slot code/.test(c) && /then in \*\*Match dishes\*\* choose the slot/.test(c))
+     && meo.some(c => /mã món = mã ô/.test(c) && /không cần ghép/.test(c) && /FABi tự sinh mã khác/.test(c)),
+     JSON.stringify(meo.filter(c => /mã ô/.test(c))));
+  ok('Hướng dẫn ban-ipos: vị trí mục "Món cần có trên FABi" đúng như trang (ngay trên bảng Thực đơn iPOS), không "cuối trang"',
+     !/cuối trang/.test(muc) && !/at the bottom of/.test(muc) && /ngay trên bảng \*\*Thực đơn iPOS\*\*/.test(muc) && /just above the \*\*iPOS menu\*\* table/.test(muc)
+     && ghep.indexOf('id="mon-fabi"') > 0 && ghep.indexOf('id="mon-fabi"') < ghep.indexOf('id="thuc-don"'));
 });
 
 // ===========================================================================

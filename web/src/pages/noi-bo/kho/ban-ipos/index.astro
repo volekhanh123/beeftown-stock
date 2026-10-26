@@ -38,7 +38,7 @@ import {
 } from '../../../../lib/kho/ban-ipos.ts';
 import { soTangChu } from '../../../../lib/kho/tang.ts';
 import {
-  docBanKhongBietTang, LOAI_KHONG_BIET_TANG, NGUYEN_NHAN_KHONG_BIET_TANG, type TomTatKhongBietTang,
+  docBanKhongBietTang, hopKhongBietTang, NGUYEN_NHAN_KHONG_BIET_TANG, type TomTatKhongBietTang,
 } from '../../../../lib/kho/thu-ngan.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../lib/cau-noi-bo.ts';
@@ -168,6 +168,8 @@ const kgGoi = (d: DongIpos) => [
   d.so_kg !== null ? `${dinhDangKg(d.so_kg, nn)} kg` : '',
 ].filter(Boolean).join(' · ') || (d.so_luong !== null ? `${dinhDangKg(d.so_luong, nn)} ${t.soLuongIpos}` : '—');
 const theDau = THE_DONG_NB[0].ma;
+// Hộp "Bán không biết tảng": nội dung chọn bằng hàm thuần (lỗi → chỉ câu lỗi, không số nào để in).
+const hop = xemGia ? hopKhongBietTang(tang, loiTang) : null;
 ---
 <Kho k={k} tieuDe={t.tieuDe} huongDan="ban-ipos" rong>
   <TheTrangCon k={k} cha="bao_cao" />
@@ -183,22 +185,20 @@ const theDau = THE_DONG_NB[0].ma;
 
   <p class="nb-dan">{t.dan}</p>
 
-  {xemGia && (loiTang || tang) && (
-    <section class={`nb-bao ${loiTang ? 'loi' : tang && tang.nhom.length > 0 ? 'luu-y' : 'xong'}`} aria-labelledby="ban-tang">
+  {hop && (
+    <section class={`nb-bao ${hop.lop}`} aria-labelledby="ban-tang">
       <h2 id="ban-tang" style="margin-top:0">{t.tangTieuDe}</h2>
-      {loiTang ? (
-        <p style="margin:0">{dichCau(nn, loiTang)}</p>
-      ) : tang && !tang.coMonO ? (
+      {hop.kieu === 'loi' ? (
+        <p style="margin:0">{dichCau(nn, hop.cau)}</p>
+      ) : hop.kieu === 'chua_co_o' ? (
         <p style="margin:0">{t.chuaCoO}</p>
-      ) : tang && (
+      ) : (
         <>
-          <p class="kho-phu" style="margin:0 0 .5rem">{t.tangKy(dinhDangNgay(tang.tuNgay), dinhDangNgay(tang.homNay))}</p>
-          {tang.nhom.length === 0 ? (
+          <p class="kho-phu" style="margin:0 0 .5rem">{t.tangKy(dinhDangNgay(hop.tuNgay), dinhDangNgay(hop.homNay))}</p>
+          {hop.kieu === 'khong_co' ? (
             <p style="margin:0">{t.khongCoTang}</p>
-          ) : LOAI_KHONG_BIET_TANG.filter(loai => tang!.dem.bayNgay[loai].dong > 0).map(loai => {
+          ) : hop.loai.map(({ loai, homNay: hn, bayNgay: bn, nhom: ds }) => {
             const nn7 = NGUYEN_NHAN_KHONG_BIET_TANG[loai];
-            const hn = tang!.dem.homNay[loai], bn = tang!.dem.bayNgay[loai];
-            const ds = tang!.nhom.filter(x => x.loai === loai);
             return (
               <div class="ip-tang">
                 <p style="margin:0"><strong>{nn7.ten[nn]}</strong> — {t.demTang(hn.dong, hn.hoaDon, bn.dong, bn.hoaDon)}</p>
