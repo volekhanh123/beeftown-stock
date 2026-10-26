@@ -1118,7 +1118,8 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   `ngay_ban`, đếm dòng và hóa đơn, mỗi loại kèm nguyên nhân có thể và chỗ sửa; nội dung hộp chọn bằng
   `hopKhongBietTang` (thuần): đọc lỗi → chỉ câu lỗi, không số. (3) Chặn ghép sai trước khi gọi database (`kiemGhep`,
   `laMaKhoTuNhan`, `oThucDon` trong `lib/kho/ban-ipos.ts`, đọc ô mã + mã giảm ngay trước khi ghép, đọc lỗi thì không
-  ghép): mã trùng mã giảm (kể cả đã tắt) / mã ô không ghép được như món kho (mã ô chỉ với đúng ô đó); ghép "Không phải
+  ghép): mã trùng mã giảm (kể cả đã tắt) / mã ô không ghép được như món kho (mã ô chỉ với đúng ô đó) — trừ khi món của
+  mã giảm / ô đã ngừng dùng: database không tự nhận mã đó (dòng chưa khớp), nên web coi là mã thường; ghép "Không phải
   hàng kho" / suất / hàng cân nhãn phải tích "Mã này là món khác trên FABi" (lối thoát khi FABi có món khác trùng mã);
   ghép món có ô mà không chọn ô phải tích "Vẫn ghép món chung". Thực đơn iPOS hiện "Mã giảm — kho tự nhận" /
   "Ô n — kho tự nhận" thay nút Ghép. **Mã giảm cận date giữ trừ theo hạn gần nhất** (không theo ô): lô cận date ở quầy

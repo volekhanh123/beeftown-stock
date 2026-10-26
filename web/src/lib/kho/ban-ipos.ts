@@ -655,26 +655,30 @@ export function docFormGhep(form: FormData): { ghep: GhepGui | null; loi: string
   return { ghep: { ma, kieu, matHang, donVi: kieu === 'bo_qua' ? null : donVi, kgMoiDonVi: kg }, loi: null, loiEn: null };
 }
 
-/** Ô mã và mã giảm để kiểm một lần ghép (đọc ngay trước khi ghép — mọi món, cả mã giảm đã tắt). */
+/** Ô mã và mã giảm để kiểm một lần ghép (đọc ngay trước khi ghép — mọi món, cả mã giảm đã tắt), và các món đang dùng. */
 export interface NguCanhGhep {
   oMa: readonly { id: string; mat_hang_id: string; so_o: number; ma_can: string }[];
-  maGiam: readonly { ma_can: string; phan_tram: number }[];
+  maGiam: readonly { ma_can: string; phan_tram: number; mat_hang_id: string }[];
+  /** id các món dang_dung — kho_ipos_ghi_dong (0054) chỉ tự nhận ô / mã giảm của món đang dùng. */
+  monDangDung: ReadonlySet<string>;
 }
 
 const bo0Ma = (x: string | null | undefined) => String(x ?? '').trim().replace(/^0+/, '');
 
 /**
  * Mã iPOS này kho TỰ NHẬN khi để trống (kho_ipos_ghi_dong 0051 / 0054): trùng một mã giảm (kể cả mã
- * đã tắt — tem cũ vẫn bán được) hoặc trùng một mã ô, so sau khi bỏ số 0 đầu. null = mã thường.
+ * đã tắt — tem cũ vẫn bán được) hoặc trùng một mã ô, so sau khi bỏ số 0 đầu — và món của mã giảm / ô
+ * còn dùng. Món đã ngừng dùng thì database không nhận (đọc món `and dang_dung` → dòng chưa khớp;
+ * kho_ipos_gan_o_ma 0051 từ chối ô đó): mã đó là mã thường, ghép được với món khác. null = mã thường.
  */
 export function laMaKhoTuNhan(
   ma: string, ng: NguCanhGhep,
 ): { loai: 'giam'; phanTram: number } | { loai: 'o'; soO: number; oMaId: string; matHangId: string } | null {
   const k = bo0Ma(ma);
   if (!k) return null;
-  const g = ng.maGiam.find(x => x.ma_can === k);
+  const g = ng.maGiam.find(x => x.ma_can === k && ng.monDangDung.has(x.mat_hang_id));
   if (g) return { loai: 'giam', phanTram: g.phan_tram };
-  const o = ng.oMa.find(x => x.ma_can === k);
+  const o = ng.oMa.find(x => x.ma_can === k && ng.monDangDung.has(x.mat_hang_id));
   return o ? { loai: 'o', soO: o.so_o, oMaId: o.id, matHangId: o.mat_hang_id } : null;
 }
 
@@ -685,7 +689,8 @@ export function laMaKhoTuNhan(
  *     chỉ được ghép với đúng ô đó.
  *   · Mã trùng mã giảm / mã ô, ghép "Không phải hàng kho", Bán theo suất hay hàng cân nhãn: phải xác
  *     nhận "trùng mã" (canXacNhan 'trung_ma') — lối thoát khi FABi có sẵn món KHÁC mang đúng mã đó
- *     (để trống thì kho tự nhận là món ô / món giảm và trừ sai), hoặc mã của món đã ngừng dùng.
+ *     (để trống thì kho tự nhận là món ô / món giảm và trừ sai). Mã ô / mã giảm của món đã ngừng
+ *     dùng không bị chặn — kho không tự nhận nó (laMaKhoTuNhan), ghép như mã thường.
  *   · Ghép món có ô mã như món thường (không chọn ô): phải xác nhận "món chung" (canXacNhan 'khong_o')
  *     — bán mã đó kho trừ theo hạn gần nhất, không biết tảng.
  */
@@ -762,15 +767,22 @@ const CHUA_KIEM_GHEP: HaiThuTieng = {
   en: 'Could not check whether this code is a discount code or a slot code — nothing was matched. Try again in a few minutes.',
 };
 
+/** id các món đang dùng (cho NguCanhGhep) — đọc đủ mọi trang; lỗi → ném. */
+async function docIdMonDangDung(client: SupabaseClient): Promise<Set<string>> {
+  const ds = await docTungTrang<{ id: string }>((tu, den) =>
+    client.from('kho_mat_hang').select('id').eq('dang_dung', true).order('id').range(tu, den));
+  return new Set(ds.map(r => r.id));
+}
+
 export async function ganMaIpos(client: SupabaseClient, chiNhanhId: string, form: FormData): Promise<KetQuaGhep> {
   const { ghep, loi, loiEn } = docFormGhep(form);
   if (!ghep) return { ok: false, cau: loi ?? YEU_CAU_HONG.vi, cauEn: loiEn ?? YEU_CAU_HONG.en };
   if (ghep.kieu !== null) {
-    // Đọc ô mã và mã giảm NGAY TRƯỚC khi ghép; đọc lỗi thì không ghép (không đoán).
+    // Đọc ô mã, mã giảm và món đang dùng NGAY TRƯỚC khi ghép; đọc lỗi thì không ghép (không đoán).
     let ng: NguCanhGhep;
     try {
-      const [o, g] = await Promise.all([docOMa(client), docMaGiam(client)]);
-      ng = { oMa: [...o.values()].flat(), maGiam: g };
+      const [o, g, dangDung] = await Promise.all([docOMa(client), docMaGiam(client), docIdMonDangDung(client)]);
+      ng = { oMa: [...o.values()].flat(), maGiam: g, monDangDung: dangDung };
     } catch {
       return kqHai(false, CHUA_KIEM_GHEP);
     }
