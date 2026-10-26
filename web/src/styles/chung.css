@@ -1,10 +1,12 @@
 /* =============================================================================
    BEEFTOWN — HỆ THỐNG GIAO DIỆN
    =============================================================================
-   Màu là bảng màu thương hiệu Khánh chốt ngày 09/10/2026 (THUONG-HIEU.md ở thư
-   mục gốc): Beef Red, Cream, Charcoal, Marigold, Warm Stone; cùng các màu pha
-   cho màn hình Khánh cho phép ngày 10/10/2026. Không suy màu từ ảnh, không tự
-   thêm sắc độ ngoài bảng.
+   Màu là bảng màu thương hiệu Khánh chốt ngày 22/10/2026 (THUONG-HIEU.md ở thư
+   mục gốc, mục 0): đỏ #BD0000, đen, trắng; cùng các màu pha cho màn hình Khánh
+   duyệt ngày 25/10/2026: đỏ đậm #8F0000, xám viền ô #767676, xám chữ phụ
+   #555555, nền xám nhạt #F4F4F4, vạch #E2E2E2. Không suy màu từ ảnh, không tự
+   thêm sắc độ ngoài bảng. Tên biến giữ như bảng trước (--kem là trắng, --than
+   là đen) — đổi tên là một PR sau.
 
    Hai khối :root dưới đây là bảng /noi-bo và kho đọc. Trang công khai khai lại
    đúng các biến này trong khối .ck đầu tiên của cong-khai.css — hai nơi đang
@@ -12,44 +14,42 @@
    (crm/test/test-noi-bo-bang-mau.mjs so hai khối với nhau).
 
    PHÔNG CHỮ — một quyết định cần giải thích:
-   Trang 1 của PDF ghi Hypo-me Bold cho logo, trang 6 ghi NVN Beloved Bold cho
-   heading. Cả hai đều CHƯA CÓ BẢN QUYỀN, và tài liệu tự nhận là chưa rõ hai
-   tên đó có phải một phông hay không.
-   Vì vậy ở đây KHÔNG dùng phông hiển thị nào cả. Tên thương hiệu đặt bằng
-   Montserrat ExtraBold siết chữ. Một họ phông duy nhất, giấy phép OFL, không
-   rủi ro pháp lý — và quan trọng hơn: nó sẽ KHÔNG BAO GIỜ bị nhầm là phông
-   thương hiệu thật, nên không ai ở khâu sau tưởng câu chuyện phông đã xong.
+   Bộ nhận diện cũ ghi Hypo-me Bold cho logo, NVN Beloved Bold cho heading — cả
+   hai CHƯA CÓ BẢN QUYỀN. Brand Guidelines 21/10/2026 dùng Figtree cho logo,
+   nhưng Figtree thiếu chữ có dấu tiếng Việt (ư ạ ế ề ị ộ ữ…), nên Figtree chỉ
+   nằm trong logo — logo là hình vector (web/public/thuong-hieu/), không gõ lại
+   chữ BEEFTOWN bằng phông. Chữ của trang là Montserrat (Khánh giữ ngày
+   26/10/2026): một họ phông duy nhất, giấy phép OFL, đủ dấu tiếng Việt.
    ============================================================================= */
 
 :root {
-  --do:        #A70C0C;   /* Beef Red — màu chủ đạo, nút chính */
-  --do-dam:    #890607;   /* màu pha: nút khi di chuột */
-  --kem:       #F0E3D0;   /* Cream — nền sáng */
-  --kem-sau:   #EBDCC6;   /* màu pha: nền khối phụ nhẹ */
-  --mu-tat:    #F5AA14;   /* Marigold — guideline chỉ có một vàng: tên biến cũ, cùng mã với --cuc-vang */
-  --cuc-vang:  #F5AA14;   /* Marigold — điểm nhấn nhỏ; KHÔNG làm chữ trên nền sáng (1,56 : 1 với kem) */
-  --than:      #151008;   /* Charcoal — nền tối, chữ. Tên màu; Beeftown nướng vỉ gas */
-  --da:        #B8A98C;   /* Warm Stone — nét kẻ; chữ phụ CHỈ trên nền tối (1,83 : 1 với kem) */
+  --do:        #BD0000;   /* Đỏ — nút chính, số báo việc, "làm ngay" */
+  --do-dam:    #8F0000;   /* màu pha: đỏ đậm — nút khi di chuột, câu lỗi */
+  --kem:       #FFFFFF;   /* Trắng — thẻ, ô nhập; chữ trên đen và đỏ; vòng focus trên nền tối (tên cũ) */
+  --kem-sau:   #F4F4F4;   /* màu pha: xám nhạt — nền trang nội bộ, dải phụ, đầu bảng */
+  --than:      #000000;   /* Đen — chữ, đầu trang, vòng focus trên nền sáng (tên cũ) */
+  --da:        #E2E2E2;   /* xám — CHỈ chữ phụ trên nền đen (16,21 : 1); trên trắng chỉ 1,30 */
 
-  --muc-nhat:  rgba(21, 16, 8, .68);
-  --vach:      rgba(21, 16, 8, .16);
-  --vach-kem:  rgba(240, 227, 208, .22);
-  /* Viền ô nhập trên nền sáng: tương phản 3,71 : 1 với nền Cream của ô và 3,49 : 1
-     với kem sau — mức tối thiểu cho viền ô nhập là 3 : 1 (WCAG 1.4.11). Viền
-     --vach mờ quá, người ta không thấy chỗ để chạm vào. */
-  --vien-o:    #7A7366;
+  --muc-nhat:  #555555;   /* chữ phụ: 7,46 : 1 với trắng, 6,78 với F4; KHÔNG trên nền đen (2,82) */
+  --vach:      #E2E2E2;   /* viền thẻ, vạch ngăn — trang trí, không mang nghĩa */
+  --vach-kem:  rgba(255, 255, 255, .22);
+  /* Viền ô nhập trên nền sáng: tương phản 4,54 : 1 với nền trắng của ô và 4,13 : 1
+     với nền F4 — mức tối thiểu cho viền ô nhập là 3 : 1 (WCAG 1.4.11). Viền
+     --vach (E2) chỉ 1,30 : 1, người ta không thấy chỗ để chạm vào. */
+  --vien-o:    #767676;
 
   --chu: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   --rong: min(1120px, 90%);
 }
 
-/* Hai màu pha nữa cho màn hình (Khánh cho phép ngày 10/10/2026): một đỏ đậm cho
-   chữ nhấn nhỏ — cùng mã với --do-dam — và một nền kem đậm hơn để tách khối.
-   Khai riêng một khối vì các biến này thêm sau 13 biến ở khối trên. */
+/* Hai biến nữa của bảng (màu pha 25/10/2026): đỏ đậm cho chữ nhấn nhỏ — bí danh
+   của --do-dam, gộp khi đổi tên biến — và xám E2 cho khi di chuột, nhãn xám
+   "lưu ý", khung ảnh chờ. Khai riêng một khối vì các biến này thêm sau 11 biến
+   ở khối trên. */
 :root {
-  --do-sau:    #890607;   /* đỏ đậm — chữ nhấn nhỏ; cùng mã với --do-dam */
-  --kem-dam:   #E7D5BC;   /* kem đậm — nền khối phụ đậm hơn */
+  --do-sau:    #8F0000;   /* đỏ đậm — chữ nhấn nhỏ; cùng mã với --do-dam */
+  --kem-dam:   #E2E2E2;   /* xám — di chuột, nhãn "lưu ý", dòng làm nổi trong bảng */
 }
 
 /* Montserrat không có chữ Hangul. Trang tiếng Hàn tải thêm Noto Sans KR
@@ -84,15 +84,18 @@ img { max-width: 100%; height: auto; display: block; }
 
 a { color: inherit; }
 
-/* Chỉ hiện khi dùng bàn phím — không bắt người dùng chuột phải nhìn viền. */
+/* Chỉ hiện khi dùng bàn phím — không bắt người dùng chuột phải nhìn viền. Đen trên
+   nền sáng; bề mặt tối (đầu trang đen, dải đỏ) tự đổi sang vòng trắng. */
 :focus-visible {
-  outline: 3px solid var(--cuc-vang);
+  outline: 3px solid var(--than);
   outline-offset: 3px;
 }
 
+/* Link "Bỏ qua menu": nền trắng, chữ và viền đen — đọc được cả khi hiện đè lên đầu
+   trang đen lẫn nền trắng. */
 .bo-qua {
   position: absolute; left: -9999px;
-  background: var(--cuc-vang); color: var(--than);
+  background: var(--kem); color: var(--than); border: 2px solid var(--than);
   padding: 12px 20px; font-weight: 700; border-radius: 4px;
 }
 .bo-qua:focus { left: 16px; top: 16px; z-index: 100; }

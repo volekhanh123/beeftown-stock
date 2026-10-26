@@ -3,12 +3,12 @@
  * TRANG VĂN BẢN — Quyền riêng tư, Xóa dữ liệu (vi / en / ko)
  *
  * Chỉ lo BỐ CỤC: đầu trang con giống mọi trang công khai mới (.mo-dau-trang —
- * nhãn đỏ, tiêu đề lớn, nét rosemary bên phải) và một cột chữ hẹp để đọc. Chữ
+ * nhãn đỏ, tiêu đề lớn, không nét trang trí) và một cột chữ hẹp để đọc. Chữ
  * pháp lý nằm nguyên ở từng trang (slot), không qua đây — sửa câu nào thì sửa ở
  * trang đó, và sửa cả hai bản tiếng kia.
  *
- * Màu theo bề mặt kem (cong-khai.css): chữ than, chữ phụ --chu-phu, link gạch
- * chân cùng màu chữ. Không dùng màu viết cho nền tối (Warm Stone, Marigold).
+ * Màu theo bề mặt trắng (cong-khai.css): chữ đen, chữ phụ --chu-phu, link gạch
+ * chân cùng màu chữ. Không chữ đỏ thường hay --muc-nhat trên nền đen (dưới ngưỡng).
  */
 interface Props {
   hieu: string;
@@ -21,7 +21,6 @@ const { hieu, tieuDe } = Astro.props;
     <p class="hieu">{hieu}</p>
     <h1>{tieuDe}</h1>
   </div>
-  <span class="trang-tri net huong-thao-5 net-goc" aria-hidden="true"></span>
 </section>
 
 <section class="be-kem vb">

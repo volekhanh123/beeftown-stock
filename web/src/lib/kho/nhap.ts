@@ -609,7 +609,7 @@ export function chuSoSanhGia(s: SoSanhGia | undefined, nn: NgonNguNB = 'vi'): { 
 }
 
 /**
- * Câu tóm tắt trong hộp vàng trên nút Duyệt:
+ * Câu tóm tắt trong khối "lưu ý" (.nb-bao.luu-y) trên nút Duyệt:
  * "2 món giá tăng hơn 5% so với lần trước — kiểm lại hóa đơn". Không món nào vượt: null.
  */
 export function cauCanhBaoGia(ds: Iterable<SoSanhGia>, nguong: number, nn: NgonNguNB = 'vi'): string | null {

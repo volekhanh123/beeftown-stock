@@ -44,7 +44,7 @@ const PHAI_BAT = [
 
 const KHONG_BAT = [
   'Thịt chuẩn, giá thật',
-  'Pick it – Grill it – Love it',
+  'Pick it, grill it, love it!',
   'Khách ra quầy tự chọn phần mình thích, rồi mang về bàn nướng.',
   'Beeftown đã nhận yêu cầu đặt bàn — nhân viên sẽ gọi lại để xác nhận.',
   'Mở cửa 16:00–22:00, 40–42 Nguyễn Thái Học, Quận 1',

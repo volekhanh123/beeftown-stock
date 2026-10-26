@@ -31,9 +31,9 @@
  * ?ma=<mã> điền sẵn ô quét (màn Quét gửi sang "Thêm vào phiên pha đang mở").
  *
  * 0061 (món theo tảng): Beeftown Cân ở máy quầy báo về kho các dòng ô mã đang nằm trên cân và gửi nhật ký tem cân in.
- * Bước Cân & quét hiện "Cân sẵn sàng: <tên + số tảng> = PLU · phím" (xanh) hay "chưa lên cân / còn tên cũ" (vàng) cho
- * mỗi ô đang giữ, và cảnh báo nhãn in bằng mã thường (không có số tảng); bước Kết quả và màn Xem đối chiếu số tem cân
- * in bằng mã ô với số nhãn đã quét (DoiChieuCan, kho_phien_pha_can — tomTatCanPhien soạn câu).
+ * Bước Cân & quét hiện "Cân sẵn sàng: <tên + số tảng> = PLU · phím" (khối xong, dấu ✓) hay "chưa lên cân / còn tên cũ"
+ * (khối lưu ý) cho mỗi ô đang giữ, và cảnh báo nhãn in bằng mã thường (không có số tảng); bước Kết quả và màn Xem đối
+ * chiếu số tem cân in bằng mã ô với số nhãn đã quét (DoiChieuCan, kho_phien_pha_can — tomTatCanPhien soạn câu).
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
@@ -54,8 +54,8 @@ import {
   type NhanQuet,
 } from '../../../../lib/kho/pha-loc.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangThoiDiem, dinhDangTien, homNayVn, kqHai, laUuid,
-  nhanKho, trangThaiKho, TEN_XU_LY_NB, type HaiThuTieng, type KetQua,
+  cauLoiKho, chuTinhTrangHan, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangThoiDiem, dinhDangTien, homNayVn,
+  kqHai, laUuid, nhanKho, trangThaiKho, TEN_XU_LY_NB, type HaiThuTieng, type KetQua,
 } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../lib/cau-noi-bo.ts';
@@ -275,8 +275,8 @@ const t = dichNB(nn, {
   // 0049 — ô mã (món theo dõi theo tảng)
   oMaTd: { vi: 'Ô mã của tảng này', en: 'Rotating codes for this primal' },
   oMaGt: {
-    vi: 'Mỗi phiên một tảng. Chờ dòng "Cân sẵn sàng" hiện xanh rồi mới in tem bằng đúng phím đó.',
-    en: 'One primal per session. Wait for the "Scale ready" line to turn green before printing with that key.',
+    vi: 'Mỗi phiên một tảng. Chờ hiện dòng "Cân sẵn sàng" rồi mới in tem bằng đúng phím đó.',
+    en: 'One primal per session. Wait for the "Scale ready" line to appear before printing with that key.',
   },
   oMaTang: { vi: (so: string) => `Tảng ${so}`, en: (so: string) => `Primal ${so}` },
   oMaDong: { vi: (so: number, ma: string) => `ô ${so} · mã ${ma}`, en: (so: number, ma: string) => `slot ${so} · code ${ma}` },
@@ -662,7 +662,7 @@ const tenNguon = (ma: string) => nhanKho(TEN_NGUON_DU_KIEN_NB, ma, nn);
                           {tenVt.get(d.vi_tri_id)?.ten ?? '—'} · {t.conTruoc}<strong>{kgs(d.ton_kg)} kg</strong>{t.conSau}
                           {mhVao?.dem_goi && <> · {d.ton_goi} {mhVao.don_vi_goi}</>}
                           {xemGia && gia && <> · {tien(gia.gia_von_kg)}/kg</>}
-                          {' · '}<span class={`kho-han ${d.tinh_trang}`}>{t.hsd} {dinhDangNgay(d.han_dung)}</span>
+                          {' · '}<span class={`kho-han ${d.tinh_trang}`}>{chuTinhTrangHan(d.tinh_trang, nn)}{' · '}{t.hsd} {dinhDangNgay(d.han_dung)}</span>
                         </span>
                       </div>
                       {u && <p class="kho-phu pl-u">{u.mo && <>{u.mo}{' · '}</>}<span class={`nb-nhan ${u.lop}`}>{u.nhan}</span>{u.con && <>{' '}{u.con}</>}</p>}
@@ -932,6 +932,8 @@ const tenNguon = (ma: string) => nhanKho(TEN_NGUON_DU_KIEN_NB, ma, nn);
         <div class={`kho-o-so ${soSanh.muc === 'thap' ? 'gap' : ''}`}><b>{pt(phien.ty_le_thu_hoi)}</b><span>{t.thuHoiThit}</span></div>
         <div class="kho-o-so"><b>{kgs(phien.tong_kg_thit)}</b><span>{t.kgThitRa}</span></div>
       </div>
+      {/* Ô thu hồi thấp nói bằng câu — không chỉ viền đỏ. Chỉ thap1: đã chốt rồi nên câu "chốt vẫn được" (thap2) sai. */}
+      {soSanh.muc === 'thap' && <div class="nb-bao luu-y"><p>{t.thap1(pt(Math.abs(soSanh.chenh ?? 0)), kgs(nguong))}</p></div>}
       {raQuay.daOQuay > 0 && <p class="nb-dan">{t.daOQuay(raQuay.daOQuay, raQuay.donViQuay)}</p>}
       {raQuay.lo.length > 0 ? (
         <section class="nb-the">

@@ -151,8 +151,8 @@ export async function giaoOMa(client: SupabaseClient, phienPhaId: string): Promi
                 en: (x: typeof ds[number]) => `${x.ten}: slot ${x.so_o} (code ${x.ma_can})` };
   // 0061: Beeftown Cân 2.9 ở quầy (bật Tự gửi) hỏi kho 15 giây một lần và tự gửi tên mới — tự gửi tắt hay bản cũ thì quản
   // lý phải bấm Gửi. Không hứa "cân đã đổi": trang đọc lại kho_phien_pha_can và hiện "Cân sẵn sàng" khi máy quầy báo.
-  return kqHai(true, { vi: `Đã giao ô mã — ${ds.map(mot.vi).join(' · ')}. Beeftown Cân ở quầy bật Tự gửi thì tự gửi tên mới xuống cân sau khoảng 15–60 giây; không thì quản lý mở Beeftown Cân bấm Gửi xuống cân. Chờ dòng "Cân sẵn sàng" hiện xanh (bấm Xem lại cân) rồi mới in tem.`,
-                       en: `Rotating codes assigned — ${ds.map(mot.en).join(' · ')}. If Beeftown Scale at the counter has automatic sending on, it sends the new names to the scale within about 15–60 seconds; otherwise a manager opens Beeftown Scale and presses Send to scale. Wait for the "Scale ready" line to turn green (press Check the scale again) before printing labels.` });
+  return kqHai(true, { vi: `Đã giao ô mã — ${ds.map(mot.vi).join(' · ')}. Beeftown Cân ở quầy bật Tự gửi thì tự gửi tên mới xuống cân sau khoảng 15–60 giây; không thì quản lý mở Beeftown Cân bấm Gửi xuống cân. Chờ hiện dòng "Cân sẵn sàng" (bấm Xem lại cân) rồi mới in tem.`,
+                       en: `Rotating codes assigned — ${ds.map(mot.en).join(' · ')}. If Beeftown Scale at the counter has automatic sending on, it sends the new names to the scale within about 15–60 seconds; otherwise a manager opens Beeftown Scale and presses Send to scale. Wait for the "Scale ready" line to appear (press Check the scale again) before printing labels.` });
 }
 
 /** Quản lý trả một ô về trống (quyền duyet). */

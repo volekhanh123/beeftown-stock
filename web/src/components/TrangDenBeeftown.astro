@@ -97,7 +97,6 @@ const c = dich(ngonNgu, {
     <h1 id="db-tieu-de">{c.tieuDe}</h1>
     <p class="dan">{c.dan}</p>
   </div>
-  <span class="trang-tri net huong-thao-5 net-goc" aria-hidden="true"></span>
 </section>
 
 <section class="muc be-kem-dam db-tang3">
@@ -178,9 +177,9 @@ const c = dich(ngonNgu, {
   </section>
 )}
 
-{/* Cuối trang: Hỏi bàn chỉ khi có kênh thật để hỏi; Xem thực đơn luôn có. */}
-<section class="muc be-do nen-van-mo db-moi co-trang-tri" aria-labelledby="db-h-moi">
-  <span class="trang-tri net steak-2 db-steak an-khi-hep" aria-hidden="true"></span>
+{/* Cuối trang: Hỏi bàn chỉ khi có kênh thật để hỏi; Xem thực đơn luôn có. Dải đỏ phẳng — không hoa
+    văn, không nét vẽ. */}
+<section class="muc be-do db-moi" aria-labelledby="db-h-moi">
   <div class="khung db-moi-chu">
     <p class="hieu">{c.moiHieu}</p>
     <h2 id="db-h-moi"><span class="cau">{coKenh ? c.moiTieuDe1 : c.moiTieuDeMenu1}</span> <span class="cau">{coKenh ? c.moiTieuDe2 : c.moiTieuDeMenu2}</span></h2>
@@ -214,12 +213,11 @@ const c = dich(ngonNgu, {
     margin-top: var(--k-4);
   }
   @media (min-width: 600px) and (max-width: 899px) { .db-chu { margin-top: 0; } }
-  /* Số bước màu kem (14,96:1 trên than), không vàng: số to vàng cạnh eyebrow vàng trên nền
-     than thành bộ đen-vàng mà THIET-KE mục 1 bảo tránh. */
+  /* Số bước trắng trên đen (21 : 1) — màu chữ chính của dải đen; không đỏ: đỏ trên đen chỉ 3,16 : 1. */
   .db-so {
     flex: none; min-width: 1ch;
     font-size: clamp(44px, 3vw + 30px, 64px); font-weight: 800; line-height: .9; letter-spacing: -.04em;
-    color: var(--kem);
+    color: var(--chu-chinh);
   }
   .db-chu h3 { margin: 4px 0 var(--k-2); text-wrap: balance; }
   .db-chu p { margin: 0; color: var(--chu-phu); max-width: 42ch; }
@@ -242,13 +240,7 @@ const c = dich(ngonNgu, {
   .db-thu { overflow-wrap: anywhere; }
 
   /* --- Cuối trang ------------------------------------------------------------ */
-  .db-moi-chu { position: relative; }
   .db-moi-chu h2 { max-width: 22ch; }
   .db-moi-chu .cau { display: block; }
   .db-moi-chu .dan { margin-bottom: var(--k-6); }
-  .db-steak {
-    width: clamp(110px, 16vw, 220px); right: max(var(--le), calc((100% - var(--rong-ck)) / 2));
-    top: 50%; transform: translateY(-50%) rotate(14deg); opacity: .35;
-  }
-  @media (max-width: 899px) { .db-steak { display: none; } }
 </style>

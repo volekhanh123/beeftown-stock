@@ -80,6 +80,8 @@ const t = dichNB(nn, {
   kiemRoiNhan: { vi: 'Kiểm từng món rồi bấm nhận.', en: 'Check each item, then confirm receipt.' },
   choQuayNhan: { vi: 'Chờ quầy bấm nhận.', en: 'Waiting for the counter to confirm receipt.' },
   quaGio: { vi: ' Đã quá giờ — nhắc quầy kiểm hàng.', en: ' Overdue — remind the counter to check the goods.' },
+  // Nhánh quầy (người đọc chính là quầy): dải quá giờ nói bằng chữ — không chỉ viền đỏ.
+  quaGioQuay: { vi: ' Đã quá giờ.', en: ' Overdue.' },
   kiemVaNhan: { vi: 'Kiểm và nhận hàng', en: 'Check and receive' },
   huyChuyenTom: { vi: 'Hủy chuyến (mang nhầm, quầy không cần nữa)', en: 'Cancel delivery (wrong goods, or the counter no longer needs them)' },
   lyDo: { vi: 'Lý do', en: 'Reason' },
@@ -283,7 +285,7 @@ const monCua = (mhId: string) => mhTheoId.get(mhId) ?? { ten: t.monDaXoa, dem_go
       {yc.trang_thai_phieu_xuat === 'dang_chuyen' && (
         <div class:list={['kho-dai', { do: !!chuyen?.qua_gio }]}>
           <span>{laQuay
-            ? <><strong>{t.hangDangMang}</strong> {t.kiemRoiNhan}</>
+            ? <><strong>{t.hangDangMang}</strong> {t.kiemRoiNhan}{chuyen?.qua_gio ? t.quaGioQuay : ''}</>
             : <><strong>{t.choQuayNhan}</strong>{chuyen?.qua_gio ? t.quaGio : ''}</>}</span>
           {laQuay && <a class="nb-nut yc-nut" href="/noi-bo/kho/quay/nhan">{t.kiemVaNhan}</a>}
         </div>

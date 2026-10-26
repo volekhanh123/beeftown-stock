@@ -358,11 +358,14 @@ const DEM: [LoaiDong, HaiThuTieng][] = [
 <style>
   .dong-bo-buoc { margin: .5rem 0 0; padding-left: 1.25rem; display: grid; gap: .45rem; }
   .dong-bo-dem { display: flex; flex-wrap: wrap; gap: .4rem; }
-  .dong-bo-nhan { display: inline-block; font-size: .72rem; font-weight: 700; padding: .15rem .45rem; border-radius: 4px; white-space: nowrap; }
-  .dong-bo-nhan.them { background: var(--xanh-nen); color: var(--xanh); }
-  .dong-bo-nhan.sua { background: var(--mu-tat); color: var(--than); }
+  /* Nhãn đồng bộ cân — không chỉ khác bằng màu: thêm = viền đen và "+"; sửa = nền xám E2; xóa = nền đỏ chữ trắng;
+     giữ = chữ xám không nền; không lên cân = nét đứt. */
+  .dong-bo-nhan { display: inline-block; font-size: .72rem; font-weight: 700; padding: .15rem .45rem; border-radius: 4px; white-space: nowrap; border: 1.5px solid transparent; }
+  .dong-bo-nhan.them { background: transparent; color: var(--than); border: 1.5px solid var(--than); }
+  .dong-bo-nhan.them::before { content: '+ '; content: '+ ' / ''; }
+  .dong-bo-nhan.sua { background: var(--kem-dam); color: var(--than); }
   .dong-bo-nhan.xoa { background: var(--do); color: var(--kem); }
-  .dong-bo-nhan.giu { background: var(--kem-sau); color: var(--muc-nhat); }
+  .dong-bo-nhan.giu { background: transparent; color: var(--muc-nhat); }
   .dong-bo-nhan.khong-len { border: 1px dashed var(--muc-nhat); color: var(--muc-nhat); }
   /* Hàng không có trên cân sau khi nạp: làm mờ số và tên, giữ rõ nhãn và lý do. */
   .kho-bang tr.mo td.so, .kho-bang tr.mo .dong-bo-ten { opacity: .6; }

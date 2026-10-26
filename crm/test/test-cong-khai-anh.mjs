@@ -323,7 +323,7 @@ const doSang = ([r, g, b]) => {
   return 0.2126 * k[0] + 0.7152 * k[1] + 0.0722 * k[2];
 };
 const tuongPhan = (a, b) => { const [s, t] = [doSang(a), doSang(b)].sort((x, y) => y - x); return (s + 0.05) / (t + 0.05); };
-const KEM = [240, 227, 208], THAN = [21, 16, 8];
+const TRANG = [255, 255, 255], DEN = [0, 0, 0], NEN_NHAT = [244, 244, 244];   // bảng 22/10/2026: --kem, --than, --kem-sau
 
 await nhom('4 · NHÃN "ẢNH MINH HỌA": TỰ GẮN, ĐỦ BA THỨ TIẾNG, ĐỌC ĐƯỢC TRÊN MỌI VÙNG ẢNH', async () => {
   const anh = doc(SRC, 'components', 'Anh.astro');
@@ -338,15 +338,15 @@ await nhom('4 · NHÃN "ẢNH MINH HỌA": TỰ GẮN, ĐỦ BA THỨ TIẾNG, �
   const co = nhan.match(/font-size:\s*(?:(\d+)px|var\(--co-(ti|nho)\))/);
   const coPx = co ? (co[1] ? Number(co[1]) : co[2] === 'ti' ? 13 : 14) : 0;
   ok(`Nhãn: cỡ chữ ${coPx}px — không dưới sàn 13px của trang công khai`, coPx >= 13, nhan.trim().replace(/\s+/g, ' '));
-  const nen = nhan.match(/background:\s*rgba\(\s*21,\s*16,\s*8,\s*(0?\.\d+|1)\s*\)/);
+  const nen = nhan.match(/background:\s*rgba\(\s*0,\s*0,\s*0,\s*(0?\.\d+|1)\s*\)/);
   const doDuc = nen ? Number(nen[1]) : 0;
-  ok('Nhãn: chữ Cream trên nền Charcoal có độ trong (màu của bảng), nằm tuyệt đối trong khung ảnh',
+  ok('Nhãn: chữ trắng trên nền đen có độ trong (màu của bảng), nằm tuyệt đối trong khung ảnh',
      /color:\s*var\(--kem\)/.test(nhan) && !!nen && /position:\s*absolute/.test(nhan), nhan.trim().replace(/\s+/g, ' '));
   // Vùng ảnh phía sau nhãn có thể sáng tới đâu cũng được — tệ nhất là trắng tinh. Nền nhãn pha lên vùng đó:
-  const tren = mau => THAN.map((v, i) => v * doDuc + mau[i] * (1 - doDuc));
-  const [trenTrang, trenKem] = [tuongPhan(KEM, tren([255, 255, 255])), tuongPhan(KEM, tren(KEM))];
-  ok(`Nhãn đọc được trên mọi vùng ảnh: trên vùng trắng tinh ${trenTrang.toFixed(2).replace('.', ',')} : 1, trên vùng màu kem ${trenKem.toFixed(2).replace('.', ',')} : 1 (cần ≥ 4,5 : 1)`,
-     trenTrang >= 4.5 && trenKem >= 4.5, `độ đục của nền nhãn: ${doDuc}`);
+  const tren = mau => DEN.map((v, i) => v * doDuc + mau[i] * (1 - doDuc));
+  const [trenTrang, trenXam] = [tuongPhan(TRANG, tren(TRANG)), tuongPhan(TRANG, tren(NEN_NHAT))];
+  ok(`Nhãn đọc được trên mọi vùng ảnh: trên vùng trắng tinh ${trenTrang.toFixed(2).replace('.', ',')} : 1, trên vùng xám nhạt F4 ${trenXam.toFixed(2).replace('.', ',')} : 1 (cần ≥ 4,5 : 1)`,
+     trenTrang >= 4.5 && trenXam >= 4.5, `độ đục của nền nhãn: ${doDuc}`);
 
   const tuViet = congKhai.filter(f => f !== 'components/Anh.astro' && /["'`(]\/anh\//.test(mauCua(doc(SRC, f))));
   ok('Không component công khai nào tự viết đường dẫn /anh/… — ảnh chỉ đi qua <Anh> (nhãn không thể bị quên)', tuViet.length === 0, tuViet.join(', '));
@@ -365,9 +365,16 @@ await nhom('5 · BỐN QUYẾT ĐỊNH CỦA KHÁNH (11/10/2026): DẢI TỐI, C
   ok('Trang chủ, "Quầy chọn bò": vẫn là dải tối (be-toi)', /\bbe-toi\b/.test(quay) && !/\bbe-kem/.test(quay), quay);
   const boTaiQuay = lopCua('TrangThucDon.astro', /<section id="bo-tai-quay" class="([^"]*)"/);
   ok('Thực đơn, "Bò tại quầy": vẫn là dải tối (be-toi)', /\bbe-toi\b/.test(boTaiQuay) && !/\bbe-kem/.test(boTaiQuay), boTaiQuay);
-  ok('"Cả bữa" vẫn nền kem đậm, "Rủ cả nhà" vẫn dải đỏ — tỷ lệ màu của trang giữ như đang chạy',
+  ok('"Cả bữa" vẫn bề mặt be-kem-dam (nền xám nhạt F4), "Rủ cả nhà" vẫn dải đỏ — tỷ lệ màu của trang giữ như đang chạy',
      /\bbe-kem-dam\b/.test(lopCua('BuaAnCungNhau.astro', /<section class="([^"]*)"[^>]*aria-labelledby="bacn-tieu-de"/))
        && /\bbe-do\b/.test(lopCua('DiCungNhom.astro', /<section class="([^"]*)"[^>]*aria-labelledby="dcn-tieu-de"/)));
+  // Bảng 22/10/2026, nền trang trắng, đen làm điểm nhấn (QĐ4 ngày 25/10/2026): đầu trang và cả hai dải chân trang là
+  // bề mặt đen — chữ, nút, vòng focus đổi theo biến của bề mặt, không viết màu riêng.
+  const dauTrang = mauCua(doc(SRC, 'components', 'DauTrang.astro')).match(/<header class="([^"]*)"/)?.[1] ?? '';
+  const chanTrang = mauCua(doc(SRC, 'components', 'ChanTrang.astro'));
+  const [ctChinh, ctDay] = [/<div class="(ct-chinh[^"]*)"/, /<div class="(ct-day[^"]*)"/].map(m => chanTrang.match(m)?.[1] ?? '');
+  ok('Đầu trang (DauTrang.astro) và hai dải chân trang (ChanTrang.astro: ct-chinh, ct-day) là bề mặt đen be-toi',
+     [dauTrang, ctChinh, ctDay].every(l => /\bbe-toi\b/.test(l) && !/\bbe-(?:do|kem)/.test(l)), `${dauTrang} · ${ctChinh} · ${ctDay}`);
 
   // Câu chính — chép tay, kể cả dấu cách không ngắt ( ) đang giữ "bạn thích", "cả bàn" trên một dòng.
   const CAU_CHINH = {
@@ -433,11 +440,18 @@ await nhom('6 · THẺ "CÁCH ĐỌC NHÃN KHAY": NĂM TRƯỜNG THEO THỨ TỰ
   ok('Không còn thanh giá trị giả và mã vạch giả (nk-gach, nk-ma-vach)', !/nk-gach|nk-ma-vach|repeating-linear-gradient/.test(nguon));
   ok('Thẻ đặt thẳng: không transform, không rotate', !/\btransform\s*:|\brotate\s*[:(]/.test(kieu), kieu.match(/[^;{}]*(?:transform|rotate)[^;{}]*/)?.[0]?.trim());
   ok('Thẻ phẳng: không box-shadow, không filter', !/box-shadow|drop-shadow|\bfilter\s*:/.test(kieu), kieu.match(/[^;{}]*(?:shadow|filter)[^;{}]*/)?.[0]?.trim());
-  ok('Thẻ không viết thẳng mã màu nào (không nền trắng): màu chỉ qua biến của bảng', !/#[0-9a-f]{3,8}\b/i.test(kieu), kieu.match(/#[0-9a-f]{3,8}\b/i)?.[0]);
-  ok('Thẻ là nội dung đọc được (không aria-hidden trên thẻ) và dùng lớp .the của hệ giao diện (nền Cream trên dải tối, viền mảnh)',
+  ok('Thẻ không viết thẳng mã màu nào: màu chỉ qua biến của bảng', !/#[0-9a-f]{3,8}\b/i.test(kieu), kieu.match(/#[0-9a-f]{3,8}\b/i)?.[0]);
+  ok('Thẻ là nội dung đọc được (không aria-hidden trên thẻ) và dùng lớp .the của hệ giao diện (thẻ sáng trên dải đen, viền mảnh)',
      /class="nk-the the"/.test(mau) && !/class="nk-the[^"]*"[^>]*aria-hidden/.test(mau));
-  ok('Logo trên thẻ là file vector gốc cho nền kem, khai đúng cỡ 446 × 124, alt rỗng (đứng cạnh tiêu đề của thẻ)',
-     /<img src="\/thuong-hieu\/logo-ngang-do\.svg" width="446" height="124" alt=""/.test(mau));
+  // Logo chính bản đỏ (bộ 21/10/2026, cùng tên file với logo cũ nhưng nội dung mới) trên thẻ trắng — đỏ trên trắng đúng
+  // guideline trang 4. width / height khai đúng tỷ lệ viewBox của CHÍNH file (không chép 446 × 124 của logo cũ).
+  const theLogo = mau.match(/<img\b[^>]*\ssrc="\/thuong-hieu\/logo-ngang-do\.svg"[^>]*>/)?.[0] ?? '';
+  const [rongLogo, caoLogo] = [/\swidth="(\d+(?:\.\d+)?)"/, /\sheight="(\d+(?:\.\d+)?)"/].map(m => Number(theLogo.match(m)?.[1] ?? 0));
+  const vbLogo = doc(WEB, 'public', 'thuong-hieu', 'logo-ngang-do.svg').match(/<svg\b[^>]*\sviewBox\s*=\s*["']([^"']+)["']/)?.[1].trim().split(/[\s,]+/).map(Number) ?? [];
+  const dungTiLe = (r, c) => r > 0 && c > 0 && vbLogo.length === 4 && Math.abs((r / c) / (vbLogo[2] / vbLogo[3]) - 1) <= 0.01;
+  ok('Logo trên thẻ: logo chính đỏ logo-ngang-do.svg cho thẻ trắng, width / height đúng tỷ lệ viewBox (±1 %), width ≥ 160, alt rỗng (đứng cạnh tiêu đề của thẻ)',
+     !!theLogo && /\salt=""/.test(theLogo) && rongLogo >= 160 && dungTiLe(rongLogo, caoLogo), theLogo || 'không thấy <img src="/thuong-hieu/logo-ngang-do.svg">');
+  ok('…phép tỷ lệ bắt được cỡ 446 × 124 của logo cũ và nhận 446 × 101', !dungTiLe(446, 124) && dungTiLe(446, 101));
   const dung = ['QuayChonBo.astro', 'TrangThucDon.astro'].filter(f => /<NhanKhay\b/.test(mauCua(doc(SRC, 'components', f))));
   ok('Trang chủ (Quầy chọn bò) và trang Thực đơn (Bò tại quầy) dùng chung một thẻ', dung.length === 2, dung.join(', '));
 });

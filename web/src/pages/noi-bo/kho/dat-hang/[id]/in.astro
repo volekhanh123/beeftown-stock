@@ -2,7 +2,7 @@
 /**
  * KHO — IN ĐƠN ĐẶT HÀNG · LƯU PDF · GỬI ZALO (GĐ8a, migration 0039)
  *
- * Một tờ A4 gọn: logo, quán / chi nhánh, số đơn, ngày đặt, ngày giao, nhà cung
+ * Một tờ A4 gọn: logo chính bản đen, chi nhánh, số đơn, ngày đặt, ngày giao, nhà cung
  * cấp, bảng món (kg, gói), ghi chú, chỗ ký. Giá dự kiến CHỈ khi người xem được
  * giá VÀ chọn "In kèm giá" (?gia=1) — mặc định không in giá (NCC tự báo giá).
  *
@@ -169,9 +169,9 @@ const tien = (x: number | null | undefined) => dinhDangTien(x, nn);
       {/* ======================= Tờ đơn (màn hình và giấy) ======================= */}
       <article class="dh-giay">
         <header class="dh-giay-dau">
-          <img src="/bieu-tuong.svg" alt="" width="56" height="56" />
+          <img class="dh-logo" src="/thuong-hieu/logo-ngang-den.svg" alt="Beeftown" width="579" height="131" />
           <div>
-            <p class="dh-quan">BEEFTOWN{k.chiNhanh ? ` · ${k.chiNhanh.ten}` : ''}</p>
+            {k.chiNhanh && <p class="dh-quan">{k.chiNhanh.ten}</p>}
             <p class="dh-ten">{t.donDatHang}</p>
             <p class="dh-so">{t.so} <strong>{don.so_phieu}</strong> · {t.ngayDat} {dinhDangNgay(don.ngay_dat)}{don.trang_thai === 'nhap' ? t.banNhap : ''}</p>
           </div>
@@ -236,9 +236,12 @@ const tien = (x: number | null | undefined) => dinhDangTien(x, nn);
   .dh-nut { display: flex; gap: .5rem; flex-wrap: wrap; align-items: flex-start; }
   .dh-nut .nb-nut { min-height: 48px; }
   .dh-giay { background: var(--nb-the); border: 1px solid var(--kho-vach); border-radius: 12px; padding: 1.25rem; margin-top: 1rem; }
-  .dh-giay-dau { display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; }
+  /* Đầu tờ đơn: logo chính bản đen (Brand Guidelines 21/10/2026) rộng 200px — tờ này in ra giấy trắng ở máy in đen
+     trắng, bản đỏ ra xám nhạt. Logo là hình, không gõ lại chữ BEEFTOWN; dòng dưới chỉ còn tên chi nhánh. */
+  .dh-giay-dau { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; align-items: center; margin-bottom: 1rem; }
   .dh-giay-dau p { margin: 0; }
-  .dh-quan { font-size: .85rem; letter-spacing: .08em; }
+  .dh-logo { display: block; width: 200px; height: auto; }
+  .dh-quan { font-size: .85rem; }
   .dh-ten { font-size: 1.4rem; font-weight: 800; }
   .dh-so { font-size: .9rem; }
   .dh-giay-bang { margin: .5rem 0; }

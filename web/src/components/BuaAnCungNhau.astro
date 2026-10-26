@@ -27,8 +27,8 @@ interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; }
 const { ngonNgu, noiDung: nd } = Astro.props;
 const tChung = chu(ngonNgu);
 const coCon = nd.hien_do_uong_co_con === true;
-// Ảnh chưa dựng cỡ: KHÔNG dựng khung chờ ảnh (khung kem đậm trên nền kem đậm thành một vùng
-// trống) — lời mở khi đó trải hết bề ngang.
+// Ảnh chưa dựng cỡ: KHÔNG dựng khung chờ ảnh (khung xám --kem-dam trên dải xám nhạt chỉ là một vùng
+// trống không nói gì) — lời mở khi đó trải hết bề ngang.
 const coAnhBua = !!coAnh('mon-an-chia-se', '3x2');
 const t = dich(ngonNgu, {
   hieu: { vi: 'Thực đơn', en: 'The menu', ko: '메뉴' },

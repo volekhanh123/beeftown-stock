@@ -11,25 +11,26 @@
  *
  * PR 3 (trang chủ và thực đơn) thêm bốn phép đo: anh (ảnh và nhãn "Ảnh minh họa"), nhanKhay (thẻ "Cách đọc
  * nhãn khay"), trangChu (màn đầu và các khối của trang chủ), thucDon (trang Thực đơn) — và gỡ hai ngoại lệ
- * PR 2 để lại cho nó: thẻ nhãn khay nay cũng bị đo "không nền trắng", biểu tượng của nhãn món nay cũng 24px.
+ * PR 2 để lại cho nó: thẻ nhãn khay nay cũng bị đo màu nền, biểu tượng của nhãn món nay cũng 24px.
  * Không còn ngoại lệ nào trong file này.
  */
 
 export const PHEP_DO = {
   vungCham: 'nút, link điều hướng, link chân trang, summary, ô nhập, ô chọn giờ cao ≥ 48px',
-  dauTrang: 'đầu trang cao 64px (dưới 1080px) / 80px (từ 1080px), rộng hết cửa sổ; điều hướng 15–16px; logo ≥ 160px (dưới 360px: brandmark ≥ 48px), đúng tỷ lệ',
+  dauTrang: 'đầu trang nền đen, cao 64px (dưới 1080px) / 80px (từ 1080px), rộng hết cửa sổ; điều hướng 15–16px; logo phụ trắng chu-beeftown-trang ≥ 148px (≥ 176px từ 1080px; dưới 360px: brandmark trắng dau-bo-trang ≥ 48px), đúng tỷ lệ',
   ngonNgu: 'bộ chọn ngôn ngữ đủ 3 thứ tiếng, thứ tiếng đang xem đánh dấu bằng chữ đậm và nét gạch (không chỉ bằng màu)',
-  khongTrang: 'không nền trắng: mọi màu nền (kể cả dải màu background-image và phần tử giả ::before / ::after) thuộc bảng màu của trang công khai',
+  nenTrongBang: 'mọi màu nền (kể cả dải màu background-image và phần tử giả ::before / ::after) thuộc bảng 22/10/2026 của trang công khai; html và body nền trắng; ô đánh dấu tự vẽ',
   nut: 'nút: bo 4px, đệm ngang 20px, đúng màu theo bề mặt; mỗi nhóm nút một nút chính',
-  the: 'thẻ: nền Cream hoặc kem sau, đệm 20px (điện thoại) / 24px, viền mảnh, không bóng đổ; thẻ khác màu nền phía sau hoặc viền tương phản ≥ 1,35 : 1',
+  the: 'thẻ: nền trắng hoặc xám nhạt F4, đệm 20px (điện thoại) / 24px, viền mảnh, không bóng đổ; thẻ khác màu nền phía sau hoặc viền tương phản ≥ 1,35 : 1',
   cauHoi: 'câu hỏi thường gặp: mỗi hàng cao ≥ 56px, bấm được trên toàn chiều rộng, có biểu tượng mở/đóng',
-  bieuTuong: 'biểu tượng: 24px, nét 1,5px, Beef Red trên kem và Cream trên đỏ, đi kèm nhãn chữ',
+  bieuTuong: 'biểu tượng: 24px, nét 1,5px, đỏ trên nền sáng, trắng trên đỏ, trắng hoặc đỏ trên đen, đi kèm nhãn chữ',
   chu: 'chữ và lưới: chỉ Montserrat, chữ chạy 16/24px, h1 32/38 → 48/56px (tiếng Hàn cùng cỡ, dòng 1,28: 32/41 → 48/61px), lề điện thoại clamp(20px, 5vw, 40px) — 20px tới màn 400px, khung ≤ 1200px, khoảng cách khối 48–64 / 72–96px',
-  chanTrang: 'chân trang: dải đỏ, logo Cream, không hoa văn chữ, chữ ≥ 14px, điện thoại chia link 2 cột, dải pháp nhân nền Charcoal',
+  chanTrang: 'chân trang: hai dải đen (dải chính và dải pháp nhân), logo chính trắng logo-ngang-trang ≥ 160px đúng tỷ lệ, không hoa văn chữ, không tem, chữ ≥ 14px, điện thoại chia link 2 cột',
   anh: 'ảnh: ảnh AI nào cũng có nhãn "Ảnh minh họa" nhìn thấy, đọc được; nhãn của ảnh tách nền không che món (0 điểm ảnh đặc dưới nhãn); không bóng đổ; đúng tỷ lệ khung; không chữ, logo hay phần tử nào đè lên ảnh; chỉ ảnh màn đầu tải ngay',
-  nhanKhay: 'thẻ "Cách đọc nhãn khay": đặt thẳng, không bóng đổ, nền Cream hoặc kem sau, đủ 5 trường theo thứ tự, chỉ tên trường (không giá trị mẫu), đủ lớn để đọc',
-  trangChu: 'trang chủ: đủ 8 khối theo thứ tự, dải tối và dải đỏ giữ nguyên; màn đầu có ảnh, câu chính đứng trước ảnh trên điện thoại, hai cột cân nhau trên máy tính, tagline là một dải đỏ gọn không đè lên ảnh; ba bước, cả bữa, đi nhóm đúng bố cục',
-  thucDon: 'thực đơn: "Bò tại quầy" vẫn dải tối, có ảnh lát bò và thẻ đọc nhãn khay; "Món ăn" chưa có món thì có ảnh sốt chấm, đã có món thì từng nhóm kiểu cuốn menu (tên nhóm 28px tới cỡ h1, chữ hoa); thẻ món không tràn chữ, thẻ dẫn đầu từ 768px có ảnh bên phải chữ, dưới 600px món đứng sau món dẫn đầu là hàng gọn (ảnh 112–128px bên trái chữ, nhãn ảnh một dòng ở 20 % đáy khung), nhóm không có món dẫn đầu giữ thẻ to; "Đồ uống" có ảnh ba ly không cồn, chưa công bố đồ uống không cồn nào thì vẫn có tên các nhóm không cồn; không phần tử giá',
+  nhanKhay: 'thẻ "Cách đọc nhãn khay": đặt thẳng, không bóng đổ, nền trắng hoặc F4, đủ 5 trường theo thứ tự, chỉ tên trường (không giá trị mẫu), đủ lớn để đọc; logo chính đỏ ≥ 160px đúng tỷ lệ',
+  trangChu: 'trang chủ: đủ 8 khối theo thứ tự, dải đen và dải đỏ giữ nguyên, khối sáng trắng / F4; màn đầu có ảnh, không logo trong khối hình, câu chính đứng trước ảnh trên điện thoại, hai cột cân nhau trên máy tính, tagline "Pick it, grill it, love it!" là một dải đỏ gọn không đè lên ảnh; ba bước, cả bữa, đi nhóm đúng bố cục',
+  thucDon: 'thực đơn: "Bò tại quầy" vẫn dải đen, có ảnh lát bò và thẻ đọc nhãn khay; "Món ăn" chưa có món thì có ảnh sốt chấm, đã có món thì từng nhóm kiểu cuốn menu (tên nhóm 28px tới cỡ h1, chữ hoa); thẻ món không tràn chữ, thẻ dẫn đầu từ 768px có ảnh bên phải chữ, dưới 600px món đứng sau món dẫn đầu là hàng gọn (ảnh 112–128px bên trái chữ, nhãn ảnh một dòng ở 20 % đáy khung), nhóm không có món dẫn đầu giữ thẻ to; "Đồ uống" có ảnh ba ly không cồn, chưa công bố đồ uống không cồn nào thì vẫn có tên các nhóm không cồn; không phần tử giá',
+  logoDungNen: 'logo bộ 21/10/2026 đúng bản cho nền (bản trắng trên đen / đỏ, bản đỏ / đen trên nền sáng), không đặt trên ảnh, không kéo giãn; lockup ≥ 160px, brandmark ≥ 48px; không còn hình của bộ cũ (lớp nen-van-mo, net, trang-tri, net-goc; nền hay mặt nạ trỏ /thuong-hieu/)',
 };
 
 export function doGiaoDien() {
@@ -58,13 +59,28 @@ export function doGiaoDien() {
     return [r, g, b, a].some(Number.isNaN) ? null : { r, g, b, a };
   };
   const bo = c => (c ? `${c.r},${c.g},${c.b}` : '');
-  // Bảng màu của trang công khai (THUONG-HIEU.md mục 1 và 4) — chép tay, KHÔNG đọc CSS của trang.
-  const KEM = '240,227,208', KEM_SAU = '235,220,198', KEM_DAM = '231,213,188';
-  const DO = '167,12,12', DO_DAM = '137,6,7', THAN = '21,16,8';
-  const VANG = '245,170,20', DA = '184,169,140', VIEN_O = '122,115,102', KHUNG_TOI = '33,26,16';
-  const BANG = new Set([KEM, KEM_SAU, KEM_DAM, DO, DO_DAM, THAN, VANG, DA, VIEN_O, KHUNG_TOI]);
-  const NEN_SANG = new Set([KEM, KEM_SAU, KEM_DAM]);
+  // Bảng màu của trang công khai (THUONG-HIEU.md mục 1 và 4): bảng 22/10/2026 cùng màu pha màn hình 25/10/2026 —
+  // chép tay, KHÔNG đọc CSS của trang. VIEN_O, CHU_PHU là màu viền / chữ, không phải màu nền: BANG (màu nền được
+  // phép) không có hai màu đó — danh sách cho phép chỉ được bớt.
+  const TRANG = '255,255,255', NEN_NHAT = '244,244,244', VACH = '226,226,226';
+  const DO = '189,0,0', DO_DAM = '143,0,0', DEN = '0,0,0';
+  const VIEN_O = '118,118,118', CHU_PHU = '85,85,85';
+  const BANG = new Set([TRANG, NEN_NHAT, VACH, DO, DO_DAM, DEN]);
+  const NEN_SANG = new Set([TRANG, NEN_NHAT, VACH]);
   const NEN_DO = new Set([DO, DO_DAM]);
+  const NEN_TOI = new Set([DEN]);
+  // Tỷ lệ viewBox của bộ logo 21/10/2026 — chép tay (hàm chạy trong trang, không đọc được file);
+  // test-cong-khai-giao-dien.mjs nhóm 7 gác ba hằng này với viewBox của file thật.
+  const TI_LE_LOGO = { 'logo-ngang': 579 / 131, 'chu-beeftown': 430 / 61, 'dau-bo': 177 / 169 };
+  // Bề rộng tối thiểu: lockup (logo-ngang-*) 160px, brandmark (dau-bo-*) 48px là luật giữ từ bộ 09/10/2026 (guideline
+  // 21/10/2026 không ghi cỡ tối thiểu). Logo phụ (chu-beeftown-*) là tài sản mới: 148px, 176px từ màn 1080px — đủ một
+  // ô đầu bò khoảng trống trong thanh đầu trang 64 / 80px (guideline trang 3). Ngưỡng mới cho tài sản mới, không hạ 160.
+  const LOCKUP_TOI_THIEU = 160, BRANDMARK_TOI_THIEU = 48, LOGO_PHU_TOI_THIEU = RONG >= 1080 ? 176 : 148;
+  /** Tên gốc của một file logo (logo-ngang, chu-beeftown, dau-bo) và bản màu (do, den, trang); không phải logo → null. */
+  const logoCua = src => {
+    const m = /\/thuong-hieu\/(logo-ngang|chu-beeftown|dau-bo)-(do|den|trang)\.svg(?:$|[?#])/.exec(src ?? '');
+    return m ? { goc: m[1], ban: m[2] } : null;
+  };
   /** Màu nền gần như đặc đầu tiên phía sau một phần tử (nền nhuộm nhạt thì đi tiếp lên trên). */
   const nenSau = el => {
     for (let e = el; e; e = e.parentElement) {
@@ -82,10 +98,10 @@ export function doGiaoDien() {
     const [sang, toi] = [doSang(a), doSang(b)].sort((x, y) => y - x);
     return (sang + 0.05) / (toi + 0.05);
   };
-  // Viền thẻ nhạt nhất còn coi là "nhìn thấy": nét kẻ mảnh của chính hệ này (--vach: Charcoal 16 %) trên
-  // thẻ Cream đặt giữa nền Cream cho 1,40 : 1; ngưỡng 1,35 chừa phần làm tròn. Không lấy 3 : 1 của WCAG
-  // 1.4.11: mức đó dành cho ranh giới của thứ bấm được (ô nhập — viền --vien-o 3,71 : 1); thẻ chỉ gom
-  // nội dung, chữ trong thẻ vẫn đọc được khi không thấy viền. Charcoal 12 % (1,28 : 1) trở xuống là hỏng.
+  // Viền thẻ nhạt nhất còn coi là "nhìn thấy": ngưỡng 1,35 : 1 giữ từ bảng 09/10/2026 (khi đó vạch than 16 % trên
+  // thẻ kem cho 1,40 : 1). Không lấy 3 : 1 của WCAG 1.4.11: mức đó dành cho ranh giới của thứ bấm được (ô nhập —
+  // viền --vien-o 4,54 : 1); thẻ chỉ gom nội dung. Với bảng 22/10/2026, vạch E2 trên trắng chỉ 1,30 : 1 — dưới
+  // ngưỡng: thẻ trắng không được đặt trên nền trắng; .the trên nền trắng là F4 (khác nền phía sau).
   const VIEN_THE_TOI_THIEU = 1.35;
   const beMat = el => {
     const b = el.closest('.be-do, .be-toi, .be-kem, .be-kem-sau, .be-kem-dam');
@@ -113,26 +129,32 @@ export function doGiaoDien() {
     const cao = dau.getBoundingClientRect().height;
     const mong = RONG >= 1080 ? 80 : 64;
     if (Math.abs(cao - mong) > 0.6) kq.dauTrang.push(`cao ${cao.toFixed(1)}px, cần ${mong}px`);
-    if (bo(mau(getComputedStyle(dau).backgroundColor)) !== KEM) kq.dauTrang.push(`nền ${getComputedStyle(dau).backgroundColor}, cần Cream`);
+    if (bo(mau(getComputedStyle(dau).backgroundColor)) !== DEN) kq.dauTrang.push(`nền ${getComputedStyle(dau).backgroundColor}, cần đen`);
     // Thanh rộng hết bề ngang cửa sổ (trừ thanh cuộn thật nếu có). Hẹp hơn nghĩa là trang đang chừa một dải
     // trống bên phải: scrollbar-gutter: stable làm Chromium chừa 15px cả khi không có thanh cuộn nào chiếm
-    // chỗ (trình duyệt của kiểm thử và của máy chụp ảnh) — mọi ảnh chụp có một dải kem thừa, mọi phép đo lệch 15px.
+    // chỗ (trình duyệt của kiểm thử và của máy chụp ảnh) — mọi ảnh chụp có một dải trắng thừa, mọi phép đo lệch 15px.
     const rongDau = dau.getBoundingClientRect().width;
     if (Math.abs(rongDau - document.documentElement.clientWidth) > 0.5) {
       kq.dauTrang.push(`thanh rộng ${rongDau.toFixed(1)}px trong cửa sổ ${document.documentElement.clientWidth}px — trang đang chừa một dải trống bên phải`);
     }
-    // Guideline: lockup rộng tối thiểu 160px; hẹp hơn thì dùng brandmark (đầu bò), tối thiểu 48px. Thanh chỉ
-    // được đổi sang brandmark khi màn dưới 360px — không đủ chỗ cho lockup cạnh nút danh mục.
+    // Thanh đen cao 64 / 80px: logo phụ trắng (chữ BEEFTOWN, không tagline — tagline của lockup quá nhỏ ở cỡ này),
+    // rộng ≥ 148px (≥ 176px từ 1080px) để chừa đủ khoảng trống guideline. Thanh chỉ được đổi sang brandmark trắng
+    // (đầu bò, ≥ 48px — luật giữ từ bộ 09/10/2026) khi màn dưới 360px — không đủ chỗ cạnh nút danh mục.
     const logo = [...dau.querySelectorAll('.dt-logo img')].filter(hien);
     if (logo.length !== 1) kq.dauTrang.push(`cần đúng một logo hiện trên thanh, thấy ${logo.length}`);
     else {
       const k = logo[0].getBoundingClientRect();
-      const tiLe = logo[0].naturalWidth && logo[0].naturalHeight ? logo[0].naturalWidth / logo[0].naturalHeight
+      const src = logo[0].getAttribute('src') ?? '';
+      // Tỷ lệ của bộ logo lấy từ viewBox (TI_LE_LOGO — khung số nguyên tach-logo.mjs ghi, cùng số với thẻ <img>).
+      const tiLe = logoCua(src) ? TI_LE_LOGO[logoCua(src).goc]
+        : logo[0].naturalWidth && logo[0].naturalHeight ? logo[0].naturalWidth / logo[0].naturalHeight
         : Number(logo[0].getAttribute('width')) / Number(logo[0].getAttribute('height'));
-      const laLockup = /logo-ngang-do\.svg$/.test(logo[0].getAttribute('src') ?? '');
-      if (laLockup && k.width < 159.5) kq.dauTrang.push(`logo rộng ${k.width.toFixed(1)}px — guideline: lockup tối thiểu 160px`);
-      if (!laLockup && (RONG >= 360 || k.width < 47.5 || !/dau-bo-do\.svg$/.test(logo[0].getAttribute('src') ?? ''))) {
-        kq.dauTrang.push(`từ 360px thanh phải dùng lockup; dưới 360px là brandmark đầu bò ≥ 48px — thấy ${logo[0].getAttribute('src')} rộng ${k.width.toFixed(1)}px`);
+      const laLogoPhu = /\/chu-beeftown-trang\.svg$/.test(src);
+      if (laLogoPhu && (RONG < 360 || k.width < LOGO_PHU_TOI_THIEU - 0.5)) {
+        kq.dauTrang.push(`logo phụ rộng ${k.width.toFixed(1)}px ở màn ${RONG}px — cần ≥ ${LOGO_PHU_TOI_THIEU}px từ 360px (dưới 360px dùng brandmark)`);
+      }
+      if (!laLogoPhu && (RONG >= 360 || k.width < BRANDMARK_TOI_THIEU - 0.5 || !/\/dau-bo-trang\.svg$/.test(src))) {
+        kq.dauTrang.push(`từ 360px thanh dùng logo phụ trắng chu-beeftown-trang.svg; dưới 360px là brandmark trắng dau-bo-trang.svg ≥ 48px — thấy ${src} rộng ${k.width.toFixed(1)}px`);
       }
       if (Math.abs(k.width / k.height - tiLe) > 0.03) kq.dauTrang.push(`logo bị kéo giãn: ${k.width.toFixed(1)} × ${k.height.toFixed(1)}`);
     }
@@ -185,10 +207,10 @@ export function doGiaoDien() {
     for (const m of muc) if (so(getComputedStyle(m).fontSize) < 14) kq.ngonNgu.push(`${ten} ${moTa(m)} cỡ ${getComputedStyle(m).fontSize}, cần ≥ 14px`);
   }
 
-  // --- 4. Không nền trắng -----------------------------------------------------------------------
+  // --- 4. Màu nền trong bảng ------------------------------------------------------------------------
   // Nền khách nhìn thấy đến từ ba chỗ: background-color, background-image (dải màu — gradient) và phần tử
-  // giả ::before / ::after. Đo cả ba: tô trắng bằng linear-gradient(#fff, #fff) hay bằng một ::before phủ
-  // kín thì background-color của phần tử vẫn đúng bảng màu mà khách vẫn thấy nền trắng.
+  // giả ::before / ::after. Đo cả ba: tô một màu ngoài bảng (kem cũ, trắng ngà, xám lạ) bằng linear-gradient hay
+  // bằng một ::before phủ kín thì background-color của phần tử vẫn đúng bảng màu mà khách vẫn thấy màu lạ.
   const nenLa = new Map();
   const ghiNenLa = (chuoi, noi) => { if (!nenLa.has(chuoi)) nenLa.set(chuoi, noi); };
   const xetNen = (cs, noi) => {
@@ -206,23 +228,38 @@ export function doGiaoDien() {
       if (d ? (d.a > 0 && !BANG.has(bo(d))) : true) ghiNenLa(`${m} (trong background-image)`, noi);
     }
   };
+  // Nền hay mặt nạ trỏ /thuong-hieu/ (hình của bộ cũ đặt bằng CSS) gom ngay trong vòng này — mục 15 đọc lại, khỏi
+  // duyệt cả trang và gọi getComputedStyle thêm một lượt.
+  const nenTroThuongHieu = [];
+  const xetThuongHieu = (cs, noi) => {
+    const trong = `${cs.backgroundImage} ${cs.maskImage ?? ''} ${cs.webkitMaskImage ?? ''}`;
+    if (/\/thuong-hieu\//.test(trong)) nenTroThuongHieu.push(`${noi.slice(0, 50)}: nền / mặt nạ trỏ ${trong.match(/\/thuong-hieu\/[^"')]+/)?.[0]}`);
+  };
   for (const el of [document.documentElement, document.body, ...document.body.querySelectorAll('*')]) {
     if (el !== document.documentElement && !hien(el)) continue;
-    xetNen(getComputedStyle(el), moTa(el));
+    const cs = getComputedStyle(el);
+    xetNen(cs, moTa(el));
+    xetThuongHieu(cs, moTa(el));
     for (const gia of ['::before', '::after']) {
       const csGia = getComputedStyle(el, gia);
       // content none / normal: phần tử giả không được sinh ra.
       if (csGia.content === 'none' || csGia.content === 'normal' || csGia.display === 'none') continue;
       xetNen(csGia, `${moTa(el)}${gia}`);
+      xetThuongHieu(csGia, `${moTa(el)}${gia}`);
     }
     if (el.matches('input[type="file"]')) xetNen(getComputedStyle(el, '::file-selector-button'), `${moTa(el)}::file-selector-button`);
   }
-  kq.khongTrang = [...nenLa].map(([m, el]) => `${m} ở ${el}`);
-  // Ô đánh dấu, ô chọn một vẽ kiểu hệ thống thì nền trắng mà getComputedStyle không thấy (trình duyệt tự
-  // vẽ): ô nào còn hiện ra thì phải là ô tự vẽ (appearance: none).
+  kq.nenTrongBang = [...nenLa].map(([m, el]) => `${m} ở ${el}`);
+  // Nền trang công khai là trắng (QĐ4, 25/10/2026): body nền trắng; html trắng hoặc trong suốt (nền của body phủ cả
+  // khung nhìn).
+  const [nenHtml, nenBody] = [mau(getComputedStyle(document.documentElement).backgroundColor), mau(getComputedStyle(document.body).backgroundColor)];
+  if (!nenBody || nenBody.a < 1 || bo(nenBody) !== TRANG) kq.nenTrongBang.push(`body nền ${getComputedStyle(document.body).backgroundColor}, cần trắng`);
+  if (nenHtml && nenHtml.a > 0 && bo(nenHtml) !== TRANG) kq.nenTrongBang.push(`html nền ${getComputedStyle(document.documentElement).backgroundColor}, cần trắng hoặc trong suốt`);
+  // Ô đánh dấu, ô chọn một vẽ kiểu hệ thống thì màu do trình duyệt tự chọn mà getComputedStyle không thấy: ô nào
+  // còn hiện ra thì phải là ô tự vẽ (appearance: none) bằng token của bảng.
   for (const o of moi('input[type="checkbox"], input[type="radio"]').filter(hien)) {
     if (o.closest('[aria-hidden="true"]')) continue;
-    if (getComputedStyle(o).appearance !== 'none') kq.khongTrang.push(`${moTa(o)} name="${o.name}" vẽ kiểu hệ thống (nền trắng)`);
+    if (getComputedStyle(o).appearance !== 'none') kq.nenTrongBang.push(`${moTa(o)} name="${o.name}" vẽ kiểu hệ thống`);
   }
 
   // --- 5. Nút -----------------------------------------------------------------------------------
@@ -239,14 +276,14 @@ export function doGiaoDien() {
     const [nen, chu, vien] = [bo(mau(cs.backgroundColor)), bo(mau(cs.color)), bo(mau(cs.borderTopColor))];
     const nenTrong = (mau(cs.backgroundColor)?.a ?? 0) === 0;
     if (n.classList.contains('nut-chinh')) {
-      const mong = be === 'do' ? [KEM, DO_DAM] : [DO, KEM];
+      const mong = be === 'do' ? [TRANG, DO_DAM] : [DO, TRANG];
       if (nen !== mong[0] || chu !== mong[1]) kq.nut.push(`${ten} (nút chính, bề mặt ${be}) nền ${cs.backgroundColor} chữ ${cs.color}`);
     } else if (n.classList.contains('nut-vien')) {
-      if (be === 'sang' && (nen !== KEM || nenTrong || chu !== DO || vien !== DO)) {
-        kq.nut.push(`${ten} (nút phụ trên kem) cần nền Cream, chữ và viền Beef Red — nền ${cs.backgroundColor} chữ ${cs.color} viền ${cs.borderTopColor}`);
+      if (be === 'sang' && (nen !== TRANG || nenTrong || chu !== DO || vien !== DO)) {
+        kq.nut.push(`${ten} (nút phụ trên nền sáng) cần nền trắng, chữ và viền đỏ — nền ${cs.backgroundColor} chữ ${cs.color} viền ${cs.borderTopColor}`);
       }
-      if (be !== 'sang' && (chu !== KEM || vien !== KEM)) {
-        kq.nut.push(`${ten} (nút phụ, bề mặt ${be}) cần chữ và viền Cream — chữ ${cs.color} viền ${cs.borderTopColor}`);
+      if (be !== 'sang' && (chu !== TRANG || vien !== TRANG)) {
+        kq.nut.push(`${ten} (nút phụ, bề mặt ${be}) cần chữ và viền trắng — chữ ${cs.color} viền ${cs.borderTopColor}`);
       }
       if (so(cs.borderTopWidth) < 1) kq.nut.push(`${ten} (nút phụ) không có viền`);
     }
@@ -262,7 +299,7 @@ export function doGiaoDien() {
     const cs = getComputedStyle(t);
     const ten = moTa(t).slice(0, 60);
     if (cs.boxShadow !== 'none') kq.the.push(`${ten} có bóng đổ ${cs.boxShadow}`);
-    if (![KEM, KEM_SAU].includes(bo(mau(cs.backgroundColor)))) kq.the.push(`${ten} nền ${cs.backgroundColor}, cần Cream hoặc kem sau`);
+    if (![TRANG, NEN_NHAT].includes(bo(mau(cs.backgroundColor)))) kq.the.push(`${ten} nền ${cs.backgroundColor}, cần trắng hoặc xám nhạt F4`);
     const mong = DIEN_THOAI ? 20 : 24;
     if (Math.abs(so(cs.paddingRight) - mong) > 0.5 || Math.abs(so(cs.paddingBottom) - mong) > 0.5) {
       kq.the.push(`${ten} đệm phải ${cs.paddingRight}, dưới ${cs.paddingBottom} — cần ${mong}px`);
@@ -270,7 +307,7 @@ export function doGiaoDien() {
     const canh = ['Top', 'Right', 'Bottom', 'Left'].filter(c => so(cs[`border${c}Width`]) >= 1 && (mau(cs[`border${c}Color`])?.a ?? 0) > 0);
     if (!canh.length) kq.the.push(`${ten} không có viền hay nét nào tách khỏi nền`);
     // Thẻ phải nhìn ra là thẻ: nền của nó khác nền phía sau, HOẶC có một nét viền đủ rõ trên nền phía sau.
-    // Thẻ Cream nằm trên Cream với viền gần trong suốt thì mọi số đo khác vẫn đạt mà khách không thấy thẻ.
+    // Thẻ trắng nằm trên trắng với viền E2 (1,30 : 1) thì mọi số đo khác vẫn đạt mà khách không thấy thẻ.
     const nenThe = mau(cs.backgroundColor);
     const nenNgoai = nenSau(t.parentElement);
     if (nenThe && nenNgoai && bo(nenThe) === nenNgoai) {
@@ -314,8 +351,10 @@ export function doGiaoDien() {
     }
     const chu = bo(mau(getComputedStyle(s).color));
     const nen = nenSau(s);
-    if (NEN_SANG.has(nen) && ![DO, DO_DAM].includes(chu)) kq.bieuTuong.push(`biểu tượng trong ${noi} trên nền kem màu rgb(${chu}), cần Beef Red`);
-    if (NEN_DO.has(nen) && chu !== KEM) kq.bieuTuong.push(`biểu tượng trong ${noi} trên nền đỏ màu rgb(${chu}), cần Cream`);
+    if (NEN_SANG.has(nen) && ![DO, DO_DAM].includes(chu)) kq.bieuTuong.push(`biểu tượng trong ${noi} trên nền sáng màu rgb(${chu}), cần đỏ`);
+    if (NEN_DO.has(nen) && chu !== TRANG) kq.bieuTuong.push(`biểu tượng trong ${noi} trên nền đỏ màu rgb(${chu}), cần trắng`);
+    // Trên nền đen: trắng, hoặc đỏ (đỏ trên đen 3,16 : 1 — đủ 3 : 1 cho hình mang nghĩa, không đủ cho chữ thường).
+    if (NEN_TOI.has(nen) && ![TRANG, DO].includes(chu)) kq.bieuTuong.push(`biểu tượng trong ${noi} trên nền đen màu rgb(${chu}), cần trắng hoặc đỏ`);
     const bam = s.closest('a, button, summary');
     if (bam && !bam.textContent.trim()) kq.bieuTuong.push(`biểu tượng hành động trong ${moTa(bam)} không có nhãn chữ`);
   }
@@ -380,14 +419,17 @@ export function doGiaoDien() {
   else {
     if (document.querySelector('.hoa-van-chu')) kq.chanTrang.push('còn hoa văn chữ BEEFTOWN (.hoa-van-chu)');
     const chinh = chan.querySelector('.ct-chinh'), day = chan.querySelector('.ct-day');
-    if (!chinh || bo(mau(getComputedStyle(chinh).backgroundColor)) !== DO) kq.chanTrang.push('dải chính không phải nền Beef Red');
-    if (!day || bo(mau(getComputedStyle(day).backgroundColor)) !== THAN) kq.chanTrang.push('dải pháp nhân không phải nền Charcoal');
-    const logo = chan.querySelector('img[src$="/thuong-hieu/logo-ngang-kem.svg"]');
-    if (!logo || !hien(logo)) kq.chanTrang.push('không thấy logo Cream (logo-ngang-kem.svg)');
+    if (!chinh || bo(mau(getComputedStyle(chinh).backgroundColor)) !== DEN) kq.chanTrang.push('dải chính không phải nền đen');
+    if (!day || bo(mau(getComputedStyle(day).backgroundColor)) !== DEN) kq.chanTrang.push('dải pháp nhân không phải nền đen');
+    const logo = chan.querySelector('img[src$="/thuong-hieu/logo-ngang-trang.svg"]');
+    if (!logo || !hien(logo)) kq.chanTrang.push('không thấy logo chính trắng (logo-ngang-trang.svg)');
     else {
       const k = logo.getBoundingClientRect();
-      if (k.width < 159.5 || Math.abs(k.width / k.height - 446 / 124) > 0.03) kq.chanTrang.push(`logo ${k.width.toFixed(1)} × ${k.height.toFixed(1)}px — cần ≥ 160px, đúng tỷ lệ`);
+      if (k.width < LOCKUP_TOI_THIEU - 0.5 || Math.abs(k.width / k.height - TI_LE_LOGO['logo-ngang']) > 0.03) {
+        kq.chanTrang.push(`logo ${k.width.toFixed(1)} × ${k.height.toFixed(1)}px — cần ≥ ${LOCKUP_TOI_THIEU}px (luật giữ từ bộ 09/10/2026), đúng tỷ lệ 579 / 131`);
+      }
     }
+    if (chan.querySelector('img[src*="tem-tron"]')) kq.chanTrang.push('chân trang còn tem tròn (tem-tron) — một bề mặt một dấu thương hiệu');
     const nho = new Set();
     const diChan = document.createTreeWalker(chan, NodeFilter.SHOW_TEXT);
     for (let n = diChan.nextNode(); n; n = diChan.nextNode()) {
@@ -456,7 +498,7 @@ export function doGiaoDien() {
         if (dac) kq.anh.push(`${ten}: nhãn "${NHAN_ANH[NGON_NGU]}" che món — ${dac} điểm ảnh đặc (độ đục ≥ 50 %) dưới nhãn (${((dac / (d.length / 4)) * 100).toFixed(1)} %)`);
       }
     }
-    // Nhãn có nền riêng (Charcoal có độ trong) nên đọc được trên vùng ảnh nào cũng vậy: tính tương phản của chữ
+    // Nhãn có nền riêng (đen có độ trong) nên đọc được trên vùng ảnh nào cũng vậy: tính tương phản của chữ
     // với nền nhãn pha lên vùng ảnh SÁNG NHẤT có thể (trắng tinh).
     const [chuN, nenN] = [mau(csN.color), mau(csN.backgroundColor)];
     if (!chuN || !nenN || nenN.a < 0.5) kq.anh.push(`${ten}: nhãn không có nền riêng (${csN.backgroundColor}) — chữ nằm thẳng trên ảnh thì không chắc đọc được`);
@@ -467,7 +509,7 @@ export function doGiaoDien() {
     }
     if (csF.boxShadow !== 'none' || getComputedStyle(a).boxShadow !== 'none' || /drop-shadow/.test(`${csF.filter}${getComputedStyle(a).filter}`)) kq.anh.push(`${ten}: ảnh có bóng đổ`);
     if (csF.transform !== 'none' || csF.rotate !== 'none') kq.anh.push(`${ten}: ảnh bị xoay / biến dạng (${csF.transform})`);
-    // Nền chờ của khung (lúc ảnh chưa về) phải là màu của bảng — phép đo khongTrang kiểm; ở đây kiểm khung giữ
+    // Nền chờ của khung (lúc ảnh chưa về) phải là màu của bảng — phép đo nenTrongBang kiểm; ở đây kiểm khung giữ
     // đúng tỷ lệ của file ảnh đang hiện, không kéo giãn.
     const ka = a.getBoundingClientRect();
     if (a.complete && a.naturalWidth > 0 && Math.abs(ka.width / ka.height - a.naturalWidth / a.naturalHeight) > 0.02) {
@@ -525,7 +567,7 @@ export function doGiaoDien() {
     if (!hien(t)) continue;
     if (cs.transform !== 'none' || cs.rotate !== 'none') kq.nhanKhay.push(`thẻ bị nghiêng (transform ${cs.transform}, rotate ${cs.rotate})`);
     if (cs.boxShadow !== 'none' || cs.filter !== 'none') kq.nhanKhay.push(`thẻ có bóng đổ (${cs.boxShadow}; filter ${cs.filter})`);
-    if (![KEM, KEM_SAU].includes(bo(mau(cs.backgroundColor)))) kq.nhanKhay.push(`thẻ nền ${cs.backgroundColor}, cần Cream hoặc kem sau`);
+    if (![TRANG, NEN_NHAT].includes(bo(mau(cs.backgroundColor)))) kq.nhanKhay.push(`thẻ nền ${cs.backgroundColor}, cần trắng hoặc F4`);
     if (!['Top', 'Right', 'Bottom', 'Left'].every(c => so(cs[`border${c}Width`]) >= 1 && so(cs[`border${c}Width`]) <= 2)) kq.nhanKhay.push('thẻ cần viền mảnh 1–2px ở cả bốn cạnh');
     const k = t.getBoundingClientRect();
     const rongToiThieu = MAY_TINH ? 640 : Math.min(RONG - 2 * LE, 520);
@@ -545,7 +587,8 @@ export function doGiaoDien() {
     const logo = t.querySelector('img');
     if (logo && hien(logo)) {
       const kl = logo.getBoundingClientRect();
-      if (kl.width < 159.5 || Math.abs(kl.width / kl.height - 446 / 124) > 0.03) kq.nhanKhay.push(`logo trên thẻ ${kl.width.toFixed(1)} × ${kl.height.toFixed(1)}px — guideline: lockup ≥ 160px, đúng tỷ lệ`);
+      if (!/\/thuong-hieu\/logo-ngang-do\.svg$/.test(logo.getAttribute('src') ?? '')) kq.nhanKhay.push(`logo trên thẻ là ${logo.getAttribute('src')} — thẻ trắng dùng logo chính đỏ logo-ngang-do.svg`);
+      if (kl.width < LOCKUP_TOI_THIEU - 0.5 || Math.abs(kl.width / kl.height - TI_LE_LOGO['logo-ngang']) > 0.03) kq.nhanKhay.push(`logo trên thẻ ${kl.width.toFixed(1)} × ${kl.height.toFixed(1)}px — lockup ≥ ${LOCKUP_TOI_THIEU}px (luật giữ từ bộ 09/10/2026), đúng tỷ lệ`);
     }
   }
 
@@ -556,9 +599,10 @@ export function doGiaoDien() {
   const coAnh = (khoi, id) => [...(khoi?.querySelectorAll('figure.anh img') ?? [])].find(a => (a.getAttribute('src') ?? '').includes(`/anh/${id}-`)) ?? null;
   if (LA_TRANG_CHU) {
     const sai = c => kq.trangChu.push(c);
-    // Tám khối theo thứ tự (brief 06/10/2026); bề mặt giữ như đang chạy (Khánh quyết 11/10/2026).
-    const KHOI = [['màn đầu', '.kmd', KEM], ['ba bước', '#trai-nghiem', KEM], ['quầy chọn bò', '.qcb', THAN], ['cả bữa', '.bacn', KEM_DAM],
-      ['đi nhóm', '.dcn', DO], ['tầng 3', '#tang-3', KEM], ['câu hỏi', '.ch', KEM], ['chân trang', 'footer', null]];
+    // Tám khối theo thứ tự (brief 06/10/2026); bề mặt giữ như đang chạy (Khánh quyết 11/10/2026), màu theo bảng
+    // 22/10/2026: khối sáng trắng, "Cả bữa" (.be-kem-dam) xám nhạt F4, dải đen, dải đỏ.
+    const KHOI = [['màn đầu', '.kmd', TRANG], ['ba bước', '#trai-nghiem', TRANG], ['quầy chọn bò', '.qcb', DEN], ['cả bữa', '.bacn', NEN_NHAT],
+      ['đi nhóm', '.dcn', DO], ['tầng 3', '#tang-3', TRANG], ['câu hỏi', '.ch', TRANG], ['chân trang', 'footer', null]];
     let truoc = -Infinity;
     for (const [ten, chon, nen] of KHOI) {
       const el = document.querySelector(ten === 'chân trang' ? 'footer' : `main ${chon}`);
@@ -589,8 +633,9 @@ export function doGiaoDien() {
         const [kh1, kdan, knut, kanh, ktin, khinh] = [h1, dan, nut, anhDau, tin, hinh].map(e => e.getBoundingClientRect());
         if (anhDau.getAttribute('loading') !== 'eager' || anhDau.getAttribute('fetchpriority') !== 'high') sai('ảnh màn đầu phải tải ngay: loading="eager", fetchpriority="high"');
         if (kanh.top + scrollY >= innerHeight) sai(`ảnh màn đầu bắt đầu ở ${(kanh.top + scrollY).toFixed(0)}px, dưới màn hình đầu (${innerHeight}px)`);
-        if (kmd.querySelector('.nen-van-mo') && [...kmd.querySelectorAll('.nen-van-mo')].some(v => hien(v) && v.getBoundingClientRect().height > 120)) sai('màn đầu còn mảng vân mỡ đỏ lớn — hình chính phải là ảnh');
-        if (kmd.querySelector('img[src*="tem-tron"], img[src*="logo-"]')) sai('màn đầu đặt logo hay tem trong khối hình — không đặt logo cạnh hay trên ảnh');
+        // Hình chính là ảnh; không logo, logo phụ, brandmark nào trong màn đầu (đầu trang đã có logo). Hình trang trí
+        // của bộ cũ (vân mỡ, tem) đo ở logoDungNen trên mọi trang.
+        if (kmd.querySelector('img[src*="/thuong-hieu/"]')) sai('màn đầu đặt hình thương hiệu (logo, logo phụ, brandmark) trong khối — không đặt logo cạnh hay trên ảnh');
         if (!HAI_COT) {
           // Một cột. Từ 360px: câu chính → mô tả → 2 nút → ảnh → dòng địa điểm. Dưới 360px (điện thoại rất nhỏ,
           // máy tính phóng to 400 %) phần chữ dài hơn một màn hình, nên ảnh lên ngay sau câu chính.
@@ -615,11 +660,13 @@ export function doGiaoDien() {
           if (ktin.top < Math.max(knut.bottom, khinh.bottom) - 0.5) sai('máy tính: dòng địa điểm phải nằm dưới cả cột chữ lẫn khối hình');
           if (Math.abs(ktin.left - kkhung.left) > 1 || Math.abs(ktin.right - kkhung.right) > 1) sai('máy tính: dòng địa điểm phải trải hết bề ngang khung, dưới cả hai cột');
         }
-        // Tagline: một dải Beef Red gọn cạnh hoặc dưới ảnh — không đè lên ảnh.
-        if (!dai || !hien(dai)) sai('màn đầu thiếu dải tagline "Pick it. Grill it. Love it."');
+        // Tagline (theo logo 21/10/2026, Khánh chốt 26/10/2026): một dải đỏ gọn cạnh hoặc dưới ảnh — không đè lên ảnh.
+        // Chữ chép tay (hàm chạy trong trang); THUONG_HIEU.khauHieu của chu.ts do test-cong-khai-nhan-dien.mjs gác.
+        const TAGLINE = 'Pick it, grill it, love it!';
+        if (!dai || !hien(dai)) sai(`màn đầu thiếu dải tagline "${TAGLINE}"`);
         else {
           const [kdai, csD] = [dai.getBoundingClientRect(), getComputedStyle(dai)];
-          if (dai.textContent.replace(/\s+/g, ' ').trim() !== 'Pick it. Grill it. Love it.') sai(`tagline ghi «${dai.textContent.trim()}»`);
+          if (dai.textContent.replace(/\s+/g, ' ').trim() !== TAGLINE) sai(`tagline ghi «${dai.textContent.trim()}», cần «${TAGLINE}»`);
           if (dai.getAttribute('lang') !== 'en' && !dai.closest('[lang="en"]') && NGON_NGU !== 'en') sai('tagline tiếng Anh thiếu lang="en"');
           // Mắt thấy dải này; trình đọc màn hình thì đọc tagline ĐÚNG MỘT lần — ở dòng hiệu của khối ba bước ngay sau.
           // Chữ đọc được = mọi nút chữ không nằm trong aria-hidden="true" của màn đầu và khối ba bước.
@@ -630,11 +677,11 @@ export function doGiaoDien() {
             for (let n = di.nextNode(); n; n = di.nextNode()) if (!n.parentElement.closest('[aria-hidden="true"]')) chu += ` ${n.nodeValue}`;
             return chu.replace(/\s+/g, ' ');
           };
-          const soLanDoc = [kmd, document.querySelector('#trai-nghiem')].filter(Boolean).map(docDuoc).join(' ').split('Pick it. Grill it. Love it.').length - 1;
+          const soLanDoc = [kmd, document.querySelector('#trai-nghiem')].filter(Boolean).map(docDuoc).join(' ').split(TAGLINE).length - 1;
           if (soLanDoc !== 1) sai(`trình đọc màn hình đọc tagline ${soLanDoc} lần ở màn đầu và khối ba bước — cần đúng 1 lần`);
           if (giao(kdai, kanh)) sai('dải tagline đè lên ảnh');
-          if (bo(mau(csD.backgroundColor)) !== DO) sai(`dải tagline nền ${csD.backgroundColor}, cần Beef Red`);
-          if (bo(mau(csD.color)) !== KEM) sai(`chữ tagline màu ${csD.color}, cần Cream`);
+          if (bo(mau(csD.backgroundColor)) !== DO) sai(`dải tagline nền ${csD.backgroundColor}, cần đỏ`);
+          if (bo(mau(csD.color)) !== TRANG) sai(`chữ tagline màu ${csD.color}, cần trắng`);
           if (kdai.height > 72) sai(`dải tagline cao ${kdai.height.toFixed(0)}px — phải gọn (≤ 72px)`);
           if (so(csD.fontSize) < 14) sai(`chữ tagline ${csD.fontSize}, cần ≥ 14px`);
           const sat = Math.min(Math.abs(kdai.top - kanh.bottom), Math.abs(kdai.left - kanh.right));
@@ -718,7 +765,8 @@ export function doGiaoDien() {
       if (kn.bottom > kh.top + 0.5) sai('cả bữa: nút thực đơn phải đứng trước danh sách nhóm món');
     }
 
-    // Đi nhóm: ảnh bữa ăn thay hình vẽ; nút ngay sau đoạn giải thích; không hoa văn tranh với ảnh.
+    // Đi nhóm: ảnh bữa ăn thay hình vẽ; nút ngay sau đoạn giải thích. (Hoa văn vân mỡ / nét trang trí của bộ cũ
+    // không còn trên trang nào — logoDungNen đo trên mọi trang, thay cho phép "không chồng lên ảnh" của khối này.)
     const dcn = document.querySelector('.dcn');
     const anhNhom = coAnh(dcn, 'bua-an-cung-ban');
     if (!anhNhom) sai('đi nhóm: thiếu ảnh bua-an-cung-ban');
@@ -729,19 +777,13 @@ export function doGiaoDien() {
       const khe = nutD.getBoundingClientRect().top - chuD.getBoundingClientRect().bottom;
       if (khe < 0 || khe > 40) sai(`đi nhóm: nút cách đoạn giải thích ${khe.toFixed(0)}px — phải ngay sau (0–40px)`);
     }
-    if (anhNhom && hien(anhNhom)) {
-      const ka = anhNhom.getBoundingClientRect();
-      for (const v of [...(dcn?.querySelectorAll('.nen-van-mo, .trang-tri') ?? [])].filter(hien)) {
-        if (giao(v.getBoundingClientRect(), ka)) sai(`đi nhóm: ${moTa(v).slice(0, 40)} chồng lên vùng ảnh — hoa văn không tranh với ảnh`);
-      }
-    }
   }
 
   // --- 14. Trang Thực đơn ---------------------------------------------------------------------------
   kq.thucDon = [];
   if (LA_THUC_DON) {
     const quay = document.getElementById('bo-tai-quay'), monAn = document.getElementById('mon-an');
-    if (!quay || bo(mau(getComputedStyle(quay).backgroundColor)) !== THAN) kq.thucDon.push('"Bò tại quầy" phải giữ nền tối (Charcoal)');
+    if (!quay || bo(mau(getComputedStyle(quay).backgroundColor)) !== DEN) kq.thucDon.push('"Bò tại quầy" phải giữ nền đen');
     if (!coAnh(quay, 'bo-cat-lat')) kq.thucDon.push('"Bò tại quầy": thiếu ảnh bo-cat-lat');
     if (!quay?.querySelector('.nk-the')) kq.thucDon.push('"Bò tại quầy": thiếu thẻ đọc nhãn khay');
     if (quay?.querySelector('.khung-anh')) kq.thucDon.push('"Bò tại quầy": còn khung vẽ khay');
@@ -811,6 +853,31 @@ export function doGiaoDien() {
       if (tab.getBoundingClientRect().height < 47.5) kq.thucDon.push(`mục «${tab.textContent.trim()}» của thanh chọn phần cao ${tab.getBoundingClientRect().height.toFixed(1)}px, cần ≥ 48px`);
     }
   }
+
+  // --- 15. Logo đúng bản cho nền; không còn hình của bộ cũ ------------------------------------------------
+  // Guideline 21/10/2026 trang 4: bản đỏ / đen trên nền sáng (đầu bò trắng), bản trắng trên đỏ và đen (đầu bò khoét lộ
+  // nền); không đổi màu ngoài ba bản, không kéo giãn, không đặt lên ảnh. Bộ hình cũ (vân mỡ, hương thảo, steak, tem
+  // tròn, chữ lặp) bỏ hết (quyết định 26/10/2026): không phần tử nào còn lớp trang trí của nó, không nền hay mặt nạ
+  // nào trỏ /thuong-hieu/ (logo chỉ đặt bằng <img>).
+  kq.logoDungNen = [];
+  for (const anhLogo of moi('img[src*="/thuong-hieu/"]').filter(hien)) {
+    const src = anhLogo.getAttribute('src') ?? '';
+    const ten = src.replace(/^.*\/thuong-hieu\//, '');
+    const logo = logoCua(src);
+    if (!logo) { kq.logoDungNen.push(`${ten}: không phải file của bộ logo 21/10/2026 (logo-ngang / chu-beeftown / dau-bo × do / den / trang)`); continue; }
+    if (anhLogo.closest('figure.anh')) kq.logoDungNen.push(`${ten}: logo nằm trong khung ảnh — không đặt logo lên ảnh`);
+    const nen = nenSau(anhLogo);
+    if (logo.ban === 'trang' && !NEN_TOI.has(nen) && !NEN_DO.has(nen)) kq.logoDungNen.push(`${ten}: bản trắng trên nền rgb(${nen}) — bản trắng chỉ trên đen hoặc đỏ`);
+    if (logo.ban !== 'trang' && !NEN_SANG.has(nen)) kq.logoDungNen.push(`${ten}: bản ${logo.ban === 'do' ? 'đỏ' : 'đen'} trên nền rgb(${nen}) — trên đen / đỏ dùng bản trắng`);
+    const k = anhLogo.getBoundingClientRect();
+    if (Math.abs(k.width / k.height - TI_LE_LOGO[logo.goc]) > 0.03) kq.logoDungNen.push(`${ten}: bị kéo giãn ${k.width.toFixed(1)} × ${k.height.toFixed(1)}px (tỷ lệ cần ${TI_LE_LOGO[logo.goc].toFixed(3)})`);
+    const toiThieu = { 'logo-ngang': LOCKUP_TOI_THIEU, 'dau-bo': BRANDMARK_TOI_THIEU, 'chu-beeftown': LOGO_PHU_TOI_THIEU }[logo.goc];
+    // Logo phụ dưới 360px được thay bằng brandmark (đầu trang) — chỉ đo logo đang hiện.
+    if (k.width < toiThieu - 0.5) kq.logoDungNen.push(`${ten}: rộng ${k.width.toFixed(1)}px, cần ≥ ${toiThieu}px`);
+  }
+  for (const el of moi('.nen-van-mo, .net, .trang-tri, .net-goc, .hoa-van-chu')) kq.logoDungNen.push(`${moTa(el).slice(0, 50)}: lớp trang trí của bộ hình cũ`);
+  // Nền / mặt nạ trỏ /thuong-hieu/: gom ở vòng duyệt của mục 4 (nenTroThuongHieu).
+  kq.logoDungNen.push(...nenTroThuongHieu);
 
   return kq;
 }

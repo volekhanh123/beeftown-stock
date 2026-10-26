@@ -14,14 +14,16 @@
  *      gạch nối, ≤ 64 ký tự; description có chữ, ≤ 1024 ký tự; cả hai là chuỗi YAML trơn một dòng
  *      (không ": ", không " #", không mở bằng ký tự đặc biệt). Mọi link tương đối trong mọi file .md
  *      của skill có file; mọi file tham-khao/ được SKILL.md link tới.
- *   3. Mã màu ghi cạnh tên token (`--kem` … `#F0E3D0`) đúng giá trị khai trong web/src/styles; mọi
+ *   3. Mã màu ghi cạnh tên token (`--kem` … `#FFFFFF`) đúng giá trị khai trong web/src/styles; mọi
  *      biến `--…` nhắc tới có khai ở đâu đó trong web/src.
- *      Website có MỘT bảng màu (Khánh chốt 09/10/2026) khai ở HAI nơi chưa gộp: khối `.ck` đầu tiên
- *      của cong-khai.css (trang công khai) và các khối `:root` của chung.css (/noi-bo, kho). Hai nơi
- *      phải cùng bộ biến màu, cùng giá trị. SKILL.md có một bảng token, so hai chiều với CẢ hai nơi;
- *      cặp token–mã ghi ở bất kỳ file nào của skill cũng phải đúng mã đó. Tên màu thương hiệu (Beef
- *      Red, Cream…) đứng trước một mã thì mã đó là của bảng chốt. Không file nào của skill còn ghi
- *      mã của bảng cũ.
+ *      Website có MỘT bảng màu (bảng 22/10/2026: đỏ, đen, trắng cùng màu pha màn hình 25/10/2026) khai ở
+ *      HAI nơi chưa gộp: khối `.ck` đầu tiên của cong-khai.css (trang công khai) và các khối `:root` của
+ *      chung.css (/noi-bo, kho). Hai nơi phải cùng bộ biến màu, cùng giá trị. SKILL.md có một bảng token,
+ *      so hai chiều với CẢ hai nơi; cặp token–mã ghi ở bất kỳ file nào của skill cũng phải đúng mã đó.
+ *      Tên màu thương hiệu (Đỏ, Đen, Trắng) đứng trước một mã thì mã đó là của bảng; năm tên của bảng
+ *      09/10/2026 (Beef Red, Cream…) không còn đứng trước mã nào. Không file nào của skill còn ghi mã của
+ *      các bảng cũ, kể cả bảng 09/10/2026 và tám màu trạng thái. Tên file logo nhắc trong skill có thật;
+ *      tagline ghi đúng chữ của chu.ts.
  *   4. Mọi đường dẫn trong dấu `…` bắt đầu bằng web/, crm/, can-app/, .github/ hoặc là file ở gốc repo
  *      đều có thật.
  *   5. Hai danh sách biểu tượng trong skill khớp đúng bộ trong mã (công khai: TenBieuTuong của
@@ -205,14 +207,16 @@ await nhom('3 · MÃ MÀU VÀ BIẾN CSS GHI TRONG SKILL CÓ THẬT, ĐÚNG GIÁ
   };
   const rgbCua = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
   /**
-   * Ô "Mã" của một dòng bảng → giá trị CSS mong đợi. Hai cách ghi: `#RRGGBB`, hoặc "than 68 %" /
-   * "kem 22 %" — màu gốc của CHÍNH nơi khai đó với độ trong ấy (--muc-nhat, --vach, --vach-kem).
+   * Ô "Mã" của một dòng bảng → giá trị CSS mong đợi. Hai cách ghi: `#RRGGBB`, hoặc "kem 22 %" / "trắng 22 %"
+   * (than / đen N %) — màu gốc của CHÍNH nơi khai đó với độ trong ấy (--vach-kem). Tên biến giữ (--kem là trắng,
+   * --than là đen), nên ô ghi theo tên biến hay theo tên màu đều trỏ về cùng biến.
    */
+  const BIEN_THEO_TEN = { than: '--than', kem: '--kem', 'đen': '--than', 'trắng': '--kem' };
   const giaTriMongDoi = (o, mau) => {
     const hex = o.match(/^`(#[0-9a-fA-F]{6})`$/)?.[1];
     if (hex) return hex.toUpperCase();
-    const pha = o.match(/^(than|kem) (\d{1,2}) %$/);
-    const goc = pha && mau.get(`--${pha[1]}`);
+    const pha = o.match(/^(than|kem|đen|trắng) (\d{1,2}) %$/);
+    const goc = pha && mau.get(BIEN_THEO_TEN[pha[1]]);
     return goc?.startsWith('#') ? `rgba(${rgbCua(goc).join(',')},.${pha[2].padStart(2, '0')})` : null;
   };
   const TIEU_DE_BANG = 'Token màu của website';
@@ -226,7 +230,7 @@ await nhom('3 · MÃ MÀU VÀ BIẾN CSS GHI TRONG SKILL CÓ THẬT, ĐÚNG GIÁ
       const mong = giaTriMongDoi(o, mau);
       ok(`SKILL.md, bảng "${TIEU_DE_BANG}": ${bien} = ${o.replace(/`/g, '')} đúng như ${ten}`,
          !!mong && mau.get(bien) === mong,
-         mau.has(bien) ? `${ten} khai ${mau.get(bien)}${mong ? '' : ' · ô "Mã" phải là `#RRGGBB` hoặc "than N %" / "kem N %"'}` : `${ten} không khai biến màu này`);
+         mau.has(bien) ? `${ten} khai ${mau.get(bien)}${mong ? '' : ' · ô "Mã" phải là `#RRGGBB` hoặc "kem N %" / "trắng N %"'}` : `${ten} không khai biến màu này`);
     }
     const coTrongBang = new Set(dong.map(m => m[1]));
     const thieu = [...mau.keys()].filter(b => !coTrongBang.has(b));
@@ -256,21 +260,32 @@ await nhom('3 · MÃ MÀU VÀ BIẾN CSS GHI TRONG SKILL CÓ THẬT, ĐÚNG GIÁ
   ok('Cặp token–mã của bảng màu, ghi ở bất kỳ file nào của skill, đúng mã khai ở cả khối .ck lẫn :root',
      soCapCuaBang >= 10 && saiMa.length === 0, saiMa.join(' | ') || `${soCapCuaBang} lượt so`);
 
-  // Năm tên màu của guideline, đứng trước một mã ở bất kỳ file nào của skill, phải đúng mã của token
-  // tương ứng — ở cả hai nơi khai.
-  const TEN_MAU = { 'Beef Red': '--do', 'Cream': '--kem', 'Charcoal': '--than', 'Marigold': '--cuc-vang', 'Warm Stone': '--da' };
+  // Ba tên màu của bảng 22/10/2026, đứng trước một mã ở bất kỳ file nào của skill (| Đỏ | `#BD0000` |, "đỏ `#BD0000`"),
+  // phải đúng mã của token tương ứng — ở cả hai nơi khai. "đỏ đậm `#8F0000`" không khớp (chữ "đậm" chen giữa): đúng ý,
+  // đó là màu pha, không phải màu thương hiệu.
+  const TEN_MAU = { 'Đỏ': '--do', 'Đen': '--than', 'Trắng': '--kem' };
+  const vietHoaDau = t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
   const saiTen = [], thayTen = new Set();
   for (const [tep, md] of Object.entries(vanBan)) {
-    for (const [, ten, hex] of md.matchAll(/(Beef Red|Cream|Charcoal|Marigold|Warm Stone)\s*\|?\s*`(#[0-9a-fA-F]{6})`/g)) {
+    for (const [, tenGoc, hex] of md.matchAll(/(?<![\p{L}])(Đỏ|Đen|Trắng)\s*\|?\s*`(#[0-9a-fA-F]{6})`/giu)) {
+      const ten = vietHoaDau(tenGoc);
       thayTen.add(ten);
       for (const nguon of Object.values(NGUON)) {
         const dung = nguon.mau.get(TEN_MAU[ten]);
-        if (dung !== hex.toUpperCase()) saiTen.push(`${tep}: ${ten} ${hex}, nhưng ${TEN_MAU[ten]} trong ${nguon.ten} là ${dung}`);
+        if (dung !== hex.toUpperCase()) saiTen.push(`${tep}: ${tenGoc} ${hex}, nhưng ${TEN_MAU[ten]} trong ${nguon.ten} là ${dung}`);
       }
     }
   }
-  ok('Năm màu thương hiệu (Beef Red, Cream, Charcoal, Marigold, Warm Stone) ghi kèm mã đều đúng mã của khối .ck và của :root',
-     thayTen.size === 5 && saiTen.length === 0, saiTen.length ? saiTen.join(' | ') : `thấy ${[...thayTen].join(', ') || 'không tên nào'}`);
+  ok('Ba màu thương hiệu (Đỏ, Đen, Trắng) ghi kèm mã đều đúng mã của khối .ck và của :root',
+     thayTen.size === 3 && saiTen.length === 0, saiTen.length ? saiTen.join(' | ') : `thấy ${[...thayTen].join(', ') || 'không tên nào'}`);
+  // Năm tên của bảng 09/10/2026 không còn đứng trước một mã nào: skill ghi "Beef Red `#…`" là dạy phiên sau một bảng
+  // đã bỏ (danh sách tên giữ đủ năm — chỉ đổi chiều phép thử).
+  const TEN_MAU_CU = /(Beef Red|Cream|Charcoal|Marigold|Warm Stone)\s*\|?\s*`(#[0-9a-fA-F]{6})`/g;
+  const tenCu = Object.entries(vanBan).flatMap(([tep, md]) => [...md.matchAll(TEN_MAU_CU)].map(m => `${tep}: ${m[1]} ${m[2]}`));
+  ok('Không file nào của skill ghi tên màu bảng cũ (Beef Red, Cream, Charcoal, Marigold, Warm Stone) kèm mã', tenCu.length === 0, tenCu.slice(0, 6).join(' | '));
+  ok('…phép đọc tên màu nhận "| Đỏ | `#BD0000`", "đen `#000000`", bỏ qua "đỏ đậm `#8F0000`"; phép ngược bắt "Cream `#F0E3D0`"',
+     [...'| Đỏ | `#BD0000` | · đen `#000000` · đỏ đậm `#8F0000`'.matchAll(/(?<![\p{L}])(Đỏ|Đen|Trắng)\s*\|?\s*`(#[0-9a-fA-F]{6})`/giu)].map(m => m[2]).join() === '#BD0000,#000000'
+     && [...'Cream `#F0E3D0`'.matchAll(TEN_MAU_CU)].length === 1);
 
   // Bộ ba số RGB skill ghi cho rgba() phải là số của một mã trong bảng (khối .ck và :root).
   const boBaDung = new Set(Object.values(NGUON).flatMap(n => [...n.mau.values()]).filter(v => v.startsWith('#')).map(h => rgbCua(h).join(', ')));
@@ -279,17 +294,24 @@ await nhom('3 · MÃ MÀU VÀ BIẾN CSS GHI TRONG SKILL CÓ THẬT, ĐÚNG GIÁ
   ok(`SKILL.md, mục "${TIEU_DE_BANG}": ${boBa.length} bộ ba số RGB đều là số của một mã trong bảng màu`,
      boBa.length > 0 && boBaSai.length === 0, boBaSai.join(' · '));
 
-  // Mã của bảng màu trước ngày 09/10/2026, cùng token cũ của kho và màu trạng thái cũ của nội bộ. Skill
-  // còn ghi một mã trong số này là dạy phiên sau dùng lại màu đã bỏ. (Cùng họ mã với MA_CU của
-  // test-cong-khai-giao-dien.mjs và HEX_CU của test-noi-bo-bang-mau.mjs.)
-  const MA_CU = /#(?:B23A2C|8F2C21|960F13|FBF4E1|F5ECD7|F1E4C2|1E160E|F2A900|F5C211|8C8577|A21E22|2A2016|FFFCF6|EFE4D2|E0D2BB|1F7A4C|E9F5EE|FFF5DC|FDECEA|8A5A00|B07A00)\b|\b(?:30, ?22, ?14|251, ?244, ?225|178, ?58, ?44|150, ?15, ?19|143, ?44, ?33|242, ?169, ?0)\b/gi;
+  // Mã của các bảng màu trước bảng 22/10/2026 — bảng cũ tới 08/10/2026, token cũ của kho, màu trạng thái cũ, bảng
+  // 09/10/2026 (cùng màu pha 10/10/2026) và tám màu trạng thái bỏ ngày 25/10/2026. Skill còn ghi một mã trong số này,
+  // kể cả để kể lịch sử, là dạy phiên sau dùng lại màu đã bỏ (lịch sử chỉ ở THUONG-HIEU.md). Skill viết bộ ba số
+  // trong câu văn, nên ở đây không đòi tiền tố rgba(. (Cùng họ mã với MA_CU của test-cong-khai-giao-dien.mjs và
+  // HEX_CU của test-noi-bo-bang-mau.mjs.)
+  const MA_CU = new RegExp('#(?:B23A2C|8F2C21|960F13|FBF4E1|F5ECD7|F1E4C2|1E160E|F2A900|F5C211|8C8577|A21E22|2A2016|FFFCF6|EFE4D2|E0D2BB|1F7A4C|E9F5EE|FFF5DC|FDECEA|8A5A00|B07A00'
+    + '|A70C0C|890607|F0E3D0|EBDCC6|E7D5BC|151008|F5AA14|B8A98C|7A7366|211A10|FFFDF6'
+    + '|1A683F|D3E3C6|A3C597|7A5200|F6DC9E|DDB65C|F2D6CE|DDA79C)\\b'
+    + '|\\b(?:30, ?22, ?14|251, ?244, ?225|178, ?58, ?44|150, ?15, ?19|143, ?44, ?33|242, ?169, ?0'
+    + '|21, ?16, ?8|240, ?227, ?208|167, ?12, ?12|137, ?6, ?7|245, ?170, ?20|184, ?169, ?140)\\b', 'gi');
   const conCu = Object.entries(vanBan).flatMap(([tep, md]) => {
     const thay = [...new Set(md.match(MA_CU) ?? [])];
     return thay.length ? [`${tep}: ${thay.join(' ')}`] : [];
   });
   ok('Không file nào của skill còn ghi mã màu của bảng cũ (hex hoặc bộ ba số RGB)', tepMd.length > 0 && conCu.length === 0, conCu.join(' | '));
-  const MAU_THU_CU = ['`--do` `#B23A2C`', 'kem #fbf4e1', 'rgba(30, 22, 14, .68)', '251,244,225', '`#1F7A4C`'];
-  const MAU_THU_MOI = ['`--do` `#A70C0C`', '21, 16, 8 · 240, 227, 208', '`#1A683F`', '`#E23B2E`', '1200 × 630'];
+  const MAU_THU_CU = ['`--do` `#B23A2C`', 'kem #fbf4e1', 'rgba(30, 22, 14, .68)', '251,244,225', '`#1F7A4C`',
+    '`--do` `#A70C0C`', '21, 16, 8 · 240, 227, 208', '`#1A683F`'];
+  const MAU_THU_MOI = ['`--do` `#BD0000`', '0, 0, 0 · 255, 255, 255 · 189, 0, 0', '`#8F0000`', '`#555555`', '`#E23B2E`', '1200 × 630'];
   ok('Bộ lọc mã cũ bắt được mã cũ ở các kiểu viết, không bắt nhầm mã của bảng mới',
      MAU_THU_CU.every(m => m.match(MA_CU)) && !MAU_THU_MOI.some(m => m.match(MA_CU)),
      [...MAU_THU_CU.filter(m => !m.match(MA_CU)).map(m => `lọt: ${m}`), ...MAU_THU_MOI.filter(m => m.match(MA_CU)).map(m => `bắt nhầm: ${m}`)].join(' | '));
@@ -376,6 +398,55 @@ await nhom('6 · ĐỊA ĐIỂM TRONG SKILL ĐÚNG NHƯ MÃ; KHÔNG ĐỊA CHỈ
       .map((dong, i) => (luat.tim(dong) ? `${tep}:${i + 1} «${luat.tim(dong)}»` : null)).filter(Boolean));
     ok(`Không file nào của skill nhắc ${ten}`, tepMd.length > 0 && thay.length === 0, thay.join(' | '));
   }
+});
+
+// ===========================================================================
+// Bộ nhận diện 21/10/2026 (quyet-dinh 26/10/2026): logo tách nguyên path từ Brand Guidelines, tagline theo logo.
+// Skill hay viết tên file logo trơn (`logo-ngang-do`) hay gom ngoặc (`logo-ngang-{do,den,trang}.svg`) — nhóm 4 chỉ kiểm
+// đường dẫn đầy đủ, nên tên đó lọt. Ở đây mọi tên file logo / hình thương hiệu nhắc trong skill phải có thật trong
+// web/public/thuong-hieu; tên file của bộ hình cũ (có đuôi .svg, hay tên trơn của logo cũ) thì không còn file — đỏ.
+// Chữ trong câu (không `hoa-van-chu`, không tem tròn) không bị bắt: chỉ tên file.
+await nhom('7 · TÊN FILE LOGO TRONG SKILL CÓ THẬT; TAGLINE ĐÚNG CHỮ CỦA chu.ts', async () => {
+  const THU_MUC = join(GOC, 'web', 'public', 'thuong-hieu');
+  /** Mở ngoặc gom: logo-ngang-{do,den,trang}.svg → ba tên. */
+  const moNgoac = t => {
+    const m = t.match(/^(.*)\{([^{}]+)\}(.*)$/);
+    return m ? m[2].split(',').flatMap(x => moNgoac(`${m[1]}${x.trim()}${m[3]}`)) : [t];
+  };
+  const HO_TEN = '(?:logo-ngang|chu-beeftown|dau-bo|net-dau-bo|tem-tron|huong-thao|steak-net|van-mo|hoa-van-chu)';
+  const timTenFile = md => [
+    // tên có đuôi .svg ở bất kỳ đâu (kể cả trong đường dẫn /thuong-hieu/…)
+    ...[...md.matchAll(new RegExp(`(?<![\\w-])(${HO_TEN}[\\w{},-]*\\.svg)`, 'g'))].map(m => m[1]),
+    // tên trơn của logo trong dấu huyền (`logo-ngang-do`, `net-dau-bo`)
+    ...trongDauHuyen(md).filter(x => /^(?:logo-ngang|chu-beeftown|dau-bo)-[\w{},-]+$|^net-dau-bo$/.test(x)).map(x => `${x}.svg`),
+  ].flatMap(moNgoac);
+  const thieu = [], tatCa = new Set();
+  for (const [tep, md] of Object.entries(vanBan)) {
+    for (const ten of timTenFile(md)) {
+      tatCa.add(ten);
+      if (!existsSync(join(THU_MUC, ten))) thieu.push(`${tep}: ${ten}`);
+    }
+  }
+  ok(`Mọi tên file logo nhắc trong skill (${tatCa.size} tên: logo-ngang-*, chu-beeftown-*, dau-bo-*, net-dau-bo) có trong web/public/thuong-hieu — không tên file nào của bộ hình cũ`,
+     tatCa.size >= 3 && thieu.length === 0, thieu.slice(0, 8).join(' | ') || `${tatCa.size} tên`);
+  ok('…phép đọc tên mở được ngoặc gom và bắt được tên trơn, tên file của bộ cũ',
+     JSON.stringify(timTenFile('`logo-ngang-{do,den,trang}.svg` · `net-dau-bo` · /thuong-hieu/tem-tron.svg · `logo-ngang-kem`'))
+       === JSON.stringify(['logo-ngang-do.svg', 'logo-ngang-den.svg', 'logo-ngang-trang.svg', 'tem-tron.svg', 'net-dau-bo.svg', 'logo-ngang-kem.svg'])
+     && timTenFile('không `hoa-van-chu`, không tem tròn').length === 0);
+
+  // Tagline: skill ghi đúng chữ của THUONG_HIEU.khauHieu (chu.ts) ở ba file dạy viết chữ và làm ấn phẩm; không file
+  // nào còn cách viết cũ (dấu chấm, gạch ngang) — phiên sau chép từ skill vào trang và ấn phẩm.
+  const { THUONG_HIEU } = await import(pathToFileURL(join(SRC, 'lib', 'chu.ts')).href);
+  const khauHieu = THUONG_HIEU?.khauHieu ?? '';
+  for (const ten of ['SKILL.md', 'tham-khao/cau-chu.md', 'tham-khao/an-pham.md']) {
+    const md = vanBan[`.claude/skills/${TEN_KY_NANG}/${ten}`] ?? '';
+    ok(`${ten} ghi tagline đúng chữ của chu.ts (THUONG_HIEU.khauHieu: «${khauHieu}»)`, khauHieu.length > 0 && md.includes(khauHieu));
+  }
+  const TAGLINE_CU = /Pick it\.\s*Grill it\.\s*Love it\.?|Pick it\s*[–-]\s*Grill it\s*[–-]\s*Love it/i;
+  const conCu = Object.entries(vanBan).flatMap(([tep, md]) => (md.match(TAGLINE_CU) ? [`${tep}: «${md.match(TAGLINE_CU)[0]}»`] : []));
+  ok('Không file nào của skill còn tagline cũ "Pick it. Grill it. Love it." hay "Pick it – Grill it – Love it"', conCu.length === 0, conCu.join(' | '));
+  ok('…phép tìm tagline cũ bắt được cả hai cách viết cũ, không bắt tagline mới',
+     TAGLINE_CU.test('Tagline *Pick it. Grill it. Love it.*') && TAGLINE_CU.test('PICK IT – GRILL IT – LOVE IT') && !TAGLINE_CU.test('Pick it, grill it, love it!'));
 });
 
 process.exit(ketThuc('SKILL THIẾT KẾ'));

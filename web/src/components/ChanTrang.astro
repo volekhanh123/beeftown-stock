@@ -5,11 +5,12 @@
  * Ba tầng:
  *  1. Dải tuyển dụng gọn. Tuyển đội mở cửa là "đường găng" của ngày mở (TrangRaMat
  *     cũ), nên nó có mặt ở MỌI trang công khai — chỉ gọn lại so với một khối riêng.
- *  2. Dải đỏ Beef Red, nền phẳng: logo Cream (biến thể trang 3) và tem tròn (trang 11
- *     của PDF nhận diện), các mục điều hướng, địa chỉ + câu chỉ đường. Không còn hoa
- *     văn chữ BEEFTOWN chìm sau chữ (bỏ ở đợt redesign: trên đỏ mới nó nhạt và lem,
- *     làm chữ khó đọc). Điện thoại: hai nhóm link đứng cạnh nhau thành 2 cột.
- *  3. Pháp nhân, nền Charcoal. web/kiem-tra/trinh-duyet.mjs đọc chữ của <footer> ĐẦU
+ *  2. Dải đen, nền phẳng: logo chính trắng của bộ 21/10/2026 (logo-ngang-trang.svg — đầu
+ *     bò khoét lộ nền đen; guideline trang 4 vẽ bản trắng trên đỏ), các mục điều hướng,
+ *     địa chỉ + câu chỉ đường. Một bề mặt một dấu thương hiệu: không tem, không hoa văn
+ *     chữ BEEFTOWN chìm sau chữ. Điện thoại: hai nhóm link đứng cạnh nhau thành 2 cột.
+ *  3. Pháp nhân, cùng nền đen, ngăn với dải trên bằng một vạch mảnh (--vien: trắng 22 %).
+ *     web/kiem-tra/trinh-duyet.mjs đọc chữ của <footer> ĐẦU
  *     TIÊN trên trang: ngay dưới dòng "© … Beeftown · Beef Specialty Restaurant" phải
  *     là hai dòng pháp nhân, đúng từng ký tự; mọi <p> trong chân trang phải hiện.
  *     Ba dòng đó chép nguyên từ layout cũ — mỗi dòng viết liền trên một dòng mã:
@@ -57,11 +58,10 @@ const c = dich(ngonNgu, {
     </div>
   )}
 
-  <div class="ct-chinh be-do">
+  <div class="ct-chinh be-toi">
     <div class="khung ct-luoi">
       <div class="ct-logo">
-        <img src="/thuong-hieu/logo-ngang-kem.svg" width="446" height="124" alt={THUONG_HIEU.ten} loading="lazy" decoding="async" />
-        <img class="ct-tem" src="/thuong-hieu/tem-tron.svg" width="320" height="320" alt="" loading="lazy" decoding="async" />
+        <img src="/thuong-hieu/logo-ngang-trang.svg" width="579" height="131" alt={THUONG_HIEU.ten} loading="lazy" decoding="async" />
       </div>
 
       <nav class="ct-cot" aria-labelledby="ct-beeftown">
@@ -123,26 +123,22 @@ const c = dich(ngonNgu, {
   }
   .ct-td-chu { margin: 0; max-width: 62ch; font-size: 15px; }
 
-  /* --- 2. Dải đỏ ----------------------------------------------------------- */
+  /* --- 2. Dải đen ---------------------------------------------------------- */
   .ct-chinh { padding-block: var(--k-7) var(--k-6); }
   @media (min-width: 900px) { .ct-chinh { padding-block: var(--k-8) var(--k-7); } }
-  /* Tem tròn trang 11 — đóng như con dấu cạnh logo (màn hẹp) hoặc dưới logo (màn rộng). */
-  .ct-tem { width: clamp(72px, 18vw, 112px); height: auto; transform: rotate(-9deg); flex: none; }
   /* Điện thoại: hai nhóm link thành 2 cột; logo và địa chỉ rộng hết hàng. */
   .ct-luoi {
     display: grid; gap: var(--k-6) var(--k-5);
     grid-template-columns: 1fr 1fr;
   }
-  .ct-logo {
-    grid-column: 1 / -1;
-    display: flex; align-items: center; justify-content: space-between; gap: var(--k-4);
-  }
+  .ct-logo { grid-column: 1 / -1; display: flex; align-items: center; }
+  /* Logo chính rộng 180–280px — trên ngưỡng 160px của lockup (luật giữ từ bộ 09/10/2026); khe lưới
+     24–32px và đệm của dải đủ khoảng trống bằng cạnh ô đầu bò quanh logo (guideline trang 3). */
   .ct-logo img:first-child { width: clamp(180px, 26vw, 280px); height: auto; }
   .ct-dia-chi { grid-column: 1 / -1; }
   @media (min-width: 900px) {
     .ct-luoi { grid-template-columns: 1.3fr 1fr 1fr 1.4fr; align-items: start; }
     .ct-logo, .ct-dia-chi { grid-column: auto; }
-    .ct-logo { flex-direction: column; align-items: flex-start; gap: var(--k-5); }
   }
   /* Tên cột: chữ hoa nhỏ 14px (sàn của chân trang), không còn 12px. */
   .ct-tieu-de {
@@ -164,19 +160,19 @@ const c = dich(ngonNgu, {
   .ct-mxh { display: flex; flex-wrap: wrap; gap: 0 var(--k-5); }
 
   /* --- 3. Pháp nhân -------------------------------------------------------- */
-  /* Nền Charcoal, chữ 14px ở mọi dòng; dải cao theo nội dung. */
-  .ct-day { padding-block: var(--k-5); font-size: 14px; line-height: 1.6; color: var(--da); }
-  .ct-day a { color: var(--kem); display: inline-flex; align-items: center; min-height: var(--cham); }
+  /* Nền đen, chữ 14px ở mọi dòng; dải cao theo nội dung; ngăn với dải trên bằng vạch --vien. */
+  .ct-day { padding-block: var(--k-5); font-size: 14px; line-height: 1.6; color: var(--chu-phu); border-top: 1px solid var(--vien); }
+  .ct-day a { color: var(--chu-chinh); display: inline-flex; align-items: center; min-height: var(--cham); }
   .chan-hang {
     display: flex; flex-wrap: wrap; gap: 10px 24px;
     /* baseline: link Quyền riêng tư đứng ngang dòng ©, không trôi xuống giữa khối pháp nhân. */
     align-items: baseline; justify-content: space-between;
   }
-  .chan-dong { margin: 0; color: var(--kem); }
-  /* Dòng pháp nhân: cùng cỡ 14px với dòng ©, màu Warm Stone (8,19 : 1 trên Charcoal), cách
+  .chan-dong { margin: 0; color: var(--chu-chinh); }
+  /* Dòng pháp nhân: cùng cỡ 14px với dòng ©, màu chữ phụ của nền đen (--da, 16,21 : 1), cách
      dòng © một khoảng. Mỗi cụm (tên công ty, mã số thuế) không gãy giữa chừng — màn hẹp thì
      xuống dòng ở dấu "·". */
   .phap-nhan { margin-top: var(--k-2); }
-  .phap-nhan .chan-dong { color: var(--da); }
+  .phap-nhan .chan-dong { color: var(--chu-phu); }
   .phap-nhan .lien { white-space: nowrap; }
 </style>

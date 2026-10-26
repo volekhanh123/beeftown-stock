@@ -2,8 +2,9 @@
 /**
  * Cảnh báo trước khi chuyển tiền cho nhà cung cấp — trang công nợ NCC và màn Trả tiền dùng chung.
  *
- *   · tài khoản ngân hàng vừa đổi trong 30 ngày → khối đỏ: số cũ → số mới, dặn gọi hỏi lại NCC;
- *   · đọc nhật ký đổi tài khoản lỗi (mạng, hết giờ) → khối vàng nói rõ CHƯA KIỂM ĐƯỢC, cũng dặn
+ *   · tài khoản ngân hàng vừa đổi trong 30 ngày → khối "lỗi" (viền đỏ, tam giác "!"): số cũ → số mới, dặn gọi
+ *     hỏi lại NCC;
+ *   · đọc nhật ký đổi tài khoản lỗi (mạng, hết giờ) → khối "lưu ý" (vạch xám, vòng tròn "!") nói rõ CHƯA KIỂM ĐƯỢC, cũng dặn
  *     gọi hỏi lại — không im như thể tài khoản không đổi.
  *
  * Không gọi database: trang đọc trước bằng docCanhBaoTaiKhoan (lib/kho/cong-no.ts).

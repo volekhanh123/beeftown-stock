@@ -483,7 +483,7 @@ export const TRANG_THAI_CHUNG_TU_NB: Record<string, [HaiThuTieng, string]> = {
   da_ghi: [{ vi: 'Đã ghi', en: 'Recorded' }, 'song'],
   dang_dem: [{ vi: 'Đang đếm', en: 'Counting' }, 'nhap'],
   // Phiếu chuyển ra quầy khi quầy phải bấm nhận (0032)
-  dang_chuyen: [{ vi: 'Đang mang ra', en: 'On the way' }, 'cho'],
+  dang_chuyen: [{ vi: 'Đang mang ra', en: 'On the way' }, 'nhap'],
   da_nhan: [{ vi: 'Quầy đã nhận', en: 'Received at counter' }, 'song'],
   nhan_thieu: [{ vi: 'Nhận thiếu', en: 'Received short' }, 'cho'],
   da_tra_ve: [{ vi: 'Đã trả về kho', en: 'Returned to store' }, 'tat'],
@@ -503,6 +503,38 @@ export const TRANG_THAI_CHUNG_TU: Record<string, [string, string]> = Object.from
 export function trangThaiKho(ma: string | null | undefined, nn: NgonNguNB = 'vi'): [string, string] {
   const t = ma ? TRANG_THAI_CHUNG_TU_NB[ma] : undefined;
   return t ? [t[0][nn], t[1]] : [ma ?? '', ''];
+}
+
+/** Ba mức tình trạng hạn — mã của database (kho_v_ton.tinh_trang_han) và cũng là ba lớp của nhãn .kho-han (kho.css). */
+export type TinhTrangHan = 'het_han' | 'sap_het' | 'con_han';
+
+/**
+ * Chữ tình trạng của nhãn .kho-han (hạn dùng của lô hàng). Nhãn không bao giờ chỉ khác bằng màu (Khánh bỏ màu trạng
+ * thái ngày 25/10/2026): trước đây nhãn chỉ có ngày, tình trạng nằm ở màu nền — nay chữ nói, màu chỉ thêm.
+ */
+export const TINH_TRANG_HAN_NB: Record<TinhTrangHan, HaiThuTieng> = {
+  het_han: { vi: 'Hết hạn', en: 'Expired' },
+  sap_het: { vi: 'Sắp hết hạn', en: 'Expiring soon' },
+  con_han: { vi: 'Còn hạn', en: 'In date' },
+};
+/** Hạn thanh toán công nợ dùng cùng ba lớp .kho-han nhưng chữ khác — "hết hạn" sai nghĩa với tiền. */
+export const HAN_THANH_TOAN_NB: Record<TinhTrangHan, HaiThuTieng> = {
+  het_han: { vi: 'Quá hạn', en: 'Overdue' },
+  sap_het: { vi: 'Sắp đến hạn', en: 'Due soon' },
+  con_han: { vi: 'Chưa đến hạn', en: 'Not due yet' },
+};
+
+/**
+ * Chữ tình trạng hạn theo ngôn ngữ đang xem. loai 'dung' (mặc định): hạn dùng của lô hàng — "Hết hạn" / "Sắp hết hạn" /
+ * "Còn hạn"; 'thanh_toan': hạn trả tiền công nợ — "Quá hạn" / "Sắp đến hạn" / "Chưa đến hạn". Mã lạ, rỗng → '' (không
+ * in chữ sai).
+ */
+export function chuTinhTrangHan(
+  ma: string | null | undefined, nn: NgonNguNB = 'vi', loai: 'dung' | 'thanh_toan' = 'dung',
+): string {
+  if (!ma) return '';
+  const bang: Readonly<Record<string, HaiThuTieng>> = loai === 'thanh_toan' ? HAN_THANH_TOAN_NB : TINH_TRANG_HAN_NB;
+  return Object.prototype.hasOwnProperty.call(bang, ma) ? bang[ma][nn] : '';
 }
 
 export const TEN_LOAI_SO_CAI_NB: Record<string, HaiThuTieng> = {

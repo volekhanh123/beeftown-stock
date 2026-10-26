@@ -41,10 +41,10 @@
  *      chủ in bản đó và bỏ vế phường; dòng pháp nhân không đổi. Về lại kịch bản chưa công
  *      bố địa chỉ thì trang in lại địa chỉ cố định.
  *   8. Form hỏi bàn (day-du) và form nộp hồ sơ (tuyen-dung-mo) ở 390 và 1440 px: ô một
- *      dòng (kể cả ô ngày) cao đúng 48px, ô nhiều dòng ≥ 48px, chữ 16px, nền Cream, viền
- *      #7A7366; nhãn 14–16px đặt trên ô, không placeholder; thẻ form nền kem sau, không
- *      nền trắng; ô giờ đang chọn nền Beef Red chữ Cream; gửi thiếu thì có câu lỗi bằng
- *      chữ màu #890607 và tiêu điểm vào ô sai.
+ *      dòng (kể cả ô ngày) cao đúng 48px, ô nhiều dòng ≥ 48px, chữ 16px, nền trắng, viền
+ *      #767676; nhãn 14–16px đặt trên ô, không placeholder; thẻ form nền xám nhạt #F4F4F4;
+ *      ô giờ đang chọn nền đỏ chữ trắng; gửi thiếu thì có câu lỗi bằng chữ màu #8F0000 và
+ *      tiêu điểm vào ô sai.
  *   9. Form nộp hồ sơ (tuyen-dung-mo / -dut / -loi): bấm đúp khi database chậm → nop_ho_so_ung_tuyen
  *      đúng một lần, nút khóa "Đang gửi…"; mạng đứt → khung "KHÔNG CHẮC", không form, không nút mời
  *      nộp; database từ chối → câu của database, quay về ?vi_tri=<mã>, chữ đã gõ được điền lại, ô đồng
@@ -731,10 +731,10 @@ try {
 
   // =========================================================================
   // Bảng màu chép tay (THUONG-HIEU.md mục 1 và 4) — phép thử không đọc CSS của trang.
-  const MAU = { kem: 'rgb(240, 227, 208)', kemSau: 'rgb(235, 220, 198)', do: 'rgb(167, 12, 12)', doDam: 'rgb(137, 6, 7)' };
+  const MAU = { trang: 'rgb(255, 255, 255)', nenNhat: 'rgb(244, 244, 244)', do: 'rgb(189, 0, 0)', doDam: 'rgb(143, 0, 0)' };
   /** Đo ô nhập và nhãn của các form khớp `chon` (chạy TRONG trang). */
   const doO = chon => {
-    const KEM = 'rgb(240, 227, 208)', VIEN = 'rgb(122, 115, 102)';
+    const TRANG = 'rgb(255, 255, 255)', VIEN = 'rgb(118, 118, 118)';
     const hien = el => { const k = el.getBoundingClientRect(); return el.checkVisibility() && k.width > 0 && k.height > 0; };
     const o = [...document.querySelectorAll(chon)]
       .flatMap(f => [...f.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea')])
@@ -748,7 +748,7 @@ try {
         oSai.push(`${ten} (${e.tagName.toLowerCase()}${e.type ? ` ${e.type}` : ''}) cao ${k.height.toFixed(1)}px`);
       }
       if (cs.fontSize !== '16px') oSai.push(`${ten} chữ ${cs.fontSize}`);
-      if (cs.backgroundColor !== KEM) oSai.push(`${ten} nền ${cs.backgroundColor}`);
+      if (cs.backgroundColor !== TRANG) oSai.push(`${ten} nền ${cs.backgroundColor}`);
       if (cs.borderTopColor !== VIEN || cs.borderTopWidth !== '1px') oSai.push(`${ten} viền ${cs.borderTopWidth} ${cs.borderTopColor}`);
       if (e.hasAttribute('placeholder')) nhanSai.push(`${ten} dùng placeholder`);
       // Nhãn: <label for>, hoặc <span> đầu của <label> bọc ngoài ô (form nộp hồ sơ).
@@ -785,12 +785,12 @@ try {
         const nhan = `${hoiBan} · ${rong}px`;
         const tot = await doTheoQuyTac(nhan);
         const o = await page.evaluate(doO, 'form[data-hoi-ban], form[data-doi-ngay]');
-        tot.push(ok(`${nhan}: ${o.soO} ô nhập, ô chọn — ô một dòng (kể cả ô ngày) cao đúng 48px, chữ 16px, nền Cream, viền 1px #7A7366`,
+        tot.push(ok(`${nhan}: ${o.soO} ô nhập, ô chọn — ô một dòng (kể cả ô ngày) cao đúng 48px, chữ 16px, nền trắng, viền 1px #767676`,
           o.soO >= 5 && o.coNgay && o.oSai.length === 0, `${o.coNgay ? '' : 'không thấy ô ngày · '}${o.oSai.slice(0, 4).join(' | ')}`));
         tot.push(ok(`${nhan}: mỗi ô có nhãn 14–16px đặt trên ô, không ô nào dùng placeholder thay nhãn`,
           o.nhanSai.length === 0, o.nhanSai.slice(0, 4).join(' | ')));
         const nenThe = await page.locator('.hb-the').first().evaluate(el => getComputedStyle(el).backgroundColor);
-        tot.push(ok(`${nhan}: thẻ form nền kem sau #EBDCC6`, nenThe === MAU.kemSau, nenThe));
+        tot.push(ok(`${nhan}: thẻ form nền xám nhạt #F4F4F4`, nenThe === MAU.nenNhat, nenThe));
 
         const chip = page.locator('form[data-hoi-ban] .hb-chip-o:has(input:not([disabled]))').first();
         const doChip = () => chip.locator('span').evaluate(sp => {
@@ -801,11 +801,11 @@ try {
         await chip.click();
         await cho(300);   // chuyển màu 180ms
         const sau = await doChip();
-        tot.push(ok(`${nhan}: ô giờ cao ≥ 48px, chữ 16px; chưa chọn nền Cream, đang chọn nền Beef Red chữ Cream`,
-          truoc.cao >= 47.5 && truoc.co === '16px' && truoc.nen === MAU.kem && sau.nen === MAU.do && sau.chu === MAU.kem,
+        tot.push(ok(`${nhan}: ô giờ cao ≥ 48px, chữ 16px; chưa chọn nền trắng, đang chọn nền đỏ chữ trắng`,
+          truoc.cao >= 47.5 && truoc.co === '16px' && truoc.nen === MAU.trang && sau.nen === MAU.do && sau.chu === MAU.trang,
           JSON.stringify({ truoc, sau })));
 
-        // Gửi khi họ tên và số điện thoại còn trống: lỗi bằng chữ, sát ô, màu #890607.
+        // Gửi khi họ tên và số điện thoại còn trống: lỗi bằng chữ, sát ô, màu #8F0000.
         await nutGui().click();
         await cho(300);
         const loi = await page.evaluate(() => ({
@@ -818,13 +818,13 @@ try {
             return { ten: a.getAttribute('name'), vong: cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 2 };
           })(),
         }));
-        tot.push(ok(`${nhan}: gửi thiếu họ tên và số điện thoại → 2 câu lỗi bằng chữ màu #890607, 2 ô sai viền #890607`,
+        tot.push(ok(`${nhan}: gửi thiếu họ tên và số điện thoại → 2 câu lỗi bằng chữ màu #8F0000, 2 ô sai viền #8F0000`,
           loi.cau.length === 2 && loi.cau.every(c => c.chu.length > 5 && c.mau === MAU.doDam)
             && loi.vien.length === 2 && loi.vien.every(v => v === MAU.doDam), JSON.stringify(loi)));
         tot.push(ok(`${nhan}: tiêu điểm vào ô sai đầu tiên (họ tên), vòng focus nhìn thấy (≥ 2px)`,
           loi.tieuDiem.ten === 'ho_ten' && loi.tieuDiem.vong, JSON.stringify(loi.tieuDiem)));
-        tot.push(ok(`${nhan}: form báo lỗi vẫn không có nền trắng, không tràn ngang`,
-          (await page.evaluate(doGiaoDien)).khongTrang.length === 0
+        tot.push(ok(`${nhan}: form báo lỗi vẫn giữ màu nền trong bảng 22/10/2026, không tràn ngang`,
+          (await page.evaluate(doGiaoDien)).nenTrongBang.length === 0
             && await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)));
         if (tot.includes(false)) await chupLoi(`thanh-phan${hoiBan}-${rong}`);
       }
@@ -841,7 +841,7 @@ try {
         }
         const tot = await doTheoQuyTac(nhan);
         const o = await page.evaluate(doO, 'form.form-nop');
-        tot.push(ok(`${nhan}: ${o.soO} ô nhập, ô chọn — ô một dòng cao đúng 48px, chữ 16px, nền Cream, viền 1px #7A7366`,
+        tot.push(ok(`${nhan}: ${o.soO} ô nhập, ô chọn — ô một dòng cao đúng 48px, chữ 16px, nền trắng, viền 1px #767676`,
           o.soO >= 6 && o.oSai.length === 0, o.oSai.slice(0, 4).join(' | ')));
         tot.push(ok(`${nhan}: mỗi ô có nhãn 14–16px đặt trên ô, không ô nào dùng placeholder thay nhãn`,
           o.nhanSai.length === 0, o.nhanSai.slice(0, 4).join(' | ')));
@@ -1002,8 +1002,8 @@ try {
         const tot = [
           ok(`${nhan}: không gửi (nop_ho_so_ung_tuyen 0 lần, vẫn ở trang form)`,
              (mayGia.dem().nop_ho_so_ung_tuyen ?? 0) === 0 && await page.locator('form.form-nop').count() === 1),
-          ok(`${nhan}: câu lỗi sát ô CV, màu #890607, nói 5MB; ô CV aria-invalid, tiêu điểm vào ô CV`,
-             loiCv.hien && /5MB/.test(loiCv.chu) && loiCv.mau === 'rgb(137, 6, 7)' && loiCv.sai === 'true' && loiCv.tieuDiem === 'cv',
+          ok(`${nhan}: câu lỗi sát ô CV, màu #8F0000, nói 5MB; ô CV aria-invalid, tiêu điểm vào ô CV`,
+             loiCv.hien && /5MB/.test(loiCv.chu) && loiCv.mau === MAU.doDam && loiCv.sai === 'true' && loiCv.tieuDiem === 'cv',
              JSON.stringify(loiCv)),
           ok(`${nhan}: nút gửi không bị khóa (gửi được sau khi chọn file khác)`,
              await nutNop().evaluate(b => !b.disabled && b.getAttribute('aria-busy') !== 'true')),

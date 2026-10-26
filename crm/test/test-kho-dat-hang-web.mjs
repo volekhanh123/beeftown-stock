@@ -322,8 +322,9 @@ await nhom('5 · TRANG: QUYỀN, HƯỚNG DẪN, JAVASCRIPT, TIỀN', async () =
   ok('Trang đơn: đọc giá dự kiến chỉ khi xem giá', /coGia \? docGiaDonDat/.test(ma.xem));
   ok('Trang in: giá chỉ khi xem giá VÀ chọn "in kèm giá"', /const inGia = coGia && Astro\.url\.searchParams\.get\('gia'\) === '1'/.test(ma.in)
     && /inGia \? docGiaDonDat/.test(ma.in));
-  ok('Trang in: logo, chữ ký, nút In / Lưu PDF, nút Chia sẻ (ẩn tới khi có JS)',
-    /bieu-tuong\.svg/.test(ma.in) && /<KyTen\b/.test(ma.in) && /<NutIn\b/.test(ma.in) && /data-chia-se[^>]*hidden/.test(ma.in)
+  // Phiếu in: logo chính bản đen của bộ 21/10/2026 (máy in đen trắng; quyết định D-D 26/10/2026), không còn biểu tượng tab.
+  ok('Trang in: logo chính đen (/thuong-hieu/logo-ngang-den.svg), chữ ký, nút In / Lưu PDF, nút Chia sẻ (ẩn tới khi có JS)',
+    /\/thuong-hieu\/logo-ngang-den\.svg/.test(ma.in) && !/bieu-tuong\.svg/.test(ma.in) && /<KyTen\b/.test(ma.in) && /<NutIn\b/.test(ma.in) && /data-chia-se[^>]*hidden/.test(ma.in)
     && /Lưu PDF/.test(ma.in) && /Zalo/.test(ma.in));
   ok('Gửi đơn / Lưu và gửi chỉ khi nhap + duyet_nhap',
     /const guiDuoc = lapDuoc && k\.duoc\('duyet_nhap'\)/.test(ma.xem) && /const guiDuoc = k\.duoc\('duyet_nhap'\)/.test(ma.moi));

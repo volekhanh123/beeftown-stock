@@ -24,7 +24,7 @@
  * chiếu" mở /cong-no/<id>/doi-chieu. Phiếu thuộc hóa đơn gộp không đối chiếu
  * lẻ được (database chặn) — bỏ đối chiếu gộp ở đây (khi chưa trả tiền).
  * Số tài khoản vừa đổi trong 30 ngày → dòng đỏ nhắc gọi hỏi lại NCC; đọc nhật ký đổi tài khoản
- * lỗi → khối vàng "chưa kiểm được" (CanhBaoTaiKhoan, chung với màn Trả tiền).
+ * lỗi → khối lưu ý "chưa kiểm được" (CanhBaoTaiKhoan, chung với màn Trả tiền).
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
@@ -211,7 +211,7 @@ let doiChieuLoi: { phieuId: string; giaTri: Record<string, string> } | null = nu
 const form = await docFormGui(Astro);
 if (form) {
   const viec = String(form.get('viec') ?? '');
-  // Xong thì về đầu trang (không nhảy xuống neo) để thấy ngay câu báo xanh/đỏ.
+  // Xong thì về đầu trang (không nhảy xuống neo) để thấy ngay câu báo xong / lỗi.
   const ve = (kq: KetQua) => chuyenHuong(Astro, lienKet(), kq);
   if (viec === 'doi_chieu') {
     const id = String(form.get('phieu_id') ?? '');
@@ -318,15 +318,18 @@ const soO = (n: number) => n.toLocaleString(nn === 'en' ? 'en-US' : 'vi-VN');
           <span class="cn-phieu-so cn-phieu-phai kho-so"><span class="kho-phu">{t.phaiTra}</span> {dinhDangTien(p.phai_tra, nn)}</span>
           <span class="cn-phieu-so cn-phieu-con kho-so"><span class="kho-phu">{t.conNoCot}</span> <strong>{conNoChu}</strong></span>
           <span class="cn-phieu-nhan">
-            {noDau && <span class="nb-nhan nhap" style="text-transform:none">{t.noDau}</span>}
-            {p.hoa_don_gop_id && <span class="nb-nhan nhap" style="text-transform:none">{t.hoaDonGop} {soHdGop.get(p.hoa_don_gop_id) ?? ''}</span>}
+            {/* Nhãn đúng nghĩa (Khánh bỏ màu trạng thái 25/10/2026): "Nợ đầu kỳ", "Hóa đơn gộp", "NCC nợ lại", hạn còn xa
+                là thuộc tính (.thong-tin, không dấu); "Chưa đối chiếu" là lưu ý (.luu-y); quá hạn, hạn trong 7 ngày là làm
+                ngay (.cho, dấu "!"); "Đã trả đủ" là xong (.song, dấu ✓). */}
+            {noDau && <span class="nb-nhan thong-tin" style="text-transform:none">{t.noDau}</span>}
+            {p.hoa_don_gop_id && <span class="nb-nhan thong-tin" style="text-transform:none">{t.hoaDonGop} {soHdGop.get(p.hoa_don_gop_id) ?? ''}</span>}
             {lech !== 0 && <span class="nb-nhan cho" style="text-transform:none" title={t.lechGiai}>{t.lech} {dinhDangLech(lech, nn)}</span>}
-            {!noDau && !p.da_doi_chieu && !p.hoa_don_gop_id && <span class="nb-nhan nhap" style="text-transform:none">{t.chuaDoiChieuNhan}</span>}
+            {!noDau && !p.da_doi_chieu && !p.hoa_don_gop_id && <span class="nb-nhan luu-y" style="text-transform:none">{t.chuaDoiChieuNhan}</span>}
             {p.con_no <= 0
-              ? <span class="nb-nhan song">{p.con_no < 0 ? t.nccNoLaiNhan : t.daTraDu}</span>
+              ? (p.con_no < 0 ? <span class="nb-nhan thong-tin">{t.nccNoLaiNhan}</span> : <span class="nb-nhan song">{t.daTraDu}</span>)
               : p.qua_han
-                ? <span class="nb-nhan tat">{t.quaHanNgay(p.so_ngay_qua_han)}</span>
-                : <span class={`nb-nhan ${p.han_thanh_toan && p.han_thanh_toan <= tuanToi ? 'cho' : 'nhap'}`}>{t.hanNgay(dinhDangNgay(p.han_thanh_toan))}</span>}
+                ? <span class="nb-nhan cho">{t.quaHanNgay(p.so_ngay_qua_han)}</span>
+                : <span class={`nb-nhan ${p.han_thanh_toan && p.han_thanh_toan <= tuanToi ? 'cho' : 'thong-tin'}`}>{t.hanNgay(dinhDangNgay(p.han_thanh_toan))}</span>}
           </span>
         </summary>
         <div class="cn-phieu-than">
@@ -379,10 +382,10 @@ const soO = (n: number) => n.toLocaleString(nn === 'en' ? 'en-US' : 'vi-VN');
     <section id="hoa-don-gop" style="scroll-margin-top:5rem">
       <h2>{t.mucHdGop}</h2>
       {hoaDonGop.map(h => (
-        <div class="nb-dong" style={h.trang_thai === 'da_bo' ? 'opacity:.6' : ''}>
+        <div class="nb-dong">
           <div class="nb-dong-dau">
             <strong>{t.hd} {h.so_hoa_don} · {dinhDangNgay(h.ngay)}</strong>
-            <span class={`nb-nhan ${h.trang_thai === 'da_bo' ? 'tat' : 'song'}`}>{h.trang_thai === 'da_bo' ? t.daBo : dinhDangTien(h.tong_tien, nn)}</span>
+            <span class={`nb-nhan ${h.trang_thai === 'da_bo' ? 'tat' : 'thong-tin'}`}>{h.trang_thai === 'da_bo' ? t.daBo : dinhDangTien(h.tong_tien, nn)}</span>
           </div>
           <dl>
             <dt>{t.dtPhieu}</dt><dd>{h.phieu.length > 0 ? h.phieu.map(x => `${x.so_phieu ?? '?'}: ${dinhDangTien(x.so_tien, nn)}`).join(' · ') : t.soPhieu(h.so_phieu)}</dd>
@@ -412,10 +415,10 @@ const soO = (n: number) => n.toLocaleString(nn === 'en' ? 'en-US' : 'vi-VN');
   {thanhToan.length === 0 ? (
     <p class="nb-rong">{t.chuaCoKhoan}</p>
   ) : thanhToan.map(kh => (
-    <div class="nb-dong" style={kh.trang_thai === 'da_huy' ? 'opacity:.6' : ''}>
+    <div class="nb-dong">
       <div class="nb-dong-dau">
         <strong>{kh.so_phieu} · {tenKhoan(kh, nn)}</strong>
-        <span class={`nb-nhan ${kh.trang_thai === 'da_huy' ? 'tat' : 'song'}`}>{kh.trang_thai === 'da_huy' ? t.daHuy : dinhDangTien(kh.so_tien, nn)}</span>
+        <span class={`nb-nhan ${kh.trang_thai === 'da_huy' ? 'tat' : 'thong-tin'}`}>{kh.trang_thai === 'da_huy' ? t.daHuy : dinhDangTien(kh.so_tien, nn)}</span>
       </div>
       <dl>
         <dt>{t.ngay}</dt><dd>{dinhDangNgay(kh.ngay)} · {t.ghiBoi} {ten.get(kh.nguoi_tao ?? '') ?? '—'} {dinhDangThoiDiem(kh.created_at)}</dd>

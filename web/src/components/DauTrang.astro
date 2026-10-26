@@ -2,12 +2,20 @@
 /**
  * ĐẦU TRANG — logo gốc, bốn mục điều hướng, bộ chọn ngôn ngữ
  *
- * Logo là vector tách nguyên từ PDF nhận diện (bản đỏ trên kem, trang 3) — không
- * gõ lại chữ BEEFTOWN bằng phông nào. Đầu trang nền kem nên dùng đúng biến thể
- * dành cho nền kem; không đặt khối kem lạc lõng lên nền tối. Logo rộng 160px
- * (màn rộng: 172px): guideline ghi lockup tối thiểu 160px, hẹp hơn thì dùng brandmark.
+ * Đầu trang là một dải ĐEN (bề mặt .be-toi của cong-khai.css): chữ trắng, mục đang xem
+ * gạch dưới trắng, nút "Hỏi bàn" đỏ chữ trắng, vòng focus trắng. Bảng thả xuống của màn
+ * hẹp trở lại bề mặt sáng (.be-kem): nền trắng, chữ đen, nét đỏ ở đáy.
+ *
+ * Logo là path gốc của bộ 21/10/2026 (web/public/thuong-hieu, tách bằng
+ * web/cong-cu/thuong-hieu/tach-logo.mjs) — không gõ lại chữ BEEFTOWN bằng phông nào.
+ * Thanh chỉ cao 64px (80px từ 1080px) nên dùng LOGO PHỤ (chữ BEEFTOWN, không tagline:
+ * tagline của logo chính chỉ cao khoảng 1/4 chữ, ở cỡ này không đọc được), bản TRẮNG cho
+ * nền đen (đầu bò khoét lộ nền — guideline trang 4 vẽ bản này trên đỏ; bảng tài sản của PR
+ * đổi nhận diện dùng cùng bản cho nền đen). Rộng 148px (176px từ 1080px): trên dưới còn
+ * khoảng trống bằng cạnh ô đầu bò như guideline trang 3 vẽ.
  * Màn dưới 360px (điện thoại rất nhỏ, hoặc máy tính phóng to 400 %) không đủ chỗ cho
- * lockup 160px cạnh nút danh mục — thanh đổi sang brandmark đầu bò 48px.
+ * logo phụ cạnh nút danh mục — thanh đổi sang brandmark trắng 48px (mức tối thiểu 48px
+ * giữ từ bộ 09/10/2026).
  *
  * Điều hướng theo brief: Trải nghiệm / Thực đơn / Đến Beeftown / Hỏi bàn. Hỏi bàn
  * là nút đỏ — hành động chính của cả trang. Tuyển dụng và giấy tờ ở chân trang.
@@ -51,11 +59,11 @@ const hoiBan = muc.find(m => m.duong === duongHoiBan)!;
 const [traiNghiem, ...trang] = muc.filter(m => m !== hoiBan);
 const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace(/\/$/, '');
 ---
-<header class="dau-trang">
+<header class="dau-trang be-toi">
   <div class="khung dt-hang">
     <a class="dt-logo" href={duongDanTuongUng('/', ngonNgu)} aria-label={t.veTrangChu}>
-      <img class="dt-logo-day-du" src="/thuong-hieu/logo-ngang-do.svg" width="446" height="124" alt="" />
-      <img class="dt-logo-gon" src="/thuong-hieu/dau-bo-do.svg" width="116" height="117" alt="" />
+      <img class="dt-logo-day-du" src="/thuong-hieu/chu-beeftown-trang.svg" width="430" height="61" alt="" />
+      <img class="dt-logo-gon" src="/thuong-hieu/dau-bo-trang.svg" width="177" height="169" alt="" />
     </a>
 
     <nav class="dt-nav" aria-label={t.dieuHuongChinh}>
@@ -85,7 +93,7 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
           <span class="mg-mo">{t.moMenu}</span>
           <span class="mg-dong">{t.dong}</span>
         </summary>
-        <div class="mg-bang">
+        <div class="mg-bang be-kem">
           <nav aria-label={t.dieuHuongChinh}>
             <ul class="mg-muc">
               <li><a href={traiNghiem.url}>{traiNghiem.chu}</a></li>
@@ -159,12 +167,13 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
 
 <style>
   /* Thanh cao đúng --cao-dau (64px; từ 1080px là 80px), tính cả nét kẻ dưới: phần dính
-     của trang (thanh tab thực đơn, cột dính) và scroll-padding-top đọc cùng biến đó. */
+     của trang (thanh tab thực đơn, cột dính) và scroll-padding-top đọc cùng biến đó.
+     Nền và nét kẻ đọc biến của bề mặt đen (.be-toi): nền đen, nét trắng 22 %. */
   .dau-trang {
     position: sticky; top: 0; z-index: 40;
     height: var(--cao-dau);
-    background: var(--kem);
-    border-bottom: 1px solid var(--vach);
+    background: var(--nen);
+    border-bottom: 1px solid var(--vien);
   }
   /* Màn thấp (điện thoại xoay ngang, phóng to 200%): đầu trang dính ăn gần nửa màn hình —
      cho nó cuộn đi cùng trang (scroll-padding-top đổi theo ở cong-khai.css). */
@@ -173,11 +182,13 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
     display: flex; align-items: center; gap: var(--k-3);
     height: 100%;
   }
-  /* Vùng chạm 48px; logo rộng 160px — mức tối thiểu của lockup trong guideline. */
+  /* Vùng chạm 48px; logo phụ rộng 148px (cao khoảng 21px): thanh 64px còn khoảng 21px trên và dưới —
+     bằng cạnh ô đầu bò của chính logo, khoảng trống guideline trang 3 vẽ. Ngưỡng 160px chỉ áp logo chính
+     (lockup có tagline, luật giữ từ bộ 09/10/2026); logo phụ có ngưỡng riêng 148px. */
   .dt-logo { display: flex; align-items: center; min-height: var(--cham); flex: none; }
-  .dt-logo-day-du { width: 160px; height: auto; }
+  .dt-logo-day-du { width: 148px; height: auto; }
   .dt-logo-gon { display: none; width: 48px; height: auto; }
-  /* Dưới 360px: brandmark thay lockup (guideline: hẹp hơn 160px thì dùng brandmark, tối thiểu 48px). */
+  /* Dưới 360px: brandmark thay logo phụ (không đủ chỗ cạnh nút danh mục; brandmark tối thiểu 48px). */
   @media (max-width: 359.98px) {
     .dt-logo-day-du { display: none; }
     .dt-logo-gon { display: block; }
@@ -189,21 +200,22 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
   ul { list-style: none; margin: 0; padding: 0; }
 
   /* --- Bộ chọn ngôn ngữ ------------------------------------------------------ */
-  /* Ba thứ tiếng cùng cỡ, cùng màu chữ chính (không xám, không nhỏ). Thứ tiếng đang xem:
-     chữ đậm + nét gạch đỏ 2px — hai dấu hiệu không phụ thuộc màu; thứ tiếng khác là link,
-     di chuột mới hiện gạch mảnh. */
+  /* Ba thứ tiếng cùng cỡ, cùng màu chữ chính của bề mặt (không xám, không nhỏ). Thứ tiếng
+     đang xem: chữ đậm + gạch 2px màu --nhan (trắng trên đầu trang đen, đỏ trong bảng thả
+     xuống) — hai dấu hiệu không phụ thuộc màu; thứ tiếng khác là link, di chuột mới hiện
+     gạch mảnh. Bộ chọn nằm cả trên thanh đen lẫn trong bảng trắng nên chỉ đọc biến bề mặt. */
   .doi-ngon-ngu {
     display: inline-flex; align-items: center; min-height: var(--cham);
     padding-inline: var(--k-2);
     font-size: 15px; font-weight: 400; line-height: 1.2;
-    color: var(--than); text-decoration: none; white-space: nowrap;
+    color: var(--chu-chinh); text-decoration: none; white-space: nowrap;
   }
   @media (hover: hover) {
     a.doi-ngon-ngu:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .35em; }
   }
   .doi-ngon-ngu[aria-current='true'] {
-    font-weight: 700; color: var(--do-sau);
-    text-decoration: underline; text-decoration-color: var(--do);
+    font-weight: 700; color: var(--nhan-nho);
+    text-decoration: underline; text-decoration-color: var(--nhan);
     text-decoration-thickness: 2px; text-underline-offset: .35em;
   }
   @media (forced-colors: active) {
@@ -222,16 +234,18 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
   /* --- Màn rộng ------------------------------------------------------------ */
   @media (min-width: 1080px) {
     .dt-hang { gap: var(--k-5); }
-    .dt-logo-day-du { width: 172px; }
+    /* Thanh 80px: logo phụ 176px (cao khoảng 25px), trên dưới còn khoảng 27px. */
+    .dt-logo-day-du { width: 176px; }
     .dt-nav { display: block; margin-inline: auto; }
     .dt-nav ul { display: flex; gap: clamp(20px, 2.2vw, 36px); }
     .dt-nav a {
       display: inline-flex; align-items: center; min-height: var(--cham);
-      font-weight: 600; font-size: 16px; text-decoration: none; color: var(--than);
+      font-weight: 600; font-size: 16px; text-decoration: none; color: var(--chu-chinh);
       border-block: 2px solid transparent; transition: border-color var(--nhanh), color var(--nhanh);
     }
     @media (hover: hover) { .dt-nav a:hover { border-bottom-color: currentColor; } }
-    .dt-nav a[aria-current='page'] { color: var(--do-sau); border-bottom-color: var(--do); }
+    /* Trang đang xem: trên thanh đen là chữ trắng như mục khác — khác mục khác ở gạch dưới 2px. */
+    .dt-nav a[aria-current='page'] { color: var(--nhan-nho); border-bottom-color: var(--nhan); }
     /* Tương phản cao (Windows): màu bị ép về màu hệ thống, gạch dưới trong suốt cũng hiện —
        mục đang mở phải khác bằng thứ không phải màu. */
     @media (forced-colors: active) {
@@ -242,15 +256,15 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
   }
 
   /* --- Màn hẹp: danh mục gọn ----------------------------------------------- */
-  /* Nút danh mục theo hệ nút phụ: nền Cream, chữ và viền Beef Red, cao 48px. Đang mở thì
-     thành nút đóng: dấu × và chữ "Đóng", nền kem đậm, chữ và viền đỏ đậm — vẫn là nút phụ,
-     để nút chính duy nhất trong tầm mắt là "Hỏi bàn". */
+  /* Nút danh mục đọc biến nút phụ của bề mặt: trên đầu trang đen là nền trong, viền và chữ
+     trắng, cao 48px. Đang mở thì thành nút đóng: dấu × và chữ "Đóng", nền trắng 12 % — vẫn là
+     nút phụ, để nút chính duy nhất trong tầm mắt là "Hỏi bàn". */
   .menu-gon summary {
     display: inline-flex; align-items: center; gap: var(--k-2);
     min-height: var(--cham); padding: 0 var(--k-4) 0 var(--k-3);
-    border: 1.5px solid var(--do); border-radius: var(--bo);
+    border: 1.5px solid var(--nut-phu-chu); border-radius: var(--bo);
     font-weight: 700; font-size: 15px; line-height: 1.2; cursor: pointer; list-style: none;
-    background: var(--kem); color: var(--do);
+    background: var(--nut-phu-nen); color: var(--nut-phu-chu);
     transition: background-color var(--nhanh), color var(--nhanh);
   }
   .menu-gon summary::-webkit-details-marker { display: none; }
@@ -259,15 +273,15 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
   .menu-gon summary :global(.mg-dong), .menu-gon[open] summary :global(.mg-mo) { display: none; }
   .menu-gon[open] summary :global(svg.mg-dong) { display: block; }
   .menu-gon[open] summary :global(span.mg-dong) { display: inline; }
-  .menu-gon summary:active, .menu-gon[open] summary { background: var(--kem-dam); color: var(--do-dam); border-color: var(--do-dam); }
+  .menu-gon summary:active, .menu-gon[open] summary { background: var(--nut-phu-nen-di); color: var(--nut-phu-chu-di); border-color: var(--nut-phu-chu-di); }
   /* Di chuột: chỉ máy có chuột — trên màn cảm ứng, chạm đóng xong nút phải về lại màu lúc đóng. */
   @media (hover: hover) {
-    .menu-gon summary:hover { background: var(--kem-dam); color: var(--do-dam); border-color: var(--do-dam); }
+    .menu-gon summary:hover { background: var(--nut-phu-nen-di); color: var(--nut-phu-chu-di); border-color: var(--nut-phu-chu-di); }
   }
 
-  /* Bảng danh mục: nền Cream, kết thúc bằng một nét Beef Red; phía dưới là lớp phủ tối để
-     thấy rõ bảng đang nằm trên trang — không dùng bóng đổ. Lớp phủ bấm được (đóng danh mục)
-     nên có con trỏ bàn tay, và chỉ hiện khi script đã chạy ([data-co-script]). */
+  /* Bảng danh mục (bề mặt sáng .be-kem): nền trắng, kết thúc bằng một nét đỏ; phía dưới là lớp
+     phủ đen 50 % để thấy rõ bảng đang nằm trên trang — không dùng bóng đổ. Lớp phủ bấm được (đóng
+     danh mục) nên có con trỏ bàn tay, và chỉ hiện khi script đã chạy ([data-co-script]). */
   .mg-bang {
     position: absolute; inset-inline: 0; top: calc(100% + 1px); z-index: 1;
     max-height: calc(100svh - var(--cao-dau));
@@ -278,7 +292,7 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
   }
   .menu-gon[data-co-script][open]::before {
     content: ''; position: fixed; inset: var(--cao-dau) 0 0;
-    background: rgba(21, 16, 8, .5);
+    background: rgba(0, 0, 0, .5);
     cursor: pointer;
   }
   /* Đang mở thì trang phía sau đứng yên: vuốt trong bảng không kéo trang chạy theo. Thanh cuộn kiểu

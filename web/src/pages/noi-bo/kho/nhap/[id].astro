@@ -176,6 +176,8 @@ const t = dichNB(nn, {
   han: { vi: 'hạn', en: 'use by' },
   loNcc: { vi: (so: string) => `lô NCC ${so}`, en: (so: string) => `supplier lot ${so}` },
   lanTruoc: { vi: (g: number) => `lần trước ${g.toLocaleString('vi-VN')}`, en: (g: number) => `last time ${g.toLocaleString('en-US')}` },
+  // Chip giá vượt ngưỡng nói bằng chữ — không chỉ bằng viền đỏ (Khánh bỏ màu trạng thái 25/10/2026).
+  vuotNguong: { vi: 'vượt ngưỡng', en: 'over threshold' },
   phieu: { vi: 'phiếu', en: 'receipt' },
   thanhTienTam: { vi: 'Thành tiền tạm tính:', en: 'Estimated amount:' },
   vaoKho: { vi: 'vào kho ≈', en: 'into stock ≈' },
@@ -735,7 +737,7 @@ const huongDan = 'duyet-nhap';
                   placeholder={ss?.gia_truoc ? t.lanTruoc(ss.gia_truoc) : t.viDuGia} /></label>
               {chip && (
                 <p class="dg-chip-hang"><span class:list={['dg-chip', { vuot: chip.vuot }]}
-                  title={ss?.so_phieu_truoc ? `${t.phieu} ${ss.so_phieu_truoc} · ${dinhDangNgay(ss.ngay_truoc)}` : undefined}>{chip.chu}</span></p>
+                  title={ss?.so_phieu_truoc ? `${t.phieu} ${ss.so_phieu_truoc} · ${dinhDangNgay(ss.ngay_truoc)}` : undefined}>{chip.chu}{chip.vuot && <>{' · '}<strong>{t.vuotNguong}</strong></>}</span></p>
               )}
               <p class="kho-phu" style="margin:.4rem 0 0">{t.thanhTienTam} <strong>{tt !== null && tt > 0 ? tien(tt) : '—'}</strong>
                 {gv && d.don_gia_kg > 0 && Math.round(gv.gia_von_kg) !== d.don_gia_kg && <>{' '}· {t.vaoKho} {tien(gv.gia_von_kg)}/kg</>}</p>
@@ -929,10 +931,11 @@ const huongDan = 'duyet-nhap';
   }
   .dg-ten { margin: .4rem 0 .2rem; }
   .dg-chip-hang { margin: .1rem 0 0; }
-  /* Chip so giá: xám = trong ngưỡng, đỏ = vượt ngưỡng. */
+  /* Chip so giá: nền xám = trong ngưỡng; vượt ngưỡng = nền trong, viền đỏ 1,5px, chữ đỏ đậm 700 và có chữ "vượt
+     ngưỡng" (t.vuotNguong) — không chỉ khác bằng màu. */
   .dg-chip {
-    display: inline-block; padding: .3rem .7rem; border-radius: 999px;
+    display: inline-block; padding: .3rem .7rem; border-radius: 999px; border: 1.5px solid transparent;
     font-size: .9rem; font-weight: 600; background: var(--kem-sau); color: var(--than);
   }
-  .dg-chip.vuot { background: var(--do-nen); color: var(--do); }
+  .dg-chip.vuot { background: transparent; border: 1.5px solid var(--do); color: var(--do); font-weight: 700; }
 </style>

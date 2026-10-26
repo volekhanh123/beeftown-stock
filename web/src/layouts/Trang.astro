@@ -4,11 +4,13 @@
  *
  * THẺ CHIA SẺ LINK (og:image):
  * Ảnh THẬT đã công bố ở khóa `anh_chia_se` luôn được ưu tiên. Chưa có thì dùng
- * ảnh dự phòng /thuong-hieu/chia-se-1200x630.png: chỉ có vân mỡ và logo của PDF
- * nhận diện (trang 2), không ảnh chụp, không ngày, không giá — Khánh duyệt
- * 06/10/2026. Ảnh đó đi cùng bản build, nên không có chuyện thẻ og:image trỏ
- * tới ảnh hỏng (điều mà quy tắc cũ "không có ảnh thật thì không đặt thẻ" phòng).
- * v_cong_bo_con_thieu vẫn nhắc anh_chia_se cho tới khi có ảnh chụp thật.
+ * ảnh dự phòng /thuong-hieu/chia-se-1200x630.png: logo chính trắng trên nền đỏ
+ * phẳng (guideline 21/10/2026, trang 4: trắng trên đỏ), không ảnh chụp, không
+ * ngày, không giá — dựng bằng web/cong-cu/thuong-hieu/tao-bieu-tuong.py. Ảnh đó
+ * đi cùng bản build, nên không có chuyện thẻ og:image trỏ tới ảnh hỏng (điều mà
+ * quy tắc cũ "không có ảnh thật thì không đặt thẻ" phòng). Alt của nó là tên và
+ * tagline — đúng chữ in trên logo. v_cong_bo_con_thieu vẫn nhắc anh_chia_se cho
+ * tới khi có ảnh chụp thật.
  *
  * DỮ LIỆU CÓ CẤU TRÚC (JSON-LD):
  * Chỉ khai những gì đã công bố. Cụ thể là KHÔNG có:
@@ -17,6 +19,9 @@
  *     liệu đánh giá bịa vừa vi phạm chính sách Google vừa là quảng cáo sai;
  *   · openingHoursSpecification khi giờ chưa chốt — Google đưa giờ này lên
  *     kết quả tìm kiếm, nên khai sai là dẫn khách tới một cánh cửa đóng.
+ * Logo (`logo`) là biểu tượng 180 × 180 của bộ 21/10/2026 (đầu bò trắng trên nền
+ * đỏ phủ kín, web/public/thuong-hieu/bieu-tuong-180.png): Google cần ảnh tối thiểu
+ * 112 × 112, nhìn đúng trên nền trắng — ô đỏ phủ kín đạt cả hai, cắt vuông không mất gì.
  *
  * BA THỨ TIẾNG:
  * Mỗi trang khai hreflang cho đủ vi/en/ko và x-default về bản tiếng Việt —
@@ -99,6 +104,8 @@ duLieuCoCauTruc.address = diaChiCoCauTruc(nd);
 // Chỉ phần số (hotline đã công bố có thể kèm chú thích "(Zalo)").
 if (lh.goi) duLieuCoCauTruc.telephone = lh.goi.slice('tel:'.length);
 if (coAnhThat) duLieuCoCauTruc.image = anhChiaSe.url;
+// Đường dẫn tuyệt đối: chỉ khai khi biết tên miền (bản dựng không có site thì bỏ, như og:image).
+if (goc) duLieuCoCauTruc.logo = { '@type': 'ImageObject', url: `${goc}/thuong-hieu/bieu-tuong-180.png`, width: 180, height: 180 };
 if (lh.maps) duLieuCoCauTruc.hasMap = lh.maps;
 // Trang thực đơn chỉ được khai khi thực đơn đang hiện.
 if (nd.hien_thuc_don === true && goc) duLieuCoCauTruc.hasMenu = goc + duongDanTuongUng('/thuc-don', ngonNgu);
@@ -142,9 +149,11 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/bieu-tuong.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/thuong-hieu/bieu-tuong-180.png" />
-    <meta name="theme-color" content="#F0E3D0" />
-    {/* Logo đầu trang: tải sớm cùng CSS để không nháy ô trống. Ảnh hero preload qua slot "dau". */}
-    <link rel="preload" href="/thuong-hieu/logo-ngang-do.svg" as="image" type="image/svg+xml" />
+    {/* Màu thanh trình duyệt: đen như đầu trang (DauTrang.astro, bề mặt .be-toi). */}
+    <meta name="theme-color" content="#000000" />
+    {/* Logo đầu trang (logo phụ trắng của DauTrang.astro): tải sớm cùng CSS để không nháy ô trống.
+        Ảnh hero preload qua slot "dau". */}
+    <link rel="preload" href="/thuong-hieu/chu-beeftown-trang.svg" as="image" type="image/svg+xml" />
     <slot name="dau" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />

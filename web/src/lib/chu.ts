@@ -26,10 +26,10 @@ import type { NgonNgu } from './noi-dung';
 
 export const THUONG_HIEU = {
   ten: 'Beeftown',
-  // Khẩu hiệu tiếng Anh, giữ nguyên ở mọi bản ngôn ngữ. Cách viết chuẩn trên web
-  // theo brief 06/10/2026: ba câu, dấu chấm. (Logo gốc vẫn in "PICK IT – GRILL
-  // IT – LOVE IT" — đó là nét chữ của logo, không gõ lại.)
-  khauHieu: 'Pick it. Grill it. Love it.',
+  // Khẩu hiệu tiếng Anh, giữ nguyên ở mọi bản ngôn ngữ. Cách viết theo logo 21/10/2026
+  // (Khánh chốt 26/10/2026): ba vế cách bằng dấu phẩy, chấm than. Logo chính in
+  // "PICK IT, GRILL IT, LOVE IT!" — đó là hình (path của logo), không gõ lại.
+  khauHieu: 'Pick it, grill it, love it!',
   // "Tên ngành hàng đã chốt" — Brand Overview mục 2.
   descriptor: 'Beef Specialty Restaurant',
 } as const;

@@ -63,10 +63,11 @@ function moiFile(thuMuc) {
 /**
  * Đọc điểm ảnh của file PNG 8 bit RGB / RGBA, không xen kẽ — đúng dạng
  * web/cong-cu/thuong-hieu/tao-bieu-tuong.py lưu biểu tượng. Dạng khác → null.
+ * `p` là đường dẫn file, hoặc chính các byte của PNG (PNG nằm trong favicon.ico).
  * Trả { rong, cao, kenh, diem(x, y) → [r, g, b, a] }.
  */
 function docPng(p) {
-  const b = readFileSync(p);
+  const b = Buffer.isBuffer(p) ? p : readFileSync(p);
   if (b.length < 8 || b.readUInt32BE(0) !== 0x89504e47) return null;
   let i = 8, rong = 0, cao = 0, kenh = 0;
   const idat = [];
@@ -597,6 +598,48 @@ await nhom('7 · CÀI NHƯ APP (manifest + biểu tượng)', async () => {
   const b192 = docPng(join(PUB, 'kho', 'bieu-tuong-192.png'));
   ok('Biểu tượng 192 (Beeftown Cân bọc vào .ico, khai 32 bit) là PNG RGBA',
     b192?.kenh === 4 && /'kho', 'bieu-tuong-192\.png'/.test(doc(join(GOC, 'can-app', 'scripts', 'dong-goi.ts'))));
+
+  // Màu của biểu tượng app (bảng 22/10/2026, brandmark bộ 21/10/2026): ô đỏ #BD0000, đầu bò trắng. Ba bản đặc (iPhone,
+  // maskable) phủ nền đỏ tới tận góc; hai bản RGBA (192, 512) góc trong suốt nên không xét góc. Mọi điểm đục của 5 PNG
+  // và 3 PNG trong favicon.ico nằm trên đoạn pha giữa đỏ và trắng (mép khử răng cưa) — không còn kem, đỏ cũ của bảng
+  // 09/10/2026.
+  const DO_MOI = [189, 0, 0], TRANG = [255, 255, 255];
+  const trenDoan = (c, a = TRANG, b = DO_MOI, sai = 3) => {
+    const huong = a.map((v, k) => b[k] - v);
+    const t = Math.min(1, Math.max(0, huong.reduce((tong, v, k) => tong + v * (c[k] - a[k]), 0) / huong.reduce((tong, v) => tong + v * v, 0)));
+    return c.every((v, k) => Math.abs(v - (a[k] + t * huong[k])) <= sai);
+  };
+  const DAC = [['maskable-512', join(PUB, 'kho', 'bieu-tuong-maskable-512.png')], ['kho/bieu-tuong-180', join(PUB, 'kho', 'bieu-tuong-180.png')],
+    ['thuong-hieu/bieu-tuong-180', join(PUB, 'thuong-hieu', 'bieu-tuong-180.png')]];
+  const gocSai = DAC.flatMap(([ten, f]) => {
+    const a = existsSync(f) ? docPng(f) : null;
+    if (!a) return [`${ten}: không đọc được PNG`];
+    return [[0, 0], [a.rong - 1, 0], [0, a.cao - 1], [a.rong - 1, a.cao - 1]].map(([x, y]) => a.diem(x, y))
+      .filter(d => d.slice(0, 3).some((v, k) => Math.abs(v - DO_MOI[k]) > 2) || d[3] !== 255).map(d => `${ten}: góc (${d.join(', ')})`);
+  });
+  ok('Biểu tượng app đặc (maskable-512, kho/bieu-tuong-180, thuong-hieu/bieu-tuong-180): bốn điểm góc là đỏ (189, 0, 0) ± 2',
+     gocSai.length === 0, [...new Set(gocSai)].slice(0, 6).join(' | '));
+  // PNG trong favicon.ico: đọc bảng mục của ICO (6 byte đầu, mỗi mục 16 byte: cỡ, …, độ dài, vị trí).
+  const ico = existsSync(join(PUB, 'favicon.ico')) ? readFileSync(join(PUB, 'favicon.ico')) : Buffer.alloc(0);
+  const pngTrongIco = ico.length >= 6 ? Array.from({ length: ico.readUInt16LE(4) }, (_, k) => {
+    const o = 6 + 16 * k;
+    return [`favicon.ico ${ico[o] || 256}px`, ico.subarray(ico.readUInt32LE(o + 12), ico.readUInt32LE(o + 12) + ico.readUInt32LE(o + 8))];
+  }) : [];
+  const tatCa = [...DAC, ['kho/bieu-tuong-192', join(PUB, 'kho', 'bieu-tuong-192.png')], ['kho/bieu-tuong-512', join(PUB, 'kho', 'bieu-tuong-512.png')], ...pngTrongIco];
+  const ngoaiDoan = tatCa.flatMap(([ten, nguon]) => {
+    const a = Buffer.isBuffer(nguon) || existsSync(nguon) ? docPng(nguon) : null;
+    if (!a) return [`${ten}: không đọc được PNG`];
+    const la = new Map();
+    for (let y = 0; y < a.cao; y++) for (let x = 0; x < a.rong; x++) {
+      const d = a.diem(x, y);
+      if (d[3] === 255 && !trenDoan(d.slice(0, 3))) la.set(d.slice(0, 3).join(', '), (la.get(d.slice(0, 3).join(', ')) ?? 0) + 1);
+    }
+    return la.size ? [`${ten}: ${[...la].slice(0, 3).map(([m, n]) => `(${m}) × ${n}`).join(', ')}`] : [];
+  });
+  ok(`Mọi điểm đục (alpha 255) của 5 biểu tượng PNG và ${pngTrongIco.length} PNG trong favicon.ico nằm trên đoạn pha đỏ–trắng (±3) — không kem, không đỏ cũ`,
+     pngTrongIco.length === 3 && ngoaiDoan.length === 0, ngoaiDoan.slice(0, 6).join(' | '));
+  ok('…phép đoạn pha bắt được kem cũ (240, 227, 208), đỏ cũ (167, 12, 12), đen; nhận đỏ pha trắng (232, 166, 166)',
+     !trenDoan([240, 227, 208]) && !trenDoan([167, 12, 12]) && !trenDoan([0, 0, 0]) && trenDoan([232, 166, 166]) && trenDoan([189, 0, 0]));
   for (const s of mf.shortcuts ?? []) ok(`Lối tắt "${s.name}" mở trang có thật`, !!trangCua(s.url));
   ok('Không có service worker (chưa làm chế độ ngoại tuyến)',
     !existsSync(join(PUB, 'sw.js')) && !/serviceWorker/.test(khung));

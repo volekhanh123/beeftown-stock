@@ -22,7 +22,7 @@
  *     (bao_dong_ghi_luot) đóng sự cố cũ, mở sự cố mới — được báo như mọi lần đỏ.
  *   · Mỗi đèn tối đa TIN_TOI_DA_MOI_DEN tin "mới đỏ" từ 8 giờ sáng tới 8 giờ sáng hôm sau;
  *     tin cuối nói rõ là sẽ không nhắn riêng nữa tới bản tóm tắt.
- *   · 8 giờ sáng MỖI NGÀY gửi tóm tắt, kể cả khi mọi thứ xanh: không thấy tin sáng nghĩa là
+ *   · 8 giờ sáng MỖI NGÀY gửi tóm tắt, kể cả khi mọi thứ ổn: không thấy tin sáng nghĩa là
  *     việc báo động đang hỏng. Lỡ 8 giờ thì gửi bù tới 22 giờ.
  *   · Vừa có kênh (kênh đổi sau lần tóm tắt gần nhất): gửi ngay tin "đã nối kênh" liệt kê mọi
  *     mục đang đỏ — không dồn tin cũ.
@@ -55,7 +55,7 @@ export const NHOM: Readonly<Record<MaDenBaoDong, NhomDen>> = {
   so_kho: 'he_thong',
   dich: 'he_thong',
   // Sao lưu (0058) chạy 02:00; đèn đỏ khi quá 36 giờ không có bản dùng được, nên tin "mới đỏ" thường
-  // rơi vào ban ngày. Bản đêm sau dùng được thì đèn xanh lại khoảng 02:10–03:30 — tin đỏ đã đến từ chiều
+  // rơi vào ban ngày. Bản đêm sau dùng được thì đèn về "Ổn" khoảng 02:10–03:30 — tin đỏ đã đến từ chiều
   // nên tin "hết đỏ" đợi 07:00 (luật hết đỏ ban đêm trong lapKeHoach).
   sao_luu: 'he_thong',
   bao_dong: 'he_thong',

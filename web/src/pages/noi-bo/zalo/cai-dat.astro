@@ -274,7 +274,7 @@ const hhmm = (s: unknown) => String(s ?? '').slice(0, 5);
           <input type="hidden" name="ma" value={m.ma} />
           <div class="nb-dong-dau">
             <strong><code>{m.ma}</code> {m.ten}</strong>
-            <span class="nb-nhan tat">{nhanNB(TEN_LOAI_TIN, m.loai, nn)}</span>
+            <span class="nb-nhan thong-tin">{nhanNB(TEN_LOAI_TIN, m.loai, nn)}</span>
           </div>
           {!m.dang_dung && <p class="z-phu">{t.ngungDung}</p>}
           <p class="nb-gia-tri z-noi-dung">{m.noi_dung}</p>

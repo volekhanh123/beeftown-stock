@@ -3,9 +3,10 @@
  * khai) và test-noi-bo-bang-mau.mjs (/noi-bo, kho). Không phải file kiểm thử (tên không bắt đầu bằng
  * "test-"), nên npm test không chạy riêng nó.
  *
- * Trắng (và mọi màu ngoài bảng) viết được bằng nhiều cách khác ngoài mã hex: rgb(255, 255, 255),
- * hsl(0 0% 100%), oklch(1 0 0), color(srgb 1 1 1), tên màu white / ivory / snow, màu hệ thống Canvas…
- * Hàm taoMauLaTrong(boBaDuoc) trả về một hàm quét một giá trị CSS:
+ * Màu ngoài bảng 22/10/2026 (kem cũ, trắng ngà, xám lạ — và cả trắng viết không qua token) lọt vào được bằng nhiều
+ * cách khác ngoài mã hex: rgb(240, 227, 208), hsl(0 0% 100%), oklch(1 0 0), color(srgb 1 1 1), tên màu white / ivory /
+ * snow, màu hệ thống Canvas… Trắng của bảng là token --kem (hay bộ ba 255, 255, 255 trong rgb()); tên màu và màu hệ
+ * thống thì không. Hàm taoMauLaTrong(boBaDuoc) trả về một hàm quét một giá trị CSS:
  *   · rgb() / rgba(): ba số đầu phải là một bộ ba được phép (độ trong tùy ý);
  *   · không hàm màu nào khác — bảng màu khai bằng hex, không cần hsl(), oklch(), lab(), color()…;
  *   · không tên màu CSS (white, ivory, red…): chỉ transparent, currentColor và biến của bảng;

@@ -3,15 +3,13 @@
    =============================================================================
    Cùng bảng màu thương hiệu với trang công khai (chung.css), nhưng dựng khác,
    và cố ý khác: trang công khai chữ to, ít chi tiết — để đọc lướt ngoài
-   đường. Trang nội bộ mật độ cao hơn, thẻ Cream trên nền kem sau — để đứng ở
-   quầy dò một danh sách.
+   đường. Trang nội bộ mật độ cao hơn, thẻ trắng trên nền xám nhạt F4 — để
+   đứng ở quầy dò một danh sách.
 
-   KHÔNG CÓ MÀU TRẮNG, như trang công khai: bảng màu thương hiệu không có trắng.
-   Hai bề mặt, khai một lần ở .nb-than: nền trang --nb-nen (kem sau) và mọi thứ
-   nổi lên trên nó — thẻ, thanh điều hướng, menu, ô nhập — --nb-the (Cream).
-   Thẻ tách khỏi nền bằng viền mảnh --vach, không bằng một mảng trắng. Ô đánh
-   dấu, ô chọn một và nút chọn file tự vẽ (ô của hệ thống nền trắng). Chỗ duy
-   nhất có trắng và đen là bản in ra giấy.
+   Hai bề mặt, khai một lần ở .nb-than: nền trang --nb-nen (F4) và mọi thứ
+   nổi lên trên nó — thẻ, thanh điều hướng, menu, ô nhập — --nb-the (trắng).
+   Thẻ tách khỏi nền bằng viền mảnh --vach (E2). Ô đánh dấu, ô chọn một và nút
+   chọn file tự vẽ bằng token, để mọi trình duyệt vẽ giống nhau.
 
    Đầu trang tối và thanh điều hướng là tín hiệu: nhìn vào là biết ngay mình
    đang ở trang quản trị, không phải trang khách. Người dùng cùng một điện
@@ -21,36 +19,38 @@
    có font-size >= 16px. Dưới 16px thì Safari trên iPhone tự phóng to trang
    khi chạm vào ô — trang nhảy, người dùng mất chỗ.
 
-   MÀU: chỉ dùng biến. Năm màu thương hiệu và màu pha ở :root của chung.css;
-   bề mặt và màu trạng thái của công cụ ở .nb-than ngay dưới. Tương phản đã tính
-   (WCAG 2.2) — crm/test/test-noi-bo-bang-mau.mjs gác từng cặp:
-     chữ than / kem · kem sau       14,96 · 14,05 : 1
-     chữ phụ (--muc-nhat) / kem · kem sau   5,92 · 5,80 : 1
-     chữ đỏ / kem · kem sau         6,15 · 5,77 : 1     chữ kem / đỏ      6,15 : 1
-     viền ô (--vien-o) / kem · kem sau   3,71 · 3,49 : 1   chữ kem / than   14,96 : 1
-   KHÔNG BAO GIỜ: Marigold, Warm Stone làm chữ hay biểu tượng trên nền sáng
-   (1,56 và 1,83 : 1 với kem). Chữ "lưu ý" trên nền sáng dùng --vang-chu.
+   MÀU: chỉ dùng biến. Bảng 22/10/2026 (đỏ, đen, trắng) và màu pha 25/10/2026 ở
+   :root của chung.css; hai bề mặt của công cụ ở .nb-than ngay dưới. Tương phản
+   đã tính (WCAG 2.2) — crm/test/test-noi-bo-bang-mau.mjs gác từng cặp:
+     chữ đen / trắng · F4                 21,00 · 19,09 : 1
+     chữ phụ #555 (--muc-nhat) / trắng · F4   7,46 · 6,78 : 1
+     chữ đỏ / trắng · F4                   6,64 · 6,03 : 1     chữ trắng / đỏ   6,64 : 1
+     viền ô (--vien-o) / trắng · F4         4,54 · 4,13 : 1     chữ trắng / đen  21,00 : 1
+   KHÔNG BAO GIỜ: chữ đỏ hay #555 trên nền đen (3,16 và 2,82 : 1); E2 làm chữ trên
+   nền sáng (1,30 : 1 với trắng).
+
+   TRẠNG THÁI KHÔNG CÓ MÀU RIÊNG (Khánh bỏ xanh / vàng / đỏ nhạt ngày 25/10/2026):
+   phân biệt bằng chữ, dấu, nét — bảy kiểu vẽ, đỏ chỉ cho "làm ngay":
+     K1 nền đỏ, chữ trắng, dấu "!"         làm ngay (nhãn .nb-nhan.cho, .kho-han.het_han)
+     K2 viền đỏ 2px, tam giác "!"           làm ngay, dạng khối (.nb-bao.loi, .kho-o-so.gap)
+     K3 nền đen, chữ trắng                  nháp, giá thử, đang làm dở (.nb-nhan.nhap)
+     K4 viền đen liền, dấu "✓"             xong, đang bật, còn hạn (.nb-nhan.song)
+     K5 nhãn nền E2 chữ đen; khối vạch #555 và vòng tròn "!"   lưu ý (.nb-nhan.luu-y, .nb-bao.luu-y)
+     K6 nét đứt #767676, chữ #555           tắt, hủy (.nb-nhan.tat)
+     K7 viền mảnh #767676, không dấu        thuộc tính, không phải trạng thái (.nb-nhan.thong-tin)
+   Hai trạng thái đứng cạnh nhau khác nhau ở ít nhất một kênh không phải màu
+   (test-noi-bo-bang-mau.mjs nhóm 7). Dấu vẽ bằng CSS — không emoji, không ký tự tam
+   giác cảnh báo của bảng mã (iPhone vẽ nó thành emoji): tam giác là clip-path, vòng là
+   border-radius. content viết hai lần: Safari cũ đọc dòng đầu, trình duyệt mới đọc
+   dòng sau (chữ thay thế rỗng — trình đọc màn hình đọc chữ của nhãn, không đọc dấu).
    ============================================================================= */
 
 .nb-than {
-  /* Hai bề mặt của công cụ — không có trắng. Kho (Kho.astro: <body class="nb-than kho-than">)
-     đọc cùng hai biến này. Cream và kem sau chỉ chênh 1,07 : 1: thẻ tách khỏi nền bằng viền --vach. */
-  --nb-nen:    var(--kem-sau);   /* nền trang */
-  --nb-the:    var(--kem);       /* thẻ, thanh điều hướng, thanh đáy, menu thả, ô nhập */
-
-  /* Màu trạng thái của công cụ. Đây là màu CHỨC NĂNG (xanh = xong, vàng = lưu ý,
-     đỏ = làm ngay), không thuộc năm màu thương hiệu; sắc đã chỉnh cho hợp hai nền kem.
-     Ba nền nhạt sẫm ngang kem sau, không sáng hơn thẻ Cream — sáng hơn thì thành một
-     mảng gần trắng giữa thẻ kem. Đỏ của trạng thái là chính --do; vàng đặc là --mu-tat
-     (chữ than đặt lên trên). */
-  --xanh:      #1A683F;   /* chữ, vạch, nền đặc "xong": 5,36 : 1 với kem · 5,03 với kem sau · chữ kem đặt lên 5,36 */
-  --xanh-nen:  #D3E3C6;   /* nền nhạt "xong": chữ xanh đặt lên 5,03 : 1 */
-  --xanh-vien: #A3C597;   /* viền của khối nền xanh nhạt */
-  --vang-chu:  #7A5200;   /* chữ và biểu tượng "lưu ý" trên nền sáng: 5,47 : 1 với kem · 5,14 với kem sau */
-  --vang-nen:  #F6DC9E;   /* nền nhạt "lưu ý": chữ vàng đậm đặt lên 5,16 : 1 */
-  --vang-vien: #DDB65C;   /* viền của khối nền vàng nhạt */
-  --do-nen:    #F2D6CE;   /* nền nhạt "lỗi, làm ngay": chữ đỏ đặt lên 5,66 : 1 */
-  --do-vien:   #DDA79C;   /* viền của khối nền đỏ nhạt */
+  /* Hai bề mặt của công cụ. Kho (Kho.astro: <body class="nb-than kho-than">) đọc cùng hai biến
+     này. Thẻ trắng và nền F4 chỉ chênh 1,10 : 1: thẻ tách khỏi nền bằng viền --vach (E2). Không màu
+     trạng thái nào khai ở đây — trạng thái vẽ bằng chữ, dấu, nét (đầu file). */
+  --nb-nen:    var(--kem-sau);   /* nền trang — xám nhạt F4 */
+  --nb-the:    var(--kem);       /* thẻ, thanh điều hướng, thanh đáy, menu thả, ô nhập — trắng */
 
   background: var(--nb-nen);
   color: var(--than);
@@ -59,12 +59,11 @@
   padding-bottom: 5rem;
 }
 
-/* Vòng focus theo nền, như hệ bề mặt của trang công khai: Charcoal trên nền sáng
-   (14,96 : 1 với kem, 14,05 với kem sau), Marigold trên đầu trang tối (9,59 : 1).
-   Marigold trên nền sáng chỉ 1,46 – 1,56 : 1 — bấm Tab không thấy mình đang ở đâu.
-   Menu thả từ đầu trang kho là thẻ Cream: lại dùng Charcoal. */
+/* Vòng focus theo nền, như hệ bề mặt của trang công khai: đen trên nền sáng (21 : 1 với
+   trắng, 19,09 với F4), trắng trên đầu trang đen (21 : 1). Vòng đen trên đầu trang đen thì
+   bấm Tab không thấy mình đang ở đâu. Menu thả từ đầu trang kho là thẻ trắng: lại dùng đen. */
 .nb-than :focus-visible { outline-color: var(--than); }
-.nb-dau :focus-visible, .kho-dau :focus-visible { outline-color: var(--cuc-vang); }
+.nb-dau :focus-visible, .kho-dau :focus-visible { outline-color: var(--kem); }
 .kho-dau :is(.kho-nguoi-menu, .kho-cn-chon > div) :focus-visible { outline-color: var(--than); }
 
 .nb-khung { width: min(880px, 92%); margin-inline: auto; }
@@ -85,13 +84,16 @@
 .nb-dau-hang {
   display: flex; align-items: center; justify-content: space-between; gap: 1rem;
 }
+/* Logo phụ trắng (chu-beeftown-trang.svg, Brand Guidelines 21/10/2026) trên đầu trang đen — logo là hình,
+   không gõ lại chữ BEEFTOWN bằng phông. Rộng 148px (cao 21px), cỡ tối thiểu như đầu trang công khai; chữ "nội bộ"
+   trắng cạnh logo (điện thoại: dưới logo). */
 .nb-hieu {
-  font-weight: 800; letter-spacing: .06em; font-size: 1rem;
-  text-decoration: none; display: flex; align-items: baseline; gap: .5rem;
+  text-decoration: none; display: flex; align-items: center; gap: .6rem;
 }
+.nb-hieu img { width: 148px; height: auto; flex-shrink: 0; }
 .nb-hieu span {
   font-weight: 600; font-size: .7rem; letter-spacing: .14em;
-  text-transform: uppercase; color: var(--cuc-vang);
+  text-transform: uppercase; color: var(--kem);
 }
 .nb-dau-phai { display: flex; align-items: center; gap: .75rem; }
 /* Nút đổi tiếng là một link (a), nên cần căn như nút <button> bên cạnh. */
@@ -103,10 +105,11 @@
 .nb-nut-nho {
   font: inherit; font-size: .78rem; font-weight: 600;
   background: transparent; color: var(--kem);
-  border: 1px solid var(--vach-kem); border-radius: 6px;
+  /* Viền xám #767676: 4,62 : 1 trên đầu trang đen — trắng 22 % (--vach-kem) chỉ 1,79, không thấy nút. */
+  border: 1px solid var(--vien-o); border-radius: 6px;
   padding: .5rem .7rem; cursor: pointer; min-height: 40px;
 }
-.nb-nut-nho:hover { background: rgba(240, 227, 208, .1); }
+.nb-nut-nho:hover { background: rgba(255, 255, 255, .1); }
 
 /* --- Điều hướng ----------------------------------------------------------- */
 /* Máy tính / tablet: thanh trên. Xuống dòng khi hẹp — bản cũ cuộn ngang, mục cuối
@@ -135,7 +138,7 @@
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
     display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
     background: var(--nb-the); border-top: 1px solid var(--vach);
-    box-shadow: 0 -2px 12px rgba(21, 16, 8, .1);
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, .1);
     padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
   .nb-day a {
@@ -148,10 +151,10 @@
   .nb-day a[aria-current='page'] { color: var(--do); border-top-color: var(--do); }
   /* Đầu trang hẹp: một hàng không đủ chỗ cho tên người dùng, nút đổi tiếng và Đăng
      xuất. Tên + vai xuống hàng thứ hai (cả quán dùng chung điện thoại — phải luôn thấy
-     đang thao tác bằng tài khoản ai); chữ "nội bộ" xuống dưới BEEFTOWN. */
+     đang thao tác bằng tài khoản ai); chữ "nội bộ" xuống dưới logo. */
   .nb-dau-hang { flex-wrap: wrap; gap: .4rem .5rem; }
   .nb-dau-phai, .nb-ai { display: contents; }
-  .nb-hieu { flex-direction: column; align-items: flex-start; gap: .1rem; line-height: 1.1; margin-right: auto; }
+  .nb-hieu { flex-direction: column; align-items: flex-start; gap: .3rem; line-height: 1.1; margin-right: auto; }
   .nb-nut-nho { white-space: nowrap; }
   .nb-ten { order: 9; flex-basis: 100%; text-align: left; font-size: .75rem; }
   .nb-ten em { display: inline; margin-left: .4rem; }
@@ -185,14 +188,29 @@
 .nb-huy { display: flex; gap: .5rem; align-items: center; flex-shrink: 0; }
 
 /* --- Nhãn trạng thái ------------------------------------------------------ */
+/* Bảy kiểu ở đầu file. Viền trong suốt 1,5px ở lớp gốc: nhãn nền đặc (K1, K3, K5) vẫn có khung khi chế độ tương
+   phản cao của Windows bỏ màu nền, và nhãn nền đặc cùng cỡ với nhãn viền 1,5px (K4, K6) đứng cạnh. */
 .nb-nhan {
   display: inline-block; font-size: .7rem; font-weight: 700; letter-spacing: .06em;
   text-transform: uppercase; padding: .2rem .5rem; border-radius: 4px; white-space: nowrap;
+  border: 1.5px solid transparent;
 }
-.nb-nhan.song   { background: var(--xanh); color: var(--kem); }
-.nb-nhan.tat    { background: var(--vach); color: var(--muc-nhat); }
-.nb-nhan.nhap   { background: var(--mu-tat); color: var(--than); }
+/* K4 xong, đang bật: nền trong, viền đen liền, dấu ✓ (21 : 1 với thẻ trắng). */
+.nb-nhan.song   { background: transparent; color: var(--than); border-color: var(--than); }
+.nb-nhan.song::before { content: '✓ '; content: '✓ ' / ''; }
+/* K6 tắt, hủy, việc của vai khác: nền trong, nét đứt #767676 (4,54 : 1), chữ #555 (7,46). */
+.nb-nhan.tat    { background: transparent; color: var(--muc-nhat); border: 1.5px dashed var(--vien-o); }
+/* K3 nháp, giá thử, đang làm dở: nền đen, chữ trắng (21 : 1). */
+.nb-nhan.nhap   { background: var(--than); color: var(--kem); }
+/* K1 làm ngay: nền đỏ, chữ trắng (6,64 : 1), dấu "!". */
 .nb-nhan.cho    { background: var(--do); color: var(--kem); }
+.nb-nhan.cho::before { content: '! '; content: '! ' / ''; font-weight: 800; }
+/* K5 lưu ý: nền xám E2, chữ đen (16,21 : 1) — khác K3 ở đảo chữ (nền sáng chữ đen ↔ nền đen chữ trắng),
+   khác K6 ở nền đặc và không nét đứt. */
+.nb-nhan.luu-y  { background: var(--kem-dam); color: var(--than); }
+/* K7 thuộc tính, không phải trạng thái (vai, số tiền, "Nợ đầu kỳ", "Bắt buộc"): nền trong, viền mảnh liền
+   #767676, chữ đen, không dấu. */
+.nb-nhan.thong-tin { background: transparent; color: var(--than); border: 1px solid var(--vien-o); }
 
 /* --- Nút ------------------------------------------------------------------ */
 .nb-nut {
@@ -203,8 +221,8 @@
   text-decoration: none; display: inline-flex; align-items: center; justify-content: center;
 }
 .nb-nut:hover { background: var(--do-dam); }
-/* Nút phụ: nền Cream, chữ than, viền --vien-o (3,71 : 1 với thẻ Cream, 3,49 với nền kem sau). Viền Warm Stone
-   chỉ 1,83 : 1 với Cream: nút kem nằm trên thẻ kem gần như chìm. */
+/* Nút phụ: nền trắng, chữ đen, viền --vien-o (4,54 : 1 với thẻ trắng, 4,13 với nền F4). Viền E2 chỉ 1,30 : 1
+   với trắng: nút trắng nằm trên thẻ trắng gần như chìm. */
 .nb-nut.phu { background: var(--nb-the); color: var(--than); border: 1px solid var(--vien-o); }
 .nb-nut.phu:hover { background: var(--kem-dam); }
 .nb-nut[disabled] { opacity: .45; cursor: not-allowed; }
@@ -213,34 +231,35 @@
 .nb-o { display: block; margin-bottom: 1rem; }
 .nb-o > span { display: block; font-weight: 600; font-size: .88rem; margin-bottom: .35rem; }
 .nb-o > small { display: block; color: var(--muc-nhat); font-size: .8rem; margin-bottom: .35rem; }
-/* Ô nền Cream, viền --vien-o (3,71 : 1 với nền Cream của ô, 3,49 với nền kem sau quanh ô): --vach chỉ
-   1,40 : 1, đứng ở quầy không thấy chỗ để chạm vào. */
+/* Ô nền trắng, viền --vien-o (4,54 : 1 với nền trắng của ô, 4,13 với nền F4 quanh ô): --vach (E2) chỉ
+   1,30 : 1, đứng ở quầy không thấy chỗ để chạm vào. */
 .nb-o input, .nb-o select, .nb-o textarea {
   font: inherit; font-size: 16px; width: 100%;
   padding: .75rem .8rem; min-height: 48px;
   border: 1px solid var(--vien-o); border-radius: 8px; background: var(--kem); color: var(--than);
 }
 .nb-o textarea { min-height: 7rem; resize: vertical; line-height: 1.5; }
-/* Ô đang gõ: viền Charcoal dày gấp đôi (bóng lồng trong, không xô lệch bố cục) là dấu
-   hiệu chính; quầng Marigold là điểm nhấn thêm, tự nó không đủ tương phản trên nền sáng. */
+/* Ô đang gõ: viền đen dày gấp đôi (bóng lồng trong, không xô lệch bố cục) và một vòng ngoài
+   đen 3px — đen trên thẻ trắng 21 : 1, trên nền F4 19,09. */
 .nb-o input:focus, .nb-o select:focus, .nb-o textarea:focus {
-  outline: 3px solid var(--cuc-vang); outline-offset: 1px;
+  outline: 3px solid var(--than); outline-offset: 1px;
   border-color: var(--than); box-shadow: inset 0 0 0 1px var(--than);
 }
 
-/* --- Ô của trình duyệt: không nền trắng ------------------------------------ */
-/* Ô nhập nào không có lớp riêng (bảng vị trí và lý do, ô trong dòng, form gọn…) thì trình duyệt tô trắng.
-   Đặt nền thì Chrome bỏ ô vẽ sẵn của nó và rơi về viền 2px lõm sẫm — nên đặt luôn viền --vien-o như ô của
-   .nb-o. :where() giữ độ ưu tiên bằng 0 — mọi quy tắc riêng của trang vẫn thắng. */
+/* --- Ô của trình duyệt dùng token ------------------------------------------ */
+/* Ô nhập nào không có lớp riêng (bảng vị trí và lý do, ô trong dòng, form gọn…) thì mỗi trình duyệt tự vẽ một
+   kiểu (viền, nền ô tự điền, chế độ tối của máy). Đặt nền --kem thì Chrome bỏ ô vẽ sẵn của nó và rơi về viền 2px
+   lõm sẫm — nên đặt luôn viền --vien-o như ô của .nb-o. :where() giữ độ ưu tiên bằng 0 — mọi quy tắc riêng của
+   trang vẫn thắng. */
 :where(.nb-than) :where(input:not([type]), input[type='text'], input[type='search'], input[type='tel'], input[type='email'],
   input[type='number'], input[type='password'], input[type='url'], input[type='date'], input[type='time'],
   input[type='datetime-local'], input[type='month'], select, textarea) {
   background-color: var(--kem); color: var(--than);
   border: 1px solid var(--vien-o); border-radius: 6px;
 }
-/* Ô trình duyệt tự điền (email, mật khẩu đã lưu): Chrome và Safari tô nền ô bằng màu gần trắng của riêng chúng
-   và không cho ghi đè bằng background — phủ lại bằng một lớp bóng trong màu Cream, như trang công khai. Ô đang
-   gõ giữ vòng than bên trong. :is() nhận cả hai cách viết; trình duyệt không hiểu cách nào thì bỏ qua cách đó. */
+/* Ô trình duyệt tự điền (email, mật khẩu đã lưu): Chrome và Safari tô nền ô bằng màu xanh nhạt / vàng nhạt của
+   riêng chúng và không cho ghi đè bằng background — phủ lại bằng một lớp bóng trong màu trắng, như trang công khai.
+   Ô đang gõ giữ vòng đen bên trong. :is() nhận cả hai cách viết; trình duyệt không hiểu cách nào thì bỏ qua cách đó. */
 .nb-than :is(input, select, textarea):is(:autofill, :-webkit-autofill) {
   box-shadow: inset 0 0 0 1000px var(--kem);
   -webkit-text-fill-color: var(--than); caret-color: var(--than);
@@ -248,24 +267,25 @@
 .nb-than :is(input, select, textarea):is(:autofill, :-webkit-autofill):focus {
   box-shadow: inset 0 0 0 1px var(--than), inset 0 0 0 1000px var(--kem);
 }
-/* Chữ gợi ý trong ô: xám mặc định của Chrome (#757575) chỉ 3,64 : 1 trên ô Cream (Safari còn kém hơn) — dùng
-   chữ phụ --muc-nhat (5,92 : 1). opacity 1: Firefox tự làm mờ chữ gợi ý thêm một lớp. */
+/* Chữ gợi ý trong ô: xám mặc định của Chrome (#757575) chỉ 4,61 : 1 trên ô trắng, sát ngưỡng (Safari còn kém
+   hơn) — dùng chữ phụ --muc-nhat (7,46 : 1). opacity 1: Firefox tự làm mờ chữ gợi ý thêm một lớp. */
 .nb-than ::placeholder { color: var(--muc-nhat); opacity: 1; }
 /* Khung nhóm ô (fieldset) không lớp riêng: viền lõm mặc định có một nét gần trắng — thay bằng vạch mảnh. */
 :where(.nb-than) fieldset { border: 1px solid var(--vach); border-radius: 8px; }
 /* Thanh tiến độ (<progress>, màn kiểm kê đang đếm): của trình duyệt là rãnh xám trắng, phần đã xong xanh dương.
-   Tự tô như thanh của màn Thiết lập kho: rãnh kem sau, phần xong --xanh (5,03 : 1 với rãnh). Số đếm luôn ghi
+   Tự tô như thanh của màn Thiết lập kho: rãnh xám E2, phần xong đen (16,21 : 1 với rãnh). Số đếm luôn ghi
    bằng chữ ngay trên thanh — thanh chỉ là hình. */
 .nb-than progress {
   -webkit-appearance: none; appearance: none;
   border: 0; border-radius: 999px; overflow: hidden;
-  background: var(--kem-sau); color: var(--xanh);
+  background: var(--kem-dam); color: var(--than);
 }
-.nb-than progress::-webkit-progress-bar { background: var(--kem-sau); }
-.nb-than progress::-webkit-progress-value { background: var(--xanh); }
-.nb-than progress::-moz-progress-bar { background: var(--xanh); }
-/* Ô đánh dấu và ô chọn một: tự vẽ — ô của hệ thống nền trắng. Chưa chọn: nền Cream, viền --vien-o (3,71 : 1);
-   đã chọn: ô đánh dấu nền Beef Red, dấu ✓ Cream; ô chọn một viền đỏ, chấm đỏ. Cỡ ô do từng trang đặt (20–24px);
+.nb-than progress::-webkit-progress-bar { background: var(--kem-dam); }
+.nb-than progress::-webkit-progress-value { background: var(--than); }
+.nb-than progress::-moz-progress-bar { background: var(--than); }
+/* Ô đánh dấu và ô chọn một: tự vẽ — ô của hệ thống mỗi trình duyệt một kiểu, màu nhấn xanh dương. Chưa chọn: nền
+   trắng, viền --vien-o (4,54 : 1); đã chọn: ô đánh dấu nền đỏ, dấu ✓ trắng; ô chọn một viền đỏ, chấm đỏ. Cỡ ô do
+   từng trang đặt (20–24px);
    trang không đặt thì 20px (ô của hệ thống là 13px). Vẫn là <input> thật: phím cách, nhãn bấm được, trình đọc màn
    hình không đổi. */
 :where(.nb-than) input:where([type='checkbox'], [type='radio']) { width: 20px; height: 20px; }
@@ -293,37 +313,65 @@
 .nb-than input[type='radio']:checked::before { transform: scale(1); }
 .nb-than input:is([type='checkbox'], [type='radio']):focus-visible { outline: 3px solid var(--than); outline-offset: 2px; }
 .nb-than input:is([type='checkbox'], [type='radio']):disabled { opacity: .45; cursor: not-allowed; }
-/* Nút "Chọn tệp" của ô tải ảnh: nút của hệ thống nền xám trắng. */
+/* Nút "Chọn tệp" của ô tải ảnh: nút của hệ thống mỗi trình duyệt một kiểu — vẽ như nút phụ. */
 .nb-than input[type='file']::file-selector-button {
   font: inherit; font-size: .88rem; font-weight: 700; color: var(--than);
   background: var(--kem); border: 1px solid var(--vien-o); border-radius: 8px;
   padding: .55rem .9rem; margin-right: .7rem; cursor: pointer;
 }
 .nb-than input[type='file']::file-selector-button:hover { background: var(--kem-dam); }
-/* Hộp thoại (quét nhãn bằng camera): mặc định của trình duyệt là nền trắng. */
+/* Hộp thoại (quét nhãn bằng camera): nền và chữ theo token, không theo chế độ tối của máy. */
 .nb-than dialog { background: var(--kem); color: var(--than); }
-/* Giấy in là trắng: cả họ kem về trắng (nền trang, thẻ, bảng, ô nhập, đầu bảng), để máy in bật "in nền" không in
-   thành mảng kem. Ô đánh dấu, ô chọn một trả về ô của hệ thống, màu đen: in tắt nền (mặc định) thì nền đỏ và dấu ✓
-   Cream của ô tự vẽ không lên giấy — không còn biết ô nào đã chọn. */
+/* Giấy in là trắng: cả họ nền về trắng (nền trang F4, thẻ, bảng, ô nhập, đầu bảng, nhãn E2), để máy in bật "in nền"
+   không in thành mảng xám. Ô đánh dấu, ô chọn một trả về ô của hệ thống, màu đen: in tắt nền (mặc định) thì nền đỏ và
+   dấu ✓ trắng của ô tự vẽ không lên giấy — không còn biết ô nào đã chọn. */
 @media print {
   .nb-than { --nb-nen: #fff; --nb-the: #fff; --kem: #fff; --kem-sau: #fff; --kem-dam: #fff; background: #fff; }
   .nb-than input:is([type='checkbox'], [type='radio']) { -webkit-appearance: auto; appearance: auto; accent-color: #000; }
   .nb-than input:is([type='checkbox'], [type='radio'])::before { content: none; }
 }
-/* Tương phản cao (Windows): trả về ô của hệ thống — màu tự vẽ bị ép mất thì không còn thấy dấu ✓. */
+/* Tương phản cao (Windows): trả về ô của hệ thống — màu tự vẽ bị ép mất thì không còn thấy dấu ✓. Dấu của khối báo
+   vẽ bằng nền (tam giác đỏ, vòng đen): chế độ này ép nền về màu trang, chỉ còn chữ "!" / "✓" — giữ hình bằng màu
+   hệ thống. Nhãn nền đặc đã có viền trong suốt ở lớp gốc, chế độ này vẽ viền đó thành khung. */
 @media (forced-colors: active) {
   .nb-than input:is([type='checkbox'], [type='radio']), .nb-than progress { -webkit-appearance: auto; appearance: auto; }
   .nb-than input:is([type='checkbox'], [type='radio'])::before { content: none; }
+  .nb-bao.xong::before, .nb-bao.loi::before { forced-color-adjust: none; background: CanvasText; color: Canvas; }
 }
 
 /* --- Thông báo ------------------------------------------------------------ */
+/* Khối báo nền trắng như thẻ, vạch trái 6px. Không nền màu: ba trạng thái khác nhau ở dấu và nét.
+     gốc (không lớp)  vạch xám #767676, không dấu — khung thông tin (vd. phiếu xuất đang chuyển)
+     .xong            vạch đen, dấu ✓ trắng trong vòng đen
+     .luu-y (K5)      vạch #555, vòng tròn "!" viền #555 (7,46 : 1 với trắng)
+     .loi (K2)        viền đỏ 2px quanh khối, vạch đỏ, tam giác đỏ "!"
+   Dấu đặt position: absolute ở lề trái (lề trái chừa sẵn): khối có thể là flex (.nb-bao.xong.nh-so-tang của màn
+   nhận hàng) — dấu tĩnh sẽ thành một ô flex. Gốc có position: relative cho dấu bám vào. */
 .nb-bao {
+  position: relative;
   border-radius: 8px; padding: .9rem 1rem; margin-bottom: 1.25rem;
-  font-size: .92rem; border-left: 4px solid;
+  font-size: .92rem;
+  background: var(--nb-the); border: 1px solid var(--vach); border-left: 6px solid var(--vien-o);
 }
-.nb-bao.loi    { background: var(--do-nen); border-color: var(--do); }
-.nb-bao.xong   { background: var(--xanh-nen); border-color: var(--xanh); }
-.nb-bao.luu-y  { background: var(--vang-nen); border-color: var(--mu-tat); }
+.nb-bao.xong, .nb-bao.luu-y, .nb-bao.loi { padding-left: 2.75rem; }
+.nb-bao.xong::before, .nb-bao.luu-y::before, .nb-bao.loi::before {
+  position: absolute; left: .75rem; top: .85rem;
+  display: grid; place-items: center; box-sizing: border-box;
+  width: 1.35rem; height: 1.35rem; font-size: .8rem; font-weight: 800; line-height: 1;
+}
+.nb-bao.xong   { border-left-color: var(--than); }
+.nb-bao.xong::before { content: '✓'; content: '✓' / ''; background: var(--than); color: var(--kem); border-radius: 50%; }
+.nb-bao.luu-y  { border-left-color: var(--muc-nhat); }
+.nb-bao.luu-y::before {
+  content: '!'; content: '!' / '';
+  background: var(--nb-the); color: var(--muc-nhat); border: 2px solid var(--muc-nhat); border-radius: 50%;
+}
+.nb-bao.loi    { border: 2px solid var(--do); border-left: 6px solid var(--do); }
+.nb-bao.loi::before {
+  content: '!'; content: '!' / '';
+  width: 1.5rem; padding-top: .3rem;
+  background: var(--do); color: var(--kem); clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
 .nb-bao p:first-child { margin-top: 0; }
 .nb-bao p:last-child  { margin-bottom: 0; }
 
@@ -358,15 +406,17 @@
 }
 .nb-viec li:last-child { border-bottom: none; }
 .nb-viec .dau { flex-shrink: 0; font-weight: 700; width: 1.4rem; }
-.nb-viec .dau.xong { color: var(--xanh); }
-/* Dấu "chưa xong" nằm trên nền kem: Warm Stone ở đó chỉ 1,83 : 1. */
+/* Dấu ✓ / ○ / · / ! nằm sẵn trong markup — màu không mang nghĩa: xong đen, chưa xong chữ phụ. */
+.nb-viec .dau.xong { color: var(--than); }
+/* Dấu "chưa xong" nằm trên thẻ trắng: #555 ở đó 7,46 : 1 (E2 chỉ 1,30). */
 .nb-viec .dau.chua { color: var(--muc-nhat); }
 
-/* Trạng thái một ô dịch (0036), dưới ô tiếng Anh/Hàn ở màn soạn tin và màn công tắc. */
+/* Trạng thái một ô dịch (0036), dưới ô tiếng Anh/Hàn ở màn soạn tin và màn công tắc. Câu nói rõ trạng thái
+   (lib/ban-dich.ts); màu chỉ thêm: xong chữ phụ #555, đang chờ chữ đen, lỗi chữ đỏ đậm #8F0000 — hai mức sau in đậm 600. */
 .nb-dich { display: block; margin-top: .3rem; font-size: .78rem; }
 .nb-dich.xong { color: var(--muc-nhat); }
-.nb-dich.cho  { color: var(--vang-chu); }
-.nb-dich.loi  { color: var(--do); }
+.nb-dich.cho  { color: var(--than); font-weight: 600; }
+.nb-dich.loi  { color: var(--do-dam); font-weight: 600; }
 
 /* --- Bản đồ chức năng (components/BanDoChucNang.astro) ---------------------
    Trang Tất cả chức năng (khung NoiBo) và trang Khác của kho (khung Kho) — hai
@@ -377,7 +427,7 @@
   padding: .7rem .85rem; border: 1px solid var(--vien-o); border-radius: 10px; background: var(--kem); color: var(--than);
 }
 .bd-tim input:focus {
-  outline: 3px solid var(--cuc-vang); outline-offset: 1px;
+  outline: 3px solid var(--than); outline-offset: 1px;
   border-color: var(--than); box-shadow: inset 0 0 0 1px var(--than);
 }
 .bd-tim .nb-nut { flex: 0 0 auto; gap: .4rem; }

@@ -167,8 +167,8 @@ export interface DongGuiDat {
 /** Trạng thái đơn → [nhãn hai thứ tiếng, lớp CSS của nb-nhan]. */
 export const TRANG_THAI_DON_NB: Record<TrangThaiDon, [HaiThuTieng, string]> = {
   nhap: [{ vi: 'Nháp', en: 'Draft' }, 'nhap'],
-  da_gui: [{ vi: 'Đã gửi, chờ hàng', en: 'Sent, awaiting goods' }, 'cho'],
-  nhan_mot_phan: [{ vi: 'Nhận một phần', en: 'Partly received' }, 'cho'],
+  da_gui: [{ vi: 'Đã gửi, chờ hàng', en: 'Sent, awaiting goods' }, 'nhap'],
+  nhan_mot_phan: [{ vi: 'Nhận một phần', en: 'Partly received' }, 'nhap'],
   da_nhan: [{ vi: 'Đã nhận đủ', en: 'Fully received' }, 'song'],
   huy: [{ vi: 'Đã hủy', en: 'Cancelled' }, 'tat'],
 };
@@ -259,7 +259,8 @@ export function chuSao(diem: number | null | undefined, nn: NgonNguNB = 'vi'): s
   return '★'.repeat(Math.floor(d)) + (d % 1 ? '½' : '') + '☆'.repeat(5 - Math.ceil(d));
 }
 
-/** Màu sao: ≥ 4 xanh, ≥ 3 vàng, còn lại đỏ. */
+/** Mức sao (mã dữ liệu, giữ tên): ≥ 4 'xanh', ≥ 3 'vang', còn lại 'do'; chưa có điểm 'xam'. Trên màn hình sao là số sao
+    và chữ, không tô màu theo mức. */
 export function mucSao(diem: number | null | undefined): 'xanh' | 'vang' | 'do' | 'xam' {
   if (diem === null || diem === undefined) return 'xam';
   const d = Number(diem);

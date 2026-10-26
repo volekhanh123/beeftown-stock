@@ -39,17 +39,17 @@ const dong0 = cp => tomTatCanPhien(cp).dong[0];
 // ===========================================================================
 await nhom('1 · CÂN SẴN SÀNG CHỈ KHI ĐÚNG TÊN MỚI (TÊN + SỐ TẢNG)', async () => {
   const d = dong0(CP());
-  ok('Máy quầy báo đúng tên "Thăn ngoại cắt lát #0142" ở PLU 23, phím F5 → xanh "Cân sẵn sàng: … = PLU 23 · phím F5"',
+  ok('Máy quầy báo đúng tên "Thăn ngoại cắt lát #0142" ở PLU 23, phím F5 → khung xong "Cân sẵn sàng: … = PLU 23 · phím F5"',
      d.muc === 'san_sang' && d.cau.vi === 'Cân sẵn sàng: Thăn ngoại cắt lát #0142 = PLU 23 · phím F5' && d.tenMuon === 'Thăn ngoại cắt lát #0142',
      JSON.stringify(d));
   const khongPhim = dong0(CP({ o: [O({ tren_can: [{ plu: 23, ten: 'Thăn ngoại cắt lát #0142', phim: [], bao_luc: truoc(1) }] })] }));
   ok('Chưa gán phím tắt → vẫn sẵn sàng, nói gán ở thẻ Phím tắt', khongPhim.muc === 'san_sang' && /chưa gán phím tắt/.test(khongPhim.cau.vi),
      khongPhim.cau.vi);
   const cu = dong0(CP({ o: [O({ tren_can: [{ plu: 23, ten: 'Thăn ngoại cắt lát #0141', phim: ['F5'], bao_luc: truoc(1) }] })] }));
-  ok('Cân còn tên tảng trước (#0141) → vàng "còn tên cũ — chưa in tem", KHÔNG sẵn sàng', cu.muc === 'ten_cu'
+  ok('Cân còn tên tảng trước (#0141) → khung lưu ý "còn tên cũ — chưa in tem", KHÔNG sẵn sàng', cu.muc === 'ten_cu'
      && /^Cân còn tên cũ "Thăn ngoại cắt lát #0141" \(PLU 23\) — chưa in tem/.test(cu.cau.vi), cu.cau.vi);
   const chua = dong0(CP({ o: [O({ tren_can: [] })] }));
-  ok('Máy quầy báo mà mã ô chưa có trên cân → vàng "Chưa lên cân"', chua.muc === 'chua_len' && /^Chưa lên cân: mã ô 10011/.test(chua.cau.vi), chua.cau.vi);
+  ok('Máy quầy báo mà mã ô chưa có trên cân → khung lưu ý "Chưa lên cân"', chua.muc === 'chua_len' && /^Chưa lên cân: mã ô 10011/.test(chua.cau.vi), chua.cau.vi);
   const khong = dong0(CP({ o: [O({ tren_can: [] })], may: [] }));
   ok('Chưa máy quầy nào báo → "không biết": quản lý bấm Gửi xuống cân, xem trên cân đúng tên rồi mới in — không bao giờ "sẵn sàng"',
      khong.muc === 'khong_biet' && /Không biết cân đã có/.test(khong.cau.vi) && /bấm Gửi xuống cân/.test(khong.cau.vi)
@@ -79,7 +79,7 @@ await nhom('1b · 0090: MÁY QUẦY CHƯA XÁC NHẬN LẦN GỬI GẦN NHẤT �
   // qua) → trang xanh "Cân sẵn sàng" khi cân vẫn tên cũ, tem in sai số tảng. 2.9.3 báo thêm cờ chua_xac_nhan.
   const chuaXn = { plu: 23, ten: 'Thăn ngoại cắt lát #0142', phim: ['F5'], bao_luc: truoc(1), chua_xac_nhan: true };
   const d = dong0(CP({ o: [O({ tren_can: [chuaXn] })], may: [MAY({ chua_xac_nhan: true, chua_xac_nhan_tu: truoc(3) })] }));
-  ok('HỒI QUY 11/10: đúng tên mới nhưng máy quầy chưa xác nhận lần gửi gần nhất → vàng "chưa chắc", KHÔNG "Cân sẵn sàng"',
+  ok('HỒI QUY 11/10: đúng tên mới nhưng máy quầy chưa xác nhận lần gửi gần nhất → khung lưu ý "chưa chắc", KHÔNG "Cân sẵn sàng"',
      d.muc === 'chua_xac_nhan' && !/sẵn sàng/i.test(d.cau.vi) && !/ready/i.test(d.cau.en)
      && /^Chưa chắc cân đã có Thăn ngoại cắt lát #0142 \(PLU 23\)/.test(d.cau.vi) && /chưa in tem/.test(d.cau.vi)
      && /Not sure the scale has Thăn ngoại cắt lát #0142 \(PLU 23\)/.test(d.cau.en) && /do not print yet/.test(d.cau.en), JSON.stringify(d));
@@ -95,7 +95,7 @@ await nhom('1b · 0090: MÁY QUẦY CHƯA XÁC NHẬN LẦN GỬI GẦN NHẤT �
      && /has not been confirmed by the scale \(for 3 min\)/.test(may.en), `${may.vi} | ${may.en}`);
   ok('Chưa xác nhận → trang vẫn hiện nút Xem lại cân (mức khác san_sang)',
      /d\.muc !== null && d\.muc !== 'san_sang'/.test(doc('web/src/pages/noi-bo/kho/pha-loc/[id].astro')));
-  ok('Component: chỉ "san_sang" mới xanh — mức mới vàng, role="alert"', /m === 'san_sang' \? 'xong' : 'luu-y'/.test(doc('web/src/components/kho/DoiChieuCan.astro')));
+  ok('Component: chỉ "san_sang" là khung xong — mức khác là khung lưu ý, role="alert"', /m === 'san_sang' \? 'xong' : 'luu-y'/.test(doc('web/src/components/kho/DoiChieuCan.astro')));
 });
 
 // ===========================================================================
@@ -151,8 +151,8 @@ await nhom('5 · ĐỌC KHO: KHÔNG BAO GIỜ NÉM, KHÔNG BAO GIỜ ĐOÁN', as
   const kq = await giaoOMa(rpc({ data: [{ ten: 'Thăn ngoại cắt lát', so_o: 1, ma_can: '10011' }], error: null }), 'p');
   ok('Giao ô mã: câu không hứa "cân đã đổi" — tự gửi chỉ khi bật, không thì quản lý bấm Gửi; chờ dòng Cân sẵn sàng (Xem lại cân)',
      kq.ok && /bật Tự gửi thì tự gửi tên mới xuống cân sau khoảng 15–60 giây; không thì quản lý mở Beeftown Cân bấm Gửi xuống cân/.test(kq.cau)
-     && /Chờ dòng "Cân sẵn sàng" hiện xanh \(bấm Xem lại cân\) rồi mới in tem/.test(kq.cau)
-     && /wait for the "Scale ready" line/i.test(kq.cauEn), kq.cau);
+     && /Chờ hiện dòng "Cân sẵn sàng" \(bấm Xem lại cân\) rồi mới in tem/.test(kq.cau) && !/hiện xanh/.test(kq.cau)
+     && /wait for the "Scale ready" line/i.test(kq.cauEn) && !/green/i.test(kq.cauEn), `${kq.cau} | ${kq.cauEn}`);
   // Database chưa chạy 0061 (Beeftown Cân 2.9 cập nhật trước): đọc view như 2.8, không hỏng cả việc gửi xuống cân.
   const goiView = [];
   const clientCu = {
@@ -205,8 +205,8 @@ await nhom('7 · TRANG PHA LÓC NỐI ĐÚNG', async () => {
   ok('Bước Cân & quét: khung ô mã có DoiChieuCan kieu="can"; bước Kết quả và màn Xem: kieu="doi_chieu"',
      (trang.match(/<DoiChieuCan tomTat=\{tomTatCan\} kieu="can" \/>/g) ?? []).length === 1
      && (trang.match(/<DoiChieuCan tomTat=\{tomTatCan\} kieu="doi_chieu" \/>/g) ?? []).length === 2);
-  ok('Chữ hướng dẫn ô mã không còn bắt mở Beeftown Cân bấm Gửi xuống cân; nói chờ "Cân sẵn sàng"',
-     !/mở Beeftown Cân bấm Gửi xuống cân/.test(trang) && /Chờ dòng "Cân sẵn sàng" hiện xanh/.test(trang));
+  ok('Chữ hướng dẫn ô mã không còn bắt mở Beeftown Cân bấm Gửi xuống cân; nói chờ hiện dòng "Cân sẵn sàng" (không gọi tên màu)',
+     !/mở Beeftown Cân bấm Gửi xuống cân/.test(trang) && /Chờ hiện dòng "Cân sẵn sàng"/.test(trang) && !/hiện xanh|turn green/.test(trang));
   ok('Component không gọi database, không <script>', !/\.rpc\(|\.from\(|<script/i.test(comp));
   ok('hangChoCan đọc ô qua docGiaoOMaCan (kho_can_giao_o_ma)', /docGiaoOMaCan\(client, chiNhanhId\)/.test(doc('web/src/lib/kho/danh-muc-can.ts'))
      && /rpc\('kho_can_giao_o_ma'/.test(doc('web/src/lib/kho/o-ma.ts')));

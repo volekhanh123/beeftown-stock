@@ -19,7 +19,7 @@
  * (artifact "Beeftown — Menu", Cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026). Vẫn là
  * ẢNH MINH HỌA, trang vẫn ghi "Ảnh minh họa":
  *  · 21 ảnh món ăn và ảnh ba ly không cồn: ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026
- *    rồi tách nền (tachNen: true — trang đặt thẳng lên nền kem như trong cuốn).
+ *    rồi tách nền (tachNen: true — món đặt thẳng lên nền trắng hay xám nhạt của dải, như trong cuốn).
  *  · Ba ly signature (tách nền) và hai món tartare (ảnh có nền bàn): lấy từ menu chuẩn
  *    29/09 của quán; ghi chú dự án gọi là "ảnh đã duyệt" nhưng CHƯA rõ là ảnh chụp thật hay
  *    ảnh dựng — chưa rõ thì vẫn gắn nhãn minh họa. Có ảnh chụp thật thì đổi minhHoa và nguồn.

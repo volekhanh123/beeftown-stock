@@ -89,7 +89,6 @@ const t = dich(ngonNgu, {
     <div class="ch-dau">
       <p class="hieu">{t.hieu}</p>
       <h2 id="ch-tieu-de">{t.tieuDe}</h2>
-      <span class="trang-tri net huong-thao-5 ch-la an-khi-hep" aria-hidden="true"></span>
     </div>
     <div class="cau-hoi">
       <details>
@@ -137,8 +136,5 @@ const t = dich(ngonNgu, {
 <style>
   .ch-luoi { display: grid; gap: var(--k-6); grid-template-columns: 1fr; }
   @media (min-width: 900px) { .ch-luoi { grid-template-columns: 4fr 7fr; gap: var(--k-8); align-items: start; } }
-  .ch-dau { position: relative; }
   .lien { white-space: nowrap; }
-  .ch-la { width: 120px; left: 0; top: calc(100% + var(--k-6)); transform: rotate(-14deg); display: none; }
-  @media (min-width: 900px) { .ch-la { display: block; } }
 </style>

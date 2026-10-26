@@ -20,8 +20,9 @@
  * Lưu lần nữa sẽ đè mất số của người kia. Bị máy khác lưu trước thì đọc lại
  * database và gộp.
  *
- * QUÉT NHÃN: câu xanh cho nhãn đọc được; nhãn không đọc được / gói lạ là câu
- * vàng riêng, đi theo đường dẫn (?hong=&la=) sau khi chuyển hướng.
+ * QUÉT NHÃN: câu báo xong (khung nb-bao xong) cho nhãn đọc được; nhãn không đọc
+ * được / gói lạ là câu lưu ý riêng (khung nb-bao luu-y), đi theo đường dẫn
+ * (?hong=&la=) sau khi chuyển hướng.
  *
  * HỦY PHIẾU: phải ghi lý do — bước xác nhận thứ hai, bấm nhầm không mất số.
  *
@@ -236,7 +237,7 @@ const tenMh = new Map(matHang.map(m => [m.id, m]));
 // Lệnh gửi lên
 // ---------------------------------------------------------------------------
 let bao: KetQua | null = k.bao;
-/** Câu vàng: nhãn không đọc được, máy khác vừa lưu... */
+/** Câu lưu ý (khung nb-bao luu-y): nhãn không đọc được, máy khác vừa lưu... */
 const luuY: string[] = [];
 // Khi hiện lại form sau lỗi: số người đếm vừa gửi, và BẢN mà các số đó dựa
 // vào (phien_ban, số gốc của ghi chú). null = lấy thẳng từ database.
@@ -361,7 +362,7 @@ if (form && kk) {
   }
 }
 
-// Câu vàng của lần quét trước (sau khi chuyển hướng).
+// Câu lưu ý của lần quét trước (sau khi chuyển hướng).
 if (!form && demDuoc) {
   const soTrenLink = (ten: string) => {
     const n = Number(Astro.url.searchParams.get(ten) ?? 0);
@@ -688,12 +689,12 @@ const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
 
 <style>
   /* Gọn 22/10/2026 (Khánh duyệt): mỗi món một hàng — tên, rồi ô số gói, ô kg, ô "Đã hết thật" trên cùng một
-     hàng (điện thoại cũng vậy). Món chưa đếm: vạch Marigold bên trái như trước. */
+     hàng (điện thoại cũng vậy). Món chưa đếm: vạch xám #767676 dày 4px bên trái như trước. */
   .kk-dong {
     border: 1px solid var(--kho-vach); border-radius: var(--kho-bo); background: var(--nb-the);
     padding: .55rem .75rem .6rem; margin-bottom: .5rem; scroll-margin-top: 5.5rem;
   }
-  .kk-dong.chua-dem { border-left: 4px solid var(--mu-tat); }
+  .kk-dong.chua-dem { border-left: 4px solid var(--vien-o); }
   .kk-ten { margin: 0 0 .35rem; line-height: 1.3; }
   .kk-ten .kho-phu { font-size: .8rem; }
   .kk-ten .kho-phu::before { content: ' · '; }

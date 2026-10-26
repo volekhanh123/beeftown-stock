@@ -22,31 +22,30 @@
 
 ## Nhịp trang
 
-Trang chủ (`TrangRaMat.astro`): kem (màn đầu: chữ + ảnh, dải tagline đỏ dưới ảnh — dải có
-`aria-hidden`, tagline được đọc một lần ở dòng hiệu của ba bước) → kem (ba bước) →
-**tối** (quầy, thịt sáng lên) → kem đậm (cả bữa) → **đỏ** (đi nhóm) → kem (tầng 3) → kem (câu hỏi) →
-chân trang. Thứ tự tám khối và bề mặt của từng khối là điều Khánh đã quyết (11/10/2026: giữ như đang
+Trang chủ (`TrangRaMat.astro`): trắng (màn đầu: chữ + ảnh, dải tagline đỏ dưới ảnh — dải có
+`aria-hidden`, tagline được đọc một lần ở dòng hiệu của ba bước) → trắng (ba bước) →
+**đen** (quầy, thịt sáng lên) → xám nhạt (cả bữa, lớp `.be-kem-dam`) → **đỏ** (đi nhóm) → trắng (tầng 3)
+→ trắng (câu hỏi) → chân trang **đen**. Tên lớp bề mặt giữ (`.be-kem`, `.be-toi`…), màu theo bảng
+22/10/2026. Thứ tự tám khối và bề mặt của từng khối là điều Khánh đã quyết (11/10/2026: giữ như đang
 chạy) — có kiểm thử, đừng đổi. Bảng từng khối, ảnh và bố cục điện thoại / máy tính: `web/THIET-KE.md`,
 mục 1, "Tám khối của trang chủ". Hàng thông tin của màn đầu đổi theo `/noi-bo`: khóa `ngay_khai_truong`
 (chưa có ngày · "Đón bạn từ …" · "Mở cửa từ …") và `dong_trang_thai` (một câu hay vài câu) — sửa hàng
 này thì thử cả ba trạng thái (`npm run thu-day-du -- --chi 9`), đừng chỉ nhìn trang lúc chưa có database.
 
 Khối có ảnh xếp so le trên máy tính (ảnh trái – chữ phải, rồi chữ trái – ảnh phải); trên điện thoại
-chữ và nút đứng trước ảnh, trừ dải tối "Quầy chọn bò" mở bằng ảnh. Nút của một khối nằm ngay sau đoạn
+chữ và nút đứng trước ảnh, trừ dải đen "Quầy chọn bò" mở bằng ảnh. Nút của một khối nằm ngay sau đoạn
 giải thích của nó, không đẩy xuống cuối khối.
 
 Trang con (Thực đơn, Đến Beeftown, Hỏi bàn, Tuyển dụng):
 
-1. `section.mo-dau-trang.be-kem` — `.khung > p.hieu + h1 + p.dan`, nét rosemary `net-goc` ở mép phải.
-2. Các khối `section.muc.be-*` xen kẽ bề mặt — không hai dải tối hay hai dải đỏ liền nhau.
-3. Khối kêu gọi cuối: `section.muc.be-do.nen-van-mo.co-trang-tri` với `p.hieu`, `h2`, `p.dan`,
-   `.hang-nut`.
+1. `section.mo-dau-trang.be-kem` — `.khung > p.hieu + h1 + p.dan` — không hình trang trí.
+2. Các khối `section.muc.be-*` xen kẽ bề mặt — không hai dải đen hay hai dải đỏ liền nhau.
+3. Khối kêu gọi cuối: `section.muc.be-do` với `p.hieu`, `h2`, `p.dan`, `.hang-nut` — dải đỏ phẳng.
 
 ## Khung mẫu một khối
 
 ```astro
-<section class="muc be-toi qcb co-trang-tri" aria-labelledby="qcb-tieu-de">
-  <span class="trang-tri net steak-1 qcb-steak an-khi-hep" aria-hidden="true"></span>
+<section class="muc be-toi qcb" aria-labelledby="qcb-tieu-de">
   <div class="khung">
     <div class="qcb-dau">
       <p class="hieu">{t.hieu}</p>
@@ -62,17 +61,15 @@ Trang con (Thực đơn, Đến Beeftown, Hỏi bàn, Tuyển dụng):
 
 - `aria-labelledby` trỏ tới id tiêu đề có tiền tố của component (`bb-tieu-de`, `td-h-quay`).
 - Đúng **một `h1`** mỗi trang: ở `KhoiMoDau`, `mo-dau-trang` hoặc `TrangVanBan`.
-- Trang trí là con trực tiếp của `section` (hoặc của một phần tử đã `position: relative`), cỡ và vị trí
-  đặt trong CSS riêng của component; khối có trang trí lấn mép thêm `co-trang-tri`; ẩn trên màn hẹp
-  bằng `an-khi-hep`.
+- Không hình trang trí (Khánh bỏ hình của bộ nhận diện cũ ngày 26/10/2026): khối màu phẳng và ảnh; dấu
+  thương hiệu duy nhất là logo bộ 21/10/2026 ở đầu trang, chân trang, thẻ "Đọc nhãn khay".
 
 ## CSS: chung hay riêng
 
 - **Lớp dùng chung** chỉ ở `web/src/styles/cong-khai.css`, mọi quy tắc dưới `.ck` (có kiểm thử).
   Danh mục: `muc`, `khung`, `khung-hep`, `be-*`, `hieu`, `dan`, `nho`, `an-chu`, `nut`, `nut-chinh`,
   `nut-vien`, `nut-nho`, `hang-nut`, `lien-ket`, `the`, `luoi`, `trang-thai`, `anh`, `chu-thich-anh`,
-  `khung-anh`, `trang-tri`, `net`, `nen-van-mo`, `an-khi-hep`, `cau-hoi`, `tra-loi`,
-  `mon`, `nhan-mon`, `o`, `loi-o`, `mo-dau-trang`, `net-goc`, `co-trang-tri`, `tach-nen`.
+  `khung-anh`, `cau-hoi`, `tra-loi`, `mon`, `nhan-mon`, `o`, `loi-o`, `mo-dau-trang`, `tach-nen`.
 - **CSS riêng của component**: `<style>` có phạm vi (không `is:global`), mọi lớp mang **tiền tố của
   component**: `kmd-` (KhoiMoDau), `bb-` (BaBuoc), `qcb-` (QuayChonBo), `bacn-` (BuaAnCungNhau), `dcn-`
   (DiCungNhom), `lt3-` (LenTang3), `ch-`
@@ -83,18 +80,19 @@ Trang con (Thực đơn, Đến Beeftown, Hỏi bàn, Tuyển dụng):
 - Trong CSS riêng: màu chỉ từ biến bề mặt và token; khoảng cách `--k-*`; cỡ chữ `--co-*`; mốc
   600 / 900 / 1024 / 1080px (768px chỉ của `DauTrang.astro`); tiếng Hàn chỉnh bằng `:lang(ko)`; thêm
   `@media (forced-colors: active)` khi dùng nền hay viền để truyền nghĩa. Thứ bấm được cao ít nhất
-  `--cham` (48px); thẻ đệm `--dem-the`; không `box-shadow` trang trí, không nền trắng.
+  `--cham` (48px); thẻ đệm `--dem-the`; không `box-shadow` trang trí.
 - **`:hover` luôn nằm trong `@media (hover: hover)`**; thứ bấm được có thêm `:active` đặt ngoài khối
-  đó. Màu viết thẳng: chỉ mã hex của bảng hoặc `rgba()` với bộ ba của bảng — không `hsl()`, `oklch()`,
-  tên màu (`white`…), màu hệ thống ngoài `forced-colors` (`test-cong-khai-giao-dien.mjs` nhóm 7).
-- Token ở đây khai trong **khối `.ck`** của `cong-khai.css` (bảng màu chốt 09/10/2026 — bảng "Token
+  đó. Màu viết thẳng: chỉ mã hex 6 chữ số của bảng hoặc `rgba()` với bộ ba của bảng — không mã 3 chữ
+  số, không `hsl()`, `oklch()`, tên màu (`white`…), màu hệ thống ngoài `forced-colors`
+  (`test-cong-khai-giao-dien.mjs` nhóm 7).
+- Token ở đây khai trong **khối `.ck`** của `cong-khai.css` (bảng 22/10/2026 — bảng "Token
   màu của website" trong `SKILL.md`). `:root` của `chung.css`, nơi `/noi-bo` và kho đọc, khai cùng giá
   trị: đổi một mã thì đổi cả hai nơi. Cần màu trong suốt thì viết `rgba()` bằng số RGB của bảng đó; mã
   hex hay bộ ba số của bảng cũ trong một file công khai (kể cả trong chú thích) là kiểm thử đỏ
   (`test-cong-khai-giao-dien.mjs` nhóm 6).
-- Nút trên dải đỏ tự đổi (nút chính: nền Cream, chữ đỏ đậm; nút phụ: viền và chữ Cream) nhờ biến bề
-  mặt — đừng viết lại màu nút trong component. Biểu tượng cạnh chữ lấy màu `--nhan` (Beef Red trên kem,
-  Cream trên đỏ).
+- Nút trên dải đỏ tự đổi (nút chính: nền trắng, chữ đỏ đậm; nút phụ: viền và chữ trắng) nhờ biến bề
+  mặt — đừng viết lại màu nút trong component. Biểu tượng cạnh chữ lấy màu `--nhan` (đỏ trên nền sáng,
+  trắng trên đỏ và đen).
 
 ## Ba thứ tiếng
 
@@ -149,16 +147,16 @@ theo ngày — `web/THIET-KE.md` mục 10.
 | Component | Props chính | Dùng cho |
 |---|---|---|
 | `BieuTuong` | `ten`, `class?` | Biểu tượng nét 1,5px, lưới 24, `currentColor`, luôn `aria-hidden`. Nơi dùng đặt cỡ 24px; nét không co theo cỡ. Nằm trong thứ bấm được thì phải có nhãn chữ cạnh nó (nhìn thấy, hoặc `.an-chu` khi thật sự không còn chỗ) |
-| `Anh` | `id`, `ngonNgu`, `khung`, `khungNho?`, `sizes?`, `uuTien?`, `thayBang?`, `nenKhung?` | Ảnh AVIF / WebP trong khung tự giữ tỷ lệ (`khung` từ 600px, `khungNho` dưới 600px), tự gắn nhãn "Ảnh minh họa"; `uuTien` chỉ cho ảnh màn đầu (mỗi trang nhiều nhất một, và nó phải nằm trong màn hình đầu); `nenKhung` (`kem` / `toi` / `do`) theo dải đặt ảnh; ảnh `tachNen` thì khung tự thêm `.tach-nen` (trong suốt, nhãn giữa đáy, dưới món). `id` và `khung` viết bằng chữ thẳng — kiểm thử đọc chúng từ mã; ngoại lệ duy nhất: ảnh món trong `ThucDonNhomAnh.astro`, `id={anh.id} khung={anh.khung}` lấy từ `ANH_CUA_MON` |
+| `Anh` | `id`, `ngonNgu`, `khung`, `khungNho?`, `sizes?`, `uuTien?`, `thayBang?`, `nenKhung?` | Ảnh AVIF / WebP trong khung tự giữ tỷ lệ (`khung` từ 600px, `khungNho` dưới 600px), tự gắn nhãn "Ảnh minh họa"; `uuTien` chỉ cho ảnh màn đầu (mỗi trang nhiều nhất một, và nó phải nằm trong màn hình đầu); `nenKhung` (`kem` / `toi` / `do` — tên giữ; nền chờ xám E2 / trắng 8 % / đỏ đậm) theo dải đặt ảnh; ảnh `tachNen` thì khung tự thêm `.tach-nen` (trong suốt, nhãn giữa đáy, dưới món). `id` và `khung` viết bằng chữ thẳng — kiểm thử đọc chúng từ mã; ngoại lệ duy nhất: ảnh món trong `ThucDonNhomAnh.astro`, `id={anh.id} khung={anh.khung}` lấy từ `ANH_CUA_MON` |
 | `KhungAnh` | `loai` (`quay`, `khay`, `thang-may`, `loi-vao`, `ban-nuong`), `tiLe?`, `tiLeNho?`, `nen?` | Chỗ của ảnh chụp thật chưa có — đúng tỷ lệ, không chữ |
-| `NhanKhay` | `ngonNgu` | Thiết bị chữ ký "Đọc nhãn khay": một thẻ `.the` đặt thẳng, không bóng đổ — logo, tiêu đề, năm trường theo thứ tự (số, tên trường, lời giải thích); không con số, không giá trị mẫu |
+| `NhanKhay` | `ngonNgu` | Thiết bị chữ ký "Đọc nhãn khay": một thẻ `.the` đặt thẳng, không bóng đổ — logo chính đỏ, tiêu đề, năm trường theo thứ tự (số, tên trường, lời giải thích); không con số, không giá trị mẫu |
 | `LenTang3` | `ngonNgu`, `noiDung`, `gon?`, `capTieuDe?`, `anHieu?`, `tieuDe?`, `khongLinkDuongDen?` | "Tầng 3" và đường lên; bản gọn cho trang Hỏi bàn. In địa chỉ và câu chỉ đường `t.loiLen` (lối vào riêng ngay cạnh GS25, thang máy lên tầng 3) — không viết lại câu đó trong component khác |
 | `CauHoi` | `ngonNgu`, `noiDung` | Hỏi đáp bằng `<details>` — chỉ dữ kiện đã xác nhận. Mỗi `<summary>` có hai biểu tượng `cong` (`.bt-mo`) và `tru` (`.bt-dong`); hàng cao 56px, bấm được trên toàn chiều rộng |
 | `TrangVanBan` | `hieu`, `tieuDe` + `<slot>` | Trang pháp lý |
 | `ThucDonNhom` | `nhom`, `ngonNgu`, `ghiChu?`, `khongGia?` | Một nhóm món dạng danh sách (bò tại quầy, đồ uống chưa có ảnh) |
-| `ThucDonNhomAnh` | `nhom`, `ngonNgu`, `kieu?` (`dan-dau` / `deu`), `ghiChu?`, `tieuDeNho?`, `nenKhung?`, `khongGia?` | Một nhóm món kiểu cuốn menu bản sáng: tên nhóm chữ hoa `--co-nhom`, câu của nhóm (`CAU_NHOM`), món dẫn đầu chữ trái – ảnh phải từ 768px, lưới thẻ ảnh trên chữ dưới (2 / 3 cột) từ 600px; dưới 600px món đứng sau món dẫn đầu là hàng gọn `tdn-gon` (ảnh 128px trái, chữ phải) — nhóm không có món dẫn đầu giữ thẻ to; `deu` cho ba ly signature (luôn là thẻ); `tieuDeNho` trong dải tối Bò tại quầy |
+| `ThucDonNhomAnh` | `nhom`, `ngonNgu`, `kieu?` (`dan-dau` / `deu`), `ghiChu?`, `tieuDeNho?`, `nenKhung?`, `khongGia?` | Một nhóm món kiểu cuốn menu bản sáng: tên nhóm chữ hoa `--co-nhom`, câu của nhóm (`CAU_NHOM`), món dẫn đầu chữ trái – ảnh phải từ 768px, lưới thẻ ảnh trên chữ dưới (2 / 3 cột) từ 600px; dưới 600px món đứng sau món dẫn đầu là hàng gọn `tdn-gon` (ảnh 128px trái, chữ phải) — nhóm không có món dẫn đầu giữ thẻ to; `deu` cho ba ly signature (luôn là thẻ); `tieuDeNho` trong dải đen Bò tại quầy |
 | `ThucDonMon` | `mon`, `ngonNgu`, `lon?`, `khongGia?` | Chữ của một món: tên (chữ thường đậm 700), giá chỉ khi `gia !== null`, mô tả, nhãn Món sống / Có cồn, câu cảnh báo món sống |
-| `DauTrang`, `ChanTrang` | — | Layout đã gắn sẵn. Đầu trang cao 64 / 80px, bộ chọn ngôn ngữ in đủ ba thứ tiếng (thứ tiếng đang xem: `aria-current="true"`, chữ đậm và nét gạch), menu gọn có nút đóng và nút chính Hỏi bàn (lớp phủ tối và khoá cuộn chỉ có khi script đã chạy — `data-co-script`). Chân trang: dải đỏ phẳng không hoa văn, chữ ≥ 14px, `<footer>` pháp nhân duy nhất, giữ nguyên từng ký tự |
+| `DauTrang`, `ChanTrang` | — | Layout đã gắn sẵn. Đầu trang cao 64 / 80px, bộ chọn ngôn ngữ in đủ ba thứ tiếng (thứ tiếng đang xem: `aria-current="true"`, chữ đậm và nét gạch), menu gọn có nút đóng và nút chính Hỏi bàn (lớp phủ tối và khoá cuộn chỉ có khi script đã chạy — `data-co-script`). Đầu trang đen, logo phụ trắng (dưới 360px brandmark trắng). Chân trang: hai dải đen, logo chính trắng, không tem, không hoa văn chữ, chữ ≥ 14px, `<footer>` pháp nhân duy nhất, giữ nguyên từng ký tự |
 
 Thêm biểu tượng: vẽ thêm một dòng vào `NET` và kiểu `TenBieuTuong` trong `BieuTuong.astro`, lưới 24,
 nét 1,5, đầu tròn — rồi cập nhật danh sách tên trong `SKILL.md` và `web/THIET-KE.md` mục 5.
@@ -178,8 +176,7 @@ Thêm ảnh thật: `web/THIET-KE.md` mục 7, "Đưa một ảnh chụp thật 
   dựng cỡ (`tao-co-anh.py`) — khung chưa dựng thì trang hiện `KhungAnh`, và kiểm thử đỏ.
 - `sizes` ghi đúng bề rộng ảnh hiện ra: cột 6/11 của khung 1200px là `620px` từ 1280px, khoảng `50vw`
   từ 900px, còn lại `calc(100vw - 40px)`.
-- Không đặt gì lên ảnh ngoài nhãn "Ảnh minh họa" của component: logo, chữ, tem, nét trang trí đứng
-  cạnh hoặc dưới ảnh. Không `box-shadow`, không xoay, không viền.
+- Không đặt gì lên ảnh ngoài nhãn "Ảnh minh họa" của component: logo, chữ đứng cạnh hoặc dưới ảnh. Không `box-shadow`, không xoay, không viền.
 - Sau khi dựng cỡ, mở từng file đã cắt mà xem: không cắt mất món chính, không cắt ngang bàn tay; alt
   viết theo đúng thứ nhìn thấy (một alt cho cả hai khung thì chỉ tả thứ có ở cả hai).
 

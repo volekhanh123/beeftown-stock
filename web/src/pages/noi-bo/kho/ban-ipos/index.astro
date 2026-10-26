@@ -33,7 +33,7 @@ import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.t
 import { docTimDs, catTrang, dangTim, linkDs } from '../../../../lib/kho/tim-ds.ts';
 import { cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, dinhDangTien, type KetQua } from '../../../../lib/kho/chung.ts';
 import {
-  docDongIpos, docTrangThaiIpos, docThe, gomDongIpos, xuLyDongIpos, lopDen, trangThaiDong, THE_DONG_NB,
+  chuDen, docDongIpos, docTrangThaiIpos, docThe, gomDongIpos, xuLyDongIpos, lopDen, trangThaiDong, THE_DONG_NB,
   type DongIpos, type TrangThaiIpos,
 } from '../../../../lib/kho/ban-ipos.ts';
 import { soTangChu } from '../../../../lib/kho/tang.ts';
@@ -178,7 +178,7 @@ const hop = xemGia ? hopKhongBietTang(tang, loiTang) : null;
 
   {tt && (
     <div class={`nb-bao ${lopDen(tt.den)}`}>
-      <p style="margin:0">{dichCau(nn, tt.cau)} {t.lanNhanHd} {tt.nhan_hd_luc ? dinhDangThoiDiem(tt.nhan_hd_luc) : t.chuaCo}.{' '}
+      <p style="margin:0"><strong>{chuDen(tt.den, nn)}.</strong>{' '}{dichCau(nn, tt.cau)} {t.lanNhanHd} {tt.nhan_hd_luc ? dinhDangThoiDiem(tt.nhan_hd_luc) : t.chuaCo}.{' '}
         <a href="/noi-bo/kho/cai-dat/ipos">{t.ketNoi}</a></p>
     </div>
   )}

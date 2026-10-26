@@ -1,6 +1,8 @@
 ---
 /**
- * QUẦY CHỌN BÒ — dải tối, để thịt sáng lên (Khánh giữ dải tối ngày 11/10/2026)
+ * QUẦY CHỌN BÒ — dải đen, để thịt sáng lên (Khánh giữ dải tối ngày 11/10/2026; bảng 22/10/2026:
+ * dải đen, chữ trắng, chữ nhấn trắng — không chữ đỏ trên nền đen). Không nét trang trí: khối màu
+ * phẳng, ảnh và thẻ đọc nhãn khay.
  *
  * Khay skin-pack, nhãn khay, nhân viên tư vấn. Ảnh ở đây là ảnh minh họa không
  * khí món (bo-van-mo-can: cận cảnh vân thịt trên giấy lót, có nhãn "Ảnh minh họa")
@@ -39,8 +41,7 @@ const t = dich(ngonNgu, {
   },
 });
 ---
-<section class="muc be-toi qcb co-trang-tri" aria-labelledby="qcb-tieu-de">
-  <span class="trang-tri net steak-1 qcb-steak an-khi-hep" aria-hidden="true"></span>
+<section class="muc be-toi qcb" aria-labelledby="qcb-tieu-de">
   <div class="khung">
     <div class="qcb-dau">
       <div class="qcb-anh">
@@ -68,18 +69,9 @@ const t = dich(ngonNgu, {
   @media (min-width: 900px) { .qcb-dau { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: var(--k-8); margin-bottom: var(--k-8); } }
   .qcb-anh { max-width: 520px; width: 100%; }
   .qcb-chu .dan { color: var(--kem); }
-  .qcb-u { color: var(--da); font-size: var(--co-nho); border-top: 1px solid var(--vach-kem); padding-top: var(--k-4); margin: var(--k-5) 0 0; }
+  /* Chữ phụ và vạch đọc biến của bề mặt đen: --da (16,21 : 1) và trắng 22 %. */
+  .qcb-u { color: var(--chu-phu); font-size: var(--co-nho); border-top: 1px solid var(--vien); padding-top: var(--k-4); margin: var(--k-5) 0 0; }
 
-  .qcb-steak { width: clamp(90px, 14vw, 170px); right: -2%; top: var(--k-7); transform: rotate(-12deg); opacity: .16; }
-  /* Hai cột (≥ 900px): ở trên thì nét steak nằm đúng mép phải cột chữ, các dòng đoạn dẫn
-     chạy đè lên. Từ 1200px nó xuống góc dưới, bên phải thẻ đọc nhãn khay (thẻ rộng tối đa
-     880px, khung 1200px: còn trống hơn 300px). Từ 900 đến 1199px thẻ lấp gần hết bề ngang,
-     không còn chỗ nào không chạm thẻ: bỏ hẳn nét vẽ. */
-  @media (min-width: 900px) and (max-width: 1199.98px) { .qcb-steak { display: none; } }
-  /* Dưới 700px khung ảnh chiếm gần hết bề ngang: nét vẽ đè lên góc khung. */
-  @media (max-width: 699.98px) { .qcb-steak { display: none; } }
-  @media (min-width: 1200px) { .qcb-steak { top: auto; bottom: var(--k-8); right: 3%; } }
-
-  .qcb :global(.qcb-nhan) { border-top: 1px solid var(--vach-kem); padding-top: var(--k-7); }
+  .qcb :global(.qcb-nhan) { border-top: 1px solid var(--vien); padding-top: var(--k-7); }
   @media (min-width: 900px) { .qcb :global(.qcb-nhan) { padding-top: var(--k-8); } }
 </style>

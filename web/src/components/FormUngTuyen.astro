@@ -263,10 +263,11 @@ const t = dich(ngonNgu, {
      nó không phải thứ bấm được, nên không vẽ vòng focus quanh cả khung (như trang hỏi bàn). */
   .ut-da-nhan:focus, .ut-loi:focus { outline: none; }
 
-  /* Khung lỗi của máy chủ: chữ than trên nền nhuộm đỏ nhạt, vạch đỏ đậm bên trái. */
+  /* Khung lỗi của máy chủ: chữ đen trên nền xám --kem-dam, vạch đỏ đậm bên trái — không nền đỏ nhạt
+     (bảng 22/10/2026 không có màu nhạt nào); câu lỗi luôn có chữ, vạch là dấu thứ hai. */
   .ut-loi {
     border-left: 4px solid var(--do-dam);
-    background: rgba(137, 6, 7, .08);
+    background: var(--kem-dam);
     padding: var(--k-3) var(--k-4);
     margin: 0 0 var(--k-5);
   }
@@ -294,10 +295,10 @@ const t = dich(ngonNgu, {
     display: block; color: var(--chu-phu); font-size: var(--co-nho); margin-bottom: 6px; line-height: 1.45;
   }
 
-  /* Form nằm trên nền SÁNG (be-kem-sau). Bản đầu viết màu cho nền tối: chữ kem,
-     viền kem 22%, nền kem 6% — trên nền kem thì ô vô hình và chữ gõ vào cũng
-     vô hình (26/09/2026, ứng viên không nộp được hồ sơ). Ô nền Cream (bảng màu
-     không có trắng), viền --vien-o 3,71 : 1 với nền ô, chữ than; cao 48px.
+  /* Form nằm trên nền SÁNG (be-kem-sau). Bản đầu viết màu cho nền tối: chữ, viền 22% và
+     nền 6% đều là màu sáng của bảng khi đó — đặt lên nền sáng thì ô vô hình và chữ gõ vào
+     cũng vô hình (26/09/2026, ứng viên không nộp được hồ sơ). Ô nền trắng --kem,
+     viền --vien-o 4,54 : 1 với nền ô, chữ đen; cao 48px.
      font-size 16px là mức tối thiểu: dưới đó Safari trên iPhone tự phóng to
      trang khi chạm vào ô, và người đang điền mất chỗ. */
   .form-nop input[type='text'],
@@ -318,7 +319,7 @@ const t = dich(ngonNgu, {
   /* Câu lỗi sát ô CV (.loi-o của cong-khai.css) nằm trong <label> nên là span — cho nó đứng một dòng. */
   .form-nop .loi-o:not([hidden]) { display: block; }
 
-  /* Ô CV: nút chọn file theo hệ nút phụ (.nut-vien: nền Cream, chữ và viền Beef Red, cao 48px)
+  /* Ô CV: nút chọn file theo hệ nút phụ (.nut-vien: nền trắng, chữ và viền đỏ, cao 48px)
      thay cho nút xám mặc định của trình duyệt; chữ "chưa chọn tệp" bên cạnh là chữ phụ. */
   .form-nop input[type='file'] {
     font: inherit; font-size: 15px; width: 100%; color: var(--chu-phu);

@@ -2,12 +2,14 @@
 /**
  * BẢNG SỨC KHỎE HỆ THỐNG — trên trang Tổng quan, cho chủ và quản lý.
  *
- * Mục có vấn đề (đỏ, vàng) hiện đủ: tên (bấm để mở màn xử lý), nhãn mức độ, câu vì sao và làm
- * gì. Mục ổn và mục chưa bật gộp vào một dòng thu gọn — trang này trả lời "hôm nay còn vướng
- * gì", không phải liệt kê thứ đang chạy tốt. Mở dòng đó ra thì thấy câu của từng mục.
+ * Mục có vấn đề ("Xử lý ngay", "Xem hôm nay") hiện đủ: tên (bấm để mở màn xử lý), nhãn mức độ,
+ * câu vì sao và làm gì. Mục ổn và mục chưa bật gộp vào một dòng thu gọn — trang này trả lời "hôm
+ * nay còn vướng gì", không phải liệt kê thứ đang chạy tốt. Mở dòng đó ra thì thấy câu của từng mục.
  *
- * Màu và câu do lib/suc-khoe.ts quyết định; component chỉ vẽ. Không đọc được số liệu thì nói
- * thẳng là không đọc được — không bao giờ để trống như thể mọi thứ đều ổn.
+ * Mức và câu do lib/suc-khoe.ts quyết định (mã dữ liệu 'do' / 'vang' / 'xanh' / 'tat'); component
+ * chỉ vẽ. Mỗi mức một HÌNH, không phân biệt bằng màu: tam giác đỏ "Xử lý ngay", hình thoi xám "Xem
+ * hôm nay", chấm đen "Ổn", vòng rỗng "Chưa bật" — và luôn có chữ của mức bên cạnh. Không đọc được
+ * số liệu thì nói thẳng là không đọc được — không bao giờ để trống như thể mọi thứ đều ổn.
  */
 import { bangSucKhoe, type KetQuaDoc } from '../lib/suc-khoe';
 import { dichNB, type NgonNguNB } from '../lib/ngon-ngu-noi-bo';
@@ -98,23 +100,34 @@ const khoi = (sk?.khoi ?? []).map(k => ({
     margin-top: .3rem; background: var(--vach);
   }
   .sk-tom .sk-den { margin-top: .2rem; width: 1rem; height: 1rem; }
-  .sk-den.do   { background: var(--do); }
-  /* Đèn vàng: Marigold trên thẻ Cream chỉ 1,56 : 1 (trên nền kem sau 1,46) — thêm viền --vang-chu (5,47 và 5,14 : 1)
-     để chấm vàng có hình rõ. */
-  .sk-den.vang { background: var(--mu-tat); box-shadow: inset 0 0 0 2px var(--vang-chu); }
-  .sk-den.xanh { background: var(--xanh); }
-  /* Đèn "chưa bật": vòng rỗng, viền --vien-o (3,71 : 1 với thẻ Cream, 3,49 với nền kem sau; --vach chỉ 1,40 : 1). */
+  /* "Xử lý ngay": tam giác đỏ (6,64 : 1 với thẻ trắng). */
+  .sk-den.do   { background: var(--do); border-radius: 0; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+  /* "Xem hôm nay": hình thoi #555 (7,46 : 1 với thẻ trắng) — đỏ và #555 chỉ chênh 1,12 : 1, nên hai mức này khác nhau
+     ở hình chứ không ở màu. */
+  .sk-den.vang { background: var(--muc-nhat); border-radius: 1px; transform: rotate(45deg) scale(.8); }
+  /* "Ổn": chấm tròn đen. */
+  .sk-den.xanh { background: var(--than); }
+  /* "Chưa bật": vòng rỗng, viền --vien-o (4,54 : 1 với thẻ trắng, 4,13 với nền F4; --vach chỉ 1,30 : 1). */
   .sk-den.tat  { background: transparent; border: 2px solid var(--vien-o); }
   .sk-nhan {
     display: inline-block; font-size: .68rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
     padding: .15rem .45rem; border-radius: 4px; margin-left: .35rem; white-space: nowrap; vertical-align: .1em;
+    border: 1px solid transparent;
   }
+  /* Nhãn mức: "Xử lý ngay" K1 (nền đỏ, chữ trắng, dấu "!"), "Xem hôm nay" K5 (nền xám E2, chữ đen). */
   .sk-nhan.do   { background: var(--do); color: var(--kem); }
-  .sk-nhan.vang { background: var(--mu-tat); color: var(--than); }
+  .sk-nhan.do::before { content: '! '; content: '! ' / ''; font-weight: 800; }
+  .sk-nhan.vang { background: var(--kem-dam); color: var(--than); }
   .sk-gon { margin-top: .6rem; font-size: .85rem; }
   .sk-gon summary { cursor: pointer; color: var(--muc-nhat); padding: .4rem 0; line-height: 1.8; }
   .sk-cum { margin-right: .9rem; }
   .sk-nhom { white-space: nowrap; }
   .sk-cum .sk-den { margin: 0 .4rem 0 .15rem; vertical-align: -.05em; }
   .sk-khoi .sk-ds + .sk-gon { border-top: 1px solid var(--vach); padding-top: .5rem; }
+  /* Tương phản cao (Windows): chế độ này ép nền về màu trang — hình của đèn vẽ bằng nền sẽ mất. Giữ hình bằng màu hệ
+     thống (đèn chỉ là hình; chữ của mức nằm ngay bên cạnh). */
+  @media (forced-colors: active) {
+    .sk-den { forced-color-adjust: none; background: CanvasText; }
+    .sk-den.tat { background: transparent; border-color: CanvasText; }
+  }
 </style>
