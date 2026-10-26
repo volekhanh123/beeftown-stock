@@ -76,9 +76,12 @@
   --co-ti:    13px;               /* sàn cho nhãn — không nhỏ hơn (chân trang: 14px) */
   --co-dan:   clamp(18px, 0.19vw + 17.26px, 20px);
   --co-h3:    clamp(18px, 0.19vw + 17.26px, 20px);
+  /* Tên nhóm món của trang Thực đơn (kiểu tiêu đề trang của cuốn menu bản sáng: chữ hoa, đậm 800):
+     28px (390px) → 40px (1440px) — giữa h2 và h1, không bao giờ to hơn h1. */
+  --co-nhom:  clamp(28px, 1.14vw + 23.54px, 40px);
   --co-h2:    clamp(26px, 0.95vw + 22.3px, 36px);
   --co-h1:    clamp(32px, 1.8vw + 25px, 48px);
-  --co-so:    clamp(52px, 5vw + 28px, 104px);
+  --co-so:    clamp(44px, 2.29vw + 35.1px, 68px);   /* số thứ tự của ba bước: 44px (390px) → 68px (1440px) */
 
   /* Khoảng cách: 4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96 · 128 */
   --k-1: 4px;  --k-2: 8px;  --k-3: 12px; --k-4: 16px; --k-5: 24px;
@@ -282,16 +285,35 @@ html:has(body.ck) {
 .ck:lang(ko) .vi-tri .nhan { letter-spacing: .02em; }
 
 /* --- Ảnh và chú thích ------------------------------------------------------ */
-.ck .anh { position: relative; margin: 0; }
-.ck .anh img, .ck .anh picture { display: block; width: 100%; height: auto; border-radius: var(--bo-anh); }
-.ck .anh.phu-kin img, .ck .anh.phu-kin picture { height: 100%; object-fit: cover; }
-/* "Ảnh minh họa": luôn đọc được kể cả trên vùng ảnh sáng (≥ 7 : 1 trên nền trắng). */
+/* Khung ảnh giữ sẵn đúng tỷ lệ của ảnh (--ti-le: màn rộng, --ti-le-nho: điện thoại — Anh.astro khai) từ
+   trước khi ảnh về: ảnh về chậm thì trang không xô lệch. Nền chờ là màu của bảng, theo dải đặt ảnh.
+   Không bóng đổ, không viền; bo góc như thẻ. */
+.ck .anh {
+  position: relative; margin: 0; overflow: clip;
+  aspect-ratio: var(--ti-le, 4 / 3);
+  border-radius: var(--bo-anh);
+  background: var(--kem-dam);
+}
+@media (max-width: 599px) { .ck .anh { aspect-ratio: var(--ti-le-nho, var(--ti-le, 4 / 3)); } }
+.ck .anh.tren-toi { background: #211A10; }
+.ck .anh.tren-do  { background: var(--do-sau); }
+/* Ảnh tách nền (ảnh món của trang Thực đơn — DANH_MUC_ANH.tachNen): món đặt thẳng lên nền của dải như
+   trong cuốn menu — khung trong suốt, không bo góc. Khung vẫn giữ đúng tỷ lệ từ trước khi ảnh về. */
+.ck .anh.tach-nen { background: transparent; border-radius: 0; }
+.ck .anh picture { display: block; width: 100%; height: 100%; }
+.ck .anh img { display: block; width: 100%; height: 100%; object-fit: cover; }
+/* "Ảnh minh họa": nhãn có nền riêng (Charcoal 78 %) nên đọc được trên vùng ảnh nào cũng vậy — chữ Cream
+   trên nền nhãn đặt lên vùng ảnh trắng tinh vẫn 7,58 : 1, trên vùng màu kem 8,29 : 1. Chữ 13px (sàn). */
 .ck .chu-thich-anh {
-  position: absolute; left: 10px; bottom: 10px; margin: 0;
+  position: absolute; left: 12px; bottom: 12px; margin: 0;
   padding: 3px 8px; border-radius: 3px;
-  font-size: 12px; font-weight: 600; line-height: 1.4; letter-spacing: .02em;
+  font-size: var(--co-ti); font-weight: 600; line-height: 1.4; letter-spacing: .02em;
   color: var(--kem); background: rgba(21, 16, 8, .78);
 }
+/* Ảnh tách nền: nhãn sát đáy khung, giữa theo chiều ngang — nằm trong dải trống tao-co-anh.py chừa sẵn ở
+   đáy khung (12–14 % chiều cao), tức là ngay dưới món (món nằm giữa khung), không đè lên món. Lệch nửa bề
+   rộng bằng translate: nhãn tiếng Anh dài hay tiếng Hàn ngắn đều nằm giữa. */
+.ck .anh.tach-nen .chu-thich-anh { left: 50%; bottom: 0; transform: translateX(-50%); white-space: nowrap; }
 
 /* Khung ảnh chờ ảnh chụp thật: đúng tỷ lệ của ảnh sau này, có artwork — không
    phải hộp xám. Thay bằng ảnh thật là thay một thẻ, không đổi bố cục. */
@@ -369,12 +391,14 @@ html:has(body.ck) {
 .ck .mon-mo-ta { margin: 4px 0 0; font-size: 15px; color: var(--chu-phu); grid-column: 1; max-width: 60ch; }
 .ck .mon-gia { grid-column: 2; grid-row: 1; margin: 0; font-weight: 700; white-space: nowrap; }
 .ck .mon-nhan { grid-column: 1; display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0 0; padding: 0; list-style: none; }
+/* Nhãn món (Món sống, Có cồn): biểu tượng 24px như mọi biểu tượng của trang — vẽ trên lưới 24 với nét
+   1,5px không co, thu về 16px thì nét dính nhau. */
 .ck .nhan-mon {
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; gap: var(--k-2);
   font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
   color: var(--nhan-nho);
 }
-.ck .nhan-mon svg { width: 16px; height: 16px; flex: none; }
+.ck .nhan-mon svg { width: 24px; height: 24px; flex: none; }
 .ck .canh-bao-mon { grid-column: 1; margin: 6px 0 0; font-size: 14px; color: var(--chu-chinh); }
 
 /* --- Ô nhập ---------------------------------------------------------------- */

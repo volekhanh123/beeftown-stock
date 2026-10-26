@@ -16,7 +16,10 @@ con số cụ thể **khi con số đã được xác nhận**.
 - Chữ **"rẻ"** — thay bằng *hợp lý*, *xứng đáng*, *giá thật*. (Máy chỉ chặn "rẻ hơn"; chữ trơn "rẻ"
   thì người viết tự giữ.)
 - Tiếng lóng giới trẻ, chiêu câu tương tác, giọng fine dining xa cách.
-- Hứa mâm banchan đầy đủ kiểu Hàn — Beeftown tập trung vào bò. Không gọi là "Korean BBQ".
+- Hứa mâm banchan đầy đủ kiểu Hàn — Beeftown tập trung vào bò. Không gọi là "Korean BBQ". (Hai ảnh
+  bữa ăn trên trang chủ có kim chi và mấy chén món phụ: đó là ảnh minh họa Khánh cho dùng, có nhãn
+  "Ảnh minh họa". Chữ thì vẫn giữ luật này — alt và câu chữ quanh ảnh không kể tên, không hứa món phụ
+  nào; `crm/test/test-cong-khai-anh.mjs` chặn alt có tên món phụ.)
 - Guideline 09/10/2026 (`THUONG-HIEU.md`) cấm thêm: **buffet, cao cấp, nướng Hàn**, grade khi chưa có
   chứng nhận, số ngày ủ khi chưa có hồ sơ, chữ về **than, lửa, khói**, số phần trăm khi chưa có phép
   thử. Máy chỉ chặn phần có trong `chuoi-cam.js` — phần còn lại người viết tự giữ.

@@ -9,6 +9,11 @@
  * Bảng nội dung menu gốc có cột "Giá duyệt" trống ở cả 31 dòng. Sáu mức giá
  * đang hiển thị trên website nháp không có nguồn nào cả. Bài test này là chỗ
  * ghi nhận sự thật đó thành một khẳng định chạy được.
+ *
+ * Mục 1 kiểm SEED CỦA 0011 trên database chỉ nạp tới 0011 — đúng thứ production đã
+ * chạy. Từ 0096 danh mục là cuốn menu bản sáng (42 món còn dùng, 10 món thu hồi):
+ * test-thuc-don-ban-sang.mjs kiểm danh mục đó. Mục 2–7 chạy trên database đủ
+ * migration, tức là trên danh mục mới.
  */
 
 import { dungDatabaseTrong } from './kho-chung.mjs';
@@ -40,6 +45,8 @@ console.log('='.repeat(60));
 
 // Mô phỏng Supabase (schema auth, ba vai, quyền mặc định đặt TRƯỚC khi nạp migration — thiếu nó thì mọi
 // khẳng định "anon không làm được X" đều đúng một cách rỗng) rồi nạp migration: dungDatabaseTrong() của kho-chung.mjs.
+// Hai database: seedDb dừng ở 0011 (mục 1, seed gốc); db nạp mọi migration (mục 2–7).
+const { db: seedDb } = await dungDatabaseTrong({ den: 11 });
 const { db } = await dungDatabaseTrong();
 
 /** Bật một công tắc nội dung (chạy với quyền migration, không cần đăng nhập). */
@@ -50,57 +57,63 @@ async function batCongTac(khoa) {
 }
 
 // ===========================================================================
-await nhom('1 · DỮ LIỆU SEED KHỚP BẢNG NỘI DUNG GỐC', async () => {
-  const { rows: [{ n: soMon }] } = await db.query(`select count(*)::int as n from mon_an`);
+await nhom('1 · DỮ LIỆU SEED CỦA 0011 KHỚP BẢNG NỘI DUNG GỐC (database dừng ở 0011)', async () => {
+  const { rows: [{ n: soMon }] } = await seedDb.query(`select count(*)::int as n from mon_an`);
   ok('Seed đủ 31 mục bán', soMon === 31, `${soMon} mục`);
 
-  const { rows: [{ n: soAn }] } = await db.query(
+  const { rows: [{ n: soAn }] } = await seedDb.query(
     `select count(*)::int as n from mon_an where ma like 'F%'`);
-  const { rows: [{ n: soUong }] } = await db.query(
+  const { rows: [{ n: soUong }] } = await seedDb.query(
     `select count(*)::int as n from mon_an where ma like 'D%'`);
-  const { rows: [{ n: soSot }] } = await db.query(
+  const { rows: [{ n: soSot }] } = await seedDb.query(
     `select count(*)::int as n from mon_an where ma like 'S%'`);
   ok('18 món ăn + 12 đồ uống + 1 set sốt',
      soAn === 18 && soUong === 12 && soSot === 1, `${soAn}/${soUong}/${soSot}`);
 
-  const { rows: [{ n: soNhom }] } = await db.query(`select count(*)::int as n from nhom_mon`);
+  const { rows: [{ n: soNhom }] } = await seedDb.query(`select count(*)::int as n from nhom_mon`);
   ok('13 nhóm (12 nhóm món + nhóm bò tại quầy)', soNhom === 13, `${soNhom} nhóm`);
 
-  const { rows: [{ n: chuaNhap }] } = await db.query(
+  const { rows: [{ n: chuaNhap }] } = await seedDb.query(
     `select count(*)::int as n from mon_an where trang_thai <> 'nhap'`);
   ok('MỌI món đều ở trạng thái nháp sau khi cài', chuaNhap === 0,
      `${chuaNhap} món không phải nháp`);
 
   // Khẳng định quan trọng nhất của cả file.
-  const { rows: [{ n: coGia }] } = await db.query(
+  const { rows: [{ n: coGia }] } = await seedDb.query(
     `select count(*)::int as n from mon_an
      where gia is not null or gia_da_duyet or gia_de_xuat is not null`);
   ok('KHÔNG một mức giá nào được duyệt — đúng như bảng nội dung gốc',
      coGia === 0, `${coGia} món đã có giá`);
 
-  const { rows: [{ n: coCon }] } = await db.query(
+  const { rows: [{ n: coCon }] } = await seedDb.query(
     `select count(*)::int as n from mon_an where co_con`);
   ok('8 đồ uống được đánh dấu có cồn', coCon === 8, `${coCon} món`);
 
-  const { rows: song } = await db.query(`select ma from mon_an where la_mon_song`);
+  const { rows: song } = await seedDb.query(`select ma from mon_an where la_mon_song`);
   ok('Đúng F03 Yukhoe được đánh dấu là món sống',
      song.length === 1 && song[0].ma === 'F03', song.map(r => r.ma).join(',') || '(không có)');
 
-  const { rows: [{ n: coMoTa }] } = await db.query(
+  const { rows: [{ n: coMoTa }] } = await seedDb.query(
     `select count(*)::int as n from mon_an where mo_ta_vi is not null`);
   ok('Chưa món nào có mô tả chính thức (chờ biên tập)', coMoTa === 0);
 
   // Câu quảng cáo chưa kiểm chứng phải ở lại cột nội bộ.
-  const { rows: [{ n: loMoTaEn }] } = await db.query(
+  const { rows: [{ n: loMoTaEn }] } = await seedDb.query(
     `select count(*)::int as n from mon_an where mo_ta_en is not null`);
   ok('Câu gốc tiếng Anh KHÔNG bị chép thành mô tả công khai', loMoTaEn === 0);
-  const { rows: [{ nguon }] } = await db.query(
+  const { rows: [{ nguon }] } = await seedDb.query(
     `select nguyen_van_nguon as nguon from mon_an where ma = 'D09'`);
   ok('Câu "100% fresh orange" nằm ở cột nội bộ', /100% fresh orange/i.test(nguon));
 
-  const { rows: [{ can }] } = await db.query(
+  const { rows: [{ can }] } = await seedDb.query(
     `select can_xac_nhan as can from mon_an where ma = 'F07'`);
   ok('Ghi chú "cần xác nhận" được giữ lại cho từng món', can && can.length > 20);
+
+  // Bốn món trong bảng gốc còn mô tả dạng [chờ duyệt].
+  const { rows: nhapCon } = await seedDb.query(
+    `select ma from mon_an where copy_nhap ~ '\\[.*\\]' order by ma`);
+  ok('Bốn món còn mô tả dạng nháp trong dữ liệu gốc',
+     nhapCon.length === 4, nhapCon.map(r => r.ma).join(', '));
 });
 
 // ===========================================================================
@@ -182,13 +195,9 @@ await nhom('3 · GIÁ CHƯA DUYỆT KHÔNG CÓ ĐƯỜNG RA', async () => {
 
 // ===========================================================================
 await nhom('4 · NỘI DUNG NHÁP KHÔNG CÔNG BỐ ĐƯỢC', async () => {
-  // Bốn món trong bảng gốc còn mô tả dạng [chờ duyệt].
-  const { rows: nhapCon } = await db.query(
-    `select ma from mon_an where copy_nhap ~ '\\[.*\\]' order by ma`);
-  ok('Bốn món còn mô tả dạng nháp trong dữ liệu gốc',
-     nhapCon.length === 4, nhapCon.map(r => r.ma).join(', '));
-
-  await db.query(`update mon_an set mo_ta_vi = copy_nhap where ma = 'F07'`);
+  // Bản nháp của F07 trong seed 0011 (mục 1 kiểm nó còn nằm ở copy_nhap của seed). Từ 0096 copy_nhap của
+  // F07 là mô tả của cuốn, nên chép thẳng câu nháp đó vào mo_ta_vi.
+  await db.query(`update mon_an set mo_ta_vi = '[Mô tả sau khi duyệt công thức]' where ma = 'F07'`);
   ok('Mô tả còn dấu ngoặc vuông → không công bố được',
      (await phaiLoi(db,
        `update mon_an set trang_thai = 'da_cong_bo' where ma = 'F07'`)) !== null);
@@ -236,7 +245,7 @@ await nhom('5 · ĐỒ UỐNG CÓ CỒN CÓ CÔNG TẮC RIÊNG', async () => {
 await nhom('6 · SONG NGỮ VÀ PHIÊN BẢN', async () => {
   const { rows: [en] } = await db.query(
     `select ten, mo_ta from thuc_don_cong_khai('en') where mon_ma = 'F01'`);
-  ok('Thực đơn tiếng Anh trả về tên gốc tiếng Anh', en.ten === 'Caesar Salad');
+  ok('Thực đơn tiếng Anh trả về tên gốc tiếng Anh', en.ten === 'Caesar salad', en.ten);
   ok('Mô tả tiếng Anh dùng bản đã biên tập', en.mo_ta === 'Romaine, caesar dressing, parmesan.');
 
   const { rows: [vi] } = await db.query(
@@ -285,6 +294,14 @@ await nhom('7 · MÀN HÌNH QUẢN TRỊ TRẢ LỜI ĐƯỢC "VÌ SAO CHƯA LÊ
 
   await db.query(
     `update mon_an set gia = gia_de_xuat, gia_da_duyet = true where ma = 'F05'`);
+  // Từ 0096, F05 (Cơm trộn Hàn) có mức cay ĐỀ XUẤT 1 của cuốn — lý do kế tiếp.
+  const { rows: cay } = await db.query(
+    `select vuong_gi from v_mon_con_vuong where ma = 'F05'`);
+  ok('Duyệt giá rồi nhưng mức cay đề xuất chưa duyệt thì nói đúng lý do',
+     cay[0]?.vuong_gi === 'Mức cay chưa được duyệt', cay[0]?.vuong_gi);
+
+  await db.query(
+    `update mon_an set muc_cay = muc_cay_de_xuat, muc_cay_da_duyet = true where ma = 'F05'`);
   const { rows: xong } = await db.query(
     `select vuong_gi from v_mon_con_vuong where ma = 'F05'`);
   ok('Duyệt xong thì báo sẵn sàng công bố',

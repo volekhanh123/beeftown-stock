@@ -2,13 +2,20 @@
 /**
  * CẢ BỮA, CHO CẢ BÀN — món đi cùng và đồ uống
  *
- * Giúp người rủ nhóm hình dung cả bữa. Chỉ nhắc các NHÓM món đã xác nhận bán từ
- * ngày đầu (brief 06/10/2026; nhom_mon trong migration 0011). Tên từng món, mô tả,
+ * Giúp người rủ nhóm hình dung cả bữa. Chỉ nhắc các NHÓM món của cuốn menu bản sáng
+ * Khánh chốt 11/10/2026 (nhom_mon trong migration 0096). Tên từng món, mô tả,
  * giá nằm ở trang Thực đơn và chỉ hiện khi Khánh công bố — không lặp ở đây.
  * Không dựng combo, khẩu phần hay giá từ một mức chi tiêu dự kiến.
  *
  * Đồ uống có cồn chỉ được nhắc khi công tắc hien_do_uong_co_con bật — cùng công
  * tắc database dùng để ẩn chúng khỏi thực đơn (luật quảng cáo rượu bia).
+ *
+ * Ảnh mon-an-chia-se là ẢNH MINH HỌA một bữa ăn chung (Khánh cho dùng ngày 11/10/2026):
+ * trong ảnh có kim chi và mấy chén món phụ, nhưng câu chữ ở đây KHÔNG kể tên và không hứa
+ * món phụ nào — chỉ các nhóm món đã xác nhận bán.
+ *
+ * Bố cục: lời mở và nút "Xem thực đơn" (nút nằm sát đoạn giới thiệu) cạnh ảnh; danh sách
+ * nhóm món thành một dải ngang phía dưới. Điện thoại: lời mở → nút → ảnh → danh sách.
  */
 import { chu, dich, duongDanTuongUng } from '../lib/chu';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
@@ -20,9 +27,9 @@ interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; }
 const { ngonNgu, noiDung: nd } = Astro.props;
 const tChung = chu(ngonNgu);
 const coCon = nd.hien_do_uong_co_con === true;
-// Chưa có ảnh sốt chấm: KHÔNG dựng khung chờ ảnh (khung kem đậm trên nền kem đậm thành một
-// vùng trống, và hình bàn nướng lặp lại ngay ở dải đỏ sau). Thay bằng hai cột chữ.
-const coAnhSot = !!coAnh('sot-cham', '4x3');
+// Ảnh chưa dựng cỡ: KHÔNG dựng khung chờ ảnh (khung kem đậm trên nền kem đậm thành một vùng
+// trống) — lời mở khi đó trải hết bề ngang.
+const coAnhBua = !!coAnh('mon-an-chia-se', '3x2');
 const t = dich(ngonNgu, {
   hieu: { vi: 'Thực đơn', en: 'The menu', ko: '메뉴' },
   // \u00a0: "for the" không tách — "for" không đứng một mình cuối dòng.
@@ -37,68 +44,63 @@ const t = dich(ngonNgu, {
   doUong: { vi: 'Đồ uống', en: 'Drinks', ko: '음료' },
   goiThem: { vi: 'Gọi thêm', en: 'Add-ons', ko: '추가 주문' },
 });
-// Tên nhóm lấy từ lib/chu.ts — MỘT bộ tên cho trang chủ và trang Thực đơn.
-const MON_AN = [tChung.nhomSalad, tChung.nhomCom, tChung.nhomMiY, tChung.nhomMien, tChung.nhomCanh, tChung.nhomLau, tChung.nhomTrangMieng];
-const DO_UONG = [tChung.nhomNuocEp, ...(coCon ? [tChung.nhomHighball, tChung.nhomMakgeolli, tChung.nhomCocktail] : [])];
-// Tiêu đề tách ở dấu phẩy: màn rộng không ảnh thì mỗi vế một dòng ("Cả bữa," / "cho cả bàn").
+// Tên nhóm lấy từ lib/chu.ts — MỘT bộ tên cho trang chủ và trang Thực đơn (cuốn menu bản sáng 11/10/2026).
+// Thứ tự: Salad, Món thêm, Canh, Cơm, Mì, Lẩu — thứ tự trang của cuốn, trừ Lẩu đưa xuống cuối vì chỉ bán
+// buổi trưa (gọi theo combo); Món đặc trưng không có ở đây vì đó là hai món riêng (hai tartare), không phải
+// một nhóm để giới thiệu bằng tên.
+const MON_AN = [tChung.nhomSalad, tChung.nhomMonThem, tChung.nhomCanh, tChung.nhomCom, tChung.nhomMi, tChung.nhomLau];
+const DO_UONG = [tChung.nhomNuocEp, tChung.nhomNuocNgot, tChung.nhomNuocSuoi,
+  ...(coCon ? [tChung.nhomHighball, tChung.nhomSoju, tChung.nhomMakgeolli, tChung.nhomBia] : [])];
+// Tiêu đề tách ở dấu phẩy: mỗi vế không gãy giữa chừng ("Cả bữa," / "cho cả bàn").
 const veTieuDe = t.tieuDe.split(/(?<=,)\s+/u);
 ---
 <section class="muc be-kem-dam bacn" aria-labelledby="bacn-tieu-de">
-  <div class:list={['khung', 'bacn-luoi', { 'khong-anh': !coAnhSot }]}>
-    {coAnhSot && (
+  <div class:list={['khung', 'bacn-luoi', { 'khong-anh': !coAnhBua }]}>
+    <div class="bacn-mo">
+      <p class="hieu">{t.hieu}</p>
+      <h2 id="bacn-tieu-de">{veTieuDe.map((ve, i) => <>{i > 0 && ' '}<span class="cau">{ve}</span></>)}</h2>
+      <p class="dan">{t.dan}</p>
+      <div class="hang-nut">
+        <a class="nut nut-chinh" href={duongDanTuongUng('/thuc-don', ngonNgu)}>{tChung.xemMenu}<BieuTuong ten="mui-ten" /></a>
+      </div>
+    </div>
+    {coAnhBua && (
       <div class="bacn-anh">
-        <Anh id="sot-cham" ngonNgu={ngonNgu} khung="4x3" thayBang="ban-nuong" sizes="(min-width: 900px) 45vw, 100vw" />
+        <Anh id="mon-an-chia-se" ngonNgu={ngonNgu} khung="3x2" khungNho="4x3" thayBang="ban-nuong"
+             sizes="(min-width: 1280px) 620px, (min-width: 900px) 50vw, calc(100vw - 40px)" />
       </div>
     )}
-    <div class="bacn-chu">
-      <div class="bacn-mo">
-        <p class="hieu">{t.hieu}</p>
-        <h2 id="bacn-tieu-de">{veTieuDe.map((ve, i) => <>{i > 0 && ' '}<span class="cau">{ve}</span></>)}</h2>
-        <p class="dan">{t.dan}</p>
+    <div class="bacn-nhom">
+      <div class="bacn-mon-an">
+        <h3>{t.monAn}</h3>
+        <ul>{MON_AN.map(m => <li>{m}</li>)}</ul>
       </div>
-      <div class="bacn-danh-sach">
-        <div class="bacn-nhom">
-          <div>
-            <h3>{t.monAn}</h3>
-            <ul>{MON_AN.map(m => <li>{m}</li>)}</ul>
-          </div>
-          <div>
-            <h3>{t.doUong}</h3>
-            <ul>{DO_UONG.map(m => <li>{m}</li>)}</ul>
-            {coCon && <p class="nho bacn-luat">{tChung.luatRuou}</p>}
-            <h3 class="bacn-goi-them">{t.goiThem}</h3>
-            <ul><li>{tChung.setSot}</li></ul>
-          </div>
-        </div>
-        <a class="nut nut-chinh" href={duongDanTuongUng('/thuc-don', ngonNgu)}>{tChung.xemMenu}<BieuTuong ten="mui-ten" /></a>
+      <div class="bacn-do-uong">
+        <h3>{t.doUong}</h3>
+        <ul>{DO_UONG.map(m => <li>{m}</li>)}</ul>
+        {coCon && <p class="nho bacn-luat">{tChung.luatRuou}</p>}
+      </div>
+      <div>
+        <h3>{t.goiThem}</h3>
+        <ul><li>{tChung.setSot}</li></ul>
       </div>
     </div>
   </div>
 </section>
 
 <style>
-  .bacn-luoi { display: grid; gap: var(--k-7); align-items: center; grid-template-columns: 1fr; }
-  .bacn-chu .dan { margin-bottom: var(--k-6); }
-  @media (min-width: 900px) { .bacn-luoi { grid-template-columns: 6fr 5fr; gap: var(--k-8); } }
+  /* Một cột: lời mở + nút → ảnh → danh sách nhóm món. */
+  .bacn-luoi { display: grid; gap: var(--k-6); grid-template-columns: minmax(0, 1fr); }
+  .bacn-mo h2 .cau { display: inline-block; }
+  .bacn-mo .dan { margin: 0 0 var(--k-5); }
 
-  /* Không ảnh: lời mở bên trái, danh sách nhóm món bên phải — .bacn-chu "tan" vào lưới để
-     hai phần con của nó thành hai cột. */
-  .khong-anh .bacn-chu { display: contents; }
-  .khong-anh .bacn-mo .dan { margin-bottom: 0; }
-  @media (min-width: 900px) {
-    .bacn-luoi.khong-anh { grid-template-columns: 5fr 6fr; align-items: start; }
-    .khong-anh .bacn-mo h2 .cau { display: block; }
-    .khong-anh .bacn-nhom { padding-top: var(--k-6); }
-    /* Vạch đỏ đầu cột phải nằm ngang đúng gạch đỏ của nhãn "Thực đơn" bên trái (nhãn
-       inline-flex cao ~19px, thấp hơn đỉnh cột ~8px vì khoảng dòng của khối chứa). */
-    .khong-anh .bacn-danh-sach { margin-top: 17px; }
-  }
-
+  /* Danh sách nhóm món: nét đỏ phía trên, đọc như mục lục của tờ thực đơn.
+     Điện thoại hai cột: Món ăn bên trái; Đồ uống và Gọi thêm xếp chồng bên phải. */
   .bacn-nhom {
-    display: grid; grid-template-columns: 1fr 1fr; gap: var(--k-5);
-    margin-bottom: var(--k-6);
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--k-5);
     padding-top: var(--k-5); border-top: 2px solid var(--do);
   }
+  .bacn-mon-an { grid-row: 1 / span 2; }
   .bacn-nhom h3 {
     font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
     color: var(--do-sau); margin: 0 0 var(--k-3);
@@ -106,6 +108,17 @@ const veTieuDe = t.tieuDe.split(/(?<=,)\s+/u);
   .bacn-nhom h3:lang(ko) { letter-spacing: .04em; }   /* chữ Hangul không giãn như chữ in hoa Latin */
   .bacn-nhom ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
   .bacn-nhom li { font-weight: 600; line-height: 1.4; }
-  .bacn-goi-them { margin-top: var(--k-5) !important; }
   .bacn-luat { margin: var(--k-3) 0 0; max-width: 32ch; }
+
+  @media (min-width: 900px) {
+    /* Lời mở bên trái, ảnh bên phải (cân giữa theo chiều dọc); danh sách thành dải ngang dưới cả hai. */
+    .bacn-luoi { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); column-gap: var(--k-8); row-gap: var(--k-7); align-items: center; }
+    .bacn-luoi.khong-anh { grid-template-columns: minmax(0, 1fr); }
+    .bacn-nhom { grid-column: 1 / -1; grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) minmax(0, 1.2fr); gap: var(--k-7); padding-top: var(--k-6); }
+    .bacn-mon-an { grid-row: auto; }
+    /* Sáu nhóm món ăn và các nhóm đồ uống (ba, hay bảy khi công tắc đồ uống có cồn bật) chia hai cột con,
+       đọc hết cột trái rồi sang cột phải — dải ngang thấp, không kéo dài khối. */
+    :is(.bacn-mon-an, .bacn-do-uong) ul { display: block; columns: 2; column-gap: var(--k-5); }
+    :is(.bacn-mon-an, .bacn-do-uong) li { break-inside: avoid; margin-bottom: 6px; }
+  }
 </style>

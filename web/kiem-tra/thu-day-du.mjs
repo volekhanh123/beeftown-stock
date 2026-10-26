@@ -49,6 +49,19 @@
  *      đúng một lần, nút khóa "Đang gửi…"; mạng đứt → khung "KHÔNG CHẮC", không form, không nút mời
  *      nộp; database từ chối → câu của database, quay về ?vi_tri=<mã>, chữ đã gõ được điền lại, ô đồng
  *      ý không tích sẵn; file CV quá 5MB → câu lỗi sát ô, không gửi.
+ *  10. Màn đầu trang chủ ở ba trạng thái của khóa ngay_khai_truong — chưa có ngày (day-du), sắp
+ *       mở (sap-mo: "Đón bạn từ …"), đã mở (da-mo: "Mở cửa từ …"), hai trạng thái sau kèm dòng
+ *       trạng thái dài hai câu — × vi/en/ko × 390, 900, 1024, 1440 px: câu chỉ đường dính ngay
+ *       dưới dòng địa chỉ, ngày nằm trên một dòng, không ô nào tràn khung, không cuộn ngang.
+ *  11. Trang Thực đơn theo cuốn menu bản sáng (day-du = danh mục 11/10/2026 đã công bố) ở 320 → 1440 px
+ *       (vi; en, ko ở 390 và 1440): bấm từng tab, mọi món của dữ liệu giả hiện đúng tên ở đúng phần;
+ *       món có ảnh (ANH_CUA_MON) thì ảnh có alt đúng thứ tiếng và nhãn "Ảnh minh họa"; món sống kèm câu
+ *       cảnh báo; câu dưới tên nhóm đúng chữ; không số tiền, không phần tử giá; không cuộn ngang; đủ mười
+ *       bốn phép đo của do-giao-dien.mjs trên từng tab. khong-con-tat (công tắc đồ uống có cồn tắt): ba ly
+ *       signature, nhãn Có cồn, dòng luật rượu đều không hiện. thuc-don-thu-suc: món không ảnh, tên và mô tả
+ *       rất dài, nhóm lạ chưa có câu, nhóm đồ uống dạng danh sách — không tràn, vẫn đạt mọi phép đo.
+ *       day-du chỉ có ba ly signature (có cồn) ở phần Đồ uống: tên ba nhóm không cồn phải đứng đầu cột
+ *       thực đơn, cạnh ảnh ba ly không cồn; có món không cồn thì không có danh sách đó.
  *
  * Hỏng thì ảnh chụp nằm ở kiem-tra/anh-loi/day-du/ (CI tải lên cùng artifact của
  * trinh-duyet.mjs).
@@ -61,7 +74,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setTimeout as cho } from 'node:timers/promises';
-import { batMayGia, LIEN_HE_THU, MON_MAU, DIA_CHI_CONG_BO_THU } from './gia-supabase.mjs';
+import { batMayGia, LIEN_HE_THU, MON_MAU, MON_THU_SUC, DIA_CHI_CONG_BO_THU, NGAY_DA_MO_THU, TRANG_THAI_THU, ngaySapMoThu } from './gia-supabase.mjs';
 import { timChuoiCam } from '../src/lib/chuoi-cam.js';
 import { doGiaoDien, PHEP_DO } from './do-giao-dien.mjs';
 
@@ -76,8 +89,10 @@ const CHUP = process.argv.includes('--chup');
 // thì phép thử đổi theo, không phải chép tay hai nơi.
 const { CAP_DUONG_DAN, NGON_NGU, chu, duongDanTuongUng, cauLoiDatabase, DIA_CHI_NHA_HANG, PHAP_NHAN } =
   await import(pathToFileURL(join(WEB, 'src', 'lib', 'chu.ts')).href);
-const { NHAN_MON } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'thuc-don.ts')).href);
-const { congNgay } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'gio-vn.ts')).href);
+const { NHAN_MON, CAU_NHOM } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'thuc-don.ts')).href);
+const { ANH_CUA_MON, DANH_MUC_ANH } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'anh.ts')).href);
+const { congNgay, homNayVn } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'gio-vn.ts')).href);
+const { dinhDangNgay } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'noi-dung.ts')).href);
 
 /** Playwright của web/; máy không cài thì dùng bản cài chung của máy. */
 function napPlaywright() {
@@ -995,6 +1010,233 @@ try {
         ];
         if (tot.includes(false)) await chupLoi(`cv-qua-lon${tuyenDung}`);
       }
+    }
+    mayGia.datKichBan('day-du');
+  });
+
+  // =========================================================================
+  // Màn đầu trang chủ có ba trạng thái theo khóa ngay_khai_truong: chưa có ngày, sắp mở ("Đón bạn từ …"),
+  // đã mở ("Mở cửa từ …"). CI không có database nên trinh-duyet.mjs chỉ thấy trạng thái đầu; hai trạng thái
+  // sau là thứ khách thấy thật quanh ngày mở. Dòng trạng thái thử dài hai câu: ô trạng thái cao hơn cặp
+  // địa chỉ + câu chỉ đường — đúng lúc hàng thông tin dễ lệch nhất.
+  await nhom('10 · MÀN ĐẦU TRANG CHỦ THEO NGÀY KHAI TRƯƠNG: CHƯA CÓ NGÀY, SẮP MỞ (sap-mo), ĐÃ MỞ (da-mo) Ở 390, 900, 1024, 1440 PX', async () => {
+    const motDong = s => (s ?? '').replace(/\s+/g, ' ').trim();
+    const homNay = homNayVn();
+    const TRANG_THAI = [['day-du', null], ['sap-mo', ngaySapMoThu()], ['da-mo', NGAY_DA_MO_THU]];
+    ok(`Ngày thử: sap-mo ${ngaySapMoThu()} sau hôm nay ${homNay} (giờ Việt Nam), da-mo ${NGAY_DA_MO_THU} đã qua; dòng trạng thái thử dài hai câu`,
+       ngaySapMoThu() > homNay && NGAY_DA_MO_THU <= homNay
+         && Object.values(TRANG_THAI_THU).every(c => (c.match(/[.!?](\s|$)/g) ?? []).length === 2 && timChuoiCam(c).length === 0));
+    for (const rong of [390, 900, 1024, 1440]) {
+      await page.setViewportSize({ width: rong, height: rong < 600 ? 844 : 900 });
+      for (const [kichBan, ngay] of TRANG_THAI) {
+        mayGia.datKichBan(kichBan);
+        for (const nn of NGON_NGU) {
+          const t = chu(nn);
+          const duong = duongDanTuongUng('/', nn);
+          const nhan = `${kichBan} ${duong} · ${rong}px`;
+          const r = await page.goto(goc + duong, { waitUntil: 'load' });
+          await page.evaluate(() => document.fonts.ready);
+          const kq = await page.evaluate(() => {
+            const chon = c => document.querySelector(`main .kmd ${c}`);
+            const [tin, dc, loiLen, ngayMo, trangThai] = ['.kmd-thong-tin', '.kmd-dia-chi', '.kmd-loi-len', '.kmd-ngay', '.kmd-trang-thai'].map(chon);
+            const chu = e => (e?.textContent ?? '').replace(/\s+/g, ' ').trim();
+            const soDong = el => {
+              if (!el) return 0;
+              const vung = document.createRange(); vung.selectNodeContents(el);
+              const dinh = [];
+              for (const o of vung.getClientRects()) if (o.width >= 1 && !dinh.some(d => Math.abs(d - o.top) < 6)) dinh.push(o.top);
+              return dinh.length;
+            };
+            const khop = tin?.getBoundingClientRect();
+            return {
+              khe: dc && loiLen ? loiLen.getBoundingClientRect().top - dc.getBoundingClientRect().bottom : null,
+              loiLen: chu(loiLen), ngay: ngayMo ? chu(ngayMo) : null, trangThai: chu(trangThai),
+              dongNgay: soDong(ngayMo?.querySelector('strong')), dongCaNgay: soDong(ngayMo),
+              tran: tin ? [...tin.children].filter(e => { const k = e.getBoundingClientRect(); return k.left < khop.left - 1 || k.right > khop.right + 1 || k.right > innerWidth; }).map(e => e.className) : ['không thấy hàng thông tin'],
+              rongTrang: document.documentElement.scrollWidth, khung: innerWidth,
+            };
+          });
+          // Như nhóm 8: con trỏ còn nằm ở chỗ nhóm trước vừa bấm — đưa ra góc, chờ hết chuyển màu (180ms),
+          // không thì nút nằm dưới con trỏ bị đo ở màu "di chuột" (đo được màu giữa chừng, ngoài bảng).
+          await page.mouse.move(0, 0);
+          await cho(300);
+          const gd = await page.evaluate(doGiaoDien);
+          const saiGd = Object.keys(PHEP_DO).flatMap(khoa => (gd[khoa] ?? ['không đo được']).map(c => `[${khoa}] ${c}`));
+          const ngayMong = ngay ? `${ngay <= homNay ? t.moCuaTu : t.donBanTu} ${dinhDangNgay(ngay, nn)}` : null;
+          const tot = [
+            ok(`${nhan}: HTTP 200, không cuộn ngang, không ô nào của hàng thông tin tràn khung`,
+               r?.status() === 200 && kq.rongTrang <= kq.khung + 1 && kq.tran.length === 0,
+               `HTTP ${r?.status()}, rộng ${kq.rongTrang}px / khung ${kq.khung}px, tràn: ${kq.tran.join(', ') || 'không'}`),
+            ok(ngayMong ? `${nhan}: dòng ngày ghi "${ngayMong}"` : `${nhan}: chưa công bố ngày → không có dòng ngày`, kq.ngay === ngayMong, String(kq.ngay)),
+            ok(`${nhan}: dòng trạng thái ${kichBan === 'day-du' ? 'là câu dự phòng trong mã' : 'là câu hai câu đã công bố'}`,
+               kq.trangThai === (TRANG_THAI_THU[kichBan] ?? t.trangThaiMacDinh), kq.trangThai),
+            ok(`${nhan}: câu chỉ đường nguyên văn, dính ngay dưới dòng địa chỉ (cách đáy địa chỉ −10 đến 8px)`,
+               kq.loiLen === t.loiLen && kq.khe !== null && kq.khe >= -10 && kq.khe <= 8, `cách ${kq.khe?.toFixed(1)}px · «${kq.loiLen}»`),
+            ok(`${nhan}: thành phần và khung trang đúng quy tắc (${Object.keys(PHEP_DO).length} phép đo của do-giao-dien.mjs)`,
+               saiGd.length === 0, saiGd.slice(0, 5).join(' | ')),
+          ];
+          if (ngay) {
+            tot.push(ok(`${nhan}: ngày nằm trên một dòng${rong >= 900 ? ', cả dòng "… từ <ngày>" cũng một dòng' : ''}`,
+              kq.dongNgay === 1 && (rong < 900 || kq.dongCaNgay === 1), `ngày ${kq.dongNgay} dòng, cả dòng ${kq.dongCaNgay} dòng`));
+          }
+          if (tot.includes(false)) await chupLoi(`man-dau-${kichBan}-${tenTep(duong)}-${rong}`);
+        }
+      }
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    mayGia.datKichBan('day-du');
+  });
+
+  // =========================================================================
+  // Trang Thực đơn sau khi Khánh công bố danh mục của cuốn menu bản sáng. Ba phần là ba tab: bấm từng tab như
+  // khách, cuộn cho ảnh lazy của phần vừa mở tải xong, rồi đo.
+  await nhom('11 · THỰC ĐƠN BẢN SÁNG ĐÃ CÔNG BỐ: TỪNG MÓN, ẢNH VÀ NHÃN, CẢNH BÁO MÓN SỐNG, CÔNG TẮC ĐỒ UỐNG CÓ CỒN, MỌI BỀ RỘNG', async () => {
+    // Phần của từng nhóm trên trang — theo loai của nhóm (lib/thuc-don.ts → VE_PHAN): gọi thêm và bò tại quầy
+    // ở dải "Bò tại quầy", đồ uống ở "Đồ uống", còn lại ở "Món ăn".
+    const PHAN_CUA_NHOM = { 'goi-them': 'bo-tai-quay', 'bo-tai-quay': 'bo-tai-quay', highball: 'do-uong', 'khong-con': 'do-uong', 'do-uong-signature': 'do-uong' };
+    const phanCua = m => PHAN_CUA_NHOM[m.nhom] ?? 'mon-an';
+    const NHAN_ANH = { vi: 'Ảnh minh họa', en: 'Illustrative image', ko: '연출 이미지' };
+    /** Bấm tab, cuộn hết phần vừa mở cho ảnh lazy tải xong, về đầu trang; trả về các thẻ món đang hiện. */
+    const moTab = async (p, phan) => {
+      await p.locator(`#td-tab-${phan}`).click();
+      // Chuột rời khỏi trang trước khi cuộn: chuột đứng yên ở chỗ tab trong lúc trang cuộn bên dưới thì "di chuột"
+      // lên nút Hỏi bàn của dải đỏ — phép đo màu nút bắt đúng lúc nút đang đổi màu (180ms), không phải lỗi giao diện.
+      await p.mouse.move(0, 0);
+      return p.evaluate(async phan => {
+        const khoi = document.getElementById(phan);
+        const dau = khoi.getBoundingClientRect().top + scrollY;
+        for (let y = dau; y < dau + khoi.offsetHeight; y += 500) { scrollTo({ top: y, behavior: 'instant' }); await new Promise(r => setTimeout(r, 60)); }
+        for (let i = 0; i < 100; i++) {
+          const cho = [...khoi.querySelectorAll('figure.anh img')].filter(a => a.checkVisibility() && !(a.complete && a.naturalWidth > 0));
+          if (!cho.length) break;
+          await new Promise(r => setTimeout(r, 100));
+        }
+        scrollTo({ top: 0, behavior: 'instant' });
+        await new Promise(r => setTimeout(r, 250));   // hết chuyển màu (--nhanh 180ms) của phần tử vừa đi qua
+        const anhCua = f => f && {
+          src: f.querySelector('img')?.getAttribute('src') ?? '', alt: f.querySelector('img')?.getAttribute('alt') ?? '',
+          nhan: f.querySelector('figcaption')?.checkVisibility() ? f.querySelector('figcaption').textContent.trim() : '',
+          daVe: !!f.querySelector('img')?.complete && (f.querySelector('img')?.naturalWidth ?? 0) > 0,
+        };
+        return {
+          hien: [...document.querySelectorAll('.td-phan')].filter(x => x.checkVisibility()).map(x => x.id),
+          mon: [...khoi.querySelectorAll('.tdn-mon, .td-nhom .mon')].filter(x => x.checkVisibility()).map(x => {
+            const anh = x.classList.contains('tdn-lon') ? x.closest('.tdn-mo')?.querySelector('.tdn-lon-anh figure.anh') : x.querySelector('figure.anh');
+            return {
+              ten: (x.querySelector('.tdm-ten, .mon-ten')?.textContent ?? '').trim(),
+              chu: x.innerText,
+              anh: anhCua(anh),
+            };
+          }),
+          cau: Object.fromEntries([...khoi.querySelectorAll('.tdn')].map(n => [n.querySelector('.tdn-ten')?.id ?? '', n.querySelector('.tdn-cau')?.textContent.trim() ?? null])),
+          giaPhanTu: document.querySelectorAll('.mon-gia').length,
+        };
+      }, phan);
+    };
+
+    // Chữ đang hiện của một trang (chuTrang() ở trên đọc trang chung `page`; ở đây mỗi bề rộng một context riêng).
+    const chuTrangCua = async (p, chon) => (await p.locator(chon).first().innerText().catch(() => '')) ?? '';
+    const thu = async ({ kichBan, nn, rong, monMong, kiemThem = () => [] }) => {
+      mayGia.datKichBan(kichBan);
+      const c = await trinhDuyet.newContext({ viewport: { width: rong, height: rong < 600 ? 800 : 900 } });
+      const p = await c.newPage();
+      const loiJs = [];
+      p.on('pageerror', e => loiJs.push(e.message));
+      const duong = duongDanTuongUng('/thuc-don', nn);
+      const nhan = `${kichBan} ${duong} · ${rong}px`;
+      try {
+        await p.goto(goc + duong, { waitUntil: 'load', timeout: 60000 });
+        const tot = [];
+        let thay = [];
+        let chuCaTrang = '';
+        for (const phan of ['mon-an', 'do-uong', 'bo-tai-quay']) {
+          const kq = await moTab(p, phan);
+          const gd = await p.evaluate(doGiaoDien);
+          const saiGd = Object.keys(PHEP_DO).flatMap(khoa => (gd[khoa] ?? ['không đo được']).map(x => `[${khoa}] ${x}`));
+          const tran = await p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+          tot.push(
+            ok(`${nhan} · tab #${phan}: đúng phần này hiện, không cuộn ngang, đủ ${Object.keys(PHEP_DO).length} phép đo của do-giao-dien.mjs`,
+               kq.hien.join() === phan && tran <= 1 && saiGd.length === 0, [`hiện: ${kq.hien.join(', ')}`, tran > 1 ? `tràn ${tran}px` : '', ...saiGd.slice(0, 4)].filter(Boolean).join(' | ')),
+          );
+          // Mỗi món mong đợi của phần này hiện đúng tên; có ảnh thì ảnh đúng, alt đúng thứ tiếng, nhãn đang hiện.
+          for (const m of monMong.filter(x => phanCua(x) === phan)) {
+            const the = kq.mon.find(x => x.ten === m.ten[nn]);
+            const a = ANH_CUA_MON[m.ma];
+            const sai = !the ? ['không thấy thẻ món'] : [
+              ...(a ? [!the.anh ? 'thiếu ảnh' : !the.anh.src.includes(`/anh/${a.id}-${a.khung}-`) ? `ảnh ${the.anh.src}` : '',
+                the.anh && the.anh.alt !== DANH_MUC_ANH[a.id].alt[nn] ? 'alt sai thứ tiếng / sai ảnh' : '',
+                the.anh && the.anh.nhan !== NHAN_ANH[nn] ? `nhãn «${the.anh.nhan}»` : '', the.anh && !the.anh.daVe ? 'ảnh chưa tải về' : '']
+                : [the.anh ? 'món không có trong ANH_CUA_MON mà có ảnh' : '']),
+              m.moTa && !the.chu.includes(m.moTa[nn]) ? 'thiếu mô tả' : '',
+              m.laMonSong && !(thuong(the.chu).includes(thuong(NHAN_MON.monSong[nn])) && the.chu.includes(m.canhBao[nn])) ? 'món sống thiếu nhãn hoặc câu cảnh báo' : '',
+            ].filter(Boolean);
+            thay.push(m.ma);
+            tot.push(ok(`${nhan} · ${m.ma} «${m.ten[nn]}»: hiện đúng tên${a ? ', ảnh, alt, nhãn' : ''}${m.laMonSong ? ', nhãn Món sống và câu cảnh báo' : ''}`, sai.length === 0, sai.join(' · ')));
+          }
+          // Câu dưới tên nhóm: đúng chữ CAU_NHOM; nhóm không có trong CAU_NHOM thì không in câu nào.
+          for (const [idNhom, cau] of Object.entries(kq.cau)) {
+            const ma = idNhom.replace(/^tdn-/, '');
+            const mong = CAU_NHOM[ma]?.[nn] ?? null;
+            tot.push(ok(`${nhan} · nhóm ${ma}: ${mong ? `câu dưới tên nhóm «${mong}»` : 'không có câu dưới tên nhóm'}`, cau === mong, `thấy «${cau}»`));
+          }
+          tot.push(ok(`${nhan} · tab #${phan}: không phần tử giá (.mon-gia)`, kq.giaPhanTu === 0, `${kq.giaPhanTu} phần tử`));
+          if (phan === 'do-uong') {
+            // Đã công bố đồ uống mà chưa có món không cồn nào (day-du: chỉ ba ly signature, đều có cồn): cột thực đơn
+            // mở đầu bằng tên các nhóm không cồn, đứng trước nhóm đầu tiên — cạnh ảnh ba ly không cồn. Có món không
+            // cồn (thuc-don-thu-suc) hay chưa công bố đồ uống nào (khong-con-tat) thì không có danh sách này.
+            const uong = monMong.filter(m => phanCua(m) === 'do-uong');
+            const tChu = chu(nn);
+            const mong = uong.length && !uong.some(m => !m.coCon) ? [tChu.nhomNuocEp, tChu.nhomNuocNgot, tChu.nhomNuocSuoi] : [];
+            const thayDs = await p.evaluate(() => {
+              const ds = document.querySelector('#do-uong .td-uong-khong-con');
+              const nhomDau = document.querySelector('#do-uong .td-chinh .tdn, #do-uong .td-chinh .td-nhom');
+              return {
+                ten: [...(ds?.querySelectorAll('.td-dm-ten') ?? [])].map(e => e.textContent.trim()),
+                hien: !!ds?.checkVisibility(),
+                truoc: !ds || !nhomDau || ds.getBoundingClientRect().bottom <= nhomDau.getBoundingClientRect().top + 0.5,
+              };
+            });
+            tot.push(ok(mong.length
+              ? `${nhan} · tab #do-uong: chưa có đồ uống không cồn nào công bố → tên ba nhóm không cồn (${mong.join(', ')}) hiện trước nhóm đầu tiên`
+              : `${nhan} · tab #do-uong: không có danh sách nhóm không cồn chen trước đồ uống đã công bố`,
+              JSON.stringify(thayDs.ten) === JSON.stringify(mong) && (!mong.length || (thayDs.hien && thayDs.truoc)),
+              `thấy ${JSON.stringify(thayDs.ten)}, hiện ${thayDs.hien}, đứng trước ${thayDs.truoc}`));
+          }
+          chuCaTrang += '\n' + await chuTrangCua(p, 'main');
+        }
+        const cam = timChuoiCam(chuCaTrang);
+        tot.push(
+          ok(`${nhan}: KHÔNG một số tiền nào, không chữ cấm trên cả ba tab`, cam.length === 0, cam.map(x => x.tim_thay).join(' · ')),
+          ok(`${nhan}: không lỗi JavaScript`, loiJs.length === 0, loiJs.slice(0, 3).join(' | ')),
+          ...kiemThem(chuCaTrang),
+        );
+        if ((await Promise.all(tot)).includes(false)) {
+          mkdirSync(ANH_LOI, { recursive: true });
+          await p.screenshot({ path: join(ANH_LOI, `thuc-don-${kichBan}-${nn}-${rong}.png`), fullPage: true }).catch(() => {});
+        }
+      } finally {
+        await c.close();
+      }
+    };
+    const CO_DAY_DU = [[320, 'vi'], [360, 'vi'], [390, 'vi'], [430, 'vi'], [768, 'vi'], [1024, 'vi'], [1440, 'vi'],
+      [390, 'en'], [1440, 'en'], [390, 'ko'], [1440, 'ko']];
+    for (const [rong, nn] of CO_DAY_DU) {
+      // Dữ liệu giả day-du: 22 món ăn và ba ly signature — mọi món phải hiện ở đúng phần.
+      await thu({ kichBan: 'day-du', nn, rong, monMong: MON_MAU });
+    }
+    for (const [rong, nn] of [[390, 'vi'], [1440, 'vi'], [390, 'en'], [1440, 'ko']]) {
+      const coCon = MON_MAU.filter(m => m.coCon);
+      await thu({
+        kichBan: 'khong-con-tat', nn, rong, monMong: MON_MAU.filter(m => !m.coCon),
+        kiemThem: chuDoc => [
+          ok(`khong-con-tat ${duongDanTuongUng('/thuc-don', nn)} · ${rong}px: công tắc đồ uống có cồn tắt → không ly signature nào, không nhãn "${NHAN_MON.coCon[nn]}", không dòng luật rượu`,
+             !coCon.some(m => chuDoc.includes(m.ten[nn])) && !thuong(chuDoc).includes(thuong(NHAN_MON.coCon[nn])) && !chuDoc.includes(chu(nn).luatRuou),
+             coCon.filter(m => chuDoc.includes(m.ten[nn])).map(m => m.ten[nn]).join(', ')),
+        ],
+      });
+    }
+    for (const [rong, nn] of [[320, 'vi'], [360, 'vi'], [390, 'vi'], [768, 'vi'], [1024, 'vi'], [1440, 'vi'], [390, 'ko'], [1440, 'ko'], [390, 'en']]) {
+      await thu({ kichBan: 'thuc-don-thu-suc', nn, rong, monMong: [...MON_MAU, ...MON_THU_SUC] });
     }
     mayGia.datKichBan('day-du');
   });
