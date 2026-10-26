@@ -310,7 +310,7 @@ export function tomTatCanPhien(cp: CanPhien): TomTatCan {
         const phim = (dung.phim ?? []).filter(Boolean);
         const p = phim.length
           ? { vi: ` · phím ${phim.join(', ')}`, en: ` · key ${phim.join(', ')}` }
-          : { vi: ' · chưa gán phím tắt (gán ở thẻ Phím tắt của Beeftown Cân)', en: ' · no shortcut key yet (set it on the Keys tab of Beeftown Scale)' };
+          : { vi: ' · chưa gán phím tắt (gán ở mục Phím tắt của Beeftown Cân)', en: ' · no shortcut key yet (set it in the Keys section of Beeftown Scale)' };
         const bao = msCua(dung.bao_luc);
         const cuQua = bao !== null && bayGio - bao > PHUT_BAO_CAN_CU * 60000
           ? { vi: ` (máy quầy báo ${tuTruoc(bayGio, bao).vi})`, en: ` (counter computer reported ${tuTruoc(bayGio, bao).en})` } : { vi: '', en: '' };

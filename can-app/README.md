@@ -1,7 +1,8 @@
 # Beeftown Cân — máy quầy: cân in tem, quầy, giảm giá cận date, tảng & ô, báo cáo
 
 Chương trình Windows (`BeeftownCan.exe`) cho máy tính ở quầy, thay phần mềm của hãng cân. Đăng nhập bằng
-**tài khoản kho của mình** (NV quầy, thủ kho, kế toán, quản lý, chủ) — thẻ hiện theo vai.
+**tài khoản kho của mình** (NV quầy, thủ kho, kế toán, quản lý, chủ) — thẻ hiện theo vai. Từ 2.11 có năm thẻ:
+**Quầy · Cân · Giảm giá · Báo cáo · Thiết lập cân** (mục "Bản 2.11" bên dưới — bảng thẻ cũ → chỗ mới).
 
 Máy quầy (từ 2.0.0, cần migration 0054):
 
@@ -9,9 +10,9 @@ Máy quầy (từ 2.0.0, cần migration 0054):
   duyệt); gói **cận date** → "xếp ra trước" và "cân lại bằng PLU n · mã 90001 · −30%"; món **dưới mức** →
   sửa số, **gửi yêu cầu lấy hàng** cho thủ kho. Tồn quầy từng món, yêu cầu đang chờ, hàng đang mang ra. Tự
   tải lại mỗi phút.
-- **Tảng & ô mã** (mọi vai) — mỗi ô đang giữ tảng nào, lóc ra / đã bán / huỷ / còn, % bán, số lần lệch ô;
+- **Tảng & ô mã** (mọi vai; từ 2.11 là mục gập ở cuối thẻ Quầy) — mỗi ô đang giữ tảng nào, lóc ra / đã bán / huỷ / còn, % bán, số lần lệch ô;
   báo **cân chưa đổi tên theo tảng** (so tên trên cân với tên kho muốn).
-- **Giảm giá cận date** — FABi không đọc giá trên tem, nên mỗi mức giảm là **một mã cân riêng**. Quản lý / chủ
+- **Giảm giá cận date** (thẻ Giảm giá; từ 2.11 chỉ quản lý, chủ thấy thẻ này) — FABi không đọc giá trên tem, nên mỗi mức giảm là **một mã cân riêng**. Quản lý / chủ
   tạo mã (món + mức, mã tự lấy từ 90001), bật / tắt; tải danh sách để tạo món trên FABi (mã món = mã cân,
   giá = giá đã giảm); mã lên cân ở lần gửi sau. Bán ra kho tự ghi là bán giảm giá.
 - **Báo cáo** (chủ, quản lý, kế toán) — doanh thu / kg theo giờ, theo ngày, món bán chạy; bán giảm giá (tiền
@@ -91,10 +92,10 @@ lên file cũ. Cài đặt, đăng nhập, file gốc của cân không mất �
 
 1. Chép `BeeftownCan.exe` (tải ở mục trên) vào máy tính ở quán (máy phải cùng WiFi với cân). Nháy đúp để mở.
    File không ký số: lần đầu Windows có thể báo *"Windows protected your PC"* → **More info** → **Run anyway**.
-2. **Đăng nhập kho** bằng tài khoản kho (NV quầy dùng thẻ Quầy, Tảng & ô; gửi giá xuống cân, tem, mã giảm: quản lý hoặc chủ). Máy nhớ đăng nhập.
+2. **Đăng nhập kho** bằng tài khoản kho (NV quầy, thủ kho chỉ thấy thẻ Quầy — cả Tảng & ô mã ở cuối thẻ; gửi giá xuống cân (thẻ Cân), tem (thẻ Thiết lập cân), mã giảm: quản lý hoặc chủ). Máy nhớ đăng nhập.
 3. **Bắt đầu** (một lần): trên cân lưu dữ liệu ra USB (`Prog → ↓ V3 tới P4 → Accu/Confirm → Accu/Confirm → Amend`), chọn file `JHSCALE\A_000.TMS`.
-4. Mỗi lần đổi giá / thêm món trong kho: mở chương trình → xem bảng thay đổi → **Gửi xuống cân** → gọi thử một hàng trên cân.
-5. Đổi tem: thẻ **Mẫu tem** → bỏ chọn / chọn ô, sửa chữ → **Gửi tem xuống cân** → cân thử một món, in một tem xem đã đổi chưa. Nếu chưa đổi: **Lưu file nạp USB**.
+4. Mỗi lần đổi giá / thêm món trong kho: mở chương trình → thẻ **Cân** → xem bảng thay đổi → **Gửi xuống cân** → gọi thử một hàng trên cân.
+5. Đổi tem: thẻ **Thiết lập cân** → mục **Mẫu tem** → bỏ chọn / chọn ô, sửa chữ → **Gửi tem xuống cân** → cân thử một món, in một tem xem đã đổi chưa. Nếu chưa đổi: **Lưu file nạp USB**.
 6. Việc mới của 2.2: thử theo thứ tự ở mục **"Thử bản 2.2 ở quán"** bên dưới — bắt đầu bằng việc chỉ đọc.
 
 ## Bản 2.2 — cổng hai chiều, thông số, phím, nhật ký, HSD, sửa tem
@@ -196,6 +197,59 @@ Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn 
     (chưa gửi): ô Cân có khung đỏ; gửi (hay tự gửi) → số ngày giảm 1, HSD trên tem vẫn đúng hạn của lô.
 
 Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
+
+## Bản 2.11 — gọn còn 5 thẻ
+
+Khánh duyệt 25/10/2026 ("Có thể tinh giản"): mười thẻ của 2.10 gom còn năm — **Quầy · Cân · Giảm giá · Báo cáo · Thiết lập
+cân**. Chỉ đổi giao diện: quyền ở máy chủ (gửi tay, xem trước, USB, tem, thông số, báo cáo) không đổi, không có migration,
+cách nói với cân (WiFi / dây, tự gửi) không đổi.
+
+| Vai | Thẻ thấy |
+|---|---|
+| NV quầy, thủ kho | Quầy (cả Tảng & ô mã ở cuối thẻ) |
+| Kế toán | Quầy, Báo cáo |
+| Quản lý, chủ | Quầy, Cân, Giảm giá, Báo cáo, Thiết lập cân |
+| Chưa đăng nhập kho | Cân (khung đăng nhập, Tất cả hàng), Thiết lập cân — như các thẻ 2.10 hiện khi chưa đăng nhập |
+
+Thẻ cũ → chỗ mới. Các mục "Thử ở quán" của bản cũ bên dưới vẫn dùng tên thẻ cũ — tra bảng này:
+
+| Thẻ cũ (tới 2.10) | Từ 2.11 |
+|---|---|
+| Quầy | thẻ Quầy |
+| Tảng & ô mã | thẻ Quầy → mục gập Tảng & ô mã ở cuối thẻ |
+| Giảm giá cận date | thẻ Giảm giá (quản lý, chủ; NV quầy thấy mã giảm của lô cận date ngay ở thẻ Quầy) |
+| Báo cáo | thẻ Báo cáo |
+| Gửi giá từ kho | thẻ Cân, phần trên |
+| Tất cả hàng (SKU) | thẻ Cân → mục gập Tất cả hàng |
+| Mẫu tem | thẻ Thiết lập cân → mục gập Mẫu tem |
+| Cân & thông số | thẻ Thiết lập cân → mục gập Cân & thông số |
+| Phím tắt | thẻ Thiết lập cân → mục gập Phím tắt |
+| Nhật ký cân | thẻ Thiết lập cân → mục gập Nhật ký cân |
+
+- NV quầy, thủ kho không còn thấy Giảm giá (2.10: chỉ xem) và Tất cả hàng. Máy chủ vẫn trả hai thứ đó cho họ như cũ (quyền không
+  đổi) — chỉ trang không hiện.
+- Mục gập (`<details>`) chỉ đọc dữ liệu khi mở. Gửi giá (xem trước) và Quầy đọc lại mỗi lần mở thẻ như 2.10. Tảng & ô đọc ngay
+  khi mở thẻ Quầy: dòng gập nêu số ô đang dùng và ô có vấn đề (ô cân chưa đổi tên kèm tên món và số ô, ô bán hết chờ trả ô, lệch
+  ô); có ô cân chưa đổi tên thì mục tự mở (một lần — gập lại thì dòng gập vẫn nêu); đọc lại mỗi phút cùng thẻ Quầy.
+- Chưa đăng nhập kho: thẻ Cân mở sẵn mục Tất cả hàng (phần Gửi giá chỉ có khung đăng nhập). Phím mũi tên dời ô tem chỉ khi mục
+  Mẫu tem đang mở.
+- Luật thẻ theo vai nằm một chỗ: `mucDuocThay` trong khối "THẺ THEO VAI" của `src/giao-dien.html` — `test/thu-giao-dien-gon.ts`
+  chạy khối đó cho mọi vai × có / chưa có file gốc.
+- Kiểm thử trong trình duyệt thật: `test/thu-trinh-duyet.ts` mở trang (dữ liệu giả của `test/xem-giao-dien.ts`) trong Chromium
+  cho chưa đăng nhập, NV quầy, thủ kho, kế toán, quản lý, chủ: đúng thẻ, bấm từng thẻ, mở từng mục gập, không lỗi JavaScript.
+  CI chạy file này sau `test/thu.ts` ở `kiem-thu.yml` và `dong-goi-can.yml` (cài Chromium như job web).
+- Câu báo chỉ tới thẻ cũ đã đổi theo chỗ mới. Riêng câu lỗi "Mở lại thẻ Tem rồi sửa lại." (`src/tem.ts`) giữ nguyên chữ — kiểm
+  thử khoá chữ của lỗi cũ. Trang pha lóc: "chưa gán phím tắt (gán ở mục Phím tắt của Beeftown Cân)" — đúng cả máy còn chạy 2.10.
+
+**Thử ở quán (2.11)** — sau khi bấm **Cập nhật**; không ghi gì xuống cân ngoài bước 4:
+1. Đăng nhập tài khoản NV quầy: chỉ thấy thẻ **Quầy**; cuối thẻ có dòng **Tảng & ô mã — …** (số ô đang dùng, ô có vấn đề). Có ô
+   "cân chưa đổi tên" thì mục tự mở.
+2. Đăng nhập kế toán: thấy **Quầy**, **Báo cáo**.
+3. Đăng nhập quản lý: đủ năm thẻ. Thẻ **Cân** → bảng thay đổi từ kho như "Gửi giá từ kho" cũ; mở **Tất cả hàng** ở dưới. Thẻ
+   **Thiết lập cân** → mở lần lượt Mẫu tem, Cân & thông số, Phím tắt, Nhật ký cân: mỗi mục ra dữ liệu như 2.10.
+4. Sửa giá một món ít bán trong kho → thẻ Cân → **Gửi xuống cân** như 2.10 (đang dùng dây: trên cân bấm Prog → 4 → 3
+   trước, xong bấm Sale): khung xanh "Cân đã nhận". Sửa giá lại như cũ, gửi lần nữa.
+5. Chỗ nào khó tìm, chữ nào dễ lẫn (thẻ "Cân" với ô "Cân" ở hàng trên cùng): ghi lại để sửa.
 
 ## Bản 2.10 — dây RS232 làm đường chính
 
@@ -757,7 +811,10 @@ npx bun test/thu.ts              # cân giả, kho giả (test/kho-gia.ts), tem,
                                  # thông số, giờ, phím, sửa tem, quyền, /huong-dan; rồi kiểm thử từng module
                                  # (thu-giao-thuc, thu-tem, thu-bao-cao-can, thu-thong-so — mỗi file cũng chạy riêng được);
                                  # cuối cùng chạy src/main.ts thật với BEEFTOWN_CAN_DU_LIEU trỏ vào thư mục tạm
+npx bun test/thu-trinh-duyet.ts  # 2.11: mở giao diện trong Chromium cho từng vai, bấm từng thẻ, mở từng mục gập (cần web/
+                                 # đã npm ci và Chromium: cd web && npx playwright install chromium)
 npx bun test/xem-giao-dien.ts    # mở giao diện với dữ liệu giả để xem / chụp màn hình (--vai nhan_vien_quay để xem như NV quầy;
+                                 # --chua-dang-nhap: chưa đăng nhập kho;
                                  # --can-doi-dia-chi: lúc mở tự dò ra cân; --hai-can: WiFi có hai cân, hiện nút chọn;
                                  # --chua-co-goc: chưa có file gốc). Có cân giả hai chiều, nhật ký 7 ngày, thông số, phím, HSD.
 npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói được từ Linux
@@ -781,7 +838,8 @@ npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói
   như gửi giá (2.9.3).
 - Tự gửi dừng hẳn sau một lần đọc lại thấy cân CHƯA nhận (cân đang ở menu Prog lúc gửi…) tới khi người bấm Gửi — tên ô mã theo
   tảng không lên cân trong lúc đó. Có thể tự gửi lại cả danh sách sau 10 phút (bấm Gửi cũng chỉ làm vậy): chủ quyết.
-- Phím tắt cố định cho từng ô: trang pha lóc mới HIỆN phím; gán phím vẫn bằng tay ở thẻ Phím tắt.
+- Thử bản 2.11 trên cân thật (mục "Thử ở quán (2.11)").
+- Phím tắt cố định cho từng ô: trang pha lóc mới HIỆN phím; gán phím vẫn bằng tay ở mục Phím tắt (thẻ Thiết lập cân).
 - Tự gửi chưa tự gỡ hàng còn nằm lại (cần người xem trước rồi bấm).
 - Mã `99999` / `99998` mới chỉ được chặn ở bộ lập danh sách (món mang mã đó không lên cân); database chưa chặn.
 - Thử bản 2.2 trên cân thật (mục "Thử bản 2.2 ở quán") và sửa `CAN-TMA.md` theo kết quả.

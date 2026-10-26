@@ -292,10 +292,10 @@ export const O_THEM_DUOC: readonly MauOThem[] = [
     ghiChu: 'Chỉ in khi hàng có hạn dùng, cùng lúc với ô Hạn dùng (chưa thử trên cân thật).' },
   { khoa: 'chu', ten: 'Chữ cố định', flag1: 3, flag2: 0, flag3: 0, inKhi: 1, font: 0, canh: 5, w: 160, h: 20 },
   { khoa: 'ten-quan', ten: 'Tên quán', flag1: 2, flag2: 0, flag3: 0, inKhi: 1, font: 1, canh: 5, w: 400, h: 26 },
-  // 2.4: chữ của "Ghi chú cân 1–8" (chữ cài đặt chung TMT 4–11) sửa ở thẻ Cân & thông số, mục 6.
+  // 2.4: chữ của "Ghi chú cân 1–8" (chữ cài đặt chung TMT 4–11) sửa ở mục Cân & thông số (thẻ Thiết lập cân), phần 6.
   ...Array.from({ length: 8 }, (_, i): MauOThem => ({ khoa: `ghi-chu-${i + 1}`, ten: `Ghi chú cân ${i + 1}`, flag1: 2, flag2: 17 + i, flag3: 0,
     inKhi: 1, font: 0, canh: 5, w: 400, h: 20,
-    ghiChu: `Chữ của ô này sửa ở thẻ Cân & thông số, mục 6 (Ghi chú cân ${i + 1}) — chưa thử trên cân thật.` })),
+    ghiChu: `Chữ của ô này sửa ở thẻ Thiết lập cân → Cân & thông số, phần 6 (Ghi chú cân ${i + 1}) — chưa thử trên cân thật.` })),
   { khoa: 'ma-vach', ten: 'Mã vạch', flag1: 0, flag2: 0, flag3: 0, inKhi: 1, font: 0, canh: 5, w: 257, h: 74 },
 ];
 
