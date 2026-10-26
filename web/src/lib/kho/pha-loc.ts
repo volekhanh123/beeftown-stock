@@ -60,6 +60,7 @@ export interface PhienPhaTom {
   tong_kg_vao: number | null;
   tong_kg_thit: number | null;
   ty_le_thu_hoi: number | null;
+  /** Số DÒNG vào (mỗi lô mỗi vị trí một dòng). Đếm lô thì dùng so_lo_vao. */
   so_dau_vao: number;
   so_dau_ra: number;
   kg_vao_nhap: number;
@@ -70,6 +71,8 @@ export interface PhienPhaTom {
   ty_le_du_kien: number | null;
   thu_hoi_thap: boolean;
   da_xem_luc: string | null;
+  // 0098: số LÔ khác nhau — Lóc một chạm đưa một lô vào thành hai dòng (kho lạnh + quầy), "N lô vào" in số này.
+  so_lo_vao: number;
 }
 
 export interface PhienPha {
@@ -160,7 +163,7 @@ export async function docDanhSachPhienPha(
 ): Promise<PhienPhaTom[]> {
   let q = client
     .from('kho_v_phien_pha')
-    .select('id, so_phieu, trang_thai, mat_hang_vao_id, ten_mat_hang_vao, ngay_pha, tong_kg_vao, tong_kg_thit, ty_le_thu_hoi, so_dau_vao, so_dau_ra, kg_vao_nhap, kg_ra_nhap, nguoi_tao, created_at, ty_le_du_kien, thu_hoi_thap, da_xem_luc')
+    .select('id, so_phieu, trang_thai, mat_hang_vao_id, ten_mat_hang_vao, ngay_pha, tong_kg_vao, tong_kg_thit, ty_le_thu_hoi, so_dau_vao, so_dau_ra, kg_vao_nhap, kg_ra_nhap, nguoi_tao, created_at, ty_le_du_kien, thu_hoi_thap, da_xem_luc, so_lo_vao')
     .eq('chi_nhanh_id', chiNhanhId)
     .order('ngay_pha', { ascending: false })
     .order('created_at', { ascending: false });

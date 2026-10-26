@@ -1,6 +1,6 @@
 /**
- * BEEFTOWN KHO — Kiểm thử "Lóc #0142" một chạm (web, không migration)
- * ===================================================================
+ * BEEFTOWN KHO — Kiểm thử "Lóc #0142" một chạm (web, không migration; đếm lô ở danh sách: 0098)
+ * ================================================================================================
  *
  *     node test/test-kho-loc-tang-web.mjs
  *
@@ -15,7 +15,8 @@
  *
  *   1. Hàm thuần: chỗ lóc được, tảng nào có nút, công thức, câu báo (số kiểu Việt, không chữ cấm).
  *   2–3. Dựng database; danh sách tảng lóc được đọc từ database.
- *   4. Một chạm: đúng lô, mọi vị trí kho / quầy (bỏ chờ huỷ), ngày pha giờ Việt Nam, công thức, ô mã.
+ *   4. Một chạm: đúng lô, mọi vị trí kho / quầy (bỏ chờ huỷ), ngày pha giờ Việt Nam, công thức, ô mã; danh sách phiên
+ *      đếm 1 lô vào cho hai dòng vào cùng lô (so_lo_vao của kho_v_phien_pha, 0098).
  *   5. Bấm hai lần: tuần tự, SONG SONG cùng ma_gui (lần sau đọc danh sách trước khi lần đầu ghi xong),
  *      ma_gui khác khi tảng đang lóc dở, form cũ của phiên đã huỷ.
  *   6. Mất mạng: giao ô báo lỗi mạng / ném / database đã giao rồi phản hồi mất (vẫn vào phiên, câu đỏ "Không chắc
@@ -29,7 +30,8 @@
  *   12. Phiên nháp của từng lô (docLoCuaPhien trên database có phiên nháp thật): tảng đang lóc dở không có nút,
  *       Tảng · ủ có đúng số phiên; đọc hỏng thì ném.
  *   13. Sổ kho: phiên mở bằng Lóc → quét nhãn ô → chốt → kho_doi_soat_ton() rỗng.
- *   14. Trang (đọc mã nguồn): nút, chữ ghép, ve=tang, bảng 5 cột, hướng dẫn; tóm tắt bước 2 đếm số lô, không đếm dòng vào.
+ *   14. Trang (đọc mã nguồn): nút, chữ ghép, ve=tang, bảng 5 cột, hướng dẫn; tóm tắt bước 2 và danh sách phiên đếm số lô,
+ *       không đếm dòng vào.
  */
 
 import { readFileSync } from 'node:fs';
@@ -322,6 +324,14 @@ await nhom('4 · MỘT CHẠM: ĐÚNG LÔ, ĐÚNG CÔNG THỨC, Ô MÃ GIAO LUÔ
      && ph[0].cong_thuc_id === CT.ngoai && vao.length === 2 && vao.every(v => v.lo_id === L[1].id)
      && vao.map(v => `${v.vi_tri_id === vt.kho ? 'kho' : v.vi_tri_id === vt.quay ? 'quay' : '?'}:${v.so_kg}`).sort().join() === 'kho:5.2,quay:1',
      `${kq.cau} · ${JSON.stringify(vao)}`);
+  // Danh sách phiên pha lóc (pha-loc/index.astro) in "N lô vào (… kg)" cho phiên chưa chốt. Lóc một chạm đưa một lô vào
+  // thành hai dòng (kho lạnh + quầy): đếm dòng (so_dau_vao, count(*) của view) thì một tảng hiện "2 lô vào". Phải đếm số
+  // LÔ khác nhau (so_lo_vao, 0098) — cùng cách đếm với tóm tắt bước 2 (nhóm 14).
+  const dsNhap = await PL.docDanhSachPhienPha(tk, cnA.id, 'nhap');
+  const dongP1 = dsNhap.find(p => p.id === P[1]);
+  ok('Danh sách phiên pha lóc: phiên mở bằng Lóc #0001 (hai dòng vào, một lô) đếm 1 lô vào · 6,2 kg, không phải "2 lô vào"',
+     !!dongP1 && dongP1.so_lo_vao === 1 && dongP1.so_dau_vao === 2 && Math.round(dongP1.kg_vao_nhap * 1000) === 6200,
+     JSON.stringify(dongP1 ? { so_dau_vao: dongP1.so_dau_vao, so_lo_vao: dongP1.so_lo_vao, kg_vao_nhap: dongP1.kg_vao_nhap } : null));
   const o = P[1] ? await oCuaPhien(P[1]) : [];
   ok('Ô mã giao luôn cho phần cắt có ô trong công thức; câu báo nêu ô và mã',
      o.map(x => x.ma_can).join() === '10011' && /ô 1 \(mã 10011\)/.test(kq.cau) && /slot 1 \(code 10011\)/.test(kq.cauEn ?? '')
@@ -629,6 +639,10 @@ await nhom('14 · TRANG (đọc mã nguồn)', async () => {
      && /t\.loKg\(loVaoPhien\.length, kgs\(vaoDb\.reduce\(\(s, v\) => s \+ v\.so_kg, 0\)\)\)/.test(trangPhien)
      && !/t\.loKg\(vaoDb\.length/.test(trangPhien),
      `${vaoP1.length} dòng vào · ${new Set(vaoP1.map(v => v.lo_id)).size} lô`);
+  // Cùng lỗi ở danh sách phiên (nhóm 4 kiểm số trên database): "N lô vào" in so_lo_vao, không in so_dau_vao (số dòng).
+  const dsTrang = doc('web/src/pages/noi-bo/kho/pha-loc/index.astro');
+  ok('Danh sách phiên pha lóc: "N lô vào" in so_lo_vao (số lô khác nhau), không in so_dau_vao (số dòng vào)',
+     /t\.loVao\(p\.so_lo_vao, dinhDangKg\(p\.kg_vao_nhap, nn\)\)/.test(dsTrang) && !/t\.loVao\(p\.so_dau_vao\b/.test(dsTrang));
 
   const hd = id => MUC_HUONG_DAN.find(m => m.id === id);
   const chu = (m, nn) => (m ? [...m.buoc, ...(m.meo ?? [])].map(x => x[nn]).join('\n') : '');
