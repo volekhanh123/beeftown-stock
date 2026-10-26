@@ -193,6 +193,24 @@ await nhom('3 · FILE CỦA QUY TRÌNH CÓ MẶT VÀ ĐƯỢC GIT THEO DÕI', as
   const viTriThu = goi.search(/run: npx bun test\/thu\.ts/), viTriGoi = goi.search(/run: npx bun scripts\/dong-goi\.ts/);
   ok('Workflow đóng gói Beeftown Cân chạy kiểm thử TRƯỚC khi đóng gói', viTriThu >= 0 && viTriGoi > viTriThu,
      viTriThu < 0 ? 'không thấy run: npx bun test/thu.ts' : viTriGoi < 0 ? 'không thấy run: npx bun scripts/dong-goi.ts' : 'đóng gói đứng trước kiểm thử');
+  // Beeftown Cân 2.11: giao diện trong Chromium thật cho từng vai — đọc mã không bắt được lỗi lúc chạy của trang. Chạy ở PR
+  // (kiem-thu.yml, có cài Chromium) và trước khi đóng gói bản lên Release (dong-goi-can.yml).
+  /** Cả một job của kiem-thu.yml (điều kiện và các bước): từ dòng khóa job tới dòng đầu tiên thụt 2 cách (job sau, chú thích). */
+  const khoiJobDay = ten => yml.match(new RegExp(`\\n  ${ten}:\\n((?:    .*\\n|\\s*\\n)*)`))?.[1] ?? '';
+  const viTriTrinhDuyetGoi = goi.search(/run: npx bun test\/thu-trinh-duyet\.ts/);
+  ok('Beeftown Cân: kiểm thử giao diện trong Chromium (test/thu-trinh-duyet.ts) chạy ở kiem-thu.yml (có cài Chromium) và trước khi đóng gói',
+     /run: npx bun test\/thu-trinh-duyet\.ts/.test(khoiJobDay('database-va-can')) && /playwright install(?:-deps| --with-deps) chromium/.test(khoiJobDay('database-va-can'))
+       && viTriTrinhDuyetGoi >= 0 && viTriTrinhDuyetGoi < viTriGoi && /playwright install --with-deps chromium/.test(goi),
+     `kiem-thu.yml: ${/thu-trinh-duyet/.test(yml)} · dong-goi-can.yml vị trí ${viTriTrinhDuyetGoi} / đóng gói ${viTriGoi}`);
+  // Lượt chạy tay "Bản thử PR" lấy workflow của main nhưng mã của PR: PR mở trước 2.11 chưa có test/thu-trinh-duyet.ts —
+  // hai bước Chromium phải tự bỏ qua (có cảnh báo), không làm đỏ cả lượt và không ra bản thử.
+  const buocGoi = goi.split(/\n      - /).slice(1);
+  const buocChromium = buocGoi.filter(b => /playwright install|run: npx bun test\/thu-trinh-duyet\.ts/.test(b));
+  const coFile = /if: .*hashFiles\('can-app\/test\/thu-trinh-duyet\.ts'\) != ''/;
+  ok('Beeftown Cân: bản thử PR chưa có test/thu-trinh-duyet.ts (PR mở trước 2.11) — hai bước Chromium tự bỏ qua, có cảnh báo',
+     buocChromium.length === 2 && buocChromium.every(b => coFile.test(b))
+       && buocGoi.some(b => /if: .*hashFiles\('can-app\/test\/thu-trinh-duyet\.ts'\) == ''/.test(b) && /::warning/.test(b)),
+     buocChromium.map(b => b.split('\n')[0] + ' — ' + (b.match(/if: .*/)?.[0] ?? 'không có if')).join(' | '));
   // .exe gói cả mã dùng chung trong web/src/lib — đổi ở đó cũng phải đóng gói lại (main) và đóng gói thử (PR).
   const duongDan = khoi => (goi.match(new RegExp(`\\n  ${khoi}:\\n(?:    .*\\n)*?    paths:.*\\n((?:      - .*\\n)+)`))?.[1] ?? '');
   const BUOC_GOI = [

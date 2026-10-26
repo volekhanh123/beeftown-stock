@@ -27,7 +27,7 @@ import {
 } from './cap-nhat.ts';
 import { chayPowerShell } from './day-rs232.ts';
 
-const PHIEN_BAN = '2.10.0';
+const PHIEN_BAN = '2.11.0';
 
 // ---- 2.6.1: bản cũ đang CHẠY THỬ file này trước khi đổi sang (cap-nhat.ts chayThuBanMoi) ---------------------------
 // Chỉ ghi phiên bản vào file được chỉ rồi thoát: không mở máy chủ, không mở cửa sổ, không đụng dữ liệu — trước mọi bước

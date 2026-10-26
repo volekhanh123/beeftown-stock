@@ -1,7 +1,8 @@
 # Beeftown Cân — máy quầy: cân in tem, quầy, giảm giá cận date, tảng & ô, báo cáo
 
 Chương trình Windows (`BeeftownCan.exe`) cho máy tính ở quầy, thay phần mềm của hãng cân. Đăng nhập bằng
-**tài khoản kho của mình** (NV quầy, thủ kho, kế toán, quản lý, chủ) — thẻ hiện theo vai.
+**tài khoản kho của mình** (NV quầy, thủ kho, kế toán, quản lý, chủ) — thẻ hiện theo vai. Từ 2.11 có năm thẻ:
+**Quầy · Cân · Giảm giá · Báo cáo · Thiết lập cân** (mục "Bản 2.11" bên dưới — bảng thẻ cũ → chỗ mới).
 
 Máy quầy (từ 2.0.0, cần migration 0054):
 
@@ -9,9 +10,9 @@ Máy quầy (từ 2.0.0, cần migration 0054):
   duyệt); gói **cận date** → "xếp ra trước" và "cân lại bằng PLU n · mã 90001 · −30%"; món **dưới mức** →
   sửa số, **gửi yêu cầu lấy hàng** cho thủ kho. Tồn quầy từng món, yêu cầu đang chờ, hàng đang mang ra. Tự
   tải lại mỗi phút.
-- **Tảng & ô mã** (mọi vai) — mỗi ô đang giữ tảng nào, lóc ra / đã bán / huỷ / còn, % bán, số lần lệch ô;
+- **Tảng & ô mã** (mọi vai; từ 2.11 là mục gập ở cuối thẻ Quầy) — mỗi ô đang giữ tảng nào, lóc ra / đã bán / huỷ / còn, % bán, số lần lệch ô;
   báo **cân chưa đổi tên theo tảng** (so tên trên cân với tên kho muốn).
-- **Giảm giá cận date** — FABi không đọc giá trên tem, nên mỗi mức giảm là **một mã cân riêng**. Quản lý / chủ
+- **Giảm giá cận date** (thẻ Giảm giá; từ 2.11 chỉ quản lý, chủ thấy thẻ này) — FABi không đọc giá trên tem, nên mỗi mức giảm là **một mã cân riêng**. Quản lý / chủ
   tạo mã (món + mức, mã tự lấy từ 90001), bật / tắt; tải danh sách để tạo món trên FABi (mã món = mã cân,
   giá = giá đã giảm); mã lên cân ở lần gửi sau. Bán ra kho tự ghi là bán giảm giá.
 - **Báo cáo** (chủ, quản lý, kế toán) — doanh thu / kg theo giờ, theo ngày, món bán chạy; bán giảm giá (tiền
@@ -91,10 +92,10 @@ lên file cũ. Cài đặt, đăng nhập, file gốc của cân không mất �
 
 1. Chép `BeeftownCan.exe` (tải ở mục trên) vào máy tính ở quán (máy phải cùng WiFi với cân). Nháy đúp để mở.
    File không ký số: lần đầu Windows có thể báo *"Windows protected your PC"* → **More info** → **Run anyway**.
-2. **Đăng nhập kho** bằng tài khoản kho (NV quầy dùng thẻ Quầy, Tảng & ô; gửi giá xuống cân, tem, mã giảm: quản lý hoặc chủ). Máy nhớ đăng nhập.
+2. **Đăng nhập kho** bằng tài khoản kho (NV quầy, thủ kho chỉ thấy thẻ Quầy — cả Tảng & ô mã ở cuối thẻ; gửi giá xuống cân (thẻ Cân), tem (thẻ Thiết lập cân), mã giảm: quản lý hoặc chủ). Máy nhớ đăng nhập.
 3. **Bắt đầu** (một lần): trên cân lưu dữ liệu ra USB (`Prog → ↓ V3 tới P4 → Accu/Confirm → Accu/Confirm → Amend`), chọn file `JHSCALE\A_000.TMS`.
-4. Mỗi lần đổi giá / thêm món trong kho: mở chương trình → xem bảng thay đổi → **Gửi xuống cân** → gọi thử một hàng trên cân.
-5. Đổi tem: thẻ **Mẫu tem** → bỏ chọn / chọn ô, sửa chữ → **Gửi tem xuống cân** → cân thử một món, in một tem xem đã đổi chưa. Nếu chưa đổi: **Lưu file nạp USB**.
+4. Mỗi lần đổi giá / thêm món trong kho: mở chương trình → thẻ **Cân** → xem bảng thay đổi → **Gửi xuống cân** → gọi thử một hàng trên cân.
+5. Đổi tem: thẻ **Thiết lập cân** → mục **Mẫu tem** → bỏ chọn / chọn ô, sửa chữ → **Gửi tem xuống cân** → cân thử một món, in một tem xem đã đổi chưa. Nếu chưa đổi: **Lưu file nạp USB**.
 6. Việc mới của 2.2: thử theo thứ tự ở mục **"Thử bản 2.2 ở quán"** bên dưới — bắt đầu bằng việc chỉ đọc.
 
 ## Bản 2.2 — cổng hai chiều, thông số, phím, nhật ký, HSD, sửa tem
@@ -153,8 +154,8 @@ Quy tắc:
   quá 999 ngày → không in; mã giảm giá → không in. Số này chỉ đúng **trong ngày tính**: mỗi sáng mở Beeftown Cân và gửi
   (hay bật tự gửi) **trước khi đóng gói**, đồng hồ cân phải đúng ngày.
 - **Ngày tính HSD trên cân** — `Tài liệu › Beeftown Can › hsd-tinh-ngay.txt` (một dòng `YYYY-MM-DD`, ghi file tạm rồi đổi
-  tên): ghi khi gửi đủ danh sách thành công (bấm Gửi, tự gửi), xoá qua WiFi đọc lại khớp, "đã nạp USB" file lưu từ thẻ Gửi
-  giá (ngày lúc **lưu file**, ở `cho-usb/hsd-tinh-ngay.txt`), hay khi xem trước / tự gửi / Tất cả hàng thấy HSD trên cân
+  tên): ghi khi gửi đủ danh sách thành công (bấm Gửi, tự gửi), xoá qua WiFi đọc lại khớp, "đã nạp USB" file lưu từ phần Gửi
+  giá của thẻ Cân (ngày lúc **lưu file**, ở `cho-usb/hsd-tinh-ngay.txt`), hay khi xem trước / tự gửi / Tất cả hàng thấy HSD trên cân
   đã đúng số tính hôm nay. Gửi hỏng thì không ghi. Cập nhật file gốc từ cân có HSD khác bản đã gửi → quên ngày (chưa
   biết). `/api/trang-thai` và `/api/can` trả `hsd: { homNay, tinhNgay, coInHsd, cu }` (hôm nay giờ VN của chương trình —
   trang không dùng đồng hồ trình duyệt); `cu` → khung đỏ "HSD trên cân tính cho ngày dd/mm — mỗi ngày chưa gửi lại là HSD
@@ -164,38 +165,96 @@ Quy tắc:
   khớp hàng đang ở số PLU đó (bảng PLU của cùng file USB, hoặc đọc qua WiFi ngay sau nhật ký). Đọc thường xuyên, và trước
   khi gửi giá / hàng mới. Gộp giữ bản đọc sớm nhất (khoá: mã máy + số giao dịch + giờ + dòng).
 
-Quyền (phía máy chủ, `kiemQuyenCan`): mọi việc mới của 2.2 theo quy tắc thẻ Mẫu tem — chưa đăng nhập kho thì làm được
+Quyền (phía máy chủ, `kiemQuyenCan`): mọi việc mới của 2.2 theo quy tắc của Mẫu tem — chưa đăng nhập kho thì làm được
 (máy của quản lý chạy không cần kho; không đọc được kho vì mất mạng cũng coi như chưa đăng nhập), đã đăng nhập mà vai
-không có `danh_muc` (NV quầy, thủ kho, kế toán) thì bị từ chối. Ba thẻ mới chỉ hiện cho quản lý, chủ (hoặc khi chưa đăng nhập).
+không có `danh_muc` (NV quầy, thủ kho, kế toán) thì bị từ chối. Các phần mới (Cân & thông số, Phím tắt, Nhật ký cân — từ 2.11 là
+mục gập của thẻ Thiết lập cân) chỉ hiện cho quản lý, chủ (hoặc khi chưa đăng nhập).
 
 ### Thử bản 2.2 ở quán (theo thứ tự — dừng ở bước nào hỏng thì dùng USB như 2.1)
 
-Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn USB và file lưu từ cân ra USB gần nhất.
+Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn USB và file lưu từ cân ra USB gần nhất. Từ 2.11 các bước dưới
+đây nói theo năm thẻ mới (bảng thẻ cũ → chỗ mới: mục "Bản 2.11").
 
-1. **Chỉ đọc:** thẻ Cân & thông số → **Đọc thông tin cân**. Đúng khi hiện mã máy `0023F019CFCA`, loại máy
+1. **Chỉ đọc:** thẻ Thiết lập cân → mục Cân & thông số → **Đọc thông tin cân**. Đúng khi hiện mã máy `0023F019CFCA`, loại máy
    `TM-xA UA006 V3.14E8` và giờ cân (chương trình nhớ mã máy này; xoá qua WiFi cần bước này). Không được: ghi lại câu báo
    nguyên văn (cổng 33581 có mở không — Spec166 = 33581, Spec43 = 1).
 2. **Chỉ đọc:** **Đọc giờ cân** — so với màn hình cân (bấm **Time**).
-3. **Chỉ đọc (cân), thay file gốc (máy tính):** **Đọc dữ liệu từ cân qua WiFi** — số hàng ở ô "Trên cân" khớp; thẻ Tất cả
-   hàng đúng tên, giá. Không ghi gì xuống cân.
-4. **Chỉ đọc:** thẻ Nhật ký cân → **Đọc qua WiFi (thử)** — so vài dòng với tem đã in hôm nay.
+3. **Chỉ đọc (cân), thay file gốc (máy tính):** **Đọc dữ liệu từ cân qua WiFi** — số hàng ở ô "Trên cân" khớp; thẻ Cân →
+   mục Tất cả hàng đúng tên, giá. Không ghi gì xuống cân.
+4. **Chỉ đọc:** thẻ Thiết lập cân → mục Nhật ký cân → **Đọc qua WiFi (thử)** — so vài dòng với tem đã in hôm nay.
 5. **Ghi, đổi lại được:** **Chỉnh giờ cân theo giờ Việt Nam** (trước 2.9.2: "theo máy tính") — xem trang báo đường nào (33581: cân báo lại giờ; 33571: chưa
    xác nhận), rồi bấm **Time** trên cân.
 6. **Ghi, đổi lại được:** đổi một thông số nhẹ (ví dụ Độ đậm khi in tem 9 → 10), gửi, in thử một tem; đổi lại.
 7. **Ghi:** đổi một phím ít dùng ở tầng Shift, gửi, bấm thử trên cân; đổi lại.
-8. **HSD, với một PLU thử** (CAN-TMA §13 — số PLU và mã cân không món thật nào dùng; **không** dùng "Gửi giá từ kho" cho
+8. **HSD, với một PLU thử** (CAN-TMA §13 — số PLU và mã cân không món thật nào dùng; **không** dùng thẻ Cân (gửi giá từ kho) cho
    việc này): trên cân đặt PLU thử PS-UD = 1, PC-UD = 3 (sửa nhanh `F-Prog` + `PLU`), hoặc bằng file USB. In một tem: HSD =
    hôm nay + 3, đúng kiểu ngày của cân (Spec104).
-9. **Ghi:** thẻ Mẫu tem → **Chỉ in HSD khi hàng có hạn dùng** (ô Hạn dùng và chữ "HSD" sang "chỉ khi có HSD") → gửi → in
+9. **Ghi:** thẻ Thiết lập cân → mục Mẫu tem → **Chỉ in HSD khi hàng có hạn dùng** (ô Hạn dùng và chữ "HSD" sang "chỉ khi có HSD") → gửi → in
    PLU thử (có HSD) và một món thật (không HSD): món thật không còn chữ "HSD" lẻ loi.
 10. **Rủi ro nhất, làm sau cùng:** khi có hàng "còn nằm lại", **Xoá hẳn qua WiFi (thử)** (cần bước 1 trước). Chương trình
     kiểm danh sách trên cân trước khi xoá, đọc lại để so; lệch hay hỏng thì nạp USB ngay (khung đỏ có nút **Lưu file để nạp USB**).
-11. **Ngoài giờ bán, sau các bước trên:** bấm **Gửi giá từ kho** lần đầu với bản 2.2 — xem các dòng "Sửa" trước khi bấm Gửi:
+11. **Ngoài giờ bán, sau các bước trên:** mở thẻ **Cân** (gửi giá từ kho) lần đầu với bản 2.2 — xem các dòng "Sửa" trước khi bấm Gửi:
     lần đầu này bật in HSD (số ngày còn lại của lô) cho các món có lô / hạn dùng, và tắt HSD của mã giảm giá. Để sẵn file USB
     lưu từ cân trước khi thử. Gửi xong in một tem món có lô: HSD trên tem phải đúng hạn của lô (thẻ Quầy / Tồn kho). Hôm sau
     (chưa gửi): ô Cân có khung đỏ; gửi (hay tự gửi) → số ngày giảm 1, HSD trên tem vẫn đúng hạn của lô.
 
 Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
+
+## Bản 2.11 — gọn còn 5 thẻ
+
+Khánh duyệt 25/10/2026 ("Có thể tinh giản"): mười thẻ của 2.10 gom còn năm — **Quầy · Cân · Giảm giá · Báo cáo · Thiết lập
+cân**. Chỉ đổi giao diện: quyền ở máy chủ (gửi tay, xem trước, USB, tem, thông số, báo cáo) không đổi, không có migration,
+cách nói với cân (WiFi / dây, tự gửi) không đổi.
+
+| Vai | Thẻ thấy |
+|---|---|
+| NV quầy, thủ kho | Quầy (cả Tảng & ô mã ở cuối thẻ) |
+| Kế toán | Quầy, Báo cáo |
+| Quản lý, chủ | Quầy, Cân, Giảm giá, Báo cáo, Thiết lập cân |
+| Chưa đăng nhập kho | Cân (khung đăng nhập, Tất cả hàng), Thiết lập cân — như các thẻ 2.10 hiện khi chưa đăng nhập |
+
+Thẻ cũ → chỗ mới. "Dùng", "Thử bản 2.2 ở quán" và mục 2.4 (ở trên, còn đang thử) đã nói theo chỗ mới; các mục "Thử ở quán"
+của 2.10 trở về 2.5 (ngay dưới mục này) vẫn dùng tên thẻ cũ — tra bảng này:
+
+| Thẻ cũ (tới 2.10) | Từ 2.11 |
+|---|---|
+| Quầy | thẻ Quầy |
+| Tảng & ô mã | thẻ Quầy → mục gập Tảng & ô mã ở cuối thẻ |
+| Giảm giá cận date | thẻ Giảm giá (quản lý, chủ; NV quầy thấy mã giảm của lô cận date ngay ở thẻ Quầy) |
+| Báo cáo | thẻ Báo cáo |
+| Gửi giá từ kho | thẻ Cân, phần trên |
+| Tất cả hàng (SKU) | thẻ Cân → mục gập Tất cả hàng |
+| Mẫu tem | thẻ Thiết lập cân → mục gập Mẫu tem |
+| Cân & thông số | thẻ Thiết lập cân → mục gập Cân & thông số |
+| Phím tắt | thẻ Thiết lập cân → mục gập Phím tắt |
+| Nhật ký cân | thẻ Thiết lập cân → mục gập Nhật ký cân |
+
+- NV quầy, thủ kho không còn thấy Giảm giá (2.10: chỉ xem) và Tất cả hàng. Máy chủ vẫn trả hai thứ đó cho họ như cũ (quyền không
+  đổi) — chỉ trang không hiện.
+- Mục gập (`<details>`) chỉ đọc dữ liệu khi mở. Gửi giá (xem trước) và Quầy đọc lại mỗi lần mở thẻ như 2.10. Tảng & ô đọc ngay
+  khi mở thẻ Quầy: dòng gập nêu số ô đang dùng và ô có vấn đề (ô cân chưa đổi tên kèm tên món và số ô, ô bán hết chờ trả ô, lệch
+  ô); có ô cân chưa đổi tên thì mục tự mở (một lần — gập lại thì dòng gập vẫn nêu); đọc lại mỗi phút cùng thẻ Quầy. Lượt đọc
+  lại hỏng (mất mạng, kho không trả lời) thì giữ bảng, dòng gập nói **chưa đọc lại được** kèm giờ của lần đọc cuối.
+- Chưa đăng nhập kho: thẻ Cân mở sẵn mục Tất cả hàng (phần Gửi giá chỉ có khung đăng nhập). Phím mũi tên dời ô tem chỉ khi mục
+  Mẫu tem đang mở.
+- Luật thẻ theo vai nằm một chỗ: `mucDuocThay` trong khối "THẺ THEO VAI" của `src/giao-dien.html` — `test/thu-giao-dien-gon.ts`
+  chạy khối đó cho mọi vai × có / chưa có file gốc.
+- Kiểm thử trong trình duyệt thật: `test/thu-trinh-duyet.ts` mở trang (dữ liệu giả của `test/xem-giao-dien.ts`) trong Chromium
+  cho chưa đăng nhập, NV quầy, thủ kho, kế toán, quản lý, chủ: đúng thẻ, bấm từng thẻ, mở từng mục gập, không lỗi JavaScript;
+  thêm lượt đọc lại mỗi phút (đồng hồ giả: gập rồi không tự mở lại, đọc lại hỏng thì báo) và đăng xuất / đăng nhập trên cùng trang.
+  CI chạy file này sau `test/thu.ts` ở `kiem-thu.yml` và `dong-goi-can.yml` (cài Chromium như job web).
+- Câu báo chỉ tới thẻ cũ đã đổi theo chỗ mới. Riêng câu lỗi "Mở lại thẻ Tem rồi sửa lại." (`src/tem.ts`) giữ nguyên chữ — kiểm
+  thử khoá chữ của lỗi cũ. Trang pha lóc: "chưa gán phím tắt (gán ở mục Phím tắt của Beeftown Cân)" — đúng cả máy còn chạy 2.10.
+
+**Thử ở quán (2.11)** — sau khi bấm **Cập nhật**; không ghi gì xuống cân ngoài bước 4:
+1. Đăng nhập tài khoản NV quầy: chỉ thấy thẻ **Quầy**; cuối thẻ có dòng **Tảng & ô mã — …** (số ô đang dùng, ô có vấn đề). Có ô
+   "cân chưa đổi tên" thì mục tự mở.
+2. Đăng nhập kế toán: thấy **Quầy**, **Báo cáo**.
+3. Đăng nhập quản lý: đủ năm thẻ. Thẻ **Cân** → bảng thay đổi từ kho như "Gửi giá từ kho" cũ; mở **Tất cả hàng** ở dưới. Thẻ
+   **Thiết lập cân** → mở lần lượt Mẫu tem, Cân & thông số, Phím tắt, Nhật ký cân: mỗi mục ra dữ liệu như 2.10.
+4. Sửa giá một món ít bán trong kho → thẻ Cân → **Gửi xuống cân** như 2.10 (đang dùng dây: trên cân bấm Prog → 4 → 3
+   trước, xong bấm Sale): khung xanh "Cân đã nhận". Sửa giá lại như cũ, gửi lần nữa.
+5. Chỗ nào khó tìm, chữ nào dễ lẫn (thẻ "Cân" với ô "Cân" ở hàng trên cùng): ghi lại để sửa.
 
 ## Bản 2.10 — dây RS232 làm đường chính
 
@@ -592,8 +651,8 @@ chừng → "Chưa đổi gì"; đang gửi xuống cân thì cập nhật chờ
 
 ## Bản 2.4 — chữ cài đặt chung (TMT)
 
-Thẻ Cân & thông số, **mục 6**: sửa các dòng chữ lưu trong cân (phần `TMT` của file .TMS, "Global Text" / `Prog → 1 → 3`
-trên cân) — tên quán, tên cân, chữ trước / sau số tiền, Ghi chú cân 1–8 (in trên tem khi mẫu tem có ô đó; thẻ Mẫu tem
+Thẻ Thiết lập cân → mục Cân & thông số, **phần 6**: sửa các dòng chữ lưu trong cân (phần `TMT` của file .TMS, "Global Text" / `Prog → 1 → 3`
+trên cân) — tên quán, tên cân, chữ trước / sau số tiền, Ghi chú cân 1–8 (in trên tem khi mẫu tem có ô đó; mục Mẫu tem
 thêm được ô "Ghi chú cân 1–8"), chữ tuỳ ý 1–8 (màn hình lúc chờ). Chữ dự phòng 12, 13, 17, 18 và dấu ngành hàng 14 chỉ xem.
 
 - **Tên WiFi, mật khẩu WiFi, tên miền (TMT 15, 16, 19) không bao giờ đọc ra trang, không bao giờ ghi**: `docChuChung` bỏ
@@ -606,9 +665,9 @@ thêm được ô "Ghi chú cân 1–8"), chữ tuỳ ý 1–8 (màn hình lúc 
   nhiêu ký tự, phông của cân in được chữ có dấu ở các ô này.
 - Quyền như thông số (`kiemQuyenCan`). Đường API: `/api/chu-chung`, `/api/chu-chung/gui`, `/api/tao-usb-goc` (`chuChung`).
 
-Thử ở quán (sau bước 6 ở trên): đổi **Ghi chú cân 1** thành số điện thoại của quán, gửi; thẻ Mẫu tem → thêm ô
+Thử ở quán (sau bước 6 ở trên): đổi **Ghi chú cân 1** thành số điện thoại của quán, gửi; mục Mẫu tem (thẻ Thiết lập cân) → thêm ô
 "Ghi chú cân 1" vào một mẫu tem thử (không phải mẫu 28 đang bán), in thử — dòng chữ đúng, có dấu. Tên quán: gửi rồi bấm
-**Đọc thông tin cân** (mục 1) — "Tên quán trên cân" đổi theo.
+**Đọc thông tin cân** (phần 1 của Cân & thông số) — "Tên quán trên cân" đổi theo.
 
 ## Cân đổi địa chỉ — chương trình tự tìm cân (từ 2.1.0)
 
@@ -757,7 +816,10 @@ npx bun test/thu.ts              # cân giả, kho giả (test/kho-gia.ts), tem,
                                  # thông số, giờ, phím, sửa tem, quyền, /huong-dan; rồi kiểm thử từng module
                                  # (thu-giao-thuc, thu-tem, thu-bao-cao-can, thu-thong-so — mỗi file cũng chạy riêng được);
                                  # cuối cùng chạy src/main.ts thật với BEEFTOWN_CAN_DU_LIEU trỏ vào thư mục tạm
+npx bun test/thu-trinh-duyet.ts  # 2.11: mở giao diện trong Chromium cho từng vai, bấm từng thẻ, mở từng mục gập (cần web/
+                                 # đã npm ci và Chromium: cd web && npx playwright install chromium)
 npx bun test/xem-giao-dien.ts    # mở giao diện với dữ liệu giả để xem / chụp màn hình (--vai nhan_vien_quay để xem như NV quầy;
+                                 # --chua-dang-nhap: chưa đăng nhập kho;
                                  # --can-doi-dia-chi: lúc mở tự dò ra cân; --hai-can: WiFi có hai cân, hiện nút chọn;
                                  # --chua-co-goc: chưa có file gốc). Có cân giả hai chiều, nhật ký 7 ngày, thông số, phím, HSD.
 npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói được từ Linux
@@ -781,7 +843,8 @@ npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói
   như gửi giá (2.9.3).
 - Tự gửi dừng hẳn sau một lần đọc lại thấy cân CHƯA nhận (cân đang ở menu Prog lúc gửi…) tới khi người bấm Gửi — tên ô mã theo
   tảng không lên cân trong lúc đó. Có thể tự gửi lại cả danh sách sau 10 phút (bấm Gửi cũng chỉ làm vậy): chủ quyết.
-- Phím tắt cố định cho từng ô: trang pha lóc mới HIỆN phím; gán phím vẫn bằng tay ở thẻ Phím tắt.
+- Thử bản 2.11 trên cân thật (mục "Thử ở quán (2.11)").
+- Phím tắt cố định cho từng ô: trang pha lóc mới HIỆN phím; gán phím vẫn bằng tay ở mục Phím tắt (thẻ Thiết lập cân).
 - Tự gửi chưa tự gỡ hàng còn nằm lại (cần người xem trước rồi bấm).
 - Mã `99999` / `99998` mới chỉ được chặn ở bộ lập danh sách (món mang mã đó không lên cân); database chưa chặn.
 - Thử bản 2.2 trên cân thật (mục "Thử bản 2.2 ở quán") và sửa `CAN-TMA.md` theo kết quả.

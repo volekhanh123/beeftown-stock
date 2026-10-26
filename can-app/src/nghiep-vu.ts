@@ -6,9 +6,10 @@
  * tem.ts). Và máy quầy (0054, phần tính ở quay.ts): bảng quầy, tạo yêu cầu lấy
  * hàng / phiếu huỷ, tảng & ô mã, mã giảm giá, báo cáo bán.
  *
- * Đăng nhập theo vai: mọi vai kho (xem) dùng được thẻ Quầy, Tảng & ô, xem mã
- * giảm; gửi xuống cân, sửa tem, tạo mã giảm cần danh_muc (quản lý, chủ); báo
- * cáo có doanh thu cần xem_gia.
+ * Đăng nhập theo vai: mọi vai kho (xem) dùng được thẻ Quầy (cả Tảng & ô mã), xem
+ * mã giảm; gửi xuống cân, sửa tem, tạo mã giảm cần danh_muc (quản lý, chủ); báo
+ * cáo có doanh thu cần xem_gia. (2.11: giao diện chỉ hiện thẻ Quầy cho NV quầy,
+ * thủ kho — quyền ở đây không đổi.)
  *
  * Nối thẳng kho Beeftown với cân in tem TM-A qua WiFi:
  *   kho (Supabase, đăng nhập bằng tài khoản quản lý)
@@ -49,7 +50,7 @@
  *     nhận (ghiNhanFileTuCan) — mọi lần gửi xuống cân đều bỏ phần REP / INF
  *     (boPhanChiDoc), nên file gốc sau lần gửi đầu không còn nhật ký.
  *   · Mẫu tem sửa kỹ hơn (tem.ts: di chuyển, cỡ chữ, điều kiện in, thêm ô).
- *   · Quyền: mọi việc mới với cân theo quy tắc thẻ Mẫu tem (kiemQuyenCan).
+ *   · Quyền: mọi việc mới với cân theo quy tắc của Mẫu tem (kiemQuyenCan).
  *
  * BẢN 2.7 (cân của quán bỏ qua cổng 33571 từ 02/10/2026; đọc qua 33581 thì được — ghi qua 33581 CHƯA THỬ TRÊN CÂN THẬT):
  *   · Thông số, chữ cài đặt, phím, mẫu tem ghi qua cổng hai chiều như gửi giá (ghiHoacLui), rồi đọc lại phần đó để kiểm
@@ -960,7 +961,7 @@ export interface TrangThaiHsd {
   cu: boolean;
 }
 
-/** Một dòng ở thẻ "Tất cả hàng": hàng trên cân, đối chiếu với kho. */
+/** Một dòng ở mục "Tất cả hàng" (thẻ Cân): hàng trên cân, đối chiếu với kho. */
 export type TinhTrangHang =
   | 'khop'        // trên cân, đúng như kho
   | 'lech'        // trên cân, tên/giá khác kho (hoặc kho thiếu giá nên để nguyên)
@@ -1956,7 +1957,7 @@ export class UngDung {
         nhatKy = { soDong: kq.dong.length, soMoi: this.gopVaoNhatKy(kq.dong).soMoi };
       } catch (e) {
         // File đã ghi nhận nhưng nhật ký CHƯA gộp (thường vì nhat-ky-can.tsv đang mở trong Excel). Lấy lại: đóng file
-        // nhat-ky-can.tsv rồi bấm "Đọc từ file gốc" ở thẻ Nhật ký cân TRƯỚC lần gửi xuống cân sau (gửi xong file gốc
+        // nhat-ky-can.tsv rồi bấm "Đọc từ file gốc" ở mục Nhật ký cân TRƯỚC lần gửi xuống cân sau (gửi xong file gốc
         // không còn phần REP), hoặc lưu lại từ cân ra USB bằng [Amend].
         nhatKy = { loi: cauLoi(e) };
       }
@@ -2320,7 +2321,7 @@ export class UngDung {
         const dauTruoc = this.chuaXacNhan();
         if (dauTruoc?.loai === 'lech') {
           return { luc, daGui: false, cau: (this.canChuaRo() ? 'Lần xoá qua WiFi trước hỏng giữa chừng — cân có thể thiếu hàng, nạp USB ngay. ' : '')
-            + 'Tự gửi tạm dừng: lần gửi trước, đọc lại thấy cân chưa nhận. Mở thẻ Gửi giá từ kho, để cân ở màn hình '
+            + 'Tự gửi tạm dừng: lần gửi trước, đọc lại thấy cân chưa nhận. Mở thẻ Cân (quản lý, chủ), để cân ở màn hình '
             + 'bán hàng rồi bấm Gửi xuống cân — hoặc nạp USB.' };
         }
         // Có lần gửi theo kho xong SAU lúc bắt đầu đọc kho (người bấm Gửi trong lúc đó): lần đọc này có thể cũ hơn thứ cân vừa
@@ -2339,7 +2340,7 @@ export class UngDung {
         if (batTat > 0) {
           return { luc, daGui: false, cau: nhacChuaRo
             + `Kho bật / tắt in hạn dùng (HSD) của ${batTat} hàng (hàng trên cân, hay hàng mới lần đầu in HSD) — tự gửi không bật / tắt HSD, `
-            + 'nên chưa gửi gì (cả HSD đếm ngược của hàng khác). Mở thẻ Gửi giá từ kho, xem lại rồi bấm Gửi xuống cân (in HSD chưa thử trên cân thật).' };
+            + 'nên chưa gửi gì (cả HSD đếm ngược của hàng khác). Mở thẻ Cân (quản lý, chủ), xem lại rồi bấm Gửi xuống cân (in HSD chưa thử trên cân thật).' };
         }
         // 2.9.3 — lần gửi trước chưa đọc lại được cân: thử lại theo giờ đã hẹn (lùi dần), không gửi mỗi phút.
         const thuLai = dauTruoc?.loai === 'khong-doc' ? dauTruoc : null;
@@ -2735,7 +2736,7 @@ export class UngDung {
   daNapUsb(): { soHang: number } {
     if (!fs.existsSync(this.fileChoUsb)) throw new LoiCan('Chưa có file nạp USB. Bấm "Lưu file để nạp USB" trước.');
     const kq = this.ghiNhanFileTuCan(new Uint8Array(fs.readFileSync(this.fileChoUsb)));
-    // File USB làm từ thẻ Tem: giờ cân mới thật sự có tem đó.
+    // File USB làm từ mục Mẫu tem: giờ cân mới thật sự có tem đó.
     if (fs.existsSync(this.fileDaTatChoUsb)) ghiJson(this.fileDaTat, docJson<DaTat>(this.fileDaTatChoUsb, {}), this.phu.vietByte);
     const ngayHsd = docNgayHsd(this.fileHsdNgayChoUsb);
     if (ngayHsd) this.ghiNgayHsd(ngayHsd);
@@ -2748,7 +2749,7 @@ export class UngDung {
   // ---- 2.2: quyền --------------------------------------------------------------------
   /**
    * Việc với cân của bản 2.2 (cổng hai chiều, thông số, giờ, phím, sửa tem, xoá qua WiFi, nhật ký cân) theo
-   * quy tắc thẻ Mẫu tem / Gửi giá: chưa đăng nhập kho thì làm được (máy của quản lý chạy không cần kho); đã
+   * quy tắc của Mẫu tem / Gửi giá: chưa đăng nhập kho thì làm được (máy của quản lý chạy không cần kho); đã
    * đăng nhập mà vai không có danh_muc (NV quầy, thủ kho, kế toán) → từ chối. Không đọc được người đăng nhập
    * (mất mạng; 2.9.1: kho không trả lời trong HAN_HOI_QUYEN_MS) thì theo người đọc được lần gần nhất (nguoiBiet — NV quầy
    * vẫn bị từ chối); chưa đọc được lần nào thì coi như chưa đăng nhập — như khi đăng xuất; việc với cân vẫn chạy được không
@@ -2940,7 +2941,7 @@ export class UngDung {
   }
 
   /**
-   * Tự đọc nhật ký qua WiFi (như nút "Đọc qua WiFi" của thẻ Nhật ký cân, không kiểm vai: chỉ đọc cân rồi lưu vào
+   * Tự đọc nhật ký qua WiFi (như nút "Đọc qua WiFi" của mục Nhật ký cân, không kiểm vai: chỉ đọc cân rồi lưu vào
    * nhat-ky-can.tsv trên máy này — xem vẫn chỉ quản lý / chủ). Một lượt mỗi lúc, xếp hàng với mọi việc khác (motLuc).
    * Không bao giờ ném: lỗi vào trạng thái nền.
    */
@@ -2990,7 +2991,7 @@ export class UngDung {
     const mang = await this.layGioMang();
     if (mang === null) {
       ghi({ daGui: false, ok: false, cau: `Giờ cân ${huong(g.lechGiay, 'nhanh', 'chậm')} nhưng chưa tự chỉnh: không lấy được giờ mạng để kiểm `
-        + 'giờ máy tính (mất mạng?). Chỉnh tay ở thẻ Cân & thông số nếu giờ máy tính đúng.' });
+        + 'giờ máy tính (mất mạng?). Chỉnh tay ở thẻ Thiết lập cân → Cân & thông số nếu giờ máy tính đúng.' });
       return;
     }
     const lechMay = Math.round((this.bayGio() - mang) / 1000);
@@ -3165,7 +3166,7 @@ export class UngDung {
   async goHangConLai(giuHangNgoaiKho = false, dauVan?: unknown): Promise<KetQuaGo> {
     await this.kiemQuyenCan('Gỡ hàng còn nằm lại qua WiFi');
     if (typeof dauVan !== 'string' || !dauVan) {
-      throw new LoiCan('Thiếu danh sách đã xem trước — bấm Xem lại (thẻ Gửi giá từ kho, hay "Xem hàng còn nằm lại") rồi thử lại. Chưa gửi gì xuống cân.');
+      throw new LoiCan('Thiếu danh sách đã xem trước — bấm Xem lại (thẻ Cân, hay "Xem hàng còn nằm lại") rồi thử lại. Chưa gửi gì xuống cân.');
     }
     return this.motLuc(async () => {
       const { goc, moi, tren, cho, conLai } = await this.dung(giuHangNgoaiKho);
@@ -3174,7 +3175,7 @@ export class UngDung {
         throw new LoiCan('Danh sách trên cân hoặc trong kho đã đổi từ lúc xem trước — bấm Xem lại rồi thử lại. Chưa gửi gì xuống cân.');
       }
       if (!this.cauHinh().macHaiChieu) {
-        throw new LoiCan('Chưa biết mã máy của cân qua cổng hai chiều — bấm "Đọc thông tin cân" (thẻ Cân & thông số), xem đúng cân của quầy rồi mới gỡ. '
+        throw new LoiCan('Chưa biết mã máy của cân qua cổng hai chiều — bấm "Đọc thông tin cân" (thẻ Thiết lập cân → Cân & thông số), xem đúng cân của quầy rồi mới gỡ. '
           + 'Chưa gửi gì xuống cân.');
       }
       const ke = (ds: number[]) => ds.slice(0, 8).map(so => 'PLU ' + so).join(', ') + (ds.length > 8 ? '…' : '');
@@ -3236,11 +3237,11 @@ export class UngDung {
         if (kp.loai === 'khop') phimXong = true;
         else {
           loiPhim = (kp.loai === 'lech' ? `Đọc lại thấy phím tắt chưa đổi: ${kp.cau}.` : `Chưa đọc lại được phím tắt (${kp.cau.replace(/[.\s]+$/, '')}).`)
-            + ' Hàng đã gỡ; phím vẫn gọi số PLU đó (ra dòng trống) — bỏ phím ở thẻ Phím tắt.';
+            + ' Hàng đã gỡ; phím vẫn gọi số PLU đó (ra dòng trống) — bỏ phím ở thẻ Thiết lập cân → Phím tắt.';
         }
       }
       // File gốc bỏ dòng của các số vừa gỡ (như hàng còn nằm lại sau một lần gửi: chỉ tren-can.tsv giữ — ở đây là dòng
-      // trống), và nhận phím đã bỏ khi cân đọc lại khớp. Không bỏ thì thẻ Tất cả hàng vẫn hiện hàng cũ "Kho không có".
+      // trống), và nhận phím đã bỏ khi cân đọc lại khớp. Không bỏ thì mục Tất cả hàng vẫn hiện hàng cũ "Kho không có".
       const duMoi = boDongPlu(phimXong && ph ? ph.du : this.docGoc(), soGo);
       const khoiDaGui = [...(canGo.length ? khoiPlu : []), ...(phimXong && ph ? ph.khoi : [])];
       if (khoiDaGui.length) this.luuGoc(duMoi, fileNho(goc.phienBan, khoiDaGui));
@@ -3266,7 +3267,7 @@ export class UngDung {
   async xoaQuaWifi(giuHangNgoaiKho = false, dauVan?: unknown): Promise<{ soHang: number; daXoa: HangTrenCan[]; phucHoi: string | null }> {
     await this.kiemQuyenCan('Xoá hàng trên cân qua WiFi');
     if (typeof dauVan !== 'string' || !dauVan) {
-      throw new LoiCan('Thiếu danh sách đã xem trước — bấm Xem lại (thẻ Gửi giá từ kho, hay "Xem hàng còn nằm lại") rồi thử lại. Chưa gửi gì xuống cân.');
+      throw new LoiCan('Thiếu danh sách đã xem trước — bấm Xem lại (thẻ Cân, hay "Xem hàng còn nằm lại") rồi thử lại. Chưa gửi gì xuống cân.');
     }
     return this.motLuc(async () => {
       const { goc, kh, du, moi, tren, cho, conLai, ngayHsd } = await this.dung(giuHangNgoaiKho);
@@ -3275,10 +3276,10 @@ export class UngDung {
         throw new LoiCan('Danh sách trên cân hoặc trong kho đã đổi từ lúc xem trước — bấm Xem lại rồi thử lại. Chưa gửi gì xuống cân.');
       }
       if (demBatTatHsd(kh.dong, goc) > 0) {
-        throw new LoiCan('Kho bật / tắt in hạn dùng (HSD) của hàng chưa gửi — gửi ở thẻ Gửi giá từ kho (xem trước, in thử tem) rồi mới xoá. Chưa gửi gì xuống cân.');
+        throw new LoiCan('Kho bật / tắt in hạn dùng (HSD) của hàng chưa gửi — gửi ở thẻ Cân (xem trước, in thử tem) rồi mới xoá. Chưa gửi gì xuống cân.');
       }
       if (!this.cauHinh().macHaiChieu) {
-        throw new LoiCan('Chưa biết mã máy của cân qua cổng hai chiều — bấm "Đọc thông tin cân" (thẻ Cân & thông số), xem đúng cân của quầy rồi mới xoá. '
+        throw new LoiCan('Chưa biết mã máy của cân qua cổng hai chiều — bấm "Đọc thông tin cân" (thẻ Thiết lập cân → Cân & thông số), xem đúng cân của quầy rồi mới xoá. '
           + 'Chưa gửi gì xuống cân.');
       }
       const khoi = khoiXoaVaNapPlu(moi.plu.map(p => p.tho));   // danh sách rỗng → LoiGiaoThuc, không xoá sạch cân
@@ -3457,7 +3458,7 @@ export class UngDung {
           const g = await this.voiKetNoi(kn => kn.docGio(), false);
           const lech = lechGiayVn(g, this.bayGio());
           return `Giờ trên cân ${chuoiGio(g)} — ${Math.abs(lech) <= 120 ? 'khớp giờ Việt Nam'
-            : `${lech < 0 ? 'chậm' : 'nhanh'} hơn giờ Việt Nam ${khoangThoiGian(Math.abs(lech))}: chỉnh giờ cân (mục 2) — ngày đóng gói, HSD in theo giờ cân`}.`;
+            : `${lech < 0 ? 'chậm' : 'nhanh'} hơn giờ Việt Nam ${khoangThoiGian(Math.abs(lech))}: chỉnh giờ cân (phần 2 của mục Cân & thông số) — ngày đóng gói, HSD in theo giờ cân`}.`;
         });
         let trenCan: DongPlu[] | null = null;
         const docDuoc = await lam('doc-plu', '3. Đọc danh sách hàng', async () => {
@@ -3492,7 +3493,7 @@ export class UngDung {
           ketLuan.push('Cân CHƯA nhận ghi qua cổng hai chiều (xem bước hỏng). Tạm dùng USB; gửi file kết quả này cho người sửa chương trình.');
         }
         if (ket('go-thu') === 'dat') ketLuan.push('Gỡ hàng bằng ghi đè (dòng trống) chạy được: nút "Gỡ khỏi cân qua WiFi (ghi đè)" dùng được.');
-        else if (ket('go-thu') === 'hong') ketLuan.push(`Gỡ hàng thử chưa được: PLU ${PLU_THU} có thể còn hàng thử — xem thẻ Tất cả hàng, gỡ lại hoặc nạp USB.`);
+        else if (ket('go-thu') === 'hong') ketLuan.push(`Gỡ hàng thử chưa được: PLU ${PLU_THU} có thể còn hàng thử — xem thẻ Cân → Tất cả hàng, gỡ lại hoặc nạp USB.`);
         if (ket('33571') === 'dat') ketLuan.push('Cổng 33571 nhận file nhỏ: đường lui còn dùng được.');
         else if (ket('33571') === 'hong') ketLuan.push('Cổng 33571 không nhận (như ở quán từ 02/10/2026): chỉ cổng hai chiều và USB dùng được.');
       }
@@ -4201,7 +4202,7 @@ export class UngDung {
         ?? doi.find(d => d.loai === 'them') ?? doi[0];
       if (!hang) {
         throw new LoiCan('Kho và cân đang khớp nên gửi thử sẽ không thấy gì đổi trên cân. Thử lúc kho có đổi giá hoặc thêm món ' +
-          '(thẻ Gửi giá từ kho có dòng Thêm / Sửa) — hoặc tạm sửa giá một món ít bán trong kho, thử xong sửa lại.');
+          '(thẻ Cân có dòng Thêm / Sửa) — hoặc tạm sửa giá một món ít bán trong kho, thử xong sửa lại.');
       }
       const bd = Date.now();
       const kq = await guiCom(com, baud, du, this.phu.chayPs);
