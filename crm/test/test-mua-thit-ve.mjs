@@ -183,7 +183,11 @@ async function ghiKhop(ca) {
   const { rows: [r] } = await db.query(
     `select cong_tac_bat('hien_mua_thit_ve') as cong_tac,
             exists (select 1 from mua_thit_ve_cong_khai('vi', null)) as co_dong`);
-  khop.push({ ca, congTac: r.cong_tac, coDong: r.co_dong, hien: h });
+  // Bản dừng ở gói đầu (noi_dung_cong_khai hỏi bản này): đúng dòng đầu của menu đầy đủ, không hơn một dòng.
+  const { rows: day } = await db.query(`select * from mua_thit_ve_cong_khai('vi', null)`);
+  const { rows: dau } = await db.query(`select * from mua_thit_ve_goi('vi', null, true)`);
+  khop.push({ ca, congTac: r.cong_tac, coDong: r.co_dong, hien: h,
+              dauKhop: dau.length === Math.min(day.length, 1) && JSON.stringify(dau[0]) === JSON.stringify(day[0]) });
 }
 
 const mh = {};
@@ -284,17 +288,21 @@ await nhom('1 · QUYỀN', async () => {
     ['chu_dich_con_hieu_luc', `select chu_dich_con_hieu_luc('vi', '{}'::jsonb, 'ten', 'Ba chỉ', null, null)`],
     ['la_link_zalo_oa', `select la_link_zalo_oa('https://zalo.me/1')`],
     ['mua_thit_ve_kenh_mo', `select mua_thit_ve_kenh_mo()`],
+    ['mua_thit_ve_goi', `select * from mua_thit_ve_goi('vi', null, false)`],
   ];
   const noiBoLo = [];
   for (const [ten, sql] of noiBo) {
     const t = await duoiAnon(sql);
     if (!(t.loi !== null && t.ma === '42501')) noiBoLo.push(`${ten}: ${vi(t)}`);
   }
-  ok('anon không gọi được chu_dich_con_hieu_luc, la_link_zalo_oa, mua_thit_ve_kenh_mo (42501)', noiBoLo.length === 0,
+  ok('anon không gọi được chu_dich_con_hieu_luc, la_link_zalo_oa, mua_thit_ve_kenh_mo, mua_thit_ve_goi (42501)', noiBoLo.length === 0,
      noiBoLo.join(' · '));
 
   const kenh = await duoi(UID.chu, `select mua_thit_ve_kenh_mo()`);
   ok('authenticated không gọi được mua_thit_ve_kenh_mo (thu quyền ở khối thứ hai)', kenh.ma === '42501', vi(kenh));
+  const goiNoiBo = await duoi(UID.chu, `select * from mua_thit_ve_goi('vi', null, false)`);
+  ok('authenticated không gọi được mua_thit_ve_goi (thu quyền ở khối thứ hai) — chỉ hai hàm definer gọi nó',
+     goiNoiBo.ma === '42501', vi(goiNoiBo));
   const trig = await duoi(UID.chu, `select zalo_oa_url_kiem_tra()`);
   ok('authenticated không gọi được hàm trigger zalo_oa_url_kiem_tra (thu quyền ở khối thứ hai)', trig.ma === '42501', vi(trig));
   const thuan = await duoi(UID.qlA, `select la_link_zalo_oa($1) as a,
@@ -305,17 +313,19 @@ await nhom('1 · QUYỀN', async () => {
   const { rows: dinhNghia } = await db.query(`
     select p.proname, p.prosecdef, p.provolatile, p.proconfig from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname in ('mua_thit_ve_cong_khai', 'mua_thit_ve_kenh_mo', 'la_link_zalo_oa',
-                                                   'chu_dich_con_hieu_luc', 'zalo_oa_url_kiem_tra')`);
+                                                   'chu_dich_con_hieu_luc', 'zalo_oa_url_kiem_tra', 'mua_thit_ve_goi')`);
   const cuaHam = ten => dinhNghia.find(x => x.proname === ten);
   const cong = cuaHam('mua_thit_ve_cong_khai');
   ok("mua_thit_ve_cong_khai là security definer, có search_path = public, chỉ đọc (provolatile = 's')",
      cong?.prosecdef === true && (cong.proconfig ?? []).includes('search_path=public') && cong.provolatile === 's',
      JSON.stringify(cong));
-  const khac = ['mua_thit_ve_kenh_mo', 'la_link_zalo_oa', 'chu_dich_con_hieu_luc', 'zalo_oa_url_kiem_tra'].map(cuaHam);
-  ok('Bốn hàm mới còn lại không security definer, đều có search_path = public; hai hàm thuần là immutable',
+  const khac = ['mua_thit_ve_kenh_mo', 'la_link_zalo_oa', 'chu_dich_con_hieu_luc', 'zalo_oa_url_kiem_tra',
+                'mua_thit_ve_goi'].map(cuaHam);
+  ok('Năm hàm mới còn lại không security definer, đều có search_path = public; hai hàm thuần là immutable',
      khac.every(h => h && h.prosecdef === false && (h.proconfig ?? []).includes('search_path=public'))
      && cuaHam('la_link_zalo_oa')?.provolatile === 'i' && cuaHam('chu_dich_con_hieu_luc')?.provolatile === 'i'
-     && cuaHam('mua_thit_ve_kenh_mo')?.provolatile === 's', JSON.stringify(khac));
+     && cuaHam('mua_thit_ve_kenh_mo')?.provolatile === 's' && cuaHam('mua_thit_ve_goi')?.provolatile === 's',
+     JSON.stringify(khac));
 
   const anon = JSON.stringify((await menu()).rows);
   const theoVai = [];
@@ -393,6 +403,26 @@ await nhom('1 · QUYỀN', async () => {
      && go.loi === null && go.kq === true && (await dangSong('zalo_oa_url')) === null,
      `kênh mở: ${k.mo} · menu: ${vi(rCu)} · hien: ${hCu} · gỡ: ${vi(go)}`);
   await congBoPhai('zalo_oa_url', LINK_OA);
+
+  // Bản NHÁP có trước 0101 không hợp lệ: duyệt hay công bố nó (đổi trang_thai, không đổi chữ) vẫn phải qua mẫu.
+  await db.exec(`alter table noi_dung_cong_bo disable trigger zalo_oa_url_kiem_tra_trigger`);
+  let nhapCu;
+  try {
+    ({ rows: [nhapCu] } = await db.query(`insert into noi_dung_cong_bo (khoa, kieu, gia_tri_text, trang_thai)
+                    values ('zalo_oa_url', 'url', 'https://example.com/nhap-cu', 'nhap') returning id`));
+  } finally {
+    await db.exec(`alter table noi_dung_cong_bo enable trigger zalo_oa_url_kiem_tra_trigger`);
+  }
+  let duyetCu;
+  try {
+    await db.query(`update noi_dung_cong_bo set trang_thai = 'da_duyet' where id = $1`, [nhapCu.id]);
+    duyetCu = 'không lỗi';
+  } catch (e) { duyetCu = e.message; }
+  const { rows: [conNhap] } = await db.query(`select trang_thai from noi_dung_cong_bo where id = $1`, [nhapCu.id]);
+  ok('Bản nháp zalo_oa_url không hợp lệ có từ trước 0101 không duyệt được (trigger kiểm cả khi chỉ đổi trạng thái sang duyệt / công bố)',
+     duyetCu === CAU_ZALO && conNhap.trang_thai === 'nhap' && (await dangSong('zalo_oa_url'))?.gia_tri_text === LINK_OA,
+     `${duyetCu} · trạng thái: ${conNhap.trang_thai}`);
+  await db.query(`delete from noi_dung_cong_bo where id = $1`, [nhapCu.id]);
 
   const nd = await duoiAnon(`select noi_dung_cong_khai() as j`);
   ok('anon gọi noi_dung_cong_khai() khi công tắc bật: không lỗi quyền (hàm definer gọi mua_thit_ve_cong_khai)',
@@ -801,6 +831,14 @@ await nhom('8 · CÔNG TẮC HIỆU LỰC — noi_dung_cong_khai().hien_mua_thit
      khop.length >= 12 && sai.length === 0 && tatSai.length === 0
      && khop.some(c => c.congTac && !c.coDong) && khop.some(c => c.congTac && c.coDong),
      `${khop.length} ca · lệch: ${JSON.stringify([...sai, ...tatSai])}`);
+  const gon = s => s.replace(/\s+/g, ' ').trim();
+  const dauLech = khop.filter(c => !c.dauKhop).map(c => c.ca);
+  ok("Ở mọi ca của nhóm 5, mua_thit_ve_goi('vi', null, true) trả đúng dòng đầu của menu đầy đủ (rỗng khi menu rỗng)",
+     khop.length >= 12 && dauLech.length === 0, dauLech.join(' · '));
+  const { rows: [dn] } = await db.query(`select pg_get_functiondef('noi_dung_cong_khai(text)'::regprocedure) as d`);
+  ok("noi_dung_cong_khai hỏi mua_thit_ve_goi('vi', null, true) — dừng ở gói đầu, không dựng cả menu cho mỗi trang công khai",
+     gon(dn.d).includes("exists (select 1 from mua_thit_ve_goi('vi', null, true))")
+     && !gon(dn.d).includes('mua_thit_ve_cong_khai('), gon(dn.d).slice(0, 300));
 
   ok('Mọi khóa khác của noi_dung_cong_khai giữ nguyên giá trị khi bật / tắt công tắc',
      lech0.length === 0 && lech1.length === 0 && lech4.length === 0 && (await noiDung())?.dong_trang_thai === 'Đang thi công, sắp mở cửa.',
@@ -811,7 +849,6 @@ await nhom('8 · CÔNG TẮC HIỆU LỰC — noi_dung_cong_khai().hien_mua_thit
   ok('Vẫn trả đủ mọi khóa của sổ đăng ký',
      j && Object.keys(j).length === khoa.length && khoa.every(k => k.khoa in j), `${Object.keys(j ?? {}).length}/${khoa.length}`);
 
-  const gon = s => s.replace(/\s+/g, ' ').trim();
   const khoi36 = s36.slice(s36.indexOf('create or replace function noi_dung_cong_khai'));
   const tu = khoi36.indexOf("select coalesce(jsonb_object_agg(k.khoa, v.gia_tri), '{}'::jsonb)");
   const den = khoi36.indexOf(') v on true', tu) + ') v on true'.length;

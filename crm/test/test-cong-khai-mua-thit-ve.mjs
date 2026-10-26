@@ -315,6 +315,15 @@ await nhom('6 · CÂU CHỮ: ĐÚNG SỰ THẬT, KHÔNG CHỮ TẠM (QUYẾT Đ�
      nhanMo.includes('{c.giaCongBo}') && don.includes('{c.giaCongBo}') && nhanHet.includes('{c.giaCongBo}')
        && ngoaiDieuKien(hoiDapCua(TRANG.khuon), '<summary>{c.cauHoi3}'),
      `Nhận hàng (mo) ${nhanMo.includes('{c.giaCongBo}')}, Đơn ${don.includes('{c.giaCongBo}')}, Nhận hàng (het_quay) ${nhanHet.includes('{c.giaCongBo}')}`);
+  // Hai trạng thái mo và het_quay chép cùng thẻ Nhận hàng và cùng vòng dựng nhóm (form bọc ngoài chỉ ở mo): sửa một
+  // bản mà quên bản kia là trang hai trạng thái lệch nhau.
+  const gonKhoi = x => x.replace(/\s+/g, ' ').trim();
+  const dsMo = mo.match(/<div class="mtv-danh-sach">[\s\S]*?\)\)\}\s*<\/div>/)?.[0] ?? '';
+  const dsHet = hetQuay.match(/<div class="mtv-danh-sach">[\s\S]*?\)\)\}\s*<\/div>/)?.[0] ?? '';
+  ok('Thẻ Nhận hàng và vòng dựng nhóm của mo và het_quay giống hệt nhau (chỉ khác coOChon)',
+     !!nhanMo && gonKhoi(nhanMo) === gonKhoi(nhanHet) && !!dsMo
+       && gonKhoi(dsMo.replace('coOChon={true}', 'coOChon={?}')) === gonKhoi(dsHet.replace('coOChon={false}', 'coOChon={?}')),
+     `${gonKhoi(nhanMo) === gonKhoi(nhanHet)} · ${gonKhoi(dsMo).slice(0, 80)} | ${gonKhoi(dsHet).slice(0, 80)}`);
   const LUON = [1, 2, 3, 4, 6, 9, 10, 11, 12];
   ok(`Hỏi đáp ${LUON.join(', ')} luôn dựng (không nằm trong điều kiện)`,
      LUON.every(i => ngoaiDieuKien(hoiDapCua(TRANG.khuon), `<summary>{c.cauHoi${i}}`)),

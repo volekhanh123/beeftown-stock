@@ -1602,6 +1602,36 @@ try {
         }
       }
 
+      // Gói vừa "Tạm hết ở quầy" giữa lúc khách chọn và lúc bấm Xem đơn (ba-chi-bo-my 400 g tạm hết trong MENU_THU):
+      // giỏ chỉ có gói đó thì đơn trống — trang vẫn phải nói vì sao, ở #xem-don, có và không có JavaScript.
+      const BO_TAM_HET = ba('Có gói vừa tạm hết ở quầy nên không có trong đơn.',
+        'A pack you chose is sold out at the counter for now, so it is not in the order.',
+        '고르신 팩 중 지금 매장에 재고가 없는 팩은 주문에서 빠졌어요.');
+      for (const js of nn === 'vi' ? [true, false] : [true]) {
+        const het = await mo(`${duong}?ba-chi-bo-my_400=2#xem-don`, { js });
+        try {
+          const xem = het.p.locator('#xem-don');
+          const chu = motDong(await het.p.locator('[data-mtv-xem-don]').innerText().catch(() => ''));
+          ok(`${nhan}${js ? '' : ' · tắt JavaScript'}: giỏ chỉ có gói vừa tạm hết → #xem-don hiện câu "${BO_TAM_HET[nn]}", không dòng đơn, không nút gửi`,
+             await xem.isVisible() && chu.includes(BO_TAM_HET[nn])
+               && await het.p.locator('[data-mtv-xem-dong] li').count() === 0
+               && !(await het.p.locator('a[data-mtv-gui]').isVisible()) && !(await het.p.locator('#mtv-tin').isVisible())
+               && het.loiJs.length === 0,
+             `«${chu.slice(0, 160)}» · ${het.loiJs.join(' | ')}`);
+        } finally {
+          await het.c.close();
+        }
+      }
+      const vaHet = await mo(`${duong}?ribeye-cap_200=1&ba-chi-bo-my_400=2#xem-don`);
+      try {
+        const chu = motDong(await vaHet.p.locator('[data-mtv-xem-don]').innerText().catch(() => ''));
+        ok(`${nhan}: giỏ có một gói đặt được và một gói vừa tạm hết → đơn có gói đặt được, câu tạm hết hiện, nút gửi hiện`,
+           chu.includes(BO_TAM_HET[nn]) && await vaHet.p.locator('[data-mtv-xem-dong] li').count() === 1
+             && await vaHet.p.locator('a[data-mtv-gui]').isVisible() && vaHet.loiJs.length === 0, `«${chu.slice(0, 160)}»`);
+      } finally {
+        await vaHet.c.close();
+      }
+
       // Tắt JavaScript: chọn số, bấm "Xem đơn" → máy chủ dựng #xem-don có tin đơn như bản có JavaScript (trừ dòng giờ).
       const tat = await mo(duong, { js: false });
       try {

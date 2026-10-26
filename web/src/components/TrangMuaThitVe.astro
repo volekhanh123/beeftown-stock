@@ -418,31 +418,33 @@ const nhanHienTai = `${c.cachNhan}: ${cachNhan === 'giao' ? c.nhanGiao : c.nhanQ
           </div>
         )}
 
+        {/* Giỏ chỉ có gói vừa tạm hết (máy chủ bỏ lúc đọc địa chỉ): khối vẫn hiện, chỉ với câu tạm hết và "Chọn thêm";
+            phần của đơn (data-mtv-xem-phan) ẩn khi đơn trống. data-bo-het báo script giữ khối hiện. */}
         {trangThai === 'mo' && (
-          <div class="mtv-xem-don" data-mtv-xem-don hidden={gioRong}>
+          <div class="mtv-xem-don" data-mtv-xem-don data-bo-het={boTamHet > 0 ? '' : undefined} hidden={gioRong && boTamHet === 0}>
             <h2 id="xem-don" tabindex="-1">{c.xemLaiDon}</h2>
-            <ul class="mtv-dong-don" data-mtv-xem-dong>
+            <ul class="mtv-dong-don" data-mtv-xem-dong data-mtv-xem-phan hidden={gioRong}>
               {don.dong.map(d => <li>{CHU_DON.dongDau[nn](d.sanPham.ten, nhanGoi(d.sanPham.donVi, d.goi.soGam, nn), d.soLuong)}<span data-tien>{dinhDangTien(d.thanhTien)}</span></li>)}
             </ul>
-            <p class="mtv-tam-tinh" data-mtv-xem-tam-tinh>{CHU_DON.tamTinh[nn]}: <span data-tien>{dinhDangTien(don.tamTinh)}</span></p>
-            <p data-mtv-xem-nhan data-quay={`${c.cachNhan}: ${c.nhanQuay}`} data-giao={`${c.cachNhan}: ${c.nhanGiao}`}>{nhanHienTai}</p>
+            <p class="mtv-tam-tinh" data-mtv-xem-tam-tinh data-mtv-xem-phan hidden={gioRong}>{CHU_DON.tamTinh[nn]}: <span data-tien>{dinhDangTien(don.tamTinh)}</span></p>
+            <p data-mtv-xem-phan hidden={gioRong} data-mtv-xem-nhan data-quay={`${c.cachNhan}: ${c.nhanQuay}`} data-giao={`${c.cachNhan}: ${c.nhanGiao}`}>{nhanHienTai}</p>
             {boTamHet > 0 && (<p class="mtv-ghi">{c.boTamHet}</p>)}
             <p><a class="lien-ket" href="#chon-goi">{c.chonThem}<BieuTuong ten="mui-ten" /></a></p>
             {dich.coBuocChep && (
-              <div class="mtv-chep">
+              <div class="mtv-chep" data-mtv-xem-phan hidden={gioRong}>
                 <label class="mtv-nhan-tin" for="mtv-tin">{c.khungTin}</label>
                 {c.tinTiengViet && (<p class="mtv-ghi">{c.tinTiengViet}</p>)}
                 <textarea id="mtv-tin" class="mtv-tin" readonly rows="10" lang="vi" data-tien aria-describedby="mtv-chep-tay">{taoTinDon(don, nn, msSoan)}</textarea>
                 <p id="mtv-chep-tay" class="mtv-ghi" data-mtv-chep-tay>{chuDich.chepTay[nn]}</p>
               </div>
             )}
-            <div class="hang-nut">
+            <div class="hang-nut" data-mtv-xem-phan hidden={gioRong}>
               {dich.coBuocChep && (<button class="nut nut-vien" type="button" data-mtv-chep hidden><BieuTuong ten="sao-chep" />{chuDich.nutChep[nn]}</button>)}
               <a class="nut nut-chinh" href={linkGuiDon(dich, gio, cachNhan)} rel="noopener" data-mtv-gui><BieuTuong ten="tin-nhan" />{chuDich.nutGui[nn]}</a>
             </div>
             <p class="mtv-bao" role="status" data-mtv-bao></p>
-            <p class="mtv-ghi">{chuDich.sauNut[nn]}</p>
-            {lh.goi && (<p class="mtv-ghi" data-mtv-khong-zalo>{c.khongZalo} <a href={lh.goi}>{lh.hotline}</a></p>)}
+            <p class="mtv-ghi" data-mtv-xem-phan hidden={gioRong}>{chuDich.sauNut[nn]}</p>
+            {lh.goi && (<p class="mtv-ghi" data-mtv-khong-zalo data-mtv-xem-phan hidden={gioRong}>{c.khongZalo} <a href={lh.goi}>{lh.hotline}</a></p>)}
           </div>
         )}
       </div>
@@ -592,6 +594,7 @@ const nhanHienTai = `${c.cachNhan}: ${cachNhan === 'giao' ? c.nhanGiao : c.nhanQ
     const thanhXem = form.querySelector<HTMLElement>('[data-mtv-thanh-xem]');
     const xemDon = document.querySelector<HTMLElement>('[data-mtv-xem-don]');
     const xemDong = document.querySelector<HTMLUListElement>('[data-mtv-xem-dong]');
+    const xemPhan = document.querySelectorAll<HTMLElement>('[data-mtv-xem-phan]');
     const xemTamTinh = document.querySelector<HTMLElement>('[data-mtv-xem-tam-tinh]');
     const xemNhan = document.querySelector<HTMLElement>('[data-mtv-xem-nhan]');
     const tin = document.querySelector<HTMLTextAreaElement>('#mtv-tin');
@@ -625,7 +628,8 @@ const nhanHienTai = `${c.cachNhan}: ${cachNhan === 'giao' ? c.nhanGiao : c.nhanQ
       thanhChu?.replaceChildren(...(rong ? [CHU_DON.donTrong[nn]] : [`${dem} · ${CHU_DON.tamTinh[nn]}: `, oTien(don.tamTinh)]));
       if (thanhXem) thanhXem.hidden = rong;
 
-      if (xemDon) xemDon.hidden = rong;
+      if (xemDon) xemDon.hidden = rong && xemDon.dataset.boHet === undefined;
+      xemPhan.forEach(e => { e.hidden = rong; });
       xemDong?.replaceChildren(...dongCua(don, nn));
       xemTamTinh?.querySelector<HTMLElement>('[data-tien]')?.replaceWith(oTien(don.tamTinh));
       if (xemNhan) xemNhan.textContent = (cachNhan === 'giao' ? xemNhan.dataset.giao : xemNhan.dataset.quay) ?? xemNhan.textContent;
@@ -685,7 +689,8 @@ const nhanHienTai = `${c.cachNhan}: ${cachNhan === 'giao' ? c.nhanGiao : c.nhanQ
       });
     }
 
-    // Đúng ngay khi trang hiện: lúc tải (kể cả tải lại có tham số), và khi bấm Back trở lại trang này.
+    // Đúng ngay khi trang hiện: lúc tải (kể cả tải lại có tham số), và khi bấm Back trở lại trang này. pageshow cả lần
+    // tải đầu, không chỉ bfcache: Back không qua bfcache thì trình duyệt điền lại ô chọn SAU khi script này chạy.
     capNhat();
     window.addEventListener('pageshow', capNhat);
   }

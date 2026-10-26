@@ -37,7 +37,7 @@
 --   1 · la_link_zalo_oa; zalo_oa_url thành khóa chỉ chủ; trigger zalo_oa_url_kiem_tra.
 --   2 · Mười khóa công bố nhóm mua_thit.
 --   3 · chu_dich_con_hieu_luc — chọn chữ theo ngôn ngữ, bỏ bản dịch của câu gốc cũ.
---   4 · mua_thit_ve_kenh_mo; mua_thit_ve_cong_khai — hàm anon duy nhất của file.
+--   4 · mua_thit_ve_kenh_mo; mua_thit_ve_goi (thân menu); mua_thit_ve_cong_khai — hàm anon duy nhất của file.
 --   5 · noi_dung_cong_khai: hien_mua_thit_ve trả về là công tắc HIỆU LỰC.
 --   6 · Chú thích của từng hàm.
 --   7 · Khối chốt quyền (chép 0099, thêm một dòng grant); thu quyền authenticated của hai hàm nội bộ mới.
@@ -76,8 +76,10 @@ language plpgsql
 set search_path = public
 as $$
 begin
-  -- Chỉ kiểm khi giá trị mới vào: dòng cũ (có trước 0101) không hợp lệ vẫn THU HỒI được.
-  if tg_op = 'UPDATE' and new.gia_tri_text is not distinct from old.gia_tri_text then
+  -- Kiểm khi giá trị mới vào, và khi một dòng được duyệt / công bố (bản nháp có trước 0101 không đổi chữ vẫn
+  -- phải qua mẫu). Dòng cũ không hợp lệ vẫn THU HỒI được, trả về nháp được.
+  if tg_op = 'UPDATE' and new.gia_tri_text is not distinct from old.gia_tri_text
+     and (new.trang_thai is not distinct from old.trang_thai or new.trang_thai not in ('da_duyet', 'da_cong_bo')) then
     return new;
   end if;
   if not la_link_zalo_oa(new.gia_tri_text) then
@@ -187,7 +189,11 @@ $$;
 -- Không kiểm vai (hàm công khai, như mini_app_con_hang của 0093). Không raise: đầu vào lạ thì trả ít dòng hơn.
 -- p_ngon_ngu lạ → tiếng Việt (chon_ngon_ngu). Thứ tự: thịt trước kim chi, rồi thu_tu, tên; gói theo so_gam
 -- tăng dần (ban_le_san_pham_json).
-create or replace function mua_thit_ve_cong_khai(p_ngon_ngu text default 'vi', p_chi_nhanh_ma text default null)
+--
+-- Thân ở mua_thit_ve_goi (nội bộ, không definer, chỉ hai hàm definer gọi): p_chi_dong_dau = true dừng ở gói đầu
+-- tiên — noi_dung_cong_khai chỉ cần biết menu có dòng không, mỗi trang công khai không phải dựng cả menu.
+-- exists trên hàm plpgsql trả tập KHÔNG dừng sớm (hàm chạy hết rồi mới trả), nên phải dừng ở trong hàm.
+create or replace function mua_thit_ve_goi(p_ngon_ngu text, p_chi_nhanh_ma text, p_chi_dong_dau boolean)
 returns table (
   san_pham_ma text,
   loai        text,
@@ -203,7 +209,6 @@ returns table (
 )
 language plpgsql
 stable
-security definer
 set search_path = public
 as $$
 declare
@@ -255,9 +260,34 @@ begin
       gia         := v_gia;
       tam_het     := coalesce(g ->> 'con_hang' = 'het', false);
       return next;
+      if p_chi_dong_dau then
+        return;
+      end if;
     end loop;
   end loop;
 end;
+$$;
+
+create or replace function mua_thit_ve_cong_khai(p_ngon_ngu text default 'vi', p_chi_nhanh_ma text default null)
+returns table (
+  san_pham_ma text,
+  loai        text,
+  don_vi      text,
+  bao_quan    text,
+  ten         text,
+  ten_vi      text,
+  mo_ta       text,
+  cach_dung   text,
+  so_gam      int,
+  gia         bigint,
+  tam_het     boolean
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select * from mua_thit_ve_goi(p_ngon_ngu, p_chi_nhanh_ma, false)
 $$;
 
 
@@ -268,7 +298,7 @@ $$;
 -- true CHỈ khi công tắc công bố true VÀ link Zalo OA hợp lệ đã công bố VÀ mua_thit_ve_cong_khai('vi', null) có
 -- ít nhất một dòng (null chi nhánh: tam_het luôn false — "gói đặt được" ở đây là gói có trên menu web). Không
 -- thì một mục điều hướng dẫn tới trang "chưa mở". Chưa công bố → null như mọi khóa; công bố false → false.
--- Menu chỉ được tính khi công tắc công bố true (nhánh case).
+-- Menu chỉ được tính khi công tắc công bố true (nhánh case), và chỉ tới gói đầu tiên (mua_thit_ve_goi … true).
 --
 -- Cùng chữ ký, cùng kiểu trả: create or replace giữ quyền EXECUTE của anon. Khối select bên trong chép NGUYÊN
 -- VĂN thân 0036 (crm/test/test-mua-thit-ve.mjs nhóm 8 kiểm) — sửa ở đây thì sửa theo bản mới nhất của khối đó.
@@ -283,7 +313,7 @@ as $$
   select case
            when x.d -> 'hien_mua_thit_ve' = 'true'::jsonb
              then jsonb_set(x.d, '{hien_mua_thit_ve}',
-                            to_jsonb(exists (select 1 from mua_thit_ve_cong_khai('vi', null))))
+                            to_jsonb(exists (select 1 from mua_thit_ve_goi('vi', null, true))))
            else x.d
          end
   from (
@@ -326,11 +356,13 @@ $$;
 comment on function la_link_zalo_oa(text) is
   'Link chat của một Zalo OA: https://zalo.me/<mã>, không gì phía sau (0101). Trùng MAU_LINK_ZALO_OA của web/src/lib/dich-dat-hang.ts. Hàm thuần.';
 comment on function zalo_oa_url_kiem_tra() is
-  'Trigger (0101): giá trị mới của zalo_oa_url phải qua la_link_zalo_oa; dòng cũ không hợp lệ vẫn thu hồi được.';
+  'Trigger (0101): giá trị mới của zalo_oa_url, và dòng được duyệt / công bố, phải qua la_link_zalo_oa; dòng cũ không hợp lệ vẫn thu hồi được.';
 comment on function chu_dich_con_hieu_luc(text, jsonb, text, text, text, text) is
   'Chữ theo ngôn ngữ (ko → en → vi) chỉ với bản dịch còn hiệu lực — băm trong sổ dịch trùng câu gốc hiện tại (0101). Câu gốc rỗng / tạm → null. Hàm thuần.';
 comment on function mua_thit_ve_kenh_mo() is
   'Kênh nhận đơn Mua thịt về mở (0101): công tắc hien_mua_thit_ve bật và zalo_oa_url đã công bố là link https://zalo.me/…. Nội bộ: chỉ hàm definer gọi.';
+comment on function mua_thit_ve_goi(text, text, boolean) is
+  'Thân của mua_thit_ve_cong_khai (0101); p_chi_dong_dau = true dừng ở gói đầu (noi_dung_cong_khai chỉ cần biết có dòng không). Nội bộ: chỉ hai hàm definer gọi.';
 comment on function mua_thit_ve_cong_khai(text, text) is
   'CÔNG KHAI (0101): gói bán lẻ của trang Mua thịt về — chỉ khi kênh mở (hien_mua_thit_ve bật và zalo_oa_url là link https://zalo.me/…), chỉ sản phẩm Đang bán, kênh website, đã được chủ chốt giá; gia = giá gói trong ảnh chụp gia_chot (giá đã chốt, không theo giá kg mới); tam_het chỉ khi công tắc mua_thit_hien_tam_het bật và số kho tin được. Không trả mã nội bộ, giá kg, số tồn. anon gọi qua /mua-thit-ve.';
 comment on function noi_dung_cong_khai(text) is
@@ -379,14 +411,15 @@ begin
 end
 $$;
 
--- Hai hàm nội bộ mới: revoke from public / anon ở trên KHÔNG gỡ quyền authenticated nhận qua quyền mặc định của
--- Supabase. mua_thit_ve_kenh_mo đọc noi_dung_cong_bo, chỉ hàm definer gọi; hàm trigger cũng thu (Postgres không
--- kiểm quyền EXECUTE của hàm trigger lúc trigger chạy). la_link_zalo_oa, chu_dich_con_hieu_luc để nguyên — hàm
--- thuần, không đọc bảng nào (như ban_le_gia_goi).
+-- Ba hàm nội bộ mới: revoke from public / anon ở trên KHÔNG gỡ quyền authenticated nhận qua quyền mặc định của
+-- Supabase. mua_thit_ve_kenh_mo đọc noi_dung_cong_bo, mua_thit_ve_goi đọc menu bán lẻ — chỉ hàm definer gọi
+-- hai hàm này; hàm trigger cũng thu (Postgres không kiểm quyền EXECUTE của hàm trigger lúc trigger chạy).
+-- la_link_zalo_oa, chu_dich_con_hieu_luc để nguyên — hàm thuần, không đọc bảng nào (như ban_le_gia_goi).
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'authenticated') then
     execute 'revoke execute on function mua_thit_ve_kenh_mo() from authenticated';
+    execute 'revoke execute on function mua_thit_ve_goi(text,text,boolean) from authenticated';
     execute 'revoke execute on function zalo_oa_url_kiem_tra() from authenticated';
   end if;
 end
