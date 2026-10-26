@@ -9,6 +9,9 @@
  * 0050: bấm số tảng để truy vết (tang/[lo_id]); ô tìm "#0142" (?tim=) mở thẳng
  * tảng đó; mục "Đã lóc" (tảng nhận trong 90 ngày, đã lóc) cho biết bán được
  * bao nhiêu, còn bao nhiêu — đọc bằng kho_bao_cao_tang.
+ * Không thấy số: câu cauKhongThayTang nói rõ số cấp lúc nhận hàng (0097) chỉ
+ * hiện ở đây sau khi phiếu nhận được duyệt; chỉ vai nhap được chỉ sang Nhận hàng
+ * (câu và link) — màn đó chuyển hướng vai khác.
  *
  * Lóc một chạm (vai pha_loc): dưới số tảng có nút "Lóc" — cùng luật tangLocDuoc
  * với mục "Tảng lóc được" ở Pha lóc mới (có số tảng, không còn đang ủ, còn chỗ
@@ -23,7 +26,7 @@ import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho } from '../../../../lib/kho/trang.ts';
 import { cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangPhanTram, homNayVn, nhanKho, phoBienNhat } from '../../../../lib/kho/chung.ts';
 import {
-  cauConU, docBaoCaoTang, docTangTon, soTangChu, timTangTheoSo, TINH_TRANG_BAN_NB, TINH_TRANG_U_NB,
+  cauConU, cauKhongThayTang, docBaoCaoTang, docTangTon, soTangChu, timTangTheoSo, TINH_TRANG_BAN_NB, TINH_TRANG_U_NB,
   type DongTang, type TangTon, type TinhTrangU,
 } from '../../../../lib/kho/tang.ts';
 import { docChoLocTang, docDanhSachPhienPha, docLoCuaPhien, tangLocDuoc } from '../../../../lib/kho/pha-loc.ts';
@@ -56,7 +59,7 @@ const t = dichNB(nn, {
   tim: { vi: 'Tìm tảng theo số', en: 'Find a primal by number' },
   timGoiY: { vi: 'vd 142 hoặc #0142', en: 'e.g. 142 or #0142' },
   mo: { vi: 'Mở', en: 'Open' },
-  khongThay: { vi: (x: string) => `Không thấy tảng "${x}" trong 90 ngày gần đây.`, en: (x: string) => `No primal "${x}" in the last 90 days.` },
+  moNhanHang: { vi: 'Mở Nhận hàng', en: 'Open Receive goods' },
   daLoc: { vi: 'Đã lóc (nhận trong 90 ngày)', en: 'Cut (received in the last 90 days)' },
   baoCao: { vi: 'Báo cáo theo tảng', en: 'By-primal report' },
   ngayLoc: { vi: 'Ngày lóc', en: 'Cut on' },
@@ -115,7 +118,11 @@ const noiChinh = phoBienNhat(ds.map(x => x.vi_tri));
   <p class="kho-phu">{t.gioiThieu}{noiChinh && <>{' '}{t.noiChinh(noiChinh)}</>}</p>
   <p><a href="/noi-bo/kho/bao-cao/theo-tang">{t.baoCao}</a></p>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
-  {tim && <div class="nb-bao loi" role="alert"><p>{t.khongThay(tim)}</p></div>}
+  {/* Ô tìm chỉ tìm trong lô (có sau khi duyệt); số tảng cấp lúc nhận hàng (0097) có trước đó — câu nói rõ điều này.
+      Đọc danh sách hỏng (BaoKho đã báo) hay chưa có chi nhánh thì không nói "không thấy": đọc lỗi khác không có. */}
+  {tim && cn && !loiDoc && (
+    <div class="nb-bao loi" role="alert"><p>{cauKhongThayTang(tim, k.duoc('nhap'))[nn]}{k.duoc('nhap') && <>{' '}<a href="/noi-bo/kho/nhan-hang">{t.moNhanHang}</a></>}</p></div>
+  )}
   {loiLoc && <div class="nb-bao luu-y" role="status"><p>{t.khongDocLoc}</p></div>}
 
   <form method="GET" action="/noi-bo/kho/tang" class="kho-thanh-nut">
