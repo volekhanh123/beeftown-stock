@@ -974,8 +974,13 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   túi (`soTangVuaThem` — chỉ khi phiếu đọc lại đúng phiên bản đó). Bấm đúp "+ Thêm dòng": nhánh "đã thêm từ
   lần bấm trước" chỉ nhận dòng cuối khi số của nó do chính tài khoản này cấp (`so_tang_toi_cap` của
   `kho_doc_phieu_nhap_kg`), không hiện to số, câu chỉ số ở dòng cuối; tảng giống hệt mà tài khoản khác vừa thêm
-  thì báo "máy khác" như thường. Sửa dòng: câu và chuyển hướng do `ketQuaSauSuaDong` chọn. Bản in phiếu nhập in
-  số của dòng khi chưa có lô.
+  thì báo "máy khác" như thường. Lần bấm trước nhận ra theo **phiên bản của form** (phiếu đọc lại hơn form đúng
+  một phiên bản, đúng một dòng hơn lúc form hiện), không theo phiếu mà lần bấm sau đọc — lần sau có thể đọc phiếu
+  khi lần trước đã ghi xong. Sửa dòng: câu và chuyển hướng do `ketQuaSauSuaDong` chọn (tảng chưa số → tảng: "Tảng
+  này vừa được cấp số", khác món thường → tảng: "Dòng này giờ là một tảng"). Bấm đúp "Lưu dòng này": id dòng đổi sau
+  mỗi lần lưu nên lần sau không còn `dong_id` — trang chuyển về form thêm **trống** với câu `ketQuaDongSuaKhongCon`
+  ("có thể đã được lưu ở lần bấm trước" khi phiếu hơn form đúng một phiên bản), không hiện lại chữ đã gõ (form sẽ
+  thành form thêm điền sẵn, bấm nữa là thêm tảng thừa có số mới). Bản in phiếu nhập in số của dòng khi chưa có lô.
 - **Tảng lưu trước 0097** (chưa có số, hay món bật theo tảng sau khi lưu): lần lưu nào đầu tiên (thêm ảnh, sửa
   đầu phiếu, thêm / sửa / bỏ dòng) cũng cấp số cho mọi tảng đó. `luuPhieuNhan` đọc lại phiếu và câu báo kể các
   số vừa cấp (`soTangMoiCap`, `noiCauTangMoi`) để viết lên túi; đọc lại hỏng thì vẫn báo đã lưu, kèm câu "có thể
@@ -1084,7 +1089,9 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   kg NCC → sau repack → vào lóc → thịt / phụ phẩm / bỏ / hao hụt; giá NCC → giá vốn sau repack → giá vốn
   thịt ra; các lô cắt ra (ô mã, đã bán, bếp, huỷ, còn ở đâu); phiếu huỷ của tảng. Mở bằng lô tảng hoặc
   bất kỳ lô cắt ra. Màn Tảng · ủ: số tảng là link, ô **Tìm tảng theo số** (`?tim=142` / `#0142`), mục
-  **Đã lóc** (tảng nhận trong 90 ngày). Từ 0089, đã bán / bếp / huỷ của tảng và của từng lô cắt là **số ròng**:
+  **Đã lóc** (tảng nhận trong 90 ngày). Ô tìm chỉ tìm trong lô (có sau khi duyệt); số cấp lúc nhận hàng (0097) mà
+  phiếu chưa duyệt thì câu `cauKhongThayTang` nói rõ số đó chỉ hiện ở đây sau khi phiếu nhận được duyệt (vai `nhap`
+  có link sang Nhận hàng) — không đọc dòng phiếu để tìm thêm, vì thủ kho / thợ lóc không đọc được dòng phiếu (có giá). Từ 0089, đã bán / bếp / huỷ của tảng và của từng lô cắt là **số ròng**:
   dòng sổ `dao_nguoc` (hoá đơn iPOS sửa / huỷ, phiên lóc mở lại) xét theo dòng nó đảo nên tự triệt; ngày bán cuối
   của lô là lần bán còn hiệu lực.
 - **Huỷ cả tảng** (`kho_huy_ca_tang`, quyền van_hanh): mỗi vị trí còn hàng của tảng (kể cả tảng chưa lóc

@@ -19,7 +19,9 @@
  * viết lên túi, chỉ khi phiếu đọc lại đúng phiên bản đó (soTangVuaThem). Bỏ dòng
  * tảng: câu báo bảo gạch số trên túi (cauSoTangBo); sửa dòng: câu báo và chuyển
  * hướng do ketQuaSauSuaDong chọn. Phiếu có tảng lưu trước 0097 (chưa số): lần lưu
- * nào cũng có thể cấp số cho chúng — câu báo kể số (noiCauTangMoi).
+ * nào cũng có thể cấp số cho chúng — câu báo kể số (noiCauTangMoi). Dòng đang sửa
+ * không còn trên phiếu (id dòng đổi sau mỗi lần lưu — bấm đúp "Lưu dòng này"):
+ * chuyển về form thêm trống với câu của ketQuaDongSuaKhongCon, không hiện lại chữ đã gõ.
  *
  * KHÔNG có tiền ở đây: đọc bằng kho_doc_phieu_nhap_kg, ghi bằng
  * kho_luu_phieu_nhap_kg (migration 0031). Mỗi lệnh lưu CẢ phiếu kèm phien_ban,
@@ -36,7 +38,8 @@ import { docDinhNghia, docMatHang, docViTri, type MatHang, type ViTri } from '..
 import {
   docPhieuNhan, docNccNhap, docMonGanDay, gopMonGanDay, docFormDongNhan, docFormDauNhan, dongNhanTrong,
   dongNhanVaoForm, dongLuuTuPhieu, ghepDongNhan, luuPhieuNhan, themDongNhan, themAnhNhan, kiemTruocKhiGui,
-  guiPhieuNhan, rutPhieuNhan, huyPhieuNhan, haoRepack, soTangVuaThem, cauSoTangBo, ketQuaSauSuaDong, noiCauTangMoi,
+  guiPhieuNhan, rutPhieuNhan, huyPhieuNhan, haoRepack, soTangVuaThem, cauSoTangBo, ketQuaSauSuaDong, ketQuaDongSuaKhongCon,
+  noiCauTangMoi,
   type DauNhan, type DongNhanForm, type KetQuaLuuNhan, type MonKiem, type NccNhap, type PhieuNhan,
 } from '../../../../lib/kho/nhan-hang.ts';
 import {
@@ -226,23 +229,25 @@ if (form && phieu) {
     // Có dong_id = đang sửa dòng đó; không có = thêm dòng mới ở cuối.
     const dongId = String(form.get('dong_id') ?? '');
     const cu = p.dong.find(d => d.id === dongId);
+    // Dòng đang sửa không còn trên phiếu (id dòng đổi sau mỗi lần lưu — bấm đúp "Lưu dòng này", hay có người vừa
+    // sửa): chuyển về danh sách với form thêm TRỐNG, kể cả khi chữ gõ sai. Hiện lại chữ đã gõ thì form thành form
+    // THÊM điền sẵn, bấm nữa là thêm một dòng thừa (dòng tảng: database cấp thêm một số, 0097).
+    if (dongId && !cu) return ve(ketQuaDongSuaKhongCon(p.phien_ban, phienBan));
     const r = docFormDongNhan(form, dnLo, mon, cu?.truong_them ?? {});
     if (!r.luu) {
       bao = { ok: false, cau: r.loi.join(' · '), cauEn: r.loiEn.join(' · ') };
       dongForm = r.dong;
       suaId = cu ? cu.id : null;
-    } else if (dongId) {
-      const ds = ghepDongNhan(p.dong, { thay: dongId, dong: r.luu });
+    } else if (cu) {
+      const ds = ghepDongNhan(p.dong, { thay: cu.id, dong: r.luu });
       const kq: KetQuaLuuNhan = ds ? await luuPhieuNhan(k.client, cn.id, p, phienBan, maGui, ds,
                                                         { vua: p.dong.findIndex(d => d.id === dongId) })
-        : kqHai(false, {
-          vi: 'Dòng này không còn trên phiếu (có người vừa sửa) — xem lại danh sách.',
-          en: 'This line is no longer on the note (someone just edited it) — check the list again.',
-        });
+        : ketQuaDongSuaKhongCon(p.phien_ban, phienBan);
       if (kq.ok) {
         // 0097: dòng sửa giữ số tảng (ghepDongNhan mang số cũ); đổi sang món thường → số bỏ; món thường đổi
-        // thành tảng → database vừa cấp số, hiện to như lúc thêm tảng. ketQuaSauSuaDong chọn câu và đuôi.
-        const x = ketQuaSauSuaDong(cu?.so_tang, !!mon.get(r.luu.mat_hang_id)?.theo_tang, kq, p.dong.findIndex(d => d.id === dongId));
+        // thành tảng → database vừa cấp số, hiện to như lúc thêm tảng; tảng chưa số (lưu trước 0097) → "vừa được
+        // cấp số". ketQuaSauSuaDong chọn câu và đuôi; `cu.theo_tang` là theo_tang của dòng TRƯỚC khi sửa.
+        const x = ketQuaSauSuaDong(cu?.so_tang, !!mon.get(r.luu.mat_hang_id)?.theo_tang, kq, p.dong.findIndex(d => d.id === dongId), !!cu?.theo_tang);
         return ve(kqHai(true, x.bao), x.them);
       }
       bao = kq; dongForm = r.dong; suaId = dongId;
