@@ -49,8 +49,8 @@ Mở http://localhost:4321. Không cần Supabase.
 | `npm run kiem-tra` | Kiểm tra kiểu dữ liệu (`astro check`) |
 | `npm run deploy` | **Cổng kiểm thử** (`kiem-tra/truoc-deploy.mjs`: chỉ commit đã có CI xanh) → quét chữ cấm → build → đẩy lên Cloudflare |
 | `npm run deploy:khan-cap` | Như trên nhưng bỏ qua cổng kiểm thử — chỉ khi khẩn cấp |
-| `npm run thu-trinh-duyet` | Kiểm thử bằng trình duyệt thật (Chromium): 24 trang công khai ở 320 / 360 / 390 / 430 / 768 / 800 / 1024 / 1366 / 1440px — một `h1`, ảnh đủ kích thước và alt, tương phản, thành phần và khung trang (`kiem-tra/do-giao-dien.mjs`: vùng chạm ≥ 48px, đầu trang 64 / 80px, bộ chọn ngôn ngữ, nền chỉ màu của bảng, logo đúng bản cho nền, nút, thẻ, hàng câu hỏi ≥ 56px, biểu tượng 24px, chữ 16/24px và h1 32 → 48px, chân trang chữ ≥ 14px; ảnh AI có nhãn "Ảnh minh họa" và không bị gì đè lên, thẻ đọc nhãn khay thẳng và đủ 5 trường, màn đầu và các khối của trang chủ, trang Thực đơn), ảnh về chậm thì khung vẫn giữ chỗ và trang không xô lệch, trang Thực đơn bấm từng tab rồi đo lại ảnh và thành phần của phần vừa mở (ảnh `sot-cham` ở tab "Món ăn", `uong-khong-con-ba-ly` ở tab "Đồ uống" ẩn lúc tải trang), địa điểm (câu chỉ đường đúng từng chữ, JSON-LD, không còn địa chỉ nào khác ngoài dòng pháp nhân, không ghi phường hay quận, không chữ về cầu thang bộ — mẫu tìm chữ sai ở `kiem-tra/mau-dia-diem.mjs`), menu gọn chạy cả khi tắt JavaScript và đi lại được bằng bàn phím (Enter, Tab, Esc) — có JavaScript thì có lớp phủ tối và trang phía sau đứng yên, tắt JavaScript thì trang vẫn cuộn được; câu hỏi thường gặp mở / đóng bằng bàn phím; màn cảm ứng không giữ màu di chuột sau khi chạm; máy có thanh cuộn kiểu cổ điển mở danh mục không xô lệch trang; form không bao giờ báo thành công khi chưa ghi được; trang hỏi bàn không hứa "nhà hàng gọi lại" khi form đóng; trang 404 (mã 404, đúng thứ tiếng, link về `/`, `/en`, `/ko` — nhóm này chạy cả với `-- --url`); đường dẫn lạ dưới `/noi-bo` khi chưa đăng nhập về trang đăng nhập (đã đăng nhập thì hiện trang 404 nội bộ — kiểm ở `crm/test/test-noi-bo-khong-co.mjs`). Luôn build **không database** (đặt rỗng `PUBLIC_SUPABASE_*`, kể cả khi máy có sẵn hai biến này) — `npm run quet` cũng vậy |
-| `npm run thu-day-du` | Kiểm thử trang công khai ở trạng thái **đã nối database** (`kiem-tra/thu-day-du.mjs`): bật Supabase giả `kiem-tra/gia-supabase.mjs` cùng `astro dev`, rồi thử trạng thái đầy đủ (Facebook, Maps, thực đơn đã công bố, form mở), mô tả và đoạn mở đầu trang hỏi bàn khi form mở / đóng, bấm gửi hai lần (chỉ một yêu cầu), database báo lỗi 500, mạng đứt giữa chừng (không bao giờ "đã nhận", dữ liệu đã gõ còn nguyên), địa chỉ đã công bố trong `/noi-bo` (bản công bố tới được mọi chỗ in địa chỉ, màn đầu bỏ vế phường), thành phần của form hỏi bàn và form nộp hồ sơ (ô một dòng, kể cả ô ngày, cao đúng 48px nền trắng; ô giờ đang chọn; câu lỗi màu `#8F0000`), màn đầu trang chủ ở ba trạng thái của ngày khai trương — chưa có ngày, sắp mở (kịch bản `sap-mo`), đã mở (`da-mo`), kèm dòng trạng thái dài hai câu — ở 390 / 900 / 1024 / 1440px (câu chỉ đường dính dưới dòng địa chỉ, ngày trên một dòng, không tràn khung), trang Thực đơn theo cuốn menu bản sáng (kịch bản `day-du` trả đúng danh mục 11/10/2026 đã công bố; bấm từng tab ở 320 → 1440px: mọi món hiện đúng tên, ảnh món có alt và nhãn, món sống có cảnh báo, không số tiền; `khong-con-tat`: ba ly signature không hiện; `day-du` chỉ có đồ uống có cồn: tên các nhóm không cồn vẫn đứng cạnh ảnh ba ly không cồn; `thuc-don-thu-suc`: món không ảnh, tên và mô tả rất dài, nhóm lạ). Thêm `-- --chup` để chụp mọi trang ở 360 / 390 / 768 / 1024 / 1440px vào `kiem-tra/anh-chup/` (không commit); `-- --chi 3,6` chỉ chạy vài nhóm |
+| `npm run thu-trinh-duyet` | Kiểm thử bằng trình duyệt thật (Chromium): 24 trang công khai ở 320 / 360 / 390 / 430 / 768 / 800 / 1024 / 1366 / 1440px — một `h1`, ảnh đủ kích thước và alt, tương phản, thành phần và khung trang (`kiem-tra/do-giao-dien.mjs`: vùng chạm ≥ 48px, đầu trang 64 / 80px, bộ chọn ngôn ngữ, nền chỉ màu của bảng, logo đúng bản cho nền, nút, thẻ, hàng câu hỏi ≥ 56px, biểu tượng 24px, chữ 16/24px và h1 32 → 48px, chân trang chữ ≥ 14px; ảnh AI có nhãn "Ảnh minh họa" và không bị gì đè lên, thẻ đọc nhãn khay thẳng và đủ 5 trường, màn đầu và các khối của trang chủ, trang Thực đơn), ảnh về chậm thì khung vẫn giữ chỗ và trang không xô lệch, trang Thực đơn bấm từng tab rồi đo lại ảnh và thành phần của phần vừa mở (ảnh `sot-cham` ở tab "Món ăn", `uong-khong-con-ba-ly` ở tab "Đồ uống" ẩn lúc tải trang), địa điểm (câu chỉ đường đúng từng chữ, JSON-LD, không còn địa chỉ nào khác ngoài dòng pháp nhân, không ghi phường hay quận, không chữ về cầu thang bộ — mẫu tìm chữ sai ở `kiem-tra/mau-dia-diem.mjs`), menu gọn chạy cả khi tắt JavaScript và đi lại được bằng bàn phím (Enter, Tab, Esc) — có JavaScript thì có lớp phủ tối và trang phía sau đứng yên, tắt JavaScript thì trang vẫn cuộn được; câu hỏi thường gặp mở / đóng bằng bàn phím; màn cảm ứng không giữ màu di chuột sau khi chạm; máy có thanh cuộn kiểu cổ điển mở danh mục không xô lệch trang; form không bao giờ báo thành công khi chưa ghi được; trang hỏi bàn không hứa "nhà hàng gọi lại" khi form đóng; trang 404 (mã 404, đúng thứ tiếng, link về `/`, `/en`, `/ko` — nhóm này chạy cả với `-- --url`); Meta Pixel (mã gốc đúng từng chữ trên mọi trang, sự kiện chỉ kèm tên trang và thứ tiếng, không ở trang 404 — Meta bị chặn ở mọi nhóm, `kiem-tra/chan-meta.mjs`); đường dẫn lạ dưới `/noi-bo` khi chưa đăng nhập về trang đăng nhập (đã đăng nhập thì hiện trang 404 nội bộ — kiểm ở `crm/test/test-noi-bo-khong-co.mjs`). Luôn build **không database** (đặt rỗng `PUBLIC_SUPABASE_*`, kể cả khi máy có sẵn hai biến này) — `npm run quet` cũng vậy |
+| `npm run thu-day-du` | Kiểm thử trang công khai ở trạng thái **đã nối database** (`kiem-tra/thu-day-du.mjs`): bật Supabase giả `kiem-tra/gia-supabase.mjs` cùng `astro dev`, rồi thử trạng thái đầy đủ (Facebook, Maps, thực đơn đã công bố, form mở), mô tả và đoạn mở đầu trang hỏi bàn khi form mở / đóng, bấm gửi hai lần (chỉ một yêu cầu), database báo lỗi 500, mạng đứt giữa chừng (không bao giờ "đã nhận", dữ liệu đã gõ còn nguyên), địa chỉ đã công bố trong `/noi-bo` (bản công bố tới được mọi chỗ in địa chỉ, màn đầu bỏ vế phường), thành phần của form hỏi bàn và form nộp hồ sơ (ô một dòng, kể cả ô ngày, cao đúng 48px nền trắng; ô giờ đang chọn; câu lỗi màu `#8F0000`), màn đầu trang chủ ở ba trạng thái của ngày khai trương — chưa có ngày, sắp mở (kịch bản `sap-mo`), đã mở (`da-mo`), kèm dòng trạng thái dài hai câu — ở 390 / 900 / 1024 / 1440px (câu chỉ đường dính dưới dòng địa chỉ, ngày trên một dòng, không tràn khung), trang Thực đơn theo cuốn menu bản sáng (kịch bản `day-du` trả đúng danh mục 11/10/2026 đã công bố; bấm từng tab ở 320 → 1440px: mọi món hiện đúng tên, ảnh món có alt và nhãn, món sống có cảnh báo, không số tiền; `khong-con-tat`: ba ly signature không hiện; `day-du` chỉ có đồ uống có cồn: tên các nhóm không cồn vẫn đứng cạnh ảnh ba ly không cồn; `thuc-don-thu-suc`: món không ảnh, tên và mô tả rất dài, nhóm lạ), Meta Pixel (`Lead` chỉ sau khi database trả mã, kể cả bấm đúp; không `Lead` khi lỗi; `Contact`, `InitiateCheckout`; địa chỉ trang sau khi gửi không mang số điện thoại). Thêm `-- --chup` để chụp mọi trang ở 360 / 390 / 768 / 1024 / 1440px vào `kiem-tra/anh-chup/` (không commit); `-- --chi 3,6` chỉ chạy vài nhóm |
 
 **Cổng deploy.** `npm run deploy` chỉ đưa lên commit mà GitHub Actions đã chạy xanh: nó hỏi kết quả
 workflow "Kiểm thử" của commit đang deploy bằng lệnh `gh`. Cài một lần trên máy deploy:
@@ -75,6 +75,7 @@ web/
 │  ├─ may-chu-ban-build.mjs ← build không database rồi chạy dist/ trong wrangler dev — quet và trinh-duyet dùng chung
 │  ├─ trinh-duyet.mjs     ← trình duyệt thật, trạng thái KHÔNG có database (như CI)
 │  ├─ thu-day-du.mjs      ← trình duyệt thật, trạng thái ĐÃ nối database (Supabase giả)
+│  ├─ chan-meta.mjs       ← hai file trên mở Chromium chặn Meta (CI không gửi lượt đo lên Pixel thật); fbevents.js giả
 │  └─ gia-supabase.mjs    ← Supabase giả: trả lời đúng các hàm trang công khai gọi, theo kịch bản
 ├─ cong-cu/            ← script dựng tài sản, chạy bằng python3 -I (xem THIET-KE.md, mục 7)
 │  ├─ thuong-hieu/     ← tach-logo.mjs: tách logo chính, logo phụ, brandmark từ PDF guideline 21/10/2026; tao-bieu-tuong.py: favicon, biểu tượng, ảnh chia sẻ
@@ -104,6 +105,7 @@ web/
 │  │  ├─ mua-thit-ve.ts · don-mua-thit.ts ← trang Mua thịt về: đọc menu gói đã chốt giá; tính đơn, soạn tin đơn (chạy cả trong trình duyệt)
 │  │  ├─ dich-dat-hang.ts ← đích đặt hàng của trang Mua thịt về — MỘT chỗ (TẠM: chép tin, mở chat Zalo OA; sau đổi sang Mini App)
 │  │  ├─ xu-ly-form.ts ← POST → chuyển hướng → GET, dùng chung hai ngôn ngữ
+│  │  ├─ meta-pixel.ts ← Meta Pixel: ID, mã gốc của Meta, sự kiện — chỉ tên trang và thứ tiếng tới Meta
 │  │  ├─ than-gioi-han.ts ← đọc thân POST có giới hạn: form công khai, webhook iPOS, Messenger
 │  │  ├─ gui-noi-bo.ts ← form ở /noi-bo (CRM): đọc thân, chuyển hướng 303, câu báo qua cookie
 │  │  ├─ tuyen-dung.ts
@@ -185,6 +187,44 @@ Bật công tắc mà trang vẫn "chưa mở": xem mô tả khóa `hien_mua_thi
 7. Khách ghi thêm "cần hơn 10 gói" → kiểm quầy trước khi nhận.
 
 **Việc Khánh thử trên máy thật** (trước khi bật công tắc; danh sách đủ mười hai bước và thứ tự triển khai ở mô tả PR của trang Mua thịt về): chạm `https://zalo.me/3030027075662095415` trên iPhone và Android, có và không cài Zalo, tài khoản đã và chưa Quan tâm OA — app mở khung chat hay hồ sơ OA; dán một tin đơn mẫu vào chat — còn xuống dòng, không bị cắt; mở trang từ trình duyệt trong Zalo, Facebook, Messenger — nút "Chép đơn" có chép được không, không chép được thì chữ trong khung có được bôi đen sẵn; Zalo trên máy tính; tin tự động của OA có bắt nhầm tin đơn ("giá", "menu", "mua") không; gửi một tin hai lần; tắt JavaScript rồi đặt thử.
+
+---
+
+## Meta Pixel (đo quảng cáo Facebook, Instagram)
+
+Khánh giao 27/10/2026. Beeftown Pixel, ID `1486681409963017`, thuộc Business Beeftown (2104301050185040). ID là số
+công khai nên để thẳng trong mã (`src/lib/meta-pixel.ts`), không cần biến môi trường. Mã gốc của Meta nằm ở cuối
+`<head>` của `layouts/Trang.astro` — mọi trang công khai vi / en / ko, **trừ trang 404**. Không có ở `/noi-bo`, kho,
+`/hook`, `/mini-app`, Beeftown Cân, Mini App Zalo. Máy chủ không gọi Meta: pixel chạy trong trình duyệt khách.
+
+**Bật cho mọi người, không hỏi đồng ý** (Khánh chốt 27/10/2026). Bù lại: **không gửi thông tin cá nhân nào cho Meta**.
+Mỗi sự kiện chỉ kèm `{ content_name: <tên trang>, language: 'vi' | 'en' | 'ko' }` — `guiSuKien()` tự dựng hai trường đó,
+không nhận gì khác; `fbq('init')` chỉ có ID; So khớp nâng cao và Sự kiện tự động **giữ Tắt** trong Trình quản lý sự kiện (bật Sự kiện tự
+động thì Meta tự gửi thêm chữ của mọi nút bấm và thông tin trang — trang Quyền riêng tư không còn đúng); form có ô họ tên,
+số điện thoại là POST nên địa chỉ trang không bao giờ mang chúng. Trang Quyền riêng tư (ba thứ tiếng) ghi đúng Meta nhận
+gì — đổi sự kiện thì sửa cả ba trang đó.
+
+| Sự kiện | Khi nào | Ở đâu trong mã |
+|---|---|---|
+| `PageView` | mở trang | mã gốc |
+| `ViewContent` | mở trang Thực đơn (`/thuc-don`, `/en/menu`, `/ko/menu`) | script của `Trang.astro` |
+| `Contact` | bấm link `tel:`, Zalo (`zalo.me`), Messenger (`m.me`, `messenger.com`) ở mọi trang, cả bấm chuột giữa | script của `Trang.astro` |
+| `InitiateCheckout` | bấm "Xem đơn" ở Mua thịt về (có giỏ); một lần cho mỗi giỏ — bấm lại ở trang xem đơn không thêm | script của `TrangMuaThitVe.astro` |
+| `Lead` | thẻ "đã nhận yêu cầu" của trang hỏi bàn hiện ra — chỉ dựng khi database đã trả mã; một lần cho mỗi mã, kể cả bấm Back về trang lấy từ bộ nhớ đệm | script của `TrangDatBan.astro` |
+
+Form ứng tuyển chỉ có `PageView`. Giới hạn đã biết: `InitiateCheckout` và `Contact` của link mở trong cùng thẻ gửi
+ngay trước khi trang chuyển — fbevents.js chưa tải xong (mạng chậm) thì lời gọi còn trong hàng đợi và mất theo trang cũ,
+nên hai số này có thể thấp hơn thật một chút. Không giữ khách lại để chờ gửi. Script của Meta bị chặn (trình chặn quảng cáo, mất mạng): trang, form hỏi bàn, Mua
+thịt về chạy như không có pixel — mọi lời gọi ngoài mã gốc qua `guiSuKien()` (kiểm `typeof fbq === 'function'`, không
+bao giờ ném lỗi). Kiểm thử: `crm/test/test-cong-khai-meta-pixel.mjs` (mã gốc đúng từng chữ, gắn ở đâu, sự kiện, quyền
+riêng tư), `kiem-tra/trinh-duyet.mjs` nhóm 12, `kiem-tra/thu-day-du.mjs` nhóm 13. Hai file trình duyệt chặn Meta ở mọi
+context (`kiem-tra/chan-meta.mjs`) — CI không gửi lượt đo nào lên Pixel thật.
+
+**Kiểm sau khi deploy:** Trình quản lý sự kiện → Beeftown Pixel → **Thử nghiệm sự kiện** → nhập `https://beeftown.vn` →
+mở trang, mở Thực đơn, bấm số điện thoại → thấy `PageView`, `ViewContent`, `Contact` trong vài giây; tab Tổng quan có
+lượt `PageView` trong khoảng 20 phút. Nên bật **Quyền truy cập lưu lượng** (Cài đặt của tập dữ liệu → danh sách cho
+phép `beeftown.vn`): lượt từ máy chạy thử, `localhost` hay trang chép mã không vào số đo. API Chuyển đổi (Conversions
+API) chưa làm. Tắt pixel: chưa có công tắc trong `/noi-bo` — gỡ khối mã gốc trong `Trang.astro` rồi deploy.
 
 ---
 
