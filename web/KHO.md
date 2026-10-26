@@ -633,6 +633,7 @@ từng nhãn**; hai dòng cùng item_id là hai dòng. `raw` bỏ `membership_*`
 | `/noi-bo/kho/cai-dat/ipos` | Kết nối iPOS: đèn, **lần nhận hóa đơn gần nhất**, **địa chỉ nhận hóa đơn** (chủ thấy đủ khóa, người khác thấy che), 4 việc nhờ iPOS, "Cập nhật ngay" (= thử lại hàng chờ + đọc lại thực đơn, phiên người bấm, `dong_bo_ban`, giới hạn 60 giây), cấu hình (không còn ô đường dẫn hóa đơn; có "báo mất kết nối sau … giờ"), chuyển nguồn số bán |
 | `/noi-bo/kho/ban-ipos` | Hàng đợi: Chưa khớp → Ghép món; Thiếu hàng → Thử lại / Hàng ngoài sổ / Bỏ qua (`kho_ipos_xu_ly_dong`) |
 | `/noi-bo/kho/ban-ipos/ghep` | Ghép món + **Bán theo** kg / gói (+ "mỗi gói = … kg") / suất (món chế biến) → `kho_ipos_gan_ma_v2`; **Thực đơn iPOS** (`kho_ipos_menu`, tìm + chia trang GĐ4b) để ghép trước khi bán |
+| `/noi-bo/kho/ban-ipos/mon-fabi.csv` | Danh sách món cần có trên FABi (`danh_muc`) — `taoTepMonFabi` (`lib/kho/thu-ngan.ts`) |
 
 **Tại sao chặn /hook/ipos ở worker.ts.** Astro bật `security.checkOrigin`: POST có `content-type`
 kiểu form (`text/plain`, `x-www-form-urlencoded`, `multipart/form-data`) hoặc không có `content-type` mà
@@ -1065,6 +1066,22 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   **lúc bán** (`kho_ipos_lo_cua_o`) và trừ đúng lô đó ở quầy (`kho_ipos_lay_lo_cua_lo`); lô không đủ / ô chưa
   gắn lô → trừ theo hạn gần nhất như cũ, `kho_ipos_dong.lech_o` + câu lý do, màn Bán hàng iPOS hiện "Lệch ô".
   Ghép lại bằng `kho_ipos_gan_ma_v2` bỏ ô. `kho_v_ipos_dong` thêm `so_o`, `ma_can_o`, `so_tang`, `lech_o`.
+- **Thu ngân / FABi** (chỉ web, `lib/kho/thu-ngan.ts`, không migration; `test-kho-ipos-fabi.mjs`): kho chỉ biết tảng
+  khi dòng hóa đơn mang mã ô. (1) Ghép món → **Món cần có trên FABi** (`#mon-fabi`, `danh_muc`): mỗi ô mã của món đang
+  dùng + mỗi mã giảm đang bật một món — tên gợi ý "<tên món> ô <số>" (mã giảm: tên như trên cân), mã món = mã vạch
+  (đệm đủ số chữ `C` của mẫu) = mã ô / mã giảm, bán theo kg, giá/kg = giá kho (mã giảm: `giaGiam`). Đối chiếu
+  `kho_ipos_menu` (chỉ có mã món — nhãn "có" nói mã vạch phải thử bằng một tem; ô ghép tay mã khác cũng tính);
+  thực đơn rỗng → "Chưa đọc được thực đơn iPOS", không kết luận; kèm giờ đọc thực đơn. Tải
+  `/noi-bo/kho/ban-ipos/mon-fabi.csv` (`taoTepMonFabi`: `taoCsv`, không lách bằng "=", tên file ASCII giờ VN; vai khác
+  403; đọc lỗi 500 kèm câu, không file rỗng). (2) Bán hàng iPOS → hộp **Bán không biết tảng · 7 ngày** (`xem_gia`,
+  `docBanKhongBietTang`): dòng `da_ghi` của món có ô mà không ô, không mã giảm (`khong_qua_o` — không xét "lúc bán ô
+  có giữ tảng không": ô không tự đóng khi tảng bán hết) và dòng `lech_o`; hôm nay / 7 ngày theo `ngay_ban`, đếm dòng
+  và hóa đơn, mỗi loại kèm nguyên nhân có thể và chỗ sửa; đọc lỗi → câu lỗi, không in 0. (3) Chặn ghép sai trước khi
+  gọi database (`kiemGhep`, `laMaKhoTuNhan` trong `lib/kho/ban-ipos.ts`, đọc ô mã + mã giảm ngay trước khi ghép, đọc
+  lỗi thì không ghép): mã trùng mã giảm (kể cả đã tắt) chỉ được Bỏ ghép; mã trùng mã ô chỉ được ghép với đúng ô đó;
+  ghép món có ô mà không chọn ô phải tích "Vẫn ghép món chung". Thực đơn iPOS hiện "Mã giảm — kho tự nhận" /
+  "Ô n — kho tự nhận" thay nút Ghép. **Mã giảm cận date giữ trừ theo hạn gần nhất** (không theo ô): lô cận date ở quầy
+  gần như luôn là lô lóc sớm nhất, nên vẫn trúng tảng; mã giảm theo ô sẽ nhân số mã, số PLU và số món FABi phải sửa giá.
 
 ## 3p. Máy quầy — Beeftown Cân: bảng quầy · mã giảm giá cận date · tảng & ô · báo cáo (migration 0054)
 

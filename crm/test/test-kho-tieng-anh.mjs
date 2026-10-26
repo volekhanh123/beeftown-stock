@@ -82,6 +82,7 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     "TEN_PLU_TRONG = 'KHÔNG DÙNG (PLU trống)'",                          // can-tma.ts: tên dòng trống ghi xuống cân (in trên tem), không phải câu màn hình
     "throw new RangeError(`Số PLU của dòng riêng phải từ 1 đến ${PLU_RIENG_TOI_DA}.`)", // can-tma.ts: lỗi lập trình — goHangConLai kiểm số PLU trước khi gọi
     ".replace(/(đ|d|vnd)$/i, '')",              // đọc ô tiền: "450.000đ", "450.000 đ"
+    "`${ten.trim()} ô ${soO}`",                  // thu-ngan.ts: tên món trên FABi ("Thăn ngoại ô 1") — dữ liệu thu ngân đọc, tiếng Việt ở mọi màn
     ".replace(/đ/g, 'd').replace(/Đ/g, 'D')",   // bỏ dấu khi sinh mã / tìm không dấu
     // gói máy & iPOS — câu cho máy / log, không hiện trên màn nào:
     // lib/kho/ipos-dong-bo.ts — nhãn câu đăng nhập tài khoản máy (câu ghép ở lib/tai-khoan-may.ts,
