@@ -1,0 +1,193 @@
+---
+/**
+ * CÀI ĐẶT BÁN LẺ — cỡ gói online dùng chung cho thịt bò (0102)
+ *
+ * Danh sách cỡ gói (bảng ban_le_co_goi): cỡ Đang dùng hiện sẵn ở form Thêm sản phẩm thịt của /noi-bo/ban-le, mỗi cỡ
+ * một ô chọn Bán / Không bán. Cài đặt chỉ là MẶC ĐỊNH khi thêm sản phẩm: tắt hay bỏ một cỡ không đụng gói của sản
+ * phẩm đã có (sửa gói ở trang từng sản phẩm). Kim chi bán theo hộp, không dùng danh sách này. Quyền do database
+ * quyết định: bốn vai CRM xem (ban_le_cai_dat), chủ và quản lý sửa (ban_le_luu_co_goi) — vai khác về /noi-bo.
+ *
+ * MỘT FORM cho cả danh sách, mang phien_ban (database tính theo nội dung). Ghi được thì chuyển hướng 303 về chính
+ * trang này (lib/gui-noi-bo.ts). Không ghi được thì dựng lại ngay: ô cỡ mới giữ chữ đã gõ, nhưng phien_ban,
+ * so_dong_cg và cg_i_so_gam LUÔN từ lần đọc mới. Người khác vừa sửa → hiện danh sách như database đang giữ để
+ * người dùng xem lại rồi lưu; lỗi khác → giữ cả việc đã chọn ở từng cỡ.
+ *
+ * Không JavaScript, không ô đánh dấu (việc của từng cỡ là select), ô số là ô chữ + inputmode. Kiểm thử:
+ * crm/test/test-ban-le-cai-dat-web.mjs (thư viện, trang), test-ban-le-cai-dat.mjs (database).
+ */
+import NoiBo from '../../../layouts/NoiBo.astro';
+import {
+  docCaiDat, luuCoGoi, cauLoiDoc, VAI_XEM_BAN_LE, VAI_SUA_BAN_LE, SO_DONG_CO_GOI_MOI, SO_CO_GOI_TOI_DA,
+  type CaiDatBanLe, type KetQua,
+} from '../../../lib/ban-le-noi-bo';
+import { dichNB, nnCua } from '../../../lib/ngon-ngu-noi-bo';
+import { CAU_DOC_FORM_HONG, chuyenHuongNoiBo, docBaoNoiBo, docFormNoiBo } from '../../../lib/gui-noi-bo';
+
+const phien = Astro.locals.phien!;
+const { client, nhanSu } = phien;
+const nn = nnCua(Astro);
+// Vai kho không đọc được menu (RLS): về /noi-bo, trang đó đưa họ sang kho.
+if (!(VAI_XEM_BAN_LE as readonly string[]).includes(nhanSu.vai_tro)) return Astro.redirect('/noi-bo', 302);
+
+const t = dichNB(nn, {
+  tieuDe:    { vi: 'Cài đặt bán lẻ', en: 'Retail settings' },
+  lui:       { vi: '← Menu bán lẻ', en: '← Retail menu' },
+  coGoi:     { vi: 'Cỡ gói thịt bò', en: 'Beef pack sizes' },
+  dan:       { vi: 'Cỡ gói online dùng chung cho thịt bò. Cỡ Đang dùng hiện sẵn ở form Thêm sản phẩm thịt — chọn Bán hay Không bán cho từng cỡ. Sản phẩm đã có giữ nguyên gói của nó; sửa gói ở trang từng sản phẩm. Kim chi bán theo hộp, không dùng danh sách này.',
+               en: "Online pack sizes shared by all beef products. Sizes that are In use appear on the Add product form for beef — choose Sell or Don't sell for each size. Existing products keep their own packs; edit packs on each product's page. Kimchi is sold by the box and does not use this list." },
+  fabi:      { vi: 'Mỗi cỡ mới cần một món tương ứng trong FABi — xem Đối chiếu FABi sau khi thêm sản phẩm.',
+               en: 'Each new size needs a matching item in FABi — see the FABi check after adding products.' },
+  chiDoc:    { vi: 'Chỉ chủ và quản lý sửa được cài đặt bán lẻ.', en: 'Only the owner and managers can change the retail settings.' },
+  rongSua:   { vi: 'Chưa có cỡ gói nào — sản phẩm thịt mới sẽ chưa có gói; thêm cỡ ở dưới.',
+               en: 'No pack sizes yet — new beef products will have no packs; add sizes below.' },
+  rong:      { vi: 'Chưa có cỡ gói nào — sản phẩm thịt mới sẽ chưa có gói.', en: 'No pack sizes yet — new beef products will have no packs.' },
+  // Gam viết không dấu ngăn nghìn, như nhãn gói ở mọi nơi ("1000 g").
+  gam:       { vi: (n: number) => `${n} g`, en: (n: number) => `${n} g` },
+  dangDung:  { vi: 'Đang dùng', en: 'In use' },
+  tamTat:    { vi: 'Tạm tắt', en: 'Turned off' },
+  boKhoi:    { vi: 'Bỏ khỏi danh sách', en: 'Remove from the list' },
+  viecCo:    { vi: (n: number) => `Cỡ ${n} g`, en: (n: number) => `${n} g size` },
+  them:      { vi: 'Thêm cỡ mới', en: 'Add new sizes' },
+  coMoi:     { vi: 'Cỡ mới (gam)', en: 'New size (grams)' },
+  coMoiGoiY: { vi: 'Từ 50 đến 5000 g — ví dụ 300, hoặc 1000 cho 1 kg. Để trống nếu không thêm.',
+               en: 'From 50 to 5000 g — for example 300, or 1000 for 1 kg. Leave empty to add nothing.' },
+  daDu:      { vi: (n: number) => `Danh sách đã đủ ${n} cỡ — bỏ bớt cỡ không dùng rồi mới thêm được.`,
+               en: (n: number) => `The list already has ${n} sizes — remove sizes you do not use before adding more.` },
+  luu:       { vi: 'Lưu cỡ gói', en: 'Save pack sizes' },
+  huy:       { vi: 'Hủy', en: 'Cancel' },
+  viecSai:   { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
+});
+const duocSua = (VAI_SUA_BAN_LE as readonly string[]).includes(nhanSu.vai_tro);
+const duongDan = Astro.url.pathname + Astro.url.search;
+
+let bao: (KetQua & { maLoi?: string }) | null = docBaoNoiBo(Astro.cookies, Astro.url.pathname);
+let daGo: FormData | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await docFormNoiBo(Astro.request);
+  if (!form) bao = { ok: false, cau: CAU_DOC_FORM_HONG[nn] };
+  else if (String(form.get('viec') ?? '') === 'luu') {
+    const kq = await luuCoGoi(client, form, nn);
+    if (kq.ok) return chuyenHuongNoiBo(Astro, kq, duongDan);
+    bao = kq;
+    daGo = form;
+  } else bao = { ok: false, cau: t.viecSai };
+}
+
+let caiDat: CaiDatBanLe | null = null;
+let loiDoc: string | null = null;
+try {
+  caiDat = await docCaiDat(client);
+} catch (e) {
+  loiDoc = cauLoiDoc(e, nn);
+}
+
+// Người khác vừa sửa: database không ghi gì — hiện từng cỡ đúng như database đang giữ, không phủ lựa chọn cũ lên.
+const nguoiKhacSua = bao?.maLoi === 'nguoi_khac_sua';
+/** Việc đang chọn của một cỡ: việc đã chọn trên form vừa gửi (cùng số gam), không thì theo trạng thái mới đọc. */
+function viecCua(soGam: number, dangDung: boolean): string {
+  const macDinh = dangDung ? 'dung' : 'tat';
+  if (!daGo || nguoiKhacSua) return macDinh;
+  const soDongGui = Math.min(Number(daGo.get('so_dong_cg')) || 0, 40);
+  for (let i = 0; i < soDongGui; i++) {
+    if (String(daGo.get(`cg_${i}_so_gam`) ?? '') !== String(soGam)) continue;
+    const v = String(daGo.get(`cg_${i}_viec`) ?? '');
+    return ['dung', 'tat', 'bo'].includes(v) ? v : macDinh;
+  }
+  return macDinh;
+}
+/** Số ô cỡ mới: ba ô, không quá giới hạn dòng của danh sách (cùng database). */
+const soOMoi = caiDat ? Math.max(0, Math.min(SO_DONG_CO_GOI_MOI, SO_CO_GOI_TOI_DA - caiDat.co_goi.length)) : 0;
+---
+<NoiBo tieuDe={t.tieuDe} nhanSu={nhanSu}>
+  <p class="bl-lui"><a href="/noi-bo/ban-le">{t.lui}</a></p>
+  <h1>{t.tieuDe}</h1>
+
+  {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>}
+  {loiDoc && <div class="nb-bao loi"><p>{loiDoc}</p></div>}
+  {!duocSua && <div class="nb-bao luu-y"><p>{t.chiDoc}</p></div>}
+
+  {caiDat && (
+    <form method="POST" action={duongDan} class="nb-the bl-cai-dat">
+      <input type="hidden" name="viec" value="luu" />
+      <input type="hidden" name="phien_ban" value={caiDat.phien_ban} />
+      <input type="hidden" name="so_dong_cg" value={caiDat.co_goi.length} />
+      <h2>{t.coGoi}</h2>
+      <p class="bl-phu bl-dan">{t.dan}</p>
+      <p class="bl-phu bl-dan">{t.fabi}</p>
+      <fieldset disabled={!duocSua}>
+        {caiDat.co_goi.length === 0 && (
+          <div class="nb-rong"><p style="margin:0">{duocSua ? t.rongSua : t.rong}</p></div>
+        )}
+        {caiDat.co_goi.length > 0 && (
+          <ul class="bl-ds-co">
+            {caiDat.co_goi.map((c, i) => (
+              <li class="bl-co">
+                <input type="hidden" name={`cg_${i}_so_gam`} value={c.so_gam} />
+                <div class="nb-dong-dau">
+                  <strong class="bl-so">{t.gam(c.so_gam)}</strong>
+                  <span class={`nb-nhan ${c.dang_dung ? 'song' : 'tat'}`}>{c.dang_dung ? t.dangDung : t.tamTat}</span>
+                </div>
+                {duocSua && (
+                  <label class="nb-o">
+                    <span>{t.viecCo(c.so_gam)}</span>
+                    <select name={`cg_${i}_viec`}>
+                      <option value="dung" selected={viecCua(c.so_gam, c.dang_dung) === 'dung'}>{t.dangDung}</option>
+                      <option value="tat" selected={viecCua(c.so_gam, c.dang_dung) === 'tat'}>{t.tamTat}</option>
+                      <option value="bo" selected={viecCua(c.so_gam, c.dang_dung) === 'bo'}>{t.boKhoi}</option>
+                    </select>
+                  </label>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {duocSua && (soOMoi > 0 ? (
+          <fieldset class="bl-them-co">
+            <legend>{t.them}</legend>
+            <p class="bl-phu bl-goi-y-moi" id="cg-moi-goi-y">{t.coMoiGoiY}</p>
+            <div class="bl-luoi">
+              {Array.from({ length: soOMoi }, (_, j) => (
+                <label class="nb-o">
+                  <span>{t.coMoi}</span>
+                  <input type="text" name={`cg_moi_${j}`} inputmode="numeric" autocomplete="off" maxlength="7"
+                         aria-describedby="cg-moi-goi-y" value={String(daGo?.get(`cg_moi_${j}`) ?? '')} />
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        ) : (
+          <p class="bl-phu">{t.daDu(SO_CO_GOI_TOI_DA)}</p>
+        ))}
+
+        {duocSua && (
+          <div class="bl-nut">
+            <button type="submit" class="nb-nut">{t.luu}</button>
+            <a href="/noi-bo/ban-le" class="nb-nut phu">{t.huy}</a>
+          </div>
+        )}
+      </fieldset>
+    </form>
+  )}
+</NoiBo>
+
+<style>
+  .bl-lui { margin: 0 0 .75rem; font-size: .9rem; }
+  .bl-lui a { display: inline-flex; align-items: center; min-height: 48px; }
+  .bl-cai-dat h2 { margin-top: 0; }
+  .bl-cai-dat > fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+  .bl-phu { margin: .35rem 0 0; font-size: .85rem; color: var(--muc-nhat); }
+  .bl-dan { margin: -.35rem 0 1rem; }
+  .bl-ds-co { list-style: none; margin: 0 0 1rem; padding: 0; }
+  .bl-co { border-top: 1px solid var(--vach); padding: .75rem 0 0; }
+  .bl-co:last-child { border-bottom: 1px solid var(--vach); }
+  .bl-co .nb-o { margin: .6rem 0 .75rem; }
+  .bl-so { font-variant-numeric: tabular-nums; }
+  .bl-them-co { padding: .6rem .9rem .25rem; margin: 0 0 1rem; min-width: 0; }
+  .bl-them-co legend { font-weight: 700; font-size: .95rem; padding: 0 .35rem; }
+  .bl-goi-y-moi { margin: 0 0 .75rem; }
+  .bl-luoi { display: grid; gap: 0 1rem; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); }
+  .bl-luoi input { font-variant-numeric: tabular-nums; }
+  .bl-nut { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: .5rem 0 0; }
+</style>

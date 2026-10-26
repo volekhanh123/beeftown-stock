@@ -2,7 +2,8 @@
  * MENU BÁN LẺ — đọc, thêm, lưu, xác nhận giá, đối chiếu FABi (màn /noi-bo/ban-le)
  *
  * Thịt bò mang về và kim chi (0099). Quầy cân thịt theo gram ở giá mỗi kg của mặt hàng kho
- * (kho_mat_hang.gia_ban_kg — Beeftown Cân tự gửi xuống cân); online bán gói cố định 200 g / 400 g; kim
+ * (kho_mat_hang.gia_ban_kg — Beeftown Cân tự gửi xuống cân); online bán theo gói — cỡ gói của thịt mới lấy
+ * từ Cài đặt bán lẻ (ban_le_co_goi, 0102; màn /noi-bo/ban-le/cai-dat), từng sản phẩm sửa gói riêng; kim
  * chi bán theo hộp, giá cố định. Website đọc menu này qua mua_thit_ve_cong_khai (0101, trang Mua thịt về):
  * chỉ sản phẩm Đang bán, kênh website, đã chốt giá — giá trên trang là giá trong ảnh chụp gia_chot, giá kg đổi
  * sau lần chốt thì trang vẫn giữ giá đã chốt cho tới khi chủ chốt lại. Mini App Zalo đọc ở bước sau (PR riêng).
@@ -16,6 +17,8 @@
  *   · Thêm, lưu: ban_le_tao_san_pham / ban_le_luu_san_pham — chủ và quản lý (VAI_SUA_BAN_LE), kể cả mô tả.
  *     Marketing có quyền ghi thẳng các ô dịch en / ko, nhưng chỉ để máy dịch (ghi_ban_dich) chạy dưới
  *     phiên của họ — màn này không mở form cho marketing.
+ *   · Cài đặt bán lẻ (cỡ gói thịt dùng chung, 0102): ban_le_cai_dat đọc — bốn vai CRM; ban_le_luu_co_goi lưu —
+ *     chủ và quản lý (VAI_SUA_BAN_LE).
  *   · Xác nhận giá (bỏ chữ "Giá thử"): ban_le_chot_gia — chỉ chủ (VAI_CHOT_GIA).
  *   · Đối chiếu FABi: ban_le_doi_chieu — quyền danh mục kho của chi nhánh đó (chủ; quản lý chi nhánh mình).
  *
@@ -27,7 +30,8 @@
  * đã đổi — đọc lại, database đang giữ đúng bản vừa gửi thì đó là "Đã lưu.", không phải "người khác sửa".
  *
  * Kiểm thử: crm/test/test-ban-le-web.mjs (thư viện trên database thật), test-noi-bo-ban-le.mjs (hợp đồng
- * với database, trang). Database: crm/supabase/migrations/0099_ban_le_menu.sql, test-ban-le.mjs.
+ * với database, trang), test-ban-le-cai-dat-web.mjs (Cài đặt bán lẻ). Database: crm/supabase/migrations/
+ * 0099_ban_le_menu.sql, 0102_ban_le_co_goi.sql; test-ban-le.mjs, test-ban-le-cai-dat.mjs.
  */
 
 import type { AstroCookies } from 'astro';
@@ -46,10 +50,12 @@ export const VAI_XEM_BAN_LE = ['chu_so_huu', 'quan_ly', 'thu_ngan', 'marketing']
 export const VAI_SUA_BAN_LE = ['chu_so_huu', 'quan_ly'] as const;
 /** Vai bỏ chữ "Giá thử" — ban_le_chot_gia chỉ nhận la_chu_so_huu(). */
 export const VAI_CHOT_GIA = ['chu_so_huu'] as const;
-/** Hai cỡ gói online mặc định của một phần thịt (ban_le_tao_san_pham tạo sẵn). */
-export const GOI_MAC_DINH = [200, 400] as const;
-/** Một sản phẩm có tối đa chừng này gói — cùng giới hạn với ban_le_luu_san_pham. */
+/** Một sản phẩm có tối đa chừng này gói — cùng giới hạn với ban_le_luu_san_pham (và số cỡ đang dùng của cài đặt). */
 export const SO_GOI_TOI_DA = 20;
+/** Danh sách cỡ gói của Cài đặt bán lẻ có tối đa chừng này dòng — cùng giới hạn với ban_le_luu_co_goi. */
+export const SO_CO_GOI_TOI_DA = 30;
+/** Số ô "Cỡ mới" trên trang Cài đặt bán lẻ (docFormCoGoi đọc đúng chừng này ô). */
+export const SO_DONG_CO_GOI_MOI = 3;
 /** Giá mỗi kg cân TMA nhận được — dùng lại hằng của kho/can-tma.ts, không chép số. */
 export { GIA_TOI_DA };
 
@@ -105,6 +111,14 @@ const CAU = {
   daBoGoi:      { vi: (g: number) => `Đã bỏ gói ${g} g.`, en: (g: number) => `Removed the ${g} g pack.` },
   chuCam:       { vi: (tim: string, lyDo: string) => `Câu này dính chữ cấm: «${tim}» (${lyDo}) — sửa trước khi bán online.`,
                   en: (tim: string, lyDo: string) => `This text has a forbidden phrase: «${tim}» (${lyDo}) — fix it before selling online.` },
+  // Cài đặt bán lẻ (0102). coGoiTrung, dsCoGoiHong: cùng chữ với câu của ban_le_luu_co_goi (dichCau ra cùng bản en).
+  coGoiSai:     { vi: 'Cỡ gói phải là số gam từ 50 đến 5.000.', en: 'A pack size must be a whole number of grams from 50 to 5,000.' },
+  coGoiTrung:   { vi: (g: number) => `Cỡ gói ${g} g nhập hai lần.`, en: (g: number) => `Pack size ${g} g is entered twice.` },
+  dsCoGoiHong:  { vi: 'Danh sách cỡ gói không hợp lệ — tải lại trang.', en: 'Invalid pack size list — reload the page.' },
+  daLuuCoGoi:   { vi: 'Đã lưu cỡ gói.', en: 'Pack sizes saved.' },
+  khongDoi:     { vi: 'Không có gì thay đổi.', en: 'Nothing changed.' },
+  coGoiNguoiKhac: { vi: 'Người khác vừa sửa cỡ gói — xem danh sách mới rồi lưu lại.',
+                    en: 'Someone else just changed the pack sizes — check the new list, then save again.' },
 } satisfies Record<string, HaiThuTieng<unknown>>;
 
 // -----------------------------------------------------------------------------
@@ -239,6 +253,18 @@ export interface DoiChieuFabi {
 
 export interface ChiNhanhBanLe { id: string; ma: string; ten: string }
 
+/** Một cỡ gói của Cài đặt bán lẻ — đúng khóa JSON của ban_le_cai_dat() (0102). */
+export interface CoGoi {
+  so_gam: number;
+  dang_dung: boolean;
+}
+
+/** Cài đặt bán lẻ: ban_le_cai_dat() — phiên bản theo nội dung của cả danh sách, các cỡ theo gam tăng dần. */
+export interface CaiDatBanLe {
+  phien_ban: string;
+  co_goi: CoGoi[];
+}
+
 export interface KetQua { ok: boolean; cau: string }
 
 /** Kết quả lưu. maLoi: hai trường hợp hàm lưu trả ok:false mà không lỗi — để kiểm thử biết đi nhánh nào. */
@@ -294,8 +320,9 @@ export const NGUON_GOI: Record<NguonGoi, { ten: HaiThuTieng; giai: HaiThuTieng }
  * cặp chủ không cần phải hiểu. Database vẫn nhận mọi cặp hợp lệ — sản phẩm lỡ mang cặp khác vẫn hiện được.
  */
 export const KIEU_SAN_PHAM = [
-  { ma: 'thit|theo_can', ten: { vi: `Thịt bò — quầy cân theo gram, online gói ${GOI_MAC_DINH.join(' g / ')} g`,
-                                 en: `Beef — weighed by the gram at the counter, online packs of ${GOI_MAC_DINH.join(' g / ')} g` } },
+  // Nhãn không liệt kê cỡ gói: cỡ của thịt mới nằm ở Cài đặt bán lẻ, chọn ngay dưới ô này trên form Thêm sản phẩm.
+  { ma: 'thit|theo_can', ten: { vi: 'Thịt bò — quầy cân theo gram, online bán theo gói',
+                                 en: 'Beef — weighed by the gram at the counter, sold online in packs' } },
   { ma: 'kim_chi|theo_hop', ten: { vi: 'Kim chi — giá cố định mỗi hộp', en: 'Kimchi — fixed price per box' } },
 ] as const;
 
@@ -551,6 +578,21 @@ export async function docMatHangChon(client: SupabaseClient, dangGan: readonly (
     .order('ten');
   if (error) throw new Error(error.message);
   return ((data ?? []) as MatHangBanLe[]).filter(m => m.dang_dung || dangGan.includes(m.id));
+}
+
+/**
+ * Cài đặt bán lẻ: các cỡ gói thịt dùng chung, theo gam tăng dần, và phiên bản của cả danh sách. Bốn vai CRM đọc
+ * được; vai khác → database từ chối (42501), hàm ném, trang hiện cauLoiDoc().
+ */
+export async function docCaiDat(client: SupabaseClient): Promise<CaiDatBanLe> {
+  // Tham số {} viết rõ: test-hop-dong-web.mjs đọc tham số từ object literal ngay sau tên hàm.
+  const { data, error } = await client.rpc('ban_le_cai_dat', {});
+  if (error) throw new Error(error.message);
+  const kq = (data ?? {}) as Partial<CaiDatBanLe>;
+  return {
+    phien_ban: String(kq.phien_ban ?? ''),
+    co_goi: (Array.isArray(kq.co_goi) ? kq.co_goi : []).map(c => ({ so_gam: Number(c.so_gam), dang_dung: c.dang_dung === true })),
+  };
 }
 
 /** Đối chiếu FABi của một chi nhánh. */
@@ -820,9 +862,75 @@ export function cauDaLuu(r: KetQuaHamLuu, duLieu: DuLieuLuu, doiFabi: boolean, n
 }
 
 // -----------------------------------------------------------------------------
+// FORM CÀI ĐẶT BÁN LẺ — đọc trước khi gọi database; lỗi của người gõ không bao giờ tới database
+// -----------------------------------------------------------------------------
+/**
+ * Form của /noi-bo/ban-le/cai-dat → danh sách cỡ gói gửi ban_le_luu_co_goi. Hàm thuần.
+ *   · so_dong_cg (ẩn): số dòng đang có lúc dựng trang. Dòng i: cg_i_so_gam (ẩn, từ lần đọc mới) và ô chọn
+ *     cg_i_viec — dung (Đang dùng) / tat (Tạm tắt) / bo (Bỏ khỏi danh sách). Dòng "bo" không có trong kết quả.
+ *   · cg_moi_0 … cg_moi_2: ô chữ cỡ mới (gam); trống thì bỏ qua. Đọc bằng docSoNguyen: "1.000" là một nghìn
+ *     (1000 g), "1,5" là lỗi. Cỡ mới luôn Đang dùng.
+ *   · Trùng cỡ (dòng mới trùng một dòng đang có — kể cả dòng chọn "bo" — hay trùng nhau) → "Cỡ gói N g nhập hai
+ *     lần.", cùng chữ với câu của database.
+ *   · Ô ẩn sai (kể cả hai dòng đang có cùng số gam), ô chọn lạ, thiếu số dòng: trang cũ hay form bị sửa tay —
+ *     không đoán, báo tải lại trang (thiếu số dòng mà coi là 0 dòng thì một form hỏng xóa sạch danh sách).
+ * Kết quả theo gam tăng dần. Giới hạn 30 dòng / 20 cỡ đang dùng do database kiểm (câu có bản tiếng Anh).
+ */
+export function docFormCoGoi(form: FormData, nn: NgonNguNB = 'vi'): { coGoi: CoGoi[] | null; loi: string | null } {
+  const t = dichNB(nn, CAU);
+  const hong = { coGoi: null, loi: t.dsCoGoiHong };
+  const soDong = docSoNguyen(form.get('so_dong_cg'), 0, 40);
+  if (soDong === null || Number.isNaN(soDong)) return hong;
+
+  const ds: CoGoi[] = [];
+  const daCo = new Set<number>();
+  for (let i = 0; i < soDong; i++) {
+    const soGam = docSoNguyen(form.get(`cg_${i}_so_gam`), 50, 5000);
+    const viec = String(form.get(`cg_${i}_viec`) ?? '');
+    // Hai dòng đang có cùng số gam: bảng có khóa so_gam nên trang không bao giờ dựng ra — form hỏng.
+    if (soGam === null || Number.isNaN(soGam) || !['dung', 'tat', 'bo'].includes(viec) || daCo.has(soGam)) return hong;
+    daCo.add(soGam);
+    if (viec !== 'bo') ds.push({ so_gam: soGam, dang_dung: viec === 'dung' });
+  }
+
+  for (let j = 0; j < SO_DONG_CO_GOI_MOI; j++) {
+    const soGam = docSoNguyen(form.get(`cg_moi_${j}`), 50, 5000);
+    if (soGam === null) continue;
+    if (Number.isNaN(soGam)) return { coGoi: null, loi: t.coGoiSai };
+    if (daCo.has(soGam)) return { coGoi: null, loi: t.coGoiTrung(soGam) };
+    daCo.add(soGam);
+    ds.push({ so_gam: soGam, dang_dung: true });
+  }
+  return { coGoi: ds.sort((a, b) => a.so_gam - b.so_gam), loi: null };
+}
+
+/**
+ * Cỡ gói chọn ở form Thêm sản phẩm. null = không gửi p_so_gam (database dùng các cỡ đang dùng của cài đặt; kim
+ * chi bỏ qua). Chỉ thịt bán theo cân có danh sách co_goi_ds (ẩn: các cỡ đã hiện trên form, nối dấu phẩy, có thể
+ * rỗng) mới gửi: đúng các cỡ chọn "Bán" (goi_N = ban) — kể cả mảng rỗng, kể cả cỡ vừa bị tắt sau khi mở form
+ * (người dùng đã chọn rõ). Cỡ không phải số nguyên 50–5000 trong co_goi_ds → bỏ qua.
+ */
+function coGoiChon(form: FormData, loai: string, cachBan: string): number[] | null {
+  const ds = form.get('co_goi_ds');
+  if (loai !== 'thit' || cachBan !== 'theo_can' || ds === null) return null;
+  const chon = new Set<number>();
+  for (const x of String(ds).split(',')) {
+    const s = x.trim();
+    if (!/^[1-9]\d{1,3}$/.test(s)) continue;
+    const n = Number(s);
+    if (n < 50 || n > 5000) continue;
+    if (String(form.get(`goi_${s}`) ?? '') === 'ban') chon.add(n);
+  }
+  return [...chon].sort((a, b) => a - b);
+}
+
+// -----------------------------------------------------------------------------
 // GHI
 // -----------------------------------------------------------------------------
-/** Thêm sản phẩm. Cùng ma_gui (bấm đúp, F5) → database trả sản phẩm đã có, không tạo thêm. */
+/**
+ * Thêm sản phẩm. Cùng ma_gui (bấm đúp, F5) → database trả sản phẩm đã có, không tạo thêm — gói theo lần đầu, dù
+ * lần này chọn cỡ khác. Gói tạo sẵn: coGoiChon().
+ */
 export async function taoSanPham(
   client: SupabaseClient, form: FormData, nn: NgonNguNB = 'vi',
 ): Promise<{ ok: true; id: string; daCo: boolean } | { ok: false; cau: string }> {
@@ -836,9 +944,12 @@ export async function taoSanPham(
   // Mã gõ tay (trong ô "Mã") cũng đi qua maTuTen: chữ hoa, dấu, khoảng trắng thành mã hợp lệ.
   const ma = maTuTen(chuCua(form, 'ma') ?? ten);
   if (!ma) return { ok: false, cau: t.maSai };
+  const soGam = coGoiChon(form, loai, cachBan);
 
+  // Không có danh sách cỡ (kim chi, form cũ) thì KHÔNG gửi p_so_gam: database dùng các cỡ đang dùng của cài đặt.
   const { data, error } = await chacChan(() => client.rpc('ban_le_tao_san_pham', {
     p_ma_gui: maGui, p_ma: ma, p_ten_vi: ten, p_loai: loai, p_cach_ban: cachBan,
+    ...(soGam ? { p_so_gam: soGam } : {}),
   }));
   if (error) return { ok: false, cau: cauLoi(error, t.khongTao, nn) };
   const kq = data as { id?: string; da_co?: boolean } | null;
@@ -891,6 +1002,37 @@ export async function luuSanPham(
   if (r?.ly_do === 'gia_kho_vua_doi') {
     return { ok: false, cau: t.giaKhoVuaDoi(dinhDangTien(r.gia_ban_kg ?? null, nn)), maLoi: 'gia_kho_vua_doi' };
   }
+  return { ok: false, cau: t.khongLuu };
+}
+
+/**
+ * Lưu cả danh sách cỡ gói của Cài đặt bán lẻ (ban_le_luu_co_goi). Không bao giờ "Đã lưu" khi database chưa trả ok:
+ *   · ok, khong_doi: database đã đúng như danh sách gửi lên. Phiên bản không đổi từ lúc mở trang → "Không có gì
+ *     thay đổi."; đã đổi (lần hai của cú bấm đúp — lần một đã ghi, trình duyệt chỉ hiện câu của lần hai) →
+ *     "Đã lưu cỡ gói.", không "người khác sửa";
+ *   · ok → "Đã lưu cỡ gói.";
+ *   · nguoi_khac_sua (database không ghi gì) → câu người khác vừa sửa, maLoi để trang hiện danh sách mới;
+ *   · lỗi → câu của database (dichCau), mất mạng → CAU_MAT_MANG_GHI ("chưa chắc đã ghi").
+ * Đổi cài đặt không đụng gói của sản phẩm đã có (database).
+ */
+export async function luuCoGoi(
+  client: SupabaseClient, form: FormData, nn: NgonNguNB = 'vi',
+): Promise<{ ok: true; cau: string } | { ok: false; cau: string; maLoi?: 'nguoi_khac_sua' }> {
+  const t = dichNB(nn, CAU);
+  const phienBan = String(form.get('phien_ban') ?? '').trim();
+  if (!phienBan) return { ok: false, cau: t.dsCoGoiHong };
+  const { coGoi, loi } = docFormCoGoi(form, nn);
+  if (loi || !coGoi) return { ok: false, cau: loi ?? t.dsCoGoiHong };
+
+  const { data, error } = await chacChan(() => client.rpc('ban_le_luu_co_goi', {
+    p_phien_ban: phienBan, p_co_goi: coGoi,
+  }));
+  if (error) return { ok: false, cau: cauLoi(error, t.khongLuu, nn) };
+  const r = data as { ok?: boolean; khong_doi?: boolean; ly_do?: string; phien_ban?: string } | null;
+  if (r?.ok === true) {
+    return { ok: true, cau: r.khong_doi === true && r.phien_ban === phienBan ? t.khongDoi : t.daLuuCoGoi };
+  }
+  if (r?.ly_do === 'nguoi_khac_sua') return { ok: false, cau: t.coGoiNguoiKhac, maLoi: 'nguoi_khac_sua' };
   return { ok: false, cau: t.khongLuu };
 }
 

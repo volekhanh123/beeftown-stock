@@ -184,6 +184,9 @@ const SAU_0070 = {
   'ban_le_san_pham.ban_le_san_pham_dich': [
     "co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro, 'marketing'::vai_tro])",
     "co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro, 'marketing'::vai_tro])"],
+  // 0102 — cỡ gói thịt bò dùng chung (test-ban-le-cai-dat.mjs nhóm 1): đọc = bốn vai CRM; không policy ghi. Bảng có hai
+  // dòng gieo của migration (200 g, 400 g) nên phép thử không rỗng.
+  'ban_le_co_goi.ban_le_co_goi_doc': [SPEC_CRM, null],
 };
 
 const { rows: MOI_PL } = await db.query(`

@@ -21,7 +21,7 @@
  */
 import NoiBo from '../../../layouts/NoiBo.astro';
 import {
-  docSanPham, docMatHangChon, luuSanPham, chotGia, chonChiNhanhBanLe, dongGoiDaGo, cauLoiDoc, cauCanhBao, giaGoi,
+  docSanPham, docMatHangChon, docCaiDat, luuSanPham, chotGia, chonChiNhanhBanLe, dongGoiDaGo, cauLoiDoc, cauCanhBao, giaGoi,
   cungChu, canhBaoDauTrang, dongGiaDeChot, tenKieu,
   VAI_XEM_BAN_LE, VAI_SUA_BAN_LE, VAI_CHOT_GIA, KIEU_SAN_PHAM, CANH_BAO_BAN_LE, TEN_LOAI_BAN_LE,
   TEN_BAO_QUAN, TRANG_THAI_BAN_LE, NGUON_GOI, O_DICH_BAN_LE, SO_GOI_TOI_DA,
@@ -103,6 +103,8 @@ const t = dichNB(nn, {
   goiTieuDe:   { vi: 'Bán lẻ online — gói cố định', en: 'Online retail — fixed packs' },
   goiDan:      { vi: 'Giá gói = giá mỗi kg × trọng lượng, làm tròn 1.000 đ. Để trống "Giá riêng" là dùng giá tự tính.',
                  en: 'Pack price = price per kg × weight, rounded to 1,000 ₫. Leave "Own price" empty to use the calculated price.' },
+  goiYCo:      { vi: (ds: string) => `Cỡ trong Cài đặt bán lẻ: ${ds}`, en: (ds: string) => `Sizes in Retail settings: ${ds}` },
+  goiYChuaCo:  { vi: 'Cài đặt bán lẻ chưa có cỡ nào đang dùng', en: 'Retail settings have no pack size in use' },
   nguonGoi:    { vi: 'Gói online lấy từ đâu', en: 'Where online packs come from' },
   // Hộp
   hopTieuDe:   { vi: 'Hộp — giá cố định', en: 'Boxes — fixed price' },
@@ -222,6 +224,17 @@ if (sp && duocSua) {
   }
 }
 const dangCho = sp ? await oDangCho(client, 'ban_le_san_pham', id) : new Set<string>();
+
+// Gợi ý dưới tiêu đề Gói: các cỡ Đang dùng của Cài đặt bán lẻ (0102). Chỉ là gợi ý — ô gram của gói vẫn nhận mọi
+// cỡ 50–5000 g; đọc lỗi thì bỏ dòng gợi ý, không chặn trang.
+let coCaiDat: number[] | null = null;
+if (sp && sp.cach_ban !== 'theo_hop') {
+  try {
+    coCaiDat = (await docCaiDat(client)).co_goi.filter(c => c.dang_dung).map(c => c.so_gam);
+  } catch {
+    coCaiDat = null;
+  }
+}
 
 // ---- Giá trị hiện trong form: chữ vừa gõ (khi lưu hỏng) hoặc lần đọc mới ----------------------------------
 const go = (ten: string, moi: string) => (daGo && daGo.get(ten) !== null ? String(daGo.get(ten)) : moi);
@@ -468,6 +481,7 @@ const lyDoAn = !sp ? null
             ) : (
               <>
                 <p class="bl-phu bl-dan">{t.goiDan}</p>
+                {coCaiDat && <p class="bl-phu bl-dan">{coCaiDat.length > 0 ? t.goiYCo(coCaiDat.map(n => `${n} g`).join(' · ')) : t.goiYChuaCo}</p>}
                 <input type="hidden" name="nguon_goi_cu" value={sp.nguon_goi} />
                 <label class="nb-o">
                   <span>{t.nguonGoi}</span>
