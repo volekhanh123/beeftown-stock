@@ -770,6 +770,15 @@ export async function luuPhieuNhan(
 }
 
 /**
+ * Ô ẩn so_dong của form THÊM dòng (màn Nhận hàng): số dòng của phiếu lúc form hiện — themDongNhan dùng để nhận ra
+ * lần bấm trước. Chỉ nhận số nguyên không âm viết bằng chữ số; thiếu ô, rỗng hay hỏng → null (themDongNhan dùng luật cũ).
+ */
+export function docSoDongForm(form: FormData): number | null {
+  const x = form.get('so_dong');
+  return typeof x === 'string' && /^\d{1,6}$/.test(x) ? Number(x) : null;
+}
+
+/**
  * Thêm dòng. Bấm hai lần (mạng chậm): lần sau vấp phien_ban cũ — đọc lại
  * phiếu, nếu dòng cuối đúng là dòng này (món, kg, gói, ngày mổ, kg sau repack)
  * thì coi như đã thêm, không báo lỗi. Dòng tảng (0097) còn phải do CHÍNH tài
@@ -777,13 +786,19 @@ export async function luuPhieuNhan(
  * không phải lần bấm trước — trả nguyên câu "máy khác" (ok false). Nhánh lần bấm
  * trước KHÔNG trả phienBan: trang không hiện to số, câu chỉ số ở dòng cuối.
  *
- * Nhận ra lần bấm trước theo phiên bản của FORM (`phienBan`), không theo `p`: lần
+ * Nhận ra lần bấm trước theo FORM (`phienBan`, `soDongForm`), không theo `p`: lần
  * bấm sau có thể đọc phiếu SAU khi lần trước đã ghi (máy chủ ghi xong, trả lời về
  * chậm) — khi đó `p` đã có sẵn dòng mới. Điều kiện: phiếu đọc lại đúng một lần lưu
  * kể từ form (phien_ban = phienBan + 1) và có đúng một dòng hơn lúc form hiện.
+ * Số dòng lúc form hiện lấy từ ô ẩn so_dong của form (`soDongForm`, docSoDongForm),
+ * KHÔNG suy ra từ `p`: máy khác lưu chen mà không thêm dòng (sửa đầu phiếu, thêm ảnh,
+ * sửa hay bỏ dòng khác) cũng làm phiếu lên đúng một phiên bản. Thiếu ô hay ô hỏng
+ * (form mở trước khi có ô) → luật cũ: chỉ khi `p` đọc cùng phiên bản form, số dòng
+ * lúc form hiện là p.dong.length; `p` đọc sau một lần lưu thì không đoán ("máy khác").
  */
 export async function themDongNhan(
   client: SupabaseClient, chiNhanhId: string, p: PhieuNhan, phienBan: number, maGui: string, moi: DongLuu,
+  soDongForm: number | null = null,
 ): Promise<KetQuaLuuNhan> {
   const kq = await luuPhieuNhan(client, chiNhanhId, p, phienBan, maGui, ghepDongNhan(p.dong, { them: moi })!,
     { vua: p.dong.length });
@@ -799,11 +814,12 @@ export async function themDongNhan(
   if (/may khac/.test(boDau(kq.cau))) {
     const lai = await docPhieuNhan(client, p.id).catch(() => null);
     const cuoi = lai?.dong[lai.dong.length - 1];
-    // Số dòng lúc form hiện: p đọc cùng phiên bản form → p.dong.length; p đọc SAU lần bấm trước (phiên bản form + 1)
-    // → p đã có dòng đó; p cách form xa hơn → không đoán được (-1, không bao giờ khớp).
-    const soDongForm = p.phien_ban === phienBan ? p.dong.length : p.phien_ban === phienBan + 1 ? p.dong.length - 1 : -1;
+    // Số dòng lúc form hiện: ô so_dong của form; thiếu ô hay ô hỏng → chỉ khi p đọc cùng phiên bản form (luật cũ),
+    // không thì -1 (không bao giờ khớp). Không đoán từ p đọc sau một lần lưu: lần lưu đó có thể không thêm dòng nào.
+    const soDongLucForm = soDongForm != null && Number.isInteger(soDongForm) && soDongForm >= 0 ? soDongForm
+      : p.phien_ban === phienBan ? p.dong.length : -1;
     // Ngày mổ, kg sau repack: dòng đọc từ database trả null, dòng mới không có khóa là undefined.
-    if (lai && lai.phien_ban === phienBan + 1 && lai.dong.length === soDongForm + 1 && cuoi
+    if (lai && soDongLucForm >= 0 && lai.phien_ban === phienBan + 1 && lai.dong.length === soDongLucForm + 1 && cuoi
         && cuoi.mat_hang_id === moi.mat_hang_id && cuoi.so_kg === moi.so_kg && (cuoi.so_goi || null) === (moi.so_goi || null)
         && (cuoi.ngay_mo ?? null) === (moi.ngay_mo ?? null)
         && (cuoi.so_kg_thuc == null ? null : Number(cuoi.so_kg_thuc)) === (moi.so_kg_thuc ?? null)) {

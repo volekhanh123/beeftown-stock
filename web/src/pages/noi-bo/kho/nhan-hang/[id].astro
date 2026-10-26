@@ -22,6 +22,9 @@
  * nào cũng có thể cấp số cho chúng — câu báo kể số (noiCauTangMoi). Dòng đang sửa
  * không còn trên phiếu (id dòng đổi sau mỗi lần lưu — bấm đúp "Lưu dòng này"):
  * chuyển về form thêm trống với câu của ketQuaDongSuaKhongCon, không hiện lại chữ đã gõ.
+ * Form thêm dòng gửi kèm ô ẩn so_dong (số dòng lúc form hiện): bấm đúp "+ Thêm dòng"
+ * thì themDongNhan nhận ra lần bấm trước theo form (phien_ban, so_dong), không theo
+ * phiếu đọc lúc bấm — máy khác lưu chen mà không thêm dòng không bị nhận nhầm.
  *
  * KHÔNG có tiền ở đây: đọc bằng kho_doc_phieu_nhap_kg, ghi bằng
  * kho_luu_phieu_nhap_kg (migration 0031). Mỗi lệnh lưu CẢ phiếu kèm phien_ban,
@@ -37,7 +40,7 @@ import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/
 import { docDinhNghia, docMatHang, docViTri, type MatHang, type ViTri } from '../../../../lib/kho/danh-muc.ts';
 import {
   docPhieuNhan, docNccNhap, docMonGanDay, gopMonGanDay, docFormDongNhan, docFormDauNhan, dongNhanTrong,
-  dongNhanVaoForm, dongLuuTuPhieu, ghepDongNhan, luuPhieuNhan, themDongNhan, themAnhNhan, kiemTruocKhiGui,
+  dongNhanVaoForm, dongLuuTuPhieu, ghepDongNhan, luuPhieuNhan, themDongNhan, docSoDongForm, themAnhNhan, kiemTruocKhiGui,
   guiPhieuNhan, rutPhieuNhan, huyPhieuNhan, haoRepack, soTangVuaThem, cauSoTangBo, ketQuaSauSuaDong, ketQuaDongSuaKhongCon,
   noiCauTangMoi,
   type DauNhan, type DongNhanForm, type KetQuaLuuNhan, type MonKiem, type NccNhap, type PhieuNhan,
@@ -252,7 +255,8 @@ if (form && phieu) {
       }
       bao = kq; dongForm = r.dong; suaId = dongId;
     } else {
-      const kq = await themDongNhan(k.client, cn.id, p, phienBan, maGui, r.luu);
+      // so_dong: số dòng lúc form hiện — themDongNhan nhận ra lần bấm trước theo form, không theo phiếu đọc lúc này.
+      const kq = await themDongNhan(k.client, cn.id, p, phienBan, maGui, r.luu, docSoDongForm(form));
       // Món theo tảng: điền sẵn món và ngày mổ cho tảng tiếp theo (tảng cùng thùng hay cùng ngày mổ).
       if (kq.ok && mon.get(r.luu.mat_hang_id)?.theo_tang) {
         const tiepTang = `?tiep=${r.luu.mat_hang_id}&mo=${r.luu.ngay_mo ?? ''}`;
@@ -549,6 +553,7 @@ const tieuDe = phieu ? t.tdPhieu(phieu.so_phieu) : t.tdChung;
         <input type="hidden" name="phien_ban" value={String(phieu.phien_ban)} />
         <input type="hidden" name="ma_gui" value={maGuiForm} />
         {dongSua && <input type="hidden" name="dong_id" value={dongSua.id} />}
+        {!dongSua && <input type="hidden" name="so_dong" value={String(phieu.dong.length)} />}
 
         <div class="nb-o">
           <span>{t.monGi}</span>

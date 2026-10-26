@@ -466,12 +466,18 @@ export function timTangTheoSo(ds: { lo_id: string; so_tang: number | null }[], c
  * sau khi DUYỆT phiếu nhận; từ 0097 số tảng đã cấp và viết lên túi ngay lúc nhận hàng. Nên "không thấy" chỉ đúng với
  * tảng đã duyệt — tảng ở phiếu nhận chưa duyệt có số thật mà chưa hiện ở đây. Không đọc bảng dòng phiếu để tìm thêm:
  * thủ kho, thợ lóc không đọc được dòng phiếu (có giá).
+ * `coNhap`: người xem có quyền nhap. Tảng · ủ mở cho mọi vai xem (kế toán, nhân viên quầy…) mà màn Nhận hàng chuyển
+ * hướng vai không có nhap — chỉ vai nhap mới được chỉ sang Nhận hàng; vai khác dừng ở câu về việc duyệt phiếu.
  */
-export function cauKhongThayTang(x: string): HaiThuTieng {
-  return {
-    vi: `Không thấy tảng "${x}" trong các tảng đã duyệt 90 ngày gần đây. Số tảng cấp lúc nhận hàng chỉ hiện ở đây (và mới lóc được) sau khi phiếu nhận được duyệt — tảng vừa nhận thì xem ở Nhận hàng.`,
-    en: `No approved primal "${x}" in the last 90 days. A primal number given at receiving shows here (and can be cut) only after its receiving note is approved — for a primal just received, check Receive goods.`,
+export function cauKhongThayTang(x: string, coNhap: boolean): HaiThuTieng {
+  const cau: HaiThuTieng = {
+    vi: `Không thấy tảng "${x}" trong các tảng đã duyệt 90 ngày gần đây. Số tảng cấp lúc nhận hàng chỉ hiện ở đây (và mới lóc được) sau khi phiếu nhận được duyệt`,
+    en: `No approved primal "${x}" in the last 90 days. A primal number given at receiving shows here (and can be cut) only after its receiving note is approved`,
   };
+  const duoi: HaiThuTieng = coNhap
+    ? { vi: ' — tảng vừa nhận thì xem ở Nhận hàng.', en: ' — for a primal just received, check Receive goods.' }
+    : { vi: '.', en: '.' };
+  return { vi: cau.vi + duoi.vi, en: cau.en + duoi.en };
 }
 
 /**

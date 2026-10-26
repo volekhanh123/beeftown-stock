@@ -10,7 +10,8 @@
  * tảng đó; mục "Đã lóc" (tảng nhận trong 90 ngày, đã lóc) cho biết bán được
  * bao nhiêu, còn bao nhiêu — đọc bằng kho_bao_cao_tang.
  * Không thấy số: câu cauKhongThayTang nói rõ số cấp lúc nhận hàng (0097) chỉ
- * hiện ở đây sau khi phiếu nhận được duyệt (vai nhap có link sang Nhận hàng).
+ * hiện ở đây sau khi phiếu nhận được duyệt; chỉ vai nhap được chỉ sang Nhận hàng
+ * (câu và link) — màn đó chuyển hướng vai khác.
  *
  * Lóc một chạm (vai pha_loc): dưới số tảng có nút "Lóc" — cùng luật tangLocDuoc
  * với mục "Tảng lóc được" ở Pha lóc mới (có số tảng, không còn đang ủ, còn chỗ
@@ -120,7 +121,7 @@ const noiChinh = phoBienNhat(ds.map(x => x.vi_tri));
   {/* Ô tìm chỉ tìm trong lô (có sau khi duyệt); số tảng cấp lúc nhận hàng (0097) có trước đó — câu nói rõ điều này.
       Đọc danh sách hỏng (BaoKho đã báo) hay chưa có chi nhánh thì không nói "không thấy": đọc lỗi khác không có. */}
   {tim && cn && !loiDoc && (
-    <div class="nb-bao loi" role="alert"><p>{cauKhongThayTang(tim)[nn]}{k.duoc('nhap') && <>{' '}<a href="/noi-bo/kho/nhan-hang">{t.moNhanHang}</a></>}</p></div>
+    <div class="nb-bao loi" role="alert"><p>{cauKhongThayTang(tim, k.duoc('nhap'))[nn]}{k.duoc('nhap') && <>{' '}<a href="/noi-bo/kho/nhan-hang">{t.moNhanHang}</a></>}</p></div>
   )}
   {loiLoc && <div class="nb-bao luu-y" role="status"><p>{t.khongDocLoc}</p></div>}
 
