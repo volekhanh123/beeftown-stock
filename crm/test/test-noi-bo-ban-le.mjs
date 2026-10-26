@@ -151,7 +151,8 @@ await nhom('3 · Ô dịch, mã cảnh báo, mã việc: khớp database, đủ 
 
   const json = await prosrc('ban_le_san_pham_json');
   const maCanh = [...json.matchAll(/v_canh := v_canh \|\| '([a-z_]+)'::text/g)].map(m => m[1]);
-  ok('Đọc được các mã cảnh báo của ban_le_san_pham_json', maCanh.length >= 9, maCanh.join(', '));
+  ok('Đọc được các mã cảnh báo của ban_le_san_pham_json, có mã riêng chua_gia_can (giá trống / ≤ 0) bên cạnh gia_qua_can (> 999.999)',
+     maCanh.length >= 10 && maCanh.includes('chua_gia_can') && maCanh.includes('gia_qua_can'), maCanh.join(', '));
   const thieuCanh = maCanh.filter(m => !BL.CANH_BAO_BAN_LE[m]);
   ok('Mọi mã cảnh báo database trả về đều có câu', thieuCanh.length === 0, thieuCanh.join(', '));
   const enCanh = maCanh.map(m => BL.cauCanhBao(m, 'en'));
@@ -244,14 +245,14 @@ await nhom('4 · Ba trang: form an toàn, chuyển hướng 303, không JavaScri
      /<option value=\{m\.id\} title=\{m\.ma\}/.test(sua) && /<optgroup label=\{g\.ten\}>/.test(sua));
   ok('[id].astro: mỗi gói một fieldset (không bảng trên điện thoại); gói đang có có Giữ / Ngưng bán / Bỏ gói này',
      /<fieldset class="bl-goi">/.test(sua) && !/<table/.test(sua) && /value="bo"/.test(sua) && /value="ngung"/.test(sua));
-  ok('[id].astro: cảnh báo giá cân tại ô giá lấy từ mã gia_qua_can của database (canhBaoDauTrang), không tự so > GIA_TOI_DA',
-     /canhBaoDauTrang\(sp\)/.test(sua) && !/> GIA_TOI_DA/.test(sua) && /\{giaCanTaiO && sp\.mat_hang\.ma_can && \(/.test(sua));
-  ok('[id].astro: câu tại ô giá chọn theo giá trị — quá cân: "Lưu giá này thì cân VẪN IN GIÁ CŨ"; chưa có giá: câu của thư viện',
-     /giaCanTaiO === 'qua' \? t\.quaCan\(dinhDangTien\(GIA_TOI_DA, nn\), sp\.mat_hang\.ma_can\) : cauCanhBao\('gia_qua_can', nn, sp\)/.test(sua)
-     && sua.includes('Lưu giá này thì cân VẪN IN GIÁ CŨ cho mã'));
-  ok('[id].astro: cảnh báo đầu trang là phần "dau" của canhBaoDauTrang — giá cân và khay nguyên hiện đúng một lần',
-     /const \{ dau: canhDau, giaCanTaiO, khayTaiO \} = sp \? canhBaoDauTrang\(sp\)/.test(sua) && /\{canhDau\.map\(c => \(/.test(sua)
-     && /\{khayTaiO && \(/.test(sua) && !/sp\.canh_bao\.includes\('khay_nguyen'\) && \(/.test(sua));
+  ok('[id].astro: cảnh báo giá cân tại ô giá là mã của database (chua_gia_can / gia_qua_can) qua canhBaoDauTrang, hiện bằng câu thư viện',
+     /const \{ dau: canhDau, oGia, khayTaiO \} = sp \? canhBaoDauTrang\(sp\)/.test(sua) && /\{oGia\.map\(c => \(/.test(sua)
+     && /\{oGia\.map\(c => \(\s*<div class="nb-bao loi bl-sat"><p>\{cauCanhBao\(c, nn, sp\)\}<\/p><\/div>/.test(sua)
+     && /\{canhDau\.map\(c => \(/.test(sua) && /\{khayTaiO && \(/.test(sua) && !/> GIA_TOI_DA/.test(sua));
+  ok('[id].astro: không còn câu cân riêng của trang ("Lưu giá này thì…", t.quaCan) — MỘT câu mỗi trạng thái ở mọi nơi',
+     !/Lưu giá này thì/.test(sua) && !/quaCan/.test(sua));
+  ok('Thư viện: không đoán trạng thái giá cân (loiGiaCan), không còn câu cân thừa (CAU.quaCan, CAU.chuaGiaCan, thieu_gia_kg)',
+     !/loiGiaCan|quaCan:|chuaGiaCan:|thieu_gia_kg/.test(NGUON_LIB));
   ok('Câu cảnh báo khay nguyên theo trạng thái: cả hai trang truyền sản phẩm vào cauCanhBao',
      /cauCanhBao\('khay_nguyen', nn, sp\)/.test(sua) && /cauCanhBao\(c, nn, sp\)/.test(sua) && /cauCanhBao\(c, nn, sp\)/.test(ds));
   ok('[id].astro: danh sách giá sẽ chốt từ dongGiaDeChot(sp) — đúng ảnh chụp, gói ngưng bán ghi "(ngưng bán)"',

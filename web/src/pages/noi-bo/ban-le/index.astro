@@ -130,7 +130,7 @@ const linkVoi = (doi: Record<string, string | null>) => {
 function dongQuay(sp: SanPhamBanLe): string {
   if (sp.cach_ban === 'theo_hop') return t.theoHop;
   const mh = sp.mat_hang;
-  // Giá trống hay 0 đ: cân bỏ qua dòng — như chưa có giá (cảnh báo gia_qua_can nói rõ ở dưới).
+  // Giá trống hay 0 đ: cân bỏ qua dòng — như chưa có giá (cảnh báo chua_gia_can nói rõ ở dưới).
   if (!mh || !mh.dang_dung || mh.gia_ban_kg == null || mh.gia_ban_kg <= 0) return t.chuaGiaCan;
   const gia = t.quayCan(dinhDangTien(mh.gia_ban_kg, nn), dinhDangTien(giaGoi(mh.gia_ban_kg, 100), nn));
   return `${gia} · ${mh.ma_can ? t.maCan(mh.ma_can) : t.chuaMaCan}`;

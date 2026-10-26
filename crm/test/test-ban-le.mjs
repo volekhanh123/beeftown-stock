@@ -721,15 +721,20 @@ await nhom('5 · LUẬT — giá thử, gói, khay nguyên, mặt hàng mất / 
   l = await luu(UID.qlA, id.dat, { gia_ban_kg: 1050000, gia_ban_kg_cu: 1050000 });
   ok('Lưu lại đúng giá đang có → gia_kho_doi false', l.kq?.ok === true && l.kq?.gia_kho_doi === false, vi(l));
   // Beeftown Cân (can-tma.ts kiemHang) bỏ qua dòng giá trống, giá 0 và giá quá 999.999 — cả ba thì cân GIỮ dòng cũ.
+  // Hai trạng thái, hai mã: chua_gia_can (trống / ≤ 0), gia_qua_can (chỉ khi > 999.999) — trang không phải đoán.
   mh.chuaGia = await matHang('CHUA-GIA', 'Thăn chưa có giá', { maCan: '1008' });
   const chuaGia = (await tao(UID.qlA, 'luat-chua-gia', 'Thăn chưa có giá')).kq.id;
   l = await luu(UID.qlA, chuaGia, { mat_hang_id: mh.chuaGia });
-  ok('Mặt hàng có mã cân mà CHƯA có giá mỗi kg → cảnh báo gia_qua_can (cân giữ dòng cũ)',
-     l.kq?.ok === true && coCanh(l.kq, 'gia_qua_can') && coCanh(await doc(chuaGia), 'gia_qua_can'), vi(l));
+  ok('Mặt hàng có mã cân mà CHƯA có giá mỗi kg → cảnh báo chua_gia_can, KHÔNG gia_qua_can (mã đó chỉ cho giá quá 999.999)',
+     l.kq?.ok === true && coCanh(l.kq, 'chua_gia_can') && !coCanh(l.kq, 'gia_qua_can') && coCanh(await doc(chuaGia), 'chua_gia_can'), vi(l));
   await db.query(`update kho_mat_hang set gia_ban_kg = 0 where id = $1`, [mh.chuaGia]);
-  ok('…giá 0 đ → cũng gia_qua_can', coCanh(await doc(chuaGia), 'gia_qua_can'), JSON.stringify((await doc(chuaGia)).canh_bao));
+  ok('…giá 0 đ → cũng chua_gia_can, không gia_qua_can', coCanh(await doc(chuaGia), 'chua_gia_can') && !coCanh(await doc(chuaGia), 'gia_qua_can'),
+     JSON.stringify((await doc(chuaGia)).canh_bao));
+  await db.query(`update kho_mat_hang set gia_ban_kg = 1050000 where id = $1`, [mh.chuaGia]);
+  ok('…giá 1.050.000 → gia_qua_can, không chua_gia_can', coCanh(await doc(chuaGia), 'gia_qua_can') && !coCanh(await doc(chuaGia), 'chua_gia_can'),
+     JSON.stringify((await doc(chuaGia)).canh_bao));
   await db.query(`update kho_mat_hang set gia_ban_kg = 990000 where id = $1`, [mh.chuaGia]);
-  ok('…giá 990.000 → hết gia_qua_can', !coCanh(await doc(chuaGia), 'gia_qua_can'));
+  ok('…giá 990.000 → không còn mã nào trong hai mã', !coCanh(await doc(chuaGia), 'gia_qua_can') && !coCanh(await doc(chuaGia), 'chua_gia_can'));
 
   // --- Chốt khi giá vừa đổi
   sp = await doc(id.luat);
@@ -965,6 +970,30 @@ await nhom('6b · ĐỐI CHIẾU FABi — mục "kiểm tra" không bảo tắt 
      giongNhau(kiemTra.find(x => x.ma_fabi === 'F1-OLD')?.viec, ['kiem_tra_mon']), JSON.stringify(kiemTra));
   ok('Dòng kiem_tra còn lại đúng hai gói cũ: F1-OLD, OLD-500', giongNhau([...maKiemTra].sort(), ['F1-OLD', 'OLD-500']), maKiemTra.join(', '));
 
+  // --- Chỉ loại ĐÚNG những mã các dòng ở trên đòi (mã cân, ô mã, mã giảm ĐANG DÙNG của mặt hàng dùng được của sản
+  // phẩm theo cân). Mã giảm đã tắt, mã cân của mặt hàng ngừng dùng, mã cân của mặt hàng hộp không dòng nào đòi —
+  // FABi còn bán chúng theo gói, trừ mặt hàng của menu, thì vẫn phải xem lại.
+  await db.query(`insert into kho_ma_giam (mat_hang_id, phan_tram, ma_can, dang_dung) values ($1, 30, '92102', false)`, [mh.f1]);
+  mh.f1Ngung = await matHang('F1-NGUNG', 'Bắp đã ngừng', { gia: 500000, maCan: '2401', dangDung: false });
+  await sanPham('dc-f1-ngung', 'Bắp đã ngừng đối chiếu', { mat_hang_id: mh.f1Ngung });
+  mh.f1Hop = await matHang('F1-KC-HOP', 'Kim chi hộp có mã cân', { demGoi: true, donVi: 'hộp', maCan: '2501' });
+  const kcF1 = (await tao(UID.qlB, 'dc-f1-kim-chi', 'Kim chi có mã cân', 'kim_chi', 'theo_hop')).kq.id;
+  const lKc = await luu(UID.qlB, kcF1, { goi: [{ so_gam: 500, gia_rieng: 120000, mat_hang_id: mh.f1Hop, ma_fabi: 'F1-KC-500' }] });
+  if (lKc.loi || lKc.kq?.ok !== true) throw new Error(`dc-f1-kim-chi: ${vi(lKc)}`);
+  await themMenu(['92102', '2401', '2501']);
+  await ghep([['92102', mh.f1, 'goi', null], ['2401', mh.f1Ngung, 'goi', null], ['2501', mh.f1Hop, null, null]]);
+  r = await doiChieu(UID.qlB, cn);
+  const kiemTra2 = (r.kq?.dong ?? []).filter(x => x.loai_dong === 'kiem_tra');
+  const coKiemTra = ma => giongNhau(kiemTra2.find(x => x.ma_fabi === ma)?.viec, ['kiem_tra_mon']);
+  ok('Mã giảm ĐÃ TẮT (92102) mà FABi còn bán theo gói, trừ mặt hàng của menu → vẫn kiem_tra_mon (mục mã giảm không đòi nó)',
+     coKiemTra('92102') && !(r.kq?.dong ?? []).some(x => x.loai_dong === 'ma_giam' && x.ma_can === '92102'), JSON.stringify(kiemTra2.map(x => x.ma_fabi)));
+  ok('Mã cân của mặt hàng NGỪNG dùng (2401) ghép theo gói → vẫn kiem_tra_mon (không có dòng mã cân cho mặt hàng ngừng)',
+     coKiemTra('2401') && !(r.kq?.dong ?? []).some(x => x.loai_dong === 'can' && x.ma_can === '2401'), JSON.stringify(kiemTra2.map(x => x.ma_fabi)));
+  ok('Mã cân của mặt hàng hộp (2501, chỉ gắn qua hộp kim chi) → vẫn kiem_tra_mon',
+     coKiemTra('2501'), JSON.stringify(kiemTra2.map(x => x.ma_fabi)));
+  ok('…các mã mục khác đòi vẫn không bị liệt kê (02101, 21011, O-21, 92101)',
+     !kiemTra2.some(x => ['02101', '21011', 'O-21', '92101'].includes(x.ma_fabi)), JSON.stringify(kiemTra2.map(x => x.ma_fabi)));
+
   // --- Giá mỗi kg TRỐNG (hay 0 đ): Beeftown Cân bỏ qua dòng, cân giữ hàng cũ. Đã chốt (kg null = null) vẫn không
   // bao giờ "khớp" — mã cân, ô mã, mã giảm đều thieu_gia.
   mh.f5 = await matHang('F5-NAM', 'Nạm chưa có giá', { maCan: '2201' });
@@ -983,10 +1012,14 @@ await nhom('6b · ĐỐI CHIẾU FABi — mục "kiểm tra" không bảo tắt 
      giongNhau(dongF5('can')?.viec, ['thieu_gia']), JSON.stringify(dongF5('can')));
   ok('…ô mã 22011 → thieu_gia, không khop', giongNhau(dongF5('o_ma')?.viec, ['thieu_gia']), JSON.stringify(dongF5('o_ma')));
   ok('…mã giảm 92201 → thieu_gia, không khop', giongNhau(dongF5('ma_giam')?.viec, ['thieu_gia']), JSON.stringify(dongF5('ma_giam')));
+  ok('Giá mỗi kg trống → gia_phai_dat null ở dòng mã cân, ô mã, mã giảm', ['can', 'o_ma', 'ma_giam'].every(x => dongF5(x)?.gia_phai_dat === null),
+     JSON.stringify(['can', 'o_ma', 'ma_giam'].map(x => dongF5(x)?.gia_phai_dat)));
   await db.query(`update kho_mat_hang set gia_ban_kg = 0 where id = $1`, [mh.f5]);
   r = await doiChieu(UID.qlB, cn);
   ok('Giá 0 đ → thieu_gia (không phải gia_qua_can)', giongNhau(dongF5('can')?.viec, ['thieu_gia'])
      && giongNhau(dongF5('o_ma')?.viec, ['thieu_gia']), JSON.stringify([dongF5('can')?.viec, dongF5('o_ma')?.viec]));
+  ok('Giá 0 đ → gia_phai_dat null (không bao giờ "đặt 0 đ/kg trên FABi") ở dòng mã cân, ô mã, mã giảm',
+     ['can', 'o_ma', 'ma_giam'].every(x => dongF5(x)?.gia_phai_dat === null), JSON.stringify(['can', 'o_ma', 'ma_giam'].map(x => dongF5(x)?.gia_phai_dat)));
   await db.query(`update kho_mat_hang set gia_ban_kg = 1050000 where id = $1`, [mh.f5]);
   r = await doiChieu(UID.qlB, cn);
   ok('Giá 1.050.000 → gia_qua_can (giá đổi sau chốt → dat_gia), không thieu_gia',

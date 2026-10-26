@@ -573,10 +573,11 @@ $$;
 --
 -- Mặt hàng "mất" (không còn dòng) và "ngừng" (dang_dung = false) đều KHÔNG DÙNG ĐƯỢC: không lấy giá, không
 -- tính tồn, kèm cảnh báo. Mã cảnh báo (canh_bao, thứ tự cố định):
---   gia_qua_can       mặt hàng theo cân có mã cân mà giá mỗi kg TRỐNG, ≤ 0 hoặc > 999.999: Beeftown Cân bỏ qua
---                     dòng đó (can-tma.ts kiemHang) và CÂN GIỮ DÒNG CŨ — hàng chưa có thì cân không bán được,
---                     hàng đã có thì cân vẫn in giá cũ (web/src/lib/kho/can-tma.ts, GIA_TOI_DA). Trang chọn câu
---                     theo giá (giá trống / ≤ 0 khác giá quá cửa sổ 6 chữ số).
+--   chua_gia_can      mặt hàng theo cân dùng được, có mã cân, mà giá mỗi kg TRỐNG hoặc ≤ 0
+--   gia_qua_can       …mà giá mỗi kg > 999.999 (cửa sổ 6 chữ số của cân TMA, web/src/lib/kho/can-tma.ts GIA_TOI_DA)
+--                     Cả hai: Beeftown Cân bỏ qua dòng đó (can-tma.ts kiemHang) và cân GIỮ dòng cũ — mã đã có trên
+--                     cân thì cân vẫn in giá cũ, chưa có thì cân không bán được. Hai mã riêng để trang không phải
+--                     đoán trạng thái theo giá.
 --   thieu_gia         sản phẩm Đang bán mà không gói đang bán nào có giá > 0
 --   khay_nguyen       theo cân + cắt tại quầy + mặt hàng đếm theo khay: FABi trừ NGUYÊN một khay cho mỗi gói
 --                     online (0054). Mọi trạng thái: ban_le_luu_san_pham chặn lần lưu ĐƯA sản phẩm vào cấu hình
@@ -698,10 +699,11 @@ begin
       'con_hang', v_con));
   end loop;
 
-  if v_sp.cach_ban = 'theo_can' then
-    -- "is null" phải viết rõ: null > 999999 là null, và giá trống chính là trường hợp cân bỏ qua dòng.
-    if v_dung and v_mh.ma_can is not null
-       and (v_mh.gia_ban_kg is null or v_mh.gia_ban_kg <= 0 or v_mh.gia_ban_kg > 999999) then
+  if v_sp.cach_ban = 'theo_can' and v_dung and v_mh.ma_can is not null then
+    -- "is null" phải viết rõ: null <= 0 là null, và giá trống chính là trường hợp cân bỏ qua dòng.
+    if v_mh.gia_ban_kg is null or v_mh.gia_ban_kg <= 0 then
+      v_canh := v_canh || 'chua_gia_can'::text;
+    elsif v_mh.gia_ban_kg > 999999 then
       v_canh := v_canh || 'gia_qua_can'::text;
     end if;
   end if;
@@ -1104,12 +1106,11 @@ begin
 
       v_khoa := ban_le_doc_chu(v_g -> 'id');
       if v_khoa is not null then
-        -- id phải là id THẬT của một gói đang có của sản phẩm này: so với v_goi_cu (gói trước lần lưu), không
-        -- với v_goi_moi — v_goi_moi còn chứa khóa tạm 'moi-<thứ tự>' của gói thêm trong chính lần này, mà khóa
-        -- đó lọt qua thì hoặc sửa lặng lẽ gói vừa thêm, hoặc vấp phép đổi ::uuid (lỗi Postgres thô 22P02).
-        -- Gói đã bỏ ở dòng trước của cùng danh sách (không còn trong v_goi_moi) cũng là "không thấy".
-        if v_khoa !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-           or not (v_goi_cu ? v_khoa) or not (v_goi_moi ? v_khoa) then
+        -- id phải là id THẬT của một gói đang có của sản phẩm này: khóa của v_goi_cu (gói trước lần lưu) là
+        -- g.id::text, nên chuỗi nào không phải id gói (khóa tạm 'moi-<thứ tự>' của gói thêm trong chính lần này,
+        -- chữ bất kỳ) đều rơi ở đây — trước khi có phép đổi ::uuid nào, không sửa lặng lẽ gói vừa thêm. Gói đã
+        -- bỏ ở dòng trước của cùng danh sách (không còn trong v_goi_moi) cũng là "không thấy".
+        if not (v_goi_cu ? v_khoa) or not (v_goi_moi ? v_khoa) then
           raise exception 'Không thấy gói này — tải lại trang.';
         end if;
         if v_g -> 'xoa' = 'true'::jsonb then
@@ -1384,8 +1385,8 @@ comment on function ban_le_chot_gia(uuid, timestamptz, jsonb) is
 -- hay "hộp 500 g".
 -- Việc (viec): khop (chỉ khi không còn việc nào khác), menu_cu, tao_mon, bat_mon, ghep, sua_ghep, dat_gia (giá
 -- chưa chốt hoặc đã đổi sau lần chốt), thieu_gia (gói đang bán chưa có giá; dòng mã cân / ô mã / mã giảm: giá
--- mỗi kg trống hay 0 đ — Beeftown Cân bỏ qua dòng), gia_qua_can, khay_nguyen, thieu_mat_hang, goi_khong_dem_goi,
--- chua_co_ma, tat_mon, kiem_tra_mon.
+-- mỗi kg trống hay 0 đ — Beeftown Cân bỏ qua dòng, gia_phai_dat null), gia_qua_can, khay_nguyen, thieu_mat_hang,
+-- goi_khong_dem_goi, chua_co_ma, tat_mon, kiem_tra_mon.
 create or replace function ban_le_doi_chieu(p_chi_nhanh_id uuid)
 returns jsonb
 language plpgsql
@@ -1492,7 +1493,8 @@ begin
       v_dong := v_dong || jsonb_build_array(jsonb_build_object(
         'loai_dong', 'can', 'ma_fabi', v_ma, 'ma_can', r.ma_can, 'so_o', null, 'phan_tram', null, 'don_vi', null,
         'ten_san_pham', r.ten_san_pham, 'san_pham_id', r.san_pham_id, 'so_gam', null,
-        'gia_phai_dat', r.gia_ban_kg,
+        -- Giá trống / 0 đ: không có giá nào để đặt — null, không bao giờ "đặt 0 đ/kg trên FABi".
+        'gia_phai_dat', case when r.gia_ban_kg > 0 then r.gia_ban_kg end,
         'tren_fabi', case when v_menu.ma_ipos is not null then jsonb_build_object(
                             'co', true, 'ma', v_menu.ma_ipos, 'ten', v_menu.ten_ipos, 'dang_ban', v_menu.dang_ban)
                           when v_cu then null
@@ -1515,7 +1517,8 @@ begin
       order by 2, 3
     loop
       v_ma := q.ma_can;
-      v_gia := q.gia;
+      -- Giá phải đặt chỉ khi có thật: giá mỗi kg trống / 0 đ (hay giá giảm làm tròn ra 0) → null.
+      v_gia := case when r.gia_ban_kg > 0 and q.gia > 0 then q.gia end;
       v_tren := jsonb_build_object('loai_dong', q.loai_dong, 'so_o', q.so_o, 'phan_tram', q.phan_tram, 'don_vi', null);
       v_menu := null;
       select * into v_menu from kho_ipos_menu mn
@@ -1531,8 +1534,8 @@ begin
       elsif not v_menu.dang_ban then
         v_viec := v_viec || case when v_cu then 'menu_cu' else 'bat_mon' end;
       end if;
-      -- Như dòng mã cân: giá mỗi kg trống / 0 đ (hay giá giảm làm tròn ra 0) → thieu_gia, không bao giờ khop.
-      if r.gia_ban_kg is null or r.gia_ban_kg <= 0 or v_gia is null or v_gia <= 0 then
+      -- Như dòng mã cân: không có giá để đặt (v_gia null ở trên) → thieu_gia, không bao giờ khop.
+      if v_gia is null then
         v_viec := v_viec || 'thieu_gia'::text;
       else
         if v_gia > 999999 then
@@ -1682,22 +1685,30 @@ begin
   end loop;
 
   -- ---- Mã FABi đang bán, trừ cùng mặt hàng theo gói, mà menu bán lẻ không có -----------------------------
-  -- Không bao giờ bảo xem lại / tắt một mã mà mục khác của trang ĐÒI có trên FABi: loại mã (bỏ số 0 đầu như
-  -- kho_ipos_ghi_dong) trùng mã cân của mặt hàng gắn với menu, trùng ô mã hay mã giảm của những mặt hàng đó;
-  -- loại dòng ghép vào ô mã (o_ma_id — hàng cân của ô, không phải gói). Dòng bán theo kg đã ngoài điều kiện
-  -- đơn vị ở dưới (chỉ 'goi', hoặc "theo món kho" của mặt hàng đếm theo gói).
+  -- Không bao giờ bảo xem lại / tắt một mã mà mục khác của trang ĐÒI có trên FABi — và chỉ loại ĐÚNG những mã
+  -- đó: mã cân, ô mã, mã giảm ĐANG DÙNG của mặt hàng dùng được của sản phẩm theo cân (đúng tập dòng can / o_ma /
+  -- ma_giam ở trên tạo ra). Mã so sau khi bỏ số 0 đầu như kho_ipos_ghi_dong. Mã giảm đã tắt, mã cân của mặt hàng
+  -- ngừng dùng hay của mặt hàng hộp không dòng nào đòi — FABi còn bán chúng theo gói thì vẫn phải xem lại. Loại
+  -- thêm dòng ghép vào ô mã (o_ma_id — hàng cân của ô, không phải gói). Dòng bán theo kg đã ngoài điều kiện đơn
+  -- vị ở dưới (chỉ 'goi', hoặc "theo món kho" của mặt hàng đếm theo gói).
   for r in
     with lien_ket as (
       select s.mat_hang_id as id from ban_le_san_pham s where s.mat_hang_id is not null
       union
       select g.mat_hang_id from ban_le_goi g where g.mat_hang_id is not null
     ),
+    mh_dong_can as (
+      select distinct m.id, m.ma_can
+      from ban_le_san_pham s
+      join kho_mat_hang m on m.id = s.mat_hang_id and m.dang_dung
+      where s.cach_ban = 'theo_can'
+    ),
     ma_duoc_doi as (
-      select m.ma_can from kho_mat_hang m join lien_ket l on l.id = m.id where m.ma_can is not null
+      select c.ma_can from mh_dong_can c where c.ma_can is not null
       union
-      select o.ma_can from kho_o_ma o join lien_ket l on l.id = o.mat_hang_id
+      select o.ma_can from kho_o_ma o join mh_dong_can c on c.id = o.mat_hang_id
       union
-      select g.ma_can from kho_ma_giam g join lien_ket l on l.id = g.mat_hang_id
+      select g.ma_can from kho_ma_giam g join mh_dong_can c on c.id = g.mat_hang_id where g.dang_dung
     )
     select mp.ma_ipos, mp.kieu, mp.don_vi_ban, mp.kg_moi_don_vi, m.ten as mat_hang_ten, mn.ten_ipos
     from kho_ipos_ma_hang mp

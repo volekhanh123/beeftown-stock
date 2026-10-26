@@ -24,7 +24,7 @@ import {
   docSanPham, docMatHangChon, luuSanPham, chotGia, chonChiNhanhBanLe, dongGoiDaGo, cauLoiDoc, cauCanhBao, giaGoi,
   cungChu, canhBaoDauTrang, dongGiaDeChot, tenKieu,
   VAI_XEM_BAN_LE, VAI_SUA_BAN_LE, VAI_CHOT_GIA, KIEU_SAN_PHAM, CANH_BAO_BAN_LE, TEN_LOAI_BAN_LE,
-  TEN_BAO_QUAN, TRANG_THAI_BAN_LE, NGUON_GOI, O_DICH_BAN_LE, SO_GOI_TOI_DA, GIA_TOI_DA,
+  TEN_BAO_QUAN, TRANG_THAI_BAN_LE, NGUON_GOI, O_DICH_BAN_LE, SO_GOI_TOI_DA,
   type SanPhamBanLe, type MatHangBanLe, type ChiNhanhBanLe, type GoiBanLe, type KetQuaLuu, type DongGoiDaGo,
 } from '../../../lib/ban-le-noi-bo';
 import { dichBu, chayNen, oDangCho, moTaO, cauTomTat } from '../../../lib/ban-dich';
@@ -98,8 +98,6 @@ const t = dichNB(nn, {
   mot100:      { vi: (gia: string) => `= ${gia} / 100 g`, en: (gia: string) => `= ${gia} / 100 g` },
   maCan:       { vi: (ma: string) => `Mã trên cân: ${ma}`, en: (ma: string) => `Scale code: ${ma}` },
   chuaMaCan:   { vi: 'Chưa có mã cân — cân quầy chưa có hàng này.', en: 'No scale code yet — the counter scale does not have this item.' },
-  quaCan:      { vi: (gia: string, ma: string) => `Cân quầy chỉ nhận tối đa ${gia}/kg. Lưu giá này thì cân VẪN IN GIÁ CŨ cho mã ${ma}.`,
-                 en: (gia: string, ma: string) => `The counter scale accepts at most ${gia}/kg. With this price the scale STILL PRINTS THE OLD PRICE for code ${ma}.` },
   ganTruoc:    { vi: 'Gắn một mặt hàng kho đang dùng rồi bấm Lưu — sau đó mới sửa được giá mỗi kg ở đây.', en: 'Link an active stock item and press Save — then the price per kg can be edited here.' },
   // Gói online
   goiTieuDe:   { vi: 'Bán lẻ online — gói cố định', en: 'Online retail — fixed packs' },
@@ -279,9 +277,9 @@ const trangThaiGia = !sp || !coGia ? t.chuaCoGia
   : !sp.gia_thu ? t.daChotLuc(dinhDangThoiDiem(sp.gia_chot_luc), sp.gia_chot_boi_ten ?? '—')
   : sp.gia_chot ? t.doiSauChot : t.chuaChot;
 const suaGiaDuoc = !!sp?.mat_hang && sp.mat_hang.dang_dung;
-// Mỗi cảnh báo hiện đúng một lần: giá cân (mã gia_qua_can của database — giá trống, ≤ 0 hay quá cửa sổ cân) dưới
-// ô giá mỗi kg, khay nguyên dưới ô "Gói online lấy từ đâu", còn lại ở đầu trang.
-const { dau: canhDau, giaCanTaiO, khayTaiO } = sp ? canhBaoDauTrang(sp) : { dau: [] as string[], giaCanTaiO: null, khayTaiO: false };
+// Mỗi cảnh báo hiện đúng một lần: giá cân (mã chua_gia_can / gia_qua_can của database) dưới ô giá mỗi kg, khay
+// nguyên dưới ô "Gói online lấy từ đâu", còn lại ở đầu trang — mọi chỗ dùng cùng câu của thư viện (cauCanhBao).
+const { dau: canhDau, oGia, khayTaiO } = sp ? canhBaoDauTrang(sp) : { dau: [] as string[], oGia: [] as string[], khayTaiO: false };
 
 const goiXem = (sp?.goi ?? []).filter(g => g.dang_ban && g.gia != null && g.gia > 0);
 const lyDoAn = !sp ? null
@@ -450,9 +448,9 @@ const lyDoAn = !sp ? null
                   <p class="bl-phu bl-so">
                     {(sp.mat_hang.gia_ban_kg ?? 0) > 0 && <>{t.mot100(dinhDangTien(giaGoi(sp.mat_hang.gia_ban_kg, 100), nn))} · </>}{sp.mat_hang.ma_can ? t.maCan(sp.mat_hang.ma_can) : t.chuaMaCan}
                   </p>
-                  {giaCanTaiO && sp.mat_hang.ma_can && (
-                    <div class="nb-bao loi bl-sat"><p>{giaCanTaiO === 'qua' ? t.quaCan(dinhDangTien(GIA_TOI_DA, nn), sp.mat_hang.ma_can) : cauCanhBao('gia_qua_can', nn, sp)}</p></div>
-                  )}
+                  {oGia.map(c => (
+                    <div class="nb-bao loi bl-sat"><p>{cauCanhBao(c, nn, sp)}</p></div>
+                  ))}
                 </>
               ) : (
                 <p class="bl-phu">{t.ganTruoc}</p>
