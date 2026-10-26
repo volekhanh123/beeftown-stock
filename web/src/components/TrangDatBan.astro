@@ -214,7 +214,7 @@ const t = dich(ngonNgu, {
   <div class:list={['khung', 'hb-luoi', { 'hb-luoi-da-nhan': daNhanYeuCau || chuaMo }]}>
 
     {daNhanYeuCau && ketQua && (
-      <div class="hb-the hb-da-nhan" data-ket-qua="da-nhan" tabindex="-1">
+      <div class="hb-the hb-da-nhan" data-ket-qua="da-nhan" data-ma={ketQua.ma} tabindex="-1">
         <h2 class="hb-tieu-de-the">{t.daNhan}</h2>
         {ketQua.ma && (
           <p class="hb-ma">{t.maYeuCau}<strong>{ketQua.ma}</strong></p>
@@ -403,7 +403,12 @@ const t = dich(ngonNgu, {
    *   Ô "nhận tin mới" KHÔNG được giữ: sự đồng ý phải là một cú bấm mới.
    * · Ngày so bằng chuỗi ISO 'YYYY-MM-DD' (so chuỗi đúng thứ tự ngày) — không
    *   dựng Date, không đụng múi giờ của máy khách.
+   * · Meta Pixel: Lead khi thẻ "đã nhận" hiện — máy chủ chỉ dựng thẻ đó khi database
+   *   đã trả mã (lib/xu-ly-form.ts), cùng nhánh với câu "đã nhận yêu cầu". Một Lead cho
+   *   mỗi mã: tải lại, bấm Back về thẻ không gửi lần hai. Mã không tới Meta (lib/meta-pixel.ts).
    */
+  import { guiSuKienMotLan } from '../lib/meta-pixel';
+
   const KHOA = 'bt-hoi-ban';
   const SONG_MS = 15 * 60 * 1000;
   const O_GIU = ['so_khach', 'ho_ten', 'sdt', 'dip', 'ghi_chu'] as const;
@@ -439,6 +444,7 @@ const t = dich(ngonNgu, {
   // Đã nhận: xong việc. Không chắc đã ghi: câu trên trang bảo nhắn hỏi, đừng gửi lại —
   // điền sẵn mọi ô (cả giờ) thì gửi lại chỉ còn một cú bấm, nhà hàng nhận hai bản.
   if (khungKetQua?.dataset.ketQua === 'da-nhan' || khungKetQua?.dataset.ketQua === 'khong-chac') xoaDaLuu();
+  if (khungKetQua?.dataset.ketQua === 'da-nhan' && khungKetQua.dataset.ma) guiSuKienMotLan('Lead', khungKetQua.dataset.ma);
   khungKetQua?.focus();
 
   const form = document.querySelector<HTMLFormElement>('form[data-hoi-ban]');

@@ -69,17 +69,30 @@
  *      (390 và 1440 px, ba thứ tiếng) rồi đo lại: phần vừa mở có đúng các ảnh của nó, ảnh
  *      tải về được, đủ nhãn "Ảnh minh họa", không gì đè lên ảnh, đúng khung — và giấu nhãn
  *      của ảnh trong phần vừa mở đi thì phép đo phải đỏ (phép đo thật sự nhìn thấy ảnh đó).
+ *  12. Meta Pixel (src/lib/meta-pixel.ts). Mọi nhóm chạy với Meta bị chặn (chan-meta.mjs: CI không gửi lượt nào lên
+ *      Pixel thật, và trang phải chạy đủ khi khách chặn quảng cáo). Mọi trang công khai có đúng một khối mã gốc, đúng
+ *      từng chữ, cuối <head>; <body> mang tên trang; lời gọi fbq đúng init + PageView (trang Thực đơn thêm
+ *      ViewContent), mỗi sự kiện chỉ kèm content_name và language. Bấm link tel:, Zalo, Messenger → Contact (cả bấm
+ *      chuột giữa); link khác, chuột phải thì không. fbevents.js tải được (bản giả) thì nhận đủ lời gọi đã xếp hàng. Tắt JavaScript: ảnh noscript gọi đúng
+ *      địa chỉ đo, trang vẫn đủ. Trang 404 không có pixel. Không lượt nào tới được Meta. Chạy cả với --url.
  *
  * Hỏng thì ảnh chụp màn hình nằm ở kiem-tra/anh-loi/ (CI tải lên thành artifact).
  */
 
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { setTimeout as cho } from 'node:timers/promises';
 import { chromium } from 'playwright';
+import { MAU_META, moChromium, ghiPixel, docHangDoi, suKienTrong } from './chan-meta.mjs';
 import { TEN_DIA_CHI_KHAC, SO_NHA_KHAC, PHUONG_QUAN, CAU_THANG, boPhapNhan } from './mau-dia-diem.mjs';
 import { doGiaoDien, PHEP_DO } from './do-giao-dien.mjs';
 import { WEB, batMayChuBanBuild, tatMayChu } from './may-chu-ban-build.mjs';
+
+// Meta Pixel (nhóm 12): ID và mã gốc đọc từ chính thư viện của trang — crm/test/test-cong-khai-meta-pixel.mjs so mã gốc
+// đó với bản Meta đưa, đúng từng chữ. Tên trang thì chép quy tắc tay (bản tiếng Việt của đường dẫn, bỏ "/").
+const { MA_PIXEL, khoiMaPixel } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'meta-pixel.ts')).href);
+const { duongDanTuongUng } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'chu.ts')).href);
 
 const ANH_LOI = join(WEB, 'kiem-tra', 'anh-loi');
 const CONG = 4330;
@@ -291,7 +304,7 @@ let trinhDuyet = null;
 try {
   const goc = URL_NGOAI ?? (mayChu = await batMayChu()).goc;
   console.log(`Trang: ${goc}`);
-  trinhDuyet = await chromium.launch();
+  trinhDuyet = await moChromium(chromium);
   const trang = await danhSachTrang(goc);
   const chupLoi = async (page, ten) => {
     mkdirSync(ANH_LOI, { recursive: true });
@@ -785,7 +798,7 @@ try {
   // DauTrang.astro đo bề rộng thanh cuộn trước khi mở và bù bằng padding-right của <html>.
   // Playwright mặc định giấu thanh cuộn, nên nhóm này mở một Chromium riêng có thanh cuộn thật.
   await nhom('8 · THANH CUỘN KIỂU CỔ ĐIỂN: MỞ DANH MỤC KHÔNG XÔ LỆCH TRANG, KHÔNG CUỘN NGANG', async () => {
-    const coThanhCuon = await chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
+    const coThanhCuon = await moChromium(chromium, { ignoreDefaultArgs: ['--hide-scrollbars'] });
     try {
       const do_ = page => page.evaluate(() => {
         const trai = chon => document.querySelector(chon)?.getBoundingClientRect().left ?? null;
@@ -1059,6 +1072,170 @@ try {
       }
       await ctx.close();
     }
+  });
+
+  // =========================================================================
+  // Meta Pixel: mọi nhóm trên đã chạy với Meta bị chặn (chan-meta.mjs) — trang đủ khi khách chặn quảng cáo. Nhóm này
+  // kiểm chính pixel. Chạy cả với --url (kiểm beeftown.vn sau deploy).
+  await nhom('12 · META PIXEL: MÃ GỐC Ở MỌI TRANG CÔNG KHAI, SỰ KIỆN CHỈ KÈM TÊN TRANG VÀ THỨ TIẾNG, KHÔNG Ở TRANG 404', async () => {
+    const MA_GOC = khoiMaPixel();
+    const TRANG_THUC_DON = ['/thuc-don', '/en/menu', '/ko/menu'];
+    const tenTrangMong = duong => duongDanTuongUng(duong, 'vi').replace(/^\//, '') || 'trang-chu';
+    const thamSo = (duong, nn) => ({ content_name: tenTrangMong(duong), language: nn });
+    const toiMeta = [];   // lượt nào tới được Meta (có trả lời) — phải rỗng
+    const ctx = await trinhDuyet.newContext({ viewport: { width: 390, height: 844 } });
+    ctx.on('requestfinished', r => { if (MAU_META.test(r.url())) toiMeta.push(r.url()); });
+
+    for (const duong of trang) {
+      const nn = ngonNguCua(duong);
+      const page = await ctx.newPage();
+      const loiJs = [];
+      page.on('pageerror', e => loiJs.push(e.message));
+      const html = await (await fetch(goc + duong)).text();
+      const iMa = html.indexOf(MA_GOC);
+      // Giữa mã gốc và </head> chỉ còn thứ Astro tự chèn khi build (CSS của trang, script module) — không thẻ nào của ta.
+      const sauMa = iMa < 0 ? '' : html.slice(iMa + MA_GOC.length, html.indexOf('</head>'))
+        .replace(/<style\b[^>]*>[\s\S]*?<\/style>|<link\b[^>]*>|<script type="module"[^>]*>[\s\S]*?<\/script>/g, '').trim();
+      await page.goto(goc + duong, { waitUntil: 'load', timeout: 30000 });
+      const tenTrang = await page.evaluate(() => document.body.dataset.pixelTrang ?? null);
+      const lenh = await page.evaluate(docHangDoi);
+      const mong = [['init', MA_PIXEL], ['track', 'PageView'],
+        ...(TRANG_THUC_DON.includes(duong) ? [['track', 'ViewContent', thamSo(duong, nn)]] : [])];
+      const tot = [
+        ok(`${duong}: đúng một khối mã gốc Meta Pixel, đúng từng chữ, cuối <head> (sau nó chỉ còn CSS, script Astro tự chèn)`,
+           iMa > -1 && html.split(MA_GOC).length === 2 && iMa < html.indexOf('</head>') && sauMa === '',
+           iMa < 0 ? 'không thấy mã gốc' : `sau mã gốc: «${sauMa.slice(0, 80)}»`),
+        ok(`${duong}: <body data-pixel-trang="${tenTrangMong(duong)}">`, tenTrang === tenTrangMong(duong), String(tenTrang)),
+        ok(`${duong}: lời gọi fbq đúng ${mong.map(l => l[1]).join(' + ')}${mong.length > 2 ? ' (chỉ content_name, language)' : ''} — không gì khác`,
+           JSON.stringify(lenh) === JSON.stringify(mong), JSON.stringify(lenh)),
+        ok(`${duong}: Meta bị chặn, trang không lỗi JavaScript`, !loiJs.length, loiJs.slice(0, 3).join(' | ')),
+      ];
+      if (tot.includes(false)) await chupLoi(page, `pixel${duong}`);
+      await page.close();
+    }
+
+    // Contact: link dựng thẳng vào trang (bản build không database không có hotline, Zalo, Messenger). Bấm vào chữ
+    // bên trong link cũng tính; link Trang Facebook, email, link trong trang thì không.
+    const LINK = [
+      ['tel:+84283822123', true], ['https://zalo.me/1234567890', true], ['https://oa.zalo.me/home', true],
+      ['https://m.me/beeftown', true], ['https://www.messenger.com/t/beeftown', true],
+      ['https://www.facebook.com/beeftown', false], ['mailto:thu@beeftown.example', false], ['/thuc-don', false],
+      ['https://zalo.me.example.com/x', false],
+    ];
+    for (const duong of ['/den-beeftown', '/en/visit', '/ko/visit']) {
+      const nn = ngonNguCua(duong);
+      const page = await ctx.newPage();
+      await page.goto(goc + duong, { waitUntil: 'load', timeout: 30000 });
+      await page.evaluate(ds => {
+        const hop = document.createElement('div');
+        hop.id = 'thu-pixel';
+        for (const [href] of ds) {
+          const a = document.createElement('a');
+          a.href = href;
+          a.innerHTML = '<span>bấm</span>';
+          // Không rời trang: chặn ở pha nổi bọt, SAU listener pha capture của Trang.astro.
+          a.addEventListener('click', e => e.preventDefault());
+          hop.append(a);
+        }
+        document.querySelector('main').prepend(hop);
+      }, LINK);
+      const sai = [];
+      for (const [i, [href, laContact]] of LINK.entries()) {
+        const truoc = suKienTrong(await page.evaluate(docHangDoi)).length;
+        await page.evaluate(j => document.querySelectorAll('#thu-pixel a span')[j].click(), i);
+        const moi = suKienTrong(await page.evaluate(docHangDoi)).slice(truoc);
+        const dung = laContact
+          ? moi.length === 1 && JSON.stringify(moi[0]) === JSON.stringify(['track', 'Contact', thamSo(duong, nn)])
+          : moi.length === 0;
+        if (!dung) sai.push(`${href}: ${JSON.stringify(moi)}`);
+      }
+      ok(`${duong}: bấm tel:, zalo.me, oa.zalo.me, m.me, messenger.com → một Contact mỗi lần (chỉ content_name, language); Trang Facebook, mailto, link trong trang, tên miền giả zalo.me.example.com → không`,
+         sai.length === 0, sai.slice(0, 3).join(' | '));
+      // Bấm chuột giữa (mở thẻ mới) chỉ phát auxclick: vẫn là Contact. Chuột phải (button 2) thì không.
+      const truocGiua = suKienTrong(await page.evaluate(docHangDoi)).length;
+      await page.evaluate(() => {
+        const a = document.querySelectorAll('#thu-pixel a span')[1];   // https://zalo.me/…
+        for (const nut of [1, 2]) a.dispatchEvent(new MouseEvent('auxclick', { bubbles: true, cancelable: true, button: nut }));
+      });
+      const giua = suKienTrong(await page.evaluate(docHangDoi)).slice(truocGiua);
+      ok(`${duong}: bấm chuột giữa vào link Zalo → một Contact; chuột phải → không`,
+         JSON.stringify(giua) === JSON.stringify([['track', 'Contact', thamSo(duong, nn)]]), JSON.stringify(giua));
+      await page.close();
+    }
+
+    // fbevents.js tải được: lời gọi đã xếp hàng tới thư viện đủ, đúng thứ tự; lời gọi sau đó đi thẳng.
+    {
+      const ctxGhi = await trinhDuyet.newContext({ viewport: { width: 390, height: 844 } });
+      const lenh = await ghiPixel(ctxGhi);
+      for (const duong of TRANG_THUC_DON) {
+        const nn = ngonNguCua(duong);
+        const page = await ctxGhi.newPage();
+        lenh.length = 0;
+        await page.goto(goc + duong, { waitUntil: 'load', timeout: 30000 });
+        await page.waitForFunction(() => typeof window.fbq?.callMethod === 'function', null, { timeout: 10000 }).catch(() => {});
+        await page.evaluate(() => {
+          const a = Object.assign(document.createElement('a'), { href: 'tel:+84283822123', textContent: 'gọi' });
+          a.addEventListener('click', e => e.preventDefault());
+          document.querySelector('main').prepend(a);
+          a.click();
+        });
+        await cho(200);
+        const mong = [['init', MA_PIXEL], ['track', 'PageView'], ['track', 'ViewContent', thamSo(duong, nn)],
+          ['track', 'Contact', thamSo(duong, nn)]];
+        ok(`${duong}: fbevents.js tải được (bản giả) → nhận init, PageView, ViewContent đã xếp hàng rồi Contact khi bấm, đúng thứ tự`,
+           JSON.stringify(lenh) === JSON.stringify(mong), JSON.stringify(lenh));
+        await page.close();
+      }
+      await ctxGhi.close();
+    }
+
+    // Tắt JavaScript: ảnh noscript của mã gốc gọi đúng địa chỉ đo (bị chặn); ảnh nằm trong <head> nên trình duyệt mở
+    // <body> sớm — <body> vẫn phải giữ lớp "ck" và tên trang, trang vẫn đủ.
+    {
+      const ctxTat = await trinhDuyet.newContext({ viewport: { width: 390, height: 844 }, javaScriptEnabled: false });
+      ctxTat.on('requestfinished', r => { if (MAU_META.test(r.url())) toiMeta.push(r.url()); });
+      for (const duong of ['/', '/en/menu', '/ko/book']) {
+        const page = await ctxTat.newPage();
+        const goiMeta = [];
+        page.on('request', r => { if (MAU_META.test(r.url())) goiMeta.push(r.url()); });
+        await page.goto(goc + duong, { waitUntil: 'load', timeout: 30000 });
+        const kq = await page.evaluate(() => ({
+          lop: document.body.className, tenTrang: document.body.dataset.pixelTrang ?? null,
+          soH1: document.querySelectorAll('h1').length, coChan: !!document.querySelector('footer'),
+        }));
+        ok(`${duong} (tắt JavaScript): chỉ ảnh noscript gọi Meta, đúng https://www.facebook.com/tr?id=${MA_PIXEL}&ev=PageView&noscript=1`,
+           JSON.stringify(goiMeta) === JSON.stringify([`https://www.facebook.com/tr?id=${MA_PIXEL}&ev=PageView&noscript=1`]),
+           JSON.stringify(goiMeta));
+        ok(`${duong} (tắt JavaScript): <body class="ck" data-pixel-trang="${tenTrangMong(duong)}">, đúng một <h1>, có chân trang`,
+           kq.lop.split(/\s+/).includes('ck') && kq.tenTrang === tenTrangMong(duong) && kq.soH1 === 1 && kq.coChan, JSON.stringify(kq));
+        await page.close();
+      }
+      await ctxTat.close();
+    }
+
+    // Trang 404 (khongLapChiMuc): không mã gốc, không fbq, không tên trang; bấm link gọi điện không lỗi.
+    for (const [duong] of TRANG_KHONG_CO) {
+      const page = await ctx.newPage();
+      const loiJs = [];
+      page.on('pageerror', e => loiJs.push(e.message));
+      const html = await (await fetch(goc + duong)).text();
+      await page.goto(goc + duong, { waitUntil: 'load', timeout: 30000 });
+      const kq = await page.evaluate(() => {
+        const a = Object.assign(document.createElement('a'), { href: 'tel:+84283822123', textContent: 'gọi' });
+        a.addEventListener('click', e => e.preventDefault());
+        document.querySelector('main').prepend(a);
+        a.click();
+        return { fbq: typeof window.fbq, tenTrang: document.body.dataset.pixelTrang ?? null };
+      });
+      ok(`${duong} (404): không mã Meta Pixel, không fbq, không data-pixel-trang; bấm link tel: không lỗi`,
+         !html.includes(MA_PIXEL) && !/facebook\.(?:net|com\/tr)|fbq\(/.test(html) && kq.fbq === 'undefined' && kq.tenTrang === null && !loiJs.length,
+         `${JSON.stringify(kq)} ${loiJs.join(' | ')}`);
+      await page.close();
+    }
+
+    ok('Không lượt nào tới được Meta trong cả nhóm (CI không gửi lượt đo nào lên Beeftown Pixel thật)', toiMeta.length === 0,
+       toiMeta.slice(0, 3).join(' | '));
+    await ctx.close();
   });
 } catch (e) {
   ok('Chạy được đến cuối', false, e.stack || e.message);

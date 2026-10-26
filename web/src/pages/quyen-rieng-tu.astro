@@ -1,7 +1,10 @@
 ---
 /* Trang này BẮT BUỘC có từ ngày đầu. Ngay khi mời người ta gửi số điện thoại
    để ứng tuyển là đã thu thập dữ liệu cá nhân, và Nghị định 13/2023 đòi phải
-   nói rõ thu để làm gì, giữ bao lâu, ai giữ. */
+   nói rõ thu để làm gì, giữ bao lâu, ai giữ.
+   Mục "Khi bạn xem trang web này": Meta Pixel (lib/meta-pixel.ts) — Khánh chốt
+   27/10/2026 bật cho mọi người, không hỏi đồng ý, nên trang phải nói đúng Meta
+   nhận gì. Đổi sự kiện của pixel thì sửa danh sách nút ở đây, en/privacy, ko/privacy. */
 import Trang from '../layouts/Trang.astro';
 import TrangVanBan from '../components/TrangVanBan.astro';
 import { docNoiDung } from '../lib/noi-dung';
@@ -19,13 +22,27 @@ const nd = await docNoiDung('vi');
         về việc bạn đã bấm đồng ý; nó bị xóa cùng lúc với phần thông tin còn
         lại. Nếu bạn đính kèm CV, file đó được lưu trong kho riêng tư mà chỉ
         chủ nhà hàng và quản lý mở được.</p>
-      <p>Beeftown <strong>không dùng công cụ đo lường của bên thứ ba</strong> —
-        không Google Analytics, không pixel quảng cáo, không theo dõi bạn sang
-        trang khác.</p>
       <p>Dữ liệu được lưu tại Supabase, một dịch vụ database mà Beeftown thuê.
         Ngoài Supabase, không đơn vị nào khác đọc được dữ liệu này — riêng tin
         nhắn bạn gửi qua Messenger thì đi qua Meta, và tin đơn bạn gửi qua Zalo
         thì đi qua Zalo (xem các mục bên dưới).</p>
+
+      <h2>Khi bạn xem trang web này</h2>
+      <p>Beeftown dùng Meta Pixel, công cụ đo lường của Meta (công ty sở hữu
+        Facebook và Instagram). Khi bạn mở trang, Meta Pixel gửi cho Meta: trang
+        bạn đang xem, nút bạn bấm (gọi điện, mở Zalo, mở Messenger, xem đơn mua
+        thịt, gửi yêu cầu đặt bàn), địa chỉ IP, loại trình duyệt và một mã
+        cookie. Beeftown dùng các số này để biết quảng cáo trên Facebook,
+        Instagram đưa bao nhiêu người tới trang, và để hiện quảng cáo của
+        Beeftown cho người đã ghé trang.</p>
+      <p>Beeftown <strong>không gửi cho Meta</strong> tên, số điện thoại hay bất
+        kỳ thông tin nào bạn điền vào form.</p>
+      <p>Meta xử lý dữ liệu này theo chính sách quyền riêng tư của Meta, và có
+        thể lưu trên máy chủ ở nước ngoài.</p>
+      <p>Không muốn bị đo: bật chặn trình theo dõi trong trình duyệt, hoặc dùng
+        tiện ích chặn quảng cáo — trang vẫn dùng được đầy đủ. Không muốn thấy
+        quảng cáo dựa trên việc đã ghé trang: tắt quảng cáo dựa trên hoạt động
+        ngoài Meta trong Cài đặt quảng cáo của tài khoản Facebook.</p>
 
       <h2>Khi bạn nhắn Beeftown qua Messenger</h2>
       <p>Tin nhắn gửi Trang Facebook của Beeftown đi qua Messenger, một dịch vụ
@@ -74,7 +91,7 @@ const nd = await docNoiDung('vi');
           : <>Gửi yêu cầu bằng cách nhắn cho Trang Beeftown trên Messenger.</>}
       </p>
 
-      <p class="nho">Tuân theo Nghị định 13/2023/NĐ-CP về
-        bảo vệ dữ liệu cá nhân.</p>
+      <p class="nho">Tuân theo Luật Bảo vệ dữ liệu cá nhân 2025 (hiệu lực từ
+        01/01/2026) và Nghị định 13/2023/NĐ-CP về bảo vệ dữ liệu cá nhân.</p>
   </TrangVanBan>
 </Trang>

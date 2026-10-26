@@ -535,6 +535,7 @@ const nhanHienTai = `${c.cachNhan}: ${cachNhan === 'giao' ? c.nhanGiao : c.nhanQ
   // (don-mua-thit.ts); link nút gửi bằng linkGuiDon (dich-dat-hang.ts) — đích đặt hàng đọc từ data-dich, không tự đặt.
   import { CHU_DON, SO_GOI_TOI_DA, dinhDangTien, docGio, nhanGoi, taoTinDon, tinhDon, type Don, type SanPhamMua } from '../lib/don-mua-thit';
   import { linkGuiDon, type DichDatHang } from '../lib/dich-dat-hang';
+  import { guiSuKienMotLan } from '../lib/meta-pixel';
 
   type ThuTieng = keyof typeof CHU_DON.tamTinh;
   const THU_TIENG: readonly ThuTieng[] = ['vi', 'en', 'ko'];
@@ -664,10 +665,24 @@ const nhanHienTai = `${c.cachNhan}: ${cachNhan === 'giao' ? c.nhanGiao : c.nhanQ
     form.addEventListener('formdata', e => {
       for (const [ten, giaTri] of [...e.formData]) if (giaTri === '0') e.formData.delete(ten);
     });
+    // Meta Pixel (lib/meta-pixel.ts): InitiateCheckout khi khách bấm "Xem đơn" có giỏ — nút gửi form hay nút của thanh
+    // dưới (chỉ hiện khi giỏ có gói). Một giỏ một lần (guiSuKienMotLan, khóa là giỏ đang chọn): gửi form rồi bấm thanh
+    // dưới ở trang xem đơn — ô chọn mang lại đúng giỏ đó — vẫn là một lần xem đơn; đổi giỏ rồi xem đơn là lần mới. Giỏ
+    // chỉ làm khóa trong sessionStorage — chỉ tên trang và thứ tiếng tới Meta.
+    const baoXemDon = () => {
+      const gio: string[] = [];
+      for (const [ten, giaTri] of new FormData(form)) if (typeof giaTri === 'string' && giaTri !== '0') gio.push(`${ten}=${giaTri}`);
+      guiSuKienMotLan('InitiateCheckout', gio.sort().join('&'));
+    };
+    thanhXem?.addEventListener('click', baoXemDon);
+
     // Giỏ rỗng: không gửi, đưa con trỏ về ô chọn đầu. Có giỏ: để form GET chạy — máy chủ đọc lại menu, dựng "Xem lại đơn".
     form.addEventListener('submit', e => {
       capNhat();
-      if (donHienTai && donHienTai.dong.length > 0) return;
+      if (donHienTai && donHienTai.dong.length > 0) {
+        baoXemDon();
+        return;
+      }
       e.preventDefault();
       form.querySelector<HTMLSelectElement>('select.mtv-so')?.focus();
     });
