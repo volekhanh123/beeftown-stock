@@ -125,6 +125,9 @@ nhom('3 · MÀN CRM KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     'lib/truong-form.ts', 'lib/ngon-ngu-noi-bo.ts',
     // Soạn thực đơn: danh sách, màn soạn, thư viện.
     'pages/noi-bo/thuc-don/index.astro', 'pages/noi-bo/thuc-don/[id].astro', 'lib/thuc-don-noi-bo.ts',
+    // Menu bán lẻ (0097): danh sách, trang sửa, đối chiếu FABi, thư viện.
+    'pages/noi-bo/ban-le/index.astro', 'pages/noi-bo/ban-le/[id].astro', 'pages/noi-bo/ban-le/doi-chieu.astro',
+    'lib/ban-le-noi-bo.ts',
     // Gửi tin Zalo (0047): ba màn + nhãn dùng chung.
     'pages/noi-bo/zalo/index.astro', 'pages/noi-bo/zalo/chien-dich/moi.astro', 'pages/noi-bo/zalo/cai-dat.astro',
     'lib/zalo-trang.ts', 'lib/zalo-bao.ts',

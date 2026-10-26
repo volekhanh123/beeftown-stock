@@ -91,6 +91,7 @@ web/
 │  │  ├─ trang-cong-khai.ts ← liên hệ đã công bố (chỉ link http/https), địa chỉ, thứ bậc nút màn đầu, điều hướng
 │  │  ├─ thuc-don.ts   ← đọc thực đơn công khai — không bao giờ ném lỗi, không bao giờ hiện giá chưa duyệt
 │  │  ├─ thuc-don-noi-bo.ts ← màn /noi-bo/thuc-don: sửa tên, mô tả, bản dịch, công bố, gỡ món — không đụng giá
+│  │  ├─ ban-le-noi-bo.ts ← màn /noi-bo/ban-le: menu bán lẻ (thịt mang về, kim chi), giá cân, gói online, đối chiếu FABi
 │  │  ├─ anh.ts        ← danh mục ảnh: minh họa hay thật, alt ba thứ tiếng
 │  │  ├─ anh-tao-san.ts ← SINH TỰ ĐỘNG: cỡ ảnh đã dựng — đừng sửa tay
 │  │  ├─ chuoi-cam.js  ← danh sách chữ cấm, dùng chung cho máy quét và máy dịch
@@ -134,6 +135,8 @@ Tên file và biến đặt bằng tiếng Việt, khớp với tên cột trong
 **Giao diện** — hướng "Quầy thịt ấm": nền kem, đỏ Beeftown làm nhãn và nút, vài dải tối, artwork lấy nguyên từ PDF nhận diện. Màu theo vai kèm tỷ lệ tương phản, chữ, khoảng cách, thành phần, manifest từng tài sản, brief chụp ảnh và phần bàn giao: [`THIET-KE.md`](THIET-KE.md). `src/styles/cong-khai.css` chỉ `layouts/Trang.astro` nạp và mọi quy tắc nằm dưới `body.ck`, nên `/noi-bo` và kho không bị ảnh hưởng.
 
 **Thực đơn** — trang `/thuc-don` (`/en/menu`, `/ko/menu`) đọc món qua `thuc_don_cong_khai()`. Món chỉ hiện khi đã công bố. Sửa tên, mô tả, bản tiếng Anh và tiếng Hàn, công bố và gỡ từng món: màn `/noi-bo/thuc-don` (chủ nhà hàng, quản lý, marketing; thu ngân chỉ xem). Giá, mức cay, cờ món sống / có cồn và việc bật hai công tắc vẫn làm theo [`THUC-DON.md`](THUC-DON.md).
+
+**Menu bán lẻ** — màn `/noi-bo/ban-le` (database `crm/supabase/migrations/0097_ban_le_menu.sql`): thịt bò mang về và kim chi. Quầy cân thịt theo gram ở giá mỗi kg của Kho → Mặt hàng (sửa ở đây là sửa đúng ô đó; Beeftown Cân gửi xuống cân, cân chỉ nhận tối đa 999.999 đ/kg); online bán gói cố định 200 g / 400 g; kim chi theo hộp, giá cố định. Chủ và quản lý sửa, thu ngân và marketing chỉ xem; chỉ chủ bỏ chữ "Giá thử". FABi sửa tay theo `/noi-bo/ban-le/doi-chieu` (API iPOS chỉ đọc thực đơn). Mini App Zalo và website chưa đọc menu này — nối ở bước sau.
 
 **Ảnh** — hai loại, hai luật (`src/lib/anh.ts`):
 

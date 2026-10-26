@@ -1,0 +1,677 @@
+---
+/**
+ * SỬA MỘT SẢN PHẨM BÁN LẺ
+ *
+ * Tên, mô tả, cách dùng (bản tiếng Anh và tiếng Hàn máy dịch, sửa tay được), bảo quản, trạng thái, kênh,
+ * cách bán; thịt theo cân: mặt hàng kho, giá mỗi kg (ĐÚNG ô gia_ban_kg của Kho → Mặt hàng — đổi cho mọi chi
+ * nhánh, Beeftown Cân gửi xuống cân), cách làm gói, các gói online; kim chi theo hộp: các cỡ hộp. Quyền do
+ * database quyết định — xem đầu lib/ban-le-noi-bo.ts.
+ *
+ * BA FORM TÁCH NHAU: sửa (nút Lưu là nút submit đầu tiên — một cú Enter trong ô chữ chỉ lưu), dịch ngay,
+ * xác nhận giá (chỉ chủ, ngoài fieldset của form sửa, gửi kèm đúng những giá trang đang hiện).
+ *
+ * GHI ĐƯỢC THÌ CHUYỂN HƯỚNG 303 về chính trang này (lib/gui-noi-bo.ts): F5 không lưu lại bản cũ. Không ghi
+ * được thì dựng lại trang ngay với đúng chữ đã gõ — nhưng mọi ô ẩn phiên bản (phien_ban, gia_ban_kg_cu,
+ * goc_…, …_cu) LUÔN lấy từ lần đọc mới, không bao giờ từ chữ đã gõ: lấy từ chữ đã gõ thì lần lưu sau vấp
+ * lại đúng lỗi cũ mãi. Ô dịch và ô giá mỗi kg người dùng KHÔNG sửa thì hiện giá trị mới đọc (máy dịch hay
+ * người ở Kho vừa đổi), để lần lưu sau không lặng lẽ ghi đè bằng chữ cũ.
+ *
+ * Lưu xong thì dịch nền đúng sản phẩm này (chayNen) — lib/ban-dich.ts không cần đổi gì: nó đọc v_viec_dich
+ * theo bảng, và 0097 đã nối ban_le_san_pham vào đó.
+ */
+import NoiBo from '../../../layouts/NoiBo.astro';
+import {
+  docSanPham, docMatHangChon, luuSanPham, chotGia, chonChiNhanhBanLe, dongGoiDaGo, cauLoiDoc, cauCanhBao, giaGoi,
+  tenKieu, VAI_XEM_BAN_LE, VAI_SUA_BAN_LE, VAI_CHOT_GIA, KIEU_SAN_PHAM, CANH_BAO_BAN_LE, TEN_LOAI_BAN_LE,
+  TEN_BAO_QUAN, TRANG_THAI_BAN_LE, NGUON_GOI, O_DICH_BAN_LE, SO_GOI_TOI_DA, GIA_TOI_DA,
+  type SanPhamBanLe, type MatHangBanLe, type ChiNhanhBanLe, type GoiBanLe, type KetQuaLuu, type DongGoiDaGo,
+} from '../../../lib/ban-le-noi-bo';
+import { dichBu, chayNen, oDangCho, moTaO, cauTomTat } from '../../../lib/ban-dich';
+import { dichNB, nnCua } from '../../../lib/ngon-ngu-noi-bo';
+import { CAU_DOC_FORM_HONG, chuyenHuongNoiBo, docBaoNoiBo, docFormNoiBo } from '../../../lib/gui-noi-bo';
+import { dinhDangKg, dinhDangTien, dinhDangThoiDiem, docTien, duoc, TEN_LOAI_MAT_HANG_NB } from '../../../lib/kho/chung';
+
+const phien = Astro.locals.phien!;
+const { client, nhanSu } = phien;
+const nn = nnCua(Astro);
+// Vai kho không đọc được menu (RLS): về /noi-bo, trang đó đưa họ sang kho.
+if (!(VAI_XEM_BAN_LE as readonly string[]).includes(nhanSu.vai_tro)) return Astro.redirect('/noi-bo', 302);
+
+const t = dichNB(nn, {
+  tieuDe:      { vi: 'Sản phẩm bán lẻ', en: 'Retail product' },
+  tatCa:       { vi: '← Menu bán lẻ', en: '← Retail menu' },
+  khongThay:   { vi: 'Không thấy sản phẩm này, hoặc tài khoản của bạn không xem được.', en: 'This product was not found, or your account cannot view it.' },
+  viecSai:     { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
+  dangDich:    { vi: (cau: string) => `${cau} Bản tiếng Anh và tiếng Hàn đang được dịch — tải lại trang sau ít giây để xem.`,
+                 en: (cau: string) => `${cau} The English and Korean versions are being translated — reload in a few seconds to see them.` },
+  chiDoc:      { vi: 'Chỉ chủ và quản lý sửa được menu bán lẻ, kể cả mô tả.', en: 'Only the owner and managers can edit the retail menu, including descriptions.' },
+  ma:          { vi: 'Mã', en: 'Code' },
+  loai:        { vi: 'Loại', en: 'Type' },
+  oQuay:       { vi: 'Ở quầy', en: 'At the counter' },
+  tonKg:       { vi: (kg: string) => `${kg} kg`, en: (kg: string) => `${kg} kg` },
+  tonHop:      { vi: (n: number) => `${n} hộp`, en: (n: number) => `${n} boxes` },
+  chuaTru:     { vi: '(theo sổ kho — quầy chưa trừ theo FABi)', en: '(from the stock books — the counter is not deducted from FABi yet)' },
+  thieuGia:    { vi: 'Thiếu giá', en: 'No price' },
+  giaThuNhan:  { vi: 'Giá thử', en: 'Trial price' },
+  daChotNhan:  { vi: 'Đã chốt giá', en: 'Price confirmed' },
+  // Cho khách xem
+  khachXem:    { vi: 'Cho khách xem', en: 'What customers see' },
+  tenSp:       { vi: 'Tên sản phẩm', en: 'Product name (in Vietnamese)' },
+  moTa:        { vi: 'Mô tả ngắn', en: 'Short description (in Vietnamese)' },
+  cachDung:    { vi: 'Cách dùng, cách nướng', en: 'How to use or grill (in Vietnamese)' },
+  cachDungHop: { vi: 'Cách dùng, bảo quản', en: 'How to use and store (in Vietnamese)' },
+  toiDa:       { vi: (n: number) => `Tối đa ${n} ký tự.`, en: (n: number) => `At most ${n} characters.` },
+  banDichTom:  { vi: 'Bản tiếng Anh và tiếng Hàn — máy tự dịch', en: 'English and Korean versions — machine translated' },
+  banDichPhu:  { vi: 'Mỗi lần lưu, máy dịch những ô có câu tiếng Việt vừa đổi. Sửa tay ô nào thì ô đó được giữ, cho tới khi câu tiếng Việt của nó đổi. Xóa trắng một ô là nhờ máy dịch lại ô đó.',
+                 en: 'Each save translates the fields whose Vietnamese text changed. A field you edit by hand is kept until its Vietnamese text changes. Clear a field to have it machine-translated again.' },
+  tiengAnh:    { vi: 'Tiếng Anh', en: 'English' },
+  tiengHan:    { vi: 'Tiếng Hàn', en: 'Korean' },
+  // Bán thế nào
+  banThe:      { vi: 'Bán thế nào', en: 'How it is sold' },
+  kieu:        { vi: 'Cách bán', en: 'Selling method' },
+  kieuGoiY:    { vi: 'Đổi cách bán thì lưu trước, rồi điền phần mới (gói hoặc hộp).', en: 'After changing the selling method, save first, then fill in the new part (packs or boxes).' },
+  baoQuan:     { vi: 'Bảo quản', en: 'Storage' },
+  trangThai:   { vi: 'Trạng thái', en: 'Status' },
+  trangThaiGoiY: { vi: 'Sản phẩm mới luôn Tạm ngưng. Chuyển sang Đang bán khi đã có giá và gói.', en: 'A new product is always Paused. Switch it to On sale once it has prices and packs.' },
+  kenhMiniApp: { vi: 'Bán qua Mini App Zalo', en: 'Sell on the Zalo Mini App' },
+  kenhWeb:     { vi: 'Bán qua website', en: 'Sell on the website' },
+  co:          { vi: 'Có', en: 'Yes' },
+  khong:       { vi: 'Không', en: 'No' },
+  kenhGhiChu:  { vi: 'Mini App và website sẽ đọc ở bước sau — chọn trước từ bây giờ được.', en: 'The Mini App and the website will read this in a later step — you can choose now.' },
+  // Ở quầy
+  quay:        { vi: 'Ở quầy — bán theo cân', en: 'At the counter — sold by weight' },
+  quayDan:     { vi: 'Khách chọn miếng ở tủ, cân in tem theo gram. Cùng một giá với Kho → Mặt hàng: sửa ở đây là sửa ở đó.',
+                 en: 'Customers pick a piece from the display, the scale prints a label by the gram. Same price as Stock → Items: editing it here edits it there.' },
+  matHang:     { vi: 'Mặt hàng kho', en: 'Stock item' },
+  matHangGoiY: { vi: 'Giá mỗi kg, mã cân và tồn ở quầy lấy từ mặt hàng này.', en: 'The price per kg, scale code and counter stock come from this item.' },
+  chuaGan:     { vi: '— Chưa gắn —', en: '— Not linked —' },
+  khongCon:    { vi: '(Mặt hàng cũ không còn trong kho)', en: '(The old item no longer exists)' },
+  giuCu:       { vi: 'Giữ mặt hàng cũ (không còn trong kho)', en: 'Keep the old item (no longer exists)' },
+  daNgung:     { vi: ' — đã ngừng dùng', en: ' — no longer in use' },
+  demTheo:     { vi: (dv: string) => ` · đếm theo ${dv}`, en: (dv: string) => ` · counted by ${dv}` },
+  canKg:       { vi: ' · cân theo kg', en: ' · weighed by kg' },
+  khongDocMh:  { vi: 'Không đọc được danh sách mặt hàng kho — ô chọn chỉ có mặt hàng đang gắn.', en: 'Could not read the stock items — the list only has the linked item.' },
+  giaKg:       { vi: 'Giá bán mỗi kg (đồng)', en: 'Selling price per kg (dong)' },
+  giaKgGoiY:   { vi: 'Đây cũng là giá ở Kho → Mặt hàng: đổi cho mọi chi nhánh; đổi cả giá cân quầy, giá mã giảm, ô mã, cách chia giá vốn khi chốt phiên lóc và báo cáo ước tính.',
+                 en: 'This is also the price in Stock → Items: it changes for every branch, and also changes the counter scale price, discount codes, slot codes, how cost is split when closing a butchery session, and estimated reports.' },
+  mot100:      { vi: (gia: string) => `= ${gia} / 100 g`, en: (gia: string) => `= ${gia} / 100 g` },
+  maCan:       { vi: (ma: string) => `Mã trên cân: ${ma}`, en: (ma: string) => `Scale code: ${ma}` },
+  chuaMaCan:   { vi: 'Chưa có mã cân — cân quầy chưa có hàng này.', en: 'No scale code yet — the counter scale does not have this item.' },
+  quaCan:      { vi: (gia: string, ma: string) => `Cân quầy chỉ nhận tối đa ${gia}/kg. Lưu giá này thì cân VẪN IN GIÁ CŨ cho mã ${ma}.`,
+                 en: (gia: string, ma: string) => `The counter scale accepts at most ${gia}/kg. With this price the scale STILL PRINTS THE OLD PRICE for code ${ma}.` },
+  ganTruoc:    { vi: 'Gắn một mặt hàng kho đang dùng rồi bấm Lưu — sau đó mới sửa được giá mỗi kg ở đây.', en: 'Link an active stock item and press Save — then the price per kg can be edited here.' },
+  // Gói online
+  goiTieuDe:   { vi: 'Bán lẻ online — gói cố định', en: 'Online retail — fixed packs' },
+  goiDan:      { vi: 'Giá gói = giá mỗi kg × trọng lượng, làm tròn 1.000 đ. Để trống "Giá riêng" là dùng giá tự tính.',
+                 en: 'Pack price = price per kg × weight, rounded to 1,000 ₫. Leave "Own price" empty to use the calculated price.' },
+  nguonGoi:    { vi: 'Gói online lấy từ đâu', en: 'Where online packs come from' },
+  // Hộp
+  hopTieuDe:   { vi: 'Hộp — giá cố định', en: 'Boxes — fixed price' },
+  hopDan:      { vi: 'Ở quầy thu ngân quét mã vạch trên hộp, không qua cân. Quầy và online cùng một giá.',
+                 en: 'At the till the cashier scans the barcode on the box, no scale. Counter and online share one price.' },
+  hopKho1:     { vi: 'Mỗi cỡ hộp là một mặt hàng kho riêng: tạo ở', en: 'Each box size is its own stock item: create it in' },
+  hopKho2:     { vi: 'Kho → Mặt hàng', en: 'Stock → Items' },
+  hopKho3:     { vi: '(loại Phần cắt, đếm theo gói, đơn vị "hộp"). Danh sách việc của kho sẽ ghi mặt hàng đó "chưa đủ cài đặt" cho tới khi có mã cân và giá — đúng như vậy, không phải lỗi.',
+                 en: '(type Cut, counted by pack, unit "box"). The stock checklist will show that item as not fully set up until it has a scale code and a price — that is expected, not an error.' },
+  // Một gói
+  goiMoi:      { vi: 'Gói mới (để trống nếu không thêm)', en: 'New pack (leave empty to skip)' },
+  hopMoi:      { vi: 'Cỡ hộp mới (để trống nếu không thêm)', en: 'New box size (leave empty to skip)' },
+  goi:         { vi: (g: number) => `Gói ${g} g`, en: (g: number) => `${g} g pack` },
+  hop:         { vi: (g: number) => `Hộp ${g} g`, en: (g: number) => `${g} g box` },
+  trongLuong:  { vi: 'Trọng lượng (g)', en: 'Weight (g)' },
+  giaTuTinh:   { vi: 'Giá tự tính', en: 'Calculated price' },
+  giaRieng:    { vi: 'Giá riêng (đồng)', en: 'Own price (dong)' },
+  giaHop:      { vi: 'Giá hộp (đồng)', en: 'Box price (dong)' },
+  maFabi:      { vi: 'Mã FABi', en: 'FABi code' },
+  maFabiGoiY:  { vi: 'Phân biệt chữ hoa, chữ thường. Có ít nhất một chữ cái.', en: 'Case-sensitive. At least one letter.' },
+  maVach:      { vi: 'Mã vạch trên hộp', en: 'Barcode on the box' },
+  matHangGoi:  { vi: 'Mặt hàng kho (đếm theo gói)', en: 'Stock item (counted by pack)' },
+  viecGoi:     { vi: 'Gói này', en: 'This pack' },
+  giu:         { vi: 'Giữ, đang bán', en: 'Keep, on sale' },
+  ban:         { vi: 'Bán gói này', en: 'Sell this pack' },
+  ngung:       { vi: 'Ngưng bán', en: 'Stop selling' },
+  bo:          { vi: 'Bỏ gói này', en: 'Remove this pack' },
+  giaDangBan:  { vi: (gia: string) => `Giá đang bán: ${gia}`, en: (gia: string) => `Current price: ${gia}` },
+  chuaGia:     { vi: 'Chưa có giá', en: 'No price yet' },
+  giaThuNho:   { vi: 'giá thử', en: 'trial price' },
+  conHang:     { vi: 'quầy đủ hàng cho gói này', en: 'the counter has enough for this pack' },
+  hetHang:     { vi: 'quầy không đủ hàng cho gói này', en: 'the counter does not have enough for this pack' },
+  mhGoiNgung:  { vi: 'mặt hàng kho đã ngừng dùng', en: 'the stock item is no longer in use' },
+  mhGoiMat:    { vi: 'mặt hàng kho không còn', en: 'the stock item no longer exists' },
+  luu:         { vi: 'Lưu', en: 'Save' },
+  huy:         { vi: 'Hủy', en: 'Cancel' },
+  // Dịch ngay
+  banDich:     { vi: 'Bản dịch', en: 'Translations' },
+  conCho:      { vi: (n: number) => `Còn ${n} ô tiếng Anh/Hàn đang chờ máy dịch. Máy tự làm sau mỗi lần lưu và khi có người mở trang nội bộ; bấm nút này để dịch ngay và xem kết quả.`,
+                 en: (n: number) => `${n} English/Korean fields are waiting for machine translation. It runs after each save and whenever someone opens the internal app; press this button to translate now and see the result.` },
+  dichNgay:    { vi: 'Dịch ngay', en: 'Translate now' },
+  // Giá thử
+  giaThu:      { vi: 'Giá thử', en: 'Trial price' },
+  giaThuDan:   { vi: 'Giá mới tạo hoặc vừa đổi là giá thử cho tới khi chủ xác nhận. Đối chiếu FABi nhắc đặt giá trên FABi sau khi xác nhận.',
+                 en: 'A new or just-changed price is a trial price until the owner confirms it. The FABi check reminds you to set the price in FABi after confirming.' },
+  chuaCoGia:   { vi: 'Chưa có giá nào để xác nhận.', en: 'There is no price to confirm yet.' },
+  daChotLuc:   { vi: (luc: string, ai: string) => `Đã chốt lúc ${luc} bởi ${ai}.`, en: (luc: string, ai: string) => `Confirmed at ${luc} by ${ai}.` },
+  doiSauChot:  { vi: 'Giá đã đổi sau khi chốt — đang là giá thử.', en: 'The prices changed after confirmation — they are trial prices again.' },
+  chuaChot:    { vi: 'Giá thử — chủ chưa xác nhận.', en: 'Trial prices — not confirmed by the owner yet.' },
+  giaMoiKg:    { vi: (gia: string) => `Giá mỗi kg: ${gia}`, en: (gia: string) => `Price per kg: ${gia}` },
+  giaCua:      { vi: (ten: string, gia: string) => `${ten}: ${gia}`, en: (ten: string, gia: string) => `${ten}: ${gia}` },
+  xacNhan:     { vi: 'Giá này đúng — bỏ chữ Giá thử', en: 'These prices are right — remove the Trial price label' },
+  chiChuChot:  { vi: 'Chỉ chủ xác nhận được giá.', en: 'Only the owner can confirm prices.' },
+  // Xem trước
+  xemTruoc:    { vi: 'Xem trước — khi Mini App đọc menu này (bước sau)', en: 'Preview — once the Mini App reads this menu (later step)' },
+  anTamNgung:  { vi: 'Sẽ không hiện: sản phẩm đang Tạm ngưng.', en: 'Would not show: the product is Paused.' },
+  anKenh:      { vi: 'Sẽ không hiện: không bán qua Mini App.', en: 'Would not show: not sold on the Mini App.' },
+  anChuaGoi:   { vi: 'Sẽ không hiện: chưa có gói nào đang bán.', en: 'Would not show: no pack is on sale.' },
+  anChuaGia:   { vi: 'Sẽ không hiện: chưa gói nào có giá.', en: 'Would not show: no pack has a price.' },
+  xemGiaThu:   { vi: 'Giá đang là giá thử — chủ chưa xác nhận.', en: 'These are trial prices — not confirmed by the owner yet.' },
+});
+const duocSua = (VAI_SUA_BAN_LE as readonly string[]).includes(nhanSu.vai_tro);
+const duocChot = (VAI_CHOT_GIA as readonly string[]).includes(nhanSu.vai_tro);
+const xemKho = duoc(nhanSu.vai_tro, 'xem');
+const id = Astro.params.id ?? '';
+// Giữ ?cn= khi gửi form và khi chuyển hướng về: dựng lại đúng chi nhánh đang xem.
+const duongDan = Astro.url.pathname + Astro.url.search;
+
+let bao: KetQuaLuu | null = docBaoNoiBo(Astro.cookies, Astro.url.pathname);
+let daGo: FormData | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await docFormNoiBo(Astro.request);
+  if (!form) bao = { ok: false, cau: CAU_DOC_FORM_HONG[nn] };
+
+  if (form) {
+    const viec = String(form.get('viec') ?? '');
+    bao = viec === 'luu'  ? await luuSanPham(client, id, form, nn)
+        : viec === 'chot' ? await chotGia(client, id, String(form.get('phien_ban') ?? ''), String(form.get('gia_da_xem') ?? ''), nn)
+        // Dịch ngay thì CHỜ kết quả: người bấm nút muốn biết nó xong hay hỏng vì sao.
+        : viec === 'dich' ? cauTomTat(await dichBu(client, { bang: 'ban_le_san_pham', dongId: id }), nn)
+        :                   { ok: false, cau: t.viecSai };
+
+    if (bao.ok) {
+      // Lưu xong thì dịch nền đúng sản phẩm này: trang trả về ngay, bản dịch vào sau vài giây.
+      // Máy hỏng cũng không làm hỏng lần lưu — xem chayNen().
+      if (viec === 'luu') {
+        chayNen(Astro.locals, dichBu(client, { bang: 'ban_le_san_pham', dongId: id }));
+        if ((await oDangCho(client, 'ban_le_san_pham', id)).size > 0) bao = { ...bao, cau: t.dangDich(bao.cau) };
+      }
+      return chuyenHuongNoiBo(Astro, bao, duongDan);
+    }
+    // Lưu hỏng: dựng lại với đúng chữ vừa gõ. Xác nhận giá hỏng: hiện giá mới đọc, không giữ gì.
+    if (viec === 'luu') daGo = form;
+  }
+}
+
+let chiNhanh: ChiNhanhBanLe | null = null;
+if (xemKho) ({ chiNhanh } = await chonChiNhanhBanLe(client, nhanSu, Astro.url, Astro.cookies));
+
+let sp: SanPhamBanLe | null = null;
+let loiDoc: string | null = null;
+try {
+  sp = await docSanPham(client, id, chiNhanh?.id ?? null);
+} catch (e) {
+  loiDoc = cauLoiDoc(e, nn);
+}
+
+let matHang: MatHangBanLe[] = [];
+let loiMatHang: string | null = null;
+if (sp && duocSua) {
+  try {
+    matHang = await docMatHangChon(client, [sp.mat_hang_id, ...sp.goi.map(g => g.mat_hang?.id ?? null)]);
+  } catch (e) {
+    loiMatHang = cauLoiDoc(e, nn);
+  }
+}
+const dangCho = sp ? await oDangCho(client, 'ban_le_san_pham', id) : new Set<string>();
+
+// ---- Giá trị hiện trong form: chữ vừa gõ (khi lưu hỏng) hoặc lần đọc mới ----------------------------------
+const go = (ten: string, moi: string) => (daGo && daGo.get(ten) !== null ? String(daGo.get(ten)) : moi);
+const giongChu = (a: unknown, b: unknown) => String(a ?? '').replace(/\r/g, '').trim() === String(b ?? '').replace(/\r/g, '').trim();
+/** Ô dịch: chữ đã gõ chỉ khi người dùng sửa ô đó (khác goc_ lúc họ mở trang); không thì bản mới đọc. */
+const giaTriDich = (k: string) => {
+  const moi = String((sp as unknown as Record<string, unknown> | null)?.[k] ?? '');
+  if (!daGo || daGo.get(k) === null) return moi;
+  return giongChu(daGo.get(k), daGo.get(`goc_${k}`)) ? moi : String(daGo.get(k));
+};
+const soTien = (n: number | null | undefined) => (n == null ? '' : Number(n).toLocaleString(nn === 'en' ? 'en-US' : 'vi-VN'));
+/** Ô giá mỗi kg: chữ đã gõ chỉ khi người dùng đổi giá so với giá họ đã thấy; không thì giá kho mới đọc. */
+const giaKgHien = (() => {
+  const moi = soTien(sp?.mat_hang?.gia_ban_kg);
+  if (!daGo || daGo.get('gia_ban_kg') === null) return moi;
+  const daThay = String(daGo.get('gia_ban_kg_cu') ?? '');
+  const dang = docTien(daGo.get('gia_ban_kg'));
+  return dang === (daThay === '' ? null : Number(daThay)) ? moi : String(daGo.get('gia_ban_kg'));
+})();
+
+const laHop = sp?.cach_ban === 'theo_hop';
+const coMatHangGoi = !!sp && (sp.cach_ban === 'theo_hop' || sp.nguon_goi === 'dong_san');
+const tenGoi = (g: number) => (laHop ? t.hop(g) : t.goi(g));
+
+/** Dòng gói của form: gói đang có, rồi tối đa hai dòng trống cho gói mới (không quá SO_GOI_TOI_DA). */
+const dongGo = daGo ? dongGoiDaGo(daGo) : [];
+const goMoi = dongGo.filter(d => !d.id);
+const dongGoi: { goi: GoiBanLe | null; go: DongGoiDaGo | null }[] = sp
+  ? [
+      ...sp.goi.map(g => ({ goi: g, go: dongGo.find(d => d.id === g.id) ?? null })),
+      ...Array.from({ length: Math.max(0, Math.min(2, SO_GOI_TOI_DA - sp.goi.length)) }, (_, i) => ({ goi: null, go: goMoi[i] ?? null })),
+    ]
+  : [];
+
+/** Mặt hàng kho theo nhóm loại, cho optgroup — chữ của lựa chọn là tên, mã nằm ở title. */
+function theoLoai(ds: MatHangBanLe[]) {
+  const thuTu = ['phan_cat', 'tang', 'phu_pham'];
+  const loai = [...new Set(ds.map(m => m.loai))].sort((a, b) => (thuTu.indexOf(a) + 1 || 9) - (thuTu.indexOf(b) + 1 || 9));
+  return loai.map(l => ({ ten: TEN_LOAI_MAT_HANG_NB[l]?.[nn] ?? l, ds: ds.filter(m => m.loai === l) }));
+}
+const nhanMatHang = (m: MatHangBanLe, kemDem: boolean) =>
+  `${m.ten}${m.dang_dung ? '' : t.daNgung}${kemDem ? (m.dem_goi ? t.demTheo(m.don_vi_goi ?? '—') : t.canKg) : ''}`;
+// Không đọc được danh sách (hay vai chỉ xem): ô chọn vẫn có mặt hàng đang gắn, để lần lưu không gỡ nó.
+const dsChon = (dangGan: MatHangBanLe | null) =>
+  dangGan && !matHang.some(m => m.id === dangGan.id) ? [...matHang, dangGan] : matHang;
+const nhomSp = sp ? theoLoai(dsChon(sp.mat_hang).filter(m => m.loai === 'phan_cat' || m.id === sp!.mat_hang_id)) : [];
+
+const kieuCu = sp ? `${sp.loai}|${sp.cach_ban}` : '';
+const kieuLa = !!sp && !KIEU_SAN_PHAM.some(k => k.ma === kieuCu);
+const coGia = !!sp && (sp.gia_de_chot.kg != null || Object.keys(sp.gia_de_chot.goi ?? {}).length > 0);
+const giaChot = sp
+  ? Object.entries(sp.gia_de_chot.goi ?? {}).map(([g, gia]) => ({ soGam: Number(g), gia })).sort((a, b) => a.soGam - b.soGam)
+  : [];
+const trangThaiGia = !sp || !coGia ? t.chuaCoGia
+  : !sp.gia_thu ? t.daChotLuc(dinhDangThoiDiem(sp.gia_chot_luc), sp.gia_chot_boi_ten ?? '—')
+  : sp.gia_chot ? t.doiSauChot : t.chuaChot;
+const quaCan = !!sp?.mat_hang?.ma_can && (sp.mat_hang.gia_ban_kg ?? 0) > GIA_TOI_DA;
+const suaGiaDuoc = !!sp?.mat_hang && sp.mat_hang.dang_dung;
+// Cảnh báo ở đầu trang; giá quá cân và khay nguyên hiện ngay ở chỗ sửa của chúng.
+const canhDau = (sp?.canh_bao ?? []).filter(c => sp?.cach_ban !== 'theo_can' || (c !== 'gia_qua_can' && c !== 'khay_nguyen'));
+
+const goiXem = (sp?.goi ?? []).filter(g => g.dang_ban && g.gia != null && g.gia > 0);
+const lyDoAn = !sp ? null
+  : sp.trang_thai !== 'dang_ban' ? t.anTamNgung
+  : !sp.kenh_mini_app ? t.anKenh
+  : !sp.goi.some(g => g.dang_ban) ? t.anChuaGoi
+  : goiXem.length === 0 ? t.anChuaGia
+  : null;
+---
+<NoiBo tieuDe={sp?.ten_vi ?? t.tieuDe} nhanSu={nhanSu}>
+  <p class="bl-lui"><a href="/noi-bo/ban-le">{t.tatCa}</a></p>
+
+  {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>}
+  {loiDoc && <div class="nb-bao loi"><p>{loiDoc}</p></div>}
+
+  {!sp && !loiDoc && (
+    <div class="nb-rong"><p style="margin:0">{t.khongThay}</p></div>
+  )}
+
+  {sp && (
+    <>
+      <div class="nb-dong-dau" style="margin-bottom:.35rem">
+        <h1 style="margin:0">{sp.ten_vi}</h1>
+        <span class="bl-nhan">
+          <span class={`nb-nhan ${TRANG_THAI_BAN_LE[sp.trang_thai]?.lop ?? 'tat'}`}>{TRANG_THAI_BAN_LE[sp.trang_thai]?.ten[nn] ?? sp.trang_thai}</span>
+          {sp.canh_bao.includes('thieu_gia') && <span class="nb-nhan cho">{t.thieuGia}</span>}
+          {coGia && <span class={`nb-nhan ${sp.gia_thu ? 'nhap' : 'song'}`}>{sp.gia_thu ? t.giaThuNhan : t.daChotNhan}</span>}
+        </span>
+      </div>
+      <dl class="bl-co-dinh">
+        <dt>{t.ma}</dt><dd><code>{sp.ma}</code></dd>
+        <dt>{t.loai}</dt><dd>{TEN_LOAI_BAN_LE[sp.loai]?.[nn] ?? sp.loai}</dd>
+        {xemKho && (
+          <>
+            <dt>{t.oQuay}</dt>
+            <dd>{sp.ton ? `${laHop ? t.tonHop(sp.ton.so_goi) : t.tonKg(dinhDangKg(sp.ton.so_kg, nn))}${sp.ton.tin_duoc ? '' : ` ${t.chuaTru}`}` : '—'}</dd>
+          </>
+        )}
+      </dl>
+
+      {!duocSua && <div class="nb-bao luu-y"><p>{t.chiDoc}</p></div>}
+      {canhDau.map(c => (
+        <div class={`nb-bao ${CANH_BAO_BAN_LE[c]?.nang ? 'loi' : 'luu-y'}`}><p>{cauCanhBao(c, nn)}</p></div>
+      ))}
+
+      {/* ------------------------------------------------------------ SỬA */}
+      <form method="POST" action={duongDan} class="bl-soan">
+        <input type="hidden" name="phien_ban" value={sp.updated_at} />
+        <fieldset disabled={!duocSua}>
+          <section class="nb-the">
+            <h2>{t.khachXem}</h2>
+            <label class="nb-o">
+              <span>{t.tenSp} *</span>
+              <input type="text" name="ten_vi" required maxlength="120" value={go('ten_vi', sp.ten_vi)} autocapitalize="sentences" />
+            </label>
+            <label class="nb-o">
+              <span>{t.moTa}</span>
+              <small>{t.toiDa(500)}</small>
+              <textarea name="mo_ta_vi" rows="3" maxlength="500">{go('mo_ta_vi', sp.mo_ta_vi ?? '')}</textarea>
+            </label>
+            <label class="nb-o">
+              <span>{sp.loai === 'kim_chi' ? t.cachDungHop : t.cachDung}</span>
+              <small>{t.toiDa(500)}</small>
+              <textarea name="cach_dung_vi" rows="3" maxlength="500">{go('cach_dung_vi', sp.cach_dung_vi ?? '')}</textarea>
+            </label>
+
+            <details class="bl-dich" open={dangCho.size > 0}>
+              <summary>{t.banDichTom}</summary>
+              <p class="bl-phu">{t.banDichPhu}</p>
+              {(['en', 'ko'] as const).map(l => (
+                <fieldset class="bl-ngon-ngu">
+                  <legend>{l === 'en' ? t.tiengAnh : t.tiengHan}</legend>
+                  {O_DICH_BAN_LE.map(o => {
+                    const k = `${o.cot}_${l}`;
+                    const trangThai = moTaO(sp.ban_dich?.[o.cot]?.[l], dangCho.has(`${o.cot}/${l}`), nn);
+                    return (
+                      <label class="nb-o">
+                        <span>{o.ten[nn]} ({l.toUpperCase()})</span>
+                        {o.dong === 1
+                          ? <input type="text" name={k} lang={l} maxlength={o.toiDa} value={giaTriDich(k)} />
+                          : <textarea name={k} rows={o.dong} lang={l} maxlength={o.toiDa}>{giaTriDich(k)}</textarea>}
+                        {/* Chữ lúc mở màn hình — lib/ban-le-noi-bo.ts so với nó để biết ô nào được sửa tay. */}
+                        <input type="hidden" name={`goc_${k}`} value={String((sp as unknown as Record<string, unknown>)[k] ?? '')} />
+                        {trangThai && <small class={`nb-dich ${trangThai.lop}`}>{trangThai.chu}</small>}
+                      </label>
+                    );
+                  })}
+                </fieldset>
+              ))}
+            </details>
+          </section>
+
+          <section class="nb-the">
+            <h2>{t.banThe}</h2>
+            <input type="hidden" name="kieu_cu" value={kieuCu} />
+            <input type="hidden" name="trang_thai_cu" value={sp.trang_thai} />
+            <div class="bl-luoi">
+              <label class="nb-o">
+                <span>{t.kieu}</span>
+                <small>{t.kieuGoiY}</small>
+                <select name="kieu">
+                  {KIEU_SAN_PHAM.map(k => <option value={k.ma} selected={go('kieu', kieuCu) === k.ma}>{k.ten[nn]}</option>)}
+                  {kieuLa && <option value={kieuCu} selected={go('kieu', kieuCu) === kieuCu}>{tenKieu(sp.loai, sp.cach_ban, nn)}</option>}
+                </select>
+              </label>
+              <label class="nb-o">
+                <span>{t.baoQuan}</span>
+                <select name="bao_quan">
+                  {Object.entries(TEN_BAO_QUAN).map(([ma, ten]) => <option value={ma} selected={go('bao_quan', sp.bao_quan) === ma}>{ten[nn]}</option>)}
+                </select>
+              </label>
+              <label class="nb-o">
+                <span>{t.trangThai}</span>
+                <small>{t.trangThaiGoiY}</small>
+                <select name="trang_thai">
+                  {Object.entries(TRANG_THAI_BAN_LE).map(([ma, tt]) => <option value={ma} selected={go('trang_thai', sp.trang_thai) === ma}>{tt.ten[nn]}</option>)}
+                </select>
+              </label>
+              <label class="nb-o">
+                <span>{t.kenhMiniApp}</span>
+                <select name="kenh_mini_app">
+                  <option value="co" selected={go('kenh_mini_app', sp.kenh_mini_app ? 'co' : 'khong') === 'co'}>{t.co}</option>
+                  <option value="khong" selected={go('kenh_mini_app', sp.kenh_mini_app ? 'co' : 'khong') === 'khong'}>{t.khong}</option>
+                </select>
+              </label>
+              <label class="nb-o">
+                <span>{t.kenhWeb}</span>
+                <select name="kenh_web">
+                  <option value="co" selected={go('kenh_web', sp.kenh_web ? 'co' : 'khong') === 'co'}>{t.co}</option>
+                  <option value="khong" selected={go('kenh_web', sp.kenh_web ? 'co' : 'khong') === 'khong'}>{t.khong}</option>
+                </select>
+              </label>
+            </div>
+            <p class="bl-phu">{t.kenhGhiChu}</p>
+          </section>
+
+          {sp.cach_ban === 'theo_can' && (
+            <section class="nb-the">
+              <h2>{t.quay}</h2>
+              <p class="bl-phu bl-dan">{t.quayDan}</p>
+              <input type="hidden" name="mat_hang_id_cu" value={sp.mat_hang_id ?? ''} />
+              {loiMatHang && <div class="nb-bao luu-y"><p>{t.khongDocMh}</p></div>}
+              <label class="nb-o">
+                <span>{t.matHang}</span>
+                <small>{t.matHangGoiY}</small>
+                <select name="mat_hang_id">
+                  <option value="" selected={go('mat_hang_id', sp.mat_hang_id ?? '') === ''}>{t.chuaGan}</option>
+                  {sp.mat_hang_mat && sp.mat_hang_id && (
+                    <option value={sp.mat_hang_id} selected={go('mat_hang_id', sp.mat_hang_id) === sp.mat_hang_id}>{t.khongCon}</option>
+                  )}
+                  {nhomSp.map(g => (
+                    <optgroup label={g.ten}>
+                      {g.ds.map(m => <option value={m.id} title={m.ma} selected={go('mat_hang_id', sp.mat_hang_id ?? '') === m.id}>{nhanMatHang(m, false)}</option>)}
+                    </optgroup>
+                  ))}
+                </select>
+              </label>
+              {suaGiaDuoc && sp.mat_hang ? (
+                <>
+                  <input type="hidden" name="gia_ban_kg_cu" value={sp.mat_hang.gia_ban_kg ?? ''} />
+                  <label class="nb-o">
+                    <span>{t.giaKg}</span>
+                    <small>{t.giaKgGoiY}</small>
+                    <input type="text" name="gia_ban_kg" inputmode="numeric" autocomplete="off" value={giaKgHien} />
+                  </label>
+                  <p class="bl-phu bl-so">
+                    {sp.mat_hang.gia_ban_kg != null && <>{t.mot100(dinhDangTien(giaGoi(sp.mat_hang.gia_ban_kg, 100), nn))} · </>}{sp.mat_hang.ma_can ? t.maCan(sp.mat_hang.ma_can) : t.chuaMaCan}
+                  </p>
+                  {quaCan && sp.mat_hang.ma_can && (
+                    <div class="nb-bao loi bl-sat"><p>{t.quaCan(dinhDangTien(GIA_TOI_DA, nn), sp.mat_hang.ma_can)}</p></div>
+                  )}
+                </>
+              ) : (
+                <p class="bl-phu">{t.ganTruoc}</p>
+              )}
+            </section>
+          )}
+
+          <section class="nb-the">
+            <h2>{laHop ? t.hopTieuDe : t.goiTieuDe}</h2>
+            {laHop ? (
+              <>
+                <p class="bl-phu bl-dan">{t.hopDan}</p>
+                <p class="bl-phu bl-dan">{t.hopKho1} <a href="/noi-bo/kho/cai-dat/mat-hang">{t.hopKho2}</a> {t.hopKho3}</p>
+              </>
+            ) : (
+              <>
+                <p class="bl-phu bl-dan">{t.goiDan}</p>
+                <input type="hidden" name="nguon_goi_cu" value={sp.nguon_goi} />
+                <label class="nb-o">
+                  <span>{t.nguonGoi}</span>
+                  <select name="nguon_goi">
+                    {Object.entries(NGUON_GOI).map(([ma, n]) => <option value={ma} selected={go('nguon_goi', sp.nguon_goi) === ma}>{n.ten[nn]}</option>)}
+                  </select>
+                </label>
+                <ul class="bl-giai">
+                  {Object.values(NGUON_GOI).map(n => <li>{n.giai[nn]}</li>)}
+                </ul>
+                {sp.canh_bao.includes('khay_nguyen') && (
+                  <div class="nb-bao loi bl-sat"><p>{cauCanhBao('khay_nguyen', nn)}</p></div>
+                )}
+              </>
+            )}
+
+            <input type="hidden" name="so_dong_goi" value={dongGoi.length} />
+            {dongGoi.map(({ goi: g, go: d }, i) => {
+              const p = `goi_${i}_`;
+              const viecMoi = g ? (g.dang_ban ? 'giu' : 'ngung') : 'giu';
+              const viec = d?.viec ?? viecMoi;
+              const mhGoi = g?.mat_hang ?? null;
+              const chonMhGoi = d ? d.mat_hang_id : (g?.mat_hang_mat ? 'giu' : mhGoi?.id ?? '');
+              return (
+                <fieldset class="bl-goi">
+                  <legend>{g ? tenGoi(g.so_gam) : laHop ? t.hopMoi : t.goiMoi}</legend>
+                  {g && (
+                    <>
+                      <input type="hidden" name={`${p}id`} value={g.id} />
+                      <input type="hidden" name={`${p}so_gam_cu`} value={g.so_gam} />
+                      <input type="hidden" name={`${p}gia_rieng_cu`} value={g.gia_rieng ?? ''} />
+                      <input type="hidden" name={`${p}ma_fabi_cu`} value={g.ma_fabi ?? ''} />
+                      <input type="hidden" name={`${p}dang_ban_cu`} value={String(g.dang_ban)} />
+                      {coMatHangGoi && <input type="hidden" name={`${p}mat_hang_id_cu`} value={mhGoi?.id ?? ''} />}
+                    </>
+                  )}
+                  <div class="bl-luoi">
+                    <label class="nb-o">
+                      <span>{t.trongLuong}</span>
+                      <input type="text" name={`${p}so_gam`} inputmode="numeric" autocomplete="off" value={d ? d.so_gam : g ? String(g.so_gam) : ''} />
+                    </label>
+                    {!laHop && (
+                      <div class="nb-o">
+                        <span>{t.giaTuTinh}</span>
+                        <p class="bl-gia-tu">{g?.gia_tu_tinh != null ? dinhDangTien(g.gia_tu_tinh, nn) : '—'}</p>
+                      </div>
+                    )}
+                    <label class="nb-o">
+                      <span>{laHop ? t.giaHop : t.giaRieng}</span>
+                      <input type="text" name={`${p}gia_rieng`} inputmode="numeric" autocomplete="off" value={d ? d.gia_rieng : soTien(g?.gia_rieng)} />
+                    </label>
+                    <label class="nb-o">
+                      <span>{t.maFabi}</span>
+                      <small>{t.maFabiGoiY}</small>
+                      <input type="text" name={`${p}ma_fabi`} maxlength="40" spellcheck="false" autocapitalize="none" autocomplete="off" value={d ? d.ma_fabi : g?.ma_fabi ?? ''} />
+                    </label>
+                    {laHop && (
+                      <label class="nb-o">
+                        <span>{t.maVach}</span>
+                        <input type="text" name={`${p}ma_vach`} inputmode="numeric" maxlength="14" spellcheck="false" autocomplete="off" value={d ? d.ma_vach : g?.ma_vach ?? ''} />
+                      </label>
+                    )}
+                    {coMatHangGoi && (
+                      <label class="nb-o">
+                        <span>{t.matHangGoi}</span>
+                        <select name={`${p}mat_hang_id`}>
+                          <option value="" selected={chonMhGoi === ''}>{t.chuaGan}</option>
+                          {g?.mat_hang_mat && <option value="giu" selected={chonMhGoi === 'giu'}>{t.giuCu}</option>}
+                          {theoLoai(dsChon(mhGoi)).map(n => (
+                            <optgroup label={n.ten}>
+                              {n.ds.map(m => <option value={m.id} title={m.ma} selected={chonMhGoi === m.id}>{nhanMatHang(m, true)}</option>)}
+                            </optgroup>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                    <label class="nb-o">
+                      <span>{t.viecGoi}</span>
+                      <select name={`${p}viec`}>
+                        <option value="giu" selected={viec === 'giu'}>{g ? t.giu : t.ban}</option>
+                        <option value="ngung" selected={viec === 'ngung'}>{t.ngung}</option>
+                        {g && <option value="bo" selected={viec === 'bo'}>{t.bo}</option>}
+                      </select>
+                    </label>
+                  </div>
+                  {g && (
+                    <p class="bl-phu bl-so">
+                      {[
+                        g.gia != null ? t.giaDangBan(dinhDangTien(g.gia, nn)) : t.chuaGia,
+                        g.gia != null && g.gia_thu ? t.giaThuNho : null,
+                        g.con_hang === 'con' ? t.conHang : g.con_hang === 'het' ? t.hetHang : null,
+                        coMatHangGoi && g.mat_hang_ngung ? t.mhGoiNgung : null,
+                        coMatHangGoi && g.mat_hang_mat ? t.mhGoiMat : null,
+                      ].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
+                </fieldset>
+              );
+            })}
+          </section>
+
+          {duocSua && (
+            <div class="bl-nut">
+              <button type="submit" name="viec" value="luu" class="nb-nut">{t.luu}</button>
+              <a href="/noi-bo/ban-le" class="nb-nut phu">{t.huy}</a>
+            </div>
+          )}
+        </fieldset>
+      </form>
+
+      {/* ------------------------------------------------------------ DỊCH */}
+      {duocSua && dangCho.size > 0 && (
+        <form method="POST" action={duongDan} class="nb-the bl-form">
+          <input type="hidden" name="viec" value="dich" />
+          <h2>{t.banDich}</h2>
+          <p class="bl-phu bl-dan">{t.conCho(dangCho.size)}</p>
+          <button type="submit" class="nb-nut phu">{t.dichNgay}</button>
+        </form>
+      )}
+
+      {/* ------------------------------------------------------------ GIÁ THỬ */}
+      <section class="nb-the" id="gia-thu">
+        <h2>{t.giaThu}</h2>
+        <p class="bl-phu bl-dan">{t.giaThuDan}</p>
+        <p class="bl-trang-thai-gia"><strong>{trangThaiGia}</strong></p>
+        {coGia && (
+          <ul class="bl-gia-chot">
+            {sp.gia_de_chot.kg != null && <li>{t.giaMoiKg(`${dinhDangTien(sp.gia_de_chot.kg, nn)}/kg`)}</li>}
+            {giaChot.map(x => <li>{t.giaCua(tenGoi(x.soGam), dinhDangTien(x.gia, nn))}</li>)}
+          </ul>
+        )}
+        {duocChot && coGia && sp.gia_thu && (
+          <form method="POST" action={duongDan}>
+            <input type="hidden" name="viec" value="chot" />
+            <input type="hidden" name="phien_ban" value={sp.updated_at} />
+            <input type="hidden" name="gia_da_xem" value={JSON.stringify(sp.gia_de_chot)} />
+            <button type="submit" class="nb-nut">{t.xacNhan}</button>
+          </form>
+        )}
+        {!duocChot && coGia && sp.gia_thu && <p class="bl-phu">{t.chiChuChot}</p>}
+      </section>
+
+      {/* ------------------------------------------------------------ XEM TRƯỚC */}
+      <section class="nb-the">
+        <h2>{t.xemTruoc}</h2>
+        {lyDoAn ? (
+          <p class="bl-phu">{lyDoAn}</p>
+        ) : (
+          <div class="bl-xem">
+            <strong>{sp.ten_vi}</strong>
+            <p class="bl-phu">{TEN_BAO_QUAN[sp.bao_quan]?.[nn] ?? sp.bao_quan}{sp.mo_ta_vi ? ` · ${sp.mo_ta_vi}` : ''}</p>
+            <ul class="bl-chip">
+              {goiXem.map(g => <li>{tenGoi(g.so_gam)} · {dinhDangTien(g.gia, nn)}</li>)}
+            </ul>
+            {sp.gia_thu && <p class="bl-canh">{t.xemGiaThu}</p>}
+          </div>
+        )}
+      </section>
+    </>
+  )}
+</NoiBo>
+
+<style>
+  .bl-lui { margin: 0 0 .75rem; font-size: .9rem; }
+  .bl-lui a { display: inline-flex; align-items: center; min-height: 48px; }
+  .bl-nhan { display: inline-flex; flex-wrap: wrap; gap: .3rem; }
+  .bl-co-dinh { display: grid; grid-template-columns: max-content 1fr; gap: .3rem 1rem; margin: .5rem 0 1.25rem; font-size: .92rem; }
+  .bl-co-dinh dt { font-weight: 600; }
+  .bl-co-dinh dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .bl-soan fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+  .bl-soan h2, form.nb-the h2, section.nb-the h2 { margin-top: 0; }
+  .bl-phu { margin: .35rem 0 0; font-size: .85rem; color: var(--muc-nhat); }
+  .bl-dan { margin: -.35rem 0 1rem; }
+  .bl-so { font-variant-numeric: tabular-nums; }
+  .bl-sat { margin-top: .75rem; }
+  .bl-luoi {
+    display: grid; gap: 0 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  }
+  .bl-dich { margin-top: .25rem; }
+  .bl-dich summary { cursor: pointer; font-weight: 600; font-size: .9rem; padding: .7rem 0; min-height: 48px; }
+  .bl-soan .bl-ngon-ngu { border: 1px solid var(--vach); border-radius: 8px; padding: .5rem .85rem .25rem; margin: 0 0 1rem; }
+  .bl-ngon-ngu legend { font-weight: 700; font-size: .9rem; padding: 0 .35rem; }
+  .bl-giai { margin: -.4rem 0 1rem; padding-left: 1.1rem; font-size: .85rem; color: var(--muc-nhat); }
+  .bl-giai li { margin: .2rem 0; }
+  .bl-soan .bl-goi {
+    border: 1px solid var(--vach); border-radius: 10px; background: var(--kem-sau);
+    padding: .6rem .9rem .5rem; margin: 0 0 .75rem;
+  }
+  .bl-goi legend { font-weight: 700; font-size: .95rem; padding: 0 .35rem; background: var(--nb-the); border-radius: 4px; }
+  .bl-gia-tu { margin: 0; min-height: 48px; display: flex; align-items: center; font-variant-numeric: tabular-nums; }
+  .bl-goi .bl-phu { margin: -.4rem 0 .4rem; }
+  .bl-nut { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: 1rem 0 1.5rem; }
+  .bl-form .nb-nut { margin-top: .25rem; }
+  .bl-trang-thai-gia { margin: 0 0 .5rem; }
+  .bl-gia-chot { margin: 0 0 1rem; padding-left: 1.1rem; font-variant-numeric: tabular-nums; }
+  .bl-gia-chot li { margin: .2rem 0; }
+  .bl-xem { border: 1px dashed var(--vach); border-radius: 10px; padding: .8rem 1rem; }
+  .bl-chip { list-style: none; display: flex; flex-wrap: wrap; gap: .35rem; margin: .5rem 0 0; padding: 0; }
+  .bl-chip li {
+    font-size: .82rem; font-variant-numeric: tabular-nums; padding: .2rem .6rem;
+    border: 1px solid var(--vach); border-radius: 999px; background: var(--kem-sau);
+  }
+  .bl-canh { margin: .35rem 0 0; font-size: .85rem; color: var(--vang-chu); }
+</style>

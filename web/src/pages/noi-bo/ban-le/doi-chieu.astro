@@ -1,0 +1,212 @@
+---
+/**
+ * ĐỐI CHIẾU FABi — việc phải làm trên máy thu ngân để khớp với menu bán lẻ (một chi nhánh)
+ *
+ * FABi (iPOS) sửa TAY: API iPOS chỉ đọc được thực đơn, không tạo hay sửa món được. Trang chỉ đọc
+ * ban_le_doi_chieu() (0097): mã cân, ô mã, mã giảm của mặt hàng bán theo cân; mỗi gói / hộp đang bán; mã
+ * FABi còn bán mà menu không có. Không có POST — nên không nằm trong danh sách TRANG của
+ * test-noi-bo-gui-lai.mjs.
+ *
+ * Chủ và quản lý (quyền danh mục kho của chi nhánh — database kiểm). Chủ chọn chi nhánh (?cn=, cookie riêng
+ * của màn bán lẻ). Thực đơn FABi cũ (chưa đọc được, quá 2 giờ, đồng bộ tắt, iPOS báo vừa đổi): không bao
+ * giờ nói "chưa có trên FABi" — database trả việc menu_cu thay cho tạo / bật món.
+ *
+ * Giá trên FABi không được lưu ở đâu (có chủ đích), nên trang ghi giá phải đặt và nhắc so bằng tay.
+ */
+import NoiBo from '../../../layouts/NoiBo.astro';
+import {
+  docDoiChieu, chonChiNhanhBanLe, cauLoiDoc, cauViecDoiChieu, giaPhaiDat,
+  VAI_XEM_BAN_LE, VAI_SUA_BAN_LE, type DoiChieuFabi, type DongDoiChieu, type ChiNhanhBanLe,
+} from '../../../lib/ban-le-noi-bo';
+import { dichNB, nnCua } from '../../../lib/ngon-ngu-noi-bo';
+import { dichCau } from '../../../lib/cau-noi-bo';
+import { dinhDangThoiDiem } from '../../../lib/kho/chung';
+
+const phien = Astro.locals.phien!;
+const { client, nhanSu } = phien;
+const nn = nnCua(Astro);
+// Vai kho không đọc được menu (RLS): về /noi-bo, trang đó đưa họ sang kho.
+if (!(VAI_XEM_BAN_LE as readonly string[]).includes(nhanSu.vai_tro)) return Astro.redirect('/noi-bo', 302);
+
+const t = dichNB(nn, {
+  tieuDe:    { vi: 'Đối chiếu FABi', en: 'FABi check' },
+  lui:       { vi: '← Menu bán lẻ', en: '← Retail menu' },
+  dan:       { vi: 'Việc phải làm trên FABi (máy thu ngân) để khớp với menu bán lẻ của chi nhánh này. FABi sửa tay: API iPOS chỉ đọc được thực đơn.',
+               en: 'What to do in FABi (the till) so it matches the retail menu for this branch. FABi is updated by hand: the iPOS API can only read the menu.' },
+  chiSua:    { vi: 'Chỉ chủ và quản lý xem được đối chiếu FABi.', en: 'Only the owner and managers can see the FABi check.' },
+  chiNhanh:  { vi: 'Chi nhánh', en: 'Branch' },
+  khongCN:   { vi: 'Chưa có chi nhánh nào đang hoạt động.', en: 'No branch is active.' },
+  menuLuc:   { vi: (luc: string) => `Thực đơn FABi đọc lần cuối ${luc} — đối chiếu có thể cũ. Bấm Cập nhật ngay ở`,
+               en: (luc: string) => `The FABi menu was last read at ${luc} — this check may be out of date. Press Update now in` },
+  menuChua:  { vi: 'Thực đơn FABi chưa đọc được — cần nối iPOS — đối chiếu có thể cũ. Bấm Cập nhật ngay ở',
+               en: 'The FABi menu has not been read yet — iPOS needs to be connected — this check may be out of date. Press Update now in' },
+  caiDatIpos:{ vi: 'Kho → Cài đặt → iPOS', en: 'Stock → Settings → iPOS' },
+  dongBoTat: { vi: 'Đồng bộ iPOS đang tắt.', en: 'iPOS sync is off.' },
+  vuaDoi:    { vi: 'iPOS báo thực đơn vừa đổi, chưa đọc lại.', en: 'iPOS reported a menu change that has not been read yet.' },
+  chuaGi:    { vi: 'Chưa có sản phẩm Đang bán — chưa có gì để đối chiếu.', en: 'No product is On sale — there is nothing to check yet.' },
+  soViec:    { vi: (n: number) => `${n} việc cần làm trên FABi.`, en: (n: number) => `${n} ${n === 1 ? 'task' : 'tasks'} to do in FABi.` },
+  khongViec: { vi: 'Không còn việc nào phải làm trên FABi.', en: 'Nothing left to do in FABi.' },
+  chuaRo:    { vi: (n: number) => `${n} dòng chưa rõ vì thực đơn FABi cũ.`, en: (n: number) => `${n} ${n === 1 ? 'row is' : 'rows are'} unknown because the FABi menu is out of date.` },
+  soGia:     { vi: 'Màn này không đọc được giá trên FABi — so giá trên FABi bằng tay với dòng "Giá phải đặt".',
+               en: 'This screen cannot read prices in FABi — compare the FABi prices by hand with the "Price to set" line.' },
+  chuaMa:    { vi: '(chưa có mã FABi)', en: '(no FABi code yet)' },
+  mon:       { vi: 'Món', en: 'Item' },
+  giaDat:    { vi: 'Giá phải đặt', en: 'Price to set' },
+  trenFabi:  { vi: 'Trên FABi', en: 'In FABi' },
+  theoCan:   { vi: (ma: string) => `theo cân · mã cân ${ma}`, en: (ma: string) => `by weight · scale code ${ma}` },
+  oMa:       { vi: (so: number) => `ô mã số ${so}`, en: (so: number) => `slot code ${so}` },
+  maGiam:    { vi: (pt: number) => `mã giảm ${pt}%`, en: (pt: number) => `${pt}% discount code` },
+  goi:       { vi: (g: number) => `gói / hộp ${g} g`, en: (g: number) => `${g} g pack / box` },
+  ngoaiMenu: { vi: 'không có trong menu bán lẻ', en: 'not in the retail menu' },
+  coBan:     { vi: 'có, đang bán', en: 'yes, on sale' },
+  coTat:     { vi: 'có, đang tắt', en: 'yes, turned off' },
+  khongCo:   { vi: 'không có', en: 'not there' },
+  khongRo:   { vi: 'chưa rõ', en: 'unknown' },
+  tenTren:   { vi: (ten: string) => ` · tên trên FABi: ${ten}`, en: (ten: string) => ` · name in FABi: ${ten}` },
+  nhanKhop:  { vi: 'Khớp', en: 'Matches' },
+  nhanChuaRo:{ vi: 'Chưa rõ', en: 'Unknown' },
+  nhanLam:   { vi: 'Cần làm', en: 'To do' },
+  moGhep:    { vi: 'Mở Ghép món', en: 'Open Match dishes' },
+  viSao:     { vi: 'Vì sao FABi phải sửa tay', en: 'Why FABi is updated by hand' },
+  viSao1:    { vi: 'API của iPOS chỉ có đường đọc thực đơn, không có đường tạo hay sửa món. Kho đọc thực đơn FABi theo lịch và khi iPOS báo thực đơn đổi, rồi trang này so với menu bán lẻ.',
+               en: 'The iPOS API can only read the menu; it cannot create or edit items. Stock reads the FABi menu on a schedule and when iPOS reports a change, then this page compares it with the retail menu.' },
+  viSao2:    { vi: 'Mỗi gói online là một món trên FABi (mã riêng, giá cố định) để thu ngân bấm khi khách nhận hàng. Kho trừ theo Ghép món: "Bán theo gói, mỗi gói = 0,2 kg".',
+               en: 'Each online pack is one item in FABi (its own code, a fixed price) for the cashier to ring up when the customer collects. Stock deducts through Match dishes: "Sold by pack, each pack = 0.2 kg".' },
+  viSao3:    { vi: 'Giá trên FABi không được đọc về — so bằng tay với giá phải đặt ở từng dòng.',
+               en: 'FABi prices are not read back — compare them by hand with the price to set on each row.' },
+});
+const duocSua = (VAI_SUA_BAN_LE as readonly string[]).includes(nhanSu.vai_tro);
+
+let chiNhanh: ChiNhanhBanLe | null = null;
+let cacChiNhanh: ChiNhanhBanLe[] = [];
+let loiDoc: string | null = null;
+let dc: DoiChieuFabi | null = null;
+if (duocSua) {
+  const cn = await chonChiNhanhBanLe(client, nhanSu, Astro.url, Astro.cookies);
+  ({ chiNhanh, cacChiNhanh } = cn);
+  if (cn.loi) loiDoc = dichCau(nn, cn.loi);
+  else if (chiNhanh) {
+    try {
+      dc = await docDoiChieu(client, chiNhanh.id);
+    } catch (e) {
+      loiDoc = cauLoiDoc(e, nn);
+    }
+  }
+}
+
+const dong = dc?.dong ?? [];
+const laViec = (v: string) => v !== 'khop' && v !== 'menu_cu';
+const soViec = dong.filter(d => d.viec.some(laViec)).length;
+const soChuaRo = dong.filter(d => d.viec.includes('menu_cu')).length;
+
+function tenMon(d: DongDoiChieu): string {
+  if (d.loai_dong === 'kiem_tra') return t.ngoaiMenu;
+  const ten = d.ten_san_pham ?? '—';
+  if (d.loai_dong === 'can') return `${ten} · ${t.theoCan(d.ma_can ?? '—')}`;
+  if (d.loai_dong === 'o_ma') return `${ten} · ${t.oMa(d.so_o ?? 0)}`;
+  if (d.loai_dong === 'ma_giam') return `${ten} · ${t.maGiam(d.phan_tram ?? 0)}`;
+  return `${ten} · ${t.goi(d.so_gam ?? 0)}`;
+}
+function trenFabi(d: DongDoiChieu): string {
+  const f = d.tren_fabi;
+  if (!f) return t.khongRo;
+  if (!f.co) return t.khongCo;
+  return `${f.dang_ban ? t.coBan : t.coTat}${f.ten ? t.tenTren(f.ten) : ''}`;
+}
+function nhan(d: DongDoiChieu): { chu: string; lop: string } {
+  if (d.viec.some(laViec)) return { chu: t.nhanLam, lop: 'cho' };
+  if (d.viec.includes('menu_cu')) return { chu: t.nhanChuaRo, lop: 'tat' };
+  return { chu: t.nhanKhop, lop: 'song' };
+}
+---
+<NoiBo tieuDe={t.tieuDe} nhanSu={nhanSu}>
+  <p class="bl-lui"><a href="/noi-bo/ban-le">{t.lui}</a></p>
+  <h1>{t.tieuDe}</h1>
+  <p class="nb-dan">{t.dan}</p>
+
+  {!duocSua && <div class="nb-bao luu-y"><p>{t.chiSua}</p></div>}
+  {loiDoc && <div class="nb-bao loi"><p>{loiDoc}</p></div>}
+
+  {duocSua && cacChiNhanh.length > 1 && (
+    <nav class="bl-hang-nut" aria-label={t.chiNhanh}>
+      {cacChiNhanh.map(c => (
+        <a href={`/noi-bo/ban-le/doi-chieu?cn=${encodeURIComponent(c.ma)}`} class={`nb-nut ${c.id === chiNhanh?.id ? '' : 'phu'}`}
+           aria-current={c.id === chiNhanh?.id ? 'page' : undefined}>{c.ten}</a>
+      ))}
+    </nav>
+  )}
+  {duocSua && !chiNhanh && !loiDoc && <div class="nb-rong"><p style="margin:0">{t.khongCN}</p></div>}
+
+  {dc && (
+    <>
+      {dc.menu_cu && (
+        <div class="nb-bao luu-y">
+          <p>{dc.menu_luc ? t.menuLuc(dinhDangThoiDiem(dc.menu_luc)) : t.menuChua} <a href="/noi-bo/kho/cai-dat/ipos">{t.caiDatIpos}</a>.</p>
+          {!dc.bat && <p>{t.dongBoTat}</p>}
+          {dc.bat && dc.menu_can_lam_moi && <p>{t.vuaDoi}</p>}
+        </div>
+      )}
+
+      {dong.length === 0 ? (
+        <div class="nb-rong"><p style="margin:0">{t.chuaGi}</p></div>
+      ) : (
+        <>
+          <p class="bl-dem"><strong>{soViec > 0 ? t.soViec(soViec) : t.khongViec}</strong>{soChuaRo > 0 && ` ${t.chuaRo(soChuaRo)}`}</p>
+          <p class="bl-phu bl-cach">{t.soGia}</p>
+          {dong.map(d => {
+            const n = nhan(d);
+            const ghep = (d.viec.includes('ghep') || d.viec.includes('sua_ghep')) && d.ma_fabi && chiNhanh;
+            return (
+              <article class="nb-dong">
+                <div class="nb-dong-dau">
+                  <strong class="bl-ma">{d.ma_fabi ?? t.chuaMa}</strong>
+                  <span class={`nb-nhan ${n.lop}`}>{n.chu}</span>
+                </div>
+                <dl>
+                  <dt>{t.mon}</dt><dd>{tenMon(d)}</dd>
+                  <dt>{t.giaDat}</dt><dd class="bl-so">{giaPhaiDat(d, nn)}</dd>
+                  <dt>{t.trenFabi}</dt><dd>{trenFabi(d)}</dd>
+                </dl>
+                <ul class="bl-viec">
+                  {cauViecDoiChieu(d, nn).map(c => <li>{c}</li>)}
+                </ul>
+                {ghep && (
+                  <div class="bl-hang-nut bl-sat">
+                    <a href={`/noi-bo/kho/ban-ipos/ghep?ma=${encodeURIComponent(d.ma_fabi!)}&cn=${encodeURIComponent(chiNhanh!.ma)}`} class="nb-nut phu">{t.moGhep}</a>
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </>
+      )}
+    </>
+  )}
+
+  <details class="nb-the bl-vi-sao">
+    <summary>{t.viSao}</summary>
+    <ul>
+      <li>{t.viSao1}</li>
+      <li>{t.viSao2}</li>
+      <li>{t.viSao3}</li>
+    </ul>
+  </details>
+</NoiBo>
+
+<style>
+  .bl-lui { margin: 0 0 .75rem; font-size: .9rem; }
+  .bl-lui a { display: inline-flex; align-items: center; min-height: 48px; }
+  .bl-hang-nut { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 1rem; }
+  .bl-sat { margin: .75rem 0 0; }
+  .bl-dem { margin: 0 0 .35rem; }
+  .bl-phu { margin: .35rem 0 0; font-size: .85rem; color: var(--muc-nhat); }
+  .bl-cach { margin: 0 0 1rem; }
+  .bl-ma { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .bl-so { font-variant-numeric: tabular-nums; }
+  .bl-viec { margin: .6rem 0 0; padding-left: 1.1rem; font-size: .9rem; }
+  .bl-viec li { margin: .2rem 0; }
+  .bl-vi-sao { margin-top: 1.5rem; }
+  .bl-vi-sao summary { cursor: pointer; font-weight: 700; min-height: 48px; padding-top: .7rem; }
+  .bl-vi-sao ul { margin: .5rem 0 0; padding-left: 1.1rem; font-size: .9rem; }
+  .bl-vi-sao li { margin: .35rem 0; }
+</style>

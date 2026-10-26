@@ -80,6 +80,11 @@ export const MUC_NOI_BO: readonly MucNoiBo[] = [
     ten: { vi: 'Thực đơn', en: 'Menu' }, ngan: { vi: 'Thực đơn', en: 'Menu' },
     vai: VAI_CRM, bieuTuong: 'bep', nhom: 'website',
     tuKhoa: { vi: 'món ăn đồ uống mô tả công bố bản dịch', en: 'dish drink description publish translation' } },
+  // Bốn vai CRM như policy ban_le_san_pham_doc (0097): thu ngân, marketing chỉ xem; chủ, quản lý sửa (VAI_SUA_BAN_LE).
+  { ma: 'ban_le', link: '/noi-bo/ban-le',
+    ten: { vi: 'Menu bán lẻ', en: 'Retail menu' }, ngan: { vi: 'Bán lẻ', en: 'Retail' },
+    vai: VAI_CRM, bieuTuong: 'mat_hang', nhom: 'nha_hang',
+    tuKhoa: { vi: 'thịt mang về gói 200g 400g kim chi giá cân fabi mini app', en: 'take-away pack kimchi scale price fabi mini app' } },
   { ma: 'tuyen_dung', link: '/noi-bo/tuyen-dung',
     ten: { vi: 'Hồ sơ ứng tuyển', en: 'Job applications' }, ngan: { vi: 'Tuyển dụng', en: 'Hiring' },
     vai: ['chu_so_huu', 'quan_ly'], bieuTuong: 'nguoi', nhom: 'website',

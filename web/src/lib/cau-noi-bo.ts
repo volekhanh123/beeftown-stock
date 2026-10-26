@@ -181,6 +181,52 @@ export const CAU_EN: Readonly<Record<string, string>> = {
   'Người xử lý phải là chính người đang đăng nhập': 'The handler must be the person who is signed in',
   'Đặt bàn mới chỉ ở trạng thái chờ gọi hoặc đã xác nhận': 'A new booking can only be waiting for a call or already confirmed',
   'Mẫu tin khác mẫu của chiến dịch': 'The message template differs from the campaign template',
+
+  // 0097 — menu bán lẻ (ban_le_*). Câu có % ở MAU_EN.
+  'Tài khoản này không xem được menu bán lẻ.': 'This account cannot view the retail menu.',
+  'Chỉ chủ và quản lý được sửa menu bán lẻ.': 'Only the owner and managers can edit the retail menu.',
+  'Chỉ chủ được chốt giá bán lẻ.': 'Only the owner can confirm retail prices.',
+  'Tài khoản này không đối chiếu được FABi ở chi nhánh này.':
+    'This account cannot reconcile FABi for this branch.',
+  'Tài khoản này không sửa được giá mỗi kg ở Kho → Mặt hàng.':
+    'This account cannot change the price per kg in Stock → Items.',
+  'Mã sản phẩm này đã có. Đổi tên hoặc sửa mã.': 'This product code already exists. Change the name or edit the code.',
+  'Không thấy sản phẩm này.': 'Product not found.',
+  'Lưu mặt hàng kho trước, rồi mới sửa giá mỗi kg.': 'Save the stock item first, then change the price per kg.',
+  'Sản phẩm chưa gắn mặt hàng kho đang dùng, chưa sửa được giá mỗi kg.':
+    'This product is not linked to an active stock item yet, so the price per kg cannot be changed.',
+  'Giá mỗi kg phải từ 1.000 đ.': 'The price per kg must be at least 1,000 VND.',
+  'Giá mỗi kg tối đa 100.000.000 đ.': 'The price per kg can be at most 100,000,000 VND.',
+  'Không thấy gói này — tải lại trang.': 'Pack not found — reload the page.',
+  'Chưa chuyển sang Đang bán được: mặt hàng kho đếm theo khay, FABi sẽ trừ nguyên một khay cho mỗi gói online. Chọn "Đóng gói sẵn" hoặc đổi mặt hàng sang cân theo kg.':
+    'Cannot switch to On sale yet: the stock item is counted by tray, so FABi would deduct a whole tray for every online pack. Choose "Pre-packed" or change the item to weigh by kg.',
+  'Chưa có giá nào để chốt.': 'There is no price to confirm yet.',
+  'Không thấy mặt hàng kho này.': 'Stock item not found.',
+  'Mã sản phẩm không đổi được sau khi tạo.': 'A product code cannot be changed after it is created.',
+  'Thiếu mã chống gửi hai lần — tải lại trang.': 'The double-submit guard code is missing — reload the page.',
+  'Mã sản phẩm chỉ gồm chữ thường không dấu, số và dấu gạch ngang, tối đa 40 ký tự.':
+    'A product code may only contain lowercase letters without accents, digits and hyphens, up to 40 characters.',
+  'Chưa điền tên sản phẩm.': 'The product name is empty.',
+  'Tên sản phẩm dài quá 120 ký tự.': 'The product name is longer than 120 characters.',
+  'Mô tả dài quá 500 ký tự.': 'The description is longer than 500 characters.',
+  'Cách dùng dài quá 500 ký tự.': 'The usage notes are longer than 500 characters.',
+  'Loại sản phẩm phải là thịt bò hoặc kim chi.': 'The product type must be beef or kimchi.',
+  'Cách bán phải là theo cân hoặc theo hộp.': 'The selling method must be by weight or by box.',
+  'Cách bảo quản không hợp lệ.': 'The storage option is not valid.',
+  'Cách làm gói phải là cắt tại quầy hoặc đóng gói sẵn.': 'Packs must be either cut at the counter or pre-packed.',
+  'Trạng thái phải là Đang bán hoặc Tạm ngưng.': 'The status must be On sale or Paused.',
+  'Thứ tự phải là số nguyên.': 'The sort order must be a whole number.',
+  'Dữ liệu lưu không hợp lệ — tải lại trang.': 'The saved data is not valid — reload the page.',
+  'Danh sách gói không hợp lệ — tải lại trang.': 'The pack list is not valid — reload the page.',
+  'Một sản phẩm có tối đa 20 gói.': 'A product can have at most 20 packs.',
+  'Trọng lượng gói phải từ 50 đến 5.000 g.': 'A pack weight must be between 50 and 5,000 g.',
+  'Giá gói phải từ 1.000 đ đến 100.000.000 đ.': 'A pack price must be between 1,000 and 100,000,000 VND.',
+  'Giá gói phải tròn nghìn đồng.': 'A pack price must be a whole thousand VND.',
+  'Mã FABi chỉ gồm chữ không dấu, số, dấu chấm, gạch dưới, gạch ngang, tối đa 40 ký tự.':
+    'A FABi code may only contain letters without accents, digits, dots, underscores and hyphens, up to 40 characters.',
+  'Mã FABi phải có ít nhất một chữ cái — mã toàn số dễ trùng mã cân.':
+    'A FABi code must contain at least one letter — an all-digit code can clash with scale codes.',
+  'Mã vạch phải gồm 8 đến 14 chữ số.': 'A barcode must have 8 to 14 digits.',
 };
 
 /**
@@ -297,6 +343,12 @@ export const MAU_EN: ReadonlyArray<readonly [RegExp, (m: RegExpMatchArray) => st
   [/^Bảng (.+?) không nhận bản dịch qua hàm này$/, m => `Table ${m[1]} does not accept translations through this function`],
   [/^Ô (.+?) không nằm trong danh sách dịch của bảng (.+)$/, m => `Field ${m[1]} is not in the translation list of table ${m[2]}`],
   [/^Trạng thái bản dịch không hợp lệ: (.+)$/, m => `Invalid translation status: ${m[1]}`],
+  // 0097 — menu bán lẻ
+  [/^Hai gói cùng trọng lượng (.+) g\.$/, m => `Two packs have the same weight of ${m[1]} g.`],
+  [/^Không nhận ô "(.+?)" — tải lại trang\.$/, m => `The field "${m[1]}" is not accepted — reload the page.`],
+  [/^Ô "(.+?)" phải là Có hoặc Không\.$/, m => `The field "${m[1]}" must be Yes or No.`],
+  [/^Mã FABi (.+) đã dùng cho gói khác\.$/, m => `The FABi code ${m[1]} is already used by another pack.`],
+  [/^Mã vạch (.+) đã dùng cho gói khác\.$/, m => `The barcode ${m[1]} is already used by another pack.`],
 ];
 
 export function dichCau(nn: NgonNguNB, cau: string | null | undefined): string {

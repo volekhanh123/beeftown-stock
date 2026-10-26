@@ -97,6 +97,10 @@ await db.query(`insert into nhat_ky_tra_cuu (ip, ma_thu, thanh_cong) values ('1.
 await db.query(`insert into tep_anh (bucket, duong_dan, loai, nguon_that)
                 values ('beeftown-noi-bo', 'thu/anh.jpg', enum_first(null::loai_tep), enum_first(null::anh_thuc_te))`);
 await db.query(`insert into phien_ban_thuc_don (ma, ngay_hieu_luc) values ('v-thu', hom_nay_vn())`);
+// 0097 · menu bán lẻ — bảng có policy tạo sau 0070 (SAU_0070 bên dưới): một sản phẩm, một gói.
+const { rows: [spBanLe] } = await db.query(
+  `insert into ban_le_san_pham (ma, ten_vi, loai, cach_ban) values ('ribeye', 'Ribeye', 'thit', 'theo_can') returning id`);
+await db.query(`insert into ban_le_goi (san_pham_id, so_gam) values ($1, 200)`, [spBanLe.id]);
 // Hai dữ kiện nháp (chưa công bố) — đúng thứ không được lộ cho người đã nghỉ / vai kho. Hỏng thì ném: bảng
 // thiếu dòng làm phép thử của mục 1–2 thành rỗng.
 await db.query(`insert into noi_dung_cong_bo (khoa, kieu, gia_tri_text)
@@ -169,6 +173,19 @@ const SPEC_CRM = "co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro, 't
 const DOI_NGHIA = ['khoa_cong_bo.khoa_cong_bo_doc', 'khung_anh.khung_anh_doc', 'mau_tin.mau_tin_doc', 'mon_an.mon_an_doc',
                    'nhom_mon.nhom_mon_doc', 'noi_dung_cong_bo.noi_dung_doc', 'phien_ban_thuc_don.phien_ban_doc', 'tep_anh.tep_anh_doc'];
 
+// Policy của bảng tạo SAU 0070: không có "biểu thức trước 0070" để chép. Ghi biểu thức CHUẨN — nghĩa policy phải
+// có — và mục 2 so từng dòng, từng kiểu người y như với CU: cổng "không thêm không bớt" vẫn bắt policy lạ hay policy
+// đổi nghĩa. Phép thử từ chối từng vai của bảng nằm ở file test của bảng đó.
+const SAU_0070 = {
+  // 0097 — menu bán lẻ (test-ban-le.mjs nhóm 1): đọc = bốn vai CRM; sửa thẳng = vai biên tập, chỉ các ô dịch en / ko
+  // và sổ ban_dich (quyền cột) — đường ghi của máy dịch.
+  'ban_le_goi.ban_le_goi_doc': [SPEC_CRM, null],
+  'ban_le_san_pham.ban_le_san_pham_doc': [SPEC_CRM, null],
+  'ban_le_san_pham.ban_le_san_pham_dich': [
+    "co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro, 'marketing'::vai_tro])",
+    "co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro, 'marketing'::vai_tro])"],
+};
+
 const { rows: MOI_PL } = await db.query(`
   select tablename || '.' || policyname as ten, tablename, qual, with_check
   from pg_policies where schemaname = 'public' and tablename !~ '^kho_' and policyname <> 'chi_nhanh_doc_kho'`);
@@ -206,11 +223,12 @@ await nhom('1 · TÁM BẢNG NỘI DUNG — chỉ bốn vai CRM đang làm đọ
 // ===========================================================================
 await nhom('2 · TƯƠNG ĐƯƠNG — biểu thức mới cho cùng kết quả như biểu thức cũ, từng dòng, từng người', async () => {
   const moi = new Map(MOI_PL.map(p => [p.ten, p]));
-  ok(`Đủ ${Object.keys(CU).length} policy, không thêm không bớt`,
-     moi.size === Object.keys(CU).length && Object.keys(CU).every(t => moi.has(t)),
-     `thiếu: ${Object.keys(CU).filter(t => !moi.has(t)).join(', ')} · thừa: ${[...moi.keys()].filter(t => !(t in CU)).join(', ')}`);
+  const DU = { ...CU, ...SAU_0070 };
+  ok(`Đủ ${Object.keys(DU).length} policy (${Object.keys(CU).length} trước 0070, ${Object.keys(SAU_0070).length} sau), không thêm không bớt`,
+     moi.size === Object.keys(DU).length && Object.keys(DU).every(t => moi.has(t)),
+     `thiếu: ${Object.keys(DU).filter(t => !moi.has(t)).join(', ')} · thừa: ${[...moi.keys()].filter(t => !(t in DU)).join(', ')}`);
 
-  for (const [ten, [dung, kiem]] of Object.entries(CU)) {
+  for (const [ten, [dung, kiem]] of Object.entries(DU)) {
     const p = moi.get(ten);
     if (!p) continue;
     const bang = p.tablename;

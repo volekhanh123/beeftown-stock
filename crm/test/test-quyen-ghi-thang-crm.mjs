@@ -278,6 +278,10 @@ await nhom('8 · CỔNG — mọi hàm definer authenticated gọi được ph�
     // 0074 — xóa file CV rồi mới ẩn danh, quét CV mồ côi (từ chối từng vai: test-tuyen-dung-xoa-cv.mjs nhóm 2, 3, 5).
     ho_so_cv_het_han: 'tu_kiem_vai', an_danh_ho_so_het_han: 'tu_kiem_vai', ho_so_thu_muc_cv_mo_coi: 'tu_kiem_vai',
     suc_khoe_he_thong: 'tu_kiem_vai', suc_khoe_sao_luu: 'tu_kiem_vai',
+    // 0097 — menu bán lẻ: từ chối anon, vai kho, nhân sự đã nghỉ, không nhan_su, vai khác, chi nhánh khác bằng 42501
+    // kèm đúng câu (test-ban-le.mjs nhóm 1).
+    ban_le_danh_sach: 'tu_kiem_vai', ban_le_tao_san_pham: 'tu_kiem_vai', ban_le_luu_san_pham: 'tu_kiem_vai',
+    ban_le_chot_gia: 'tu_kiem_vai', ban_le_doi_chieu: 'tu_kiem_vai',
     // Chỉ đọc thứ đã công khai cho anon (cong_tac_bat: công tắc đã công bố; lịch trống: như lich_trong_theo_ma).
     cong_tac_bat: 'cong_khai', khung_gio_trong_ngay: 'cong_khai', so_ban_con_trong: 'cong_khai',
     lich_trong_theo_ngay: 'cong_khai',
