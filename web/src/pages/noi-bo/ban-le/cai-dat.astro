@@ -8,16 +8,17 @@
  * quyết định: bốn vai CRM xem (ban_le_cai_dat), chủ và quản lý sửa (ban_le_luu_co_goi) — vai khác về /noi-bo.
  *
  * MỘT FORM cho cả danh sách, mang phien_ban (database tính theo nội dung). Ghi được thì chuyển hướng 303 về chính
- * trang này (lib/gui-noi-bo.ts). Không ghi được thì dựng lại ngay: ô cỡ mới giữ chữ đã gõ, nhưng phien_ban,
- * so_dong_cg và cg_i_so_gam LUÔN từ lần đọc mới. Người khác vừa sửa → hiện danh sách như database đang giữ để
- * người dùng xem lại rồi lưu; lỗi khác → giữ cả việc đã chọn ở từng cỡ.
+ * trang này (lib/gui-noi-bo.ts). Không ghi được thì dựng lại ngay: phien_ban, so_dong_cg, cg_i_so_gam và
+ * cg_i_viec_goc LUÔN từ lần đọc mới; ô chọn của một cỡ giữ việc đã chọn CHỈ khi người dùng đã đổi cỡ đó
+ * (viecDaChon — không phủ lựa chọn cũ lên cỡ người khác vừa sửa); ô cỡ mới giữ chữ đã gõ trừ cỡ database đã có
+ * (coMoiDaGo — mất mạng sau khi đã ghi). Người khác vừa sửa → mọi cỡ theo database để người dùng xem lại rồi lưu.
  *
  * Không JavaScript, không ô đánh dấu (việc của từng cỡ là select), ô số là ô chữ + inputmode. Kiểm thử:
  * crm/test/test-ban-le-cai-dat-web.mjs (thư viện, trang), test-ban-le-cai-dat.mjs (database).
  */
 import NoiBo from '../../../layouts/NoiBo.astro';
 import {
-  docCaiDat, luuCoGoi, cauLoiDoc, VAI_XEM_BAN_LE, VAI_SUA_BAN_LE, SO_DONG_CO_GOI_MOI, SO_CO_GOI_TOI_DA,
+  docCaiDat, luuCoGoi, cauLoiDoc, viecDaChon, coMoiDaGo, VAI_XEM_BAN_LE, VAI_SUA_BAN_LE, SO_DONG_CO_GOI_MOI, SO_CO_GOI_TOI_DA,
   type CaiDatBanLe, type KetQua,
 } from '../../../lib/ban-le-noi-bo';
 import { dichNB, nnCua } from '../../../lib/ngon-ngu-noi-bo';
@@ -84,18 +85,7 @@ try {
 
 // Người khác vừa sửa: database không ghi gì — hiện từng cỡ đúng như database đang giữ, không phủ lựa chọn cũ lên.
 const nguoiKhacSua = bao?.maLoi === 'nguoi_khac_sua';
-/** Việc đang chọn của một cỡ: việc đã chọn trên form vừa gửi (cùng số gam), không thì theo trạng thái mới đọc. */
-function viecCua(soGam: number, dangDung: boolean): string {
-  const macDinh = dangDung ? 'dung' : 'tat';
-  if (!daGo || nguoiKhacSua) return macDinh;
-  const soDongGui = Math.min(Number(daGo.get('so_dong_cg')) || 0, 40);
-  for (let i = 0; i < soDongGui; i++) {
-    if (String(daGo.get(`cg_${i}_so_gam`) ?? '') !== String(soGam)) continue;
-    const v = String(daGo.get(`cg_${i}_viec`) ?? '');
-    return ['dung', 'tat', 'bo'].includes(v) ? v : macDinh;
-  }
-  return macDinh;
-}
+const viecCua = (soGam: number, dangDung: boolean) => viecDaChon(daGo, soGam, dangDung, nguoiKhacSua);
 /** Số ô cỡ mới: ba ô, không quá giới hạn dòng của danh sách (cùng database). */
 const soOMoi = caiDat ? Math.max(0, Math.min(SO_DONG_CO_GOI_MOI, SO_CO_GOI_TOI_DA - caiDat.co_goi.length)) : 0;
 ---
@@ -124,6 +114,7 @@ const soOMoi = caiDat ? Math.max(0, Math.min(SO_DONG_CO_GOI_MOI, SO_CO_GOI_TOI_D
             {caiDat.co_goi.map((c, i) => (
               <li class="bl-co">
                 <input type="hidden" name={`cg_${i}_so_gam`} value={c.so_gam} />
+                <input type="hidden" name={`cg_${i}_viec_goc`} value={c.dang_dung ? 'dung' : 'tat'} />
                 <div class="nb-dong-dau">
                   <strong class="bl-so">{t.gam(c.so_gam)}</strong>
                   <span class={`nb-nhan ${c.dang_dung ? 'song' : 'tat'}`}>{c.dang_dung ? t.dangDung : t.tamTat}</span>
@@ -152,7 +143,7 @@ const soOMoi = caiDat ? Math.max(0, Math.min(SO_DONG_CO_GOI_MOI, SO_CO_GOI_TOI_D
                 <label class="nb-o">
                   <span>{t.coMoi}</span>
                   <input type="text" name={`cg_moi_${j}`} inputmode="numeric" autocomplete="off" maxlength="7"
-                         aria-describedby="cg-moi-goi-y" value={String(daGo?.get(`cg_moi_${j}`) ?? '')} />
+                         aria-describedby="cg-moi-goi-y" value={coMoiDaGo(daGo, j, caiDat)} />
                 </label>
               ))}
             </div>

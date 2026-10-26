@@ -56,6 +56,10 @@ export const SO_GOI_TOI_DA = 20;
 export const SO_CO_GOI_TOI_DA = 30;
 /** Số ô "Cỡ mới" trên trang Cài đặt bán lẻ (docFormCoGoi đọc đúng chừng này ô). */
 export const SO_DONG_CO_GOI_MOI = 3;
+/** Việc của một cỡ đang có trên trang Cài đặt: Đang dùng / Tạm tắt / Bỏ khỏi danh sách. */
+export const VIEC_CO_GOI = ['dung', 'tat', 'bo'] as const;
+/** Số dòng đang có (so_dong_cg) đọc tối đa từ form — rộng hơn SO_CO_GOI_TOI_DA để form hỏng vẫn được nhận ra. */
+export const SO_DONG_CG_TOI_DA = 40;
 /** Giá mỗi kg cân TMA nhận được — dùng lại hằng của kho/can-tma.ts, không chép số. */
 export { GIA_TOI_DA };
 
@@ -117,6 +121,9 @@ const CAU = {
   dsCoGoiHong:  { vi: 'Danh sách cỡ gói không hợp lệ — tải lại trang.', en: 'Invalid pack size list — reload the page.' },
   daLuuCoGoi:   { vi: 'Đã lưu cỡ gói.', en: 'Pack sizes saved.' },
   khongDoi:     { vi: 'Không có gì thay đổi.', en: 'Nothing changed.' },
+  // Database đã đúng như form gửi nhưng phiên bản khác lúc mở trang: lần bấm trước (bấm đúp) hay người khác vừa sửa
+  // đúng như vậy — yêu cầu NÀY không ghi gì, nên không nói "Đã lưu".
+  coGoiDaDung:  { vi: 'Danh sách cỡ gói đã đúng như bạn chọn.', en: 'The pack sizes already match your choices.' },
   coGoiNguoiKhac: { vi: 'Người khác vừa sửa cỡ gói — xem danh sách mới rồi lưu lại.',
                     en: 'Someone else just changed the pack sizes — check the new list, then save again.' },
 } satisfies Record<string, HaiThuTieng<unknown>>;
@@ -879,7 +886,7 @@ export function cauDaLuu(r: KetQuaHamLuu, duLieu: DuLieuLuu, doiFabi: boolean, n
 export function docFormCoGoi(form: FormData, nn: NgonNguNB = 'vi'): { coGoi: CoGoi[] | null; loi: string | null } {
   const t = dichNB(nn, CAU);
   const hong = { coGoi: null, loi: t.dsCoGoiHong };
-  const soDong = docSoNguyen(form.get('so_dong_cg'), 0, 40);
+  const soDong = docSoNguyen(form.get('so_dong_cg'), 0, SO_DONG_CG_TOI_DA);
   if (soDong === null || Number.isNaN(soDong)) return hong;
 
   const ds: CoGoi[] = [];
@@ -888,7 +895,7 @@ export function docFormCoGoi(form: FormData, nn: NgonNguNB = 'vi'): { coGoi: CoG
     const soGam = docSoNguyen(form.get(`cg_${i}_so_gam`), 50, 5000);
     const viec = String(form.get(`cg_${i}_viec`) ?? '');
     // Hai dòng đang có cùng số gam: bảng có khóa so_gam nên trang không bao giờ dựng ra — form hỏng.
-    if (soGam === null || Number.isNaN(soGam) || !['dung', 'tat', 'bo'].includes(viec) || daCo.has(soGam)) return hong;
+    if (soGam === null || Number.isNaN(soGam) || !laViecCoGoi(viec) || daCo.has(soGam)) return hong;
     daCo.add(soGam);
     if (viec !== 'bo') ds.push({ so_gam: soGam, dang_dung: viec === 'dung' });
   }
@@ -902,6 +909,39 @@ export function docFormCoGoi(form: FormData, nn: NgonNguNB = 'vi'): { coGoi: CoG
     ds.push({ so_gam: soGam, dang_dung: true });
   }
   return { coGoi: ds.sort((a, b) => a.so_gam - b.so_gam), loi: null };
+}
+
+const laViecCoGoi = (v: string): v is (typeof VIEC_CO_GOI)[number] => (VIEC_CO_GOI as readonly string[]).includes(v);
+
+/**
+ * Việc hiện ở ô chọn của một cỡ khi dựng lại trang Cài đặt sau lỗi. phien_ban luôn từ lần đọc mới, nên ô chọn
+ * cũng phải theo lần đọc mới — trừ cỡ người dùng đã tự đổi (cg_i_viec khác cg_i_viec_goc lúc họ mở trang): phủ
+ * lựa chọn cũ lên cỡ họ không đụng tới thì lần Lưu sau qua được kiểm phiên bản và âm thầm đè thay đổi của người
+ * khác. Người khác vừa sửa (boQua), không có form, thiếu ô gốc (trang mở trước bản này), việc lạ → theo database.
+ */
+export function viecDaChon(daGo: FormData | null, soGam: number, dangDung: boolean, boQua = false): string {
+  const theoDatabase = dangDung ? 'dung' : 'tat';
+  if (!daGo || boQua) return theoDatabase;
+  const soDong = docSoNguyen(daGo.get('so_dong_cg'), 0, SO_DONG_CG_TOI_DA);
+  if (soDong === null || Number.isNaN(soDong)) return theoDatabase;
+  for (let i = 0; i < soDong; i++) {
+    if (docSoNguyen(daGo.get(`cg_${i}_so_gam`), 50, 5000) !== soGam) continue;
+    const viec = String(daGo.get(`cg_${i}_viec`) ?? '');
+    const goc = String(daGo.get(`cg_${i}_viec_goc`) ?? '');
+    return laViecCoGoi(viec) && laViecCoGoi(goc) && viec !== goc ? viec : theoDatabase;
+  }
+  return theoDatabase;
+}
+
+/**
+ * Chữ điền lại vào ô "Cỡ mới" thứ j khi dựng lại trang sau lỗi. Cỡ đã có trong lần đọc mới thì để trống: mất mạng
+ * sau khi database đã ghi (CAU_MAT_MANG_GHI — "chưa chắc đã ghi") mà điền lại "300" thì bấm Lưu lần nữa bị báo
+ * "nhập hai lần" oan. Chữ sai giữ nguyên để người dùng sửa. Đọc cài đặt lỗi (caiDat null) → giữ chữ đã gõ.
+ */
+export function coMoiDaGo(daGo: FormData | null, j: number, caiDat: CaiDatBanLe | null): string {
+  const chu = String(daGo?.get(`cg_moi_${j}`) ?? '');
+  const soGam = docSoNguyen(chu, 50, 5000);
+  return soGam !== null && !Number.isNaN(soGam) && caiDat?.co_goi.some(c => c.so_gam === soGam) ? '' : chu;
 }
 
 /**
@@ -1007,9 +1047,9 @@ export async function luuSanPham(
 
 /**
  * Lưu cả danh sách cỡ gói của Cài đặt bán lẻ (ban_le_luu_co_goi). Không bao giờ "Đã lưu" khi database chưa trả ok:
- *   · ok, khong_doi: database đã đúng như danh sách gửi lên. Phiên bản không đổi từ lúc mở trang → "Không có gì
- *     thay đổi."; đã đổi (lần hai của cú bấm đúp — lần một đã ghi, trình duyệt chỉ hiện câu của lần hai) →
- *     "Đã lưu cỡ gói.", không "người khác sửa";
+ *   · ok, khong_doi: database đã đúng như danh sách gửi lên, yêu cầu này không ghi gì. Phiên bản không đổi từ lúc
+ *     mở trang → "Không có gì thay đổi."; đã đổi (lần hai của cú bấm đúp, hay người khác vừa sửa đúng như vậy —
+ *     không phân biệt được) → "Danh sách cỡ gói đã đúng như bạn chọn.", không "Đã lưu", không "người khác sửa";
  *   · ok → "Đã lưu cỡ gói.";
  *   · nguoi_khac_sua (database không ghi gì) → câu người khác vừa sửa, maLoi để trang hiện danh sách mới;
  *   · lỗi → câu của database (dichCau), mất mạng → CAU_MAT_MANG_GHI ("chưa chắc đã ghi").
@@ -1030,7 +1070,8 @@ export async function luuCoGoi(
   if (error) return { ok: false, cau: cauLoi(error, t.khongLuu, nn) };
   const r = data as { ok?: boolean; khong_doi?: boolean; ly_do?: string; phien_ban?: string } | null;
   if (r?.ok === true) {
-    return { ok: true, cau: r.khong_doi === true && r.phien_ban === phienBan ? t.khongDoi : t.daLuuCoGoi };
+    if (r.khong_doi !== true) return { ok: true, cau: t.daLuuCoGoi };
+    return { ok: true, cau: r.phien_ban === phienBan ? t.khongDoi : t.coGoiDaDung };
   }
   if (r?.ly_do === 'nguoi_khac_sua') return { ok: false, cau: t.coGoiNguoiKhac, maLoi: 'nguoi_khac_sua' };
   return { ok: false, cau: t.khongLuu };

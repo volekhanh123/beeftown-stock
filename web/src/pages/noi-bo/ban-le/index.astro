@@ -82,6 +82,8 @@ const t = dichNB(nn, {
                    en: 'Only used when Beef is chosen. Sizes come from Retail settings; add other sizes on the edit page after creating.' },
   ban:        { vi: 'Bán', en: 'Sell' },
   khongBan:   { vi: 'Không bán', en: "Don't sell" },
+  caiDatLoi:  { vi: 'Chưa đọc được Cài đặt bán lẻ — sản phẩm thịt mới sẽ có mọi cỡ gói đang dùng; bỏ cỡ không bán ở trang sửa sau khi tạo.',
+                en: 'Could not read the retail settings — a new beef product will get every pack size in use; remove the sizes you do not sell on its page after creating it.' },
   chuaCoCo:   { vi: 'Cài đặt bán lẻ chưa có cỡ gói nào đang dùng — sản phẩm thịt mới sẽ chưa có gói.',
                 en: 'Retail settings have no pack size in use — new beef products will have no packs.' },
   taoNut:     { vi: 'Thêm sản phẩm', en: 'Add product' },
@@ -111,18 +113,11 @@ const maGuiCu = go('ma_gui');
 const maGui = laUuid(maGuiCu) ? maGuiCu : crypto.randomUUID();
 
 // Cỡ gói của form Thêm sản phẩm: các cỡ Đang dùng của Cài đặt bán lẻ (đọc mới mỗi lần dựng — kể cả khi dựng lại
-// form hỏng). Đọc lỗi → không có ô chọn cỡ, form không gửi co_goi_ds, database dùng cài đặt.
-let caiDat: CaiDatBanLe | null = null;
-if (duocSua) {
-  try {
-    caiDat = await docCaiDat(client);
-  } catch {
-    caiDat = null;
-  }
-}
-const coDangDung = (caiDat?.co_goi ?? []).filter(c => c.dang_dung).map(c => c.so_gam);
-/** Lựa chọn của một cỡ: đã chọn trên form vừa gửi, không thì "Bán". */
-const chonGoi = (n: number) => (go(`goi_${n}`) === 'khong' ? 'khong' : 'ban');
+// form hỏng), chạy song song với đọc chi nhánh và menu bên dưới. Đọc lỗi → không có ô chọn cỡ, form không gửi
+// co_goi_ds (database dùng cài đặt) và trang nói rõ điều đó (caiDatLoi), không im lặng.
+const caiDatHua: Promise<{ caiDat: CaiDatBanLe | null; loi: boolean }> = duocSua
+  ? docCaiDat(client).then(caiDat => ({ caiDat, loi: false }), () => ({ caiDat: null, loi: true }))
+  : Promise.resolve({ caiDat: null, loi: false });
 
 let chiNhanh: ChiNhanhBanLe | null = null;
 let cacChiNhanh: ChiNhanhBanLe[] = [];
@@ -136,6 +131,11 @@ try {
 } catch (e) {
   dsLoi = cauLoiDoc(e, nn);
 }
+
+const { caiDat, loi: caiDatLoi } = await caiDatHua;
+const coDangDung = (caiDat?.co_goi ?? []).filter(c => c.dang_dung).map(c => c.so_gam);
+/** Lựa chọn của một cỡ: đã chọn trên form vừa gửi, không thì "Bán". */
+const chonGoi = (n: number) => (go(`goi_${n}`) === 'khong' ? 'khong' : 'ban');
 
 const thamSo = Astro.url.searchParams;
 const nhom = thamSo.get('nhom') === 'thit' || thamSo.get('nhom') === 'kim_chi' ? thamSo.get('nhom')! : 'tat_ca';
@@ -262,6 +262,7 @@ const coGia = (sp: SanPhamBanLe) => sp.gia_de_chot.kg != null || Object.keys(sp.
           {KIEU_SAN_PHAM.map(k => <option value={k.ma} selected={go('kieu') === k.ma}>{k.ten[nn]}</option>)}
         </select>
       </label>
+      {caiDatLoi && <p class="bl-phu bl-cach">{t.caiDatLoi}</p>}
       {caiDat && (
         <fieldset class="nb-o bl-co-goi">
           <legend>{t.goiOnline}</legend>

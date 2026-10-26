@@ -214,6 +214,12 @@ try {
   loiDoc = cauLoiDoc(e, nn);
 }
 
+// Gợi ý dưới tiêu đề Gói: các cỡ Đang dùng của Cài đặt bán lẻ (0102), đọc song song với mặt hàng kho bên dưới.
+// Chỉ là gợi ý — ô gram của gói vẫn nhận mọi cỡ 50–5000 g; đọc lỗi thì bỏ dòng gợi ý, không chặn trang.
+const coCaiDatHua: Promise<number[] | null> = sp && sp.cach_ban !== 'theo_hop'
+  ? docCaiDat(client).then(cd => cd.co_goi.filter(c => c.dang_dung).map(c => c.so_gam), () => null)
+  : Promise.resolve(null);
+
 let matHang: MatHangBanLe[] = [];
 let loiMatHang: string | null = null;
 if (sp && duocSua) {
@@ -225,16 +231,7 @@ if (sp && duocSua) {
 }
 const dangCho = sp ? await oDangCho(client, 'ban_le_san_pham', id) : new Set<string>();
 
-// Gợi ý dưới tiêu đề Gói: các cỡ Đang dùng của Cài đặt bán lẻ (0102). Chỉ là gợi ý — ô gram của gói vẫn nhận mọi
-// cỡ 50–5000 g; đọc lỗi thì bỏ dòng gợi ý, không chặn trang.
-let coCaiDat: number[] | null = null;
-if (sp && sp.cach_ban !== 'theo_hop') {
-  try {
-    coCaiDat = (await docCaiDat(client)).co_goi.filter(c => c.dang_dung).map(c => c.so_gam);
-  } catch {
-    coCaiDat = null;
-  }
-}
+const coCaiDat = await coCaiDatHua;
 
 // ---- Giá trị hiện trong form: chữ vừa gõ (khi lưu hỏng) hoặc lần đọc mới ----------------------------------
 const go = (ten: string, moi: string) => (daGo && daGo.get(ten) !== null ? String(daGo.get(ten)) : moi);

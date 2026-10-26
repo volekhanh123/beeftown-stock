@@ -62,6 +62,7 @@ const ANON = clientCua('anon');
 const CAU = {
   daLuu:     { vi: 'Đã lưu cỡ gói.', en: 'Pack sizes saved.' },
   khongDoi:  { vi: 'Không có gì thay đổi.', en: 'Nothing changed.' },
+  daDung:    { vi: 'Danh sách cỡ gói đã đúng như bạn chọn.', en: 'The pack sizes already match your choices.' },
   nguoiKhac: { vi: 'Người khác vừa sửa cỡ gói — xem danh sách mới rồi lưu lại.',
                en: 'Someone else just changed the pack sizes — check the new list, then save again.' },
   coSai:     { vi: 'Cỡ gói phải là số gam từ 50 đến 5.000.', en: 'A pack size must be a whole number of grams from 50 to 5,000.' },
@@ -92,7 +93,10 @@ function formTu(o) {
  */
 function formCaiDat(cd, doi = {}) {
   const o = { viec: 'luu', phien_ban: cd.phien_ban, so_dong_cg: cd.co_goi.length };
-  cd.co_goi.forEach((c, i) => { o[`cg_${i}_so_gam`] = c.so_gam; o[`cg_${i}_viec`] = c.dang_dung ? 'dung' : 'tat'; });
+  cd.co_goi.forEach((c, i) => {
+    o[`cg_${i}_so_gam`] = c.so_gam;
+    o[`cg_${i}_viec`] = o[`cg_${i}_viec_goc`] = c.dang_dung ? 'dung' : 'tat';
+  });
   const soMoi = Math.max(0, Math.min(BL.SO_DONG_CO_GOI_MOI, BL.SO_CO_GOI_TOI_DA - cd.co_goi.length));
   for (let j = 0; j < soMoi; j++) o[`cg_moi_${j}`] = '';
   return formTu({ ...o, ...doi });
@@ -224,8 +228,8 @@ await nhom('5c · luuCoGoi trên database thật: đã lưu, không đổi, bấ
   const sauLan1 = await bangCo();
 
   const b = await BL.luuCoGoi(QL, formCaiDat(v0, { cg_moi_0: '300' }), 'vi');
-  ok('Bấm Lưu lần hai (cùng form, phiên bản CŨ — database đã đúng như gửi) → "Đã lưu cỡ gói.", không "người khác sửa", không "Không có gì thay đổi"',
-     b.ok === true && b.cau === CAU.daLuu.vi, JSON.stringify(b));
+  ok('Bấm Lưu lần hai (cùng form, phiên bản CŨ — database đã đúng như gửi) → "Danh sách cỡ gói đã đúng như bạn chọn.", không "người khác sửa", không nói lần này đã lưu',
+     b.ok === true && b.cau === CAU.daDung.vi && !noiDaLuu(b.cau), JSON.stringify(b));
   ok('…không ghi lần nữa: mọi dòng giữ nguyên (người sửa, updated_at)', giongNhau(await bangCo(), sauLan1));
 
   const v1 = await BL.docCaiDat(QL);
@@ -273,9 +277,55 @@ await nhom('5c · luuCoGoi trên database thật: đã lưu, không đổi, bấ
   ok('luuCoGoi gửi ban_le_luu_co_goi { p_phien_ban, p_co_goi: [{so_gam số, dang_dung}] } theo gam tăng dần',
      gian.goi.length === 1 && gian.goi[0].ten === 'ban_le_luu_co_goi' && gian.goi[0].tham.p_phien_ban === 'pb'
      && giongNhau(gian.goi[0].tham.p_co_goi, [co(200), co(400, false), co(1000)]), JSON.stringify(gian.goi));
+
+  // Hai người cùng mở trang, cùng tắt 400 g: người lưu sau KHÔNG được nghe "Đã lưu" (yêu cầu của họ không ghi gì)
+  const v3 = await BL.docCaiDat(QL);
+  const chuTat = await BL.luuCoGoi(CHU, formCaiDat(v3, viecCua(v3, 400, 'tat')), 'vi');
+  const sauTat = await bangCo();
+  const qlTat = await BL.luuCoGoi(QL, formCaiDat(v3, viecCua(v3, 400, 'tat')), 'vi');
+  const qlTatEn = await BL.luuCoGoi(QL, formCaiDat(v3, viecCua(v3, 400, 'tat')), 'en');
+  ok('Chủ và quản lý cùng mở trang, cùng tắt 400 g: người lưu sau nghe "Danh sách cỡ gói đã đúng như bạn chọn." (vi, en), không "Đã lưu"',
+     chuTat.ok === true && qlTat.ok === true && qlTat.cau === CAU.daDung.vi && qlTatEn.cau === CAU.daDung.en
+     && !noiDaLuu(qlTat.cau) && !noiDaLuu(qlTatEn.cau), `${JSON.stringify(qlTat)} · ${JSON.stringify(qlTatEn)}`);
+  ok('…không ghi lần nữa', giongNhau(await bangCo(), sauTat));
+  const bat = await BL.docCaiDat(QL);
+  await BL.luuCoGoi(CHU, formCaiDat(bat, viecCua(bat, 400, 'dung')), 'vi');
+  ok('…bật lại 400 g cho các ca sau', giongNhau(coCua(await bangCo()).find(c => c.so_gam === 400), co(400)));
 });
 
 // ===========================================================================
+await nhom('5e · Dựng lại form Cài đặt sau lỗi: không phủ lựa chọn cũ lên cỡ người khác vừa sửa, không điền lại cỡ đã lưu', async () => {
+  ok('Thư viện có viecDaChon, coMoiDaGo, VIEC_CO_GOI, SO_DONG_CG_TOI_DA',
+     typeof BL.viecDaChon === 'function' && typeof BL.coMoiDaGo === 'function'
+     && giongNhau(BL.VIEC_CO_GOI, ['dung', 'tat', 'bo']) && BL.SO_DONG_CG_TOI_DA === 40);
+  if (typeof BL.viecDaChon !== 'function' || typeof BL.coMoiDaGo !== 'function') return;
+
+  // A mở trang lúc 200 g, 400 g đang dùng; gõ sai ô cỡ mới ("abc") nên form bị trả lại. Trong lúc đó B tắt 200 g.
+  const cuA = { phien_ban: 'v1', co_goi: [co(200), co(400)] };
+  const daGoA = formCaiDat(cuA, { cg_moi_0: 'abc' });
+  ok('Cỡ A không đụng tới (200 g, việc = việc gốc "dung"), database mới đọc: Tạm tắt → hiện "tat" (theo database, không phủ lựa chọn cũ)',
+     BL.viecDaChon(daGoA, 200, false) === 'tat');
+  ok('…cỡ A không đụng tới mà database vẫn đang dùng → "dung"', BL.viecDaChon(daGoA, 400, true) === 'dung');
+  const daGoB = formCaiDat(cuA, { ...viecCua(cuA, 400, 'bo'), cg_moi_0: 'abc' });
+  ok('Cỡ A đã đổi việc (400 g: "dung" → "bo") → giữ "bo" khi dựng lại', BL.viecDaChon(daGoB, 400, true) === 'bo');
+  ok('…cỡ không có trên form vừa gửi (người khác vừa thêm 300 g) → theo database', BL.viecDaChon(daGoB, 300, true) === 'dung'
+     && BL.viecDaChon(daGoB, 300, false) === 'tat');
+  ok('…người khác vừa sửa (bỏ qua chữ đã gõ) → theo database', BL.viecDaChon(daGoB, 400, true, true) === 'dung');
+  ok('…không có form vừa gửi → theo database', BL.viecDaChon(null, 400, false) === 'tat');
+  const thieuGoc = formTu({ so_dong_cg: 1, cg_0_so_gam: 200, cg_0_viec: 'bo' });
+  ok('…form thiếu ô việc gốc (trang mở trước bản này) → theo database, không đoán', BL.viecDaChon(thieuGoc, 200, true) === 'dung');
+  const viecLa = formTu({ so_dong_cg: 1, cg_0_so_gam: 200, cg_0_viec: 'xoa-het', cg_0_viec_goc: 'dung' });
+  ok('…việc lạ → theo database', BL.viecDaChon(viecLa, 200, true) === 'dung');
+
+  // Mất mạng sau khi database đã ghi 300 g: dựng lại không điền "300" vào ô cỡ mới (bấm Lưu lại sẽ báo trùng oan)
+  const moi = { phien_ban: 'v2', co_goi: [co(200), co(300), co(400)] };
+  const daGoC = formCaiDat(cuA, { cg_moi_0: '300', cg_moi_1: '1.000', cg_moi_2: 'abc' });
+  ok('Ô cỡ mới "300" mà database mới đọc đã có 300 g → để trống', BL.coMoiDaGo(daGoC, 0, moi) === '');
+  ok('…"1.000" (1000 g, chưa có) → giữ chữ đã gõ', BL.coMoiDaGo(daGoC, 1, moi) === '1.000');
+  ok('…"abc" (sai) → giữ chữ đã gõ để người dùng sửa', BL.coMoiDaGo(daGoC, 2, moi) === 'abc');
+  ok('…không có form vừa gửi, hay đọc cài đặt lỗi → không đoán', BL.coMoiDaGo(null, 0, moi) === '' && BL.coMoiDaGo(daGoC, 1, null) === '1.000');
+});
+
 await nhom('5d · taoSanPham: chọn cỡ Bán / Không bán, kim chi, form cũ, cỡ lạ, bấm hai lần', async () => {
   // Cài đặt cho nhóm này: 300 (dùng), 400 (tắt), 1000 (dùng) — khác 200 / 400 để thấy rõ gói lấy từ đâu.
   const v = await BL.docCaiDat(CHU);
@@ -406,8 +456,9 @@ await nhom('7 · TRANG: cai-dat.astro, index.astro, [id].astro — đọc mã ng
      /<fieldset disabled=\{!duocSua\}>/.test(cd) && /const duocSua = \(VAI_SUA_BAN_LE as readonly string\[\]\)\.includes\(nhanSu\.vai_tro\);/.test(cd)
      && /\{duocSua && \(\s*<div class="bl-nut">\s*<button type="submit" class="nb-nut">\{t\.luu\}<\/button>/.test(cd)
      && cd.includes("'Chỉ chủ và quản lý sửa được cài đặt bán lẻ.'") && /\{!duocSua && <div class="nb-bao luu-y"><p>\{t\.chiDoc\}<\/p><\/div>\}/.test(cd));
-  ok('cai-dat.astro: lưu hỏng thì dựng lại với chữ đã gõ ở ô cỡ mới (daGo), người khác sửa thì hiện danh sách mới',
-     /daGo = form;/.test(cd) && /daGo\?\.get\(`cg_moi_\$\{j\}`\)/.test(cd) && /maLoi === 'nguoi_khac_sua'/.test(cd));
+  ok('cai-dat.astro: lưu hỏng thì dựng lại với chữ đã gõ ở ô cỡ mới (coMoiDaGo trên daGo), người khác sửa thì hiện danh sách mới',
+     /daGo = form;/.test(cd) && /value=\{coMoiDaGo\(daGo, j, caiDat\)\}/.test(cd) && /maLoi === 'nguoi_khac_sua'/.test(cd)
+     && /viecDaChon\(daGo, soGam, dangDung, nguoiKhacSua\)/.test(cd));
   const CHU_CAI_DAT = [
     ["tieuDe", "'Cài đặt bán lẻ'", "'Retail settings'"],
     ['h2', "'Cỡ gói thịt bò'", "'Beef pack sizes'"],
@@ -443,17 +494,19 @@ await nhom('7 · TRANG: cai-dat.astro, index.astro, [id].astro — đọc mã ng
      && /ban:\s+\{ vi: 'Bán', en: 'Sell' \}/.test(ds) && /khongBan:\s+\{ vi: 'Không bán', en: "Don't sell" \}/.test(ds) && /go\(`goi_\$\{n\}`\)/.test(ds));
   ok('index.astro: cài đặt không có cỡ đang dùng → câu nói rõ thịt mới sẽ chưa có gói',
      ds.includes("'Cài đặt bán lẻ chưa có cỡ gói nào đang dùng — sản phẩm thịt mới sẽ chưa có gói.'"));
-  ok('index.astro: đọc cài đặt lỗi → bỏ fieldset (không gửi co_goi_ds), không chặn form',
-     /try \{\s*caiDat = await docCaiDat\(client\);\s*\} catch \{/.test(ds) && /\{caiDat && \(\s*<fieldset class="nb-o bl-co-goi">/.test(ds));
-  ok('index.astro: chỉ người sửa mới đọc cài đặt (form Thêm chỉ cho người sửa)', /if \(duocSua\) \{\s*try \{\s*caiDat = await docCaiDat/.test(ds));
+  ok('index.astro: đọc cài đặt lỗi → bỏ fieldset (không gửi co_goi_ds), không chặn form (lỗi thành { caiDat: null, loi: true })',
+     /docCaiDat\(client\)\.then\(caiDat => \(\{ caiDat, loi: false \}\), \(\) => \(\{ caiDat: null, loi: true \}\)\)/.test(ds)
+     && /\{caiDat && \(\s*<fieldset class="nb-o bl-co-goi">/.test(ds));
+  ok('index.astro: chỉ người sửa mới đọc cài đặt (form Thêm chỉ cho người sửa)',
+     /const caiDatHua[^=]*= duocSua\s*\?\s*docCaiDat\(client\)/.test(ds));
 
   // [id].astro: chỉ thêm dòng gợi ý
   ok('[id].astro: dòng gợi ý "Cỡ trong Cài đặt bán lẻ: …" (vi, en) dưới goiDan, chỉ khi không phải hộp, đọc lỗi thì bỏ dòng',
      sua.includes("'Cỡ trong Cài đặt bán lẻ: '") || /Cỡ trong Cài đặt bán lẻ: \$\{/.test(sua));
   ok('…có câu khi cài đặt không có cỡ đang dùng, bản tiếng Anh',
      sua.includes("'Cài đặt bán lẻ chưa có cỡ nào đang dùng'") && /Sizes in Retail settings: /.test(sua) && sua.includes('Retail settings have no pack size in use'));
-  ok('…đọc cài đặt trong try / catch (không chặn trang), chỉ khi sản phẩm không theo hộp',
-     /if \(sp && sp\.cach_ban !== 'theo_hop'\) \{\s*try \{[\s\S]{0,200}docCaiDat\(client\)[\s\S]{0,200}\} catch \{/.test(sua)
+  ok('…đọc cài đặt lỗi thì null (không chặn trang), chỉ khi sản phẩm không theo hộp',
+     /= sp && sp\.cach_ban !== 'theo_hop'\s*\?\s*docCaiDat\(client\)\.then\([\s\S]{0,160}, \(\) => null\)/.test(sua)
      && /\{coCaiDat && <p class="bl-phu bl-dan">/.test(sua));
   ok('[id].astro: form sửa giữ nguyên hình (hai dòng gói mới, tên ô goi_N_so_gam) — formTuSanPham của test-ban-le-web không đổi',
      /Math\.min\(2, SO_GOI_TOI_DA - sp\.goi\.length\)/.test(sua) && /name=\{`\$\{p\}so_gam`\} inputmode="numeric"/.test(sua));
@@ -481,6 +534,21 @@ await nhom('7 · TRANG: cai-dat.astro, index.astro, [id].astro — đọc mã ng
 });
 
 // ===========================================================================
+await nhom('7b · TRANG: dựng lại sau lỗi, đọc cài đặt hỏng, đọc song song', async () => {
+  const cd = docNguon('pages/noi-bo/ban-le/cai-dat.astro');
+  const ds = docNguon('pages/noi-bo/ban-le/index.astro');
+  const sua = docNguon('pages/noi-bo/ban-le/[id].astro');
+  ok('cai-dat.astro: mỗi cỡ có ô ẩn cg_i_viec_goc (việc lúc mở trang) — để dựng lại chỉ giữ cỡ người dùng đã đổi',
+     /name=\{`cg_\$\{i\}_viec_goc`\}/.test(cd));
+  ok('cai-dat.astro: dựng lại bằng viecDaChon / coMoiDaGo của thư viện, không tự đọc lại form (không Number(...) || 0, không số 40, không danh sách việc viết tay)',
+     /viecDaChon\(/.test(cd) && /coMoiDaGo\(/.test(cd) && !/\|\|\s*0/.test(cd) && !/\b40\b/.test(cd) && !/\['dung',\s*'tat',\s*'bo'\]/.test(cd));
+  ok('index.astro: đọc Cài đặt bán lẻ lỗi → có câu báo (không im lặng), vi và en',
+     /caiDatLoi:\s*\{\s*vi:\s*'Chưa đọc được Cài đặt bán lẻ[^']*',\s*en:\s*'[^']+'/.test(ds) && /\{t\.caiDatLoi\}/.test(ds));
+  ok('index.astro: đọc cài đặt chạy song song với đọc menu (không await docCaiDat( đứng riêng)',
+     /docCaiDat\(client\)\.then\(/.test(ds) && !/await docCaiDat\(/.test(ds));
+  ok('[id].astro: đọc cài đặt chạy song song (không await docCaiDat( đứng riêng)', /docCaiDat\(client\)\.then\(/.test(sua) && !/await docCaiDat\(/.test(sua));
+});
+
 await nhom('8 · SỔ KHO KHỚP', async () => {
   const { rows } = await db.query(`select * from kho_doi_soat_ton()`);
   ok('kho_doi_soat_ton() rỗng', rows.length === 0, JSON.stringify(rows.slice(0, 3)));
