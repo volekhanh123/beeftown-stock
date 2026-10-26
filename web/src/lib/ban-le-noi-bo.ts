@@ -99,6 +99,8 @@ const CAU = {
                   en: 'Beeftown Scale sends the new price to the scale within about a minute if Auto-send is on.' },
   quaCan:       { vi: (gia: string, ma: string) => `Cân quầy chỉ nhận tối đa ${gia}/kg: cân VẪN IN GIÁ CŨ cho mã ${ma}.`,
                   en: (gia: string, ma: string) => `The counter scale accepts at most ${gia}/kg: it STILL PRINTS THE OLD PRICE for code ${ma}.` },
+  chuaGiaCan:   { vi: (ma: string) => `Mặt hàng kho chưa có giá mỗi kg — cân quầy chưa bán được mã ${ma}.`,
+                  en: (ma: string) => `The stock item has no price per kg yet — the counter scale cannot sell code ${ma}.` },
   fabiSuaTay:   { vi: 'FABi phải sửa tay — xem Đối chiếu FABi.', en: 'FABi must be updated by hand — see FABi check.' },
   daBoGoiMa:    { vi: (g: number, ma: string) => `Đã bỏ gói ${g} g (mã FABi ${ma}) — nhớ tắt món này trên FABi.`,
                   en: (g: number, ma: string) => `Removed the ${g} g pack (FABi code ${ma}) — remember to turn this item off in FABi.` },
@@ -215,6 +217,8 @@ export interface DongDoiChieu {
   ma_can: string | null;
   so_o: number | null;
   phan_tram: number | null;
+  /** Dòng gói: 'goi' (thịt theo cân) hay 'hop' (kim chi theo hộp) — trang ghi "gói 200 g" / "hộp 500 g". Dòng khác: null. */
+  don_vi: 'goi' | 'hop' | null;
   ten_san_pham: string | null;
   san_pham_id: string | null;
   so_gam: number | null;
@@ -318,16 +322,26 @@ export const O_DICH_BAN_LE = [
 const COT_DICH = O_DICH_BAN_LE.flatMap(o => [`${o.cot}_en`, `${o.cot}_ko`]);
 const COT_CHU_VI = ['ten_vi', 'mo_ta_vi', 'cach_dung_vi'] as const;
 
-/** Cảnh báo của sản phẩm (canh_bao của ban_le_danh_sach / ban_le_luu_san_pham). nang = hiện đỏ. */
-export const CANH_BAO_BAN_LE: Record<string, { cau: HaiThuTieng; nang: boolean }> = {
+/**
+ * Cảnh báo của sản phẩm (canh_bao của ban_le_danh_sach / ban_le_luu_san_pham). nang = hiện đỏ. Hai mã có câu
+ * theo sản phẩm — dùng cauCanhBao(ma, nn, sp), đừng đọc thẳng .cau:
+ *   · gia_qua_can: database trả mã này cho CẢ giá mỗi kg trống / ≤ 0 lẫn giá quá 999.999 (Beeftown Cân bỏ qua
+ *     dòng cả ba trường hợp); câu ở đây là câu giá quá cân, giá trống có câu riêng (CAU.chuaGiaCan).
+ *   · khay_nguyen: đúng cho mọi trạng thái; sản phẩm Đang bán thì thêm "Đang bán nhưng" (dangBan).
+ */
+export const CANH_BAO_BAN_LE: Record<string, { cau: HaiThuTieng; nang: boolean; dangBan?: HaiThuTieng }> = {
   gia_qua_can: { nang: true, cau: {
     vi: `Cân quầy chỉ nhận tối đa ${dinhDangTien(GIA_TOI_DA, 'vi')}/kg — cân vẫn in giá cũ.`,
     en: `The counter scale accepts at most ${dinhDangTien(GIA_TOI_DA, 'en')}/kg — it still prints the old price.` } },
   thieu_gia: { nang: false, cau: {
     vi: 'Đang bán mà chưa gói nào có giá.', en: 'On sale, but no pack has a price yet.' } },
-  khay_nguyen: { nang: true, cau: {
-    vi: 'Mặt hàng kho đếm theo khay: FABi sẽ trừ nguyên một khay cho mỗi gói online. Chọn "Đóng gói sẵn" hoặc đổi mặt hàng sang cân theo kg.',
-    en: 'The stock item is counted by tray: FABi would deduct a whole tray for every online pack. Choose "Pre-packed" or change the item to weigh by kg.' } },
+  khay_nguyen: { nang: true,
+    cau: {
+      vi: 'Mặt hàng kho đếm theo khay: FABi trừ nguyên một khay cho mỗi gói online. Chọn "Đóng gói sẵn" hoặc đổi mặt hàng sang cân theo kg.',
+      en: 'The stock item is counted by tray: FABi deducts a whole tray for every online pack. Choose "Pre-packed" or change the item to weigh by kg.' },
+    dangBan: {
+      vi: 'Đang bán nhưng mặt hàng kho đếm theo khay: FABi trừ nguyên một khay cho mỗi gói online. Chọn "Đóng gói sẵn" hoặc đổi mặt hàng sang cân theo kg.',
+      en: 'On sale, but the stock item is counted by tray: FABi deducts a whole tray for every online pack. Choose "Pre-packed" or change the item to weigh by kg.' } },
   chua_gan_kho: { nang: false, cau: {
     vi: 'Chưa gắn mặt hàng kho — chưa có giá cân, mã cân, tồn ở quầy.',
     en: 'No stock item linked yet — no scale price, scale code or counter stock.' } },
@@ -348,9 +362,55 @@ export const CANH_BAO_BAN_LE: Record<string, { cau: HaiThuTieng; nang: boolean }
     en: 'A pre-packed pack on sale has no stock item — sales would not deduct stock.' } },
 };
 
-/** Câu của một mã cảnh báo; mã lạ (database mới hơn web) thì hiện nguyên mã. */
-export function cauCanhBao(ma: string, nn: NgonNguNB = 'vi'): string {
-  return CANH_BAO_BAN_LE[ma]?.cau[nn] ?? ma;
+/** Phần sản phẩm các câu cảnh báo cần (một SanPhamBanLe đủ dùng). */
+type SanPhamCanhBao = Pick<SanPhamBanLe, 'cach_ban' | 'trang_thai' | 'canh_bao' | 'mat_hang'>;
+
+/**
+ * Vì sao cân quầy không nhận giá mỗi kg — theo mã gia_qua_can của DATABASE, câu chọn theo giá trị:
+ * 'thieu' = giá trống hoặc ≤ 0 (cân chưa bán được mã đó), 'qua' = giá quá cửa sổ 6 chữ số (cân vẫn in giá cũ).
+ * null = không có mã đó.
+ */
+export function loiGiaCan(sp: Pick<SanPhamBanLe, 'canh_bao' | 'mat_hang'>): 'thieu' | 'qua' | null {
+  if (!(sp.canh_bao ?? []).includes('gia_qua_can')) return null;
+  const gia = soHoacNull(sp.mat_hang?.gia_ban_kg);
+  return gia !== null && gia > 0 ? 'qua' : 'thieu';
+}
+
+/**
+ * Câu của một mã cảnh báo; mã lạ (database mới hơn web) thì hiện nguyên mã. Có sp thì câu đúng với sản phẩm
+ * đó: giá mỗi kg trống → "chưa có giá mỗi kg — cân quầy chưa bán được mã …" (không phải câu giá quá cân);
+ * khay nguyên khi Đang bán → "Đang bán nhưng …".
+ */
+export function cauCanhBao(ma: string, nn: NgonNguNB = 'vi', sp?: SanPhamCanhBao | null): string {
+  const c = CANH_BAO_BAN_LE[ma];
+  if (!c) return ma;
+  if (sp && ma === 'gia_qua_can' && loiGiaCan(sp) === 'thieu' && sp.mat_hang?.ma_can) return CAU.chuaGiaCan[nn](sp.mat_hang.ma_can);
+  if (sp && c.dangBan && sp.trang_thai === 'dang_ban') return c.dangBan[nn];
+  return c.cau[nn];
+}
+
+/**
+ * Cảnh báo của trang sửa, mỗi mã hiện ĐÚNG một lần: giá cân hiện ngay dưới ô giá mỗi kg (ô đó có khi sản phẩm
+ * theo cân gắn mặt hàng đang dùng — đúng điều kiện database trả gia_qua_can, kèm mã cân), khay nguyên ngay dưới
+ * ô "Gói online lấy từ đâu" (sản phẩm theo cân); mọi mã khác ở đầu trang (dau).
+ */
+export function canhBaoDauTrang(sp: SanPhamCanhBao): { dau: string[]; giaCanTaiO: 'thieu' | 'qua' | null; khayTaiO: boolean } {
+  const theoCan = sp.cach_ban === 'theo_can';
+  const coOGia = theoCan && !!sp.mat_hang?.dang_dung && !!sp.mat_hang?.ma_can;
+  const giaCanTaiO = coOGia ? loiGiaCan(sp) : null;
+  const khayTaiO = theoCan && (sp.canh_bao ?? []).includes('khay_nguyen');
+  const dau = (sp.canh_bao ?? []).filter(c => !(c === 'gia_qua_can' && giaCanTaiO) && !(c === 'khay_nguyen' && khayTaiO));
+  return { dau, giaCanTaiO, khayTaiO };
+}
+
+/**
+ * Đúng những giá chủ sắp xác nhận (gia_de_chot — ảnh chụp ban_le_chot_gia sẽ ghi), theo trọng lượng. Gói ngưng
+ * bán có giá cũng có mặt (database gồm nó, để nó không là "giá thử" mãi) — ngungBan để trang ghi "(ngưng bán)".
+ */
+export function dongGiaDeChot(sp: Pick<SanPhamBanLe, 'gia_de_chot' | 'goi'>): { soGam: number; gia: number; ngungBan: boolean }[] {
+  return Object.entries(sp.gia_de_chot?.goi ?? {})
+    .map(([g, gia]) => ({ soGam: Number(g), gia: Number(gia), ngungBan: sp.goi.find(x => x.so_gam === Number(g))?.dang_ban === false }))
+    .sort((a, b) => a.soGam - b.soGam);
 }
 
 // -----------------------------------------------------------------------------
@@ -410,8 +470,11 @@ function chuCua(form: FormData, ten: string): string | null {
   return s || null;
 }
 
-/** So hai bản chữ như database chuẩn hóa (ban_le_doc_chu): bỏ \r, bỏ khoảng trắng hai đầu, rỗng = null. */
-function cungChu(a: unknown, b: unknown): boolean {
+/**
+ * So hai bản chữ như database chuẩn hóa (ban_le_doc_chu): bỏ \r, bỏ khoảng trắng hai đầu, rỗng = null. Trang
+ * sửa dùng chính hàm này (ô dịch người dùng có sửa không) — đừng viết lại một bản ở trang.
+ */
+export function cungChu(a: unknown, b: unknown): boolean {
   const c = (x: unknown) => (x == null ? '' : String(x).replace(/\r/g, '').trim());
   return c(a) === c(b);
 }
@@ -713,13 +776,16 @@ export function daGiuDung(sp: SanPhamBanLe, duLieu: DuLieuLuu): boolean {
 }
 
 /**
- * Câu sau một lần lưu được, dựng từ chính kết quả của database — chỉ nói điều đã xảy ra:
+ * Câu sau một lần lưu được, dựng từ chính kết quả của database — chỉ nói điều VỪA xảy ra:
  *   · luôn "Đã lưu.";
- *   · giá mỗi kg vừa đổi, trong khoảng cân nhận, mặt hàng có mã cân và đang dùng → câu Beeftown Cân;
- *   · giá quá cửa sổ 6 chữ số của cân → cân VẪN IN GIÁ CŨ (không bao giờ câu "gửi giá mới");
+ *   · CHỈ khi lần này đổi giá mỗi kg (gia_kho_doi): giá cân nhận được, mặt hàng có mã cân và đang dùng → câu
+ *     Beeftown Cân; cân không nhận (mã gia_qua_can) → câu theo giá trị (quá cửa sổ 6 chữ số: VẪN IN GIÁ CŨ;
+ *     trống: chưa bán được) — không bao giờ câu "gửi giá mới";
  *   · đổi thứ FABi phải theo → "FABi phải sửa tay";
  *   · mỗi gói vừa bỏ một câu (có mã FABi thì nhắc tắt món);
- *   · cảnh báo của sản phẩm; chữ cấm trong câu vừa lưu (sẽ là chữ cho khách khi bán online).
+ *   · chữ cấm trong câu vừa lưu (sẽ là chữ cho khách khi bán online).
+ * KHÔNG lặp cảnh báo hiện có của sản phẩm: trang chuyển hướng rồi đọc lại và hiện chúng — nhắc lại ở đây là
+ * nói hai lần, và nghe như chính lần lưu này gây ra.
  */
 export function cauDaLuu(r: KetQuaHamLuu, duLieu: DuLieuLuu, doiFabi: boolean, nn: NgonNguNB = 'vi'): string {
   const t = dichNB(nn, CAU);
@@ -728,14 +794,17 @@ export function cauDaLuu(r: KetQuaHamLuu, duLieu: DuLieuLuu, doiFabi: boolean, n
   const canh = Array.isArray(r.canh_bao) ? r.canh_bao : [];
   const gia = soHoacNull(mh?.gia_ban_kg);
 
-  if (canh.includes('gia_qua_can') && mh?.ma_can) phan.push(t.quaCan(dinhDangTien(GIA_TOI_DA, nn), mh.ma_can));
-  else if (r.gia_kho_doi && mh?.dang_dung && mh.ma_can && gia !== null && gia >= 1 && gia <= GIA_TOI_DA) phan.push(t.beeftownCan);
+  if (r.gia_kho_doi && mh?.dang_dung && mh.ma_can) {
+    const loi = loiGiaCan({ canh_bao: canh, mat_hang: mh });
+    if (loi === 'qua') phan.push(t.quaCan(dinhDangTien(GIA_TOI_DA, nn), mh.ma_can));
+    else if (loi === 'thieu') phan.push(t.chuaGiaCan(mh.ma_can));
+    else if (gia !== null && gia >= 1 && gia <= GIA_TOI_DA) phan.push(t.beeftownCan);
+  }
 
   if (doiFabi || r.gia_kho_doi) phan.push(t.fabiSuaTay);
   for (const b of Array.isArray(r.da_bo) ? r.da_bo : []) {
     phan.push(b.ma_fabi ? t.daBoGoiMa(b.so_gam, b.ma_fabi) : t.daBoGoi(b.so_gam));
   }
-  for (const c of canh) if (c !== 'gia_qua_can') phan.push(cauCanhBao(c, nn));
 
   const daThay = new Set<string>();
   for (const k of [...COT_CHU_VI, ...COT_DICH]) {
@@ -903,6 +972,9 @@ const CAU_VIEC = {
                        en: (gia: string) => `The price is not confirmed or changed after confirmation — confirm it, then set ${gia} in FABi.` },
   thieu_gia:         { vi: 'Gói đang bán chưa có giá — điền giá ở menu bán lẻ trước.',
                        en: 'A pack on sale has no price — fill in the price in the retail menu first.' },
+  // thieu_gia của dòng mã cân / ô mã / mã giảm: giá mỗi kg trống hay 0 đ (Beeftown Cân bỏ qua dòng).
+  thieu_gia_kg:      { vi: 'Mặt hàng kho chưa có giá mỗi kg (hoặc giá 0 đ) — cân quầy chưa bán được mã này. Điền giá mỗi kg ở menu bán lẻ hoặc Kho → Mặt hàng.',
+                       en: 'The stock item has no price per kg (or the price is 0) — the counter scale cannot sell this code. Fill in the price per kg in the retail menu or Stock → Items.' },
   gia_qua_can:       { vi: `Giá quá ${dinhDangTien(GIA_TOI_DA, 'vi')}/kg — cân quầy không nhận, vẫn in giá cũ.`,
                        en: `The price is above ${dinhDangTien(GIA_TOI_DA, 'en')}/kg — the counter scale refuses it and keeps the old price.` },
   khay_nguyen:       { vi: 'Mặt hàng kho đếm theo khay: FABi sẽ trừ nguyên một khay cho mỗi gói — chọn "Đóng gói sẵn" hoặc đổi mặt hàng sang cân theo kg.',
@@ -959,6 +1031,7 @@ export function cauViecDoiChieu(d: DongDoiChieu, nn: NgonNguNB = 'vi'): string[]
       case 'ghep': return t.ghep(moTaGhep(d.mong_doi, nn));
       case 'sua_ghep': return t.sua_ghep(moTaGhep(d.ghep, nn), moTaGhep(d.mong_doi, nn));
       case 'dat_gia': return t.dat_gia(giaPhaiDat(d, nn));
+      case 'thieu_gia': return d.loai_dong === 'goi' ? t.thieu_gia : t.thieu_gia_kg;
       default: {
         const c = (t as Record<string, unknown>)[v];
         return typeof c === 'string' ? c : v;

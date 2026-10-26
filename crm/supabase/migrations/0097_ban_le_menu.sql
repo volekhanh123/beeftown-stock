@@ -541,7 +541,9 @@ $$;
 
 -- Ảnh chụp giá hiện tại của một sản phẩm — đúng thứ ban_le_chot_gia ghi vào gia_chot:
 --   {"kg": giá mỗi kg (sản phẩm theo cân, mặt hàng có thật và đang dùng) | null,
---    "goi": {"<số gam>": giá} của các gói đang bán có giá > 0}
+--    "goi": {"<số gam>": giá} của MỌI gói có giá > 0, kể cả gói ngưng bán}
+-- Gói ngưng bán vẫn vào ảnh chụp: gia_thu của một gói so với ảnh chụp, nên gói ngưng bán có giá mà vắng ở đây
+-- thì là "giá thử" mãi — không lần chốt nào bỏ được chữ đó (bán lại gói đó là bán ngay ở giá đã chốt).
 create or replace function ban_le_gia_hien_tai(p_san_pham_id uuid)
 returns jsonb
 language sql
@@ -560,7 +562,7 @@ as $$
       select jsonb_object_agg(g.so_gam::text, x.gia)
       from ban_le_goi g
       cross join lateral (select ban_le_gia_ban(g.gia_rieng, sp.cach_ban, sp.gia_kg, g.so_gam) as gia) x
-      where g.san_pham_id = sp.id and g.dang_ban and x.gia > 0), '{}'::jsonb))
+      where g.san_pham_id = sp.id and x.gia > 0), '{}'::jsonb))
   from sp
 $$;
 
@@ -571,18 +573,22 @@ $$;
 --
 -- Mặt hàng "mất" (không còn dòng) và "ngừng" (dang_dung = false) đều KHÔNG DÙNG ĐƯỢC: không lấy giá, không
 -- tính tồn, kèm cảnh báo. Mã cảnh báo (canh_bao, thứ tự cố định):
---   gia_qua_can       mặt hàng theo cân có mã cân mà giá mỗi kg > 999.999 hoặc ≤ 0: Beeftown Cân từ chối dòng
---                     đó và CÂN VẪN IN GIÁ CŨ (web/src/lib/kho/can-tma.ts, GIA_TOI_DA)
+--   gia_qua_can       mặt hàng theo cân có mã cân mà giá mỗi kg TRỐNG, ≤ 0 hoặc > 999.999: Beeftown Cân bỏ qua
+--                     dòng đó (can-tma.ts kiemHang) và CÂN GIỮ DÒNG CŨ — hàng chưa có thì cân không bán được,
+--                     hàng đã có thì cân vẫn in giá cũ (web/src/lib/kho/can-tma.ts, GIA_TOI_DA). Trang chọn câu
+--                     theo giá (giá trống / ≤ 0 khác giá quá cửa sổ 6 chữ số).
 --   thieu_gia         sản phẩm Đang bán mà không gói đang bán nào có giá > 0
 --   khay_nguyen       theo cân + cắt tại quầy + mặt hàng đếm theo khay: FABi trừ NGUYÊN một khay cho mỗi gói
---                     online (0054). ban_le_luu_san_pham chặn Đang bán khi còn cấu hình này; cảnh báo vẫn hiện
---                     nếu mặt hàng bị đổi sang đếm theo khay sau đó
+--                     online (0054). Mọi trạng thái: ban_le_luu_san_pham chặn lần lưu ĐƯA sản phẩm vào cấu hình
+--                     này khi Đang bán; mặt hàng bị đổi sang đếm theo khay sau đó thì chỉ còn cảnh báo
 --   chua_gan_kho      sản phẩm theo cân chưa gắn mặt hàng kho
 --   mat_hang_mat      mặt hàng của sản phẩm theo cân, hoặc của gói / hộp đang bán, không còn trong kho
 --   mat_hang_ngung    …đã ngừng dùng
 --   goi_khong_dem_goi mặt hàng của hộp / gói đóng sẵn đang bán không đếm theo gói
 --   hop_chua_co_kho   hộp kim chi đang bán chưa gắn mặt hàng kho
 --   goi_chua_co_kho   gói đóng sẵn đang bán (thịt, nguon_goi = dong_san) chưa gắn mặt hàng kho
+--
+-- Tồn ở quầy của mặt hàng sản phẩm (cắt tại quầy) tính MỘT lần cho cả sản phẩm, dùng cho mọi gói và cho "ton".
 create or replace function ban_le_san_pham_json(p_id uuid, p_chi_nhanh_id uuid, p_kem_ban_dich boolean)
 returns jsonb
 language plpgsql
@@ -602,6 +608,8 @@ declare
   v_con       text;
   v_kg        numeric;
   v_so_goi    bigint;
+  v_kg_sp     numeric;          -- tồn ở quầy của mặt hàng sản phẩm (kg), tính một lần; null = không tính
+  v_goi_sp    bigint;           -- …và số gói của nó
   v_goi       jsonb := '[]'::jsonb;
   v_co_gia    boolean := false;
   v_mat       boolean := false;
@@ -625,6 +633,10 @@ begin
   v_rieng := v_sp.cach_ban = 'theo_hop' or v_sp.nguon_goi = 'dong_san';
   if p_chi_nhanh_id is not null then
     v_tin := ban_le_ton_tin_duoc(p_chi_nhanh_id);
+    -- Một lần cho cả sản phẩm (mọi gói cắt tại quầy cùng hỏi đúng câu này).
+    if v_sp.cach_ban = 'theo_can' and v_dung then
+      select t.so_kg, t.so_goi into v_kg_sp, v_goi_sp from ban_le_ton_quay(p_chi_nhanh_id, v_mh.id) t;
+    end if;
   end if;
 
   for v_g in select * from ban_le_goi where san_pham_id = p_id order by so_gam loop
@@ -641,8 +653,7 @@ begin
     if v_tin then
       if not v_rieng then
         if v_dung then
-          select t.so_kg into v_kg from ban_le_ton_quay(p_chi_nhanh_id, v_mh.id) t;
-          v_con := case when v_kg >= v_g.so_gam / 1000.0 then 'con' else 'het' end;
+          v_con := case when v_kg_sp >= v_g.so_gam / 1000.0 then 'con' else 'het' end;
         end if;
       elsif v_mhg.id is not null and v_mhg.dang_dung and v_mhg.dem_goi then
         select t.so_goi into v_so_goi from ban_le_ton_quay(p_chi_nhanh_id, v_mhg.id) t;
@@ -688,7 +699,9 @@ begin
   end loop;
 
   if v_sp.cach_ban = 'theo_can' then
-    if v_dung and v_mh.ma_can is not null and (v_mh.gia_ban_kg > 999999 or v_mh.gia_ban_kg <= 0) then
+    -- "is null" phải viết rõ: null > 999999 là null, và giá trống chính là trường hợp cân bỏ qua dòng.
+    if v_dung and v_mh.ma_can is not null
+       and (v_mh.gia_ban_kg is null or v_mh.gia_ban_kg <= 0 or v_mh.gia_ban_kg > 999999) then
       v_canh := v_canh || 'gia_qua_can'::text;
     end if;
   end if;
@@ -721,8 +734,7 @@ begin
   -- dùng được (mỗi mặt hàng một lần).
   if p_chi_nhanh_id is not null then
     if v_sp.cach_ban = 'theo_can' and v_dung then
-      select t.so_kg, t.so_goi into v_kg, v_so_goi from ban_le_ton_quay(p_chi_nhanh_id, v_mh.id) t;
-      v_ton := jsonb_build_object('so_kg', v_kg, 'so_goi', v_so_goi, 'tin_duoc', v_tin);
+      v_ton := jsonb_build_object('so_kg', v_kg_sp, 'so_goi', v_goi_sp, 'tin_duoc', v_tin);
     elsif v_sp.cach_ban = 'theo_hop' then
       select sum(t.so_kg), sum(t.so_goi) into v_kg, v_so_goi
       from (select distinct g.mat_hang_id from ban_le_goi g
@@ -881,13 +893,16 @@ comment on function ban_le_tao_san_pham(uuid, text, text, text, text) is
 --   gia_ban_kg (+ gia_ban_kg_cu: giá mỗi kg trang đã thấy), goi
 -- goi: tối đa 20 dòng {id?, so_gam, gia_rieng, ma_fabi, ma_vach, mat_hang_id, dang_ban, thu_tu, xoa?}.
 --   Có id + xoa: true → bỏ gói (trả trong da_bo); có id → sửa; không id → thêm. Gói đang có mà danh sách không
---   nhắc tới thì GIỮ NGUYÊN — bỏ gói luôn phải nói rõ.
+--   nhắc tới thì GIỮ NGUYÊN — bỏ gói luôn phải nói rõ. id phải là id của một gói ĐANG CÓ của chính sản phẩm
+--   này (không phải khóa tạm của gói thêm cùng lần, không phải gói vừa bỏ ở dòng trước) — khác thì "Không
+--   thấy gói này — tải lại trang.".
 --
 -- MỌI KIỂM TRA TRƯỚC LẦN GHI ĐẦU TIÊN: hàm trả về bình thường thì PostgREST giao dịch luôn, nên một
 -- {ok:false} sau khi đã ghi sản phẩm sẽ để lại bản ghi nửa vời.
 --   1) khóa dòng sản phẩm; 2) phiên bản (updated_at) khác → {ok:false, ly_do:'nguoi_khac_sua'} (không lỗi);
 --   3) tính giá trị đích, chưa ghi; 4) giá mỗi kg: khóa dòng mặt hàng kho, giá kho đã đổi so với lúc trang
---   đọc → {ok:false, ly_do:'gia_kho_vua_doi', gia_ban_kg}; 5) gói và luật khay nguyên; 6) mới ghi.
+--   đọc → {ok:false, ly_do:'gia_kho_vua_doi', gia_ban_kg}; 5) gói và luật khay nguyên (chỉ chặn lần lưu đưa
+--   sản phẩm Đang bán vào cấu hình khay nguyên); 6) mới ghi.
 -- Giá mỗi kg là ô gia_ban_kg của Kho → Mặt hàng: đổi cho MỌI chi nhánh, đổi cả giá cân, giá mã giảm, ô mã,
 -- cách chia giá vốn khi chốt phiên lóc và báo cáo ước tính. Đổi mặt hàng kho và giá mỗi kg trong cùng một
 -- lần lưu bị từ chối: gia_ban_kg_cu là giá của mặt hàng CŨ.
@@ -1089,7 +1104,12 @@ begin
 
       v_khoa := ban_le_doc_chu(v_g -> 'id');
       if v_khoa is not null then
-        if not (v_goi_moi ? v_khoa) then
+        -- id phải là id THẬT của một gói đang có của sản phẩm này: so với v_goi_cu (gói trước lần lưu), không
+        -- với v_goi_moi — v_goi_moi còn chứa khóa tạm 'moi-<thứ tự>' của gói thêm trong chính lần này, mà khóa
+        -- đó lọt qua thì hoặc sửa lặng lẽ gói vừa thêm, hoặc vấp phép đổi ::uuid (lỗi Postgres thô 22P02).
+        -- Gói đã bỏ ở dòng trước của cùng danh sách (không còn trong v_goi_moi) cũng là "không thấy".
+        if v_khoa !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+           or not (v_goi_cu ? v_khoa) or not (v_goi_moi ? v_khoa) then
           raise exception 'Không thấy gói này — tải lại trang.';
         end if;
         if v_g -> 'xoa' = 'true'::jsonb then
@@ -1211,11 +1231,19 @@ begin
   end if;
 
   -- Khay nguyên: mặt hàng đếm theo khay thì FABi trừ NGUYÊN một khay (theo số kg trên sổ) cho mỗi gói online
-  -- bán theo gói (0054: kg_moi_don_vi bị bỏ qua) — sổ kho sai ngay từ đơn đầu. Không cho Đang bán; cả lần lưu
+  -- bán theo gói (0054: kg_moi_don_vi bị bỏ qua) — sổ kho sai ngay từ đơn đầu. Chỉ chặn lần lưu ĐƯA sản phẩm
+  -- Đang bán vào cấu hình đó: chuyển sang Đang bán, hoặc (đã Đang bán) đổi mặt hàng kho / cách làm gói / cách
+  -- bán. So GIÁ TRỊ cũ và mới, không so ô có mặt: form gửi lại đủ ô, kể cả ô không đổi. Mặt hàng bị đổi sang
+  -- đếm theo khay ở Kho → Mặt hàng SAU khi Đang bán thì lần lưu khác vẫn được (canh_bao khay_nguyen) — chặn cả
+  -- những lần đó là khóa luôn việc sửa mô tả, hay chuyển Tạm ngưng qua chính màn này. Bị chặn thì cả lần lưu
   -- bị hủy, trang giữ chữ đã gõ.
   if v_moi.trang_thai = 'dang_ban' and v_moi.cach_ban = 'theo_can' and v_moi.nguon_goi = 'cat_tai_quay'
-     and v_mh.id is not null and v_mh.dang_dung and v_mh.dem_goi then
-    raise exception 'Chưa chuyển sang Đang bán được: mặt hàng kho đếm theo khay, FABi sẽ trừ nguyên một khay cho mỗi gói online. Chọn "Đóng gói sẵn" hoặc đổi mặt hàng sang cân theo kg.';
+     and v_mh.id is not null and v_mh.dang_dung and v_mh.dem_goi
+     and (v_cu.trang_thai <> 'dang_ban'
+          or v_moi.mat_hang_id is distinct from v_cu.mat_hang_id
+          or v_moi.nguon_goi is distinct from v_cu.nguon_goi
+          or v_moi.cach_ban is distinct from v_cu.cach_ban) then
+    raise exception 'Chưa lưu được: gói online "Cắt tại quầy khi có đơn" trên mặt hàng kho đếm theo khay thì FABi sẽ trừ nguyên một khay cho mỗi gói. Chọn "Đóng gói sẵn", đổi mặt hàng sang cân theo kg, hoặc để Tạm ngưng.';
   end if;
 
   -- 6 · Ghi. Luôn cập nhật dòng sản phẩm (trigger đẩy updated_at) — kể cả khi chỉ gói đổi: phiên bản của
@@ -1350,10 +1378,14 @@ comment on function ban_le_chot_gia(uuid, timestamptz, jsonb) is
 --              Đóng sẵn / hộp: kiểu mon, mặt hàng của gói, bán theo gói hoặc theo món kho.
 --              Sản phẩm Tạm ngưng hoặc gói ngưng bán mà mã FABi còn đang bán → tat_mon.
 --   kiem_tra — mã FABi đang bán, ghép bán theo gói vào một mặt hàng của menu bán lẻ, mà không phải mã gói nào
---              của menu → kiem_tra_mon (xem lại, không phải lệnh tắt).
+--              của menu, không phải mã cân / ô mã / mã giảm mà các dòng trên đòi, không ghép vào ô mã →
+--              kiem_tra_mon (xem lại, không phải lệnh tắt).
+-- Mỗi dòng có don_vi: 'goi' / 'hop' (dòng gói của sản phẩm theo cân / theo hộp) hoặc null — trang ghi "gói 200 g"
+-- hay "hộp 500 g".
 -- Việc (viec): khop (chỉ khi không còn việc nào khác), menu_cu, tao_mon, bat_mon, ghep, sua_ghep, dat_gia (giá
--- chưa chốt hoặc đã đổi sau lần chốt), thieu_gia (gói đang bán chưa có giá), gia_qua_can, khay_nguyen,
--- thieu_mat_hang, goi_khong_dem_goi, chua_co_ma, tat_mon, kiem_tra_mon.
+-- chưa chốt hoặc đã đổi sau lần chốt), thieu_gia (gói đang bán chưa có giá; dòng mã cân / ô mã / mã giảm: giá
+-- mỗi kg trống hay 0 đ — Beeftown Cân bỏ qua dòng), gia_qua_can, khay_nguyen, thieu_mat_hang, goi_khong_dem_goi,
+-- chua_co_ma, tat_mon, kiem_tra_mon.
 create or replace function ban_le_doi_chieu(p_chi_nhanh_id uuid)
 returns jsonb
 language plpgsql
@@ -1383,6 +1415,7 @@ declare
   v_rieng   boolean;
   v_dung    boolean;
   v_tren    jsonb;
+  v_don_vi  text;             -- dòng gói: 'goi' (theo cân) / 'hop' (theo hộp)
 begin
   if not kho_duoc(p_chi_nhanh_id, 'danh_muc') then
     raise exception 'Tài khoản này không đối chiếu được FABi ở chi nhánh này.' using errcode = 'insufficient_privilege';
@@ -1430,24 +1463,34 @@ begin
       elsif not v_menu.dang_ban then
         v_viec := v_viec || case when v_cu then 'menu_cu' else 'bat_mon' end;
       end if;
+      -- "Ghép đúng" bọc coalesce(…, false): ô trống của Ghép món (don_vi_ban null) làm phép so ra NULL, và
+      -- "not NULL" cũng là NULL — thiếu coalesce thì ghép SAI (mặt hàng đếm khay ghép "theo món kho") lọt qua.
       if v_map.id is null then
         v_viec := v_viec || 'ghep'::text;
-      elsif not (v_map.kieu in ('mon', 'goi_can') and v_map.mat_hang_id is not distinct from r.id and v_map.o_ma_id is null
-                 and (v_map.don_vi_ban = 'kg' or (v_map.don_vi_ban is null and not r.dem_goi))) then
+      elsif not coalesce(v_map.kieu in ('mon', 'goi_can') and v_map.mat_hang_id is not distinct from r.id
+                         and v_map.o_ma_id is null
+                         and (v_map.don_vi_ban is not distinct from 'kg' or (v_map.don_vi_ban is null and not r.dem_goi)),
+                         false) then
         v_viec := v_viec || 'sua_ghep'::text;
       end if;
-      if r.gia_ban_kg > 999999 or r.gia_ban_kg <= 0 then
-        v_viec := v_viec || 'gia_qua_can'::text;
-      end if;
-      if r.gia_thu then
-        v_viec := v_viec || 'dat_gia'::text;
+      -- Giá trống hay 0 đ: Beeftown Cân bỏ qua dòng (cân không bán được mã này) — thieu_gia, không bao giờ khop,
+      -- không dat_gia (không có giá nào để đặt). Quá cửa sổ 6 chữ số: gia_qua_can.
+      if r.gia_ban_kg is null or r.gia_ban_kg <= 0 then
+        v_viec := v_viec || 'thieu_gia'::text;
+      else
+        if r.gia_ban_kg > 999999 then
+          v_viec := v_viec || 'gia_qua_can'::text;
+        end if;
+        if r.gia_thu then
+          v_viec := v_viec || 'dat_gia'::text;
+        end if;
       end if;
       if cardinality(v_viec) = 0 then
         v_viec := array['khop'];
       end if;
 
       v_dong := v_dong || jsonb_build_array(jsonb_build_object(
-        'loai_dong', 'can', 'ma_fabi', v_ma, 'ma_can', r.ma_can, 'so_o', null, 'phan_tram', null,
+        'loai_dong', 'can', 'ma_fabi', v_ma, 'ma_can', r.ma_can, 'so_o', null, 'phan_tram', null, 'don_vi', null,
         'ten_san_pham', r.ten_san_pham, 'san_pham_id', r.san_pham_id, 'so_gam', null,
         'gia_phai_dat', r.gia_ban_kg,
         'tren_fabi', case when v_menu.ma_ipos is not null then jsonb_build_object(
@@ -1473,7 +1516,7 @@ begin
     loop
       v_ma := q.ma_can;
       v_gia := q.gia;
-      v_tren := jsonb_build_object('loai_dong', q.loai_dong, 'so_o', q.so_o, 'phan_tram', q.phan_tram);
+      v_tren := jsonb_build_object('loai_dong', q.loai_dong, 'so_o', q.so_o, 'phan_tram', q.phan_tram, 'don_vi', null);
       v_menu := null;
       select * into v_menu from kho_ipos_menu mn
       where mn.chi_nhanh_id = p_chi_nhanh_id and nullif(ltrim(btrim(mn.ma_ipos), '0'), '') = v_ma
@@ -1488,11 +1531,16 @@ begin
       elsif not v_menu.dang_ban then
         v_viec := v_viec || case when v_cu then 'menu_cu' else 'bat_mon' end;
       end if;
-      if v_gia > 999999 or v_gia <= 0 then
-        v_viec := v_viec || 'gia_qua_can'::text;
-      end if;
-      if r.gia_thu then
-        v_viec := v_viec || 'dat_gia'::text;
+      -- Như dòng mã cân: giá mỗi kg trống / 0 đ (hay giá giảm làm tròn ra 0) → thieu_gia, không bao giờ khop.
+      if r.gia_ban_kg is null or r.gia_ban_kg <= 0 or v_gia is null or v_gia <= 0 then
+        v_viec := v_viec || 'thieu_gia'::text;
+      else
+        if v_gia > 999999 then
+          v_viec := v_viec || 'gia_qua_can'::text;
+        end if;
+        if r.gia_thu then
+          v_viec := v_viec || 'dat_gia'::text;
+        end if;
       end if;
       if cardinality(v_viec) = 0 then
         v_viec := array['khop'];
@@ -1526,6 +1574,10 @@ begin
     v_dung := v_mh.id is not null and v_mh.dang_dung;
     v_gia_kg := case when v_sp.cach_ban = 'theo_can' and v_dung then v_mh.gia_ban_kg end;
     v_rieng := v_sp.cach_ban = 'theo_hop' or v_sp.nguon_goi = 'dong_san';
+    v_don_vi := 'goi';
+    if v_sp.cach_ban = 'theo_hop' then
+      v_don_vi := 'hop';
+    end if;
 
     for v_g in select * from ban_le_goi where san_pham_id = v_sp.id order by so_gam loop
       v_menu := null;
@@ -1542,6 +1594,7 @@ begin
           where mp.chi_nhanh_id = p_chi_nhanh_id and mp.ma_ipos = v_g.ma_fabi;
           v_dong := v_dong || jsonb_build_array(jsonb_build_object(
             'loai_dong', 'goi', 'ma_fabi', v_g.ma_fabi, 'ma_can', null, 'so_o', null, 'phan_tram', null,
+            'don_vi', v_don_vi,
             'ten_san_pham', v_sp.ten_vi, 'san_pham_id', v_sp.id, 'so_gam', v_g.so_gam,
             'gia_phai_dat', null,
             'tren_fabi', jsonb_build_object('co', true, 'ma', v_menu.ma_ipos, 'ten', v_menu.ten_ipos, 'dang_ban', true),
@@ -1584,13 +1637,17 @@ begin
         end if;
         select * into v_map from kho_ipos_ma_hang mp
         where mp.chi_nhanh_id = p_chi_nhanh_id and mp.ma_ipos = v_g.ma_fabi;
+        -- coalesce(…, false) như dòng mã cân: gói cắt tại quầy ghép "theo món kho" (don_vi_ban trống — mặt hàng
+        -- cân kg thì iPOS trừ 1 kg mỗi gói) hay "theo gói" thiếu "mỗi gói = … kg" (iPOS từ chối dòng bán, 0054)
+        -- làm phép so ra NULL — vẫn là ghép sai.
         if v_map.id is null then
           v_viec := v_viec || 'ghep'::text;
-        elsif v_mong.id is not null and v_mong.dang_dung and not (
+        elsif v_mong.id is not null and v_mong.dang_dung and not coalesce(
                 v_map.kieu = 'mon' and v_map.mat_hang_id = v_mong.id and v_map.o_ma_id is null
                 and case when v_rieng then v_map.don_vi_ban is null or v_map.don_vi_ban = 'goi'
-                         else v_map.don_vi_ban = 'goi'
-                              and (v_mong.dem_goi or v_map.kg_moi_don_vi = v_g.so_gam / 1000.0) end) then
+                         else v_map.don_vi_ban is not distinct from 'goi'
+                              and (v_mong.dem_goi or v_map.kg_moi_don_vi = v_g.so_gam / 1000.0) end,
+                false) then
           v_viec := v_viec || 'sua_ghep'::text;
         end if;
       end if;
@@ -1605,6 +1662,7 @@ begin
 
       v_dong := v_dong || jsonb_build_array(jsonb_build_object(
         'loai_dong', 'goi', 'ma_fabi', v_g.ma_fabi, 'ma_can', null, 'so_o', null, 'phan_tram', null,
+        'don_vi', v_don_vi,
         'ten_san_pham', v_sp.ten_vi, 'san_pham_id', v_sp.id, 'so_gam', v_g.so_gam,
         'gia_phai_dat', v_gia,
         'tren_fabi', case when v_g.ma_fabi is null then null
@@ -1624,20 +1682,37 @@ begin
   end loop;
 
   -- ---- Mã FABi đang bán, trừ cùng mặt hàng theo gói, mà menu bán lẻ không có -----------------------------
+  -- Không bao giờ bảo xem lại / tắt một mã mà mục khác của trang ĐÒI có trên FABi: loại mã (bỏ số 0 đầu như
+  -- kho_ipos_ghi_dong) trùng mã cân của mặt hàng gắn với menu, trùng ô mã hay mã giảm của những mặt hàng đó;
+  -- loại dòng ghép vào ô mã (o_ma_id — hàng cân của ô, không phải gói). Dòng bán theo kg đã ngoài điều kiện
+  -- đơn vị ở dưới (chỉ 'goi', hoặc "theo món kho" của mặt hàng đếm theo gói).
   for r in
+    with lien_ket as (
+      select s.mat_hang_id as id from ban_le_san_pham s where s.mat_hang_id is not null
+      union
+      select g.mat_hang_id from ban_le_goi g where g.mat_hang_id is not null
+    ),
+    ma_duoc_doi as (
+      select m.ma_can from kho_mat_hang m join lien_ket l on l.id = m.id where m.ma_can is not null
+      union
+      select o.ma_can from kho_o_ma o join lien_ket l on l.id = o.mat_hang_id
+      union
+      select g.ma_can from kho_ma_giam g join lien_ket l on l.id = g.mat_hang_id
+    )
     select mp.ma_ipos, mp.kieu, mp.don_vi_ban, mp.kg_moi_don_vi, m.ten as mat_hang_ten, mn.ten_ipos
     from kho_ipos_ma_hang mp
     join kho_mat_hang m on m.id = mp.mat_hang_id
     join kho_ipos_menu mn on mn.chi_nhanh_id = mp.chi_nhanh_id and mn.ma_ipos = mp.ma_ipos and mn.dang_ban
     where mp.chi_nhanh_id = p_chi_nhanh_id
       and (mp.don_vi_ban = 'goi' or (mp.don_vi_ban is null and m.dem_goi))
-      and (exists (select 1 from ban_le_san_pham s where s.mat_hang_id = mp.mat_hang_id)
-           or exists (select 1 from ban_le_goi g where g.mat_hang_id = mp.mat_hang_id))
+      and mp.o_ma_id is null
+      and mp.mat_hang_id in (select id from lien_ket)
       and not exists (select 1 from ban_le_goi g where g.ma_fabi = mp.ma_ipos)
+      and not exists (select 1 from ma_duoc_doi d where d.ma_can = nullif(ltrim(btrim(mp.ma_ipos), '0'), ''))
     order by mp.ma_ipos
   loop
     v_dong := v_dong || jsonb_build_array(jsonb_build_object(
-      'loai_dong', 'kiem_tra', 'ma_fabi', r.ma_ipos, 'ma_can', null, 'so_o', null, 'phan_tram', null,
+      'loai_dong', 'kiem_tra', 'ma_fabi', r.ma_ipos, 'ma_can', null, 'so_o', null, 'phan_tram', null, 'don_vi', null,
       'ten_san_pham', null, 'san_pham_id', null, 'so_gam', null, 'gia_phai_dat', null,
       'tren_fabi', jsonb_build_object('co', true, 'ma', r.ma_ipos, 'ten', r.ten_ipos, 'dang_ban', true),
       'ghep', jsonb_build_object('kieu', r.kieu, 'mat_hang_ten', r.mat_hang_ten,

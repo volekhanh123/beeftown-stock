@@ -12,9 +12,11 @@
  *   2. Form: lỗi của người gõ không bao giờ tới database; ô trọng lượng trống của gói đang có là LỖI (không phải
  *      bỏ gói); chỉ dòng mới được để trống; bỏ gói phải nói rõ (xoa: true); bản en / ko chỉ gửi khi người dùng
  *      sửa; giá mỗi kg chỉ gửi khi đổi, luôn kèm giá đã thấy.
- *   3. cau-chu: câu sau khi lưu chỉ nói điều đã xảy ra — câu Beeftown Cân chỉ khi giá vừa đổi, trong cửa sổ 6 chữ
- *      số của cân, mặt hàng có mã cân và đang dùng; giá quá cân → "VẪN IN GIÁ CŨ"; gói vừa bỏ → nhắc tắt món trên
- *      FABi; câu dính chữ cấm → cảnh báo. Không câu nào nói Mini App hay website đã đọc menu.
+ *   3. cau-chu: câu sau khi lưu chỉ nói điều VỪA xảy ra — câu cân (Beeftown Cân / "VẪN IN GIÁ CŨ") chỉ khi lần này
+ *      đổi giá; gói vừa bỏ → nhắc tắt món trên FABi; câu dính chữ cấm → cảnh báo; KHÔNG lặp cảnh báo hiện có của
+ *      sản phẩm (trang đọc lại và hiện chúng). Không câu nào nói Mini App hay website đã đọc menu. 3b: câu cảnh báo
+ *      theo giá trị (giá trống khác giá quá cân) và trạng thái (khay nguyên khi Đang bán); trang sửa hiện mỗi cảnh
+ *      báo đúng một lần; việc thieu_gia của dòng mã cân nói về giá mỗi kg.
  *   4. quyen + bam-hai-lan + mat-mang, trên database thật (PGlite, RLS thật, client giả taoClientPg): marketing
  *      lưu bị từ chối bằng đúng câu; bấm đúp → "Đã lưu."; người khác sửa → CHƯA lưu; giá kho vừa đổi → không ghi
  *      gì (trùng giá vừa gõ → lưu phần còn lại); mất mạng (client ném TypeError('fetch failed') hay trả lỗi đó)
@@ -228,8 +230,12 @@ await nhom('3 · cau-chu: câu sau khi lưu chỉ nói điều đã xảy ra', a
   const c4 = BL.cauDaLuu(kq(), { mo_ta_vi: 'Bò Wagyu nướng than hoa', ten_en: 'Best beef in town' }, false, 'vi');
   ok('Câu vừa lưu dính chữ cấm → cảnh báo "dính chữ cấm" (cả bản tiếng Anh gõ tay)',
      (c4.match(/dính chữ cấm/g) ?? []).length >= 2 && c4.includes('sửa trước khi bán online'), c4);
-  const c5 = BL.cauDaLuu(kq({ canh_bao: ['thieu_gia', 'mat_hang_ngung'] }), {}, false, 'vi');
-  ok('Cảnh báo của sản phẩm có câu riêng', c5.includes('chưa gói nào có giá') && c5.includes('đã ngừng dùng'), c5);
+  // Câu sau khi lưu chỉ nói điều VỪA xảy ra: cảnh báo hiện tại trang đã hiện từ lần đọc mới (chuyển hướng 303
+  // rồi đọc lại) — nhắc lại trong câu "Đã lưu." là nói hai lần, và nghe như lần lưu này gây ra.
+  const c5 = BL.cauDaLuu(kq({ canh_bao: ['thieu_gia', 'mat_hang_ngung', 'khay_nguyen'] }), {}, false, 'vi');
+  ok('Cảnh báo của sản phẩm KHÔNG lặp lại trong câu sau khi lưu (trang đã hiện chúng) → đúng "Đã lưu."', c5 === 'Đã lưu.', c5);
+  const c6 = BL.cauDaLuu(kq({ mat_hang: mh(1050000), canh_bao: ['gia_qua_can'] }), { mo_ta_vi: 'x' }, false, 'vi');
+  ok('Giá đang quá cân nhưng lần lưu này KHÔNG đổi giá → không câu "VẪN IN GIÁ CŨ" (chỉ khi gia_kho_doi)', c6 === 'Đã lưu.', c6);
   const tatCa = [c1, c2, c3, c4, c5].join(' ');
   ok('Không câu nào nói Mini App hay website đã nhận / đã đọc menu', !/Mini App|website/i.test(tatCa), tatCa);
   const enC = BL.cauDaLuu(kq({ gia_kho_doi: true, mat_hang: mh(1050000), canh_bao: ['gia_qua_can', 'khay_nguyen'], da_bo: [{ so_gam: 400, ma_fabi: 'RIB-400' }] }), {}, true, 'en');
@@ -239,6 +245,65 @@ await nhom('3 · cau-chu: câu sau khi lưu chỉ nói điều đã xảy ra', a
     da_bo: [{ so_gam: 200, ma_fabi: 'RIB-200-UC' }, { so_gam: 400, ma_fabi: 'RIB-400-UC' }] }), { mo_ta_vi: 'Wagyu than hoa 199.000 đ' }, true, 'vi');
   const coCookie = encodeURIComponent(JSON.stringify({ ok: true, cau: dai + ' Bản tiếng Anh và tiếng Hàn đang được dịch — tải lại trang sau ít giây để xem.' })).length;
   ok(`Câu dài nhất có thể vẫn vừa cookie (${coCookie} < 3500 byte)`, coCookie < 3500);
+});
+
+// ===========================================================================
+await nhom('3b · cau-chu: câu cảnh báo theo đúng giá trị và trạng thái của sản phẩm', async () => {
+  const mh = (gia, maCan = '1001', dangDung = true) => ({ id: 'x', ma: 'RIB', ten: 'Ribeye', loai: 'phan_cat', gia_ban_kg: gia, ma_can: maCan, dem_goi: false, don_vi_goi: 'gói', dang_dung: dangDung });
+  const sp = (o = {}) => ({ cach_ban: 'theo_can', trang_thai: 'tam_ngung', canh_bao: [], mat_hang: mh(950000), ...o });
+  const CHUA_GIA = 'Mặt hàng kho chưa có giá mỗi kg — cân quầy chưa bán được mã 1001.';
+  const QUA_CAN = BL.CANH_BAO_BAN_LE.gia_qua_can.cau.vi;
+
+  // gia_qua_can của database gồm ba trường hợp Beeftown Cân bỏ qua dòng: giá trống, ≤ 0, > 999.999.
+  ok('loiGiaCan: không có mã gia_qua_can → null (dù giá trống)', BL.loiGiaCan(sp({ mat_hang: mh(null) })) === null);
+  ok('loiGiaCan: gia_qua_can + giá trống → "thieu"', BL.loiGiaCan(sp({ canh_bao: ['gia_qua_can'], mat_hang: mh(null) })) === 'thieu');
+  ok('loiGiaCan: gia_qua_can + giá 0 → "thieu"', BL.loiGiaCan(sp({ canh_bao: ['gia_qua_can'], mat_hang: mh(0) })) === 'thieu');
+  ok('loiGiaCan: gia_qua_can + giá 1.050.000 → "qua"', BL.loiGiaCan(sp({ canh_bao: ['gia_qua_can'], mat_hang: mh(1050000) })) === 'qua');
+  ok('Giá trống: câu "chưa có giá mỗi kg — cân quầy chưa bán được mã 1001", KHÔNG câu "tối đa 999.999"',
+     BL.cauCanhBao('gia_qua_can', 'vi', sp({ canh_bao: ['gia_qua_can'], mat_hang: mh(null) })) === CHUA_GIA);
+  ok('Giá 0 đ: cùng câu chưa có giá', BL.cauCanhBao('gia_qua_can', 'vi', sp({ canh_bao: ['gia_qua_can'], mat_hang: mh(0) })) === CHUA_GIA);
+  ok('Giá 1.050.000: câu quá cân (tối đa 999.999 đ/kg)', BL.cauCanhBao('gia_qua_can', 'vi', sp({ canh_bao: ['gia_qua_can'], mat_hang: mh(1050000) })) === QUA_CAN
+     && QUA_CAN.includes('999.999'));
+  const chuaGiaEn = BL.cauCanhBao('gia_qua_can', 'en', sp({ canh_bao: ['gia_qua_can'], mat_hang: mh(null) }));
+  ok('Câu chưa có giá đủ tiếng Anh, nêu mã cân', !VIET.test(chuaGiaEn) && chuaGiaEn.includes('1001') && !chuaGiaEn.includes('999'), chuaGiaEn);
+
+  // khay_nguyen: đúng sự thật cho cả hai trạng thái.
+  const KHAY = 'Mặt hàng kho đếm theo khay: FABi trừ nguyên một khay cho mỗi gói online. Chọn "Đóng gói sẵn" hoặc đổi mặt hàng sang cân theo kg.';
+  ok('Khay nguyên, Tạm ngưng → câu không nói "sẽ" (FABi trừ nguyên một khay cho mỗi gói online)',
+     BL.cauCanhBao('khay_nguyen', 'vi', sp({ trang_thai: 'tam_ngung' })) === KHAY, BL.cauCanhBao('khay_nguyen', 'vi', sp()));
+  ok('Khay nguyên, Đang bán → "Đang bán nhưng mặt hàng kho đếm theo khay: …"',
+     BL.cauCanhBao('khay_nguyen', 'vi', sp({ trang_thai: 'dang_ban' })) === `Đang bán nhưng m${KHAY.slice(1)}`,
+     BL.cauCanhBao('khay_nguyen', 'vi', sp({ trang_thai: 'dang_ban' })));
+  const khayEn = [BL.cauCanhBao('khay_nguyen', 'en', sp()), BL.cauCanhBao('khay_nguyen', 'en', sp({ trang_thai: 'dang_ban' }))];
+  ok('…đủ tiếng Anh; bản Đang bán mở đầu "On sale, but"', khayEn.every(c => !VIET.test(c)) && khayEn[1].startsWith('On sale, but'), khayEn.join(' | '));
+  ok('Không truyền sản phẩm → câu mặc định (trang cũ, mã lạ vẫn chạy)', BL.cauCanhBao('khay_nguyen', 'vi') === KHAY && BL.cauCanhBao('ma_la', 'vi') === 'ma_la');
+
+  // Trang sửa: mỗi cảnh báo hiện ĐÚNG một lần — ở đầu trang, hoặc ngay tại chỗ sửa của nó.
+  for (const [moTa, s] of [
+    ['giá trống', sp({ canh_bao: ['gia_qua_can', 'chua_gan_kho'], mat_hang: mh(null) })],
+    ['giá quá cân', sp({ canh_bao: ['gia_qua_can'], mat_hang: mh(1050000) })],
+    ['khay nguyên', sp({ canh_bao: ['khay_nguyen', 'thieu_gia'] })],
+    ['kim chi theo hộp', sp({ cach_ban: 'theo_hop', canh_bao: ['hop_chua_co_kho'], mat_hang: null })],
+  ]) {
+    const c = BL.canhBaoDauTrang(s);
+    const lan = ma => c.dau.filter(x => x === ma).length + (ma === 'gia_qua_can' && c.giaCanTaiO ? 1 : 0) + (ma === 'khay_nguyen' && c.khayTaiO ? 1 : 0);
+    ok(`canhBaoDauTrang (${moTa}): mỗi mã hiện đúng một lần`, s.canh_bao.every(m => lan(m) === 1), JSON.stringify(c));
+  }
+  ok('canhBaoDauTrang: giá trống → hiện tại ô giá ("thieu"), không ở đầu trang',
+     BL.canhBaoDauTrang(sp({ canh_bao: ['gia_qua_can'], mat_hang: mh(null) })).giaCanTaiO === 'thieu');
+
+  // Đối chiếu: việc thieu_gia của dòng mã cân / ô mã / mã giảm là giá MỖI KG, không phải "gói".
+  const dongDC = (loai, viec) => ({ loai_dong: loai, ma_fabi: '2201', ma_can: '2201', so_o: null, phan_tram: null, ten_san_pham: 'Nạm',
+    san_pham_id: null, so_gam: loai === 'goi' ? 200 : null, gia_phai_dat: null, tren_fabi: null, ghep: null, mong_doi: null, don_vi: null, viec });
+  const viecCan = ['can', 'o_ma', 'ma_giam'].map(l => BL.cauViecDoiChieu(dongDC(l, ['thieu_gia']), 'vi')[0]);
+  ok('Dòng mã cân / ô mã / mã giảm thieu_gia → câu "chưa có giá mỗi kg", không câu "Gói đang bán"',
+     viecCan.every(c => /chưa có giá mỗi kg/.test(c) && !/Gói/.test(c)), viecCan.join(' | '));
+  ok('Dòng gói thieu_gia → vẫn câu "Gói đang bán chưa có giá"', /^Gói đang bán chưa có giá/.test(BL.cauViecDoiChieu(dongDC('goi', ['thieu_gia']), 'vi')[0]));
+  ok('…câu tiếng Anh của dòng mã cân', !VIET.test(BL.cauViecDoiChieu(dongDC('can', ['thieu_gia']), 'en')[0]));
+
+  // cungChu: một hàm so chữ cho thư viện và trang (trang không tự viết lại).
+  ok('cungChu xuất từ thư viện: bỏ \\r và khoảng trắng hai đầu, rỗng = null', BL.cungChu(' Dòng một\r\nhai ', 'Dòng một\nhai')
+     && BL.cungChu(null, '  ') && !BL.cungChu('a', 'b'));
 });
 
 // ===========================================================================
@@ -324,6 +389,11 @@ await nhom('4 · Trên database thật: thêm, lưu, bấm đúp, người khác
   const g4 = await BL.luuSanPham(QL, idSp, formTuSanPham(sp, { gia_ban_kg: '1.050.000' }), 'vi');
   ok('Giá 1.050.000 đ/kg → "Đã lưu." + "cân VẪN IN GIÁ CŨ cho mã 1101", không câu "gửi giá mới"',
      g4.ok === true && g4.cau.includes('cân VẪN IN GIÁ CŨ cho mã 1101') && !g4.cau.includes('gửi giá mới'), JSON.stringify(g4));
+  sp = await docQL();
+  await nghi();
+  const g5 = await BL.luuSanPham(QL, idSp, formTuSanPham(sp, { mo_ta_vi: 'Thăn lưng bò Mỹ.' }), 'vi');
+  ok('Lưu lần sau (giá vẫn 1.050.000, lần này KHÔNG đổi giá) → đúng "Đã lưu.", không nhắc lại câu cân',
+     g5.ok === true && g5.cau === 'Đã lưu.', JSON.stringify(g5));
 
   sp = await docQL();
   const i400 = dongCua(sp, 400);
@@ -447,6 +517,64 @@ await nhom('4d · Đọc: tồn, mặt hàng để chọn, đối chiếu — đ
   ok('Mã việc lạ (database mới hơn web) → hiện nguyên mã, không lỗi', viecLa[0] === 'viec_moi_chua_co');
   ok('moTaGhep: "bán theo gói, mỗi gói = 0,2 kg, trừ Ribeye Mỹ"',
      BL.moTaGhep({ kieu: 'mon', mat_hang_ten: 'Ribeye Mỹ', don_vi_ban: 'goi', kg_moi_don_vi: 0.2 }, 'vi') === 'bán theo gói, mỗi gói = 0,2 kg, trừ Ribeye Mỹ');
+});
+
+// ===========================================================================
+await nhom('4e · Trên database thật: cảnh báo theo giá trị, khay nguyên khi đã Đang bán, giá để chốt gồm gói ngưng bán', async () => {
+  const taoThit = async ten => (await BL.taoSanPham(QL, formTu({ ma_gui: maGui(), ten_vi: ten, kieu: 'thit|theo_can' }), 'vi')).id;
+  const doc = id => BL.docSanPham(QL, id, null);
+
+  // Mặt hàng có mã cân nhưng CHƯA có giá mỗi kg: Beeftown Cân bỏ qua dòng, cân giữ hàng cũ.
+  const chuaGia = await matHang('CHUA-GIA-WEB', 'Thăn chưa có giá', { maCan: '1102' });
+  const idChuaGia = await taoThit('Thăn chưa có giá web');
+  await nghi();
+  let l = await BL.luuSanPham(QL, idChuaGia, formTuSanPham(await doc(idChuaGia), { mat_hang_id: chuaGia }), 'vi');
+  let sp = await doc(idChuaGia);
+  ok('Gắn mặt hàng có mã cân chưa có giá → "Đã lưu." (không câu cân nào); trang đọc lại có gia_qua_can',
+     l.ok === true && !/Cân quầy|cân quầy/.test(l.cau) && sp.canh_bao.includes('gia_qua_can'), `${JSON.stringify(l)} · ${JSON.stringify(sp.canh_bao)}`);
+  ok('…câu là "chưa có giá mỗi kg — cân quầy chưa bán được mã 1102", hiện tại ô giá, không ở đầu trang',
+     BL.cauCanhBao('gia_qua_can', 'vi', sp) === 'Mặt hàng kho chưa có giá mỗi kg — cân quầy chưa bán được mã 1102.'
+     && BL.canhBaoDauTrang(sp).giaCanTaiO === 'thieu' && !BL.canhBaoDauTrang(sp).dau.includes('gia_qua_can'), BL.cauCanhBao('gia_qua_can', 'vi', sp));
+  await nghi();
+  l = await BL.luuSanPham(QL, idChuaGia, formTuSanPham(sp, { gia_ban_kg: '990.000' }), 'vi');
+  sp = await doc(idChuaGia);
+  ok('Điền giá mỗi kg lần đầu (990.000) → câu Beeftown Cân, hết gia_qua_can',
+     l.ok === true && l.cau.includes('Beeftown Cân gửi giá mới') && !sp.canh_bao.includes('gia_qua_can'), JSON.stringify(l));
+
+  // Khay nguyên khi sản phẩm ĐÃ Đang bán: form gửi lại đủ ô không đổi — lưu mô tả vẫn phải được.
+  const khay = await matHang('KHAY-SAU-WEB', 'Bắp đổi khay sau', { gia: 600000 });
+  const idKhay = await taoThit('Bắp đổi khay web');
+  await nghi();
+  l = await BL.luuSanPham(QL, idKhay, formTuSanPham(await doc(idKhay), { mat_hang_id: khay, trang_thai: 'dang_ban' }), 'vi');
+  ok('Tiền đề: Đang bán với mặt hàng cân kg', l.ok === true, JSON.stringify(l));
+  await db.query(`update kho_mat_hang set dem_goi = true, don_vi_goi = 'khay' where id = $1`, [khay]);
+  await nghi();
+  l = await BL.luuSanPham(QL, idKhay, formTuSanPham(await doc(idKhay), { mo_ta_vi: 'Bắp bò Úc, nhiều gân.' }), 'vi');
+  sp = await doc(idKhay);
+  ok('Đã Đang bán, mặt hàng vừa đổi sang đếm khay ở Kho → sửa mô tả qua form vẫn đúng "Đã lưu."',
+     l.ok === true && l.cau === 'Đã lưu.' && sp.mo_ta_vi === 'Bắp bò Úc, nhiều gân.', JSON.stringify(l));
+  ok('…trang đọc lại: "Đang bán nhưng mặt hàng kho đếm theo khay…", hiện tại ô cách làm gói',
+     BL.cauCanhBao('khay_nguyen', 'vi', sp).startsWith('Đang bán nhưng mặt hàng kho đếm theo khay') && BL.canhBaoDauTrang(sp).khayTaiO === true
+     && !BL.canhBaoDauTrang(sp).dau.includes('khay_nguyen'), BL.cauCanhBao('khay_nguyen', 'vi', sp));
+
+  // Giá để chốt gồm cả gói ngưng bán có giá; trang đánh dấu "(ngưng bán)".
+  const rib = await matHang('RIB-NGUNG-WEB', 'Ribeye gói ngưng', { gia: 950000 });
+  const idNgung = await taoThit('Ribeye gói ngưng web');
+  await nghi();
+  await BL.luuSanPham(QL, idNgung, formTuSanPham(await doc(idNgung), { mat_hang_id: rib }), 'vi');
+  sp = await doc(idNgung);
+  await nghi();
+  l = await BL.luuSanPham(QL, idNgung, formTuSanPham(sp, { [`goi_${dongCua(sp, 400)}_viec`]: 'ngung' }), 'vi');
+  sp = await doc(idNgung);
+  const ds = BL.dongGiaDeChot(sp);
+  ok('dongGiaDeChot: gồm gói ngưng bán có giá (400 g, đánh dấu ngưng bán) và gói đang bán (200 g)',
+     l.ok === true && ds.length === 2 && ds[0].soGam === 200 && ds[0].gia === 190000 && ds[0].ngungBan === false
+     && ds[1].soGam === 400 && ds[1].gia === 380000 && ds[1].ngungBan === true, JSON.stringify(ds));
+  await nghi();
+  const c = await BL.chotGia(CHU, idNgung, sp.updated_at, JSON.stringify(sp.gia_de_chot), 'vi');
+  sp = await doc(idNgung);
+  ok('…chủ chốt đúng danh sách đó → gói ngưng bán hết "giá thử"', c.ok === true && sp.goi.every(g => g.gia_thu === false) && sp.gia_thu === false,
+     JSON.stringify(sp.goi.map(g => [g.so_gam, g.dang_ban, g.gia_thu])));
 });
 
 // ===========================================================================

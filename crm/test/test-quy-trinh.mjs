@@ -38,7 +38,8 @@ const CHUA_CO_TEST = [
   'mon_an_kiem_tra_nhom',
   'nhat_ky_ho_so_chan_sua_xoa', 'noi_dung_cong_bo_kiem_tra',
   'so_cai_diem_chan_sua_xoa', 'so_cai_diem_tinh_so_du', 'tep_anh_kiem_tra_cong_bo',
-  'tu_dong_cap_nhat_updated_at', 'vi_tri_kiem_tra',
+  'vi_tri_kiem_tra',
+  // tu_dong_cap_nhat_updated_at: test-ban-le.mjs nhóm 7 kiểm nhánh thoát sớm khi máy dịch ghi (0036).
 ];
 
 /** 9 mục "định nghĩa xong" — mỗi mục ứng với một nhóm lỗi đã thật sự xảy ra (xem CLAUDE.md). */

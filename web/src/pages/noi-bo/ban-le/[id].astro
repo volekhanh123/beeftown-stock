@@ -22,7 +22,8 @@
 import NoiBo from '../../../layouts/NoiBo.astro';
 import {
   docSanPham, docMatHangChon, luuSanPham, chotGia, chonChiNhanhBanLe, dongGoiDaGo, cauLoiDoc, cauCanhBao, giaGoi,
-  tenKieu, VAI_XEM_BAN_LE, VAI_SUA_BAN_LE, VAI_CHOT_GIA, KIEU_SAN_PHAM, CANH_BAO_BAN_LE, TEN_LOAI_BAN_LE,
+  cungChu, canhBaoDauTrang, dongGiaDeChot, tenKieu,
+  VAI_XEM_BAN_LE, VAI_SUA_BAN_LE, VAI_CHOT_GIA, KIEU_SAN_PHAM, CANH_BAO_BAN_LE, TEN_LOAI_BAN_LE,
   TEN_BAO_QUAN, TRANG_THAI_BAN_LE, NGUON_GOI, O_DICH_BAN_LE, SO_GOI_TOI_DA, GIA_TOI_DA,
   type SanPhamBanLe, type MatHangBanLe, type ChiNhanhBanLe, type GoiBanLe, type KetQuaLuu, type DongGoiDaGo,
 } from '../../../lib/ban-le-noi-bo';
@@ -155,6 +156,7 @@ const t = dichNB(nn, {
   chuaChot:    { vi: 'Giá thử — chủ chưa xác nhận.', en: 'Trial prices — not confirmed by the owner yet.' },
   giaMoiKg:    { vi: (gia: string) => `Giá mỗi kg: ${gia}`, en: (gia: string) => `Price per kg: ${gia}` },
   giaCua:      { vi: (ten: string, gia: string) => `${ten}: ${gia}`, en: (ten: string, gia: string) => `${ten}: ${gia}` },
+  ngungBanNho: { vi: '(ngưng bán)', en: '(not on sale)' },
   xacNhan:     { vi: 'Giá này đúng — bỏ chữ Giá thử', en: 'These prices are right — remove the Trial price label' },
   chiChuChot:  { vi: 'Chỉ chủ xác nhận được giá.', en: 'Only the owner can confirm prices.' },
   // Xem trước
@@ -225,12 +227,11 @@ const dangCho = sp ? await oDangCho(client, 'ban_le_san_pham', id) : new Set<str
 
 // ---- Giá trị hiện trong form: chữ vừa gõ (khi lưu hỏng) hoặc lần đọc mới ----------------------------------
 const go = (ten: string, moi: string) => (daGo && daGo.get(ten) !== null ? String(daGo.get(ten)) : moi);
-const giongChu = (a: unknown, b: unknown) => String(a ?? '').replace(/\r/g, '').trim() === String(b ?? '').replace(/\r/g, '').trim();
 /** Ô dịch: chữ đã gõ chỉ khi người dùng sửa ô đó (khác goc_ lúc họ mở trang); không thì bản mới đọc. */
 const giaTriDich = (k: string) => {
   const moi = String((sp as unknown as Record<string, unknown> | null)?.[k] ?? '');
   if (!daGo || daGo.get(k) === null) return moi;
-  return giongChu(daGo.get(k), daGo.get(`goc_${k}`)) ? moi : String(daGo.get(k));
+  return cungChu(daGo.get(k), daGo.get(`goc_${k}`)) ? moi : String(daGo.get(k));
 };
 const soTien = (n: number | null | undefined) => (n == null ? '' : Number(n).toLocaleString(nn === 'en' ? 'en-US' : 'vi-VN'));
 /** Ô giá mỗi kg: chữ đã gõ chỉ khi người dùng đổi giá so với giá họ đã thấy; không thì giá kho mới đọc. */
@@ -272,16 +273,15 @@ const nhomSp = sp ? theoLoai(dsChon(sp.mat_hang).filter(m => m.loai === 'phan_ca
 const kieuCu = sp ? `${sp.loai}|${sp.cach_ban}` : '';
 const kieuLa = !!sp && !KIEU_SAN_PHAM.some(k => k.ma === kieuCu);
 const coGia = !!sp && (sp.gia_de_chot.kg != null || Object.keys(sp.gia_de_chot.goi ?? {}).length > 0);
-const giaChot = sp
-  ? Object.entries(sp.gia_de_chot.goi ?? {}).map(([g, gia]) => ({ soGam: Number(g), gia })).sort((a, b) => a.soGam - b.soGam)
-  : [];
+// Đúng ảnh chụp sẽ ghi (gồm cả gói ngưng bán có giá — ghi "(ngưng bán)").
+const giaChot = sp ? dongGiaDeChot(sp) : [];
 const trangThaiGia = !sp || !coGia ? t.chuaCoGia
   : !sp.gia_thu ? t.daChotLuc(dinhDangThoiDiem(sp.gia_chot_luc), sp.gia_chot_boi_ten ?? '—')
   : sp.gia_chot ? t.doiSauChot : t.chuaChot;
-const quaCan = !!sp?.mat_hang?.ma_can && (sp.mat_hang.gia_ban_kg ?? 0) > GIA_TOI_DA;
 const suaGiaDuoc = !!sp?.mat_hang && sp.mat_hang.dang_dung;
-// Cảnh báo ở đầu trang; giá quá cân và khay nguyên hiện ngay ở chỗ sửa của chúng.
-const canhDau = (sp?.canh_bao ?? []).filter(c => sp?.cach_ban !== 'theo_can' || (c !== 'gia_qua_can' && c !== 'khay_nguyen'));
+// Mỗi cảnh báo hiện đúng một lần: giá cân (mã gia_qua_can của database — giá trống, ≤ 0 hay quá cửa sổ cân) dưới
+// ô giá mỗi kg, khay nguyên dưới ô "Gói online lấy từ đâu", còn lại ở đầu trang.
+const { dau: canhDau, giaCanTaiO, khayTaiO } = sp ? canhBaoDauTrang(sp) : { dau: [] as string[], giaCanTaiO: null, khayTaiO: false };
 
 const goiXem = (sp?.goi ?? []).filter(g => g.dang_ban && g.gia != null && g.gia > 0);
 const lyDoAn = !sp ? null
@@ -324,7 +324,7 @@ const lyDoAn = !sp ? null
 
       {!duocSua && <div class="nb-bao luu-y"><p>{t.chiDoc}</p></div>}
       {canhDau.map(c => (
-        <div class={`nb-bao ${CANH_BAO_BAN_LE[c]?.nang ? 'loi' : 'luu-y'}`}><p>{cauCanhBao(c, nn)}</p></div>
+        <div class={`nb-bao ${CANH_BAO_BAN_LE[c]?.nang ? 'loi' : 'luu-y'}`}><p>{cauCanhBao(c, nn, sp)}</p></div>
       ))}
 
       {/* ------------------------------------------------------------ SỬA */}
@@ -448,10 +448,10 @@ const lyDoAn = !sp ? null
                     <input type="text" name="gia_ban_kg" inputmode="numeric" autocomplete="off" value={giaKgHien} />
                   </label>
                   <p class="bl-phu bl-so">
-                    {sp.mat_hang.gia_ban_kg != null && <>{t.mot100(dinhDangTien(giaGoi(sp.mat_hang.gia_ban_kg, 100), nn))} · </>}{sp.mat_hang.ma_can ? t.maCan(sp.mat_hang.ma_can) : t.chuaMaCan}
+                    {(sp.mat_hang.gia_ban_kg ?? 0) > 0 && <>{t.mot100(dinhDangTien(giaGoi(sp.mat_hang.gia_ban_kg, 100), nn))} · </>}{sp.mat_hang.ma_can ? t.maCan(sp.mat_hang.ma_can) : t.chuaMaCan}
                   </p>
-                  {quaCan && sp.mat_hang.ma_can && (
-                    <div class="nb-bao loi bl-sat"><p>{t.quaCan(dinhDangTien(GIA_TOI_DA, nn), sp.mat_hang.ma_can)}</p></div>
+                  {giaCanTaiO && sp.mat_hang.ma_can && (
+                    <div class="nb-bao loi bl-sat"><p>{giaCanTaiO === 'qua' ? t.quaCan(dinhDangTien(GIA_TOI_DA, nn), sp.mat_hang.ma_can) : cauCanhBao('gia_qua_can', nn, sp)}</p></div>
                   )}
                 </>
               ) : (
@@ -480,8 +480,8 @@ const lyDoAn = !sp ? null
                 <ul class="bl-giai">
                   {Object.values(NGUON_GOI).map(n => <li>{n.giai[nn]}</li>)}
                 </ul>
-                {sp.canh_bao.includes('khay_nguyen') && (
-                  <div class="nb-bao loi bl-sat"><p>{cauCanhBao('khay_nguyen', nn)}</p></div>
+                {khayTaiO && (
+                  <div class="nb-bao loi bl-sat"><p>{cauCanhBao('khay_nguyen', nn, sp)}</p></div>
                 )}
               </>
             )}
@@ -598,7 +598,7 @@ const lyDoAn = !sp ? null
         {coGia && (
           <ul class="bl-gia-chot">
             {sp.gia_de_chot.kg != null && <li>{t.giaMoiKg(`${dinhDangTien(sp.gia_de_chot.kg, nn)}/kg`)}</li>}
-            {giaChot.map(x => <li>{t.giaCua(tenGoi(x.soGam), dinhDangTien(x.gia, nn))}</li>)}
+            {giaChot.map(x => <li>{t.giaCua(tenGoi(x.soGam), dinhDangTien(x.gia, nn))}{x.ngungBan ? ` ${t.ngungBanNho}` : ''}</li>)}
           </ul>
         )}
         {duocChot && coGia && sp.gia_thu && (

@@ -16,12 +16,18 @@
  *   3. Giờ Việt Nam: tồn ở quầy và còn hàng theo lô còn hạn — 23:50 còn tính, 00:10 hôm sau thì thôi.
  *   4. Chữ và số: giá gói làm tròn tới 1.000 đ, 0 đ không bao giờ là giá; chữ có dấu giữ nguyên; mã sản phẩm chỉ
  *      chữ thường không dấu; "1.000.000" dạng chữ không bao giờ bị đọc nhầm thành 1.
- *   5. Luật: giá thử / đã chốt, gói thêm sau khi chốt, hộp không giá, khay nguyên chặn Đang bán, mặt hàng mất /
- *      ngừng, mã FABi (không toàn số, không trùng), bỏ gói phải nói rõ, giá mỗi kg (sửa ô của Kho → Mặt hàng).
+ *   5. Luật: giá thử / đã chốt (gói ngưng bán có giá cũng chốt được), gói thêm sau khi chốt, hộp không giá, khay
+ *      nguyên chặn lần lưu ĐƯA sản phẩm Đang bán vào cấu hình đó (mặt hàng đổi sang khay sau khi bán thì chỉ cảnh
+ *      báo), mặt hàng mất / ngừng, mã FABi (không toàn số, không trùng), bỏ gói phải nói rõ, id gói phải là gói
+ *      đang có (khóa tạm "moi-1" bị từ chối bằng câu dịch được), giá mỗi kg (sửa ô của Kho → Mặt hàng), giá
+ *      trống / 0 / quá 999.999 đều là gia_qua_can.
  *   6. Đối chiếu FABi: thực đơn cũ → menu_cu (không bao giờ "chưa có trên FABi"), khớp, tạo, bật, ghép, sửa ghép,
- *      đặt giá, khay nguyên, tắt món, kiểm tra món, mã cân có số 0 đầu, ô mã và mã giảm với đúng giá.
+ *      đặt giá, khay nguyên, tắt món, kiểm tra món, mã cân có số 0 đầu, ô mã và mã giảm với đúng giá, don_vi của
+ *      dòng. 6b: mục kiểm tra không bảo tắt mã mà mục mã cân / ô mã / mã giảm đòi; giá mỗi kg trống không bao giờ
+ *      khop (thieu_gia); ô trống của Ghép món không làm "ghép đúng" ra NULL.
  *   7. Bản dịch (0036): v_viec_dich vẫn security_invoker, liệt kê ba ô mới; máy dịch ghi được dưới quyền quản lý
- *      và marketing; sửa tay qua hàm lưu ghi là bản tay.
+ *      và marketing, không đổi updated_at (form mở trước lúc dịch vẫn lưu được); sửa tay qua hàm lưu ghi là bản
+ *      tay.
  *   8. Cuối file: kho_doi_soat_ton() rỗng.
  *
  * PGlite chỉ có một kết nối: hai lần bấm CÙNG LÚC (hai phiên song song) không dựng được ở đây — nhánh on conflict
@@ -68,7 +74,7 @@ const CAU = {
   sua: 'Chỉ chủ và quản lý được sửa menu bán lẻ.',
   chot: 'Chỉ chủ được chốt giá bán lẻ.',
   doiChieu: 'Tài khoản này không đối chiếu được FABi ở chi nhánh này.',
-  khayNguyen: 'Chưa chuyển sang Đang bán được: mặt hàng kho đếm theo khay, FABi sẽ trừ nguyên một khay cho mỗi gói online. Chọn "Đóng gói sẵn" hoặc đổi mặt hàng sang cân theo kg.',
+  khayNguyen: 'Chưa lưu được: gói online "Cắt tại quầy khi có đơn" trên mặt hàng kho đếm theo khay thì FABi sẽ trừ nguyên một khay cho mỗi gói. Chọn "Đóng gói sẵn", đổi mặt hàng sang cân theo kg, hoặc để Tạm ngưng.',
 };
 /** Bị từ chối đúng kiểu: 42501 và đúng câu. */
 const tuChoi = (r, cau) => r.loi === cau && r.ma === '42501';
@@ -482,6 +488,20 @@ await nhom('5 · LUẬT — giá thử, gói, khay nguyên, mặt hàng mất / 
   ok('Gói thêm sau khi chốt → gia_thu === true (không null); gói cũ vẫn đã chốt',
      goiCua(sp, 600)?.gia_thu === true && goiCua(sp, 200)?.gia_thu === false && sp.gia_thu === true, JSON.stringify(sp.goi));
 
+  // --- Gói ngưng bán có giá vẫn vào ảnh chụp để chốt: không thì nó là "giá thử" mãi (không lần chốt nào gồm nó)
+  const ngGoi = (await tao(UID.qlA, 'luat-goi-ngung', 'Ribeye có gói ngưng bán')).kq.id;
+  await luu(UID.qlA, ngGoi, { mat_hang_id: mh.ribeye });
+  await luu(UID.qlA, ngGoi, { goi: [{ id: goiCua(await doc(ngGoi), 400).id, dang_ban: false }] });
+  sp = await doc(ngGoi);
+  ok('Ảnh chụp để chốt gồm cả gói NGƯNG BÁN có giá (400 g = 380.000)',
+     goiCua(sp, 400)?.dang_ban === false && giongNhau(sp.gia_de_chot, { kg: 950000, goi: { 200: 190000, 400: 380000 } }),
+     JSON.stringify(sp.gia_de_chot));
+  const cNgGoi = await chot(UID.chu, ngGoi);
+  sp = await doc(ngGoi);
+  ok('Chốt xong: gói ngưng bán có giá → gia_thu false (không "giá thử" mãi); sản phẩm hết giá thử',
+     cNgGoi.kq?.ok === true && goiCua(sp, 400)?.gia_thu === false && sp.gia_thu === false,
+     `${vi(cNgGoi)} · ${JSON.stringify(sp.goi.map(g => [g.so_gam, g.dang_ban, g.gia_thu]))}`);
+
   // --- 0 đ không bao giờ là giá
   const re = await tao(UID.qlA, 'luat-bo-vun', 'Bò vụn');
   await luu(UID.qlA, re.kq.id, { mat_hang_id: mh.re });
@@ -525,6 +545,44 @@ await nhom('5 · LUẬT — giá thử, gói, khay nguyên, mặt hàng mất / 
   sp = await doc(id.khay);
   ok('Gắn mặt hàng gói cho 200 g, ngưng bán 400 g → hết goi_chua_co_kho', !coCanh(sp, 'goi_chua_co_kho')
      && goiCua(sp, 200)?.mat_hang?.ma === 'RIB-GOI-200' && goiCua(sp, 400)?.dang_ban === false, JSON.stringify(sp.canh_bao));
+
+  // --- Khay nguyên khi sản phẩm ĐÃ Đang bán: mặt hàng bị đổi sang đếm khay ở Kho → Mặt hàng sau khi bán. Chỉ
+  // chặn lần lưu đưa sản phẩm VÀO cấu hình đó (chuyển sang Đang bán, đổi mặt hàng / cách làm gói / cách bán);
+  // lần lưu khác vẫn được, kèm cảnh báo — không thì sửa một chữ mô tả cũng bị khóa.
+  mh.f3 = await matHang('F3-THAN', 'Thăn đổi sang khay sau', { gia: 800000, maCan: '1007' });
+  mh.f3kg = await matHang('F3-THAN-KG', 'Thăn cân kg', { gia: 800000 });
+  const f3 = (await tao(UID.qlA, 'luat-khay-sau', 'Thăn đổi khay sau')).kq.id;
+  l = await luu(UID.qlA, f3, { mat_hang_id: mh.f3, trang_thai: 'dang_ban' });
+  ok('Tiền đề: mặt hàng cân theo kg → Đang bán được', l.kq?.ok === true, vi(l));
+  await db.query(`update kho_mat_hang set dem_goi = true, don_vi_goi = 'khay' where id = $1`, [mh.f3]);   // Kho → Mặt hàng
+  l = await luu(UID.qlA, f3, { mo_ta_vi: 'Sửa mô tả sau khi mặt hàng đổi sang khay.' });
+  sp = await doc(f3);
+  ok('Đã Đang bán, mặt hàng vừa đổi sang đếm khay ở Kho → lưu mô tả VẪN được, kèm canh_bao khay_nguyen',
+     l.loi === null && l.kq?.ok === true && coCanh(l.kq, 'khay_nguyen') && sp.mo_ta_vi === 'Sửa mô tả sau khi mặt hàng đổi sang khay.'
+     && sp.trang_thai === 'dang_ban', vi(l));
+  l = await luu(UID.qlA, f3, { ten_vi: 'Thăn đổi khay sau (form)', trang_thai: 'dang_ban', nguon_goi: 'cat_tai_quay',
+                               mat_hang_id: mh.f3, loai: 'thit', cach_ban: 'theo_can' });
+  ok('…form gửi đủ ô với giá trị KHÔNG đổi (trạng thái, cách làm gói, mặt hàng, cách bán) → vẫn lưu được',
+     l.loi === null && l.kq?.ok === true && (await doc(f3)).ten_vi === 'Thăn đổi khay sau (form)', vi(l));
+  l = await luu(UID.qlA, f3, { mat_hang_id: mh.f3kg });
+  ok('…đổi sang mặt hàng cân kg → được, hết khay_nguyen', l.kq?.ok === true && !coCanh(l.kq, 'khay_nguyen'), vi(l));
+  let pbF3 = (await doc(f3)).updated_at;
+  l = await luu(UID.qlA, f3, { mat_hang_id: mh.f3, ten_vi: 'Không được lưu' });
+  sp = await doc(f3);
+  ok('Đang bán, đổi mặt hàng sang mặt hàng đếm khay → từ chối bằng đúng câu, không ghi gì',
+     l.loi === CAU.khayNguyen && sp.mat_hang_id === mh.f3kg && sp.ten_vi === 'Thăn đổi khay sau (form)' && sp.updated_at === pbF3, vi(l));
+  sp = await doc(id.khay);
+  l = await luu(UID.qlA, id.khay, { nguon_goi: 'cat_tai_quay' });
+  ok('Đang bán "Đóng gói sẵn" trên mặt hàng đếm khay, đổi sang "Cắt tại quầy" → từ chối bằng đúng câu, không ghi gì',
+     l.loi === CAU.khayNguyen && (await doc(id.khay)).nguon_goi === 'dong_san' && (await doc(id.khay)).updated_at === sp.updated_at, vi(l));
+  l = await luu(UID.qlA, f3, { trang_thai: 'tam_ngung', mat_hang_id: mh.f3 });
+  ok('Tạm ngưng + mặt hàng đếm khay → lưu được (cảnh báo khay_nguyen)', l.kq?.ok === true && coCanh(l.kq, 'khay_nguyen'), vi(l));
+  pbF3 = (await doc(f3)).updated_at;
+  l = await luu(UID.qlA, f3, { trang_thai: 'dang_ban', mo_ta_vi: 'Không được lưu' });
+  sp = await doc(f3);
+  ok('Tạm ngưng → Đang bán khi còn khay nguyên → từ chối bằng đúng câu, không ghi gì',
+     l.loi === CAU.khayNguyen && sp.trang_thai === 'tam_ngung' && sp.mo_ta_vi === 'Sửa mô tả sau khi mặt hàng đổi sang khay.'
+     && sp.updated_at === pbF3, vi(l));
 
   // --- Mặt hàng mất
   mh.mat = await matHang('MAT-DI', 'Mặt hàng sẽ mất', { gia: 700000 });
@@ -597,6 +655,21 @@ await nhom('5 · LUẬT — giá thử, gói, khay nguyên, mặt hàng mất / 
   ok('id gói không có → "Không thấy gói này — tải lại trang."', l.loi === 'Không thấy gói này — tải lại trang.', vi(l));
   l = await thu([{ id: goiCua(await doc(id.khay), 200).id, gia_rieng: 1000 }]);
   ok('id gói của sản phẩm khác → cùng câu, không sửa được gói người khác', l.loi === 'Không thấy gói này — tải lại trang.', vi(l));
+  // Khóa tạm của gói thêm trong cùng lần lưu ('moi-<thứ tự>') không phải id gói: phải bị từ chối bằng câu dịch được,
+  // không lọt tới phép đổi ::uuid (lỗi Postgres thô 22P02), không lặng lẽ sửa / bỏ gói vừa thêm.
+  const soGoiTruoc = (await doc(id.luat)).goi.length;
+  l = await thu([{ so_gam: 300 }, { id: 'moi-1', xoa: true }]);
+  ok('Gói mới + id giả "moi-1" (xoa) cùng lần → "Không thấy gói này — tải lại trang.", không lỗi Postgres thô',
+     l.loi === 'Không thấy gói này — tải lại trang.', vi(l));
+  l = await thu([{ so_gam: 300 }, { id: 'moi-1', gia_rieng: 300000 }]);
+  ok('Gói mới + id giả "moi-1" (sửa) cùng lần → cùng câu, không lặng lẽ sửa gói vừa thêm',
+     l.loi === 'Không thấy gói này — tải lại trang.', vi(l));
+  l = await thu([{ id: crypto.randomUUID(), xoa: true }]);
+  ok('uuid ngẫu nhiên (xoa) → cùng câu', l.loi === 'Không thấy gói này — tải lại trang.', vi(l));
+  l = await thu([{ id: p600, xoa: true }, { id: p600, gia_rieng: 1000 }]);
+  ok('Cùng một gói vừa bỏ rồi lại sửa trong một lần → cùng câu', l.loi === 'Không thấy gói này — tải lại trang.', vi(l));
+  ok('…không lần nào ghi: không gói 300 g, số gói nguyên, gói 600 g còn', !goiCua(await doc(id.luat), 300)
+     && (await doc(id.luat)).goi.length === soGoiTruoc && !!goiCua(await doc(id.luat), 600));
   l = await thu([{ id: p600, gia: 1000 }]);
   ok('Ô lạ trong gói → "Không nhận ô "gia" — tải lại trang."', l.loi === 'Không nhận ô "gia" — tải lại trang.', vi(l));
   l = await luu(UID.qlA, id.luat, { ten: 'X' });
@@ -647,6 +720,16 @@ await nhom('5 · LUẬT — giá thử, gói, khay nguyên, mặt hàng mất / 
   ok('Lưu giá 1.050.000 → được, nhưng cảnh báo gia_qua_can', l.kq?.ok === true && coCanh(l.kq, 'gia_qua_can'), vi(l));
   l = await luu(UID.qlA, id.dat, { gia_ban_kg: 1050000, gia_ban_kg_cu: 1050000 });
   ok('Lưu lại đúng giá đang có → gia_kho_doi false', l.kq?.ok === true && l.kq?.gia_kho_doi === false, vi(l));
+  // Beeftown Cân (can-tma.ts kiemHang) bỏ qua dòng giá trống, giá 0 và giá quá 999.999 — cả ba thì cân GIỮ dòng cũ.
+  mh.chuaGia = await matHang('CHUA-GIA', 'Thăn chưa có giá', { maCan: '1008' });
+  const chuaGia = (await tao(UID.qlA, 'luat-chua-gia', 'Thăn chưa có giá')).kq.id;
+  l = await luu(UID.qlA, chuaGia, { mat_hang_id: mh.chuaGia });
+  ok('Mặt hàng có mã cân mà CHƯA có giá mỗi kg → cảnh báo gia_qua_can (cân giữ dòng cũ)',
+     l.kq?.ok === true && coCanh(l.kq, 'gia_qua_can') && coCanh(await doc(chuaGia), 'gia_qua_can'), vi(l));
+  await db.query(`update kho_mat_hang set gia_ban_kg = 0 where id = $1`, [mh.chuaGia]);
+  ok('…giá 0 đ → cũng gia_qua_can', coCanh(await doc(chuaGia), 'gia_qua_can'), JSON.stringify((await doc(chuaGia)).canh_bao));
+  await db.query(`update kho_mat_hang set gia_ban_kg = 990000 where id = $1`, [mh.chuaGia]);
+  ok('…giá 990.000 → hết gia_qua_can', !coCanh(await doc(chuaGia), 'gia_qua_can'));
 
   // --- Chốt khi giá vừa đổi
   sp = await doc(id.luat);
@@ -789,7 +872,11 @@ await nhom('6 · ĐỐI CHIẾU FABi — chi nhánh Q7', async () => {
      giam?.ma_can === '90001' && giam?.phan_tram === 30 && giam?.gia_phai_dat === 630000 && giongNhau(giam?.viec, ['tao_mon']),
      JSON.stringify(giam));
   ok('Mọi dòng đủ khóa', d.dong.every(x => ['loai_dong', 'ma_fabi', 'ten_san_pham', 'san_pham_id', 'so_gam', 'gia_phai_dat',
-    'tren_fabi', 'ghep', 'mong_doi', 'viec', 'ma_can', 'so_o', 'phan_tram'].every(k => k in x)));
+    'tren_fabi', 'ghep', 'mong_doi', 'viec', 'ma_can', 'so_o', 'phan_tram', 'don_vi'].every(k => k in x)));
+  ok('don_vi của dòng: gói thịt "goi", hộp kim chi "hop" (trang ghi "gói 200 g" / "hộp 500 g"); mã cân, ô mã, mã giảm, kiểm tra null',
+     goiDong(d, 'TN-200')?.don_vi === 'goi' && goiDong(d, 'KC-500')?.don_vi === 'hop' && goiDong(d, 'TAM-200')?.don_vi === 'goi'
+     && d.dong.filter(x => x.loai_dong !== 'goi').every(x => x.don_vi === null),
+     JSON.stringify(d.dong.map(x => [x.loai_dong, x.ma_fabi, x.don_vi])));
 
   // Giá đổi ở Kho sau khi chốt
   await db.query(`update kho_mat_hang set gia_ban_kg = 950000 where id = $1`, [mh.dc]);
@@ -828,6 +915,103 @@ await nhom('6 · ĐỐI CHIẾU FABi — chi nhánh Q7', async () => {
 });
 
 // ===========================================================================
+await nhom('6b · ĐỐI CHIẾU FABi — mục "kiểm tra" không bảo tắt mã mà mục khác đòi; giá mỗi kg trống không bao giờ "khớp"', async () => {
+  const cn = cnB.id;   // thực đơn FABi vừa đọc (nhóm 6)
+  const sanPham = async (ma, ten, duLieu) => {
+    const t = await tao(UID.qlB, ma, ten);
+    const l = await luu(UID.qlB, t.kq.id, duLieu);
+    if (l.loi || l.kq?.ok !== true) throw new Error(`${ma}: ${vi(l)}`);
+    return t.kq.id;
+  };
+  const themMenu = async ds => {
+    for (const ma of ds) {
+      await db.query(`insert into kho_ipos_menu (chi_nhanh_id, ma_ipos, ten_ipos, dang_ban) values ($1, $2, $3, true)`, [cn, ma, `Món ${ma}`]);
+    }
+  };
+  const ghep = async ds => {
+    for (const [ma, mat, donVi, oMa] of ds) {
+      await db.query(`insert into kho_ipos_ma_hang (chi_nhanh_id, ma_ipos, kieu, mat_hang_id, don_vi_ban, o_ma_id)
+                      values ($1, $2, 'mon', $3, $4, $5)`, [cn, ma, mat, donVi, oMa]);
+    }
+  };
+
+  // --- Mặt hàng ĐẾM KHAY có mã cân: mục mã cân đòi mã đó (sửa ghép sang bán theo kg), mục kiểm tra không được
+  // bảo tắt chính mã đó. Ô mã, mã giảm của mặt hàng cũng vậy.
+  mh.f1 = await matHang('F1-BAP-KHAY', 'Bắp khay đối chiếu', { demGoi: true, donVi: 'khay', gia: 600000, maCan: '2101' });
+  await sanPham('dc-f1-bap-khay', 'Bắp khay đối chiếu', { mat_hang_id: mh.f1 });   // Tạm ngưng: không có dòng gói
+  const { rows: [oMa] } = await db.query(`insert into kho_o_ma (mat_hang_id, so_o, ma_can) values ($1, 1, '21011') returning id`, [mh.f1]);
+  await db.query(`insert into kho_ma_giam (mat_hang_id, phan_tram, ma_can) values ($1, 20, '92101')`, [mh.f1]);
+  await themMenu(['02101', '21011', 'O-21', '92101', 'F1-KG', 'F1-OLD']);
+  await ghep([
+    ['02101', mh.f1, null, null],      // mã cân (FABi thêm số 0 đầu), "theo món kho" = theo khay → mục mã cân: sua_ghep
+    ['21011', mh.f1, null, oMa.id],    // ô mã đã ghép
+    ['O-21', mh.f1, null, oMa.id],     // mã khác ghép vào ô mã
+    ['92101', mh.f1, null, null],      // mã giảm ghép "theo món kho"
+    ['F1-KG', mh.f1, 'kg', null],      // bán theo kg
+    ['F1-OLD', mh.f1, 'goi', null],    // gói cũ thật sự, menu bán lẻ không có
+  ]);
+  let r = await doiChieu(UID.qlB, cn);
+  const kiemTra = (r.kq?.dong ?? []).filter(x => x.loai_dong === 'kiem_tra');
+  const maKiemTra = kiemTra.map(x => x.ma_fabi);
+  const dongMaCan = (r.kq?.dong ?? []).filter(x => x.ma_fabi === '02101');
+  ok('Mã cân 2101 của mặt hàng đếm khay, ghép "theo món kho" → đúng MỘT dòng: dòng mã cân với sua_ghep (không thêm dòng kiem_tra bảo tắt)',
+     dongMaCan.length === 1 && dongMaCan[0].loai_dong === 'can' && dongMaCan[0].viec.includes('sua_ghep'), JSON.stringify(dongMaCan));
+  ok('Ô mã 21011 đã ghép (o_ma_id) → không dòng kiem_tra', !maKiemTra.includes('21011'), maKiemTra.join(', '));
+  ok('Mã khác ghép vào ô mã (O-21, o_ma_id) → không dòng kiem_tra', !maKiemTra.includes('O-21'), maKiemTra.join(', '));
+  ok('Mã giảm 92101 ghép "theo món kho" → không dòng kiem_tra (mục mã giảm đòi mã này)',
+     !maKiemTra.includes('92101') && (r.kq?.dong ?? []).some(x => x.loai_dong === 'ma_giam' && x.ma_can === '92101'), maKiemTra.join(', '));
+  ok('Ghép bán theo kg (F1-KG) → không dòng kiem_tra', !maKiemTra.includes('F1-KG'), maKiemTra.join(', '));
+  ok('Gói cũ thật sự (F1-OLD, bán theo gói, menu không có) → vẫn kiem_tra_mon',
+     giongNhau(kiemTra.find(x => x.ma_fabi === 'F1-OLD')?.viec, ['kiem_tra_mon']), JSON.stringify(kiemTra));
+  ok('Dòng kiem_tra còn lại đúng hai gói cũ: F1-OLD, OLD-500', giongNhau([...maKiemTra].sort(), ['F1-OLD', 'OLD-500']), maKiemTra.join(', '));
+
+  // --- Giá mỗi kg TRỐNG (hay 0 đ): Beeftown Cân bỏ qua dòng, cân giữ hàng cũ. Đã chốt (kg null = null) vẫn không
+  // bao giờ "khớp" — mã cân, ô mã, mã giảm đều thieu_gia.
+  mh.f5 = await matHang('F5-NAM', 'Nạm chưa có giá', { maCan: '2201' });
+  const f5 = await sanPham('dc-f5-nam', 'Nạm chưa có giá', { mat_hang_id: mh.f5 });
+  await luu(UID.qlB, f5, { goi: [{ id: goiCua(await doc(f5), 200).id, gia_rieng: 100000 }] });
+  const cF5 = await chot(UID.chu, f5);
+  ok('Tiền đề: chốt được ảnh chụp {kg: null, goi: {200: 100.000}}', cF5.kq?.ok === true
+     && giongNhau((await doc(f5)).gia_chot, { kg: null, goi: { 200: 100000 } }), vi(cF5));
+  await db.query(`insert into kho_o_ma (mat_hang_id, so_o, ma_can) values ($1, 1, '22011')`, [mh.f5]);
+  await db.query(`insert into kho_ma_giam (mat_hang_id, phan_tram, ma_can) values ($1, 20, '92201')`, [mh.f5]);
+  await themMenu(['2201', '22011', '92201']);
+  await ghep([['2201', mh.f5, 'kg', null]]);
+  r = await doiChieu(UID.qlB, cn);
+  const dongF5 = loai => (r.kq?.dong ?? []).find(x => x.loai_dong === loai && ['2201', '22011', '92201'].includes(x.ma_can));
+  ok('Mã cân 2201, giá mỗi kg trống, đã chốt, ghép đúng → thieu_gia (KHÔNG khop, không dat_gia)',
+     giongNhau(dongF5('can')?.viec, ['thieu_gia']), JSON.stringify(dongF5('can')));
+  ok('…ô mã 22011 → thieu_gia, không khop', giongNhau(dongF5('o_ma')?.viec, ['thieu_gia']), JSON.stringify(dongF5('o_ma')));
+  ok('…mã giảm 92201 → thieu_gia, không khop', giongNhau(dongF5('ma_giam')?.viec, ['thieu_gia']), JSON.stringify(dongF5('ma_giam')));
+  await db.query(`update kho_mat_hang set gia_ban_kg = 0 where id = $1`, [mh.f5]);
+  r = await doiChieu(UID.qlB, cn);
+  ok('Giá 0 đ → thieu_gia (không phải gia_qua_can)', giongNhau(dongF5('can')?.viec, ['thieu_gia'])
+     && giongNhau(dongF5('o_ma')?.viec, ['thieu_gia']), JSON.stringify([dongF5('can')?.viec, dongF5('o_ma')?.viec]));
+  await db.query(`update kho_mat_hang set gia_ban_kg = 1050000 where id = $1`, [mh.f5]);
+  r = await doiChieu(UID.qlB, cn);
+  ok('Giá 1.050.000 → gia_qua_can (giá đổi sau chốt → dat_gia), không thieu_gia',
+     dongF5('can')?.viec.includes('gia_qua_can') && dongF5('can')?.viec.includes('dat_gia') && !dongF5('can')?.viec.includes('thieu_gia'),
+     JSON.stringify(dongF5('can')));
+
+  // --- Ô trống trong Ghép món (don_vi_ban, kg_moi_don_vi null) không được làm phép so "ghép đúng" ra NULL rồi bị
+  // bỏ qua: gói cắt tại quầy ghép "theo món kho" (mặt hàng cân kg → iPOS trừ 1 kg mỗi gói) hay "theo gói" mà
+  // thiếu "mỗi gói = … kg" (iPOS từ chối dòng bán, 0054) đều là sua_ghep.
+  mh.f1b = await matHang('F1B-THAN', 'Thăn ghép thiếu ô', { gia: 900000, maCan: '2301' });
+  const f1b = await sanPham('dc-f1b-than', 'Thăn ghép thiếu ô', { mat_hang_id: mh.f1b, trang_thai: 'dang_ban' });
+  const spF1b = await doc(f1b);
+  await luu(UID.qlB, f1b, { goi: [{ id: goiCua(spF1b, 200).id, ma_fabi: 'F1B-200' }, { id: goiCua(spF1b, 400).id, ma_fabi: 'F1B-400' }] });
+  await themMenu(['F1B-200', 'F1B-400']);
+  await ghep([['F1B-200', mh.f1b, null, null], ['F1B-400', mh.f1b, 'goi', null]]);
+  r = await doiChieu(UID.qlB, cn);
+  const goiF1b = ma => (r.kq?.dong ?? []).find(x => x.loai_dong === 'goi' && x.ma_fabi === ma);
+  ok('Gói cắt tại quầy ghép "theo món kho" (don_vi_ban trống) trên mặt hàng cân kg → sua_ghep, không khop',
+     goiF1b('F1B-200')?.viec.includes('sua_ghep') && !goiF1b('F1B-200')?.viec.includes('khop'), JSON.stringify(goiF1b('F1B-200')));
+  ok('Gói cắt tại quầy ghép "theo gói" mà thiếu "mỗi gói = … kg" → sua_ghep, không khop',
+     goiF1b('F1B-400')?.viec.includes('sua_ghep') && !goiF1b('F1B-400')?.viec.includes('khop'), JSON.stringify(goiF1b('F1B-400')));
+  ok('…mã của hai gói đó không bị liệt kê thêm ở mục kiểm tra', !(r.kq?.dong ?? []).some(x => x.loai_dong === 'kiem_tra' && /^F1B-/.test(x.ma_fabi)));
+});
+
+// ===========================================================================
 await nhom('7 · BẢN DỊCH (0036) — ba ô mới, máy dịch ghi dưới quyền người gọi', async () => {
   const { rows: [view] } = await db.query(`select coalesce(array_to_string(reloptions, ','), '') as o from pg_class where relname = 'v_viec_dich'`);
   ok('v_viec_dich vẫn là security_invoker sau khi viết lại', view.o.includes('security_invoker=true'), view.o);
@@ -856,6 +1040,12 @@ await nhom('7 · BẢN DỊCH (0036) — ba ô mới, máy dịch ghi dưới qu
   ok('Quản lý: ghi_ban_dich ghi được 1 ô, sổ ghi bản máy', r.rows?.[0]?.n === 1 && sp.ten_en === 'Australian chuck eye'
      && sp.ban_dich?.ten?.en?.cach === 'may', `${vi(r)} · ${JSON.stringify(sp.ban_dich)}`);
   ok('…máy dịch không đổi updated_at (phiên bản của form vẫn đúng)', sp.updated_at === pbTruoc, `${pbTruoc} → ${sp.updated_at}`);
+  // Báo lỗi bị nghi: "máy dịch đẩy updated_at → lần lưu sau báo nguoi_khac_sua". Sai: 0036 tu_dong_cap_nhat_updated_at
+  // thoát sớm khi beeftown.ghi_ban_dich = 'on'. Kiểm thử giữ điều đó mãi.
+  const lSauDich = await luu(UID.qlA, id.dich, { mo_ta_vi: 'Mềm, nhiều vân mỡ.' }, pbTruoc);
+  ok('…form mở TRƯỚC khi máy dịch ghi vẫn lưu được (phiên bản trước lúc dịch → ok:true, không nguoi_khac_sua)',
+     lSauDich.loi === null && lSauDich.kq?.ok === true, vi(lSauDich));
+  ok('…lần lưu đó không xóa bản máy dịch vừa ghi', (await doc(id.dich)).ten_en === 'Australian chuck eye');
   r = await ghi(UID.mktA, [{ cot: 'mo_ta', ngon_ngu: 'ko', bam: await bam('Mềm, nhiều vân mỡ.'), tt: 'ok', noi_dung: '부드럽고 마블링이 많아요.' }]);
   ok('Marketing: ghi_ban_dich ghi được 1 ô', r.rows?.[0]?.n === 1, vi(r));
   for (const [ai, uid] of [['Quản lý đã nghỉ', UID_QL_NGHI], ['Marketing đã nghỉ', UID_MKT_NGHI],

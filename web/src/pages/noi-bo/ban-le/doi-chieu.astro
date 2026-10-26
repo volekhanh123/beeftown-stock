@@ -3,7 +3,7 @@
  * ĐỐI CHIẾU FABi — việc phải làm trên máy thu ngân để khớp với menu bán lẻ (một chi nhánh)
  *
  * FABi (iPOS) sửa TAY: API iPOS chỉ đọc được thực đơn, không tạo hay sửa món được. Trang chỉ đọc
- * ban_le_doi_chieu() (0097): mã cân, ô mã, mã giảm của mặt hàng bán theo cân; mỗi gói / hộp đang bán; mã
+ * ban_le_doi_chieu() (0097): mã cân, ô mã, mã giảm của mặt hàng bán theo cân; mỗi gói, hộp đang bán; mã
  * FABi còn bán mà menu không có. Không có POST — nên không nằm trong danh sách TRANG của
  * test-noi-bo-gui-lai.mjs.
  *
@@ -56,7 +56,8 @@ const t = dichNB(nn, {
   theoCan:   { vi: (ma: string) => `theo cân · mã cân ${ma}`, en: (ma: string) => `by weight · scale code ${ma}` },
   oMa:       { vi: (so: number) => `ô mã số ${so}`, en: (so: number) => `slot code ${so}` },
   maGiam:    { vi: (pt: number) => `mã giảm ${pt}%`, en: (pt: number) => `${pt}% discount code` },
-  goi:       { vi: (g: number) => `gói / hộp ${g} g`, en: (g: number) => `${g} g pack / box` },
+  goi:       { vi: (g: number) => `gói ${g} g`, en: (g: number) => `${g} g pack` },
+  hop:       { vi: (g: number) => `hộp ${g} g`, en: (g: number) => `${g} g box` },
   ngoaiMenu: { vi: 'không có trong menu bán lẻ', en: 'not in the retail menu' },
   coBan:     { vi: 'có, đang bán', en: 'yes, on sale' },
   coTat:     { vi: 'có, đang tắt', en: 'yes, turned off' },
@@ -105,7 +106,8 @@ function tenMon(d: DongDoiChieu): string {
   if (d.loai_dong === 'can') return `${ten} · ${t.theoCan(d.ma_can ?? '—')}`;
   if (d.loai_dong === 'o_ma') return `${ten} · ${t.oMa(d.so_o ?? 0)}`;
   if (d.loai_dong === 'ma_giam') return `${ten} · ${t.maGiam(d.phan_tram ?? 0)}`;
-  return `${ten} · ${t.goi(d.so_gam ?? 0)}`;
+  // don_vi của database: hộp kim chi (theo hộp) hay gói thịt (theo cân).
+  return `${ten} · ${d.don_vi === 'hop' ? t.hop(d.so_gam ?? 0) : t.goi(d.so_gam ?? 0)}`;
 }
 function trenFabi(d: DongDoiChieu): string {
   const f = d.tren_fabi;

@@ -128,6 +128,8 @@ await nhom('2 · Hình JSON: khóa của kiểu TypeScript = khóa database tr�
   ok('DongDoiChieu = khóa của một dòng (mã cân và gói)', sapXep(khoaKieu('DongDoiChieu')) === sapXep(Object.keys(can))
      && sapXep(Object.keys(can)) === sapXep(Object.keys(goi)), Object.keys(can).join(', '));
   ok('GhepFabi = khóa của mong_doi', sapXep(khoaKieu('GhepFabi')) === sapXep(Object.keys(can.mong_doi)));
+  ok('Dòng đối chiếu mang don_vi: hộp kim chi "hop", dòng mã cân null — kiểu TypeScript có don_vi \'goi\' | \'hop\' | null',
+     goi.don_vi === 'hop' && can.don_vi === null && /^\s{2}don_vi: 'goi' \| 'hop' \| null;/m.test(NGUON_LIB), `${goi.don_vi} · ${can.don_vi}`);
   ok('tren_fabi của DongDoiChieu: co, ma, ten, dang_ban', sapXep(khoaKieuMotDong('tren_fabi')) === sapXep(['co', 'ma', 'ten', 'dang_ban']));
   ok('loai_dong của TypeScript đủ năm loại của database',
      ['can', 'o_ma', 'ma_giam', 'goi', 'kiem_tra'].every(l => NGUON_LIB.includes(`'${l}'`)) && /'kiem_tra'/.test(await prosrc('ban_le_doi_chieu')));
@@ -242,8 +244,22 @@ await nhom('4 · Ba trang: form an toàn, chuyển hướng 303, không JavaScri
      /<option value=\{m\.id\} title=\{m\.ma\}/.test(sua) && /<optgroup label=\{g\.ten\}>/.test(sua));
   ok('[id].astro: mỗi gói một fieldset (không bảng trên điện thoại); gói đang có có Giữ / Ngưng bán / Bỏ gói này',
      /<fieldset class="bl-goi">/.test(sua) && !/<table/.test(sua) && /value="bo"/.test(sua) && /value="ngung"/.test(sua));
-  ok('[id].astro: báo đỏ trước khi lưu khi giá mỗi kg quá cửa sổ cân (GIA_TOI_DA)', /const quaCan = [^\n]*> GIA_TOI_DA;/.test(sua)
+  ok('[id].astro: cảnh báo giá cân tại ô giá lấy từ mã gia_qua_can của database (canhBaoDauTrang), không tự so > GIA_TOI_DA',
+     /canhBaoDauTrang\(sp\)/.test(sua) && !/> GIA_TOI_DA/.test(sua) && /\{giaCanTaiO && sp\.mat_hang\.ma_can && \(/.test(sua));
+  ok('[id].astro: câu tại ô giá chọn theo giá trị — quá cân: "Lưu giá này thì cân VẪN IN GIÁ CŨ"; chưa có giá: câu của thư viện',
+     /giaCanTaiO === 'qua' \? t\.quaCan\(dinhDangTien\(GIA_TOI_DA, nn\), sp\.mat_hang\.ma_can\) : cauCanhBao\('gia_qua_can', nn, sp\)/.test(sua)
      && sua.includes('Lưu giá này thì cân VẪN IN GIÁ CŨ cho mã'));
+  ok('[id].astro: cảnh báo đầu trang là phần "dau" của canhBaoDauTrang — giá cân và khay nguyên hiện đúng một lần',
+     /const \{ dau: canhDau, giaCanTaiO, khayTaiO \} = sp \? canhBaoDauTrang\(sp\)/.test(sua) && /\{canhDau\.map\(c => \(/.test(sua)
+     && /\{khayTaiO && \(/.test(sua) && !/sp\.canh_bao\.includes\('khay_nguyen'\) && \(/.test(sua));
+  ok('Câu cảnh báo khay nguyên theo trạng thái: cả hai trang truyền sản phẩm vào cauCanhBao',
+     /cauCanhBao\('khay_nguyen', nn, sp\)/.test(sua) && /cauCanhBao\(c, nn, sp\)/.test(sua) && /cauCanhBao\(c, nn, sp\)/.test(ds));
+  ok('[id].astro: danh sách giá sẽ chốt từ dongGiaDeChot(sp) — đúng ảnh chụp, gói ngưng bán ghi "(ngưng bán)"',
+     /dongGiaDeChot\(sp\)/.test(sua) && sua.includes("ngungBanNho: { vi: '(ngưng bán)'") && /x\.ngungBan \? ` \$\{t\.ngungBanNho\}` : ''/.test(sua));
+  ok('[id].astro: so chữ bằng cungChu của thư viện, không tự viết lại (giongChu)',
+     /\bcungChu\b/.test(sua) && !/giongChu/.test(sua) && /^export function cungChu\(/m.test(NGUON_LIB));
+  ok('doi-chieu.astro: dòng gói ghi "gói 200 g" hay "hộp 500 g" theo don_vi của database, không "gói / hộp"',
+     /d\.don_vi === 'hop' \? t\.hop\(/.test(dc) && !/gói \/ hộp/.test(dc));
   ok('[id].astro: xem trước ghi rõ là khi Mini App đọc menu (bước sau)', sua.includes("'Xem trước — khi Mini App đọc menu này (bước sau)'"));
   ok('[id].astro: nhãn tiếng Anh của ô chỉ có tiếng Việt ghi "(in Vietnamese)"',
      ['Product name (in Vietnamese)', 'Short description (in Vietnamese)', 'How to use or grill (in Vietnamese)'].every(c => sua.includes(c)));

@@ -198,8 +198,8 @@ export const CAU_EN: Readonly<Record<string, string>> = {
   'Giá mỗi kg phải từ 1.000 đ.': 'The price per kg must be at least 1,000 VND.',
   'Giá mỗi kg tối đa 100.000.000 đ.': 'The price per kg can be at most 100,000,000 VND.',
   'Không thấy gói này — tải lại trang.': 'Pack not found — reload the page.',
-  'Chưa chuyển sang Đang bán được: mặt hàng kho đếm theo khay, FABi sẽ trừ nguyên một khay cho mỗi gói online. Chọn "Đóng gói sẵn" hoặc đổi mặt hàng sang cân theo kg.':
-    'Cannot switch to On sale yet: the stock item is counted by tray, so FABi would deduct a whole tray for every online pack. Choose "Pre-packed" or change the item to weigh by kg.',
+  'Chưa lưu được: gói online "Cắt tại quầy khi có đơn" trên mặt hàng kho đếm theo khay thì FABi sẽ trừ nguyên một khay cho mỗi gói. Chọn "Đóng gói sẵn", đổi mặt hàng sang cân theo kg, hoặc để Tạm ngưng.':
+    'Not saved: an online pack "Cut at the counter per order" on a stock item counted by tray would make FABi deduct a whole tray for every pack. Choose "Pre-packed", change the item to weigh by kg, or keep it Paused.',
   'Chưa có giá nào để chốt.': 'There is no price to confirm yet.',
   'Không thấy mặt hàng kho này.': 'Stock item not found.',
   'Mã sản phẩm không đổi được sau khi tạo.': 'A product code cannot be changed after it is created.',
