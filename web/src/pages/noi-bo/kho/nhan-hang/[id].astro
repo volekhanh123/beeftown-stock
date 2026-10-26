@@ -17,7 +17,9 @@
  * Số tảng (0097): lưu dòng tảng là database cấp số. Thêm tảng xong chuyển về
  * ?vua=<chỉ số dòng>&pb=<phien_ban của chính lần lưu> — form hiện to "#0142" để
  * viết lên túi, chỉ khi phiếu đọc lại đúng phiên bản đó (soTangVuaThem). Bỏ dòng
- * tảng, đổi sang món thường: câu báo bảo gạch số trên túi (cauSoTangBo).
+ * tảng: câu báo bảo gạch số trên túi (cauSoTangBo); sửa dòng: câu báo và chuyển
+ * hướng do ketQuaSauSuaDong chọn. Phiếu có tảng lưu trước 0097 (chưa số): lần lưu
+ * nào cũng có thể cấp số cho chúng — câu báo kể số (noiCauTangMoi).
  *
  * KHÔNG có tiền ở đây: đọc bằng kho_doc_phieu_nhap_kg, ghi bằng
  * kho_luu_phieu_nhap_kg (migration 0031). Mỗi lệnh lưu CẢ phiếu kèm phien_ban,
@@ -34,7 +36,7 @@ import { docDinhNghia, docMatHang, docViTri, type MatHang, type ViTri } from '..
 import {
   docPhieuNhan, docNccNhap, docMonGanDay, gopMonGanDay, docFormDongNhan, docFormDauNhan, dongNhanTrong,
   dongNhanVaoForm, dongLuuTuPhieu, ghepDongNhan, luuPhieuNhan, themDongNhan, themAnhNhan, kiemTruocKhiGui,
-  guiPhieuNhan, rutPhieuNhan, huyPhieuNhan, haoRepack, soTangVuaThem, cauSoTangBo,
+  guiPhieuNhan, rutPhieuNhan, huyPhieuNhan, haoRepack, soTangVuaThem, cauSoTangBo, ketQuaSauSuaDong, noiCauTangMoi,
   type DauNhan, type DongNhanForm, type KetQuaLuuNhan, type MonKiem, type NccNhap, type PhieuNhan,
 } from '../../../../lib/kho/nhan-hang.ts';
 import {
@@ -231,28 +233,17 @@ if (form && phieu) {
       suaId = cu ? cu.id : null;
     } else if (dongId) {
       const ds = ghepDongNhan(p.dong, { thay: dongId, dong: r.luu });
-      const kq: KetQuaLuuNhan = ds ? await luuPhieuNhan(k.client, cn.id, p, phienBan, maGui, ds)
+      const kq: KetQuaLuuNhan = ds ? await luuPhieuNhan(k.client, cn.id, p, phienBan, maGui, ds,
+                                                        { vua: p.dong.findIndex(d => d.id === dongId) })
         : kqHai(false, {
           vi: 'Dòng này không còn trên phiếu (có người vừa sửa) — xem lại danh sách.',
           en: 'This line is no longer on the note (someone just edited it) — check the list again.',
         });
       if (kq.ok) {
-        // 0097: dòng sửa giữ số tảng (ghepDongNhan mang số cũ). Đổi sang món thường → số bỏ; món thường
-        // đổi thành tảng → database vừa cấp số, hiện to như lúc thêm tảng.
-        const soCu = cu?.so_tang ?? null;
-        const thanhTang = !!mon.get(r.luu.mat_hang_id)?.theo_tang;
-        if (soCu !== null && !thanhTang) {
-          const b = cauSoTangBo(soCu);
-          return ve(kqHai(true, { vi: `Đã sửa dòng. ${b.vi}`, en: `Line updated. ${b.en}` }));
-        }
-        if (soCu === null && thanhTang && kq.phienBan) {
-          return ve(kqHai(true, { vi: 'Đã sửa dòng. Dòng này giờ là một tảng — viết số lên túi.',
-                                  en: 'Line updated. This line is now a primal — write the number on the bag.' }),
-                    `?vua=${p.dong.findIndex(d => d.id === dongId)}&pb=${kq.phienBan}#them`);
-        }
-        return ve(soCu !== null
-          ? kqHai(true, { vi: `Đã sửa dòng — số tảng giữ nguyên ${soTangChu(soCu)}.`, en: `Line updated — the primal number stays ${soTangChu(soCu)}.` })
-          : kqHai(true, { vi: 'Đã sửa dòng.', en: 'Line updated.' }));
+        // 0097: dòng sửa giữ số tảng (ghepDongNhan mang số cũ); đổi sang món thường → số bỏ; món thường đổi
+        // thành tảng → database vừa cấp số, hiện to như lúc thêm tảng. ketQuaSauSuaDong chọn câu và đuôi.
+        const x = ketQuaSauSuaDong(cu?.so_tang, !!mon.get(r.luu.mat_hang_id)?.theo_tang, kq, p.dong.findIndex(d => d.id === dongId));
+        return ve(kqHai(true, x.bao), x.them);
       }
       bao = kq; dongForm = r.dong; suaId = dongId;
     } else {
@@ -260,11 +251,11 @@ if (form && phieu) {
       // Món theo tảng: điền sẵn món và ngày mổ cho tảng tiếp theo (tảng cùng thùng hay cùng ngày mổ).
       if (kq.ok && mon.get(r.luu.mat_hang_id)?.theo_tang) {
         const tiepTang = `?tiep=${r.luu.mat_hang_id}&mo=${r.luu.ngay_mo ?? ''}`;
-        // 0097: chỉ chính lần lưu này (có phienBan) mới hiện to số; "có thể đã thêm từ lần bấm trước" thì
-        // không — dòng cuối có thể là tảng của máy khác, câu của themDongNhan bảo đối chiếu.
+        // 0097: chỉ chính lần lưu này (có phienBan) mới hiện to số; nhánh "đã thêm từ lần bấm trước" thì
+        // không — câu của themDongNhan chỉ số ở dòng cuối danh sách. Tảng cũ chưa số vừa có số: nối câu kể số.
         if (kq.phienBan) {
-          return ve(kqHai(true, { vi: 'Đã thêm tảng. Viết số lên túi rồi cân tảng tiếp theo, hoặc bấm "Xong, xem lại".',
-                                  en: 'Primal added. Write the number on the bag, then weigh the next primal, or press "Done, review".' }),
+          return ve(kqHai(true, noiCauTangMoi({ vi: 'Đã thêm tảng. Viết số lên túi rồi cân tảng tiếp theo, hoặc bấm "Xong, xem lại".',
+                                                en: 'Primal added. Write the number on the bag, then weigh the next primal, or press "Done, review".' }, kq)),
                     `${tiepTang}&vua=${p.dong.length}&pb=${kq.phienBan}#them`);
         }
         return ve(kq, `${tiepTang}#them`);
@@ -276,12 +267,12 @@ if (form && phieu) {
     const boId = String(form.get('dong_id') ?? '');
     const dongBo = p.dong.find(d => d.id === boId);
     const ds = ghepDongNhan(p.dong, { bo: boId });
-    const kq = ds ? await luuPhieuNhan(k.client, cn.id, p, phienBan, maGui, ds)
+    const kq: KetQuaLuuNhan = ds ? await luuPhieuNhan(k.client, cn.id, p, phienBan, maGui, ds)
       : kqHai(false, { vi: 'Dòng này không còn trên phiếu.', en: 'This line is no longer on the note.' });
     if (!kq.ok) return ve(kq);
     // 0097: bỏ dòng tảng → số đó bỏ trống, không cấp lại.
     const b = dongBo?.so_tang != null ? cauSoTangBo(dongBo.so_tang) : null;
-    return ve(kqHai(true, b ? { vi: `Đã bỏ dòng. ${b.vi}`, en: `Line removed. ${b.en}` } : { vi: 'Đã bỏ dòng.', en: 'Line removed.' }));
+    return ve(kqHai(true, noiCauTangMoi(b ? { vi: `Đã bỏ dòng. ${b.vi}`, en: `Line removed. ${b.en}` } : { vi: 'Đã bỏ dòng.', en: 'Line removed.' }, kq)));
   } else if (viec === 'them_anh') {
     const kq = await themAnhNhan(k.client, cn.id, p, phienBan, form);
     if (kq.ok) return ve(kq);
@@ -293,7 +284,7 @@ if (form && phieu) {
       dauForm = r.dau;
     } else {
       const kq = await luuPhieuNhan(k.client, cn.id, p, phienBan, maGui, p.dong.map(dongLuuTuPhieu), { dau: r.dau });
-      if (kq.ok) return ve(kqHai(true, { vi: 'Đã sửa thông tin phiếu.', en: 'Note details updated.' }));
+      if (kq.ok) return ve(kqHai(true, noiCauTangMoi({ vi: 'Đã sửa thông tin phiếu.', en: 'Note details updated.' }, kq)));
       bao = kq; dauForm = r.dau;
     }
   } else if (viec === 'gui') {

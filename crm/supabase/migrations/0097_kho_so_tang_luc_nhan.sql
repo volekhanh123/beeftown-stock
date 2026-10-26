@@ -24,7 +24,8 @@
 -- THAY THÂN (cùng chữ ký, cùng chỗ kiểm quyền, chép nguyên văn 0050, chỗ đổi ghi 0097):
 --   kho_ghi_dong_phieu_nhap — nhận khoá so_tang, cấp / kiểm số, ghi bỏ số không còn dùng.
 --   kho_duyet_phieu_nhap    — dùng số của dòng; chưa có số thì sinh như cũ và ghi sổ.
---   kho_doc_phieu_nhap_kg   — dòng trả so_tang của dòng; phiếu thêm so_tang_bo.
+--   kho_doc_phieu_nhap_kg   — dòng trả so_tang của dòng và so_tang_toi_cap; phiếu thêm so_tang_bo. Thêm quyền
+--                             duyet_nhap (kế toán thấy số tảng đã bỏ ở màn duyệt) — hàm này không trả tiền.
 -- KHÔNG đổi kho_luu_phieu_nhap_kg (0031) hay kho_luu_phieu_nhap (0031): cả hai gọi
 -- kho_ghi_dong_phieu_nhap. Không hàm mới, không có tiền ở bảng hay khoá mới.
 -- Chạy sau 0050.
@@ -512,6 +513,12 @@ comment on function kho_duyet_phieu_nhap is
 -- =============================================================================
 -- 6 · ĐỌC PHIẾU NHẬN HÀNG — so_tang của dòng, so_tang_bo (chép 0050)
 -- =============================================================================
+-- 0097: người DUYỆT cũng đọc được (quyền nhap HOẶC duyet_nhap). Khánh cần số tảng đã bỏ để kiểm soát, mà
+-- kế toán (duyet_nhap, không nhap) không đọc được sổ kho_so_tang_cap; hàm này không trả tiền, không trả
+-- đường dẫn ảnh, và kế toán vốn đọc được mọi cột của phiếu qua bảng (RLS xem_gia). Vai không có hai quyền
+-- đó, chi nhánh khác, nhân sự đã nghỉ, không có nhan_su: vẫn bị từ chối như cũ.
+-- so_tang_toi_cap: số của dòng do CHÍNH người đang đọc cấp (sổ kho_so_tang_cap.nguoi_cap) — web dùng để
+-- phân biệt "lần bấm trước của tôi" với tảng giống hệt mà tài khoản khác vừa thêm (themDongNhan).
 create or replace function kho_doc_phieu_nhap_kg(p_id uuid)
 returns jsonb
 language plpgsql
@@ -521,10 +528,12 @@ set search_path = public
 as $$
 declare
   v_pn kho_phieu_nhap;
+  v_toi uuid := (nhan_su_hien_tai()).id;   -- 0097: so_tang_toi_cap
 begin
   select * into v_pn from kho_phieu_nhap where id = p_id;
-  -- 0035: phiếu nợ đầu kỳ coi như không có.
-  if not found or v_pn.loai = 'no_dau' or not kho_duoc(v_pn.chi_nhanh_id, 'nhap') then
+  -- 0035: phiếu nợ đầu kỳ coi như không có. 0097: thêm quyền duyet_nhap (người duyệt thấy số tảng đã bỏ).
+  if not found or v_pn.loai = 'no_dau'
+     or not (kho_duoc(v_pn.chi_nhanh_id, 'nhap') or kho_duoc(v_pn.chi_nhanh_id, 'duyet_nhap')) then
     raise exception 'Không tìm thấy phiếu nhập, hoặc tài khoản không được xem'
       using errcode = 'insufficient_privilege';
   end if;
@@ -572,6 +581,11 @@ begin
                'ngay_mo',       d.ngay_mo,
                -- 0097: số tảng cấp lúc lưu dòng; dòng đã duyệt mang đúng số của lô.
                'so_tang',       d.so_tang,
+               -- 0097: số đó do chính người đang đọc cấp (false khi dòng không có số).
+               'so_tang_toi_cap', (d.so_tang is not null and v_toi is not null and exists (
+                                    select 1 from kho_so_tang_cap c
+                                    where c.chi_nhanh_id = d.chi_nhanh_id and c.so_tang = d.so_tang
+                                      and c.nguoi_cap = v_toi)),
                -- 0050: kg sau repack (null = như kg nhà cung cấp).
                'so_kg_thuc',    d.so_kg_thuc)
              order by d.thu_tu, d.id)
@@ -612,7 +626,7 @@ end;
 $$;
 
 comment on function kho_doc_phieu_nhap_kg is
-  'Một phiếu nhập cho người nhận hàng (quyền nhap trên chi nhánh của phiếu): đầu phiếu, số ảnh, các dòng kg/gói/hạn, số tảng của dòng (0097), so_tang_bo — số tảng đã cấp cho phiếu mà không dùng nữa (0097). KHÔNG có tiền, KHÔNG có đường dẫn ảnh.';
+  'Một phiếu nhập cho người nhận hàng và người duyệt (quyền nhap hoặc duyet_nhap trên chi nhánh của phiếu — duyet_nhap từ 0097): đầu phiếu, số ảnh, các dòng kg/gói/hạn, số tảng của dòng và so_tang_toi_cap — số do chính người đọc cấp (0097), so_tang_bo — số tảng đã cấp cho phiếu mà không dùng nữa (0097). KHÔNG có tiền, KHÔNG có đường dẫn ảnh.';
 
 
 -- =============================================================================

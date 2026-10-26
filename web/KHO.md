@@ -958,12 +958,21 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   gửi lại số database đã cấp (`dongLuuTuPhieu`, `ghepDongNhan`, ô ẩn `d{i}_so_tang` của màn Phiếu nhập) —
   database chỉ nhận số của chính phiếu đó, chưa bỏ, không trùng dòng; không gửi thì cấp số mới. Thêm tảng
   xong chuyển về `?tiep=&mo=&vua=<chỉ số dòng>&pb=<phien_ban của chính lần lưu>`: form hiện to số để viết lên
-  túi (`soTangVuaThem` — chỉ khi phiếu đọc lại đúng phiên bản đó; nhánh "có thể đã thêm từ lần bấm trước"
-  không hiện số, bảo đối chiếu). Bản in phiếu nhập in số của dòng khi chưa có lô.
+  túi (`soTangVuaThem` — chỉ khi phiếu đọc lại đúng phiên bản đó). Bấm đúp "+ Thêm dòng": nhánh "đã thêm từ
+  lần bấm trước" chỉ nhận dòng cuối khi số của nó do chính tài khoản này cấp (`so_tang_toi_cap` của
+  `kho_doc_phieu_nhap_kg`), không hiện to số, câu chỉ số ở dòng cuối; tảng giống hệt mà tài khoản khác vừa thêm
+  thì báo "máy khác" như thường. Sửa dòng: câu và chuyển hướng do `ketQuaSauSuaDong` chọn. Bản in phiếu nhập in
+  số của dòng khi chưa có lô.
+- **Tảng lưu trước 0097** (chưa có số, hay món bật theo tảng sau khi lưu): lần lưu nào đầu tiên (thêm ảnh, sửa
+  đầu phiếu, thêm / sửa / bỏ dòng) cũng cấp số cho mọi tảng đó. `luuPhieuNhan` đọc lại phiếu và câu báo kể các
+  số vừa cấp (`soTangMoiCap`, `noiCauTangMoi`) để viết lên túi; đọc lại hỏng thì vẫn báo đã lưu, kèm câu "có thể
+  vừa được cấp số — tải lại trang".
 - **Số bỏ trống**: dòng tảng bị bỏ, đổi sang món thường, web cũ không gửi lại số → `bo_luc` trong sổ, không
   bao giờ cấp lại; màn nhận hàng báo "gạch số trên túi" (`cauSoTangBo`) và liệt kê `so_tang_bo` của
-  `kho_doc_phieu_nhap_kg` dưới "Hàng đã cân" (gồm số của phiếu đã hủy mà chưa thành lô). Chỉ ghi sổ, không
-  chuông. Dãy số lô vì thế có chỗ hở — sổ giải thích từng chỗ.
+  `kho_doc_phieu_nhap_kg` dưới "Hàng đã cân" (gồm số của phiếu đã hủy mà chưa thành lô). Người duyệt cũng
+  thấy: màn Phiếu nhập / điền giá (`nhap/[id]`, cả bản in) hiện "Số tảng đã bỏ" dưới dòng trạng thái
+  (`docSoTangBo`) — từ 0097 `kho_doc_phieu_nhap_kg` nhận quyền `nhap` **hoặc** `duyet_nhap` (kế toán; hàm không
+  trả tiền). Chỉ ghi sổ, không chuông. Dãy số lô vì thế có chỗ hở — sổ giải thích từng chỗ.
 - **Duyệt**: lô tảng mang đúng `so_tang` của dòng (bộ đếm không tăng lúc duyệt), `ngay_mo`,
   `ngay_u_xong = ngày nhận + kho_so_ngay_u(món, ngày nhận − ngày mổ)`; dòng đã duyệt mang đúng số của lô.
   Dòng chưa có số (tồn đầu kỳ dạng lưới, phiếu lưu trước 0097, món bật theo tảng sau khi lưu) thì duyệt

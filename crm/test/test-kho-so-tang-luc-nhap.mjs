@@ -18,6 +18,9 @@
  *      dòng đã duyệt mang đúng số của lô. kho_doi_soat_ton() rỗng.
  *   5. Web giữ số qua mọi lần gửi lại (thêm ảnh, sửa đầu phiếu, sửa dòng), chỉ hiện to số khi chính lần
  *      lưu đó được database xác nhận; mất mạng thì không bao giờ báo đã thêm.
+ *   6. (Soát độc lập) Người duyệt — kế toán, không có quyền nhap — thấy số tảng đã bỏ; "lần bấm trước" của
+ *      dòng tảng chỉ khi số do chính tài khoản đó cấp; tảng lưu trước 0097 vừa có số thì câu báo kể số; câu
+ *      sau khi sửa dòng kiểm qua ketQuaSauSuaDong, không qua chữ của trang.
  */
 
 import { readFileSync } from 'node:fs';
@@ -344,6 +347,90 @@ await nhom('3b · WEB: GIỮ SỐ KHI GỬI LẠI CẢ PHIẾU (nhan-hang.ts, nh
   const cb = co(NH, 'cauSoTangBo') ? NH.cauSoTangBo(142) : { vi: '', en: '' };
   ok('cauSoTangBo: "Số tảng #0142 bỏ trống — gạch đi" hai thứ tiếng, tiếng Anh không lẫn chữ Việt',
      /#0142/.test(cb.vi) && /gạch/.test(cb.vi) && /#0142/.test(cb.en) && /cross it out/.test(cb.en) && !VIET.test(cb.en), JSON.stringify(cb));
+
+  // Câu báo và chuyển hướng sau khi sửa MỘT dòng (màn Nhận hàng) — trang chỉ gọi hàm này; so đúng chữ từng trường hợp.
+  const ks = co(NH, 'ketQuaSauSuaDong') ? NH.ketQuaSauSuaDong : () => ({ bao: { vi: 'thiếu hàm', en: '' }, them: 'thiếu hàm' });
+  const s1 = ks(142, false, { phienBan: 12 }, 3);   // tảng → món thường
+  const s2 = ks(null, true, { phienBan: 12 }, 3);   // món thường → tảng
+  const s3 = ks(142, true, { phienBan: 12 }, 3);    // tảng → tảng (sửa kg, ngày mổ, đổi món tảng)
+  const s4 = ks(null, false, { phienBan: 12 }, 3);  // món thường → món thường
+  ok('HỒI QUY: ketQuaSauSuaDong — tảng→thường: báo #0142 bỏ trống, không chuyển về ?vua',
+     s1.bao.vi === 'Đã sửa dòng. Số tảng #0142 bỏ trống — nếu đã viết lên túi thì gạch đi.'
+     && s1.bao.en === 'Line updated. Primal number #0142 is no longer used — if it is already on the bag, cross it out.' && s1.them === '',
+     JSON.stringify(s1));
+  ok('HỒI QUY: ketQuaSauSuaDong — thường→tảng: chuyển về ?vua=<dòng>&pb=<phiên bản của chính lần lưu>#them để hiện to số',
+     s2.bao.vi === 'Đã sửa dòng. Dòng này giờ là một tảng — viết số lên túi.'
+     && s2.bao.en === 'Line updated. This line is now a primal — write the number on the bag.' && s2.them === '?vua=3&pb=12#them',
+     JSON.stringify(s2));
+  ok('HỒI QUY: ketQuaSauSuaDong — tảng→tảng: "số tảng giữ nguyên #0142", không hiện to lại',
+     s3.bao.vi === 'Đã sửa dòng — số tảng giữ nguyên #0142.' && s3.bao.en === 'Line updated — the primal number stays #0142.' && s3.them === '',
+     JSON.stringify(s3));
+  ok('HỒI QUY: ketQuaSauSuaDong — thường→thường: chỉ "Đã sửa dòng.", không nhắc số tảng',
+     s4.bao.vi === 'Đã sửa dòng.' && s4.bao.en === 'Line updated.' && s4.them === '', JSON.stringify(s4));
+  const s5 = ks(null, true, {}, 3);
+  const s6 = ks(null, true, { phienBan: 12 }, -1);
+  ok('ketQuaSauSuaDong — thường→tảng mà không có phienBan, hoặc không tìm được dòng → không chuyển về ?vua (không hiện to số không chắc)',
+     s5.them === '' && s6.them === '' && s5.bao.vi === s2.bao.vi, JSON.stringify({ s5, s6 }));
+
+  // Tảng lưu trước 0097 (chưa có số): lần lưu đầu sau khi chạy 0097 cấp số cho mọi tảng đó — câu báo phải kể ra.
+  const chu = n => `#${String(n).padStart(4, '0')}`;
+  const P5 = await taoPhieu(UID.thuKhoA, [tang('T-THANLUNG', 6.1, mo.a)]);
+  const soP5 = (await dongCua(P5))[0].so_tang;
+  const chenChuaSo = (thuTu, kg) => db.query(`
+    insert into kho_phieu_nhap_dong (phieu_nhap_id, chi_nhanh_id, thu_tu, mat_hang_id, so_goi, so_kg, han_dung, ngay_mo)
+    values ($1, $2, $3, $4, 1, $5, ($6::date + 30), $7::date)`, [P5, cnA.id, thuTu, MH['T-THANLUNG'].id, kg, homNay, mo.b]);
+  await chenChuaSo(2, 5.8);
+  await chenChuaSo(3, 6.6);
+  const p5 = await NH.docPhieuNhan(tk, P5);
+  const g5 = maGui();
+  const f5 = new FormData();
+  f5.set('ma_gui', g5);
+  f5.append('anh_da_tai', `${cnA.id}/nhap/${g5}/1.jpg`);
+  const anh5 = await NH.themAnhNhan(tk, cnA.id, p5, p5.phien_ban, f5);
+  const moi5 = (await dongCua(P5)).slice(1).map(d => d.so_tang);
+  ok('HỒI QUY: thêm ảnh vào phiếu có tảng lưu trước 0097 (chưa số) → câu báo kể đủ số vừa cấp, vi/en, bảo viết lên túi; không kể số đã có',
+     p5.dong.filter(d => d.so_tang == null).length === 2 && anh5.ok && moi5.length === 2 && moi5.every(n => n > 0)
+     && moi5.every(n => anh5.cau.includes(chu(n)) && (anh5.cauEn ?? '').includes(chu(n)))
+     && !anh5.cau.includes(chu(soP5)) && /lên túi/.test(anh5.cau) && /on (its|the) bag/.test(anh5.cauEn ?? '') && !VIET.test(anh5.cauEn ?? ''),
+     JSON.stringify({ anh5, moi5 }));
+
+  await chenChuaSo(4, 5.2);
+  const p5b = await NH.docPhieuNhan(tk, P5);
+  const kq5 = await NH.themDongNhan(tk, cnA.id, p5b, p5b.phien_ban, maGui(), { ...tang('T-THANLUNG', 5.5, mo.a), so_goi: 1, so_lo_ncc: null,
+    ngay_san_xuat: null, han_dung: null, truong_them: {} });
+  const d5 = await dongCua(P5);
+  const sau5 = await NH.docPhieuNhan(tk, P5);
+  ok('themDongNhan trên phiếu có tảng chưa số → câu báo kể số tảng cũ vừa cấp; KHÔNG kể số tảng vừa thêm (số đó hiện to riêng)',
+     kq5.ok && d5.length === 5 && kq5.cau.includes(chu(d5[3].so_tang)) && (kq5.cauEn ?? '').includes(chu(d5[3].so_tang))
+     && !kq5.cau.includes(chu(d5[4].so_tang)) && !kq5.cau.includes(chu(moi5[0]))
+     && NH.soTangVuaThem(sau5, String(p5b.dong.length), String(kq5.phienBan)) === d5[4].so_tang, JSON.stringify({ kq5, d5 }));
+  const s7 = ks(null, false, { phienBan: 12, tangVuaCoSo: [201, 202] }, 0);
+  ok('ketQuaSauSuaDong nối câu "tảng cũ vừa có số" khi lần lưu cấp số cho tảng cũ', /^Đã sửa dòng\. .*#0201, #0202/.test(s7.bao.vi)
+     && /#0201, #0202/.test(s7.bao.en) && !VIET.test(s7.bao.en), JSON.stringify(s7));
+
+  // Không có tảng chưa số → luuPhieuNhan không đọc lại phiếu (client giả: lần gọi thứ hai ném lỗi).
+  const luuRoiMat = { async rpc(ten) {
+    if (ten === 'kho_luu_phieu_nhap_kg') return { data: [{ phieu_id: P5, phien_ban_moi: 77 }], error: null };
+    throw new TypeError('fetch failed');
+  } };
+  const coSo = { ...sau5, dong: sau5.dong.filter(d => d.so_tang != null) };
+  const chuaSo = { ...sau5, dong: [...coSo.dong, { ...sau5.dong[0], id: U(8), so_tang: null }] };
+  const l1 = await NH.luuPhieuNhan(luuRoiMat, cnA.id, coSo, 76, maGui(), coSo.dong.map(NH.dongLuuTuPhieu));
+  const l2 = await NH.luuPhieuNhan(luuRoiMat, cnA.id, chuaSo, 76, maGui(), chuaSo.dong.map(NH.dongLuuTuPhieu));
+  ok('luuPhieuNhan: mọi tảng đã có số → không đọc lại phiếu, không thêm câu; có tảng chưa số mà đọc lại mất mạng → vẫn báo đã lưu (database đã xác nhận), tangVuaCoSo = [] (câu "có thể vừa được cấp số")',
+     l1.ok && l1.phienBan === 77 && l1.tangVuaCoSo === undefined
+     && l2.ok && l2.phienBan === 77 && Array.isArray(l2.tangVuaCoSo) && l2.tangVuaCoSo.length === 0,
+     JSON.stringify({ l1, l2 }));
+  const cg = co(NH, 'cauTangVuaCoSo') ? NH.cauTangVuaCoSo([]) : { vi: '', en: '' };
+  ok('cauTangVuaCoSo([]) (không đọc lại được): câu "có thể vừa được cấp số — tải lại trang" vi/en, không khẳng định số nào',
+     /có thể/.test(cg.vi) && /tải lại trang/.test(cg.vi) && /may have/.test(cg.en) && /reload/.test(cg.en) && !/#\d/.test(cg.vi) && !VIET.test(cg.en),
+     JSON.stringify(cg));
+  const sm = co(NH, 'soTangMoiCap') ? NH.soTangMoiCap : () => 'thiếu hàm';
+  const tr = [{ so_tang: 5 }, { so_tang: null }, { so_tang: null }];
+  ok('soTangMoiCap: số có sau mà trước không có, trừ dòng vừa thêm / vừa sửa; bỏ dòng tảng chưa số → rỗng',
+     JSON.stringify(sm(tr, [{ so_tang: 5 }, { so_tang: 9 }, { so_tang: 10 }, { so_tang: 11 }], 3)) === '[9,10]'
+     && JSON.stringify(sm(tr, [{ so_tang: 5 }, { so_tang: null }], undefined)) === '[]'
+     && JSON.stringify(sm(tr, [{ so_tang: 5 }], null)) === '[]');
 });
 
 // ===========================================================================
@@ -428,13 +515,31 @@ await nhom('5 · BẤM HAI LẦN, GỬI LẠI', async () => {
   ok('themDongNhan bấm đúp → lần sau "có thể đã thêm từ lần bấm trước", không cấp số thứ hai',
      k1.ok && typeof k1.phienBan === 'number' && k2.ok && await soCuoi() === s1 + 1 && lai.dong.length === 2
      && /lần bấm trước/.test(k2.cau) && /lần bấm trước|first time/.test(k2.cauEn ?? ''), JSON.stringify({ k1, k2 }));
-  ok('Hai máy cùng món, cùng kg, cùng ngày mổ → máy sau KHÔNG được trang hiện to số (không phienBan), câu bảo đối chiếu',
-     k2.phienBan === undefined && /[Đđ]ối chiếu/.test(k2.cau) && (!co(NH, 'soTangVuaThem') || NH.soTangVuaThem(lai, String(p.dong.length), String(k2.phienBan ?? '')) === null),
+  ok('Bấm đúp cùng tài khoản → nhánh "lần bấm trước" không có phienBan (trang không hiện to số), câu chỉ số ở dòng cuối danh sách',
+     k2.phienBan === undefined && /dòng cuối/.test(k2.cau) && /last line/.test(k2.cauEn ?? '') && !VIET.test(k2.cauEn ?? '')
+     && (!co(NH, 'soTangVuaThem') || NH.soTangVuaThem(lai, String(p.dong.length), String(k2.phienBan ?? '')) === null),
      JSON.stringify(k2));
   const k3 = await NH.themDongNhan(tk, cnA.id, p, p.phien_ban, maGui(), { ...moi, ngay_mo: mo.b });
   const k4 = await NH.themDongNhan(tk, cnA.id, p, p.phien_ban, maGui(), { ...moi, so_kg_thuc: 5.6 });
   ok('Dòng của máy khác cùng món, cùng kg nhưng khác ngày mổ (hay khác kg sau repack) → không bị nhận là lần bấm trước',
      !k3.ok && !k4.ok && /máy khác/.test(k3.cau) && await soCuoi() === s1 + 1, JSON.stringify({ k3, k4 }));
+
+  // Hai tài khoản cùng cân một phiếu: quản lý thêm một tảng trước; thủ kho cân một tảng KHÁC giống hệt (món, kg,
+  // ngày mổ) rồi bấm với phiếu đọc từ trước. Dòng cuối là của quản lý — thủ kho không được báo "đã thêm".
+  const ql = clientCua(UID.qlA);
+  const P7 = await taoPhieu(UID.thuKhoA, [tang('T-THANLUNG', 6, mo.a)]);
+  const p7 = await NH.docPhieuNhan(tk, P7);
+  const kQl = await NH.themDongNhan(ql, cnA.id, await NH.docPhieuNhan(ql, P7), p7.phien_ban, maGui(), moi);
+  const s7 = await soCuoi();
+  const kTk = await NH.themDongNhan(tk, cnA.id, p7, p7.phien_ban, maGui(), moi);
+  ok('HỒI QUY: hai tài khoản thêm hai tảng giống hệt (món, kg, ngày mổ) → tài khoản sau nhận ok false (máy khác), không phienBan, không cấp số',
+     kQl.ok && !kTk.ok && kTk.phienBan === undefined && /máy khác/.test(kTk.cau) && await soCuoi() === s7 && (await dongCua(P7)).length === 2,
+     JSON.stringify({ kQl, kTk }));
+  const d7tk = (await docKg(UID.thuKhoA, P7)).rows?.[0]?.p?.dong ?? [];
+  const d7ql = (await docKg(UID.qlA, P7)).rows?.[0]?.p?.dong ?? [];
+  ok('kho_doc_phieu_nhap_kg: so_tang_toi_cap theo người đọc (thủ kho: dòng 1 có, dòng 2 không; quản lý ngược lại)',
+     d7tk.map(d => d.so_tang_toi_cap).join() === 'true,false' && d7ql.map(d => d.so_tang_toi_cap).join() === 'false,true',
+     JSON.stringify({ d7tk: d7tk.map(d => d.so_tang_toi_cap), d7ql: d7ql.map(d => d.so_tang_toi_cap) }));
 });
 
 // ===========================================================================
@@ -560,6 +665,19 @@ await nhom('7 · QUYỀN', async () => {
   ok('Nhân sự đã nghỉ, tài khoản không có nhan_su (duoi(null)), NV quầy, kế toán: không lưu được dòng tảng, không tốn số',
      hong.length === 0 && await soCuoi() === s0, hong.join(' | '));
 
+  // Người duyệt (kế toán: duyet_nhap, không nhap) phải thấy số tảng đã bỏ của phiếu — chỗ kiểm soát Khánh cần.
+  const ktDoc = await docKg(UID.keToanA, P1);
+  ok('HỒI QUY: kế toán đọc được kho_doc_phieu_nhap_kg của phiếu chi nhánh mình — so_tang_bo của P1 là [2, 4]',
+     !ktDoc.loi && JSON.stringify(ktDoc.rows?.[0]?.p?.so_tang_bo) === '[2,4]', ktDoc.loi ?? JSON.stringify(ktDoc.rows?.[0]?.p?.so_tang_bo));
+  const tuChoi = [];
+  for (const [ten, uid] of [['NV quầy', UID.nvQuayA], ['Thu ngân', UID.thuNganA], ['Marketing', UID.mktA],
+                            ['Nhân sự đã nghỉ', UID.nghiViec], ['Tài khoản không có nhan_su', null], ['Quản lý chi nhánh B', UID.qlB]]) {
+    const r = await docKg(uid, P1);
+    if (!/Không tìm thấy phiếu nhập, hoặc tài khoản không được xem/.test(r.loi ?? '')) tuChoi.push(`${ten}: ${r.loi ?? 'đọc được'}`);
+  }
+  ok('Không nhận hàng cũng không duyệt (NV quầy, thu ngân, marketing), nhân sự đã nghỉ, không có nhan_su, quản lý chi nhánh khác: vẫn bị từ chối',
+     tuChoi.length === 0, tuChoi.join(' | '));
+
   const hongBang = [];
   for (const [ten, uid] of [['Chủ', UID.chu], ['Quản lý', UID.qlA], ['Thủ kho', UID.thuKhoA], ['Kế toán', UID.keToanA]]) {
     const doc1 = await duoi(uid, `select count(*)::int as n from kho_so_tang_cap`);
@@ -661,13 +779,33 @@ await nhom('10 · TRANG, CÂU CHỮ, MẤT MẠNG', async () => {
      && /vietLenTui: \{ vi: 'Viết số này lên túi[^']*', en: 'Write this number on the bag[^']*' \}/.test(nh) && /t\.vietLenTui/.test(nh));
   ok('Chuyển hướng sau thêm tảng giữ ?tiep=…&mo= và thêm vua, pb (chỉ khi chính lần lưu trả phienBan)',
      /\?tiep=\$\{r\.luu\.mat_hang_id\}&mo=/.test(nh) && /&vua=\$\{p\.dong\.length\}&pb=\$\{kq\.phienBan\}/.test(nh) && /kq\.phienBan/.test(nh));
-  ok('Bỏ dòng tảng, sửa dòng tảng sang món thường: câu báo dùng cauSoTangBo; dưới "Hàng đã cân" có số tảng đã bỏ',
-     (nh.match(/cauSoTangBo\(/g) ?? []).length >= 2 && /so_tang_bo/.test(nh) && /soTangBo:/.test(nh));
+  ok('Bỏ dòng tảng: câu báo dùng cauSoTangBo; sửa dòng: câu báo và chuyển hướng lấy từ ketQuaSauSuaDong (kiểm bốn trường hợp ở nhóm 3b); dưới "Hàng đã cân" có số tảng đã bỏ',
+     /cauSoTangBo\(dongBo\.so_tang\)/.test(nh) && /ketQuaSauSuaDong\(cu\?\.so_tang, !!mon\.get\(r\.luu\.mat_hang_id\)\?\.theo_tang, kq, /.test(nh)
+     && /so_tang_bo/.test(nh) && /soTangBo:/.test(nh));
+  ok('Màn nhận hàng: bỏ dòng, sửa đầu phiếu nối câu "tảng cũ vừa có số" (noiCauTangMoi)', (nh.match(/noiCauTangMoi\(/g) ?? []).length >= 2);
   ok('Màn nhận hàng chỉ dùng lớp có sẵn (.nb-bao.xong role="status"), không mã màu mới', /class="nb-bao xong nh-so-tang" role="status"/.test(nh)
      && !/#[0-9a-fA-F]{3,6}\b/.test(nh.slice(nh.indexOf('<style>'))));
   const nhap = doc('web/src/pages/noi-bo/kho/nhap/[id].astro');
   ok('Phiếu nhập đầy đủ: ô ẩn d${i}_so_tang, bản in lấy d.so_tang khi chưa có lô',
      /type="hidden" name=\{`d\$\{i\}_so_tang`\}/.test(nhap) && /chuTang\(d\.lo_id \? soTang\.get\(d\.lo_id\) \?\? d\.so_tang : d\.so_tang, nn\)/.test(nhap));
+  ok('HỒI QUY: màn duyệt / phiếu nhập (nhap/[id].astro) đọc docSoTangBo và hiện "Số tảng đã bỏ" vi/en ngay dưới dòng trạng thái (mọi chế độ, cả bản in); đọc lỗi thì báo',
+     /docSoTangBo\(k\.client, phieu\.id\)/.test(nhap) && /\{t\.soTangBo\(/.test(nhap)
+     && /soTangBo: \{\s*vi: \(ds: string\) => `Số tảng đã bỏ trên phiếu này: \$\{ds\}[^`]*`,\s*en: \(ds: string\) => `Primal numbers dropped on this receipt: \$\{ds\}[^`]*`/.test(nhap)
+     && /khongDocSoTangBo: \{ vi: '[^']+', en: '[^']+' \}/.test(nhap));
+
+  // Web màn duyệt: kế toán đọc số tảng đã bỏ bằng chính hàm của web, trên database thật; mất mạng thì ném (trang báo), không trả rỗng.
+  const boKt = co(NHAP, 'docSoTangBo') ? await NHAP.docSoTangBo(clientCua(UID.keToanA), P1).catch(e => `ném: ${e?.message ?? e}`) : 'thiếu hàm';
+  const boLoi = [];
+  for (const [ten, c] of Object.entries({
+    'trả 500': { rpc: async () => ({ data: null, error: { message: 'Internal Server Error', code: '500' } }) },
+    'ném lỗi fetch': { rpc: async () => { throw new TypeError('fetch failed'); } },
+  })) {
+    const r = co(NHAP, 'docSoTangBo') ? await NHAP.docSoTangBo(c, P1).then(x => ({ tra: x }), e => ({ nem: String(e?.message ?? e) })) : { tra: [] };
+    if (!('nem' in r)) boLoi.push(`${ten}: ${JSON.stringify(r)}`);
+  }
+  const boLa = co(NHAP, 'docSoTangBo') ? await NHAP.docSoTangBo({ rpc: async () => ({ data: { id: P1 }, error: null }) }, P1) : 'thiếu hàm';
+  ok('docSoTangBo: kế toán đọc P1 → [2, 4]; database trả 500 / mất mạng → ném lỗi; dữ liệu thiếu so_tang_bo → null (không giả là rỗng)',
+     JSON.stringify(boKt) === '[2,4]' && boLoi.length === 0 && boLa === null, `${JSON.stringify(boKt)} | ${boLoi.join(' | ')} | ${JSON.stringify(boLa)}`);
   const m = MUC_HUONG_DAN.find(x => x.id === 'theo-tang');
   const vi = m?.buoc.map(b => b.vi).join(' | ') ?? '';
   const en = m?.buoc.map(b => b.en).join(' | ') ?? '';

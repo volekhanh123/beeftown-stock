@@ -211,6 +211,19 @@ export async function docPhieuNhap(
   };
 }
 
+/**
+ * Số tảng đã cấp cho phiếu mà không dùng nữa (0097: dòng bị bỏ, đổi sang món thường, phiếu đã hủy) — để
+ * người duyệt thấy: túi nào còn ghi số này thì không có lô nào. Sổ kho_so_tang_cap không ai đọc thẳng được;
+ * đọc qua kho_doc_phieu_nhap_kg (quyền nhap hoặc duyet_nhap, hàm không trả tiền). Lỗi, mất mạng → ném
+ * (trang báo không đọc được); dữ liệu không có so_tang_bo → null. Không bao giờ giả là "không có số nào bỏ".
+ */
+export async function docSoTangBo(client: SupabaseClient, id: string): Promise<number[] | null> {
+  const { data, error } = await client.rpc('kho_doc_phieu_nhap_kg', { p_id: id });
+  if (error) throw error;
+  const bo = data && typeof data === 'object' ? (data as { so_tang_bo?: unknown }).so_tang_bo : undefined;
+  return Array.isArray(bo) ? bo.map(Number) : null;
+}
+
 // -----------------------------------------------------------------------------
 // FORM → DỮ LIỆU
 // -----------------------------------------------------------------------------
