@@ -483,7 +483,7 @@ export const TRANG_THAI_CHUNG_TU_NB: Record<string, [HaiThuTieng, string]> = {
   da_ghi: [{ vi: 'Đã ghi', en: 'Recorded' }, 'song'],
   dang_dem: [{ vi: 'Đang đếm', en: 'Counting' }, 'nhap'],
   // Phiếu chuyển ra quầy khi quầy phải bấm nhận (0032)
-  dang_chuyen: [{ vi: 'Đang mang ra', en: 'On the way' }, 'cho'],
+  dang_chuyen: [{ vi: 'Đang mang ra', en: 'On the way' }, 'nhap'],
   da_nhan: [{ vi: 'Quầy đã nhận', en: 'Received at counter' }, 'song'],
   nhan_thieu: [{ vi: 'Nhận thiếu', en: 'Received short' }, 'cho'],
   da_tra_ve: [{ vi: 'Đã trả về kho', en: 'Returned to store' }, 'tat'],

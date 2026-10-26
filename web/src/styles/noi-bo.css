@@ -85,11 +85,12 @@
   display: flex; align-items: center; justify-content: space-between; gap: 1rem;
 }
 /* Logo phụ trắng (chu-beeftown-trang.svg, Brand Guidelines 21/10/2026) trên đầu trang đen — logo là hình,
-   không gõ lại chữ BEEFTOWN bằng phông. Rộng 120px (cao 16,9px); chữ "nội bộ" trắng cạnh logo. */
+   không gõ lại chữ BEEFTOWN bằng phông. Rộng 148px (cao 21px), cỡ tối thiểu như đầu trang công khai; chữ "nội bộ"
+   trắng cạnh logo (điện thoại: dưới logo). */
 .nb-hieu {
   text-decoration: none; display: flex; align-items: center; gap: .6rem;
 }
-.nb-hieu img { width: 120px; height: auto; flex-shrink: 0; }
+.nb-hieu img { width: 148px; height: auto; flex-shrink: 0; }
 .nb-hieu span {
   font-weight: 600; font-size: .7rem; letter-spacing: .14em;
   text-transform: uppercase; color: var(--kem);

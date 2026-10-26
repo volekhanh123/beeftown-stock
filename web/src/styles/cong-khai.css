@@ -438,6 +438,16 @@ html:has(body.ck) {
 @media print {
   .ck .dau-trang, .ck .menu-gon, .ck .doi-ngon-ngu { display: none !important; }
   .ck :is(.be-toi, .be-do) { background: #fff; color: #000; }
+  /* Giấy trắng: dải đen / đỏ in như một bề mặt sáng — đặt lại đủ biến chữ, không thì chữ trắng của dải (nhóm bò
+     của "Bò tại quầy", dòng chân trang, chữ phụ #E2E2E2) in trắng trên giấy trắng. */
+  .ck :is(.be-toi, .be-do) {
+    --nen: var(--kem); --chu-chinh: var(--than); --chu-phu: var(--muc-nhat);
+    --nhan: var(--do); --nhan-nho: var(--do-sau); --vien: var(--vach);
+    --nut-nen: var(--do); --nut-chu: var(--kem);
+    --nut-phu-nen: var(--kem); --nut-phu-chu: var(--do);
+  }
+  /* Logo trắng của dải đen in thành bản đen: cùng hình, đầu bò khoét lộ giấy trắng — đúng logo-ngang-den của guideline. */
+  .ck :is(.be-toi, .be-do) img[src$="-trang.svg"] { filter: brightness(0); }
 }
 
 /* --- Đầu trang con (Thực đơn, Đến Beeftown, Hỏi bàn) ---------------------- */

@@ -167,8 +167,8 @@ export interface DongGuiDat {
 /** Trạng thái đơn → [nhãn hai thứ tiếng, lớp CSS của nb-nhan]. */
 export const TRANG_THAI_DON_NB: Record<TrangThaiDon, [HaiThuTieng, string]> = {
   nhap: [{ vi: 'Nháp', en: 'Draft' }, 'nhap'],
-  da_gui: [{ vi: 'Đã gửi, chờ hàng', en: 'Sent, awaiting goods' }, 'cho'],
-  nhan_mot_phan: [{ vi: 'Nhận một phần', en: 'Partly received' }, 'cho'],
+  da_gui: [{ vi: 'Đã gửi, chờ hàng', en: 'Sent, awaiting goods' }, 'nhap'],
+  nhan_mot_phan: [{ vi: 'Nhận một phần', en: 'Partly received' }, 'nhap'],
   da_nhan: [{ vi: 'Đã nhận đủ', en: 'Fully received' }, 'song'],
   huy: [{ vi: 'Đã hủy', en: 'Cancelled' }, 'tat'],
 };

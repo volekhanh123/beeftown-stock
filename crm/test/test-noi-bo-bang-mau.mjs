@@ -587,6 +587,16 @@ await nhom('6 · theme-color, MANIFEST CỦA KHO, TRANG BÁO QUÁ TẢI', async 
      /body\s*\{[^}]*background:\s*#FFFFFF;\s*color:\s*#000000/i.test(kieu) && /background:\s*#BD0000;\s*color:\s*#FFFFFF/i.test(kieu), hex.join(' '));
   ok('qua-tai.ts: không mã màu nào ngoài bốn màu đó; chữ phụ là #555555',
      hex.length > 0 && hex.every(h => ['#FFFFFF', '#000000', '#BD0000', '#555555'].includes(h)) && /\.phu\s*\{\s*color:\s*#555555/i.test(kieu), hex.join(' '));
+
+  // Logo ở đầu trang đen của /noi-bo và kho theo cỡ tối thiểu của THUONG-HIEU.md mục 0 (luật giữ từ bộ 09/10/2026):
+  // logo phụ chu-beeftown-trang ≥ 148px như đầu trang công khai, brandmark dau-bo-trang ≥ 48px.
+  const rongCua = (tep, chon) => Number(boChuThich(doc(join(SRC, 'styles', tep)))
+    .match(new RegExp(`${chon.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{[^}]*?\\bwidth:\\s*(\\d+(?:\\.\\d+)?)px`))?.[1] ?? 0);
+  const [rongNoiBo, rongKho] = [rongCua('noi-bo.css', '.nb-hieu img'), rongCua('kho-khung.css', '.kho-hieu img')];
+  ok(`noi-bo.css: logo phụ ở đầu trang /noi-bo rộng ≥ 148px (đang ${rongNoiBo}px)`, rongNoiBo >= 148
+     && /<img src="\/thuong-hieu\/chu-beeftown-trang\.svg"/.test(doc(join(SRC, 'layouts', 'NoiBo.astro'))));
+  ok(`kho-khung.css: brandmark ở đầu trang kho rộng ≥ 48px (đang ${rongKho}px)`, rongKho >= 48
+     && /<img src="\/thuong-hieu\/dau-bo-trang\.svg"/.test(doc(join(SRC, 'layouts', 'Kho.astro'))));
 });
 
 // ===========================================================================

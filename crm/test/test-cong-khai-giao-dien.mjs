@@ -658,6 +658,15 @@ await nhom('7 · THÀNH PHẦN VÀ KHUNG TRANG: MÃ MÀU CHỈ CỦA BẢNG 22/1
   const inRa = boChuThich(readFileSync(join(SRC, 'styles', 'cong-khai.css'), 'utf8'));
   const ngoaiIn = inRa.replace(/@media print\s*\{(?:[^{}]|\{[^{}]*\})*\}/g, '');
   ok('cong-khai.css: #fff và #000 chỉ nằm trong khối @media print', !/#(?:fff|000)\b/i.test(ngoaiIn) && /@media print/.test(inRa));
+  // Bản in: dải đen / đỏ in trên giấy trắng — chữ của dải đọc biến bề mặt (--chu-chinh trắng, --chu-phu #E2E2E2,
+  // --nhan trắng), nên khối in phải đặt lại các biến đó về chữ tối, và logo trắng in thành bản đen.
+  const khoiIn = inRa.match(/@media print\s*\{((?:[^{}]|\{[^{}]*\})*)\}/)?.[1] ?? '';
+  const bienIn = [...khoiIn.matchAll(/:is\(\.be-toi, \.be-do\)\s*\{([^}]*)\}/g)].map(m => m[1]).join(';');
+  ok('cong-khai.css @media print: dải .be-toi / .be-do đặt lại --chu-chinh (đen), --chu-phu, --nhan, --nhan-nho về màu đọc được trên giấy trắng',
+     /--chu-chinh:\s*var\(--than\)/.test(bienIn) && /--chu-phu:\s*var\(--muc-nhat\)/.test(bienIn)
+       && /--nhan:\s*var\(--do\)/.test(bienIn) && /--nhan-nho:\s*var\(--do-sau\)/.test(bienIn), bienIn.replace(/\s+/g, ' ').trim());
+  ok('cong-khai.css @media print: logo trắng (*-trang.svg) của dải đen in thành bản đen (filter: brightness(0))',
+     /:is\(\.be-toi, \.be-do\) img\[src\$="-trang\.svg"\]\s*\{\s*filter:\s*brightness\(0\)/.test(khoiIn));
   const nenO = inRa.match(/input\[type='text'\][^{]*\{([^}]*)\}/)?.[1] ?? '';
   ok('cong-khai.css: ô nhập nền trắng var(--kem), viền var(--vien-o), chữ 16px, cao tối thiểu 48px',
      /background:\s*var\(--kem\)/.test(nenO) && /border:\s*1px solid var\(--vien-o\)/.test(nenO)

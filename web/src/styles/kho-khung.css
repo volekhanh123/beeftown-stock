@@ -65,7 +65,8 @@
 .kho-hieu {
   display: flex; align-items: center; gap: .6rem; text-decoration: none; min-width: 0; margin-right: auto;
 }
-.kho-hieu img { flex-shrink: 0; width: 32px; height: auto; }
+/* Brandmark rộng 48px (cỡ tối thiểu của brandmark, THUONG-HIEU.md mục 0) trong thanh cao 56px. */
+.kho-hieu img { flex-shrink: 0; width: 48px; height: auto; }
 .kho-hieu span {
   font-weight: 800; font-size: 1.05rem; letter-spacing: .02em; line-height: 1.1;
   display: flex; flex-direction: column; min-width: 0;

@@ -23,7 +23,7 @@
 // trang xô lệch lúc logo tải xong (kiểm thử trình duyệt bắt). Khoảng trống quanh logo theo guideline do CSS lo.
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -46,9 +46,14 @@ const MAU_PDF = { 'rgb(74.118042%, 0%, 0%)': 'do', 'rgb(100%, 100%, 100%)': 'tra
 
 function docTrang(soTrang) {
   const thuMuc = mkdtempSync(join(tmpdir(), 'tach-logo-'));
-  const ra = join(thuMuc, `trang-${soTrang}.svg`);
-  execFileSync('pdftocairo', ['-svg', '-f', String(soTrang), '-l', String(soTrang), pdf, ra]);
-  const svg = readFileSync(ra, 'utf8');
+  let svg;
+  try {
+    const ra = join(thuMuc, `trang-${soTrang}.svg`);
+    execFileSync('pdftocairo', ['-svg', '-f', String(soTrang), '-l', String(soTrang), pdf, ra]);
+    svg = readFileSync(ra, 'utf8');
+  } finally {
+    rmSync(thuMuc, { recursive: true, force: true });
+  }
   const than = svg.slice(svg.indexOf('</defs>') + 7);
   const cacPath = [];
   for (const m of than.matchAll(/<path [^>]*?fill="(rgb\([^)]*\))"[^>]*?d="([^"]+)"/g)) {

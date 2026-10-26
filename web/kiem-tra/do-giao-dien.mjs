@@ -228,14 +228,24 @@ export function doGiaoDien() {
       if (d ? (d.a > 0 && !BANG.has(bo(d))) : true) ghiNenLa(`${m} (trong background-image)`, noi);
     }
   };
+  // Nền hay mặt nạ trỏ /thuong-hieu/ (hình của bộ cũ đặt bằng CSS) gom ngay trong vòng này — mục 15 đọc lại, khỏi
+  // duyệt cả trang và gọi getComputedStyle thêm một lượt.
+  const nenTroThuongHieu = [];
+  const xetThuongHieu = (cs, noi) => {
+    const trong = `${cs.backgroundImage} ${cs.maskImage ?? ''} ${cs.webkitMaskImage ?? ''}`;
+    if (/\/thuong-hieu\//.test(trong)) nenTroThuongHieu.push(`${noi.slice(0, 50)}: nền / mặt nạ trỏ ${trong.match(/\/thuong-hieu\/[^"')]+/)?.[0]}`);
+  };
   for (const el of [document.documentElement, document.body, ...document.body.querySelectorAll('*')]) {
     if (el !== document.documentElement && !hien(el)) continue;
-    xetNen(getComputedStyle(el), moTa(el));
+    const cs = getComputedStyle(el);
+    xetNen(cs, moTa(el));
+    xetThuongHieu(cs, moTa(el));
     for (const gia of ['::before', '::after']) {
       const csGia = getComputedStyle(el, gia);
       // content none / normal: phần tử giả không được sinh ra.
       if (csGia.content === 'none' || csGia.content === 'normal' || csGia.display === 'none') continue;
       xetNen(csGia, `${moTa(el)}${gia}`);
+      xetThuongHieu(csGia, `${moTa(el)}${gia}`);
     }
     if (el.matches('input[type="file"]')) xetNen(getComputedStyle(el, '::file-selector-button'), `${moTa(el)}::file-selector-button`);
   }
@@ -866,14 +876,8 @@ export function doGiaoDien() {
     if (k.width < toiThieu - 0.5) kq.logoDungNen.push(`${ten}: rộng ${k.width.toFixed(1)}px, cần ≥ ${toiThieu}px`);
   }
   for (const el of moi('.nen-van-mo, .net, .trang-tri, .net-goc, .hoa-van-chu')) kq.logoDungNen.push(`${moTa(el).slice(0, 50)}: lớp trang trí của bộ hình cũ`);
-  for (const el of [document.body, ...document.body.querySelectorAll('*')]) {
-    for (const gia of [null, '::before', '::after']) {
-      const cs = getComputedStyle(el, gia);
-      if (gia && (cs.content === 'none' || cs.content === 'normal')) continue;
-      const trong = `${cs.backgroundImage} ${cs.maskImage ?? ''} ${cs.webkitMaskImage ?? ''}`;
-      if (/\/thuong-hieu\//.test(trong)) kq.logoDungNen.push(`${moTa(el).slice(0, 50)}${gia ?? ''}: nền / mặt nạ trỏ ${trong.match(/\/thuong-hieu\/[^"')]+/)?.[0]}`);
-    }
-  }
+  // Nền / mặt nạ trỏ /thuong-hieu/: gom ở vòng duyệt của mục 4 (nenTroThuongHieu).
+  kq.logoDungNen.push(...nenTroThuongHieu);
 
   return kq;
 }

@@ -394,7 +394,8 @@ const tenNccTheoDoi = ncc.find(n => n.nha_cung_cap_id === nccTheoDoi)?.ten_nha_c
                 <tbody>
                   {phieu.ds.map(p => {
                     const lech = tienLech(p);
-                    const lopHan = hanLop(p.han_thanh_toan);
+                    // Nhãn có chữ nên chỉ cho phiếu còn nợ: phiếu đã trả hết mà ngày hạn đã qua không "Quá hạn" — chỉ in ngày.
+                    const lopHan = p.con_no > 0 ? hanLop(p.han_thanh_toan) : '';
                     return (
                       <tr>
                         <td>
@@ -408,7 +409,9 @@ const tenNccTheoDoi = ncc.find(n => n.nha_cung_cap_id === nccTheoDoi)?.ten_nha_c
                         <td class="so">{soTien(p.da_tra)}</td>
                         <td class="so">{p.giam_tru > 0 ? dinhDangTien(p.giam_tru, nn) : '—'}</td>
                         <td class="so"><strong>{soTien(p.con_no)}</strong></td>
-                        <td>{p.han_thanh_toan ? <span class={`kho-han ${lopHan}`}>{chuTinhTrangHan(lopHan, nn, 'thanh_toan')}{' · '}{dinhDangNgay(p.han_thanh_toan)}</span> : '—'}
+                        <td>{!p.han_thanh_toan ? '—'
+                          : lopHan ? <span class={`kho-han ${lopHan}`}>{chuTinhTrangHan(lopHan, nn, 'thanh_toan')}{' · '}{dinhDangNgay(p.han_thanh_toan)}</span>
+                          : <span class="kho-phu">{dinhDangNgay(p.han_thanh_toan)}</span>}
                           {p.qua_han ? <><br /><strong style="color:var(--do)">{t.quaNgay(p.so_ngay_qua_han)}</strong></>
                             : p.con_no > 0 && p.han_thanh_toan && p.han_thanh_toan <= tuanToi ? <><br /><span class="kho-phu">{conNgay(p.han_thanh_toan) === 0 ? t.hanHomNay : t.conNgay(conNgay(p.han_thanh_toan) ?? 0)}</span></> : null}</td>
                         <td>

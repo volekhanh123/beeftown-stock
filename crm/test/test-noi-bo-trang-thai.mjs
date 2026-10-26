@@ -116,6 +116,12 @@ await nhom('1 · NHÃN HẠN CÓ CHỮ (chuTinhTrangHan): HẠN DÙNG VÀ HẠN 
   ok(`Nhãn .kho-han lớp tĩnh (${tinh.length} chỗ: "Quá hạn N ngày", "Chưa có giá") có chữ riêng {t.…}`, tinh.length >= 2 && thieuTinh.length === 0, thieuTinh.join(' | '));
   const quet = doc(join(TRANG, 'kho', 'quet.astro'));
   ok('quet.astro dùng chuTinhTrangHan, không còn bảng chữ hạn riêng (TEN_HAN) — một chỗ cho ba câu', /chuTinhTrangHan\(/.test(quet) && !/TEN_HAN\b/.test(quet));
+  // Thẻ "Theo phiếu" của Công nợ: nhãn có CHỮ nên phải đúng sự thật — phiếu đã trả hết (con_no ≤ 0) mà ngày hạn đã
+  // qua không được in "! Quá hạn". Thẻ "Theo NCC" không cần: han_gan_nhat chỉ tính trên phiếu còn nợ (cong-no.ts).
+  const congNo = doc(join(TRANG, 'kho', 'cong-no', 'index.astro'));
+  const lopHanPhieu = congNo.match(/phieu\.ds\.map\(p => \{[\s\S]*?const lopHan = ([^;\n]+);/)?.[1] ?? '';
+  ok('Công nợ, thẻ Theo phiếu: nhãn tình trạng hạn chỉ cho phiếu còn nợ (lopHan xét p.con_no > 0) — phiếu đã trả hết không bị ghi "Quá hạn"',
+     /p\.con_no\s*>\s*0/.test(lopHanPhieu) && /hanLop\(p\.han_thanh_toan\)/.test(lopHanPhieu), lopHanPhieu || 'không thấy const lopHan trong phieu.ds.map');
 });
 
 // ===========================================================================
@@ -164,6 +170,15 @@ await nhom('2 · NHÃN ĐÚNG NGHĨA: THUỘC TÍNH LÀ .thong-tin, LƯU Ý LÀ 
   ok('Công nợ "Quá hạn N ngày" là .nb-nhan.cho (làm ngay) — không .tat (nét đứt "tắt")', coLop(quaHan, 'cho', ['tat']), quaHan);
   const dangChay = nhanChua(ma('kho/cai-dat/ipos.astro'), '{t.dangChayNhan}');
   ok('Kết nối iPOS "Đang chạy" là .nb-nhan.nhap (đang làm dở, K3) — không .tat', coLop(dangChay, 'nhap', ['tat']), dangChay);
+  // .nb-nhan.cho (K1) mang dấu "!" = làm ngay. Trạng thái đang làm dở — đơn đã gửi chờ hàng, nhận một phần, đang mang
+  // ra — không phải việc của người đang xem: K3 (.nhap), không "!". Hai mã cùng chữ "Đang mang ra" cùng một lớp.
+  const { TRANG_THAI_DON_NB } = await nap('kho/dat-hang.ts');
+  const { TRANG_THAI_CHUNG_TU_NB } = await nap('kho/chung.ts');
+  const dangLamDo = [['đơn đặt hàng da_gui "Đã gửi, chờ hàng"', TRANG_THAI_DON_NB.da_gui], ['đơn đặt hàng nhan_mot_phan "Nhận một phần"', TRANG_THAI_DON_NB.nhan_mot_phan],
+    ['phiếu chuyển dang_chuyen "Đang mang ra"', TRANG_THAI_CHUNG_TU_NB.dang_chuyen], ['yêu cầu quầy dang_lam "Đang mang ra"', TRANG_THAI_CHUNG_TU_NB.dang_lam]];
+  const saiLop = dangLamDo.filter(([, v]) => v?.[1] !== 'nhap').map(([ten, v]) => `${ten}: ${v?.[1]}`);
+  ok('Trạng thái đang làm dở (Đã gửi, chờ hàng · Nhận một phần · Đang mang ra) là .nhap (K3), không .cho (K1 "! làm ngay")',
+     saiLop.length === 0, saiLop.join(' | '));
   // Mẫu tự kiểm của bộ đọc nhãn.
   const mau = '<span class="nb-nhan song">{t.a}</span> <span class={`nb-nhan ${x ? \'cho\' : \'thong-tin\'}`} title={x <= y ? 1 : 2}>{t.b}</span>';
   ok('…bộ đọc nhãn lấy đúng thẻ mở bao quanh đoạn mã (kể cả class={`…`} có dấu <=)',

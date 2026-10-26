@@ -14,10 +14,10 @@ rà soát" *sau khi* tính năng đã gộp. Mục tiêu: chặn chúng *trướ
 | `mini-app/` | Mini App Zalo (React, zmp-cli): khách chọn khay thịt mang về, đơn mở sẵn trong chat Zalo OA. Không máy chủ, không database, `package.json` và lệnh đưa lên riêng | `mini-app/CLAUDE.md`, `mini-app/README.md` |
 
 Bảng màu thương hiệu đã chốt, giá trị đã áp dụng và thứ còn mang màu cũ (Beeftown Cân, ảnh hướng dẫn kho): `THUONG-HIEU.md`. Codex và các agent khác đọc `AGENTS.md` (cùng quy trình này).
-Ngày 22/10/2026 Khánh chốt bảng mới chỉ đỏ `#BD0000`, đen, trắng (`THUONG-HIEU.md` mục 0); ngày 25/10/2026 Khánh
-duyệt đổi và trả lời câu 1–3. Thiết kế mới ngoài `web/` (bản mẫu, ấn phẩm, Mini App) dùng bảng mới; `web/` và
-Beeftown Cân vẫn theo bảng đang chạy (kiểm thử canh bảng đó) tới PR đổi màu của danh sách ở mục 0 — màu chờ câu 4
-(nền trang công khai), logo chờ file SVG. Đừng đổi màu lẻ tẻ ngoài các PR đó.
+Bộ nhận diện 21/10/2026 (Brand Guidelines của designer) và bảng đỏ `#BD0000`, đen, trắng Khánh chốt 22/10/2026
+(`THUONG-HIEU.md` mục 0) đã áp cho cả `web/` — trang công khai nền trắng, `/noi-bo` và kho không màu trạng thái — cùng
+logo SVG tách từ PDF guideline (`web/public/thuong-hieu/`). Kiểm thử canh bảng mới. Còn nhận diện cũ: Beeftown Cân
+(PR riêng, việc 7) và ảnh hướng dẫn kho `hd-*.png` (việc 8). Đừng đổi màu lẻ tẻ ngoài các PR của danh sách ở mục 0.
 
 Quy ước chung:
 - Tên hàm, biến, chú thích, tài liệu viết **tiếng Việt không tắt**, giống mã đang có.
