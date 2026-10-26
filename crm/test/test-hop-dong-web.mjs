@@ -383,6 +383,8 @@ await nhom('5 · WEB KHÔNG GỌI HÀM NGOÀI DANH SÁCH CHO PHÉP', async () =>
     'nop_ho_so_ung_tuyen', 'xin_phieu_tai_cv', 'ghi_su_kien_web',
     // 0093: /mini-app/con-hang.json (lib/mini-app.ts) — chỉ trạng thái còn hàng, không số, không dữ liệu khách.
     'mini_app_con_hang',
+    // 0101: trang Mua thịt về (lib/mua-thit-ve.ts) — gói đang bán có giá chủ đã chốt, không mã nội bộ, không số tồn.
+    'mua_thit_ve_cong_khai',
   ];
 
   for (const g of goiRpc.filter(laAnon)) {

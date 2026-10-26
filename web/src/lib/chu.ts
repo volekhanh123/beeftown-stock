@@ -168,6 +168,8 @@ const VI = {
   dieuHuongChinh: 'Điều hướng chính',
   traiNghiem: 'Trải nghiệm',
   thucDon: 'Thực đơn',
+  // Trang Mua thịt về (PR 2): mục điều hướng chỉ có khi trang mở — muaThitVeMo (lib/dich-dat-hang.ts).
+  muaThitVe: 'Mua thịt về',
   denBeeftown: 'Đến Beeftown',
   moMenu: 'Danh mục',
   dongMenu: 'Đóng danh mục',
@@ -221,6 +223,16 @@ const VI = {
   moTaHoiBanChuaMo:
     'Beeftown, nhà hàng chuyên bò ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM, chưa mở hỏi bàn trực tuyến. ' +
     'Muốn hỏi bàn, bạn nhắn cho Beeftown qua Facebook.',
+
+  // --- Mua thịt về ----------------------------------------------------------
+  // Mô tả (meta description, og:description) của trang Mua thịt về — trang-cong-khai.ts moTaTrangMuaThit() chọn
+  // theo trạng thái trang (mở hay tạm hết ở quầy: câu mở). Câu "chưa mở" không hứa gửi đơn, không nhắc Zalo: trang
+  // ở trạng thái đó không có form, không có nút kênh. Câu mở nhắc gửi đơn qua Zalo — đích đặt hàng TẠM
+  // (lib/dich-dat-hang.ts): PR đổi sang Mini App xem lại câu này.
+  moTaMuaThit:
+    'Thịt bò của quầy Beeftown chia gói để mang về. Chọn gói trên web, gửi đơn qua Zalo; ' +
+    'quán xác nhận tổng tiền và giờ nhận.',
+  moTaMuaThitChuaMo: 'Beeftown chưa mở mua thịt về qua website.',
 
   // --- Trang không có (404, pages/404.astro) --------------------------------
   // Không đoán đường dẫn hỏng vì đâu, chỉ nói điều chắc chắn đúng.
@@ -293,6 +305,7 @@ const EN: Bo = {
   dieuHuongChinh: 'Main navigation',
   traiNghiem: 'Experience',
   thucDon: 'Menu',
+  muaThitVe: 'Take home',
   denBeeftown: 'Visit',
   moMenu: 'Pages',
   dongMenu: 'Close pages',
@@ -331,6 +344,11 @@ const EN: Bo = {
   moTaHoiBanChuaMo:
     'Beeftown, a beef specialty restaurant on Floor 3, 63 Hồ Tùng Mậu, Ho Chi Minh City, is not taking ' +
     'table requests online yet. To ask about a table, message Beeftown on Facebook.',
+
+  moTaMuaThit:
+    'Beef from the Beeftown counter in packs to take home. Choose your packs here and send the order on Zalo; ' +
+    'we confirm the total and the time.',
+  moTaMuaThitChuaMo: 'Take-home orders on the Beeftown website are not open yet.',
 
   khongCoTieuDeTrang: 'Page not found — Beeftown',
   khongCoTieuDe: 'This page does not exist',
@@ -393,6 +411,7 @@ const KO: Bo = {
   dieuHuongChinh: '주요 메뉴',
   traiNghiem: '이용 방법',
   thucDon: '메뉴',
+  muaThitVe: '포장 구매',
   denBeeftown: '오시는 길',
   moMenu: '바로가기',
   dongMenu: '바로가기 닫기',
@@ -431,6 +450,11 @@ const KO: Bo = {
   moTaHoiBanChuaMo:
     '호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점 Beeftown은 아직 온라인 테이블 문의를 받지 않아요. ' +
     '테이블 문의는 Facebook으로 Beeftown에 메시지를 보내 주세요.',
+
+  moTaMuaThit:
+    'Beeftown 매장의 소고기를 팩으로 포장해 가세요. 여기서 팩을 고르고 Zalo로 주문을 보내 주시면 ' +
+    '총액과 받으실 시간을 확인해 드려요.',
+  moTaMuaThitChuaMo: 'Beeftown 웹사이트의 포장 구매는 아직 열리지 않았어요.',
 
   khongCoTieuDeTrang: '페이지를 찾을 수 없어요 — Beeftown',
   khongCoTieuDe: '찾으시는 페이지가 없어요',
@@ -496,6 +520,7 @@ export function dich<B extends Record<string, BaThuTieng<unknown>>>(
 export const CAP_DUONG_DAN: ReadonlyArray<readonly [vi: string, en: string, ko: string]> = [
   ['/',               '/en',         '/ko'],
   ['/thuc-don',       '/en/menu',    '/ko/menu'],
+  ['/mua-thit-ve',    '/en/buy-meat', '/ko/buy-meat'],
   ['/den-beeftown',   '/en/visit',   '/ko/visit'],
   ['/tuyen-dung',     '/en/jobs',    '/ko/jobs'],
   ['/dat-ban',        '/en/book',    '/ko/book'],

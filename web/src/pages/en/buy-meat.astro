@@ -1,0 +1,16 @@
+---
+import Trang from '../../layouts/Trang.astro';
+import TrangMuaThitVe from '../../components/TrangMuaThitVe.astro';
+import { docNoiDung } from '../../lib/noi-dung';
+import { docMuaThitVe, trangThaiMuaThit } from '../../lib/mua-thit-ve';
+import { muaThitVeMo } from '../../lib/dich-dat-hang';
+import { moTaTrangMuaThit } from '../../lib/trang-cong-khai';
+
+const [noiDung, menu] = await Promise.all([docNoiDung('en'), docMuaThitVe('en')]);
+const trangThai = trangThaiMuaThit(muaThitVeMo(noiDung), menu);
+---
+<Trang ngonNgu="en" noiDung={noiDung} duongDan="/en/buy-meat" tieuDe="Beef to take home — Beeftown"
+       moTa={moTaTrangMuaThit('en', trangThai === 'mo' || trangThai === 'het_quay')}>
+  <TrangMuaThitVe ngonNgu="en" noiDung={noiDung} menu={menu} trangThai={trangThai}
+                  thamSo={[...Astro.url.searchParams]} duongDan="/en/buy-meat" />
+</Trang>

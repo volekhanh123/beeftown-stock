@@ -62,6 +62,19 @@
  *       rất dài, nhóm lạ chưa có câu, nhóm đồ uống dạng danh sách — không tràn, vẫn đạt mọi phép đo.
  *       day-du chỉ có ba ly signature (có cồn) ở phần Đồ uống: tên ba nhóm không cồn phải đứng đầu cột
  *       thực đơn, cạnh ảnh ba ly không cồn; có món không cồn thì không có danh sách đó.
+ *  12. Trang Mua thịt về (PR 2, migration 0101; kịch bản mua-thit-* của gia-supabase.mjs, menu thử MENU_THU — giá
+ *       THỬ). Mở (mua-thit-mo, vi/en/ko × 390, 1440 px): đủ gói đúng nhóm, mỗi gói đúng giá trong [data-tien], câu
+ *       "giá quán đã công bố" ở Nhận hàng, Đơn của bạn, hỏi đáp; không giá theo kg / 100 g; nhãn "Gói khoảng 200 g";
+ *       gói tạm hết có giá, không ô chọn; không giao hàng khi chưa công bố. Chọn gói (nút + đọc lên vùng
+ *       aria-live), tạm tính, đếm, tin đơn đúng từng dòng của taoTinDon (dòng giờ soạn lệch ≤ 2 phút); mọi số tiền
+ *       nằm trong [data-tien]; không chữ cấm ngoài số tiền đã chốt (chu-hien-ra.mjs). Chép đơn: "Đã chép" chỉ sau
+ *       khi lệnh chép xong; bị từ chối → câu chép tay, chữ được chọn hết; không có clipboard → không nút Chép. Nút
+ *       gửi là <a> tới đúng link Zalo OA đã công bố; dòng "Không dùng Zalo?" chỉ khi có hotline. Tắt JavaScript →
+ *       form GET dựng "Xem lại đơn" có cùng tin; số gói sai kiểu trên địa chỉ bị bỏ; Back và tải lại vẫn khớp. Bề rộng
+ *       320 → 1440 px, thanh dưới (390px) không che ô chọn, dừng trước "Xem lại đơn", không có khi xoay ngang;
+ *       1080 / 1279 px đầu trang đủ năm mục một hàng. mua-thit-giao, mua-thit-het-quay, mua-thit-loi / -dut / -treo
+ *       (trả lời trong 6 giây), và trạng thái chưa mở (rong, day-du, mua-thit-rong, -khong-zalo, -zalo-la, -lech):
+ *       không form, không giá, không mời nhắn, điều hướng bốn mục, mô tả "chưa mở". Đo "hiện" bằng isVisible().
  *
  * Hỏng thì ảnh chụp nằm ở kiem-tra/anh-loi/day-du/ (CI tải lên cùng artifact của
  * trinh-duyet.mjs).
@@ -74,8 +87,10 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setTimeout as cho } from 'node:timers/promises';
-import { batMayGia, LIEN_HE_THU, MON_MAU, MON_THU_SUC, DIA_CHI_CONG_BO_THU, NGAY_DA_MO_THU, TRANG_THAI_THU, ngaySapMoThu } from './gia-supabase.mjs';
+import { batMayGia, LIEN_HE_THU, MON_MAU, MON_THU_SUC, DIA_CHI_CONG_BO_THU, NGAY_DA_MO_THU, TRANG_THAI_THU, ngaySapMoThu,
+  ZALO_OA_THU, menuMuaThitVe } from './gia-supabase.mjs';
 import { timChuoiCam } from '../src/lib/chuoi-cam.js';
+import { chuHienRa, boTienDaChot } from './chu-hien-ra.mjs';
 import { doGiaoDien, PHEP_DO } from './do-giao-dien.mjs';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -93,6 +108,11 @@ const { NHAN_MON, CAU_NHOM } = await import(pathToFileURL(join(WEB, 'src', 'lib'
 const { ANH_CUA_MON, DANH_MUC_ANH } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'anh.ts')).href);
 const { congNgay, homNayVn } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'gio-vn.ts')).href);
 const { dinhDangNgay } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'noi-dung.ts')).href);
+// Trang Mua thịt về (nhóm 12): đơn và tin đơn mong đợi tính bằng chính lib của trang từ dữ liệu giả.
+const { nhomMuaThitVe, chiaNhom } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'mua-thit-ve.ts')).href);
+const { CHU_DON, dinhDangTien, gioSoanVn, khoaGoi, nhanGoi, taoTinDon, tinhDon } =
+  await import(pathToFileURL(join(WEB, 'src', 'lib', 'don-mua-thit.ts')).href);
+const { CHU_DICH } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'dich-dat-hang.ts')).href);
 
 /** Playwright của web/; máy không cài thì dùng bản cài chung của máy. */
 function napPlaywright() {
@@ -1237,6 +1257,637 @@ try {
     }
     for (const [rong, nn] of [[320, 'vi'], [360, 'vi'], [390, 'vi'], [768, 'vi'], [1024, 'vi'], [1440, 'vi'], [390, 'ko'], [1440, 'ko'], [390, 'en']]) {
       await thu({ kichBan: 'thuc-don-thu-suc', nn, rong, monMong: [...MON_MAU, ...MON_THU_SUC] });
+    }
+    mayGia.datKichBan('day-du');
+  });
+
+  // =========================================================================
+  // Trang Mua thịt về (PR 2, migration 0101) khi đã nối database. Supabase giả trả menu thử MENU_THU (giá THỬ) theo
+  // kịch bản mua-thit-*. Mọi chỗ "hiện / không hiện" đo bằng isVisible() / checkVisibility() — đọc thuộc tính hidden
+  // không đủ (display của .nut từng đè lên hidden). Đơn, tạm tính và tin đơn mong đợi tính bằng CHÍNH lib của trang
+  // (don-mua-thit.ts) từ dữ liệu giả; dòng "Soạn lúc" (giờ soạn) kiểm riêng bằng gioSoanVn. Câu chữ của component
+  // chép tay từ bản thiết kế PR 2 mục 3.3 (hợp đồng chữ) — sửa chữ ở component thì sửa ở đây cùng PR.
+  await nhom('12 · MUA THỊT VỀ: CHỌN GÓI, TẠM TÍNH, TIN ĐƠN, CHÉP ĐƠN, MỞ ZALO, TẮT JAVASCRIPT, MẤT MẠNG, BỀ RỘNG', async () => {
+    const ba = (vi, en, ko) => ({ vi, en, ko });
+    // Quyết định 1 (Khánh 26/10/2026): giá trên trang là giá quán đã công bố — câu đầu của c.giaCongBo và hỏi đáp 3.
+    const GIA_CONG_BO = ba('Giá từng gói là giá quán đã công bố.', "Each pack's price is the price we have published.", '팩별 가격은 매장에서 공지한 가격이에요.');
+    const TAM_HET = ba('Tạm hết ở quầy', 'Sold out at the counter for now', '지금은 매장에 재고가 없어요');
+    const LOI_H1 = ba('Chưa tải được danh sách gói', 'We could not load the packs right now', '지금은 팩 목록을 불러오지 못했어요');
+    const HET_QUAY = ba('Các gói đang tạm hết ở quầy.', 'Every pack is sold out at the counter for now.', '지금은 모든 팩이 매장에 재고가 없어요.');
+    const NHOM_TEN = { mat: ba('Thịt mát', 'Chilled beef', '냉장 소고기'), dong_lanh: ba('Thịt đông lạnh', 'Frozen beef', '냉동 소고기'), kim_chi: ba('Kim chi', 'Kimchi', '김치') };
+    // Quyết định 2: gói thịt ghi "khoảng"; số gam không dấu ngăn ở mọi thứ tiếng. Chép tay — không đọc nhanGoi.
+    const NHAN_THIT = ba(n => `Gói khoảng ${n} g`, n => `Pack of about ${n} g`, n => `약 ${n} g 팩`);
+    const NHAN_HOP = ba(n => `Hộp ${n} g`, n => `${n} g box`, n => `${n} g 통`);
+    const DEM_2_1 = ba('2 gói · 1 hộp', '2 packs · 1 box', '2팩 · 1통');
+    const DT_GIAO = ba('Giao tận nơi', 'Delivery', '배달');
+    const HOI_GIAO = ba('Giao tới đâu, phí bao nhiêu?', 'Where do you deliver, and what does it cost?', '어디까지 배달하고 배달비는 얼마인가요?');
+    // Trạng thái chưa mở không mời nhắn, không đưa kênh (ĐS-N4).
+    const MOI_NHAN = ba(/nhắn|zalo|gọi/i, /message|zalo|\bcall\b/i, /메시지|zalo|전화/i);
+    // Quyết định 3: không giá theo kg hay theo 100 g.
+    const GIA_THEO_CAN = /\/\s?kg\b|mỗi\s?kg|per\s?kg|kg\s?당|\b100\s?g\b/i;
+    const CHU_DA_XONG = /thành công|đã đặt|đã gửi|\bsuccess|성공/i;
+    const TIEN = /\d{1,3}(?:\.\d{3})+[  ]đ/g;
+    const motDong = s => (s ?? '').replace(/\s+/g, ' ').trim();
+    const boDongGio = tin => tin.split('\n').filter(d => !d.startsWith('Soạn lúc ')).join('\n');
+    const duongMua = nn => duongDanTuongUng('/mua-thit-ve', nn);
+    const menuCua = (kichBan, nn) => nhomMuaThitVe(menuMuaThitVe(kichBan, nn));
+    const chuDich = CHU_DICH.chep_tin_mo_chat_oa;
+    /** Dòng "Soạn lúc …" đúng dạng, lệch giờ Việt Nam lúc chạy không quá 2 phút. */
+    const gioSoanDung = tin => {
+      const dong = tin.split('\n').find(d => d.startsWith('Soạn lúc ')) ?? '';
+      const bay = Date.now();
+      const hopLe = new Set([-2, -1, 0, 1, 2].map(k => `Soạn lúc ${gioSoanVn(bay + k * 60000)} (giờ Việt Nam)`));
+      return /^Soạn lúc \d{2}:\d{2} ngày \d{2}\/\d{2}\/\d{4} \(giờ Việt Nam\)$/.test(dong) && hopLe.has(dong);
+    };
+    /** Dòng của "Đơn của bạn" mong đợi: chữ của CHU_DON và thành tiền, như component ghép. */
+    const dongMong = (don, nn) => don.dong.map(d =>
+      motDong(CHU_DON.dongDau[nn](d.sanPham.ten, nhanGoi(d.sanPham.donVi, d.goi.soGam, nn), d.soLuong) + dinhDangTien(d.thanhTien)));
+
+    /** Mở một trang trong context riêng: bề rộng, JavaScript, quyền, script chạy trước trang. */
+    const mo = async (duong, { rong = 390, cao, js = true, quyen = [], truoc = null } = {}) => {
+      const c = await trinhDuyet.newContext({ viewport: { width: rong, height: cao ?? (rong < 600 ? 844 : 900) }, javaScriptEnabled: js, permissions: quyen });
+      if (truoc) await c.addInitScript(truoc);
+      const p = await c.newPage();
+      const loiJs = [];
+      p.on('pageerror', e => loiJs.push(e.message));
+      p.on('console', m => { if (m.type() === 'error' && (m.location().url || goc).startsWith(goc)) loiJs.push(m.text()); });
+      const batDau = Date.now();
+      const r = await p.goto(goc + duong, { waitUntil: 'load', timeout: 60000 });
+      return { c, p, r, loiJs, thoiGian: Date.now() - batDau };
+    };
+    const chupP = async (p, ten) => {
+      mkdirSync(ANH_LOI, { recursive: true });
+      await p.screenshot({ path: join(ANH_LOI, `mua-thit-${ten.replace(/[^a-z0-9-]+/gi, '_')}.png`), fullPage: true }).catch(() => {});
+    };
+    /** Đầu trang: số mục của điều hướng (danh mục gọn có đủ, kể cả Hỏi bàn) và có mục Mua thịt về không. */
+    const dieuHuong = async (p, nn) => ({
+      so: await p.locator('header .mg-muc > li').count(),
+      coMua: await p.locator(`header nav a[href="${duongMua(nn)}"]`).count() > 0,
+    });
+    /** Thẻ sản phẩm đang dựng — theo móc của bản thiết kế PR 2 mục 2.8, 2.9. */
+    const docThe = p => p.evaluate(() => [...document.querySelectorAll('#chon-goi article')].map(a => ({
+      ten: a.querySelector('h3')?.textContent.trim() ?? '',
+      lang: a.querySelector('h3')?.getAttribute('lang') ?? null,
+      nhan: [...a.querySelectorAll('.mtv-nhan-goi')].map(e => e.textContent.trim()),
+      gia: [...a.querySelectorAll('.mtv-gia[data-tien]')].map(e => e.textContent.trim()),
+      tamHet: [...a.querySelectorAll('[data-mtv-tam-het]')].map(e => e.textContent.trim()),
+      o: [...a.querySelectorAll('select.mtv-so')].map(e => e.name),
+    })));
+    // Thứ tự trên trang: theo nhóm (Thịt mát → Thịt đông lạnh → Kim chi), trong nhóm theo database — chiaNhom của lib.
+    const theMong = (menu, nn, coOChon) => chiaNhom(menu).flatMap(n => n.sanPham).map(sp => ({
+      ten: sp.ten,
+      lang: nn !== 'vi' && sp.ten === sp.tenVi ? 'vi' : null,
+      nhan: sp.goi.map(g => nhanGoi(sp.donVi, g.soGam, nn)),
+      gia: sp.goi.map(g => dinhDangTien(g.gia)),
+      tamHet: sp.goi.filter(g => g.tamHet).map(() => TAM_HET[nn]),
+      o: coOChon ? sp.goi.filter(g => !g.tamHet).map(g => g.khoa) : [],
+    }));
+    /** Chữ của cả trang (kể cả details đang đóng), bỏ script, style. */
+    const chuDom = (p, chon = 'body') => p.evaluate(chon => {
+      const b = document.querySelector(chon)?.cloneNode(true);
+      if (!b) return '';
+      b.querySelectorAll('script, style, template').forEach(x => x.remove());
+      return b.textContent;
+    }, chon);
+    const moTaMeta = p => p.evaluate(() => document.querySelector('meta[name="description"]')?.getAttribute('content') ?? '');
+
+    // ---- mua-thit-mo: danh sách gói, giá, câu giá, nhãn gói, không giao hàng ----------------------------------
+    mayGia.datKichBan('mua-thit-mo');
+    for (const nn of NGON_NGU) {
+      const duong = duongMua(nn);
+      const menu = menuCua('mua-thit-mo', nn);
+      const t = chu(nn);
+      for (const rong of [390, 1440]) {
+        const { c, p, r, loiJs } = await mo(duong, { rong });
+        try {
+          const nhan = `mua-thit-mo ${duong} · ${rong}px`;
+          const the = await docThe(p);
+          const tieuDe = await p.evaluate(() => [...document.querySelectorAll('#chon-goi h2, #chon-goi h3')].map(e => e.textContent.trim()));
+          const nhomMong = chiaNhom(menu).flatMap(n => [NHOM_TEN[n.loai][nn], ...n.sanPham.map(s => s.ten)]);
+          const caTrang = await chuDom(p);
+          const nhanHang = await chuDom(p, 'details.mtv-nhan');
+          const donCuaBan = await chuDom(p, '.mtv-don');
+          const hoiDap = await p.evaluate(() => [...document.querySelectorAll('.cau-hoi details')].map(d => d.textContent));
+          const dtNhan = await p.evaluate(() => [...document.querySelectorAll('details.mtv-nhan dt')].map(e => e.textContent.trim()));
+          const sp = Object.fromEntries(the.map(x => [x.ten, x]));
+          const ten = ma => menu.find(s => s.ma === ma)?.ten;
+          const dh = await dieuHuong(p, nn);
+          const tot = [
+            ok(`${nhan}: HTTP 200, có form GET, đủ sản phẩm của MENU_THU đúng nhóm`,
+               r?.status() === 200 && await p.locator('form[data-mtv-form][method="get"]').count() === 1
+                 && the.length === menu.length && tieuDe.join('\n').includes(nhomMong.join('\n')),
+               `HTTP ${r?.status()}, ${the.length}/${menu.length} thẻ, tiêu đề ${JSON.stringify(tieuDe)}`),
+            ok(`${nhan}: mỗi gói hiện giá bằng giá của dữ liệu giả trong .mtv-gia[data-tien]; không chữ "Quán báo giá"`,
+               JSON.stringify(the.map(x => x.gia)) === JSON.stringify(theMong(menu, nn, true).map(x => x.gia)) && !/quán báo giá/i.test(caTrang),
+               JSON.stringify(the.map(x => x.gia))),
+            ok(`${nhan}: có câu "${GIA_CONG_BO[nn]}" ở thẻ Nhận hàng, khối Đơn của bạn và hỏi đáp 3; không chữ "/kg", "mỗi kg", "per kg", "100 g" trên trang`,
+               motDong(nhanHang).includes(GIA_CONG_BO[nn]) && motDong(donCuaBan).includes(GIA_CONG_BO[nn])
+                 && hoiDap.some(h => motDong(h).includes(GIA_CONG_BO[nn])) && !GIA_THEO_CAN.test(caTrang),
+               caTrang.match(GIA_THEO_CAN)?.[0] ?? `nhận hàng ${motDong(nhanHang).includes(GIA_CONG_BO[nn])}, đơn ${motDong(donCuaBan).includes(GIA_CONG_BO[nn])}`),
+            ok(`${nhan}: gói tạm hết (Ba chỉ bò Mỹ 400 g): chữ "${TAM_HET[nn]}", vẫn có giá, không ô chọn số`,
+               JSON.stringify(sp[ten('ba-chi-bo-my')]?.tamHet) === JSON.stringify([TAM_HET[nn]])
+                 && sp[ten('ba-chi-bo-my')]?.gia.length === 2 && JSON.stringify(sp[ten('ba-chi-bo-my')]?.o) === '["ba-chi-bo-my_200"]',
+               JSON.stringify(sp[ten('ba-chi-bo-my')])),
+            ok(`${nhan}: nhãn gói thịt "${NHAN_THIT[nn](200)}", hộp "${NHAN_HOP[nn](500)}", gói 1000 g ghi "${NHAN_THIT[nn](1000)}"`,
+               JSON.stringify(sp[ten('ribeye-cap')]?.nhan) === JSON.stringify([NHAN_THIT[nn](200), NHAN_THIT[nn](400)])
+                 && JSON.stringify(sp[ten('kim-chi-cai-thao')]?.nhan) === JSON.stringify([NHAN_HOP[nn](500)])
+                 && sp[ten('than-ngoai')]?.nhan.at(-1) === NHAN_THIT[nn](1000)
+                 && JSON.stringify(the) === JSON.stringify(theMong(menu, nn, true)),
+               JSON.stringify(the.map(x => [x.ten.slice(0, 20), x.nhan, x.o, x.lang]))),
+            ok(`${nhan}: LA Galbi (tên ${nn} giống tên tiếng Việt) ${nn === 'vi' ? 'không cần' : 'có'} lang="vi" ở tên`,
+               sp['LA Galbi']?.lang === (nn === 'vi' ? null : 'vi'), JSON.stringify(sp['LA Galbi']?.lang)),
+            ok(`${nhan}: không ô chọn và không dòng "${DT_GIAO[nn]}" khi mua_thit_giao_hang chưa công bố`,
+               await p.locator('select[name="nhan"]').count() === 0 && !dtNhan.includes(DT_GIAO[nn])
+                 && !hoiDap.some(h => h.includes(HOI_GIAO[nn])), JSON.stringify(dtNhan)),
+            ok(`${nhan}: điều hướng năm mục, có "${t.muaThitVe}"; meta description là câu "mở" (moTaMuaThit)`,
+               dh.so === 5 && dh.coMua && await moTaMeta(p) === t.moTaMuaThit, `${dh.so} mục, «${await moTaMeta(p)}»`),
+            ok(`${nhan}: không lỗi JavaScript`, loiJs.length === 0, loiJs.slice(0, 3).join(' | ')),
+          ];
+          // Nhận hàng: điện thoại đóng sẵn có dòng tóm tắt (món đầu lên sớm), màn rộng mở sẵn.
+          const nhanHangMo = await p.evaluate(() => document.querySelector('details.mtv-nhan')?.open ?? null);
+          tot.push(rong < 1024
+            ? ok(`${nhan}: "Nhận hàng" đóng sẵn, có dòng tóm tắt`, nhanHangMo === false
+                && await p.locator('details.mtv-nhan .mtv-nhan-tom').isVisible() && !!motDong(await p.locator('details.mtv-nhan .mtv-nhan-tom').textContent()))
+            : ok(`${nhan}: "Nhận hàng" mở sẵn`, nhanHangMo === true));
+          if (tot.includes(false)) await chupP(p, `mo-${nn}-${rong}`);
+        } finally {
+          await c.close();
+        }
+      }
+    }
+
+    // ---- mua-thit-mo: chọn gói, tạm tính, tin đơn, chép đơn, nút gửi, Back --------------------------------------
+    for (const nn of NGON_NGU) {
+      mayGia.datKichBan('mua-thit-mo');
+      const duong = duongMua(nn);
+      const menu = menuCua('mua-thit-mo', nn);
+      const ribeye = menu.find(s => s.ma === 'ribeye-cap');
+      const gio = new Map([[khoaGoi('ribeye-cap', 200), 2], [khoaGoi('kim-chi-cai-thao', 500), 1]]);
+      const don = tinhDon(gio, 'quay', menu);
+      const nhan = `mua-thit-mo ${duong}`;
+      const { c, p, loiJs } = await mo(duong, { rong: 390, quyen: ['clipboard-read', 'clipboard-write'] });
+      try {
+        const cong = p.locator('select.mtv-so[name="ribeye-cap_200"]').locator('xpath=..').locator('button[data-mtv-buoc="1"]');
+        await cong.click();
+        const vuaDoi = CHU_DON.vuaDoi[nn](ribeye.ten, nhanGoi('goi', 200, nn), 1);
+        const vung = motDong(await p.locator('[data-mtv-tam-tinh]').textContent());
+        const tot = [
+          ok(`${nhan}: bấm +: vùng aria-live có "${vuaDoi}" rồi tạm tính`,
+             motDong(await p.locator('[data-mtv-vua-doi]').textContent()) === vuaDoi && vung.startsWith(vuaDoi)
+               && vung.endsWith(`${CHU_DON.tamTinh[nn]}: ${dinhDangTien(400000)}`)
+               && await p.locator('[data-mtv-tam-tinh]').getAttribute('aria-live') === 'polite', `«${vung}»`),
+        ];
+        await cong.click();
+        await p.locator('select.mtv-so[name="kim-chi-cai-thao_500"]').selectOption('1');
+        const kq = await p.evaluate(() => ({
+          tamTinh: document.querySelector('[data-mtv-tam-tinh] [data-tien]')?.textContent.trim() ?? null,
+          dem: document.querySelector('[data-mtv-dem]')?.textContent.trim() ?? null,
+          dong: [...document.querySelectorAll('[data-mtv-dong-don] li')].map(li => li.textContent.replace(/\s+/g, ' ').trim()),
+          tin: document.querySelector('#mtv-tin')?.value ?? null,
+        }));
+        tot.push(
+          ok(`${nhan}: chọn 2 gói Ribeye 200 g và 1 hộp kim chi: tạm tính 890.000 đ, đếm "${DEM_2_1[nn]}"`,
+             kq.tamTinh === '890.000 đ' && dinhDangTien(don.tamTinh) === '890.000 đ' && kq.dem === DEM_2_1[nn]
+               && JSON.stringify(kq.dong) === JSON.stringify(dongMong(don, nn)), JSON.stringify(kq)),
+          ok(`${nhan}: tin đơn trong khung đúng từng dòng của taoTinDon; dòng "Soạn lúc" đúng dạng, lệch giờ Việt Nam lúc chạy không quá 2 phút`,
+             !!kq.tin && boDongGio(kq.tin) === boDongGio(taoTinDon(don, nn, Date.now())) && gioSoanDung(kq.tin), kq.tin ?? 'không có khung tin'),
+          ok(`${nhan}: thanh dưới hiện, có link "Xem đơn"`,
+             await p.locator('[data-mtv-thanh]').isVisible() && await p.locator('[data-mtv-thanh-xem]').isVisible()),
+        );
+
+        // Mọi số tiền nằm trong [data-tien], và là giá gói, thành tiền hay tạm tính của dữ liệu giả.
+        const tien = await p.evaluate(() => {
+          const MAU = /\d{1,3}(?:\.\d{3})+[  ]?đ/;
+          const ngoai = [];
+          const di = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+          for (let n = di.nextNode(); n; n = di.nextNode()) {
+            if (n.parentElement?.closest('script, style, template, textarea')) continue;
+            if (MAU.test(n.textContent) && !n.parentElement?.closest('[data-tien]')) ngoai.push(n.textContent.trim().slice(0, 80));
+          }
+          const trong = [...document.querySelectorAll('[data-tien]')].map(e => (e.tagName === 'TEXTAREA' ? e.value : e.textContent.trim()));
+          return { ngoai, trong };
+        });
+        const duocPhep = new Set([...menu.flatMap(s => s.goi.map(g => g.gia)), ...don.dong.map(d => d.thanhTien), don.tamTinh, 0].map(dinhDangTien));
+        const laTien = new Set(tien.trong.flatMap(x => x.match(TIEN) ?? (/^\d/.test(x) ? [x] : [])));
+        const sai = [...laTien].filter(x => !duocPhep.has(x));
+        tot.push(ok(`${nhan}: mọi số tiền trên trang nằm trong [data-tien] và bằng giá gói, thành tiền hoặc tạm tính của dữ liệu giả`,
+          tien.ngoai.length === 0 && sai.length === 0 && laTien.size > 0, `ngoài data-tien: ${JSON.stringify(tien.ngoai)} · lạ: ${JSON.stringify(sai)}`));
+        const ma = (s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;'))(kq.tin ?? '');
+        const cam = timChuoiCam(chuHienRa(boTienDaChot(`${await p.content()}<textarea data-tien>${ma}</textarea>`, duong)));
+        tot.push(ok(`${nhan}: không chữ cấm ngoài số tiền đã chốt (chuHienRa + boTienDaChot trên HTML của trang, cả tin đơn)`,
+          cam.length === 0, cam.map(x => x.tim_thay).join(' · ')));
+
+        // Chép đơn (đã cấp quyền clipboard). Lệnh chép giả chậm 400ms: câu "Đã chép" chỉ được hiện SAU khi lệnh xong.
+        await p.evaluate(() => {
+          const bao = document.querySelector('[data-mtv-bao]');
+          window.__bao = [];
+          if (bao) new MutationObserver(() => window.__bao.push({ chu: bao.textContent.trim(), luc: performance.now() }))
+            .observe(bao, { childList: true, characterData: true, subtree: true });
+          const goc = navigator.clipboard.writeText.bind(navigator.clipboard);
+          navigator.clipboard.writeText = async chu => {
+            window.__nhanChep = chu;
+            await new Promise(x => setTimeout(x, 400));
+            await goc(chu);
+            window.__xongLuc = performance.now();
+          };
+        });
+        await p.bringToFront();
+        await p.locator('[data-mtv-chep]').click();
+        await p.waitForFunction(t => document.querySelector('[data-mtv-bao]')?.textContent.trim() === t, chuDich.daChep[nn], { timeout: 5000 }).catch(() => {});
+        const chep = await p.evaluate(async () => ({
+          bao: window.__bao, xongLuc: window.__xongLuc ?? null, tin: document.querySelector('#mtv-tin')?.value ?? null,
+          nhanChep: window.__nhanChep ?? null,
+          boNho: await navigator.clipboard.readText().catch(e => `LỖI ${e.message}`),
+        }));
+        const lanDau = chep.bao.find(x => x.chu === chuDich.daChep[nn]);
+        tot.push(ok(`${nhan}: bấm Chép đơn (đã cấp quyền clipboard): "${chuDich.daChep[nn]}" chỉ sau khi chép xong, bộ nhớ tạm bằng đúng khung đơn`,
+          !!lanDau && chep.xongLuc !== null && lanDau.luc >= chep.xongLuc && chep.nhanChep === chep.tin && chep.boNho === chep.tin && !!chep.tin,
+          JSON.stringify({ bao: chep.bao, xongLuc: chep.xongLuc, lenhChepNhanDungKhung: chep.nhanChep === chep.tin, boNho: chep.boNho.slice(0, 60) })));
+
+        // Máy từ chối chép: không bao giờ "Đã chép", câu chép tay hiện, chữ trong khung được chọn hết.
+        await p.evaluate(() => {
+          window.__bao = [];
+          navigator.clipboard.writeText = () => Promise.reject(new DOMException('Không cho chép', 'NotAllowedError'));
+        });
+        await p.locator('[data-mtv-chep]').click();
+        await p.waitForFunction(t => document.querySelector('[data-mtv-bao]')?.textContent.trim() === t, chuDich.chepLoi[nn], { timeout: 5000 }).catch(() => {});
+        const tuChoi = await p.evaluate(() => {
+          const ta = document.querySelector('#mtv-tin');
+          return {
+            bao: window.__bao.map(x => x.chu),
+            chonHet: !!ta && document.activeElement === ta && ta.selectionStart === 0 && ta.selectionEnd === ta.value.length && ta.value.length > 0,
+          };
+        });
+        tot.push(ok(`${nhan}: clipboard bị từ chối (writeText reject): không "Đã chép", câu chép tay hiện, chữ trong khung được chọn hết`,
+          !tuChoi.bao.includes(chuDich.daChep[nn]) && tuChoi.bao.includes(chuDich.chepLoi[nn])
+            && await p.locator('[data-mtv-chep-tay]').isVisible() && tuChoi.chonHet, JSON.stringify(tuChoi)));
+
+        // Nút gửi: <a> thật, tới đúng link Zalo OA đã công bố. Có hotline → dòng "Không dùng Zalo?" có link tel:.
+        const gui = await p.evaluate(() => {
+          const a = document.querySelector('[data-mtv-gui]');
+          return a && { the: a.tagName, href: a.getAttribute('href') };
+        });
+        tot.push(
+          ok(`${nhan}: nút gửi là <a> thật, href đúng zalo_oa_url đã công bố`,
+             gui?.the === 'A' && gui.href === ZALO_OA_THU && await p.locator('a[data-mtv-gui]').isVisible(), JSON.stringify(gui)),
+          ok(`${nhan}: có hotline: dòng "Không dùng Zalo?" có link tel:`,
+             await p.locator('[data-mtv-khong-zalo]').isVisible() && await p.locator('[data-mtv-khong-zalo] a[href^="tel:"]').count() === 1),
+          ok(`${nhan}: không "thành công", "đã đặt", "đã gửi" trên trang`, !CHU_DA_XONG.test(await chuDom(p, 'main')),
+             (await chuDom(p, 'main')).match(CHU_DA_XONG)?.[0]),
+        );
+
+        // Gửi form (Xem đơn): địa chỉ mang giỏ, bỏ ô bằng 0; rồi bấm Back — ô chọn còn bấm được, "Đơn của bạn" khớp ô chọn.
+        await Promise.all([
+          p.waitForNavigation({ waitUntil: 'load', timeout: 30000 }),
+          p.locator('form[data-mtv-form] button[type="submit"]').click(),
+        ]);
+        const diaChi = new URL(p.url());
+        tot.push(ok(`${nhan}: "Xem đơn" là form GET — địa chỉ mang giỏ (ribeye-cap_200=2, kim-chi-cai-thao_500=1), không ô bằng 0, tới #xem-don; tin đơn của máy chủ đúng`,
+          diaChi.pathname === duong && diaChi.searchParams.get('ribeye-cap_200') === '2' && diaChi.searchParams.get('kim-chi-cai-thao_500') === '1'
+            && ![...diaChi.searchParams.values()].includes('0') && diaChi.hash === '#xem-don'
+            && boDongGio(await p.locator('#mtv-tin').inputValue()) === boDongGio(taoTinDon(don, nn, Date.now())),
+          p.url()));
+        await p.goBack({ waitUntil: 'load' });
+        await cho(300);
+        const sau = await p.evaluate(() => ({
+          o: [...document.querySelectorAll('select.mtv-so')].map(o => ({ ten: o.name, giaTri: o.value, tat: o.disabled })),
+          dong: [...document.querySelectorAll('[data-mtv-dong-don] li')].map(li => li.textContent.replace(/\s+/g, ' ').trim()),
+          tamTinh: document.querySelector('[data-mtv-tam-tinh] [data-tien]')?.textContent.trim() ?? null,
+        }));
+        const donSau = tinhDon(new Map(sau.o.filter(o => o.giaTri !== '0').map(o => [o.ten, Number(o.giaTri)])), 'quay', menu);
+        tot.push(ok(`${nhan}: gửi đơn rồi bấm Back: mọi ô chọn bấm được, "Đơn của bạn" khớp ô chọn`,
+          sau.o.length > 0 && sau.o.every(o => !o.tat) && await p.locator('select.mtv-so').first().isEnabled()
+            && JSON.stringify(sau.dong) === JSON.stringify(dongMong(donSau, nn)) && sau.tamTinh === dinhDangTien(donSau.tamTinh),
+          JSON.stringify(sau)));
+        tot.push(ok(`${nhan}: không lỗi JavaScript`, loiJs.length === 0, loiJs.slice(0, 3).join(' | ')));
+        if (tot.includes(false)) await chupP(p, `chon-${nn}`);
+      } finally {
+        await c.close();
+      }
+
+      // Trình duyệt không có navigator.clipboard (xóa trước khi script chạy): không nút Chép, câu chép tay hiện.
+      const khong = await mo(`${duong}?ribeye-cap_200=1`, {
+        truoc: () => { try { Object.defineProperty(Navigator.prototype, 'clipboard', { configurable: true, get: () => undefined }); } catch { /* bỏ qua */ } },
+      });
+      try {
+        ok(`${nhan}: trình duyệt không có navigator.clipboard: nút Chép đơn không hiện, câu chép tay hiện`,
+           await khong.p.evaluate(() => navigator.clipboard === undefined)
+             && !(await khong.p.locator('[data-mtv-chep]').isVisible()) && await khong.p.locator('[data-mtv-chep-tay]').isVisible()
+             && khong.loiJs.length === 0, khong.loiJs.join(' | '));
+      } finally {
+        await khong.c.close();
+      }
+
+      // Tải lại trang có tham số: thanh dưới và tạm tính đúng ngay khi trang hiện.
+      const lai = await mo(`${duong}?ribeye-cap_200=2`);
+      try {
+        await lai.p.reload({ waitUntil: 'load' });
+        const thanh = motDong(await lai.p.locator('[data-mtv-thanh]').innerText().catch(() => ''));
+        ok(`${nhan}: tải lại trang có ?ribeye-cap_200=2: thanh dưới và tạm tính đúng ngay khi trang hiện`,
+           await lai.p.locator('[data-mtv-thanh]').isVisible() && thanh.includes(dinhDangTien(800000))
+             && await lai.p.locator('[data-mtv-tam-tinh] [data-tien]').textContent() === dinhDangTien(800000), `«${thanh}»`);
+      } finally {
+        await lai.c.close();
+      }
+
+      // Số gói sai kiểu trên địa chỉ trang: không thành 1000 gói, không thành 1 gói.
+      for (const giaTri of nn === 'vi' ? ['1.000', '1,5', '11', '01', '-1', 'abc'] : ['1.000']) {
+        const x = await mo(`${duong}?ribeye-cap_200=${encodeURIComponent(giaTri)}`);
+        try {
+          ok(`${nhan}: địa chỉ "?ribeye-cap_200=${giaTri}" → không dòng đơn nào, không ${giaTri} gói`,
+             await x.p.locator('[data-mtv-dong-don] li').count() === 0 && !(await x.p.locator('[data-mtv-xem-don]').isVisible())
+               && await x.p.locator('select.mtv-so[name="ribeye-cap_200"]').inputValue() === '0');
+        } finally {
+          await x.c.close();
+        }
+      }
+
+      // Gói vừa "Tạm hết ở quầy" giữa lúc khách chọn và lúc bấm Xem đơn (ba-chi-bo-my 400 g tạm hết trong MENU_THU):
+      // giỏ chỉ có gói đó thì đơn trống — trang vẫn phải nói vì sao, ở #xem-don, có và không có JavaScript.
+      const BO_TAM_HET = ba('Có gói vừa tạm hết ở quầy nên không có trong đơn.',
+        'A pack you chose is sold out at the counter for now, so it is not in the order.',
+        '고르신 팩 중 지금 매장에 재고가 없는 팩은 주문에서 빠졌어요.');
+      for (const js of nn === 'vi' ? [true, false] : [true]) {
+        const het = await mo(`${duong}?ba-chi-bo-my_400=2#xem-don`, { js });
+        try {
+          const xem = het.p.locator('#xem-don');
+          const chu = motDong(await het.p.locator('[data-mtv-xem-don]').innerText().catch(() => ''));
+          ok(`${nhan}${js ? '' : ' · tắt JavaScript'}: giỏ chỉ có gói vừa tạm hết → #xem-don hiện câu "${BO_TAM_HET[nn]}", không dòng đơn, không nút gửi`,
+             await xem.isVisible() && chu.includes(BO_TAM_HET[nn])
+               && await het.p.locator('[data-mtv-xem-dong] li').count() === 0
+               && !(await het.p.locator('a[data-mtv-gui]').isVisible()) && !(await het.p.locator('#mtv-tin').isVisible())
+               && het.loiJs.length === 0,
+             `«${chu.slice(0, 160)}» · ${het.loiJs.join(' | ')}`);
+        } finally {
+          await het.c.close();
+        }
+      }
+      const vaHet = await mo(`${duong}?ribeye-cap_200=1&ba-chi-bo-my_400=2#xem-don`);
+      try {
+        const chu = motDong(await vaHet.p.locator('[data-mtv-xem-don]').innerText().catch(() => ''));
+        ok(`${nhan}: giỏ có một gói đặt được và một gói vừa tạm hết → đơn có gói đặt được, câu tạm hết hiện, nút gửi hiện`,
+           chu.includes(BO_TAM_HET[nn]) && await vaHet.p.locator('[data-mtv-xem-dong] li').count() === 1
+             && await vaHet.p.locator('a[data-mtv-gui]').isVisible() && vaHet.loiJs.length === 0, `«${chu.slice(0, 160)}»`);
+      } finally {
+        await vaHet.c.close();
+      }
+
+      // Tắt JavaScript: chọn số, bấm "Xem đơn" → máy chủ dựng #xem-don có tin đơn như bản có JavaScript (trừ dòng giờ).
+      const tat = await mo(duong, { js: false });
+      try {
+        await tat.p.locator('select.mtv-so[name="ribeye-cap_200"]').selectOption('2');
+        await tat.p.locator('select.mtv-so[name="kim-chi-cai-thao_500"]').selectOption('1');
+        await Promise.all([
+          tat.p.waitForNavigation({ waitUntil: 'load', timeout: 30000 }),
+          tat.p.locator('form[data-mtv-form] button[type="submit"]').click(),
+        ]);
+        const tin = await tat.p.locator('#mtv-tin').inputValue().catch(() => '');
+        const anCa = [];
+        for (const chon of ['[data-mtv-chep]', 'button[data-mtv-buoc]', '[data-mtv-thanh]']) {
+          const l = tat.p.locator(chon);
+          for (let i = 0; i < await l.count(); i++) if (await l.nth(i).isVisible()) { anCa.push(chon); break; }
+        }
+        ok(`${nhan}: tắt JavaScript: chọn số, bấm Xem đơn → #xem-don có tin đơn giống bản có JavaScript (trừ dòng giờ); nút Chép, −/+, thanh dưới không hiện`,
+           await tat.p.locator('#xem-don').isVisible() && boDongGio(tin) === boDongGio(taoTinDon(don, nn, Date.now())) && gioSoanDung(tin)
+             && anCa.length === 0 && await tat.p.locator('a[data-mtv-gui]').getAttribute('href') === ZALO_OA_THU
+             && await tat.p.locator('[data-mtv-chep-tay]').isVisible(),
+           `hiện: ${anCa.join(', ') || 'không'} · tin «${tin.slice(0, 120)}»`);
+        ok(`${nhan}: tắt JavaScript: "Nhận hàng" đóng, bấm để mở`,
+           await tat.p.evaluate(() => document.querySelector('details.mtv-nhan')?.open) === false);
+      } finally {
+        await tat.c.close();
+      }
+    }
+
+    // ---- mua-thit-giao: cách nhận, giao tận nơi, không hotline ---------------------------------------------------
+    mayGia.datKichBan('mua-thit-giao');
+    for (const nn of NGON_NGU) {
+      const duong = duongMua(nn);
+      const menu = menuCua('mua-thit-giao', nn);
+      const nhan = `mua-thit-giao ${duong}`;
+      const { c, p, loiJs } = await mo(duong);
+      try {
+        const dtNhan = await p.evaluate(() => [...document.querySelectorAll('details.mtv-nhan dt')].map(e => e.textContent.trim()));
+        const hoiDap = await p.evaluate(() => [...document.querySelectorAll('.cau-hoi summary')].map(e => e.textContent.trim()));
+        const tot = [
+          ok(`${nhan}: có ô chọn cách nhận, dòng "${DT_GIAO[nn]}", hỏi đáp giao hàng`,
+             await p.locator('select[name="nhan"]').isVisible() && dtNhan.includes(DT_GIAO[nn]) && hoiDap.some(h => h.includes(HOI_GIAO[nn])),
+             JSON.stringify({ dtNhan, hoiDap: hoiDap.length })),
+        ];
+        await p.locator('select.mtv-so[name="ribeye-cap_200"]').selectOption('1');
+        await p.locator('select[name="nhan"]').selectOption('giao');
+        const tin = await p.locator('#mtv-tin').inputValue();
+        const don = tinhDon(new Map([[khoaGoi('ribeye-cap', 200), 1]]), 'giao', menu);
+        tot.push(
+          ok(`${nhan}: chọn giao → tin đơn có dòng giao và "chưa gồm phí giao"`,
+             tin.includes('Nhận: giao tận nơi') && tin.includes('chưa gồm phí giao') && boDongGio(tin) === boDongGio(taoTinDon(don, nn, Date.now())), tin),
+          ok(`${nhan} (không hotline): không có dòng "Không dùng Zalo?"`, await p.locator('[data-mtv-khong-zalo]').count() === 0),
+          ok(`${nhan}: không lỗi JavaScript`, loiJs.length === 0, loiJs.slice(0, 3).join(' | ')),
+        );
+        if (tot.includes(false)) await chupP(p, `giao-${nn}`);
+      } finally {
+        await c.close();
+      }
+    }
+
+    // ---- Bề rộng: 320 (vi, ko), 360, 1440px; 390px thanh dưới; 844 × 390 điện thoại xoay ngang ----------------
+    mayGia.datKichBan('mua-thit-mo');
+    const doTrangMua = async (p, nhan) => {
+      await p.mouse.move(0, 0);
+      await cho(300);
+      const gd = await p.evaluate(doGiaoDien);
+      const saiGd = Object.keys(PHEP_DO).flatMap(khoa => (gd[khoa] ?? ['không đo được']).map(x => `[${khoa}] ${x}`));
+      const kq = await p.evaluate(() => ({ rong: document.documentElement.scrollWidth, khung: innerWidth }));
+      return [
+        ok(`${nhan}: không tràn ngang`, kq.rong <= kq.khung + 1, `rộng ${kq.rong}px > khung ${kq.khung}px`),
+        ok(`${nhan}: đủ ${Object.keys(PHEP_DO).length} phép đo của do-giao-dien.mjs`, saiGd.length === 0, saiGd.slice(0, 5).join(' | ')),
+      ];
+    };
+    for (const [rong, nn] of [[320, 'vi'], [320, 'ko'], [360, 'vi'], [1440, 'vi']]) {
+      for (const tham of ['', '?ribeye-cap_200=2&than-lung-cat-day_400=1&kim-chi-cai-thao_500=1']) {
+        const duong = duongMua(nn) + tham;
+        const { c, p, loiJs } = await mo(duong, { rong });
+        try {
+          const nhan = `mua-thit-mo ${duong} · ${rong}px`;
+          const tot = [...await doTrangMua(p, nhan), ok(`${nhan}: không lỗi JavaScript`, loiJs.length === 0, loiJs.slice(0, 3).join(' | '))];
+          if (tot.includes(false)) await chupP(p, `rong-${nn}-${rong}${tham ? '-gio' : ''}`);
+        } finally {
+          await c.close();
+        }
+      }
+    }
+    for (const nn of NGON_NGU) {
+      const duong = duongMua(nn);
+      const { c, p } = await mo(duong, { rong: 390 });
+      try {
+        const nhan = `mua-thit-mo ${duong} · 390px`;
+        // innerText: chỉ chữ đang hiện — link "Xem đơn" (hidden khi giỏ rỗng) không tính.
+        const chuThanh = motDong(await p.locator('[data-mtv-thanh]').innerText().catch(() => ''));
+        const tot = [ok(`${nhan}: thanh dưới hiện, giỏ rỗng ghi "${CHU_DON.donTrong[nn]}", chưa có link "Xem đơn"`,
+          await p.locator('[data-mtv-thanh]').isVisible() && chuThanh === CHU_DON.donTrong[nn]
+            && !(await p.locator('[data-mtv-thanh-xem]').isVisible()), `«${chuThanh}»`)];
+        // Tab tới ô chọn cuối danh sách: ô không bị thanh dưới che.
+        const o = p.locator('select.mtv-so');
+        const soO = await o.count();
+        await o.nth(Math.max(0, soO - 2)).focus();
+        const laOCuoi = () => p.evaluate(() => document.activeElement === [...document.querySelectorAll('select.mtv-so')].at(-1));
+        for (let i = 0; i < 8 && !(await laOCuoi()); i++) await p.keyboard.press('Tab');
+        await cho(200);
+        const che = await p.evaluate(() => {
+          const oCuoi = [...document.querySelectorAll('select.mtv-so')].at(-1);
+          const thanh = document.querySelector('[data-mtv-thanh]');
+          return { laOCuoi: document.activeElement === oCuoi, day: oCuoi?.getBoundingClientRect().bottom, dinhThanh: thanh?.getBoundingClientRect().top, cao: innerHeight };
+        });
+        tot.push(ok(`${nhan}: Tab tới ô chọn cuối danh sách → ô không bị thanh che`,
+          che.laOCuoi && che.day <= che.dinhThanh + 0.5 && che.day <= che.cao, JSON.stringify(che)));
+        // Có giỏ: cuộn hết trang — thanh dừng trước khối "Xem lại đơn" (thanh nằm trong form).
+        await o.first().selectOption('1');
+        await p.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+        await cho(200);
+        const dung = await p.evaluate(() => {
+          const thanh = document.querySelector('[data-mtv-thanh]')?.getBoundingClientRect();
+          const xem = document.querySelector('[data-mtv-xem-don]')?.getBoundingClientRect();
+          return thanh && xem ? { dayThanh: thanh.bottom, dinhXem: xem.top } : null;
+        });
+        tot.push(ok(`${nhan}: thanh dừng trước khối Xem lại đơn`, !!dung && dung.dayThanh <= dung.dinhXem + 0.5
+          && await p.locator('[data-mtv-xem-don]').isVisible(), JSON.stringify(dung)));
+        if (tot.includes(false)) await chupP(p, `thanh-${nn}`);
+      } finally {
+        await c.close();
+      }
+    }
+    {
+      const duong = `${duongMua('vi')}?ribeye-cap_200=2`;
+      const { c, p, loiJs } = await mo(duong, { rong: 844, cao: 390 });
+      try {
+        const nhan = `mua-thit-mo ${duong} · 844 × 390 (điện thoại xoay ngang)`;
+        const tot = [
+          ok(`${nhan}: không thanh dưới`, !(await p.locator('[data-mtv-thanh]').isVisible())),
+          ...await doTrangMua(p, nhan),
+          ok(`${nhan}: không lỗi JavaScript`, loiJs.length === 0, loiJs.slice(0, 3).join(' | ')),
+        ];
+        if (tot.includes(false)) await chupP(p, 'xoay-ngang');
+      } finally {
+        await c.close();
+      }
+    }
+
+    // ---- 1080 và 1279px: đầu trang đủ năm mục trên một hàng -------------------------------------------------------
+    for (const nn of NGON_NGU) {
+      for (const duong of [duongDanTuongUng('/', nn), duongDanTuongUng('/thuc-don', nn), duongMua(nn)]) {
+        for (const rong of [1080, 1279]) {
+          const { c, p } = await mo(duong, { rong });
+          try {
+            const dau = await p.evaluate(() => {
+              const k = e => e.getBoundingClientRect();
+              const hien = e => !!e && e.checkVisibility() && k(e).width > 0;
+              const muc = [...document.querySelectorAll('header .dt-nav a')].filter(hien);
+              const hoiBan = document.querySelector('header .dt-hoi-ban');
+              const ngonNgu = document.querySelector('header .dt-ngon-ngu');
+              const logo = document.querySelector('header .dt-logo');
+              const hang = [logo, ...muc, ngonNgu, hoiBan].filter(Boolean);
+              const chong = [];
+              for (let i = 1; i < hang.length; i++) if (k(hang[i - 1]).right > k(hang[i]).left + 0.5) chong.push(`${hang[i - 1].textContent.trim() || hang[i - 1].className} / ${hang[i].textContent.trim() || hang[i].className}`);
+              const soDong = e => { const v = document.createRange(); v.selectNodeContents(e); return new Set([...v.getClientRects()].filter(x => x.width >= 1).map(x => Math.round(x.top))).size; };
+              const dinh = muc.map(e => k(e).top);
+              return {
+                muc: muc.map(e => e.textContent.trim()), hoiBan: hien(hoiBan), ngonNgu: hien(ngonNgu),
+                motHang: dinh.length > 0 && Math.max(...dinh) - Math.min(...dinh) < 2 && muc.every(e => soDong(e) === 1),
+                chong, menuGon: hien(document.querySelector('header .menu-gon > summary')),
+                tran: Math.max(...hang.map(e => k(e).right)) > innerWidth + 0.5 || document.documentElement.scrollWidth > innerWidth + 1,
+              };
+            });
+            const nhan = `mua-thit-mo ${duong} · ${rong}px [${nn}]`;
+            if (!ok(`${nhan}: thanh đầu trang đủ năm mục trên một hàng (có "${chu(nn).muaThitVe}"), không chồng lên bộ chọn ngôn ngữ và nút Hỏi bàn`,
+                    dau.muc.length === 4 && dau.muc.includes(chu(nn).muaThitVe) && dau.hoiBan && dau.ngonNgu && dau.motHang
+                      && dau.chong.length === 0 && !dau.menuGon && !dau.tran, JSON.stringify(dau))) await chupP(p, `dau-trang-${nn}-${rong}-${tenTep(duong)}`);
+          } finally {
+            await c.close();
+          }
+        }
+      }
+    }
+
+    // ---- mua-thit-het-quay: liệt kê gói và giá, mọi gói tạm hết, không form ------------------------------------
+    mayGia.datKichBan('mua-thit-het-quay');
+    for (const nn of NGON_NGU) {
+      const duong = duongMua(nn);
+      const menu = menuCua('mua-thit-het-quay', nn);
+      const { c, p, loiJs } = await mo(duong);
+      try {
+        const nhan = `mua-thit-het-quay ${duong}`;
+        const the = await docThe(p);
+        const dh = await dieuHuong(p, nn);
+        const het = p.locator('[data-mtv-het-quay]');
+        const tot = [
+          ok(`${nhan}: năm mục điều hướng, có gói và giá, mọi gói "${TAM_HET[nn]}", không form, không thanh dưới, có câu tạm hết và nút Zalo`,
+             dh.so === 5 && dh.coMua && JSON.stringify(the) === JSON.stringify(theMong(menu, nn, false))
+               && the.every(x => x.gia.length > 0 && x.tamHet.length === x.gia.length)
+               && await p.locator('form').count() === 0 && await p.locator('[data-mtv-thanh]').count() === 0
+               && await het.isVisible() && motDong(await het.textContent()).includes(HET_QUAY[nn])
+               && await het.locator(`a.nut[href="${ZALO_OA_THU}"]`).count() === 1,
+             JSON.stringify({ dh, the: the.length, het: motDong(await het.textContent().catch(() => '')) })),
+          ok(`${nhan}: meta description là câu "mở" (moTaMuaThit)`, await moTaMeta(p) === chu(nn).moTaMuaThit, await moTaMeta(p)),
+          ok(`${nhan}: không lỗi JavaScript`, loiJs.length === 0, loiJs.slice(0, 3).join(' | ')),
+        ];
+        if (tot.includes(false)) await chupP(p, `het-quay-${nn}`);
+      } finally {
+        await c.close();
+      }
+    }
+
+    // ---- mua-thit-loi / -dut / -treo: không giá, không form; "chưa tải được" và nút Zalo ----------------------
+    for (const kichBan of ['mua-thit-loi', 'mua-thit-dut', 'mua-thit-treo']) {
+      mayGia.datKichBan(kichBan);
+      for (const nn of NGON_NGU) {
+        const duong = duongMua(nn);
+        const { c, p, r, loiJs, thoiGian } = await mo(duong);
+        try {
+          const nhan = `${kichBan} ${duong}`;
+          const h1 = motDong(await p.locator('main h1').first().textContent().catch(() => ''));
+          const tot = [
+            ok(`${nhan}: không giá, không form, có câu "${LOI_H1[nn]}" và nút Zalo; meta description là câu chưa mở`,
+               r?.status() === 200 && await p.locator('[data-tien]').count() === 0 && await p.locator('form').count() === 0
+                 && h1 === LOI_H1[nn] && await p.locator(`main a.nut[href="${ZALO_OA_THU}"]`).count() === 1
+                 && await moTaMeta(p) === chu(nn).moTaMuaThitChuaMo, `HTTP ${r?.status()}, h1 «${h1}», mô tả «${await moTaMeta(p)}»`),
+            ok(`${nhan}: điều hướng năm mục (công tắc hiệu lực của database đang bật)`, (await dieuHuong(p, nn)).so === 5),
+            ok(`${nhan}: không lỗi JavaScript`, loiJs.length === 0, loiJs.slice(0, 3).join(' | ')),
+          ];
+          if (kichBan === 'mua-thit-treo') tot.push(ok(`${nhan}: database không trả lời — trang trả lời trong 6 giây`, thoiGian < 6000, `${thoiGian} ms`));
+          if (tot.includes(false)) await chupP(p, `${kichBan}-${nn}`);
+        } finally {
+          await c.close();
+        }
+      }
+    }
+
+    // ---- Chưa mở: chưa công bố, công tắc tắt, chưa có link Zalo, link lạ; và đua (menu rỗng) -------------------
+    for (const kichBan of ['rong', 'day-du', 'mua-thit-rong', 'mua-thit-khong-zalo', 'mua-thit-zalo-la', 'mua-thit-lech']) {
+      mayGia.datKichBan(kichBan);
+      for (const nn of NGON_NGU) {
+        const duong = duongMua(nn);
+        const { c, p, r, loiJs } = await mo(duong);
+        try {
+          const nhan = `${kichBan} ${duong}`;
+          const chuChinh = await p.locator('main').innerText().catch(() => '');
+          const kenh = await p.locator('main a.nut, main a[href*="zalo.me"], main a[href^="tel:"], main a[href*="facebook.com"]').count();
+          const dh = await dieuHuong(p, nn);
+          const tot = [
+            ok(`${nhan}: không form, không giá, không lỗi JavaScript`,
+               r?.status() === 200 && await p.locator('form').count() === 0 && await p.locator('[data-tien]').count() === 0 && loiJs.length === 0,
+               `HTTP ${r?.status()} ${loiJs.slice(0, 2).join(' | ')}`),
+          ];
+          // mua-thit-lech: database nói mở (năm mục) mà lời gọi menu song song trả rỗng — giới hạn chấp nhận (mục 2.5).
+          if (kichBan !== 'mua-thit-lech') {
+            tot.push(ok(`${nhan}: trạng thái chưa mở — không câu mời nhắn, không nút kênh; điều hướng bốn mục; meta description là câu chưa mở`,
+              !MOI_NHAN[nn].test(chuChinh) && kenh === 0 && dh.so === 4 && !dh.coMua && await moTaMeta(p) === chu(nn).moTaMuaThitChuaMo,
+              `${dh.so} mục, ${kenh} nút/link kênh, mô tả «${await moTaMeta(p)}», chữ «${motDong(chuChinh).slice(0, 160)}»`));
+          }
+          if (tot.includes(false)) await chupP(p, `${kichBan}-${nn}`);
+        } finally {
+          await c.close();
+        }
+      }
     }
     mayGia.datKichBan('day-du');
   });

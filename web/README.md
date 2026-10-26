@@ -49,7 +49,7 @@ Mở http://localhost:4321. Không cần Supabase.
 | `npm run kiem-tra` | Kiểm tra kiểu dữ liệu (`astro check`) |
 | `npm run deploy` | **Cổng kiểm thử** (`kiem-tra/truoc-deploy.mjs`: chỉ commit đã có CI xanh) → quét chữ cấm → build → đẩy lên Cloudflare |
 | `npm run deploy:khan-cap` | Như trên nhưng bỏ qua cổng kiểm thử — chỉ khi khẩn cấp |
-| `npm run thu-trinh-duyet` | Kiểm thử bằng trình duyệt thật (Chromium): 21 trang công khai ở 320 / 360 / 390 / 430 / 768 / 800 / 1024 / 1366 / 1440px — một `h1`, ảnh đủ kích thước và alt, tương phản, thành phần và khung trang (`kiem-tra/do-giao-dien.mjs`: vùng chạm ≥ 48px, đầu trang 64 / 80px, bộ chọn ngôn ngữ, nền chỉ màu của bảng, logo đúng bản cho nền, nút, thẻ, hàng câu hỏi ≥ 56px, biểu tượng 24px, chữ 16/24px và h1 32 → 48px, chân trang chữ ≥ 14px; ảnh AI có nhãn "Ảnh minh họa" và không bị gì đè lên, thẻ đọc nhãn khay thẳng và đủ 5 trường, màn đầu và các khối của trang chủ, trang Thực đơn), ảnh về chậm thì khung vẫn giữ chỗ và trang không xô lệch, trang Thực đơn bấm từng tab rồi đo lại ảnh và thành phần của phần vừa mở (ảnh `sot-cham` ở tab "Món ăn", `uong-khong-con-ba-ly` ở tab "Đồ uống" ẩn lúc tải trang), địa điểm (câu chỉ đường đúng từng chữ, JSON-LD, không còn địa chỉ nào khác ngoài dòng pháp nhân, không ghi phường hay quận, không chữ về cầu thang bộ — mẫu tìm chữ sai ở `kiem-tra/mau-dia-diem.mjs`), menu gọn chạy cả khi tắt JavaScript và đi lại được bằng bàn phím (Enter, Tab, Esc) — có JavaScript thì có lớp phủ tối và trang phía sau đứng yên, tắt JavaScript thì trang vẫn cuộn được; câu hỏi thường gặp mở / đóng bằng bàn phím; màn cảm ứng không giữ màu di chuột sau khi chạm; máy có thanh cuộn kiểu cổ điển mở danh mục không xô lệch trang; form không bao giờ báo thành công khi chưa ghi được; trang hỏi bàn không hứa "nhà hàng gọi lại" khi form đóng; trang 404 (mã 404, đúng thứ tiếng, link về `/`, `/en`, `/ko` — nhóm này chạy cả với `-- --url`); đường dẫn lạ dưới `/noi-bo` khi chưa đăng nhập về trang đăng nhập (đã đăng nhập thì hiện trang 404 nội bộ — kiểm ở `crm/test/test-noi-bo-khong-co.mjs`). Luôn build **không database** (đặt rỗng `PUBLIC_SUPABASE_*`, kể cả khi máy có sẵn hai biến này) — `npm run quet` cũng vậy |
+| `npm run thu-trinh-duyet` | Kiểm thử bằng trình duyệt thật (Chromium): 24 trang công khai ở 320 / 360 / 390 / 430 / 768 / 800 / 1024 / 1366 / 1440px — một `h1`, ảnh đủ kích thước và alt, tương phản, thành phần và khung trang (`kiem-tra/do-giao-dien.mjs`: vùng chạm ≥ 48px, đầu trang 64 / 80px, bộ chọn ngôn ngữ, nền chỉ màu của bảng, logo đúng bản cho nền, nút, thẻ, hàng câu hỏi ≥ 56px, biểu tượng 24px, chữ 16/24px và h1 32 → 48px, chân trang chữ ≥ 14px; ảnh AI có nhãn "Ảnh minh họa" và không bị gì đè lên, thẻ đọc nhãn khay thẳng và đủ 5 trường, màn đầu và các khối của trang chủ, trang Thực đơn), ảnh về chậm thì khung vẫn giữ chỗ và trang không xô lệch, trang Thực đơn bấm từng tab rồi đo lại ảnh và thành phần của phần vừa mở (ảnh `sot-cham` ở tab "Món ăn", `uong-khong-con-ba-ly` ở tab "Đồ uống" ẩn lúc tải trang), địa điểm (câu chỉ đường đúng từng chữ, JSON-LD, không còn địa chỉ nào khác ngoài dòng pháp nhân, không ghi phường hay quận, không chữ về cầu thang bộ — mẫu tìm chữ sai ở `kiem-tra/mau-dia-diem.mjs`), menu gọn chạy cả khi tắt JavaScript và đi lại được bằng bàn phím (Enter, Tab, Esc) — có JavaScript thì có lớp phủ tối và trang phía sau đứng yên, tắt JavaScript thì trang vẫn cuộn được; câu hỏi thường gặp mở / đóng bằng bàn phím; màn cảm ứng không giữ màu di chuột sau khi chạm; máy có thanh cuộn kiểu cổ điển mở danh mục không xô lệch trang; form không bao giờ báo thành công khi chưa ghi được; trang hỏi bàn không hứa "nhà hàng gọi lại" khi form đóng; trang 404 (mã 404, đúng thứ tiếng, link về `/`, `/en`, `/ko` — nhóm này chạy cả với `-- --url`); đường dẫn lạ dưới `/noi-bo` khi chưa đăng nhập về trang đăng nhập (đã đăng nhập thì hiện trang 404 nội bộ — kiểm ở `crm/test/test-noi-bo-khong-co.mjs`). Luôn build **không database** (đặt rỗng `PUBLIC_SUPABASE_*`, kể cả khi máy có sẵn hai biến này) — `npm run quet` cũng vậy |
 | `npm run thu-day-du` | Kiểm thử trang công khai ở trạng thái **đã nối database** (`kiem-tra/thu-day-du.mjs`): bật Supabase giả `kiem-tra/gia-supabase.mjs` cùng `astro dev`, rồi thử trạng thái đầy đủ (Facebook, Maps, thực đơn đã công bố, form mở), mô tả và đoạn mở đầu trang hỏi bàn khi form mở / đóng, bấm gửi hai lần (chỉ một yêu cầu), database báo lỗi 500, mạng đứt giữa chừng (không bao giờ "đã nhận", dữ liệu đã gõ còn nguyên), địa chỉ đã công bố trong `/noi-bo` (bản công bố tới được mọi chỗ in địa chỉ, màn đầu bỏ vế phường), thành phần của form hỏi bàn và form nộp hồ sơ (ô một dòng, kể cả ô ngày, cao đúng 48px nền trắng; ô giờ đang chọn; câu lỗi màu `#8F0000`), màn đầu trang chủ ở ba trạng thái của ngày khai trương — chưa có ngày, sắp mở (kịch bản `sap-mo`), đã mở (`da-mo`), kèm dòng trạng thái dài hai câu — ở 390 / 900 / 1024 / 1440px (câu chỉ đường dính dưới dòng địa chỉ, ngày trên một dòng, không tràn khung), trang Thực đơn theo cuốn menu bản sáng (kịch bản `day-du` trả đúng danh mục 11/10/2026 đã công bố; bấm từng tab ở 320 → 1440px: mọi món hiện đúng tên, ảnh món có alt và nhãn, món sống có cảnh báo, không số tiền; `khong-con-tat`: ba ly signature không hiện; `day-du` chỉ có đồ uống có cồn: tên các nhóm không cồn vẫn đứng cạnh ảnh ba ly không cồn; `thuc-don-thu-suc`: món không ảnh, tên và mô tả rất dài, nhóm lạ). Thêm `-- --chup` để chụp mọi trang ở 360 / 390 / 768 / 1024 / 1440px vào `kiem-tra/anh-chup/` (không commit); `-- --chi 3,6` chỉ chạy vài nhóm |
 
 **Cổng deploy.** `npm run deploy` chỉ đưa lên commit mà GitHub Actions đã chạy xanh: nó hỏi kết quả
@@ -101,6 +101,8 @@ web/
 │  │  ├─ cong-tac.ts   ← đọc/ghi bảng công tắc nội dung
 │  │  ├─ nop-ho-so.ts  ← nhận hồ sơ ứng tuyển + tải CV
 │  │  ├─ dat-ban.ts    ← lịch trống và gửi yêu cầu đặt bàn
+│  │  ├─ mua-thit-ve.ts · don-mua-thit.ts ← trang Mua thịt về: đọc menu gói đã chốt giá; tính đơn, soạn tin đơn (chạy cả trong trình duyệt)
+│  │  ├─ dich-dat-hang.ts ← đích đặt hàng của trang Mua thịt về — MỘT chỗ (TẠM: chép tin, mở chat Zalo OA; sau đổi sang Mini App)
 │  │  ├─ xu-ly-form.ts ← POST → chuyển hướng → GET, dùng chung hai ngôn ngữ
 │  │  ├─ than-gioi-han.ts ← đọc thân POST có giới hạn: form công khai, webhook iPOS, Messenger
 │  │  ├─ gui-noi-bo.ts ← form ở /noi-bo (CRM): đọc thân, chuyển hướng 303, câu báo qua cookie
@@ -110,12 +112,13 @@ web/
 │  │  ├─ Trang.astro   ← thẻ mô tả, JSON-LD, ảnh chia sẻ, đầu và chân trang (chỉ file này nạp cong-khai.css)
 │  │  └─ NoiBo.astro   ← khung giao diện nội bộ
 │  ├─ components/
-│  │  ├─ DauTrang.astro · ChanTrang.astro       ← logo phụ trắng trên đầu trang đen, bốn mục điều hướng, menu gọn; chân trang đen (logo chính trắng) + pháp nhân
+│  │  ├─ DauTrang.astro · ChanTrang.astro       ← logo phụ trắng trên đầu trang đen, bốn mục điều hướng (năm khi trang Mua thịt về mở), menu gọn; chân trang đen (logo chính trắng) + pháp nhân
 │  │  ├─ TrangRaMat.astro  ← trang chủ, chỉ ghép các khối:
 │  │  │    KhoiMoDau · BaBuoc · QuayChonBo · BuaAnCungNhau · DiCungNhom · LenTang3 · CauHoi
 │  │  ├─ TrangThucDon.astro · TrangDenBeeftown.astro
 │  │  │    ThucDonNhomAnh · ThucDonMon (nhóm món kiểu cuốn menu bản sáng) · ThucDonNhom (nhóm dạng danh sách)
 │  │  ├─ TrangDatBan.astro · TrangTuyenDung.astro · FormUngTuyen.astro · TrangVanBan.astro
+│  │  ├─ TrangMuaThitVe.astro · MuaThitThe.astro ← trang Mua thịt về và thẻ một sản phẩm
 │  │  └─ Anh · KhungAnh · NhanKhay · LenTang3 · BieuTuong   ← thành phần dùng chung (THIET-KE.md, mục 5)
 │  ├─ pages/
 │  │  ├─ (tiếng Việt ở gốc, tiếng Anh dưới /en, tiếng Hàn dưới /ko)
@@ -137,7 +140,7 @@ Tên file và biến đặt bằng tiếng Việt, khớp với tên cột trong
 
 **Thực đơn** — trang `/thuc-don` (`/en/menu`, `/ko/menu`) đọc món qua `thuc_don_cong_khai()`. Món chỉ hiện khi đã công bố. Sửa tên, mô tả, bản tiếng Anh và tiếng Hàn, công bố và gỡ từng món: màn `/noi-bo/thuc-don` (chủ nhà hàng, quản lý, marketing; thu ngân chỉ xem). Giá, mức cay, cờ món sống / có cồn và việc bật hai công tắc vẫn làm theo [`THUC-DON.md`](THUC-DON.md). Món đã công bố trình bày theo cuốn menu in "bản sáng" Khánh chốt 11/10/2026 (`ThucDonNhomAnh.astro`): tên nhóm chữ hoa như tiêu đề trang của cuốn, câu dưới tên nhóm (`CAU_NHOM` trong `src/lib/thuc-don.ts`), món dẫn đầu thẻ lớn, các món còn lại thành lưới thẻ có ảnh (`ANH_CUA_MON` trong `src/lib/anh.ts`, theo mã món) — dưới 600px món đứng sau món dẫn đầu là hàng gọn: ảnh nhỏ 128px bên trái, chữ bên phải (nhóm không có món dẫn đầu giữ thẻ to) — không giá, không độ cay. Chưa công bố món nào thì trang giới thiệu theo nhóm của cuốn. Bố cục và lý do: `THIET-KE.md`, mục 1, "Trang Thực đơn".
 
-**Menu bán lẻ** — màn `/noi-bo/ban-le` (database `crm/supabase/migrations/0099_ban_le_menu.sql`): thịt bò mang về và kim chi. Quầy cân thịt theo gram ở giá mỗi kg của Kho → Mặt hàng (sửa ở đây là sửa đúng ô đó; Beeftown Cân gửi xuống cân, cân chỉ nhận tối đa 999.999 đ/kg); online bán gói cố định 200 g / 400 g; kim chi theo hộp, giá cố định. Chủ và quản lý sửa, thu ngân và marketing chỉ xem; chỉ chủ bỏ chữ "Giá thử". FABi sửa tay theo `/noi-bo/ban-le/doi-chieu` (API iPOS chỉ đọc thực đơn). Mini App Zalo và website chưa đọc menu này — nối ở bước sau.
+**Menu bán lẻ** — màn `/noi-bo/ban-le` (database `crm/supabase/migrations/0099_ban_le_menu.sql`): thịt bò mang về và kim chi. Quầy cân thịt theo gram ở giá mỗi kg của Kho → Mặt hàng (sửa ở đây là sửa đúng ô đó; Beeftown Cân gửi xuống cân, cân chỉ nhận tối đa 999.999 đ/kg); online bán gói cố định 200 g / 400 g; kim chi theo hộp, giá cố định. Chủ và quản lý sửa, thu ngân và marketing chỉ xem; chỉ chủ bỏ chữ "Giá thử". FABi sửa tay theo `/noi-bo/ban-le/doi-chieu` (API iPOS chỉ đọc thực đơn). Website đọc menu này ở trang Mua thịt về (0101, giá đã chốt — mục "Mua thịt về" bên dưới); Mini App Zalo chưa — nối ở bước sau.
 
 **Ảnh** — hai loại, hai luật (`src/lib/anh.ts`):
 
@@ -149,6 +152,39 @@ Cỡ ảnh dựng sẵn bằng `python3 -I cong-cu/anh/tao-co-anh.py <thư-mục
 **Tài sản thương hiệu** — logo chính, logo phụ, brandmark (mỗi thứ ba bản đỏ / đen / trắng) tách nguyên path từ PDF Brand Guidelines 21/10/2026 bằng `cong-cu/thuong-hieu/tach-logo.mjs` (PDF không vào repo; script dừng khi số path lệch); favicon, biểu tượng 180 / 192 / 512 và ảnh chia sẻ dự phòng dựng từ chính các SVG đó bằng `cong-cu/thuong-hieu/tao-bieu-tuong.py`.
 
 **Ảnh chia sẻ link** — `og:image` là ảnh thật đã công bố ở khóa `anh_chia_se` nếu có, không thì ảnh dự phòng `public/thuong-hieu/chia-se-1200x630.png` (logo chính trắng trên nền đỏ, không ảnh chụp, không ngày, không giá).
+
+---
+
+## Mua thịt về (`/mua-thit-ve`)
+
+Trang công khai `/mua-thit-ve` (`/en/buy-meat`, `/ko/buy-meat`): khách chọn gói thịt bò và hộp kim chi để mang về, web soạn sẵn tin đơn tiếng Việt, khách tự gửi tin đó cho Beeftown qua Zalo OA. Website **không lưu đơn, không thu tiền, không hỏi tên, số điện thoại hay địa chỉ** — quán chỉ có đơn khi khách bấm Gửi trong Zalo. Database: `crm/supabase/migrations/0101_mua_thit_ve.sql` (hàm công khai `mua_thit_ve_cong_khai`, công tắc hiệu lực trong `noi_dung_cong_khai`). Kiểm thử: `crm/test/test-mua-thit-ve.mjs` (database), `test-mua-thit-ve-web.mjs` (thư viện), `test-cong-khai-mua-thit-ve.mjs` (component), `test-cong-khai-mua-thit-dieu-huong.mjs` (đích đặt hàng, điều hướng, vỏ trang, quyền riêng tư).
+
+**Luồng — TẠM (quyết định 4 của Khánh, 26/10/2026).** Khách chọn số gói (0–10 mỗi gói) → bấm "Xem đơn và gửi qua Zalo" (form GET: gói đã chọn đi lên máy chủ qua địa chỉ trang, máy chủ đọc lại menu rồi dựng khung "Xem lại đơn") → "Chép đơn" (máy không cho chép thì giữ ngón tay lên khung đơn, chọn Chép) → "Mở chat Zalo với Beeftown" → dán → Gửi. Tắt JavaScript vẫn đặt được: khung đơn và link Zalo do máy chủ dựng. Khánh: "Mốt đổi Mini App link trực tiếp đặt chứ không gửi tin nhắn nữa" — sau này nút gửi mở Mini App Zalo để đặt thẳng. Mọi thứ quyết định nút gửi trỏ đâu và giỏ đi sang quán thế nào nằm ở **một file**, `src/lib/dich-dat-hang.ts` (`dichDatHang`, `linkGuiDon`, `CHU_DICH`); component và script chỉ đọc file đó (script nhận đích qua `data-dich`). PR đổi sang Mini App sửa file đó và kiểm thử của nó — danh sách việc và những câu chữ còn nhắc "gửi tin qua Zalo" ghi ở chú thích đầu file.
+
+**Giá (quyết định 1, 2, 3).** Trang hiện giá gói trong ảnh chụp giá **chủ đã chốt** ở `/noi-bo/ban-le`, không đọc giá mỗi kg của Kho: giá mỗi kg đổi sau lần chốt thì trang vẫn giữ giá đã chốt cho tới khi chủ chốt lại. Sản phẩm chưa chốt giá lần nào: không hiện. Gói thêm sau lần chốt (ảnh chụp không có giá của gói đó): không hiện gói đó. Kim chi: giá chốt của hộp. Trang ghi "Giá từng gói là giá quán đã công bố. Quán xác nhận tổng tiền khi liên hệ lại với bạn." Gói thịt ghi "Gói khoảng 200 g"; không ghi giá theo kg hay 100 g. Số tiền chỉ in qua `dinhDangTien` trong phần tử `data-tien` — bộ quét chữ cấm miễn đúng chỗ đó, trên đúng ba đường dẫn này; trang khác vẫn cấm mọi số tiền.
+
+**Khi nào trang mở — một trạng thái cho điều hướng, mô tả trang và form.** `noi_dung_cong_khai()` trả `hien_mua_thit_ve = true` chỉ khi đủ ba điều kiện: công tắc `hien_mua_thit_ve` bật ở `/noi-bo/noi-dung`; `zalo_oa_url` đã công bố đúng dạng `https://zalo.me/<mã OA>` (khóa chỉ chủ từ 0101); có ít nhất một sản phẩm Đang bán, kênh website, đã chốt giá. Web đọc giá trị đó qua `muaThitVeMo(nd)` (`src/lib/dich-dat-hang.ts`):
+
+| Tình trạng | Điều hướng | Trang |
+|---|---|---|
+| Chưa nối database (CI), công tắc tắt, thiếu link Zalo hợp lệ, chưa có gói nào | bốn mục | "chưa mở": một câu và link Xem thực đơn — không form, không giá, không câu mời nhắn |
+| Mở, đọc menu lỗi hay hết giờ (4 giây) | năm mục | "chưa tải được danh sách gói" và nút nhắn Zalo OA |
+| Mở, mọi gói "Tạm hết ở quầy" (chỉ khi bật `mua_thit_hien_tam_het`) | năm mục | gói kèm giá, không form, nút nhắn Zalo OA |
+| Mở, có gói đặt được | năm mục — "Mua thịt về" ngay sau "Thực đơn" | form chọn gói |
+
+Bật công tắc mà trang vẫn "chưa mở": xem mô tả khóa `hien_mua_thit_ve` ở `/noi-bo/noi-dung` (thiếu link Zalo, hay chưa sản phẩm nào chốt giá). Chỉ bật khi có người trực Zalo OA trả lời đơn, đã thử chép đơn trên điện thoại thật và đã có ý kiến luật sư về cách ghi định lượng gói giá cố định. Trang 404 không đọc database nên luôn bốn mục. "Giao tận nơi" chỉ có khi khóa chỉ chủ `mua_thit_giao_hang` đã công bố. `mua_thit_hien_tam_het` mặc định tắt — chỉ bật khi chi nhánh trừ kho theo iPOS (`KHO.md`, mục 3r).
+
+**Hướng dẫn nhân viên trực Zalo OA:**
+
+1. Tin đơn của website bắt đầu bằng `MUA THỊT VỀ – BEEFTOWN · beeftown.vn`, dòng hai là giờ khách soạn tin (giờ Việt Nam).
+2. **Giá trong tin là giá trên web lúc khách soạn, và khách sửa được tin trước khi gửi.** Luôn tính lại trên FABi; báo khách tổng tiền theo FABi trước khi chốt đơn. Giá web là giá chủ đã chốt; giá quầy đổi sau đó thì FABi có thể khác.
+3. Hai tin giống hệt từng chữ (cùng dòng giờ soạn) trong cùng khung chat: khách gửi hai lần — một đơn. Khác dòng giờ: hỏi khách là đơn mới hay đơn sửa.
+4. "Giao tận nơi" chỉ có khi trang đang nhận giao; hỏi địa chỉ, báo phí giao.
+5. Mã QR chuyển khoản chỉ gửi trong khung chat của OA.
+6. Dòng "Khách đọc trang tiếng Anh / tiếng Hàn" → trả lời bằng thứ tiếng đó nếu được.
+7. Khách ghi thêm "cần hơn 10 gói" → kiểm quầy trước khi nhận.
+
+**Việc Khánh thử trên máy thật** (trước khi bật công tắc; danh sách đủ mười hai bước và thứ tự triển khai ở mô tả PR của trang Mua thịt về): chạm `https://zalo.me/3030027075662095415` trên iPhone và Android, có và không cài Zalo, tài khoản đã và chưa Quan tâm OA — app mở khung chat hay hồ sơ OA; dán một tin đơn mẫu vào chat — còn xuống dòng, không bị cắt; mở trang từ trình duyệt trong Zalo, Facebook, Messenger — nút "Chép đơn" có chép được không, không chép được thì chữ trong khung có được bôi đen sẵn; Zalo trên máy tính; tin tự động của OA có bắt nhầm tin đơn ("giá", "menu", "mua") không; gửi một tin hai lần; tắt JavaScript rồi đặt thử.
 
 ---
 
@@ -549,8 +585,8 @@ grep -rq "$(grep PUBLIC_SUPABASE_URL .env | cut -d= -f2 | sed 's|https://||;s|\.
 
 ## Đã làm và chưa làm
 
-**Trang công khai — 21 đường dẫn, ba thứ tiếng:**
-trang chủ · **thực đơn** · **đến Beeftown** · **hỏi bàn** · tuyển dụng · quyền riêng tư · xóa dữ liệu, mỗi trang một bản Việt, một bản Anh (`/en`) và một bản Hàn (`/ko`), cộng `robots.txt` và `sitemap.xml`. Đường dẫn lạ trả trang 404 của Beeftown (`src/pages/404.astro`): mã 404, thứ tiếng theo tiền tố đường dẫn (`/en/…`, `/ko/…`, còn lại tiếng Việt), link về trang chủ ba thứ tiếng, noindex, không đọc database — không vào `CAP_DUONG_DAN` hay sitemap. Chữ lấy từ database được máy dịch — xem mục "Bản dịch tự động". Giao diện "Quầy thịt ấm" và logo bộ 21/10/2026: `THIET-KE.md`.
+**Trang công khai — 24 đường dẫn, ba thứ tiếng:**
+trang chủ · **thực đơn** · mua thịt về · **đến Beeftown** · **hỏi bàn** · tuyển dụng · quyền riêng tư · xóa dữ liệu, mỗi trang một bản Việt, một bản Anh (`/en`) và một bản Hàn (`/ko`), cộng `robots.txt` và `sitemap.xml`. Đường dẫn lạ trả trang 404 của Beeftown (`src/pages/404.astro`): mã 404, thứ tiếng theo tiền tố đường dẫn (`/en/…`, `/ko/…`, còn lại tiếng Việt), link về trang chủ ba thứ tiếng, noindex, không đọc database — không vào `CAP_DUONG_DAN` hay sitemap. Chữ lấy từ database được máy dịch — xem mục "Bản dịch tự động". Giao diện "Quầy thịt ấm" và logo bộ 21/10/2026: `THIET-KE.md`.
 
 **Trang thực đơn công khai — đã có.** Phần Bò tại quầy luôn hiện; món ăn và đồ uống hiện khi Khánh công bố món (`THUC-DON.md`), đồ uống có cồn sau công tắc riêng. Không giá nào hiện khi chưa duyệt.
 

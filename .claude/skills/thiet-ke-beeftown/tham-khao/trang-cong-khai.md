@@ -7,7 +7,8 @@
 ## Khung trang
 
 - Mỗi thứ tiếng một file vỏ mỏng: `pages/thuc-don.astro`, `pages/en/menu.astro`, `pages/ko/menu.astro`.
-  Vỏ đọc dữ liệu (`docNoiDung('<thứ tiếng>')`, thêm `docThucDon`… khi cần) rồi dựng
+  Vỏ đọc dữ liệu (`docNoiDung('<thứ tiếng>')`, thêm `docThucDon`, `docMuaThitVe`… khi cần, song song bằng
+  `Promise.all`) rồi dựng
   `<Trang ngonNgu noiDung duongDan tieuDe moTa><TrangXxx ngonNgu noiDung /></Trang>`.
 - Trang có form chạy PRG trước: `const chuyenHuong = await xuLyDatBan(Astro, '/dat-ban', 'vi');
   if (chuyenHuong) return chuyenHuong;`.
@@ -36,11 +37,13 @@ Khối có ảnh xếp so le trên máy tính (ảnh trái – chữ phải, r�
 chữ và nút đứng trước ảnh, trừ dải đen "Quầy chọn bò" mở bằng ảnh. Nút của một khối nằm ngay sau đoạn
 giải thích của nó, không đẩy xuống cuối khối.
 
-Trang con (Thực đơn, Đến Beeftown, Hỏi bàn, Tuyển dụng):
+Trang con (Thực đơn, Mua thịt về, Đến Beeftown, Hỏi bàn, Tuyển dụng):
 
 1. `section.mo-dau-trang.be-kem` — `.khung > p.hieu + h1 + p.dan` — không hình trang trí.
 2. Các khối `section.muc.be-*` xen kẽ bề mặt — không hai dải đen hay hai dải đỏ liền nhau.
 3. Khối kêu gọi cuối: `section.muc.be-do` với `p.hieu`, `h2`, `p.dan`, `.hang-nut` — dải đỏ phẳng.
+   Ngoại lệ có chủ đích: Mua thịt về không có khối `be-do` cuối — trang có một hành động chính (gửi đơn),
+   nút của nó nằm trong khối chọn gói; khối cuối là hỏi đáp.
 
 ## Khung mẫu một khối
 
@@ -74,7 +77,7 @@ Trang con (Thực đơn, Đến Beeftown, Hỏi bàn, Tuyển dụng):
   component**: `kmd-` (KhoiMoDau), `bb-` (BaBuoc), `qcb-` (QuayChonBo), `bacn-` (BuaAnCungNhau), `dcn-`
   (DiCungNhom), `lt3-` (LenTang3), `ch-`
   (CauHoi), `nk-` (NhanKhay), `td-` (TrangThucDon, ThucDonNhom), `tdn-` (ThucDonNhomAnh), `tdm-` (ThucDonMon),
-  `db-` (TrangDenBeeftown), `hb-` (TrangDatBan),
+  `db-` (TrangDenBeeftown), `hb-` (TrangDatBan), `mtv-` (TrangMuaThitVe, MuaThitThe),
   `ut-` (FormUngTuyen), `vb-` (TrangVanBan), `dt-` / `mg-` (DauTrang), `ct-` (ChanTrang).
 - `:global()` chỉ để chạm tới phần tử do component con hay `<slot>` dựng (`.lt3-dc :global(svg)`).
 - Trong CSS riêng: màu chỉ từ biến bề mặt và token; khoảng cách `--k-*`; cỡ chữ `--co-*`; mốc
@@ -124,10 +127,16 @@ tệ hơn không có nút".
 - Công tắc so `=== true` (`null` là chưa duyệt): `nd.hien_thuc_don === true`.
 - Kênh liên hệ luôn qua `lienHe(nd)` (`web/src/lib/trang-cong-khai.ts`) — mỗi trường `string | null`,
   link không an toàn bị bỏ. Dựng `{lh.facebook && (<a …>)}`; cả khối không có gì để hiện thì ẩn cả
-  khối.
+  khối. Trừ đích gửi đơn mua thịt: `dichDatHang(nd)` (chỉ `https://zalo.me/…` — `lienHe(nd).zalo` nhận mọi
+  link http(s), đủ cho link liên hệ thường nhưng không cho chỗ khách gửi đơn và nhận mã QR chuyển khoản).
 - Quyết định suy ra để ở `trang-cong-khai.ts`, không rải trong component: `formHoiBanMo`,
-  `coKenhHoiBan`, `nutMoDau` (thứ bậc hai nút màn đầu), `dieuHuong`.
-- Giá: chỉ render phần tử giá khi `gia !== null` — không ô trống, không "liên hệ".
+  `coKenhHoiBan`, `nutMoDau` (thứ bậc hai nút màn đầu), `dieuHuong` (bốn mục; năm khi trang Mua thịt về
+  mở), `moTaTrangMuaThit`. Trang Mua thịt về thêm `muaThitVeMo`, `dichDatHang`, `linkGuiDon`
+  (`web/src/lib/dich-dat-hang.ts` — đích đặt hàng ở một chỗ: PR đổi sang Mini App Zalo chỉ sửa file đó) và
+  `trangThaiMuaThit`, `coGiaoHang` (`web/src/lib/mua-thit-ve.ts`).
+- Giá: chỉ render phần tử giá khi `gia !== null` — không ô trống, không "liên hệ". Trang Mua thịt về in
+  giá gói **chủ đã chốt** qua `dinhDangTien` trong phần tử `data-tien` (bộ quét miễn đúng chỗ đó); gói
+  không có giá chốt thì không hiện gói — không "liên hệ", không "quán báo giá".
 - Ngày: chỉ khi khóa ngày đã công bố; định dạng theo `dinhDangNgay(ngay, ngonNgu)`; hôm nay theo giờ
   Việt Nam `homNayVn()`.
 - Ảnh: `coAnh(id, khung)`; chưa dựng cỡ thì `<Anh>` tự hiện `KhungAnh`.
@@ -153,6 +162,8 @@ theo ngày — `web/THIET-KE.md` mục 10.
 | `LenTang3` | `ngonNgu`, `noiDung`, `gon?`, `capTieuDe?`, `anHieu?`, `tieuDe?`, `khongLinkDuongDen?` | "Tầng 3" và đường lên; bản gọn cho trang Hỏi bàn. In địa chỉ và câu chỉ đường `t.loiLen` (lối vào riêng ngay cạnh GS25, thang máy lên tầng 3) — không viết lại câu đó trong component khác |
 | `CauHoi` | `ngonNgu`, `noiDung` | Hỏi đáp bằng `<details>` — chỉ dữ kiện đã xác nhận. Mỗi `<summary>` có hai biểu tượng `cong` (`.bt-mo`) và `tru` (`.bt-dong`); hàng cao 56px, bấm được trên toàn chiều rộng |
 | `TrangVanBan` | `hieu`, `tieuDe` + `<slot>` | Trang pháp lý |
+| `TrangMuaThitVe` | `ngonNgu`, `noiDung`, `menu`, `trangThai` (`chua_mo` / `loi` / `mo` / `het_quay`), `thamSo`, `duongDan` | Trang Mua thịt về: form GET chọn gói (chỉ ở `mo`), khối "Xem lại đơn" có tin đơn và nút gửi lấy từ `dichDatHang` / `linkGuiDon` / `CHU_DICH`, hỏi đáp. Trạng thái do file vỏ tính: `trangThaiMuaThit(muaThitVeMo(noiDung), menu)`. Chưa mở: chỉ h1, một câu, link Xem thực đơn — không câu mời nhắn, không nút kênh |
+| `MuaThitThe` | `sanPham`, `ngonNgu`, `noiDung`, `gio`, `coOChon` | Thẻ một sản phẩm của Mua thịt về: `KhungAnh loai="khay"`, tên, nhãn bảo quản bằng chữ, mỗi gói một hàng nhãn gói + giá (`data-tien`) + ô chọn số 0–10 với nút −/+ (nút ra trang với `hidden`); gói tạm hết: chữ "Tạm hết ở quầy", giá vẫn hiện, không ô chọn |
 | `ThucDonNhom` | `nhom`, `ngonNgu`, `ghiChu?`, `khongGia?` | Một nhóm món dạng danh sách (bò tại quầy, đồ uống chưa có ảnh) |
 | `ThucDonNhomAnh` | `nhom`, `ngonNgu`, `kieu?` (`dan-dau` / `deu`), `ghiChu?`, `tieuDeNho?`, `nenKhung?`, `khongGia?` | Một nhóm món kiểu cuốn menu bản sáng: tên nhóm chữ hoa `--co-nhom`, câu của nhóm (`CAU_NHOM`), món dẫn đầu chữ trái – ảnh phải từ 768px, lưới thẻ ảnh trên chữ dưới (2 / 3 cột) từ 600px; dưới 600px món đứng sau món dẫn đầu là hàng gọn `tdn-gon` (ảnh 128px trái, chữ phải) — nhóm không có món dẫn đầu giữ thẻ to; `deu` cho ba ly signature (luôn là thẻ); `tieuDeNho` trong dải đen Bò tại quầy |
 | `ThucDonMon` | `mon`, `ngonNgu`, `lon?`, `khongGia?` | Chữ của một món: tên (chữ thường đậm 700), giá chỉ khi `gia !== null`, mô tả, nhãn Món sống / Có cồn, câu cảnh báo món sống |
@@ -191,5 +202,8 @@ Thêm ảnh thật: `web/THIET-KE.md` mục 7, "Đưa một ảnh chụp thật 
   phím Esc, đóng menu khi bấm ra ngoài hay Tab ra khỏi mục cuối, khóa bấm đúp (`aria-busy`, "Đang gửi…"), lỗi sát ô, giữ bản nháp 15 phút trong
   `sessionStorage` (trừ ô đồng ý), focus vào khung kết quả.
 - Nút chỉ chạy được nhờ JavaScript (sao chép địa chỉ) ra trang với `hidden`, script dò tính năng rồi
-  mới hiện; thông báo qua `role="status"`.
+  mới hiện; thông báo qua `role="status"`. Component có nút như vậy khai trong `<style>` của nó quy tắc
+  `[hidden] { display: none !important; }` (viết trơn, không `.ck` phía trước — Astro gắn phạm vi cho mọi
+  bộ chọn của `<style>`, nên `.ck [hidden]` không bao giờ khớp): `.ck .nut { display: inline-flex }` đè
+  thuộc tính `hidden`, nút vẫn hiện khi không có JavaScript.
 - Mọi truy vấn phần tử kiểm `null`; `sessionStorage`, clipboard bọc `try/catch`, hỏng thì im lặng.

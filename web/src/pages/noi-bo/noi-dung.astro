@@ -114,7 +114,7 @@ try {
 }
 
 // Nhóm theo cụm, giữ thứ tự sổ đăng ký.
-const thuTuNhom = ['trang_thai', 'lien_he', 'lich', 'chia_se', 'khoi'];
+const thuTuNhom = ['trang_thai', 'lien_he', 'lich', 'chia_se', 'khoi', 'mua_thit'];
 const theoNhom = thuTuNhom
   .map(n => ({ ma: n, hang: bang.filter(h => h.nhom === n) }))
   .filter(g => g.hang.length > 0);

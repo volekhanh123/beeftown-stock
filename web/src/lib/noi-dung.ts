@@ -51,12 +51,28 @@ export interface NoiDung {
   hien_danh_gia: boolean | null;
   // Mini App Zalo hiện còn hàng theo kho (0093) — website không đọc khóa này, hàm mini_app_con_hang() tự hỏi.
   mini_app_hien_con_hang: boolean | null;
+  // Mua thịt về (0101). hien_mua_thit_ve là công tắc HIỆU LỰC do database tính (noi_dung_cong_khai): true chỉ
+  // khi công tắc bật, zalo_oa_url là link https://zalo.me/… hợp lệ đã công bố VÀ menu web có ít nhất một gói.
+  // Điều hướng, trạng thái trang và form cùng đọc giá trị này (muaThitVeMo của lib/dich-dat-hang.ts).
+  hien_mua_thit_ve: boolean | null;
+  // Trang ghi "Tạm hết ở quầy" — website không đọc khóa này, hàm mua_thit_ve_cong_khai() tự hỏi.
+  mua_thit_hien_tam_het: boolean | null;
+  mua_thit_gio_nhan: string | null;
+  // Đã công bố = trang mở "Giao tận nơi"; chưa công bố = chỉ nhận tại quầy.
+  mua_thit_giao_hang: string | null;
+  mua_thit_thue: string | null;
+  mua_thit_bao_quan_mat: string | null;
+  mua_thit_bao_quan_dong_lanh: string | null;
+  mua_thit_can_lech: string | null;
+  mua_thit_hang_loi: string | null;
+  mua_thit_doi_huy: string | null;
   // Liên hệ
   dia_chi_hien_thi: string | null;
   hotline: string | null;
   facebook_url: string | null;
   instagram_url: string | null;
   tiktok_url: string | null;
+  // Từ 0101 chỉ chủ công bố, chỉ nhận https://zalo.me/<mã> — cũng là đích đặt hàng của Mua thịt về (lib/dich-dat-hang.ts).
   zalo_oa_url: string | null;
   google_maps_url: string | null;
   email_lien_he: string | null;
@@ -73,6 +89,9 @@ const RONG: NoiDung = {
   hien_thuc_don: null, hien_do_uong_co_con: null, hien_tuyen_dung: null,
   hien_ba_buoc: null, hien_quay_thit: null, hien_tiec_nhom: null, hien_danh_gia: null,
   mini_app_hien_con_hang: null,
+  hien_mua_thit_ve: null, mua_thit_hien_tam_het: null, mua_thit_gio_nhan: null, mua_thit_giao_hang: null,
+  mua_thit_thue: null, mua_thit_bao_quan_mat: null, mua_thit_bao_quan_dong_lanh: null, mua_thit_can_lech: null,
+  mua_thit_hang_loi: null, mua_thit_doi_huy: null,
   dia_chi_hien_thi: null, hotline: null, facebook_url: null, instagram_url: null,
   tiktok_url: null, zalo_oa_url: null, google_maps_url: null, email_lien_he: null,
   tieu_de_og: null, mo_ta_og: null, anh_chia_se: null,
@@ -83,8 +102,8 @@ const RONG: NoiDung = {
  *
  * Đó là lựa chọn ĐÚNG ở đây, không phải đường tắt: khóa anon của Supabase
  * công khai theo thiết kế — nó nằm sẵn trong mã trang web mà ai cũng xem
- * được. An toàn nằm ở RLS và ở danh sách 12 hàm anon được gọi (migration
- * 0013), không nằm ở việc giấu khóa.
+ * được. An toàn nằm ở RLS và ở danh sách hàm anon được gọi (khối CHỐT QUYỀN
+ * của migration mới nhất; DUOC_PHEP của crm/test/test-an-toan.mjs), không nằm ở việc giấu khóa.
  *
  * Hệ quả cần nhớ khi deploy: phải đặt hai biến này ở phần BUILD của
  * Cloudflare, không phải phần biến môi trường lúc chạy.

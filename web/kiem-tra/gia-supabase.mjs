@@ -20,6 +20,8 @@
  *   tin_tuyen_dung_cong_khai(p_ngon_ngu)   → [] (trang dùng danh sách dự phòng); kịch bản
  *                                            tuyen-dung-* trả hai tin mẫu, đủ cột của 0026 / 0043
  *   nop_ho_so_ung_tuyen(16 tham số, 0026)  → chuỗi mã hồ sơ 'BT-UV-YYMM-XXXXX'
+ *   mua_thit_ve_cong_khai(p_ngon_ngu, p_chi_nhanh_ma) → bảng 11 cột (0101): mỗi dòng một gói khách chọn được;
+ *                                            kịch bản cũ trả [] (kênh chưa mở), mua-thit-* trả MENU_THU
  *
  * supabase-js gọi POST {URL}/rest/v1/rpc/<tên hàm> với thân JSON. PostgREST chọn hàm
  * theo TÊN tham số: gửi một tham số lạ (đổi tên p_ho_ten ở web mà quên database) là
@@ -57,10 +59,25 @@
  *   da-mo         như day-du, thêm ngay_khai_truong là một ngày ĐÃ qua (NGAY_DA_MO_THU) và
  *                 dong_trang_thai dài hai câu: màn đầu trang chủ hiện dòng "Mở cửa từ …"
  *
+ *   Trang Mua thịt về (PR 2, 0101). hien_mua_thit_ve dưới đây là giá trị DATABASE TRẢ — công tắc hiệu lực mà
+ *   noi_dung_cong_khai() đã tính (bật + link Zalo OA hợp lệ + có gói trên menu web). Mọi kịch bản cũ: null, menu [].
+ *   mua-thit-mo         như day-du (có hotline); hien_mua_thit_ve true, zalo_oa_url = ZALO_OA_THU, giờ nhận có chữ
+ *                       thử; menu MENU_THU (Ba chỉ bò Mỹ 400 g "Tạm hết ở quầy")
+ *   mua-thit-giao       như mua-thit-mo, thêm mua_thit_giao_hang (chữ thử, không số tiền), hotline null
+ *   mua-thit-het-quay   như mua-thit-mo, mọi gói tam_het
+ *   mua-thit-rong       database tự tính false (bật, có link, 0 gói); menu []
+ *   mua-thit-khong-zalo false, zalo_oa_url null; menu []
+ *   mua-thit-zalo-la    true (phòng hờ database lệch) mà zalo_oa_url là https://example.com/…; menu MENU_THU
+ *   mua-thit-lech       true, link hợp lệ, menu [] (gói vừa bị bỏ giữa hai lời gọi song song)
+ *   mua-thit-loi        true, link hợp lệ; mua_thit_ve_cong_khai trả 500
+ *   mua-thit-dut        true, link hợp lệ; mua_thit_ve_cong_khai cắt kết nối (như dat-ban-dut)
+ *   mua-thit-treo       true, link hợp lệ; mua_thit_ve_cong_khai không trả lời trong 10 giây
+ *
  * GET /__dem → { tên hàm: số lần gọi } — để kiểm "bấm đúp → tao_dat_ban đúng một lần".
  * GET /__nhat-ky → 200 lần gọi gần nhất { ham, thamSo }.
  *
- * Dùng như module: import { batMayGia } from './gia-supabase.mjs' (thu-day-du.mjs).
+ * Dùng như module: import { batMayGia } from './gia-supabase.mjs' (thu-day-du.mjs). cong: 0 → hệ điều hành chọn
+ * cổng trống (crm/test/test-cong-khai-quet-gia.mjs); goc và cong trả về là cổng thật.
  * Không thư viện ngoài — chỉ node:http.
  */
 
@@ -71,7 +88,9 @@ import { homNayVn } from '../src/lib/gio-vn.ts';
 
 export const CONG_MAC_DINH = 54331;
 export const KICH_BAN = ['rong', 'day-du', 'dat-ban-dong', 'dat-ban-loi', 'dat-ban-500', 'dat-ban-dut', 'dat-ban-sap', 'dia-chi-cong-bo',
-  'tuyen-dung-mo', 'tuyen-dung-dut', 'tuyen-dung-loi', 'sap-mo', 'da-mo', 'khong-con-tat', 'thuc-don-thu-suc'];
+  'tuyen-dung-mo', 'tuyen-dung-dut', 'tuyen-dung-loi', 'sap-mo', 'da-mo', 'khong-con-tat', 'thuc-don-thu-suc',
+  'mua-thit-mo', 'mua-thit-giao', 'mua-thit-het-quay', 'mua-thit-rong', 'mua-thit-khong-zalo', 'mua-thit-zalo-la',
+  'mua-thit-lech', 'mua-thit-loi', 'mua-thit-dut', 'mua-thit-treo'];
 
 // Liên hệ "đã công bố" của kịch bản day-du. Đường dẫn thử, không phải trang thật của nhà hàng.
 export const LIEN_HE_THU = {
@@ -103,18 +122,65 @@ export const TRANG_THAI_THU = {
 };
 
 // Mọi khóa của sổ đăng ký khoa_cong_bo — database luôn trả ĐỦ, khóa chưa công bố là null
-// (web/src/lib/noi-dung.ts, mục "BA ĐIỀU QUAN TRỌNG").
+// (web/src/lib/noi-dung.ts, mục "BA ĐIỀU QUAN TRỌNG"). crm/test/test-cong-khai-quet-gia.mjs so với NoiDung.
 const KHOA_NOI_DUNG = [
   'ngay_khai_truong', 'ngay_treo_bang_ron', 'dong_trang_thai', 'form_dat_ban_dang_mo',
   'gio_phuc_vu_da_chot', 'hien_thuc_don', 'hien_do_uong_co_con', 'hien_tuyen_dung',
   'hien_ba_buoc', 'hien_quay_thit', 'hien_tiec_nhom', 'hien_danh_gia',
+  'mini_app_hien_con_hang',
+  // Trang Mua thịt về (0101).
+  'hien_mua_thit_ve', 'mua_thit_hien_tam_het', 'mua_thit_gio_nhan', 'mua_thit_giao_hang', 'mua_thit_thue',
+  'mua_thit_bao_quan_mat', 'mua_thit_bao_quan_dong_lanh', 'mua_thit_can_lech', 'mua_thit_hang_loi', 'mua_thit_doi_huy',
   'dia_chi_hien_thi', 'hotline', 'facebook_url', 'instagram_url', 'tiktok_url', 'zalo_oa_url',
   'google_maps_url', 'email_lien_he', 'tieu_de_og', 'mo_ta_og', 'anh_chia_se',
 ];
 
-function noiDung(kichBan) {
+const NN = ['vi', 'en', 'ko'];
+const ba = (vi, en, ko) => ({ vi, en, ko });
+
+// ---------------------------------------------------------------------------
+// Trang Mua thịt về (0101) — đích đặt hàng và chữ đã công bố của các kịch bản mua-thit-*. Link và chữ thử, không
+// phải của nhà hàng: OA thật ở mini-app/src/cau-hinh.ts, chữ thật do Sang chốt.
+// ---------------------------------------------------------------------------
+/** Link Zalo OA "đã công bố" — đúng mẫu https://zalo.me/<mã> (laLinkZaloOa, la_link_zalo_oa()). */
+export const ZALO_OA_THU = 'https://zalo.me/beeftown-thu';
+/** Kịch bản mua-thit-zalo-la: link không phải Zalo — trang phải coi như chưa mở dù database nói true. */
+export const ZALO_LA_THU = 'https://example.com/beeftown';
+export const GIO_NHAN_THU = ba(
+  'Nhận tại quầy từ 10:30 đến 21:00, sau khi quán gọi lại xác nhận.',
+  'Pick up at the counter from 10:30 to 21:00, once we have called to confirm.',
+  '주문 확인 전화를 드린 뒤 10:30부터 21:00까지 매장에서 받아 가실 수 있어요.',
+);
+export const GIAO_HANG_THU = ba(
+  'Giao trong bán kính 5 km quanh quán; quán báo phí giao khi gọi lại xác nhận đơn.',
+  'We deliver within 5 km of the restaurant and tell you the delivery fee when we call to confirm.',
+  '매장에서 5km 이내로 배달해요. 배달비는 주문 확인 전화로 알려 드려요.',
+);
+/** Kịch bản có menu (mua_thit_ve_cong_khai trả MENU_THU). */
+const KICH_BAN_CO_MENU = new Set(['mua-thit-mo', 'mua-thit-giao', 'mua-thit-het-quay', 'mua-thit-zalo-la']);
+
+/** Khóa nhóm "Mua thịt về" của một kịch bản (rỗng với kịch bản cũ: mọi khóa null). */
+function noiDungMuaThit(kichBan, n) {
+  if (!kichBan.startsWith('mua-thit-')) return {};
+  const nd = {
+    // Công tắc HIỆU LỰC: database tự tính false khi chưa có link hợp lệ hay chưa gói nào (mua-thit-rong,
+    // mua-thit-khong-zalo); mua-thit-zalo-la giả một database lệch (true với link lạ) — lớp chặn ở web phải đỡ.
+    hien_mua_thit_ve: !['mua-thit-rong', 'mua-thit-khong-zalo'].includes(kichBan),
+    zalo_oa_url: kichBan === 'mua-thit-khong-zalo' ? null : kichBan === 'mua-thit-zalo-la' ? ZALO_LA_THU : ZALO_OA_THU,
+  };
+  if (['mua-thit-mo', 'mua-thit-giao', 'mua-thit-het-quay'].includes(kichBan)) nd.mua_thit_gio_nhan = GIO_NHAN_THU[n];
+  if (kichBan === 'mua-thit-giao') Object.assign(nd, { mua_thit_giao_hang: GIAO_HANG_THU[n], hotline: null });
+  return nd;
+}
+
+/**
+ * Đúng thứ noi_dung_cong_khai(p_ngon_ngu) trả trong một kịch bản: ĐỦ mọi khóa, chưa công bố là null. Chữ của khóa văn
+ * bản Mua thịt về theo thứ tiếng (như bản dịch đã duyệt); chữ của các khóa cũ không theo thứ tiếng (như trước).
+ */
+export function noiDung(kichBan, nn = 'vi') {
   const nd = Object.fromEntries(KHOA_NOI_DUNG.map(k => [k, null]));
   if (kichBan === 'rong') return nd;
+  const n = NN.includes(nn) ? nn : 'vi';
   return {
     ...nd,
     ...LIEN_HE_THU,
@@ -124,7 +190,95 @@ function noiDung(kichBan) {
     ...(kichBan === 'dia-chi-cong-bo' ? { dia_chi_hien_thi: DIA_CHI_CONG_BO_THU } : {}),
     ...(kichBan === 'sap-mo' ? { ngay_khai_truong: ngaySapMoThu(), dong_trang_thai: TRANG_THAI_THU['sap-mo'] } : {}),
     ...(kichBan === 'da-mo' ? { ngay_khai_truong: NGAY_DA_MO_THU, dong_trang_thai: TRANG_THAI_THU['da-mo'] } : {}),
+    ...noiDungMuaThit(kichBan, n),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Menu mua thịt về thử — hình dạng của mua_thit_ve_cong_khai() (0101), giá THỬ (không phải giá của quán; số nguyên
+// chia hết cho 1.000 như ràng buộc giá của 0099). Thứ tự như database: thịt trước kim chi, gói theo số gam tăng
+// dần. Đủ các ca trang phải chịu: thịt mát / đông lạnh / giữ lạnh, gói 1000 g, một gói "Tạm hết ở quầy", sản phẩm
+// một gói, tên en / ko giống tên tiếng Việt (LA Galbi — thẻ phải gắn lang="vi"), hộp kim chi, và một sản phẩm tên
+// dài đúng 120 ký tự, mô tả dài đúng 500 ký tự (giới hạn của ban_le_san_pham, 0099) cho phép đo 320px.
+// thu-day-du.mjs nhóm 12 tính đơn và tin đơn mong đợi từ chính dữ liệu này (qua lib của trang).
+// ---------------------------------------------------------------------------
+export const MENU_THU = [
+  { ma: 'ribeye-cap', loai: 'thit', donVi: 'goi', baoQuan: 'mat',
+    ten: ba('Ribeye with Cap', 'Ribeye with the cap', '립아이 캡'),
+    moTa: ba('Thăn lưng phần đầu, có lớp nắp mỡ bao quanh. Mềm, nhiều nước.',
+             'The front of the rib, wrapped in its fat cap. Tender and juicy.',
+             '등심 앞부분으로 지방층이 감싸고 있어요. 부드럽고 육즙이 많아요.'),
+    cachDung: ba('Nướng trên vỉ nóng vừa, lật một lần, để thịt nghỉ hai phút trước khi cắt.',
+                 'Grill on a medium-hot grill, turn once, and rest for two minutes before slicing.',
+                 '중간 정도로 달군 그릴에서 한 번만 뒤집어 굽고, 자르기 전에 2분 정도 두세요.'),
+    goi: [{ soGam: 200, gia: 400000 }, { soGam: 400, gia: 800000 }] },
+  { ma: 'than-ngoai', loai: 'thit', donVi: 'goi', baoQuan: 'mat',
+    ten: ba('Thăn ngoại', 'Striploin', '채끝'),
+    moTa: ba('Thớ chắc, vị bò rõ.', 'Firm grain and a clear beef flavour.', '결이 단단하고 소고기 맛이 또렷해요.'),
+    cachDung: ba('Thái lát dày, nướng nhanh trên vỉ thật nóng.', 'Slice thick and grill quickly on a very hot grill.',
+                 '두툼하게 썰어 아주 뜨거운 그릴에서 빠르게 구워 주세요.'),
+    goi: [{ soGam: 200, gia: 300000 }, { soGam: 400, gia: 600000 }, { soGam: 1000, gia: 1500000 }] },
+  { ma: 'ba-chi-bo-my', loai: 'thit', donVi: 'goi', baoQuan: 'mat',
+    ten: ba('Ba chỉ bò Mỹ', 'US beef short plate', '미국산 우삼겹'),
+    moTa: ba('Thái lát mỏng, mỡ xen nạc.', 'Thin slices, fat running through the lean.', '얇게 썰어 살코기 사이에 지방이 고루 섞여 있어요.'),
+    cachDung: ba('Lát mỏng nên chín nhanh, nướng từng lát.', 'Thin slices cook fast: grill one slice at a time.',
+                 '얇아서 빨리 익으니 한 장씩 구워 주세요.'),
+    goi: [{ soGam: 200, gia: 180000 }, { soGam: 400, gia: 360000, tamHet: true }] },
+  { ma: 'la-galbi', loai: 'thit', donVi: 'goi', baoQuan: 'dong_lanh',
+    ten: ba('LA Galbi', 'LA Galbi', 'LA Galbi'),
+    moTa: ba('Sườn cắt ngang, có xương, đã ướp sẵn.', 'Cross-cut short ribs on the bone, already marinated.', '뼈째 가로로 썰어 미리 양념한 갈비예요.'),
+    cachDung: ba('Rã đông trong ngăn mát, nướng trên vỉ nóng vừa.', 'Thaw in the fridge, then grill on a medium-hot grill.',
+                 '냉장실에서 해동한 뒤 중간 정도로 달군 그릴에서 구워 주세요.'),
+    goi: [{ soGam: 400, gia: 360000 }] },
+  { ma: 'than-lung-cat-day', loai: 'thit', donVi: 'goi', baoQuan: 'giu_lanh',
+    ten: ba('Thăn lưng bò Mỹ cắt dày để nướng tại nhà, chia gói vừa cho hai người, kèm cách bảo quản và cách nướng trên chảo rất nóng',
+            'US beef striploin cut thick for grilling at home, packed for two people, with notes on storing it and cooking it in a very hot pan',
+            '집에서 굽기 좋게 두툼하게 썬 미국산 채끝, 두 분이 드시기 좋은 양으로 포장하고 보관 방법과 아주 뜨거운 팬에서 굽는 방법을 함께 담았어요'),
+    moTa: ba('Phần thăn lưng của bò Mỹ, thớ thịt mịn, có một dải mỡ mỏng chạy dọc mép giúp miếng thịt giữ được độ ẩm khi nướng. '
+             + 'Quầy cắt dày khoảng hai đốt ngón tay để bạn nướng tại nhà mà phần giữa vẫn hồng. Giữ trong ngăn mát, lấy ra để ngoài '
+             + 'khoảng hai mươi phút cho thịt bớt lạnh rồi mới nướng. Thấm khô mặt thịt bằng giấy, rắc muối ngay trước khi cho lên chảo '
+             + 'đã thật nóng, lật một lần, để thịt nghỉ vài phút trên thớt rồi mới thái lát theo chiều ngang thớ. Ăn kèm kim chi cải '
+             + 'thảo, rau xà lách và tương chấm.',
+             'Striploin from US beef, with a fine grain and a thin strip of fat along the edge that keeps the meat moist as it cooks. '
+             + 'The counter cuts it about two fingers thick so you can cook it at home and keep the centre pink. Keep it in the fridge, '
+             + 'then leave it out for about twenty minutes before cooking. Pat the surface dry, salt it just before it goes into a very '
+             + 'hot pan, turn it once, rest it for a few minutes on the board, then slice across the grain. Serve with napa cabbage '
+             + 'kimchi, lettuce and dipping sauce.',
+             '미국산 채끝으로 결이 곱고, 가장자리를 따라 얇은 지방층이 있어 구울 때 촉촉함이 유지돼요. 집에서 구워도 가운데가 '
+             + '분홍빛으로 남도록 손가락 두 마디 정도 두께로 썰어 드려요. 냉장 보관하시고, 굽기 20분 전에 꺼내 두세요. 키친타월로 '
+             + '겉면의 물기를 닦고 아주 뜨겁게 달군 팬에 올리기 직전에 소금을 뿌린 뒤, 한 번만 뒤집어 구워 주세요. 도마 위에서 몇 '
+             + '분 두었다가 결의 반대 방향으로 썰어 배추김치, 상추, 쌈장과 함께 드세요.'),
+    cachDung: null,
+    goi: [{ soGam: 200, gia: 250000 }, { soGam: 400, gia: 500000 }] },
+  { ma: 'kim-chi-cai-thao', loai: 'kim_chi', donVi: 'hop', baoQuan: 'giu_lanh',
+    ten: ba('Kim chi cải thảo', 'Napa cabbage kimchi', '배추김치'),
+    moTa: ba('Kim chi cải thảo nhà làm, chua cay vừa.', 'Our own napa cabbage kimchi, mildly sour and spicy.', '직접 담근 배추김치예요. 적당히 새콤하고 매콤해요.'),
+    cachDung: ba('Giữ lạnh, dùng kèm thịt nướng hoặc nấu canh.', 'Keep cold; serve with grilled beef or cook it into a stew.',
+                 '냉장 보관하고, 구운 고기와 함께 드시거나 찌개에 넣어 드세요.'),
+    goi: [{ soGam: 500, gia: 90000 }] },
+];
+
+/**
+ * Đúng các dòng mua_thit_ve_cong_khai(p_ngon_ngu, p_chi_nhanh_ma) trả trong một kịch bản — 11 cột, đúng thứ tự của
+ * 0101. Kịch bản không có menu → [] (như hàm thật khi kênh chưa mở). mua-thit-het-quay: mọi gói tam_het.
+ */
+export function menuMuaThitVe(kichBan, nn = 'vi') {
+  if (!KICH_BAN_CO_MENU.has(kichBan)) return [];
+  const n = NN.includes(nn) ? nn : 'vi';
+  const hetQuay = kichBan === 'mua-thit-het-quay';
+  return MENU_THU.flatMap(sp => sp.goi.map(g => ({
+    san_pham_ma: sp.ma,
+    loai: sp.loai,
+    don_vi: sp.donVi,
+    bao_quan: sp.baoQuan,
+    ten: sp.ten[n],
+    ten_vi: sp.ten.vi,
+    mo_ta: sp.moTa?.[n] ?? null,
+    cach_dung: sp.cachDung?.[n] ?? null,
+    so_gam: g.soGam,
+    gia: g.gia,
+    tam_het: hetQuay || g.tamHet === true,
+  })));
 }
 
 // ---------------------------------------------------------------------------
@@ -136,9 +290,6 @@ function noiDung(kichBan) {
 // 69.000đ của Set 4 sốt và ba ly signature chỉ là giá đề xuất chờ duyệt, không bao giờ tới trang.
 // Thứ tự: nhom_mon.thu_tu rồi mon_an.thu_tu, như thuc_don_cong_khai() trả.
 // ---------------------------------------------------------------------------
-const NN = ['vi', 'en', 'ko'];
-const ba = (vi, en, ko) => ({ vi, en, ko });
-
 // Nhóm theo thu_tu của bảng nhóm (0096). bo-tai-quay không có món nào trong danh mục.
 const NHOM = {
   'goi-them':          { loai: 'goi_them', xemTaiQuay: false, ten: ba('Gọi thêm tùy chọn', 'Add-ons', '추가 메뉴') },
@@ -381,6 +532,7 @@ const HAM = {
   lich_trong_theo_ma: { thamSo: ['p_chi_nhanh_ma', 'p_ngay'], batBuoc: ['p_chi_nhanh_ma', 'p_ngay'] },
   tao_dat_ban: { thamSo: THAM_SO_DAT_BAN, batBuoc: THAM_SO_DAT_BAN.slice(0, 6) },
   nop_ho_so_ung_tuyen: { thamSo: THAM_SO_NOP_HO_SO, batBuoc: THAM_SO_NOP_HO_SO.slice(0, 3) },
+  mua_thit_ve_cong_khai: { thamSo: ['p_ngon_ngu', 'p_chi_nhanh_ma'], batBuoc: [] },
 };
 
 const loiPostgrest = (code, message, details = null, hint = null) => ({ code, message, details, hint });
@@ -406,6 +558,7 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
   let nhatKy = [];
   let soDatBan = 0;
   let soHoSo = 0;
+  const henGio = new Set();   // lời trả lời đang hoãn (mua-thit-treo) — dong() hủy hết
 
   const datKichBan = (ten, { cham: ms = 0 } = {}) => {
     if (!KICH_BAN.includes(ten)) throw new Error(`Kịch bản lạ: ${ten}`);
@@ -459,7 +612,7 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
 
       const nn = typeof thamSo.p_ngon_ngu === 'string' ? thamSo.p_ngon_ngu : 'vi';
       switch (ten) {
-        case 'noi_dung_cong_khai': return tra(200, noiDung(hienTai));
+        case 'noi_dung_cong_khai': return tra(200, noiDung(hienTai, nn));
         case 'thuc_don_cong_khai': return tra(200, thucDon(hienTai, nn));
         case 'tin_tuyen_dung_cong_khai': return tra(200, tinTuyenDung(hienTai, nn));
         case 'lich_trong_theo_ma':
@@ -472,6 +625,21 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
         case 'nop_ho_so_ung_tuyen': {
           if (cham > 0) return void setTimeout(() => nopHoSo(), cham);
           return nopHoSo();
+        }
+        case 'mua_thit_ve_cong_khai': {
+          if (hienTai === 'mua-thit-loi') return tra(500, loiPostgrest('XX000', 'upstream request timeout'));
+          if (hienTai === 'mua-thit-dut') { req.socket.destroy(); return; }   // mất mạng giữa chừng: không một byte
+          if (hienTai === 'mua-thit-treo') {
+            // Database treo: 10 giây không trả lời. Trang phải thôi chờ trước đó (HET_GIO_MS của lib/mua-thit-ve.ts).
+            const h = setTimeout(() => {
+              henGio.delete(h);
+              if (!req.socket.destroyed && !res.writableEnded) tra(200, menuMuaThitVe('mua-thit-mo', nn));
+            }, 10000);
+            h.unref?.();
+            henGio.add(h);
+            return;
+          }
+          return tra(200, menuMuaThitVe(hienTai, nn));
         }
       }
       return tra(500, loiPostgrest('XX000', 'unreachable'));
@@ -520,17 +688,23 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
     server.once('error', hong);
     server.listen(cong, '127.0.0.1', xong);
   });
-  const goc = `http://127.0.0.1:${cong}`;
+  const congThat = server.address().port;   // cong: 0 → cổng hệ điều hành vừa chọn
+  const goc = `http://127.0.0.1:${congThat}`;
   if (!im) console.log(`Supabase giả: ${goc} · kịch bản ${hienTai}`);
 
   return {
     goc,
-    cong,
+    cong: congThat,
     datKichBan,
     kichBan: () => hienTai,
     dem: () => ({ ...dem }),
     nhatKy: () => [...nhatKy],
-    dong: () => new Promise(xong => { server.closeAllConnections?.(); server.close(() => xong()); }),
+    dong: () => new Promise(xong => {
+      for (const h of henGio) clearTimeout(h);
+      henGio.clear();
+      server.closeAllConnections?.();
+      server.close(() => xong());
+    }),
   };
 }
 

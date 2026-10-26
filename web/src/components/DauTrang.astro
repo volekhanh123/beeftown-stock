@@ -1,6 +1,6 @@
 ---
 /**
- * ĐẦU TRANG — logo gốc, bốn mục điều hướng, bộ chọn ngôn ngữ
+ * ĐẦU TRANG — logo gốc, bốn mục điều hướng (năm khi trang Mua thịt về mở), bộ chọn ngôn ngữ
  *
  * Đầu trang là một dải ĐEN (bề mặt .be-toi của cong-khai.css): chữ trắng, mục đang xem
  * gạch dưới trắng, nút "Hỏi bàn" đỏ chữ trắng, vòng focus trắng. Bảng thả xuống của màn
@@ -19,11 +19,16 @@
  *
  * Điều hướng theo brief: Trải nghiệm / Thực đơn / Đến Beeftown / Hỏi bàn. Hỏi bàn
  * là nút đỏ — hành động chính của cả trang. Tuyển dụng và giấy tờ ở chân trang.
+ * Khi trang Mua thịt về mở (công tắc hiệu lực của database — muaThitVeMo, lib/dich-dat-hang.ts)
+ * dieuHuong(ngonNgu, nd) thêm "Mua thịt về" ngay sau "Thực đơn"; chưa mở hay chưa nối database
+ * thì bốn mục như cũ. Nút đỏ chọn theo đường dẫn Hỏi bàn, không theo vị trí.
  *
  * Ba bề rộng (thanh cao 64px; từ 1080px cao 80px — --cao-dau trong cong-khai.css):
  *   · dưới 768px   logo | nút "Danh mục". Hỏi bàn (nút chính) và ngôn ngữ nằm trong bảng.
- *   · từ 768px     logo | ngôn ngữ | Hỏi bàn | nút "Danh mục" (bảng chỉ còn ba trang).
- *   · từ 1080px    logo | ba trang | ngôn ngữ | Hỏi bàn. Không còn nút "Danh mục".
+ *   · từ 768px     logo | ngôn ngữ | Hỏi bàn | nút "Danh mục" (bảng chỉ còn ba trang — bốn khi
+ *                  trang Mua thịt về mở).
+ *   · từ 1080px    logo | ba trang (bốn khi trang Mua thịt về mở) | ngôn ngữ | Hỏi bàn. Không
+ *                  còn nút "Danh mục".
  *
  * Bộ chọn ngôn ngữ in ĐỦ ba thứ tiếng theo một thứ tự cố định, mỗi cái ghi bằng chính
  * thứ tiếng đó. Thứ tiếng đang xem không phải link: in đậm và có nét gạch dưới
@@ -51,7 +56,7 @@ interface Props {
 }
 const { ngonNgu, noiDung: nd, duongDan, doiNgonNgu } = Astro.props;
 const t = chu(ngonNgu);
-const muc = dieuHuong(ngonNgu);
+const muc = dieuHuong(ngonNgu, nd);
 // Chọn theo đường dẫn, không theo vị trí: thêm hay đổi thứ tự mục trong dieuHuong()
 // thì nút đỏ vẫn là Hỏi bàn.
 const duongHoiBan = duongDanTuongUng('/dat-ban', ngonNgu);
@@ -237,8 +242,10 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
     /* Thanh 80px: logo phụ 176px (cao khoảng 25px), trên dưới còn khoảng 27px. */
     .dt-logo-day-du { width: 176px; }
     .dt-nav { display: block; margin-inline: auto; }
-    .dt-nav ul { display: flex; gap: clamp(20px, 2.2vw, 36px); }
+    /* Năm mục (khi trang Mua thịt về mở) vẫn một hàng từ 1080px: mỗi mục không xuống dòng, khe hẹp lại tới 1280px. */
+    .dt-nav ul { display: flex; gap: clamp(16px, 2.2vw - 8px, 36px); }
     .dt-nav a {
+      white-space: nowrap;
       display: inline-flex; align-items: center; min-height: var(--cham);
       font-weight: 600; font-size: 16px; text-decoration: none; color: var(--chu-chinh);
       border-block: 2px solid transparent; transition: border-color var(--nhanh), color var(--nhanh);
