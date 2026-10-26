@@ -18,15 +18,18 @@
  *   4. Một chạm: đúng lô, mọi vị trí kho / quầy (bỏ chờ huỷ), ngày pha giờ Việt Nam, công thức, ô mã.
  *   5. Bấm hai lần: tuần tự, SONG SONG cùng ma_gui (lần sau đọc danh sách trước khi lần đầu ghi xong),
  *      ma_gui khác khi tảng đang lóc dở, form cũ của phiên đã huỷ.
- *   6. Mất mạng: giao ô báo lỗi / ném (vẫn vào phiên, câu đỏ "chưa giao được ô mã"), bấm lại tự lành,
- *      tạo phiên hỏng, đọc hỏng từng lượt (không ghi gì).
- *   7. Nhiều công thức: không tự giao ô. Món không dùng ô mã: không gọi giao ô.
+ *   6. Mất mạng: giao ô báo lỗi mạng / ném / database đã giao rồi phản hồi mất (vẫn vào phiên, câu đỏ "Không chắc
+ *      đã giao ô mã" — không khẳng định "chưa giao được"), bấm lại tự lành, tạo phiên hỏng, đọc hỏng từng lượt
+ *      (không ghi gì).
+ *   7. Nhiều công thức: không tự giao ô. Món không dùng ô mã, phần cắt mang ô đã ngừng dùng: không gọi giao ô.
  *   8. Không có nút: lô không số tảng, tảng đang ủ, tảng chỉ còn ở chỗ chờ huỷ.
  *   9. Quyền: NV quầy, kế toán, chi nhánh khác, nhân sự đã nghỉ, tài khoản không có nhan_su, chưa đăng nhập.
  *   10. Giờ Việt Nam quanh mốc ủ xong (23:50 / 00:10).
  *   11. Hết ô mã: vẫn vào phiên, câu đỏ.
- *   12. Sổ kho: phiên mở bằng Lóc → quét nhãn ô → chốt → kho_doi_soat_ton() rỗng.
- *   13. Trang (đọc mã nguồn): nút, chữ ghép, ve=tang, bảng 5 cột, hướng dẫn.
+ *   12. Phiên nháp của từng lô (docLoCuaPhien trên database có phiên nháp thật): tảng đang lóc dở không có nút,
+ *       Tảng · ủ có đúng số phiên; đọc hỏng thì ném.
+ *   13. Sổ kho: phiên mở bằng Lóc → quét nhãn ô → chốt → kho_doi_soat_ton() rỗng.
+ *   14. Trang (đọc mã nguồn): nút, chữ ghép, ve=tang, bảng 5 cột, hướng dẫn.
  */
 
 import { readFileSync } from 'node:fs';
@@ -39,6 +42,7 @@ import * as PL from '../../web/src/lib/kho/pha-loc.ts';
 import { docTon } from '../../web/src/lib/kho/ton.ts';
 import { docTangTon, cauConU } from '../../web/src/lib/kho/tang.ts';
 import { MUC_HUONG_DAN } from '../../web/src/lib/kho/huong-dan.ts';
+import { LOI_KHO_CHUNG } from '../../web/src/lib/kho/chung.ts';
 import { timChuoiCam } from '../../web/src/lib/chuoi-cam.js';
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — LÓC MỘT CHẠM "LÓC #0142" (WEB)');
@@ -89,10 +93,14 @@ await nhom('1 · HÀM THUẦN', async () => {
      PL.congThucMot(ct, U(10)) === 'a' && PL.congThucMot(ct, U(11)) === null && PL.congThucMot(ct, U(12)) === null
      && PL.congThucMot(ct, U(13)) === 'e' && PL.congThucMot(ct, U(99)) === null);
   const oMa = new Map([[U(20), [{ id: 'o1', mat_hang_id: U(20), so_o: 1, ma_can: '10011' }]]]);
+  const dung = new Set();
   ok('coOMaTrongCongThuc: công thức có phần cắt mang ô → có; món theo tảng không dùng ô → không gọi giao ô',
-     PL.coOMaTrongCongThuc(ct, U(10), null, oMa) && PL.coOMaTrongCongThuc(ct, U(10), 'a', oMa)
-     && PL.coOMaTrongCongThuc(ct, U(11), 'b', oMa) && !PL.coOMaTrongCongThuc(ct, U(11), 'c', oMa)
-     && !PL.coOMaTrongCongThuc(ct, U(13), null, oMa) && !PL.coOMaTrongCongThuc(ct, U(12), null, oMa));
+     PL.coOMaTrongCongThuc(ct, U(10), null, oMa, dung) && PL.coOMaTrongCongThuc(ct, U(10), 'a', oMa, dung)
+     && PL.coOMaTrongCongThuc(ct, U(11), 'b', oMa, dung) && !PL.coOMaTrongCongThuc(ct, U(11), 'c', oMa, dung)
+     && !PL.coOMaTrongCongThuc(ct, U(13), null, oMa, dung) && !PL.coOMaTrongCongThuc(ct, U(12), null, oMa, dung));
+  ok('coOMaTrongCongThuc: phần cắt mang ô mà mặt hàng đã ngừng dùng → không tính (như kho_giao_o_ma lọc m.dang_dung)',
+     !PL.coOMaTrongCongThuc(ct, U(10), 'a', oMa, new Set([U(20)])) && !PL.coOMaTrongCongThuc(ct, U(11), null, oMa, new Set([U(20)]))
+     && PL.coOMaTrongCongThuc(ct, U(10), 'a', oMa, new Set([U(21)])));
 
   const khongGoi = { from() { throw new Error('không được đọc database'); }, rpc() { throw new Error('không được gọi hàm'); } };
   const rong = await PL.docLoCuaPhien(khongGoi, []);
@@ -118,6 +126,15 @@ await nhom('1 · HÀM THUẦN', async () => {
      coO.ok && coO.cau.endsWith(giaoOk.cau) && coO.cauEn.endsWith(giaoOk.cauEn) && moi.ok && !/ô mã/.test(moi.cau)
      && doDo.ok && /đang lóc dở ở phiên PL261026-001/.test(doDo.cau) && /PL261026-001/.test(doDo.cauEn)
      && daCo.ok && /lần bấm trước/.test(daCo.cau));
+  // Mất mạng lúc giao ô: database có thể đã giao xong mà phản hồi không về — không được nói "chưa giao được".
+  const matMang = PL.cauLocTang({ soTang: 142, kg: 6.2, cach: 'moi', giao: { ok: false, cau: LOI_KHO_CHUNG.mang.vi, cauEn: LOI_KHO_CHUNG.mang.en } });
+  const nemGiao = PL.cauLocTang({ soTang: 142, kg: 6.2, cach: 'dang_do', soPhieu: 'PL261026-001', giao: giaoLoi, giaoKhongChac: true });
+  ok('cauLocTang: giao ô mất mạng / ném → ok false, "Không chắc đã giao ô mã", không "chưa giao được", nhắc xem khung "Ô mã của tảng này" (vi và en)',
+     [matMang, nemGiao].every(k => !k.ok && /Không chắc đã giao ô mã/.test(k.cau) && !/chưa giao được|Nếu vừa bấm lưu/.test(k.cau)
+       && /"Ô mã của tảng này"/.test(k.cau) && /Giao ô mã cho phần cắt/.test(k.cau) && /chưa in tem bằng phím ô/.test(k.cau)
+       && /not certain whether the rotating codes were assigned/.test(k.cauEn ?? '') && /"Rotating codes for this primal"/.test(k.cauEn ?? '')
+       && !/not assigned yet|may or may not/.test(k.cauEn ?? '') && sach(k.cau) && sach(k.cauEn))
+     && /#0142/.test(matMang.cau) && /đang lóc dở ở phiên PL261026-001/.test(nemGiao.cau), `${matMang.cau} | ${nemGiao.cau}`);
   ok('cauLocTang: nhiều công thức → nhắc chọn công thức rồi bấm "Giao ô mã cho phần cắt" (vi và en)',
      chon.ok && /nhiều công thức/.test(chon.cau) && /Giao ô mã cho phần cắt/.test(chon.cau)
      && /several recipes/.test(chon.cauEn) && /Assign rotating codes to the cuts/.test(chon.cauEn));
@@ -176,10 +193,11 @@ const chuyen = async (lo, tu, den, kg, goi = 0) => {
 
 /**
  * Client giả hỏng: `bang` — đọc các bảng này trả lỗi như mất mạng; `rpcLoi` / `rpcNem` — hàm trả lỗi / ném;
+ * `rpcMatSau` — hàm chạy xong trong database rồi phản hồi mới mất (trả lỗi mất mạng);
  * `truocRpc` — chờ trước khi gọi hàm (để xếp hai lần bấm song song); `bangSauGhi` — bảng hỏng sau khi đã gọi
  * kho_luu_phien_pha. `goi` ghi lại mọi hàm đã gọi.
  */
-function clientGia(goc, { bang = [], rpcLoi = [], rpcNem = [], truocRpc = null, bangSauGhi = [] } = {}) {
+function clientGia(goc, { bang = [], rpcLoi = [], rpcNem = [], rpcMatSau = [], truocRpc = null, bangSauGhi = [] } = {}) {
   const goi = [];
   const loi = { data: null, error: { message: 'TypeError: fetch failed' } };
   const hong = () => {
@@ -197,6 +215,7 @@ function clientGia(goc, { bang = [], rpcLoi = [], rpcNem = [], truocRpc = null, 
       if (truocRpc) await truocRpc(ten);
       if (rpcNem.includes(ten)) throw new TypeError('fetch failed');
       if (rpcLoi.includes(ten)) return loi;
+      if (rpcMatSau.includes(ten)) { await goc.rpc(ten, ts); return loi; }
       return goc.rpc(ten, ts);
     },
   };
@@ -371,14 +390,20 @@ await nhom('6 · MẤT MẠNG', async () => {
   const loiGiao = clientGia(tk, { rpcLoi: ['kho_giao_o_ma'] });
   const a = await loc(loiGiao, L[3]);
   P[3] = a.id;
-  ok('MẤT MẠNG: rpc kho_giao_o_ma báo lỗi → vẫn trả id phiên đã mở, ok false, câu "chưa giao được ô mã"; không nói đã giao',
-     !a.ok && !!a.id && /chưa giao được ô mã/.test(a.cau) && !/Đã giao ô mã/.test(a.cau) && /not assigned yet/.test(a.cauEn ?? '')
+  ok('MẤT MẠNG: rpc kho_giao_o_ma báo lỗi mạng → vẫn trả id phiên đã mở, ok false, câu "Không chắc đã giao ô mã" (không khẳng định "chưa giao được"); không nói đã giao',
+     !a.ok && !!a.id && /Không chắc đã giao ô mã/.test(a.cau) && !/chưa giao được/.test(a.cau) && !/Đã giao ô mã/.test(a.cau)
+     && /not certain whether the rotating codes were assigned/.test(a.cauEn ?? '')
      && (await oCuaPhien(a.id)).length === 0 && (await phienCuaLo(L[3].id)).length === 1, a.cau);
   const nem = clientGia(tk, { rpcNem: ['kho_giao_o_ma'] });
   const b = await loc(nem, L[3]);
-  ok('MẤT MẠNG: rpc kho_giao_o_ma ném (fetch failed) khi bấm lại → vẫn vào đúng phiên đó, ok false, câu "chưa giao được ô mã"',
-     !b.ok && b.id === P[3] && /chưa giao được ô mã/.test(b.cau) && !/Đã giao ô mã/.test(b.cau)
+  ok('MẤT MẠNG: rpc kho_giao_o_ma ném (fetch failed) khi bấm lại → vẫn vào đúng phiên đó, ok false, câu "Không chắc đã giao ô mã"',
+     !b.ok && b.id === P[3] && /Không chắc đã giao ô mã/.test(b.cau) && !/chưa giao được/.test(b.cau) && !/Đã giao ô mã/.test(b.cau)
      && (await phienCuaLo(L[3].id)).length === 1, b.cau);
+  const matSau = clientGia(tk, { rpcMatSau: ['kho_giao_o_ma'] });
+  const b2 = await loc(matSau, L[3]);
+  ok('MẤT MẠNG sau khi database đã giao ô (phản hồi mất) → ok false, câu "Không chắc đã giao ô mã", không "chưa giao được"; ô đã có trong khung Ô mã của tảng này',
+     !b2.ok && b2.id === P[3] && /Không chắc đã giao ô mã/.test(b2.cau) && !/chưa giao được/.test(b2.cau)
+     && matSau.goi.includes('kho_giao_o_ma') && (await oCuaPhien(P[3])).length === 1 && (await phienCuaLo(L[3].id)).length === 1, b2.cau);
   const c = await loc(tk, L[3]);
   ok('Lóc dở tự lành: bấm lại khi mạng đã về → cùng phiên, giao được ô, vẫn một phiên',
      c.ok && c.id === P[3] && /đang lóc dở/.test(c.cau) && /Đã giao ô mã/.test(c.cau)
@@ -394,7 +419,7 @@ await nhom('6 · MẤT MẠNG', async () => {
      && !nemTao.goi.includes('kho_giao_o_ma') && (await phienCuaLo(L[7].id)).length === 0 && await demGiao() === giaoTruoc,
      `${d.cau} · ${e.cau}`);
 
-  for (const bang of ['kho_v_tang', 'kho_v_ton', 'kho_cong_thuc_pha', 'kho_cong_thuc_pha_dong', 'kho_o_ma', 'kho_phien_pha_vao']) {
+  for (const bang of ['kho_v_tang', 'kho_v_ton', 'kho_cong_thuc_pha', 'kho_cong_thuc_pha_dong', 'kho_o_ma', 'kho_mat_hang', 'kho_phien_pha_vao']) {
     const c2 = clientGia(tk, { bang: [bang] });
     const r = await loc(c2, L[4]);
     ok(`MẤT MẠNG khi đọc ${bang}: không gọi hàm ghi nào, không phiên nào, câu "Không đọc được … — tải lại trang rồi bấm lại"`,
@@ -422,6 +447,22 @@ await nhom('7 · CÔNG THỨC: NHIỀU CÔNG THỨC, MÓN KHÔNG DÙNG Ô MÃ', 
   ok('Món theo tảng không có ô trong công thức → mở phiên, không gọi giao ô, câu xanh không nhắc ô',
      noi.ok && !!noi.id && phNoi.length === 1 && phNoi[0].cong_thuc_id === CT.noi && !c2.goi.includes('kho_giao_o_ma')
      && !/ô mã/.test(noi.cau) && /#0010/.test(noi.cau), noi.cau);
+
+  // Phần cắt mang ô duy nhất của công thức thăn ngoại bị ngừng dùng mà công thức chưa sửa: kho_giao_o_ma chỉ lấy phần
+  // cắt đang dùng (0049, m.dang_dung) nên không có ô nào để giao — không gọi, không câu đỏ "Chưa có phần cắt nào có ô mã".
+  await lam(UID.qlA, `update kho_mat_hang set dang_dung = false where id = $1`, [MH['C-THANNGOAI'].id]);
+  try {
+    const c3 = clientGia(tk);
+    const ngung = await loc(c3, L[7]);
+    const ph7 = await phienCuaLo(L[7].id);
+    ok('Phần cắt mang ô đã ngừng dùng (C-THANNGOAI) → mở phiên, KHÔNG gọi kho_giao_o_ma, câu xanh không nhắc ô mã',
+       ngung.ok && !!ngung.id && ph7.length === 1 && ph7[0].cong_thuc_id === CT.ngoai && !c3.goi.includes('kho_giao_o_ma')
+       && !/ô mã/.test(ngung.cau) && !/Chưa có phần cắt nào có ô mã/.test(ngung.cau) && /#0007/.test(ngung.cau)
+       && (await oCuaPhien(ngung.id)).length === 0, ngung.cau);
+    P[7] = ngung.id;
+  } finally {
+    await lam(UID.qlA, `update kho_mat_hang set dang_dung = true where id = $1`, [MH['C-THANNGOAI'].id]);
+  }
 });
 
 // ===========================================================================
@@ -511,7 +552,31 @@ await nhom('11 · HẾT Ô MÃ: VẪN VÀO PHIÊN, CÂU ĐỎ', async () => {
 });
 
 // ===========================================================================
-await nhom('12 · SỔ KHO', async () => {
+await nhom('12 · PHIÊN NHÁP CỦA TỪNG LÔ (docLoCuaPhien trên database)', async () => {
+  // Lúc này đang nháp: #0001 (P1), #0003 (P3), #0007, #0008, thăn lưng, thăn nội, #0006; #0002 có hai phiên đã huỷ.
+  const nhap = await PL.docDanhSachPhienPha(tk, cnA.id, 'nhap');
+  const m = await PL.docLoCuaPhien(tk, nhap);
+  const soPhieu = async lo => (await phienCuaLo(lo.id)).find(p => p.trang_thai === 'nhap')?.so_phieu;
+  const dangLoc = [L[1], L[3], L[6], L[7], L[8], L.lung, L.noi];
+  ok('docLoCuaPhien: mỗi tảng đang nằm trong phiên nháp → đúng phiên đó và số phiếu (link "Đang lóc · PL…" ở Tảng · ủ)',
+     m.get(L[1].id)?.id === P[1] && m.get(L[1].id)?.so_phieu === await soPhieu(L[1])
+     && m.get(L[3].id)?.id === P[3] && m.get(L[3].id)?.so_phieu === await soPhieu(L[3])
+     && m.get(L[7].id)?.id === P[7] && dangLoc.every(l => m.has(l.id)),
+     JSON.stringify([...m.entries()].map(([lo, p]) => [Object.keys(L).find(k => L[k].id === lo), p.so_phieu])));
+  ok('docLoCuaPhien: lô chỉ nằm trong phiên đã huỷ (#0002) hay chưa vào phiên nào (#0005) → không có',
+     !m.has(L[2].id) && !m.has(L[5].id) && !m.has(L.khongSo.id) && m.size === dangLoc.length, String(m.size));
+  const [ton, tang] = await Promise.all([docTon(tk, cnA.id), docTangTon(tk, cnA.id)]);
+  const ds = PL.tangLocDuoc(tang, PL.choLocTheoLo(ton), m).map(x => x.so_tang).join();
+  ok('Pha lóc mới: tảng đang lóc dở (#0001, #0003, #0007, #0008…) không có nút Lóc mới — chỉ còn #0002 (phiên cũ đã huỷ)',
+     ds === '2', ds);
+  const hong = clientGia(tk, { bang: ['kho_phien_pha_vao'] });
+  const nem = await PL.docLoCuaPhien(hong, nhap).then(() => false, () => true);
+  ok('docLoCuaPhien: đọc kho_phien_pha_vao hỏng → ném (trang không hiện nút nào, câu "chưa đọc được"), không gọi hàm ghi nào',
+     nem && hong.goi.length === 0);
+});
+
+// ===========================================================================
+await nhom('13 · SỔ KHO', async () => {
   const q = await PL.quetPhienPha(tk, P[1], maGui(), [nhan(10011, 1000), nhan(10011, 1100), nhan(10011, 900)].join('\n'));
   const pb = (await truyVan(`select phien_ban from kho_phien_pha where id = $1`, [P[1]])).rows[0].phien_ban;
   const c = await PL.chotPhien(tk, P[1], pb);
@@ -524,7 +589,7 @@ await nhom('12 · SỔ KHO', async () => {
 });
 
 // ===========================================================================
-await nhom('13 · TRANG (đọc mã nguồn)', async () => {
+await nhom('14 · TRANG (đọc mã nguồn)', async () => {
   const moi = doc('web/src/pages/noi-bo/kho/pha-loc/moi.astro');
   const tang = doc('web/src/pages/noi-bo/kho/tang/index.astro');
   ok('Pha lóc mới: mục Tảng lóc được dùng nb-nut phu pl-nut, mỗi nút một ma_gui và lo_id, viec=loc_tang',

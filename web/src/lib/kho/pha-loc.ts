@@ -40,7 +40,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, dinhDangKg, docKg, docNgay, docSoNguyen, docTungTrang, donViChung, homNayVn, kqHai, kqLoi, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { cauLoiKho, dinhDangKg, docKg, docNgay, docSoNguyen, docTungTrang, donViChung, homNayVn, kqHai, kqLoi, laUuid, LOI_KHO_CHUNG, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
 import { maTuO, cauLoiNhan, cauQuaNhieuNhan, cauBoLuot, TOI_DA_MOT_LUOT } from './dem-quay.ts';
 import type { DongTon } from './ton.ts';
@@ -778,15 +778,16 @@ export function congThucMot(congThuc: readonly Pick<CongThuc, 'id' | 'mat_hang_v
 
 /**
  * Công thức đang dùng của tảng (chỉ công thức congThucId khi có) có phần cắt nào mang ô mã không — cùng cách
- * kho_giao_o_ma (0049) chọn phần cắt. Không có thì KHÔNG gọi giao ô: món theo tảng không dùng ô mã không phải nhận câu
- * đỏ "Chưa có phần cắt nào có ô mã".
+ * kho_giao_o_ma (0049) chọn phần cắt: phần cắt có ô VÀ mặt hàng phần cắt còn dùng (m.dang_dung; ngungDung là các mặt
+ * hàng đã ngừng dùng). Không có thì KHÔNG gọi giao ô: món theo tảng không dùng ô mã, hay phần cắt mang ô đã ngừng dùng
+ * mà công thức chưa sửa, không phải nhận câu đỏ "Chưa có phần cắt nào có ô mã".
  */
 export function coOMaTrongCongThuc(
   congThuc: readonly Pick<CongThuc, 'id' | 'mat_hang_vao_id' | 'dang_dung' | 'dong'>[], matHangVaoId: string,
-  congThucId: string | null, oMa: Map<string, readonly unknown[]>,
+  congThucId: string | null, oMa: Map<string, readonly unknown[]>, ngungDung: { has(matHangId: string): boolean },
 ): boolean {
   return congThuc.some(c => c.mat_hang_vao_id === matHangVaoId && c.dang_dung && (congThucId === null || c.id === congThucId)
-    && c.dong.some(d => (oMa.get(d.mat_hang_ra_id)?.length ?? 0) > 0));
+    && c.dong.some(d => (oMa.get(d.mat_hang_ra_id)?.length ?? 0) > 0 && !ngungDung.has(d.mat_hang_ra_id)));
 }
 
 /** moi: vừa mở · da_co: cùng ma_gui đã mở từ lần bấm trước · dang_do: tảng đang nằm trong một phiên nháp. */
@@ -806,6 +807,10 @@ const CAU_LOC = {
     vi: 'Lô này không có số tảng — mở phiên bằng nút loại tảng ở Pha lóc mới.',
     en: 'This lot has no primal number — open the session with the primal type button in New butchery session.',
   },
+  khongChacGiao: {
+    vi: 'Không chắc đã giao ô mã hay chưa — xem khung "Ô mã của tảng này": còn "Chưa giao ô mã" thì bấm "Giao ô mã cho phần cắt"; chưa thấy ô thì chưa in tem bằng phím ô.',
+    en: 'It is not certain whether the rotating codes were assigned — check the "Rotating codes for this primal" box: if it still says "No rotating code assigned yet", press "Assign rotating codes to the cuts"; do not print with the slot keys until the codes appear.',
+  },
   chonCongThuc: {
     vi: 'Tảng này có nhiều công thức: chọn công thức ở mục "Thêm: ngày pha, ghi chú, công thức", bấm Lưu rồi bấm "Giao ô mã cho phần cắt" — chưa giao ô thì chưa in tem bằng phím ô.',
     en: 'This primal has several recipes: choose one under "More: butchery date, note, recipe", press Save, then press "Assign rotating codes to the cuts" — do not print with the slot keys until the codes are assigned.',
@@ -814,10 +819,12 @@ const CAU_LOC = {
 
 /**
  * Câu báo của "Lóc #0142" — nói đúng việc đã xảy ra, không có chữ "thành công". Giao ô hỏng → ok FALSE (câu đỏ):
- * phiên đã mở nhưng CHƯA giao được ô mã, chưa in tem bằng phím ô. Số kiểu Việt ("6,2 kg"), tiếng Anh "6.2 kg".
+ * database từ chối → phiên đã mở nhưng CHƯA giao được ô mã; mất mạng hay lệnh giao ném (giaoKhongChac) → database có
+ * thể đã giao xong mà phản hồi không về: KHÔNG CHẮC, xem khung ô mã. Cả hai: chưa thấy ô thì chưa in tem bằng phím ô.
+ * Số kiểu Việt ("6,2 kg"), tiếng Anh "6.2 kg".
  */
 export function cauLocTang(a: {
-  soTang: number | null; kg: number; cach: CachLoc; soPhieu?: string; giao: KetQua | null; nhacChon?: boolean;
+  soTang: number | null; kg: number; cach: CachLoc; soPhieu?: string; giao: KetQua | null; giaoKhongChac?: boolean; nhacChon?: boolean;
 }): KetQua {
   const so = soTangChu(a.soTang);
   const sp = a.soPhieu ?? '';
@@ -829,6 +836,9 @@ export function cauLocTang(a: {
       : { vi: `Đã mở phiên lóc tảng ${so} — lấy cả tảng (${dinhDangKg(a.kg, 'vi')} kg); lấy một phần thì sửa số kg ở mục Tảng đem pha.`,
           en: `Butchery session opened for primal ${so} — the whole primal (${dinhDangKg(a.kg, 'en')} kg); to cut only part of it, change the kg under Primal to cut.` };
   const g = a.giao;
+  if (g && !g.ok && (a.giaoKhongChac || g.cau === LOI_KHO_CHUNG.mang.vi)) {
+    return kqHai(false, { vi: `${dau.vi} ${CAU_LOC.khongChacGiao.vi}`, en: `${dau.en} ${CAU_LOC.khongChacGiao.en}` });
+  }
   if (g && !g.ok) {
     const bo = (s: string) => s.trim().replace(/[\s.]+$/, '');
     return kqHai(false, {
@@ -904,6 +914,13 @@ async function docMotTang(client: SupabaseClient, chiNhanhId: string, loId: stri
   };
 }
 
+/** Mặt hàng đã ngừng dùng (kho_mat_hang.dang_dung = false) — kho_giao_o_ma bỏ qua phần cắt này. Đọc hỏng thì ném. */
+async function docMatHangNgung(client: SupabaseClient): Promise<Set<string>> {
+  const { data, error } = await client.from('kho_mat_hang').select('id').eq('dang_dung', false);
+  if (error) throw error;
+  return new Set((data ?? []).map(r => r.id as string));
+}
+
 interface PhienLoc { id: string; so_phieu: string; cong_thuc_id: string | null }
 
 /** Phiên NHÁP của chi nhánh đang có lô này (cũ nhất trước). Hai bảng, không join — đọc hỏng thì ném. */
@@ -923,8 +940,8 @@ async function docPhienNhapCuaLo(client: SupabaseClient, chiNhanhId: string, loI
  * loại tảng có đúng một công thức đang dùng, rồi giao ô mã khi công thức đó có phần cắt mang ô. Trả id phiên khi phiên
  * đã mở — KỂ CẢ khi giao ô hỏng (ok false, câu đỏ): trang vào thẳng bước 2, nơi có nút "Giao ô mã cho phần cắt".
  *
- * Tự đọc lại tảng, chỗ lóc được, công thức, ô mã và phiên nháp của lô NGAY LÚC BẤM — không tin danh sách trang đã
- * đọc trước đó. Đọc hỏng bất kỳ lượt nào → không gọi hàm ghi nào, câu "Không đọc được … tải lại trang rồi bấm lại"
+ * Tự đọc lại tảng, chỗ lóc được, công thức, ô mã, mặt hàng ngừng dùng và phiên nháp của lô NGAY LÚC BẤM — không tin
+ * danh sách trang đã đọc trước đó. Đọc hỏng bất kỳ lượt nào → không gọi hàm ghi nào, câu "Không đọc được … tải lại trang rồi bấm lại"
  * (không đoán "không có ô" rồi báo xanh, không mở phiên trùng).
  *
  * Bấm lại:
@@ -944,11 +961,12 @@ export async function locMotTang(
   client: SupabaseClient, chiNhanhId: string, a: { maGui: string; loId: string },
 ): Promise<KetQua & { id?: string }> {
   if (!laUuid(a.maGui) || !laUuid(a.loId) || !laUuid(chiNhanhId)) return kqHai(false, CAU_PHA.trangCuChon);
-  let tang: TangLoc | null, cho: Map<string, ChoLoc[]>, congThuc: CongThuc[], oMa: Map<string, unknown[]>, dangDo: PhienLoc[];
+  let tang: TangLoc | null, cho: Map<string, ChoLoc[]>, congThuc: CongThuc[], oMa: Map<string, unknown[]>, ngung: Set<string>;
+  let dangDo: PhienLoc[];
   try {
-    [tang, cho, congThuc, oMa, dangDo] = await Promise.all([
+    [tang, cho, congThuc, oMa, ngung, dangDo] = await Promise.all([
       docMotTang(client, chiNhanhId, a.loId), docChoLocTang(client, chiNhanhId, [a.loId]), docCongThuc(client),
-      docOMa(client), docPhienNhapCuaLo(client, chiNhanhId, a.loId),
+      docOMa(client), docMatHangNgung(client), docPhienNhapCuaLo(client, chiNhanhId, a.loId),
     ]);
   } catch {
     return kqHai(false, CAU_LOC.khongDoc);
@@ -965,11 +983,13 @@ export async function locMotTang(
     // giao theo công thức đó. Nhiều công thức mà chưa chọn: không tự giao (xem chú thích hàm).
     const theoCt = phien.cong_thuc_id ?? (ds.length === 1 ? ds[0].id : null);
     let giao: KetQua | null = null;
-    if (theoCt && coOMaTrongCongThuc(congThuc, t.mat_hang_id, theoCt, oMa)) {
-      try { giao = await giaoOMa(client, phien.id); } catch (e) { giao = kqLoi(e); }
+    let giaoKhongChac = false;
+    if (theoCt && coOMaTrongCongThuc(congThuc, t.mat_hang_id, theoCt, oMa, ngung)) {
+      // Ném (mạng đứt sau khi đã gửi): database có thể đã giao — câu "không chắc", không nói "chưa giao được".
+      try { giao = await giaoOMa(client, phien.id); } catch (e) { giao = kqLoi(e); giaoKhongChac = true; }
     }
-    const nhacChon = !theoCt && ds.length > 1 && coOMaTrongCongThuc(congThuc, t.mat_hang_id, null, oMa);
-    return { ...cauLocTang({ soTang: t.so_tang, kg, cach, soPhieu: phien.so_phieu, giao, nhacChon }), id: phien.id };
+    const nhacChon = !theoCt && ds.length > 1 && coOMaTrongCongThuc(congThuc, t.mat_hang_id, null, oMa, ngung);
+    return { ...cauLocTang({ soTang: t.so_tang, kg, cach, soPhieu: phien.so_phieu, giao, giaoKhongChac, nhacChon }), id: phien.id };
   };
 
   if (dangDo.length > 0) return xong(dangDo[0], 'dang_do', 0);

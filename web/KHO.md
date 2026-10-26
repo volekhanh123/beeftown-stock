@@ -346,10 +346,12 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
 - **Lóc một chạm "Lóc #0142" (món theo dõi theo tảng, không migration)**: mục **Tảng lóc được** ở `/pha-loc/moi` và nút
   **Lóc** dưới số tảng ở Tảng · ủ (vai `pha_loc`) — cùng luật `tangLocDuoc`: có số tảng, không còn đang ủ, còn chỗ lóc
   được (bỏ chờ hủy, đang mang ra quầy), chưa nằm trong phiên nháp. Bấm (`viec=loc_tang`; từ Tảng · ủ thêm `ve=tang`) →
-  `locMotTang` tự đọc lại tảng, chỗ lóc được, công thức, ô mã, phiên nháp của lô (đọc hỏng → không ghi gì), mở phiên với
-  đúng lô đó ở mọi chỗ lóc được (`kho_luu_phien_pha`, `ma_gui` theo nút), gắn công thức khi loại tảng có một công thức
-  và gọi `kho_giao_o_ma` khi công thức có phần cắt mang ô → vào thẳng bước 2, kể cả khi giao ô hỏng (câu đỏ "chưa giao
-  được ô mã"). Nhiều công thức: không tự giao, câu nhắc chọn công thức. Tảng đang lóc dở bấm lại → trả phiên đó và gọi
+  `locMotTang` tự đọc lại tảng, chỗ lóc được, công thức, ô mã, mặt hàng ngừng dùng, phiên nháp của lô (đọc hỏng → không
+  ghi gì), mở phiên với đúng lô đó ở mọi chỗ lóc được (`kho_luu_phien_pha`, `ma_gui` theo nút), gắn công thức khi loại
+  tảng có một công thức và gọi `kho_giao_o_ma` khi công thức có phần cắt mang ô còn dùng (cùng luật `m.dang_dung` của hàm)
+  → vào thẳng bước 2, kể cả khi giao ô hỏng (database từ chối: câu đỏ "chưa giao được ô mã"; mất mạng / ném: câu đỏ
+  "Không chắc đã giao ô mã" — database có thể đã giao, xem khung Ô mã của tảng này). Nhiều công thức: không tự giao, câu
+  nhắc chọn công thức. Tảng đang lóc dở bấm lại → trả phiên đó và gọi
   lại giao ô (tự lành); cùng `ma_gui` mà database báo đã có → đọc lại đúng phiên đó (đã hủy / đã chốt → "Trang đã cũ").
   Nút chỉ có sau khi phiếu nhận được duyệt (lô sinh lúc duyệt). `test-kho-loc-tang-web.mjs`.
 
