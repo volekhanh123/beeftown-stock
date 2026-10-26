@@ -106,9 +106,12 @@ await nhom('1 · DATABASE MỚI, CHƯA BẬT GÌ → KHÔNG BÁO NHẦM', async 
 
 // ===========================================================================
 await nhom('2 · ĐẶT BÀN', async () => {
+  // 0100: chi nhánh chưa có bàn thì database không tính sức chứa — form mở mà 0 bàn không còn là lỗi.
   let d = den(voi((t, c) => { c.dat_ban.form_mo = true; c.dat_ban.so_ban = 0; }), 'dat_ban');
-  ok('Form mở mà chi nhánh chưa có bàn → đỏ, mở màn Cài đặt',
-     d.mau === 'do' && /chưa có bàn nào/.test(d.cau) && d.di === '/noi-bo/cai-dat', tom(d) + ' ' + d.di);
+  ok('Form mở mà chi nhánh chưa có bàn → xanh, không đòi thêm bàn (0100)',
+     d.mau === 'xanh' && !/bàn nào|Thêm bàn/.test(d.cau) && d.di === '/noi-bo/dat-ban', tom(d) + ' ' + d.di);
+  d = den(voi((t, c) => { Object.assign(c.dat_ban, { form_mo: false, so_ban: 0, cho: 0 }); }), 'dat_ban');
+  ok('Form đóng, không ai chờ → xám, mở màn Cài đặt (nút bật nhận đặt bàn ở đó)', d.mau === 'tat' && d.di === '/noi-bo/cai-dat', tom(d) + ' ' + d.di);
   d = den(voi((t, c) => { Object.assign(c.dat_ban, { form_mo: true, so_ban: 5, cho: 2 }); }), 'dat_ban');
   ok('2 yêu cầu mới (chưa quá 2 giờ) → xanh, nói số', d.mau === 'xanh' && /^2 yêu cầu mới/.test(d.cau), tom(d));
   d = den(voi((t, c) => { Object.assign(c.dat_ban, { form_mo: false, cho: 1, cho_qua_2_gio: 1 }); }), 'dat_ban');
@@ -123,7 +126,8 @@ await nhom('2 · ĐẶT BÀN', async () => {
      && d.cau.indexOf('chờ quá 24 giờ') < d.cau.indexOf('chờ quá 2 giờ'), d.cau);
   ok('Có yêu cầu chờ → mở màn Đặt bàn', d.di === '/noi-bo/dat-ban', d.di);
   d = den(voi((t, c) => { Object.assign(c.dat_ban, { form_mo: true, so_ban: 0, cho: 1, qua_gio_hen: 1 }); }), 'dat_ban');
-  ok('Vừa thiếu bàn vừa có yêu cầu quá hẹn → mở màn Đặt bàn (việc gấp nhất là gọi khách)', d.di === '/noi-bo/dat-ban', d.di);
+  ok('Chưa có bàn mà có yêu cầu quá hẹn → đỏ vì yêu cầu quá hẹn (không vì thiếu bàn), mở màn Đặt bàn',
+     d.mau === 'do' && /^1 yêu cầu đã qua giờ hẹn/.test(d.cau) && !/bàn nào/.test(d.cau) && d.di === '/noi-bo/dat-ban', tom(d) + ' ' + d.di);
 });
 
 // ===========================================================================

@@ -161,7 +161,7 @@ Mục 1, 2 và 4 nói về **bản nháp cũ** `Beeftown_Website/index.html` (kh
 
 ### Việc của Khánh — không ai làm thay được
 
-- [ ] **Một câu hỏi về giờ: trưa mở 10:00 hay 11:00?** Mốc đóng 14:00 và khung tối 16:00–22:00 đã có hai nguồn khớp nhau (câu Khánh gõ "14-14 16-22" và roster trong `05_VanHanh`). Chỉ còn khung đầu là chưa rõ.
+- [x] **Giờ mở cửa**: trưa 11:00–14:00, tối 17:00–23:00 (Khánh chốt 26/10/2026; đã ghi vào production cùng ngày). Đổi giờ: `/noi-bo/cai-dat` → Lưu giờ mở cửa — lên trang ngay.
 - [ ] **Tạo trang Facebook**, đăng ảnh bìa và 3–4 bài trước ngày treo bạt. Đây là nút thắt của cả Giai đoạn 1 — nút bấm chính của trang trỏ vào đây, và khi chưa có thì trang **không hiện nút nào cả**.
 - [ ] **Mọi tài khoản đứng tên công ty**, không đứng tên người làm: GitHub, Cloudflare, Supabase (thẻ công ty trả tiền), nhà đăng ký tên miền, Facebook, Google Business, Zalo OA.
       *Phép thử thành thật: người làm đăng xuất một ngày, Khánh vẫn vào được từng cái.*
@@ -186,7 +186,7 @@ Mục 1, 2 và 4 nói về **bản nháp cũ** `Beeftown_Website/index.html` (kh
 
 ### Hai việc kỹ thuật dễ bị bỏ quên
 
-- [ ] **Nhập bàn thật vào `ban_an` trước khi mở đặt bàn.** Công tắc `form_dat_ban_dang_mo` được seed sẵn `true` ở migration `0010` (để tám kiểm tra cũ không hỏng), nhưng bảng `ban_an` thì trống trên database vừa cài. Website có chốt chặn thứ hai — nó hỏi database xem còn khung giờ nào trống trong 14 ngày tới, không có thì hiện "chưa mở đặt bàn" thay vì dựng một cái form chỉ để báo *"hết bàn"*. Nhưng chốt chặn đó chỉ giấu triệu chứng; bàn vẫn phải nhập.
+- [x] ~~Nhập bàn thật vào `ban_an` trước khi mở đặt bàn.~~ Không còn bắt buộc từ `0100` (Khánh quyết 26/10/2026): chi nhánh chưa có bàn nào đang dùng thì database không tính sức chứa — mọi khung giờ trong giờ mở cửa nhận yêu cầu, nhân viên gọi lại xác nhận từng cái. Nhập bàn ở `/noi-bo/cai-dat` (mục "Bàn ăn — không bắt buộc") thì web tự báo hết bàn khi một khung giờ đã kín.
 - [ ] **Chọn kênh cho báo động.** Việc báo động khi đèn sức khỏe chuyển đỏ đã chạy và giữ sổ sự cố, nhưng **chưa gửi tin đi đâu** (`chonKenhBaoDong()` luôn trả "chưa chọn kênh") — `web/README.md`, mục "Báo động", phần cuối nói cách chọn. Khánh quyết kênh (Zalo, email, Telegram…).
 - [ ] **Email báo về khi có hồ sơ hoặc yêu cầu mới — chưa làm, và đây là việc quan trọng nhất còn lại.** Rủi ro lớn nhất của cả hệ thống không phải nó hỏng, mà là hồ sơ và yêu cầu nằm im trong database không ai mở. Cho tới khi có email, **`/noi-bo` phải được mở ra xem hằng ngày** — đó là điều kiện để bật bất kỳ form nào.
 

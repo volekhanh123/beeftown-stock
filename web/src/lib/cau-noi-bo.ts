@@ -245,7 +245,7 @@ export const CAU_EN: Readonly<Record<string, string>> = {
  */
 export const MO_TA_KHOA_EN: Readonly<Record<string, string>> = {
   dong_trang_thai:      'One sentence saying which stage the restaurant is at. Change it regularly — a sentence left for three months makes the site look abandoned.',
-  form_dat_ban_dang_mo: 'Turn on the booking form. ONLY turn it on once someone is answering AND the real tables are entered in ban_an.',
+  form_dat_ban_dang_mo: 'Turn on the booking form. Only turn it on once someone calls guests back during opening hours. With no tables entered every request during opening hours is taken; with tables entered a full time slot is reported as full.',
   gio_phuc_vu_da_chot:  'Opening hours are confirmed. Off means the website shows no hours, even though the chi_nhanh table has default values.',
   dia_chi_hien_thi:     'The full address as guests read it. Publish only after checking it against the lease.',
   email_lien_he:        'A mailbox someone reads. Used as the fallback while there is no hotline.',

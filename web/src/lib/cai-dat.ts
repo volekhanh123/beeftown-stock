@@ -1,22 +1,30 @@
 /**
- * CÀI ĐẶT NHÀ HÀNG — chi nhánh, bàn ăn, dọn dữ liệu
+ * CÀI ĐẶT NHÀ HÀNG — đặt bàn (bật / tắt, giờ mở cửa), bàn ăn, dọn dữ liệu
  *
  * VÌ SAO MÀN NÀY TỒN TẠI
  *
- * Bản đầu để ba việc này ở dạng SQL, với lý do ghi trong màn tổng quan là
- * "cần giấy tờ, tài khoản công ty, hoặc người thật xác nhận". Lý do đó đúng
- * với việc tạo tài khoản nhân sự — nó phải đi qua Supabase Auth. Nhưng với
- * NHẬP BÀN và CHỐT GIỜ thì nó là lý do yếu: hai cái đó chỉ là nhập liệu.
+ * Bản đầu để mấy việc này ở dạng SQL. Nhưng đổi giờ theo mùa, bật tắt nhận
+ * đặt bàn, thêm bàn là nhập liệu mà chủ nhà hàng làm nhiều lần — bắt mở SQL
+ * Editor mỗi lần là bắt họ phụ thuộc vào một lập trình viên.
  *
- * Và chúng không phải việc làm một lần. Thêm bàn, bỏ bàn hỏng, đổi giờ theo
- * mùa, mở phòng riêng — chủ nhà hàng sẽ sửa nhiều lần. Bắt người ta mở SQL
- * Editor mỗi lần là bắt họ phụ thuộc vào một lập trình viên để làm một việc
- * mà bản chất là điền vào ô.
+ * GỌN 26/10/2026 (Khánh: "nhiều câu hỏi quá, cứ kích hoạt đi"): màn chỉ còn thứ
+ * cần để nhận đặt bàn. Lưu giờ là giờ lên trang luôn (tự công bố
+ * gio_phuc_vu_da_chot), nút bật / tắt nhận đặt bàn nằm ngay đây (công bố
+ * form_dat_ban_dang_mo) — không phải sang màn Nội dung bật thêm công tắc. Bàn
+ * ăn không bắt buộc: chi nhánh chưa nhập bàn nào thì database không tính sức
+ * chứa (0100).
+ * Bỏ khỏi form: khu vực, địa chỉ, điện thoại nội bộ, bước khung giờ, độ dài lượt
+ * ngồi, giữ bàn — giữ giá trị đang có trong database (bước 30, lượt 120, giữ 15
+ * phút). Lưu giờ chỉ ghi bốn cột giờ, mấy cột kia không bị xóa. Địa chỉ và số
+ * điện thoại khách đọc là dia_chi_hien_thi, hotline ở màn Nội dung; bot Messenger
+ * chỉ lùi về dia_chi, dien_thoai của dòng chi_nhanh khi hai khóa đó chưa công bố
+ * (lib/messenger-anon.ts) — muốn đổi thì công bố hai khóa đó, không sửa ở đây.
  *
  * QUYỀN Ở ĐÂY DO DATABASE QUYẾT ĐỊNH, KHÔNG PHẢI DO FILE NÀY
  *
- * chi_nhanh_sua đòi la_chu_so_huu(); ban_an_sua đòi quản lý trở lên và đúng
- * chi nhánh. Giao diện chỉ ẩn nút cho gọn mắt — ai gọi thẳng vẫn bị RLS chặn.
+ * chi_nhanh_sua và hai công tắc đòi la_chu_so_huu(); ban_an_sua đòi quản lý trở
+ * lên và đúng chi nhánh. Giao diện chỉ ẩn nút cho gọn mắt — ai gọi thẳng vẫn bị
+ * RLS chặn.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -34,14 +42,20 @@ const CAU = {
   gioSai:       { vi: 'Giờ phải ở dạng HH:MM.', en: 'Times must be in HH:MM format.' },
   truaSai:      { vi: 'Giờ đóng trưa phải sau giờ mở trưa.', en: 'Lunch closing time must be after lunch opening time.' },
   toiSai:       { vi: 'Giờ đóng tối phải sau giờ mở tối.', en: 'Dinner closing time must be after dinner opening time.' },
-  buocSai:      { vi: 'Khoảng cách khung giờ phải từ 15 đến 120 phút.', en: 'The time-slot interval must be 15 to 120 minutes.' },
-  luotSai:      { vi: 'Một lượt ngồi phải từ 30 đến 360 phút.', en: 'A seating must last 30 to 360 minutes.' },
-  giuSai:       { vi: 'Thời gian giữ bàn phải từ 0 đến 120 phút.', en: 'The table hold time must be 0 to 120 minutes.' },
-  khongLuuCN:   { vi: 'Không lưu được chi nhánh.', en: 'Could not save the branch.' },
-  daLuuCN:      { vi: 'Đã lưu chi nhánh. Giờ phục vụ CHƯA lên trang cho tới khi bật công tắc gio_phuc_vu_da_chot ở màn Nội dung.',
-                  en: 'Branch saved. Opening hours are NOT on the site until you turn on the gio_phuc_vu_da_chot switch on the Content screen.' },
-  daTaoCN:      { vi: 'Đã tạo chi nhánh. Nhớ đặt PUBLIC_CHI_NHANH trong web/.env bằng đúng mã vừa nhập.',
-                  en: 'Branch created. Remember to set PUBLIC_CHI_NHANH in web/.env to exactly the code you entered.' },
+  khongLuuCN:   { vi: 'Không lưu được giờ mở cửa.', en: 'Could not save the opening hours.' },
+  daLuuGio:     { vi: 'Đã lưu giờ mở cửa. Trang công khai và khung giờ đặt bàn đổi ngay.',
+                  en: 'Opening hours saved. The public site and the booking time slots change right away.' },
+  // Giờ đã ghi vào chi_nhanh nhưng công tắc gio_phuc_vu_da_chot chưa công bố được: nói đúng cả hai nửa.
+  gioChuaLen:   { vi: (loi: string) => `Đã lưu giờ mở cửa, nhưng CHƯA đưa giờ lên trang được: ${loi} Bấm Lưu giờ mở cửa lần nữa.`,
+                  en: (loi: string) => `Opening hours saved, but they could NOT be put on the site: ${loi} Press Save opening hours again.` },
+  daTaoCN:      { vi: 'Đã tạo chi nhánh và lưu giờ mở cửa. Nhớ đặt PUBLIC_CHI_NHANH trong web/.env bằng đúng mã vừa nhập.',
+                  en: 'Branch created and opening hours saved. Remember to set PUBLIC_CHI_NHANH in web/.env to exactly the code you entered.' },
+  khongDoiNhan: { vi: 'Không đổi được việc nhận đặt bàn.', en: 'Could not change whether bookings are taken.' },
+  daBatNhan:    { vi: 'Đã bật nhận đặt bàn trên web.', en: 'Online bookings are on.' },
+  daTatNhan:    { vi: 'Đã tắt nhận đặt bàn trên web. Trang Hỏi bàn không còn form.',
+                  en: 'Online bookings are off. The Ask for a table page no longer shows the form.' },
+  batSai:       { vi: 'Không rõ bật hay tắt. Chưa đổi gì.', en: 'Unclear whether to turn on or off. Nothing changed.' },
+  lyDo:         { vi: 'Bấm ở màn Cài đặt', en: 'Set on the Settings screen' },
   soSai:        { vi: 'Số bắt đầu và số kết thúc phải từ 1 đến 999.', en: 'The start and end numbers must be 1 to 999.' },
   denNho:       { vi: 'Số kết thúc phải lớn hơn hoặc bằng số bắt đầu.', en: 'The end number must be greater than or equal to the start number.' },
   toiDa100:     { vi: 'Một lần thêm tối đa 100 bàn.', en: 'You can add at most 100 tables at once.' },
@@ -69,17 +83,19 @@ export interface ChiNhanh {
   id: string;
   ma: string;
   ten: string;
-  khu_vuc: string | null;
-  dia_chi: string | null;
-  dien_thoai: string | null;
   trua_bat_dau: string;
   trua_ket_thuc: string;
   toi_bat_dau: string;
   toi_ket_thuc: string;
-  buoc_khung_gio_phut: number;
-  thoi_luong_bua_phut: number;
-  giu_ban_phut: number;
   dang_hoat_dong: boolean;
+}
+
+/** Hai công tắc của đặt bàn, như đang sống trên trang công khai. */
+export interface CongTacDatBan {
+  /** form_dat_ban_dang_mo đã công bố và đang bật. */
+  nhanDatBan: boolean;
+  /** gio_phuc_vu_da_chot đã công bố và đang bật — giờ mở cửa hiện trên trang. */
+  gioDaLen: boolean;
 }
 
 export interface BanAn {
@@ -141,7 +157,7 @@ function so(v: FormDataEntryValue | null, min: number, max: number): number | nu
 export async function docChiNhanh(client: SupabaseClient): Promise<ChiNhanh | null> {
   const { data, error } = await client
     .from('chi_nhanh')
-    .select('id, ma, ten, khu_vuc, dia_chi, dien_thoai, trua_bat_dau, trua_ket_thuc, toi_bat_dau, toi_ket_thuc, buoc_khung_gio_phut, thoi_luong_bua_phut, giu_ban_phut, dang_hoat_dong')
+    .select('id, ma, ten, trua_bat_dau, trua_ket_thuc, toi_bat_dau, toi_ket_thuc, dang_hoat_dong')
     .order('ma')
     .limit(1)
     .maybeSingle();
@@ -149,46 +165,84 @@ export async function docChiNhanh(client: SupabaseClient): Promise<ChiNhanh | nu
   return (data as ChiNhanh) ?? null;
 }
 
+/**
+ * Lưu giờ mở cửa — chưa có chi nhánh thì tạo luôn (mã, tên, giờ).
+ *
+ * Có chi nhánh: chỉ ghi bốn cột giờ. Rồi đưa giờ lên trang nếu công tắc
+ * gio_phuc_vu_da_chot chưa bật — chủ nhà hàng vừa gõ giờ là đã chốt giờ, bắt
+ * sang màn Nội dung bật thêm một công tắc là một câu hỏi thừa.
+ */
 export async function luuChiNhanh(
   client: SupabaseClient, form: FormData, hienCo: ChiNhanh | null, nn: NgonNguNB = 'vi',
 ): Promise<KetQua> {
   const t = dichNB(nn, CAU);
-  const ma = String(form.get('ma') ?? '').trim().toLowerCase();
-  const ten = String(form.get('ten') ?? '').trim();
-  if (!/^[a-z0-9-]{1,20}$/.test(ma)) {
-    return { ok: false, cau: t.maSai };
-  }
-  if (!ten) return { ok: false, cau: t.chuaTenCN };
-
   const tb = gio(form.get('trua_bat_dau')), tk = gio(form.get('trua_ket_thuc'));
   const ob = gio(form.get('toi_bat_dau')),  ok2 = gio(form.get('toi_ket_thuc'));
   if (!tb || !tk || !ob || !ok2) return { ok: false, cau: t.gioSai };
   // Database có ràng buộc y hệt; kiểm ở đây chỉ để câu lỗi dễ đọc hơn.
   if (tk <= tb) return { ok: false, cau: t.truaSai };
   if (ok2 <= ob) return { ok: false, cau: t.toiSai };
+  const gioMoi = { trua_bat_dau: tb, trua_ket_thuc: tk, toi_bat_dau: ob, toi_ket_thuc: ok2 };
 
-  const buoc = so(form.get('buoc_khung_gio_phut'), 15, 120);
-  if (buoc === null) return { ok: false, cau: t.buocSai };
-  const doDai = so(form.get('thoi_luong_bua_phut'), 30, 360);
-  if (doDai === null) return { ok: false, cau: t.luotSai };
-  const giu = so(form.get('giu_ban_phut'), 0, 120);
-  if (giu === null) return { ok: false, cau: t.giuSai };
-
-  const dong = {
-    ma, ten,
-    khu_vuc: String(form.get('khu_vuc') ?? '').trim() || null,
-    dia_chi: String(form.get('dia_chi') ?? '').trim() || null,
-    dien_thoai: String(form.get('dien_thoai') ?? '').trim() || null,
-    trua_bat_dau: tb, trua_ket_thuc: tk, toi_bat_dau: ob, toi_ket_thuc: ok2,
-    buoc_khung_gio_phut: buoc, thoi_luong_bua_phut: doDai, giu_ban_phut: giu,
-  };
-
-  const { error } = hienCo
-    ? await client.from('chi_nhanh').update(dong).eq('id', hienCo.id)
-    : await client.from('chi_nhanh').insert(dong);
-
+  let error;
+  if (hienCo) {
+    // RLS chặn update thì PostgREST không báo lỗi, chỉ sửa 0 dòng: hỏi lại dòng đã sửa, không có thì không nói "đã lưu".
+    const { data, error: loi } = await client.from('chi_nhanh').update(gioMoi).eq('id', hienCo.id).select('id');
+    if (!loi && (!Array.isArray(data) || data.length === 0)) return { ok: false, cau: t.khongQuyen };
+    error = loi;
+  } else {
+    const ma = String(form.get('ma') ?? '').trim().toLowerCase();
+    const ten = String(form.get('ten') ?? '').trim();
+    if (!/^[a-z0-9-]{1,20}$/.test(ma)) return { ok: false, cau: t.maSai };
+    if (!ten) return { ok: false, cau: t.chuaTenCN };
+    ({ error } = await client.from('chi_nhanh').insert({ ma, ten, ...gioMoi }));
+  }
   if (error) return { ok: false, cau: cauLoi(error, t.khongLuuCN, nn) };
-  return { ok: true, cau: hienCo ? t.daLuuCN : t.daTaoCN };
+
+  // Đọc không được → coi như chưa bật: công bố lại một bản cũng vô hại.
+  const gioDaLen = () => docCongTacDatBan(client).then(c => c.gioDaLen, () => false);
+  if (!await gioDaLen()) {
+    const { error: loiCongBo } = await client.rpc('dat_noi_dung', {
+      p_khoa: 'gio_phuc_vu_da_chot', p_bool: true, p_cong_bo: true, p_ly_do: t.lyDo,
+    });
+    // Hai lượt lưu cùng lúc: lượt sau vấp bản lượt trước vừa công bố (một bản sống mỗi khóa). Giờ đã lên
+    // thật thì là "đã lưu" — hỏi lại database, không đoán từ câu lỗi.
+    if (loiCongBo && !await gioDaLen()) return { ok: false, cau: t.gioChuaLen(cauLoi(loiCongBo, t.khongLuuCN, nn)) };
+  }
+  return { ok: true, cau: hienCo ? t.daLuuGio : t.daTaoCN };
+}
+
+// -----------------------------------------------------------------------------
+// HAI CÔNG TẮC CỦA ĐẶT BÀN
+// -----------------------------------------------------------------------------
+/** Đọc lỗi → ném (cai-dat.astro hiện "không đọc được"), không trả "đang tắt" để chủ nhà hàng bấm bật lần nữa. */
+export async function docCongTacDatBan(client: SupabaseClient): Promise<CongTacDatBan> {
+  const { data, error } = await client
+    .from('v_bang_cong_tac')
+    .select('khoa, dang_song, gia_tri_bool')
+    .in('khoa', ['form_dat_ban_dang_mo', 'gio_phuc_vu_da_chot']);
+  if (error) throw error;
+  const bat = (khoa: string) => ((data ?? []) as { khoa: string; dang_song: boolean; gia_tri_bool: boolean | null }[])
+    .some(h => h.khoa === khoa && h.dang_song && h.gia_tri_bool === true);
+  return { nhanDatBan: bat('form_dat_ban_dang_mo'), gioDaLen: bat('gio_phuc_vu_da_chot') };
+}
+
+/**
+ * Bật / tắt nhận đặt bàn: công bố form_dat_ban_dang_mo bằng dat_noi_dung (như màn Nội dung).
+ * Form gửi giá trị ĐÍCH (bat = co / khong), không gửi "đảo" — bấm đúp hay F5 ra cùng một kết quả.
+ */
+export async function datNhanDatBan(
+  client: SupabaseClient, form: FormData, nn: NgonNguNB = 'vi',
+): Promise<KetQua> {
+  const t = dichNB(nn, CAU);
+  const giaTri = form.get('bat');
+  if (giaTri !== 'co' && giaTri !== 'khong') return { ok: false, cau: t.batSai };
+  const bat = giaTri === 'co';
+  const { error } = await client.rpc('dat_noi_dung', {
+    p_khoa: 'form_dat_ban_dang_mo', p_bool: bat, p_cong_bo: true, p_ly_do: t.lyDo,
+  });
+  if (error) return { ok: false, cau: cauLoi(error, t.khongDoiNhan, nn) };
+  return { ok: true, cau: bat ? t.daBatNhan : t.daTatNhan };
 }
 
 // -----------------------------------------------------------------------------

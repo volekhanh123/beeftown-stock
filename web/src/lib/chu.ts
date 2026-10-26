@@ -13,7 +13,8 @@
  * gốc không nói — và mọi điều cấm dưới đây áp dụng cho cả ba bản.
  *
  * ĐIỀU KHÔNG ĐƯỢC XUẤT HIỆN Ở ĐÂY:
- *   · giá, ngày mở, giờ phục vụ, số điện thoại — chưa chốt, thuộc cổng nội dung
+ *   · giá, ngày mở, giờ phục vụ, số điện thoại của nhà hàng — chưa chốt, thuộc cổng nội dung
+ *     (số điện thoại của pháp nhân trong PHAP_NHAN là chữ pháp lý đã chốt, không phải hotline)
  *   · "rẻ", lợi thế giá, "best beef in town", "số một", "duy nhất"
  *   · Wagyu, MB9, số ngày ủ, nguồn gốc hay grade thịt
  *   · phòng riêng, chỗ gửi xe, lối cho xe lăn — chưa xác nhận
@@ -37,17 +38,25 @@ export const THUONG_HIEU = {
 /**
  * PHÁP NHÂN — công ty đứng tên trang, ghi ở chân MỌI trang công khai, ngay dưới
  * dòng "© … Beeftown · Beef Specialty Restaurant". Khánh cung cấp 04/10/2026.
+ * Địa chỉ và số điện thoại sửa 26/10/2026 cho khớp Thông tin doanh nghiệp trên Meta
+ * (Meta đã sửa cùng ngày) — hồ sơ xác minh doanh nghiệp so trang với đúng mấy dòng
+ * này. Địa chỉ chép theo mục 4 giấy chứng nhận đăng ký địa điểm kinh doanh, thay
+ * đổi lần 2 ngày 20/10/2026. Mini App Zalo (mini-app/src/cau-hinh.ts) ghi địa chỉ của
+ * chính địa điểm kinh doanh, một mục khác trên cùng giấy — hai chỗ khác nhau là đúng,
+ * đừng sửa bên này cho khớp bên kia.
  *
- * Tên công ty và địa chỉ trụ sở là chữ pháp lý: GIỮ NGUYÊN tiếng Việt, đúng từng
- * ký tự như Khánh đưa, ở cả ba thứ tiếng — dịch ra là thành một cái tên không có
- * trên giấy tờ nào. Đổi chữ nào thì đối chiếu giấy đăng ký doanh nghiệp trước.
- * Chỉ nhãn "Mã số thuế" được dịch (khóa maSoThue bên dưới). web/kiem-tra/trinh-duyet.mjs đọc chân trang của từng trang
- * công khai và so với đúng các chuỗi này.
+ * Tên công ty và địa chỉ là chữ pháp lý: GIỮ NGUYÊN tiếng Việt, đúng từng ký tự
+ * như trên giấy, ở cả ba thứ tiếng — dịch ra là thành một cái tên không có trên
+ * giấy tờ nào. Đổi chữ nào thì đối chiếu giấy chứng nhận và Thông tin doanh nghiệp
+ * trên Meta trước. Số điện thoại giữ nguyên ở cả ba thứ tiếng. Chỉ nhãn "Mã số thuế"
+ * và "Điện thoại" được dịch (khóa maSoThue, dienThoai bên dưới). web/kiem-tra/trinh-duyet.mjs
+ * đọc chân trang của từng trang công khai và so với đúng các chuỗi này.
  */
 export const PHAP_NHAN = {
   ten: 'CÔNG TY TNHH SLK GROUP',
   maSoThue: '0319712805',
-  diaChi: 'Tầng 3, 11-13-15-17-19-21 Hàm Nghi, Phường Sài Gòn, TP. Hồ Chí Minh',
+  diaChi: '53 Võ Trường Toản, Phường An Khánh, Thành phố Hồ Chí Minh',
+  dienThoai: '0961 245 124',
 } as const;
 
 /**
@@ -240,8 +249,9 @@ const VI = {
   // Nhãn cho trình đọc màn hình của cụm nút đổi ngôn ngữ.
   chonNgonNgu: 'Ngôn ngữ',
   banQuyen: 'Beeftown',
-  // Nhãn trước mã số thuế ở chân trang. Tên công ty và địa chỉ không dịch — PHAP_NHAN.
+  // Nhãn trước mã số thuế và số điện thoại ở chân trang. Tên công ty, địa chỉ và số không dịch — PHAP_NHAN.
   maSoThue: 'Mã số thuế',
+  dienThoai: 'Điện thoại',
   boQuaToiNoiDung: 'Bỏ qua, tới nội dung chính',
 };
 
@@ -351,6 +361,7 @@ const EN: Bo = {
   chonNgonNgu: 'Language',
   banQuyen: 'Beeftown',
   maSoThue: 'Tax code',
+  dienThoai: 'Phone',
   boQuaToiNoiDung: 'Skip to main content',
 };
 
@@ -458,6 +469,7 @@ const KO: Bo = {
   // Dịch đúng nghĩa "mã số thuế", không dùng 사업자등록번호 — người Hàn đọc chữ đó
   // là số đăng ký kinh doanh của Hàn Quốc.
   maSoThue: '세금 코드',
+  dienThoai: '전화',
   boQuaToiNoiDung: '본문으로 바로가기',
 };
 
