@@ -1,7 +1,8 @@
 # Đóng gói Beeftown Cân — ra file BeeftownCan.exe để tải về từ GitHub, không cần gõ lệnh.
 #
 #   · Main nhận commit đụng thứ đi vào file .exe — can-app/, mã dùng chung trong web/src/lib/ (can-tma.ts,
-#     danh-muc-can.ts, gio-vn.ts, câu tiếng Anh…), ảnh biểu tượng dong-goi.ts đọc: kiểm thử → đóng gói → artifact
+#     danh-muc-can.ts, gio-vn.ts, câu tiếng Anh…), ảnh biểu tượng dong-goi.ts đọc: kiểm thử (2.11: cả giao diện trong
+#     Chromium, test/thu-trinh-duyet.ts) → đóng gói → artifact
 #     "BeeftownCan-<phiên bản>" (PHIEN_BAN trong can-app/src/main.ts). Phiên bản chưa có Release thì tạo Release
 #     "Beeftown Cân <phiên bản>" kèm file zip — Release giữ mãi.
 #   · PR đụng cùng những chỗ đó: chỉ đóng gói thử, bắt lỗi đóng gói trước khi gộp (kiểm thử Beeftown Cân đã chạy
@@ -126,6 +127,18 @@ jobs:
         if: github.event_name != 'pull_request'
         working-directory: can-app
         run: npx bun test/thu.ts
+      # 2.11 — giao diện trong Chromium thật cho từng vai, TRƯỚC khi đóng gói: bản .exe tự cập nhật xuống máy quầy, trang vỡ
+      # (mọi vai chỉ thấy khung lỗi) không được lên Release. Playwright lấy từ web/ như kiem-thu.yml.
+      - name: Cài Playwright và Chromium (web/)
+        if: github.event_name != 'pull_request'
+        working-directory: web
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Kiểm thử giao diện Beeftown Cân trong Chromium (từng vai)
+        if: github.event_name != 'pull_request'
+        working-directory: can-app
+        run: npx bun test/thu-trinh-duyet.ts
       - name: Đóng gói BeeftownCan.exe (Bun tự tải bộ chạy cho Windows)
         working-directory: can-app
         run: npx bun scripts/dong-goi.ts
