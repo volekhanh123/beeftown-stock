@@ -951,9 +951,34 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
 - **Nhận hàng**: mỗi dòng là **một tảng** (`so_goi = 1`), cân riêng, có `ngay_mo`. Vẫn giữ luật
   "một dòng phiếu nhập = một lô", nên duyệt, huỷ, trả NCC, công nợ, kiểm kê không phải sửa. Thêm một tảng
   xong, form điền sẵn món và ngày mổ cho tảng sau (`?tiep=&mo=`).
-- **Duyệt**: lô tảng mang `so_tang` (tăng dần theo chi nhánh, bộ đếm `kho_so_thu_tu` loại `T`, hiện
-  "#0142"), `ngay_mo`, `ngay_u_xong = ngày nhận + kho_so_ngay_u(món, ngày nhận − ngày mổ)`. Phiếu mua có
-  dòng tảng chưa tách / thiếu ngày mổ (ví dụ tạo từ đơn đặt hàng) thì chưa duyệt được.
+- **Số tảng cấp lúc lưu dòng (0097, Khánh chốt 25/10/2026)**: `kho_ghi_dong_phieu_nhap` cấp số (bộ đếm
+  `kho_so_thu_tu` loại `T`, tăng dần theo chi nhánh, hiện "#0142") cho dòng tảng ngay khi thủ kho lưu — túi
+  có số trước khi vào tủ ủ. Số ghi ở `kho_phieu_nhap_dong.so_tang` và sổ `kho_so_tang_cap` (số → phiếu, người
+  cấp, lúc cấp). Hai hàm lưu xoá hết dòng rồi ghi lại, nên số đi theo **khóa `so_tang`** của từng dòng: web
+  gửi lại số database đã cấp (`dongLuuTuPhieu`, `ghepDongNhan`, ô ẩn `d{i}_so_tang` của màn Phiếu nhập) —
+  database chỉ nhận số của chính phiếu đó, chưa bỏ, không trùng dòng; không gửi thì cấp số mới. Thêm tảng
+  xong chuyển về `?tiep=&mo=&vua=<chỉ số dòng>&pb=<phien_ban của chính lần lưu>`: form hiện to số để viết lên
+  túi (`soTangVuaThem` — chỉ khi phiếu đọc lại đúng phiên bản đó). Bấm đúp "+ Thêm dòng": nhánh "đã thêm từ
+  lần bấm trước" chỉ nhận dòng cuối khi số của nó do chính tài khoản này cấp (`so_tang_toi_cap` của
+  `kho_doc_phieu_nhap_kg`), không hiện to số, câu chỉ số ở dòng cuối; tảng giống hệt mà tài khoản khác vừa thêm
+  thì báo "máy khác" như thường. Sửa dòng: câu và chuyển hướng do `ketQuaSauSuaDong` chọn. Bản in phiếu nhập in
+  số của dòng khi chưa có lô.
+- **Tảng lưu trước 0097** (chưa có số, hay món bật theo tảng sau khi lưu): lần lưu nào đầu tiên (thêm ảnh, sửa
+  đầu phiếu, thêm / sửa / bỏ dòng) cũng cấp số cho mọi tảng đó. `luuPhieuNhan` đọc lại phiếu và câu báo kể các
+  số vừa cấp (`soTangMoiCap`, `noiCauTangMoi`) để viết lên túi; đọc lại hỏng thì vẫn báo đã lưu, kèm câu "có thể
+  vừa được cấp số — tải lại trang".
+- **Số bỏ trống**: dòng tảng bị bỏ, đổi sang món thường, web cũ không gửi lại số → `bo_luc` trong sổ, không
+  bao giờ cấp lại; màn nhận hàng báo "gạch số trên túi" (`cauSoTangBo`) và liệt kê `so_tang_bo` của
+  `kho_doc_phieu_nhap_kg` dưới "Hàng đã cân" (gồm số của phiếu đã hủy mà chưa thành lô). Người duyệt cũng
+  thấy: màn Phiếu nhập / điền giá (`nhap/[id]`, cả bản in) hiện "Số tảng đã bỏ" dưới dòng trạng thái
+  (`docSoTangBo`) — từ 0097 `kho_doc_phieu_nhap_kg` nhận quyền `nhap` **hoặc** `duyet_nhap` (kế toán; hàm không
+  trả tiền). Chỉ ghi sổ, không chuông. Dãy số lô vì thế có chỗ hở — sổ giải thích từng chỗ.
+- **Duyệt**: lô tảng mang đúng `so_tang` của dòng (bộ đếm không tăng lúc duyệt), `ngay_mo`,
+  `ngay_u_xong = ngày nhận + kho_so_ngay_u(món, ngày nhận − ngày mổ)`; dòng đã duyệt mang đúng số của lô.
+  Dòng chưa có số (tồn đầu kỳ dạng lưới, phiếu lưu trước 0097, món bật theo tảng sau khi lưu) thì duyệt
+  sinh như cũ và ghi sổ; dòng có số mà món đã tắt theo tảng thì số ghi bỏ, lô không số. Phiếu mua có dòng
+  tảng chưa tách / thiếu ngày mổ (ví dụ tạo từ đơn đặt hàng) thì chưa duyệt được — tách thành từng tảng (lưu)
+  là có số.
 - **Bảng ủ** `kho_bang_u` (dùng chung toàn thương hiệu, sửa bằng quyền danh mục): gõ dạng
   `5:18, 10:14, 10` ở form mặt hàng (`docChuBangU` / `chuBangU` trong `lib/kho/tang.ts`; `soNgayU` cùng
   luật với `kho_so_ngay_u`, test so từng tuổi).
@@ -1254,6 +1279,7 @@ node test/test-kho-cong-no-v2-web.mjs # công nợ v2: misa.ts, form Trả tiề
 node test/test-kho-sua-nhanh.mjs      # sửa hàng loạt, báo cáo tháng, mua hàng, sổ thanh toán — database (0041)
 node test/test-kho-sua-nhanh-web.mjs  # sửa nhanh, lưới công thức, vị trí + lý do, trung tâm báo cáo — web
 node test/test-kho-tieng-anh.mjs      # tiếng Anh: chữ Việt ngoài { vi, en }, trang quên truyền nn, câu database, chữ dính khi xuống dòng
+node test/test-kho-so-tang-luc-nhap.mjs # số tảng cấp lúc lưu dòng nhận hàng (0097): giữ số, số bỏ, duyệt dùng số của dòng, quyền, web
 cd ../web && npm run kiem-tra && npm run quet && npm run build
 ```
 
