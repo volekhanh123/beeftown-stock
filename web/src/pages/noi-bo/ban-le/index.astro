@@ -1,0 +1,271 @@
+---
+/**
+ * MENU BÁN LẺ — danh sách sản phẩm, thêm sản phẩm
+ *
+ * Thịt bò mang về (quầy cân theo gram ở giá mỗi kg của Kho → Mặt hàng, online gói cố định) và kim chi
+ * (theo hộp, giá cố định). Mỗi sản phẩm một thẻ; bấm vào để sửa ở /noi-bo/ban-le/<id>. Quyền do database
+ * quyết định — xem đầu lib/ban-le-noi-bo.ts. Mini App Zalo và website sẽ đọc menu này ở bước sau.
+ *
+ * Tồn ở quầy theo chi nhánh: chỉ người xem được kho (chủ, quản lý); chủ chọn chi nhánh (?cn=, cookie riêng
+ * của màn này). Thu ngân, marketing xem menu, không thấy tồn, không thấy form.
+ *
+ * POST duy nhất: thêm sản phẩm, mang ma_gui chống bấm hai lần. Thêm được thì chuyển hướng 303 sang trang
+ * sửa của sản phẩm (câu báo đi theo cookie của trang đó); không được thì dựng lại form với đúng chữ đã gõ
+ * và CÙNG ma_gui.
+ */
+import NoiBo from '../../../layouts/NoiBo.astro';
+import {
+  docDanhSach, taoSanPham, chonChiNhanhBanLe, cauLoiDoc, cauCanhBao, giaGoi,
+  VAI_XEM_BAN_LE, VAI_SUA_BAN_LE, KIEU_SAN_PHAM, CANH_BAO_BAN_LE, TEN_LOAI_BAN_LE, TEN_BAO_QUAN, TRANG_THAI_BAN_LE,
+  type SanPhamBanLe, type ChiNhanhBanLe, type KetQua,
+} from '../../../lib/ban-le-noi-bo';
+import { dichNB, nnCua } from '../../../lib/ngon-ngu-noi-bo';
+import { dichCau } from '../../../lib/cau-noi-bo';
+import { CAU_DOC_FORM_HONG, chuyenHuongNoiBo, docBaoNoiBo, docFormNoiBo } from '../../../lib/gui-noi-bo';
+import { dinhDangKg, dinhDangTien, duoc, laUuid } from '../../../lib/kho/chung';
+
+const phien = Astro.locals.phien!;
+const { client, nhanSu } = phien;
+const nn = nnCua(Astro);
+// Vai kho (thủ kho, quầy, kế toán) không đọc được menu (RLS): về /noi-bo, trang đó đưa họ sang kho.
+if (!(VAI_XEM_BAN_LE as readonly string[]).includes(nhanSu.vai_tro)) return Astro.redirect('/noi-bo', 302);
+
+const t = dichNB(nn, {
+  tieuDe:     { vi: 'Menu bán lẻ', en: 'Retail menu' },
+  dan:        { vi: 'Thịt và kim chi bán mang về. Giá mỗi kg ở đây là giá cân quầy (cùng ô với Kho → Mặt hàng). Mini App Zalo và website sẽ đọc menu này ở bước sau. FABi sửa tay theo danh sách Đối chiếu FABi.',
+                en: 'Beef and kimchi sold to take away. The price per kg here is the counter scale price (the same field as Stock → Items). The Zalo Mini App and the website will read this menu in a later step. FABi is updated by hand from the FABi check list.' },
+  chiDoc:     { vi: 'Chỉ chủ và quản lý sửa được menu bán lẻ, kể cả mô tả.', en: 'Only the owner and managers can edit the retail menu, including descriptions.' },
+  doiChieu:   { vi: 'Đối chiếu FABi', en: 'FABi check' },
+  chiNhanh:   { vi: 'Chi nhánh', en: 'Branch' },
+  tonCua:     { vi: (ten: string) => `Tồn ở quầy tính cho ${ten}.`, en: (ten: string) => `Counter stock is shown for ${ten}.` },
+  khongCN:    { vi: 'Chưa có chi nhánh nào đang hoạt động — chưa tính được tồn ở quầy.', en: 'No branch is active — counter stock cannot be shown.' },
+  nhom:       { vi: 'Nhóm sản phẩm', en: 'Product group' },
+  tatCa:      { vi: 'Tất cả', en: 'All' },
+  chuaCoSua:  { vi: 'Chưa có sản phẩm nào — thêm sản phẩm đầu tiên ở dưới.', en: 'No products yet — add the first one below.' },
+  chuaCo:     { vi: 'Chưa có sản phẩm nào.', en: 'No products yet.' },
+  nhomRong:   { vi: 'Nhóm này chưa có sản phẩm nào.', en: 'This group has no products yet.' },
+  thieuGia:   { vi: 'Thiếu giá', en: 'No price' },
+  giaThu:     { vi: 'Giá thử', en: 'Trial price' },
+  daChot:     { vi: 'Đã chốt giá', en: 'Price confirmed' },
+  quayCan:    { vi: (kg: string, tram: string) => `${kg}/kg · ${tram}/100 g`, en: (kg: string, tram: string) => `${kg}/kg · ${tram}/100 g` },
+  maCan:      { vi: (ma: string) => `mã cân ${ma}`, en: (ma: string) => `scale code ${ma}` },
+  chuaMaCan:  { vi: 'chưa có mã cân', en: 'no scale code yet' },
+  chuaGiaCan: { vi: 'Quầy: chưa có giá cân', en: 'Counter: no scale price yet' },
+  theoHop:    { vi: 'Theo hộp — quét mã hộp, không qua cân', en: 'By box — scan the box barcode, no scale' },
+  goi:        { vi: (g: number) => `${g} g`, en: (g: number) => `${g} g` },
+  chuaGia:    { vi: 'chưa có giá', en: 'no price' },
+  ngungBan:   { vi: 'ngưng bán', en: 'not sold' },
+  chuaGoi:    { vi: 'Chưa có gói online nào.', en: 'No online packs yet.' },
+  chuaHop:    { vi: 'Chưa có hộp nào.', en: 'No boxes yet.' },
+  tonKg:      { vi: (kg: string) => `Ở quầy: ${kg} kg`, en: (kg: string) => `At the counter: ${kg} kg` },
+  tonHop:     { vi: (n: number) => `Ở quầy: ${n} hộp`, en: (n: number) => `At the counter: ${n} boxes` },
+  tonKhong:   { vi: 'Ở quầy: —', en: 'At the counter: —' },
+  chuaTru:    { vi: '(theo sổ kho — quầy chưa trừ theo FABi)', en: '(from the stock books — the counter is not deducted from FABi yet)' },
+  them:       { vi: 'Thêm sản phẩm', en: 'Add a product' },
+  themDan:    { vi: 'Sản phẩm mới ở trạng thái Tạm ngưng: điền giá, gói rồi mới chuyển sang Đang bán.',
+                en: 'A new product starts as Paused: fill in prices and packs before switching it to On sale.' },
+  tenSp:      { vi: 'Tên sản phẩm', en: 'Product name (in Vietnamese)' },
+  tenGoiY:    { vi: 'Tên tiếng Việt cho khách. Tiếng Anh, tiếng Hàn máy dịch sau khi lưu.', en: 'The Vietnamese name for customers. English and Korean are machine translated after saving.' },
+  kieu:       { vi: 'Bán thế nào', en: 'How it is sold' },
+  maTom:      { vi: 'Mã (tự tạo từ tên)', en: 'Code (made from the name)' },
+  ma:         { vi: 'Mã', en: 'Code' },
+  maGoiY:     { vi: 'Mã cố định cho Mini App và website — không đổi được sau khi tạo. Để trống là tự tạo từ tên: chữ thường không dấu, gạch ngang.',
+                en: 'A fixed code for the Mini App and the website — it cannot be changed later. Leave it empty to make it from the name: lowercase, no accents, hyphens.' },
+  taoNut:     { vi: 'Thêm sản phẩm', en: 'Add product' },
+  daTao:      { vi: 'Đã tạo — điền giá, gói rồi bấm Lưu.', en: 'Created — fill in prices and packs, then press Save.' },
+  viecSai:    { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
+});
+const duocSua = (VAI_SUA_BAN_LE as readonly string[]).includes(nhanSu.vai_tro);
+const xemKho = duoc(nhanSu.vai_tro, 'xem');
+// Giữ ?cn= và ?nhom= khi gửi form: lỗi thì dựng lại đúng chi nhánh, đúng nhóm đang xem.
+const duongDan = Astro.url.pathname + Astro.url.search;
+
+let bao: KetQua | null = docBaoNoiBo(Astro.cookies, Astro.url.pathname);
+let daGo: FormData | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await docFormNoiBo(Astro.request);
+  if (!form) bao = { ok: false, cau: CAU_DOC_FORM_HONG[nn] };
+  else if (String(form.get('viec') ?? '') === 'tao') {
+    const kq = await taoSanPham(client, form, nn);
+    if (kq.ok) return chuyenHuongNoiBo(Astro, { ok: true, cau: t.daTao }, `/noi-bo/ban-le/${kq.id}`);
+    bao = kq;
+    daGo = form;
+  } else bao = { ok: false, cau: t.viecSai };
+}
+const go = (ten: string) => String(daGo?.get(ten) ?? '');
+const maGuiCu = go('ma_gui');
+const maGui = laUuid(maGuiCu) ? maGuiCu : crypto.randomUUID();
+
+let chiNhanh: ChiNhanhBanLe | null = null;
+let cacChiNhanh: ChiNhanhBanLe[] = [];
+let loiCN: string | null = null;
+if (xemKho) ({ chiNhanh, cacChiNhanh, loi: loiCN } = await chonChiNhanhBanLe(client, nhanSu, Astro.url, Astro.cookies));
+
+let ds: SanPhamBanLe[] = [];
+let dsLoi: string | null = null;
+try {
+  ds = await docDanhSach(client, chiNhanh?.id ?? null);
+} catch (e) {
+  dsLoi = cauLoiDoc(e, nn);
+}
+
+const thamSo = Astro.url.searchParams;
+const nhom = thamSo.get('nhom') === 'thit' || thamSo.get('nhom') === 'kim_chi' ? thamSo.get('nhom')! : 'tat_ca';
+const NHOM = [
+  { ma: 'tat_ca', ten: t.tatCa, so: ds.length },
+  { ma: 'thit', ten: TEN_LOAI_BAN_LE.thit[nn], so: ds.filter(s => s.loai === 'thit').length },
+  { ma: 'kim_chi', ten: TEN_LOAI_BAN_LE.kim_chi[nn], so: ds.filter(s => s.loai === 'kim_chi').length },
+];
+const dsHien = nhom === 'tat_ca' ? ds : ds.filter(s => s.loai === nhom);
+/** Link giữ chi nhánh đang chọn và nhóm đang xem, đổi một tham số. */
+const linkVoi = (doi: Record<string, string | null>) => {
+  const u = new URLSearchParams(thamSo);
+  for (const [k, v] of Object.entries(doi)) { if (v === null) u.delete(k); else u.set(k, v); }
+  const q = u.toString();
+  return `/noi-bo/ban-le${q ? '?' + q : ''}`;
+};
+
+/** Dòng quầy của một sản phẩm: giá mỗi kg, giá 100 g, mã cân — hoặc vì sao không có. */
+function dongQuay(sp: SanPhamBanLe): string {
+  if (sp.cach_ban === 'theo_hop') return t.theoHop;
+  const mh = sp.mat_hang;
+  // Giá trống hay 0 đ: cân bỏ qua dòng — như chưa có giá (cảnh báo chua_gia_can nói rõ ở dưới).
+  if (!mh || !mh.dang_dung || mh.gia_ban_kg == null || mh.gia_ban_kg <= 0) return t.chuaGiaCan;
+  const gia = t.quayCan(dinhDangTien(mh.gia_ban_kg, nn), dinhDangTien(giaGoi(mh.gia_ban_kg, 100), nn));
+  return `${gia} · ${mh.ma_can ? t.maCan(mh.ma_can) : t.chuaMaCan}`;
+}
+function dongTon(sp: SanPhamBanLe): string {
+  if (!sp.ton) return t.tonKhong;
+  const so = sp.cach_ban === 'theo_hop' ? t.tonHop(sp.ton.so_goi) : t.tonKg(dinhDangKg(sp.ton.so_kg, nn));
+  return sp.ton.tin_duoc ? so : `${so} ${t.chuaTru}`;
+}
+const coGia = (sp: SanPhamBanLe) => sp.gia_de_chot.kg != null || Object.keys(sp.gia_de_chot.goi ?? {}).length > 0;
+---
+<NoiBo tieuDe={t.tieuDe} nhanSu={nhanSu}>
+  <h1>{t.tieuDe}</h1>
+  <p class="nb-dan">{t.dan}</p>
+
+  {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>}
+  {dsLoi && <div class="nb-bao loi"><p>{dsLoi}</p></div>}
+  {loiCN && <div class="nb-bao loi"><p>{dichCau(nn, loiCN)}</p></div>}
+  {!duocSua && <div class="nb-bao luu-y"><p>{t.chiDoc}</p></div>}
+
+  {duocSua && (
+    <div class="bl-hang-nut">
+      <a href="/noi-bo/ban-le/doi-chieu" class="nb-nut phu">{t.doiChieu}</a>
+    </div>
+  )}
+
+  {xemKho && cacChiNhanh.length > 1 && (
+    <nav class="bl-hang-nut" aria-label={t.chiNhanh}>
+      {cacChiNhanh.map(c => (
+        <a href={linkVoi({ cn: c.ma })} class={`nb-nut ${c.id === chiNhanh?.id ? '' : 'phu'}`}
+           aria-current={c.id === chiNhanh?.id ? 'page' : undefined}>{c.ten}</a>
+      ))}
+    </nav>
+  )}
+  {xemKho && !loiCN && (chiNhanh
+    ? <p class="bl-phu bl-cach">{t.tonCua(chiNhanh.ten)}</p>
+    : <p class="bl-phu bl-cach">{t.khongCN}</p>)}
+
+  {ds.length > 0 && (
+    <nav class="bl-hang-nut" aria-label={t.nhom}>
+      {NHOM.map(n => (
+        <a href={linkVoi({ nhom: n.ma === 'tat_ca' ? null : n.ma })} class={`nb-nut ${n.ma === nhom ? '' : 'phu'}`}
+           aria-current={n.ma === nhom ? 'page' : undefined}>{n.ten} ({n.so})</a>
+      ))}
+    </nav>
+  )}
+
+  {ds.length === 0 && !dsLoi && (
+    <div class="nb-rong"><p style="margin:0">{duocSua ? t.chuaCoSua : t.chuaCo}</p></div>
+  )}
+  {ds.length > 0 && dsHien.length === 0 && (
+    <div class="nb-rong"><p style="margin:0">{t.nhomRong}</p></div>
+  )}
+
+  {dsHien.map(sp => {
+    const tt = TRANG_THAI_BAN_LE[sp.trang_thai];
+    const thieuGia = sp.canh_bao.includes('thieu_gia');
+    return (
+      <a href={`/noi-bo/ban-le/${sp.id}`} class="nb-dong bl-the">
+        <div class="nb-dong-dau">
+          <strong>{sp.ten_vi}</strong>
+          <span class="bl-nhan">
+            <span class={`nb-nhan ${tt.lop}`}>{tt.ten[nn]}</span>
+            {thieuGia && <span class="nb-nhan cho">{t.thieuGia}</span>}
+            {coGia(sp) && <span class={`nb-nhan ${sp.gia_thu ? 'nhap' : 'song'}`}>{sp.gia_thu ? t.giaThu : t.daChot}</span>}
+          </span>
+        </div>
+        <p class="bl-phu">{TEN_LOAI_BAN_LE[sp.loai]?.[nn] ?? sp.loai} · {TEN_BAO_QUAN[sp.bao_quan]?.[nn] ?? sp.bao_quan}</p>
+        <p class="bl-dong">{dongQuay(sp)}</p>
+        {sp.goi.length > 0
+          ? (
+            <ul class="bl-chip">
+              {sp.goi.map(g => (
+                <li class={g.dang_ban ? '' : 'tat'}>{t.goi(g.so_gam)} · {!g.dang_ban ? t.ngungBan : g.gia != null ? dinhDangTien(g.gia, nn) : t.chuaGia}</li>
+              ))}
+            </ul>
+          )
+          : <p class="bl-phu">{sp.cach_ban === 'theo_hop' ? t.chuaHop : t.chuaGoi}</p>}
+        {xemKho && <p class="bl-phu">{dongTon(sp)}</p>}
+        {sp.canh_bao.map(c => (
+          <p class={`bl-canh ${CANH_BAO_BAN_LE[c]?.nang ? 'nang' : ''}`}>{cauCanhBao(c, nn, sp)}</p>
+        ))}
+      </a>
+    );
+  })}
+
+  {duocSua && (
+    <form method="POST" action={duongDan} class="nb-the bl-them">
+      <input type="hidden" name="viec" value="tao" />
+      <input type="hidden" name="ma_gui" value={maGui} />
+      <h2>{t.them}</h2>
+      <p class="bl-phu bl-cach">{t.themDan}</p>
+      <label class="nb-o">
+        <span>{t.tenSp} *</span>
+        <small>{t.tenGoiY}</small>
+        <input type="text" name="ten_vi" required maxlength="120" value={go('ten_vi')} autocapitalize="sentences" />
+      </label>
+      <label class="nb-o">
+        <span>{t.kieu} *</span>
+        <select name="kieu" required>
+          {KIEU_SAN_PHAM.map(k => <option value={k.ma} selected={go('kieu') === k.ma}>{k.ten[nn]}</option>)}
+        </select>
+      </label>
+      <details class="bl-goi-y" open={go('ma') !== ''}>
+        <summary>{t.maTom}</summary>
+        <label class="nb-o">
+          <span>{t.ma}</span>
+          <small>{t.maGoiY}</small>
+          <input type="text" name="ma" maxlength="40" value={go('ma')} autocapitalize="none" spellcheck="false" autocomplete="off" />
+        </label>
+      </details>
+      <div class="bl-nut"><button type="submit" class="nb-nut">{t.taoNut}</button></div>
+    </form>
+  )}
+</NoiBo>
+
+<style>
+  .bl-hang-nut { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 1rem; }
+  .bl-cach { margin: -.4rem 0 1rem; }
+  .bl-the { display: block; color: inherit; text-decoration: none; }
+  .bl-the:hover { border-color: var(--do); }
+  .bl-nhan { display: inline-flex; flex-wrap: wrap; gap: .3rem; }
+  .bl-phu { margin: .35rem 0 0; font-size: .85rem; color: var(--muc-nhat); }
+  .bl-dong { margin: .35rem 0 0; font-size: .9rem; font-variant-numeric: tabular-nums; }
+  .bl-chip { list-style: none; display: flex; flex-wrap: wrap; gap: .35rem; margin: .5rem 0 0; padding: 0; }
+  .bl-chip li {
+    font-size: .82rem; font-variant-numeric: tabular-nums; padding: .2rem .6rem;
+    border: 1px solid var(--vach); border-radius: 999px; background: var(--kem-sau);
+  }
+  .bl-chip li.tat { color: var(--muc-nhat); }
+  .bl-canh { margin: .35rem 0 0; font-size: .85rem; color: var(--vang-chu); }
+  .bl-canh.nang { color: var(--do); font-weight: 600; }
+  .bl-them { margin-top: 1.5rem; }
+  .bl-them h2 { margin-top: 0; }
+  .bl-goi-y { margin: 0 0 1rem; }
+  .bl-goi-y summary { cursor: pointer; font-weight: 600; font-size: .9rem; padding: .7rem 0; min-height: 48px; }
+  .bl-nut { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .5rem; }
+</style>

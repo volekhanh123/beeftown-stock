@@ -120,7 +120,9 @@ await nhom('2 · THANH MENU: TỐI ĐA 5 NÚT, KHÔNG MỤC NÀO MẤT', async (
   ok('Quản lý: thanh đáy như chủ', ma('quan_ly') === ma('chu_so_huu'), ma('quan_ly'));
   // Từ khi có mục Thực đơn, marketing có 6 mục: 4 màn nội dung + "Thêm" (Đặt bàn, Tin tuyển dụng nằm ở trang Tất cả chức năng).
   ok('Marketing: Tổng quan · Nội dung · Thực đơn · Zalo · Thêm', ma('marketing') === 'tong_quan,noi_dung,thuc_don,zalo,them', ma('marketing'));
-  ok('Thu ngân: Tổng quan · Đặt bàn · Thực đơn · Tin tuyển dụng', ma('thu_ngan') === 'tong_quan,dat_ban,thuc_don,tin_tuyen_dung', ma('thu_ngan'));
+  // Từ khi có Menu bán lẻ (0099), thu ngân có 5 mục — vừa đủ thanh đáy, chưa cần nút "Thêm".
+  ok('Thu ngân: Tổng quan · Đặt bàn · Thực đơn · Bán lẻ · Tin tuyển dụng',
+    ma('thu_ngan') === 'tong_quan,dat_ban,thuc_don,ban_le,tin_tuyen_dung', ma('thu_ngan'));
   ok('Vai lạ / chưa đăng nhập: không mục nào, không lỗi', NB.thanhDayNoiBo('may_chung').length === 0 && NB.thanhDayNoiBo(undefined).length === 0);
   // Vai chỉ-kho mở một trang khung NoiBo: chỉ một mục (Kho) → không hiện thanh nào, như bản cũ;
   // không có "Tất cả chức năng" (trang đó chuyển họ sang trang Khác của kho).
@@ -171,6 +173,13 @@ await nhom('3 · AI THẤY MỤC NÀO — KHỚP TRANG VÀ RLS', async () => {
   ok('Thực đơn: bốn vai CRM (thu ngân chỉ đọc, trang ẩn ô soạn theo VAI_SUA_MON)',
     bang(vaiCua('thuc_don'), VAI_CRM_DS)
     && /VAI_SUA_MON as readonly string\[\]\)\.includes\(nhanSu\.vai_tro\)/.test(doc('web/src/pages/noi-bo/thuc-don/index.astro')));
+  // Menu bán lẻ: vai của mục = VAI_XEM_BAN_LE (so với policy ban_le_san_pham_doc ở test-noi-bo-ban-le.mjs); trang ẩn
+  // form theo VAI_SUA_BAN_LE và đưa vai ngoài bốn vai CRM về /noi-bo.
+  const { VAI_XEM_BAN_LE } = await import('../../web/src/lib/ban-le-noi-bo.ts');
+  ok('Menu bán lẻ: bốn vai CRM = VAI_XEM_BAN_LE (thu ngân, marketing chỉ xem; trang ẩn form theo VAI_SUA_BAN_LE)',
+    bang(vaiCua('ban_le'), VAI_CRM_DS) && bang(vaiCua('ban_le'), VAI_XEM_BAN_LE)
+    && /VAI_SUA_BAN_LE as readonly string\[\]\)\.includes\(nhanSu\.vai_tro\)/.test(doc('web/src/pages/noi-bo/ban-le/index.astro'))
+    && /if \(!\(VAI_XEM_BAN_LE as readonly string\[\]\)\.includes\(nhanSu\.vai_tro\)\) return Astro\.redirect\('\/noi-bo', 302\)/.test(doc('web/src/pages/noi-bo/ban-le/index.astro')));
   const mess = doc('web/src/pages/noi-bo/messenger.astro');
   ok('Messenger: trang chỉ cho chủ, quản lý — đúng vai của mục',
     /if \(!laChu && nhanSu\.vai_tro !== 'quan_ly'\) return Astro\.redirect/.test(mess) && bang(vaiCua('messenger'), ['chu_so_huu', 'quan_ly']));

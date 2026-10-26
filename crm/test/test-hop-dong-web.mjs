@@ -212,6 +212,9 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/tin-tuyen-dung.ts',
   // Soạn thực đơn — chỉ gọi từ /noi-bo/thuc-don, bằng client của nhân sự đang đăng nhập.
   'web/src/lib/thuc-don-noi-bo.ts',
+  // Menu bán lẻ (0099) — chỉ gọi từ /noi-bo/ban-le, sau middleware, bằng client của nhân sự đang đăng nhập:
+  // năm hàm ban_le_* tự kiểm vai, kho_mat_hang và chi_nhanh đọc qua RLS. PR này không có đường anon nào.
+  'web/src/lib/ban-le-noi-bo.ts',
   // Bản dịch tự động (0036) — gọi từ màn soạn tin, màn công tắc và middleware
   // của /noi-bo, luôn bằng client của nhân sự đang đăng nhập.
   'web/src/lib/ban-dich.ts',
