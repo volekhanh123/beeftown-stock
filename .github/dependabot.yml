@@ -25,10 +25,12 @@ updates:
       web-ban-nho:
         update-types: [minor, patch]
     ignore:
-      # @astrojs/check chỉ nhận typescript ^5 || ^6 (peer): bản 7 làm `npm ci` của web/ báo ERESOLVE, CI không chạy
-      # được kiểm thử nào (PR #86, hoàn tác 26/10/2026). Bỏ dòng này khi @astrojs/check nhận TypeScript 7.
+      # TypeScript 7: @astrojs/check 0.9.10 chỉ nhận peer typescript ^5 || ^6 — npm ci trong web/ hỏng (ERESOLVE),
+      # CI "Kiểm thử" đỏ và cổng deploy chặn (PR #86, 26/10/2026). Khi @astrojs/check nhận TypeScript 7 thì bỏ cả khối
+      # ignore: này (dòng ignore:, chú thích, hai dòng dưới); bỏ sót một dòng thì hoặc hỏng file, hoặc chặn luôn bản vá
+      # và bản nhỏ của typescript.
       - dependency-name: typescript
-        versions: ['>=7.0.0']
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: npm
     directory: /crm

@@ -29,8 +29,13 @@
  * tự cố định, mỗi cái ghi bằng chính thứ tiếng đó; thứ tiếng đang xem được đánh
  * dấu bằng chữ đậm và nét gạch (components/DauTrang.astro), không phải link.
  *
+ * META PIXEL (lib/meta-pixel.ts — đọc chú thích đầu file đó):
+ * Mã gốc của Meta in nguyên khối ở cuối <head>, mọi trang trừ 404. <body> mang tên trang
+ * (data-pixel-trang), script cuối trang gửi ViewContent khi mở trang Thực đơn và Contact khi
+ * bấm link gọi điện, Zalo, Messenger. Sự kiện chỉ kèm tên trang và thứ tiếng.
+ *
  * TRANG KHÔNG LẬP CHỈ MỤC (khongLapChiMuc — trang 404, pages/404.astro):
- * noindex, không canonical, không hreflang, không og:url, không JSON-LD. Trang đó
+ * noindex, không canonical, không hreflang, không og:url, không JSON-LD, không Meta Pixel. Trang đó
  * dựng cho MỌI đường dẫn lạ: không có bản chính nào để trỏ về, và /en không phải
  * "bản tiếng Anh" của một đường dẫn không có. Nó cũng dựng với bộ nội dung rỗng
  * (không đọc database), nên JSON-LD của nó sẽ khai sai về nhà hàng thật —
@@ -40,6 +45,7 @@ import '../styles/chung.css';
 import '../styles/cong-khai.css';
 import { THUONG_HIEU, NGON_NGU, TEN_NGON_NGU, chu, duongDanTuongUng } from '../lib/chu';
 import { diaChiCoCauTruc, jsonTrongScript, lienHe } from '../lib/trang-cong-khai';
+import { khoiMaPixel, tenTrangPixel } from '../lib/meta-pixel';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import DauTrang from '../components/DauTrang.astro';
 import ChanTrang from '../components/ChanTrang.astro';
@@ -81,6 +87,9 @@ const lh = lienHe(nd);
 // Bản của trang này ở một ngôn ngữ. Chính nó thì giữ nguyên đường dẫn đang
 // mở, kể cả khi trang chưa có trong bảng CAP_DUONG_DAN.
 const banCua = (n: NgonNgu) => (n === ngonNgu ? duongDan : duongDanTuongUng(duongDan, n));
+
+// Meta Pixel: tên trang theo bản tiếng Việt, một tên cho cả ba thứ tiếng. Trang 404 không gắn pixel.
+const tenTrang = khongLapChiMuc ? null : tenTrangPixel(banCua('vi'));
 
 // Facebook cần mã vùng; mã ngôn ngữ trần thì nó bỏ qua.
 const OG_LOCALE: Record<NgonNgu, string> = { vi: 'vi_VN', en: 'en_US', ko: 'ko_KR' };
@@ -174,9 +183,12 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
     )}
 
     {!khongLapChiMuc && <script type="application/ld+json" set:html={jsonTrongScript(duLieuCoCauTruc)} is:inline />}
+
+    {/* Mã gốc Meta Pixel, đúng từng chữ của Meta, cuối <head> như Meta hướng dẫn (Astro còn chèn CSS của trang sau nó). */}
+    {tenTrang && <Fragment set:html={khoiMaPixel()} />}
   </head>
 
-  <body class="ck">
+  <body class="ck" data-pixel-trang={tenTrang ?? undefined}>
     <a class="bo-qua" href="#noi-dung">{t.boQuaToiNoiDung}</a>
 
     {/* lang trên từng mục của bộ chọn ngôn ngữ: trình đọc màn hình đọc "한국어" bằng giọng
@@ -189,5 +201,25 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
     </main>
 
     <ChanTrang ngonNgu={ngonNgu} noiDung={nd} duongDan={duongDan} />
+
+    <script>
+      // Meta Pixel (lib/meta-pixel.ts): ViewContent khi mở trang Thực đơn; Contact khi bấm link gọi điện, Zalo,
+      // Messenger — bắt ở pha capture trên document nên link nào trên trang cũng được, kể cả link script dựng sau; bấm
+      // chuột giữa (mở thẻ mới) chỉ phát auxclick nên nghe cả nó. Trang không gắn pixel (404) hay script của Meta bị
+      // chặn: guiSuKien không làm gì.
+      import { guiSuKien, suKienCuaLink, suKienMoTrang } from '../lib/meta-pixel';
+
+      const moTrang = suKienMoTrang(document.body.dataset.pixelTrang);
+      if (moTrang) guiSuKien(moTrang);
+
+      const baoLink = (e: MouseEvent) => {
+        if (e.type === 'auxclick' && e.button !== 1) return;
+        const lien = e.target instanceof Element ? e.target.closest<HTMLAnchorElement>('a[href]') : null;
+        const suKien = lien ? suKienCuaLink(lien.href) : null;
+        if (suKien) guiSuKien(suKien);
+      };
+      document.addEventListener('click', baoLink, true);
+      document.addEventListener('auxclick', baoLink, true);
+    </script>
   </body>
 </html>

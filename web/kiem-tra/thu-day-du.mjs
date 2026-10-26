@@ -75,6 +75,13 @@
  *       1080 / 1279 px đầu trang đủ năm mục một hàng. mua-thit-giao, mua-thit-het-quay, mua-thit-loi / -dut / -treo
  *       (trả lời trong 6 giây), và trạng thái chưa mở (rong, day-du, mua-thit-rong, -khong-zalo, -zalo-la, -lech):
  *       không form, không giá, không mời nhắn, điều hướng bốn mục, mô tả "chưa mở". Đo "hiện" bằng isVisible().
+ *  13. Meta Pixel (src/lib/meta-pixel.ts; Meta bị chặn ở mọi context — chan-meta.mjs). Hỏi bàn: Lead đúng một lần,
+ *       chỉ sau khi database trả mã (cả khi bấm đúp), chỉ kèm content_name và language — không họ tên, số điện thoại,
+ *       mã; tải lại thẻ "đã nhận" không thành Lead thứ hai; database 500, mạng đứt, database từ chối → không Lead;
+ *       địa chỉ trang sau khi gửi không mang họ tên hay số điện thoại. Bấm số điện thoại, link Zalo đã công bố →
+ *       Contact. Back về thẻ "đã nhận" lấy từ bộ nhớ đệm → không Lead thứ hai. Mua thịt về: "Xem đơn" có giỏ → một
+ *       InitiateCheckout cho mỗi giỏ (bấm thanh dưới ở trang xem đơn không thêm; đổi giỏ thì thêm), giỏ rỗng thì không;
+ *       địa chỉ sau "Xem đơn" chỉ mang mã gói, số gói, cách nhận.
  *
  * Hỏng thì ảnh chụp nằm ở kiem-tra/anh-loi/day-du/ (CI tải lên cùng artifact của
  * trinh-duyet.mjs).
@@ -92,6 +99,7 @@ import { batMayGia, LIEN_HE_THU, MON_MAU, MON_THU_SUC, DIA_CHI_CONG_BO_THU, NGAY
 import { timChuoiCam } from '../src/lib/chuoi-cam.js';
 import { chuHienRa, boTienDaChot } from './chu-hien-ra.mjs';
 import { doGiaoDien, PHEP_DO } from './do-giao-dien.mjs';
+import { moChromium, ghiPixel, docHangDoi, suKienTrong } from './chan-meta.mjs';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ANH_LOI = join(WEB, 'kiem-tra', 'anh-loi', 'day-du');
@@ -270,7 +278,7 @@ try {
   });
   if (hong) throw new Error('dừng');
 
-  trinhDuyet = await chromium.launch();
+  trinhDuyet = await moChromium(chromium);
   const ctx = await trinhDuyet.newContext({ viewport: { width: 390, height: 844 } });
   const page = await ctx.newPage();
   const chupLoi = async ten => {
@@ -1888,6 +1896,171 @@ try {
           await c.close();
         }
       }
+    }
+    mayGia.datKichBan('day-du');
+  });
+
+  // =========================================================================
+  await nhom('13 · META PIXEL KHI ĐÃ NỐI DATABASE: LEAD CHỈ SAU KHI DATABASE NHẬN, CONTACT, XEM ĐƠN, ĐỊA CHỈ TRANG KHÔNG MANG SỐ ĐIỆN THOẠI', async () => {
+    const thamSo = duong => ({ content_name: duongDanTuongUng(duong, 'vi').replace(/^\//, '') || 'trang-chu', language: ngonNguCua(duong) });
+    const tenSuKien = lenh => suKienTrong(lenh).map(l => l[1]);
+    /** Một context mới (sessionStorage sạch), Meta bị chặn: lời gọi fbq nằm trong hàng đợi của trang. */
+    const moTrang = async () => {
+      const c = await trinhDuyet.newContext({ viewport: { width: 390, height: 844 } });
+      const p = await c.newPage();
+      const loiJs = [];
+      p.on('pageerror', e => loiJs.push(e.message));
+      return { c, p, loiJs };
+    };
+    const dienVaGui = async (p, { dup = false } = {}) => {
+      const nhan = p.locator('form[data-hoi-ban] label:has(input[name="gio"]:not([disabled]))').first();
+      if (await nhan.count()) await nhan.click();
+      else await p.locator('form[data-hoi-ban] input[name="gio"]:not([disabled])').first().check({ force: true });
+      await p.fill('form[data-hoi-ban] [name="ho_ten"]', KHACH.ho_ten);
+      await p.fill('form[data-hoi-ban] [name="sdt"]', KHACH.sdt);
+      const nut = p.locator('form[data-hoi-ban] [type="submit"]').first();
+      await nut.scrollIntoViewIfNeeded();
+      const hop = await nut.boundingBox();
+      const sau = p.waitForNavigation({ waitUntil: 'load', timeout: 30000 });
+      if (dup) await p.mouse.dblclick(hop.x + hop.width / 2, hop.y + hop.height / 2);
+      else await p.mouse.click(hop.x + hop.width / 2, hop.y + hop.height / 2);
+      const traLoi = await sau;
+      await p.waitForLoadState('networkidle').catch(() => {});
+      await cho(dup ? 1000 : 300);
+      return traLoi;
+    };
+    const coChuKhach = s => s.includes(KHACH.sdt) || s.includes(KHACH.sdt.slice(1)) || s.includes(KHACH.ho_ten);
+
+    for (const nn of NGON_NGU) {
+      const hoiBan = duongDanTuongUng('/dat-ban', nn);
+      for (const dup of [false, true]) {
+        mayGia.datKichBan('day-du', dup ? { cham: 1500 } : {});
+        const { c, p, loiJs } = await moTrang();
+        await p.goto(goc + hoiBan, { waitUntil: 'load' });
+        const truoc = tenSuKien(await p.evaluate(docHangDoi));
+        const traLoi = await dienVaGui(p, { dup });
+        const htmlDaNhan = await traLoi?.text().catch(() => '') ?? '';
+        const lenh = await p.evaluate(docHangDoi);
+        const ma = (await p.locator('[data-ket-qua="da-nhan"]').getAttribute('data-ma').catch(() => null)) ?? '';
+        const diaChi = p.url();
+        await p.reload({ waitUntil: 'load' });
+        const sauTaiLai = tenSuKien(await p.evaluate(docHangDoi));
+        // Bấm Back về trang "đã nhận" mà trình duyệt lấy trang từ bộ nhớ đệm (không qua bfcache — hay gặp ở trình duyệt
+        // trong app Facebook, Zalo): cùng HTML đó dựng lại, script chạy lại. Giả bằng route trả đúng HTML máy chủ đã trả.
+        await c.route(goc + hoiBan, r => r.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: htmlDaNhan }), { times: 1 });
+        await p.goto(goc + hoiBan, { waitUntil: 'load' });
+        const veTuDem = { the: await p.locator(`[data-ket-qua="da-nhan"][data-ma="${ma}"]`).count(), ten: tenSuKien(await p.evaluate(docHangDoi)) };
+        const nhan = `${hoiBan}${dup ? ' (bấm đúp, database chậm)' : ''}`;
+        const tot = [
+          ok(`${nhan}: trước khi gửi chỉ có PageView`, JSON.stringify(truoc) === '["PageView"]', JSON.stringify(truoc)),
+          ok(`${nhan}: database trả mã → thẻ "đã nhận" và ĐÚNG MỘT Lead, chỉ kèm ${JSON.stringify(thamSo(hoiBan))}`,
+             !!ma && (mayGia.dem().tao_dat_ban ?? 0) === 1
+               && JSON.stringify(suKienTrong(lenh)) === JSON.stringify([['track', 'PageView'], ['track', 'Lead', thamSo(hoiBan)]]),
+             `mã «${ma}», tao_dat_ban ${mayGia.dem().tao_dat_ban ?? 0} lần, ${JSON.stringify(suKienTrong(lenh))}`),
+          ok(`${nhan}: không lời gọi fbq nào mang họ tên, số điện thoại, mã đặt bàn`,
+             !coChuKhach(JSON.stringify(lenh)) && !(ma && JSON.stringify(lenh).includes(ma)), JSON.stringify(lenh)),
+          ok(`${nhan}: địa chỉ trang sau khi gửi là đường dẫn trơn — không họ tên, không số điện thoại`,
+             new URL(diaChi).pathname === hoiBan && new URL(diaChi).search === '' && !coChuKhach(decodeURIComponent(diaChi)), diaChi),
+          ok(`${nhan}: tải lại trang (kết quả qua cookie dùng một lần) → không thẻ "đã nhận", không Lead thứ hai`,
+             !sauTaiLai.includes('Lead'), JSON.stringify(sauTaiLai)),
+          ok(`${nhan}: Back về trang "đã nhận" lấy từ bộ nhớ đệm (cùng HTML, script chạy lại) → thẻ hiện lại nhưng không Lead thứ hai`,
+             !!ma && veTuDem.the === 1 && JSON.stringify(veTuDem.ten) === '["PageView"]', JSON.stringify(veTuDem)),
+          ok(`${nhan}: không lỗi JavaScript`, !loiJs.length, loiJs.slice(0, 3).join(' | ')),
+        ];
+        if (tot.includes(false)) await p.screenshot({ path: join(ANH_LOI, `pixel-lead-${nn}${dup ? '-dup' : ''}.png`), fullPage: true }).catch(() => {});
+        await c.close();
+      }
+
+      for (const kichBan of ['dat-ban-500', 'dat-ban-dut', 'dat-ban-loi']) {
+        mayGia.datKichBan(kichBan);
+        const { c, p } = await moTrang();
+        await p.goto(goc + hoiBan, { waitUntil: 'load' });
+        await dienVaGui(p);
+        const ten = tenSuKien(await p.evaluate(docHangDoi));
+        ok(`${kichBan} ${hoiBan}: database không xác nhận → không Lead, không thẻ "đã nhận"`,
+           !ten.includes('Lead') && await p.locator('[data-ket-qua="da-nhan"]').count() === 0, JSON.stringify(ten));
+        await c.close();
+      }
+    }
+
+    // Contact với link ĐÃ CÔNG BỐ: số điện thoại (day-du) ở Đến Beeftown; link Zalo OA (mua-thit-mo) ở Mua thịt về.
+    // Không rời trang khi bấm: chặn ở pha nổi bọt, sau listener pha capture của Trang.astro.
+    const khongRoiTrang = p => p.evaluate(() => document.addEventListener('click', e => e.preventDefault()));
+    for (const nn of NGON_NGU) {
+      mayGia.datKichBan('day-du');
+      const den = duongDanTuongUng('/den-beeftown', nn);
+      const { c, p } = await moTrang();
+      await p.goto(goc + den, { waitUntil: 'load' });
+      await khongRoiTrang(p);
+      await p.locator('main a[href^="tel:"]:visible').first().click();
+      ok(`${den}: bấm số điện thoại đã công bố → Contact ${JSON.stringify(thamSo(den))}`,
+         JSON.stringify(suKienTrong(await p.evaluate(docHangDoi)).at(-1)) === JSON.stringify(['track', 'Contact', thamSo(den)]),
+         JSON.stringify(suKienTrong(await p.evaluate(docHangDoi))));
+      await c.close();
+
+      mayGia.datKichBan('mua-thit-mo');
+      const mua = duongDanTuongUng('/mua-thit-ve', nn);
+      const t2 = await moTrang();
+      await t2.p.goto(goc + mua, { waitUntil: 'load' });
+      await khongRoiTrang(t2.p);
+      await t2.p.locator(`main a[href="${ZALO_OA_THU}"]:visible`).first().click();
+      ok(`${mua}: bấm link Zalo OA đã công bố → Contact`,
+         JSON.stringify(suKienTrong(await t2.p.evaluate(docHangDoi)).at(-1)) === JSON.stringify(['track', 'Contact', thamSo(mua)]),
+         JSON.stringify(suKienTrong(await t2.p.evaluate(docHangDoi))));
+      await t2.c.close();
+    }
+
+    // InitiateCheckout: "Xem đơn" là form GET (chuyển trang) — dùng fbevents.js giả báo từng lời gọi về đây.
+    mayGia.datKichBan('mua-thit-mo');
+    for (const nn of NGON_NGU) {
+      const mua = duongDanTuongUng('/mua-thit-ve', nn);
+      const c = await trinhDuyet.newContext({ viewport: { width: 390, height: 844 } });
+      const lenh = await ghiPixel(c);
+      const p = await c.newPage();
+      const choThuVien = () => p.waitForFunction(() => typeof window.fbq?.callMethod === 'function', null, { timeout: 10000 }).catch(() => {});
+      await p.goto(goc + mua, { waitUntil: 'load' });
+      await choThuVien();
+      // Giỏ rỗng: script giữ trang lại, không InitiateCheckout.
+      await p.locator('form[data-mtv-form] button[type="submit"]').click();
+      await cho(300);
+      const sauRong = tenSuKien(lenh);
+      await p.locator('select.mtv-so[name="ribeye-cap_200"]').selectOption('2');
+      await Promise.all([
+        p.waitForNavigation({ waitUntil: 'load', timeout: 30000 }),
+        p.locator('form[data-mtv-form] button[type="submit"]').click(),
+      ]);
+      await choThuVien();
+      const diaChi = new URL(p.url());
+      const sauGui = tenSuKien(lenh);
+      // Trang xem đơn (giỏ trên địa chỉ, ô chọn mang lại đúng giỏ): bấm "Xem đơn" của thanh dưới hai lần — cùng giỏ, không
+      // thêm lần nào. Đổi giỏ rồi gửi lại: lần xem đơn mới.
+      await p.evaluate(() => window.scrollTo(0, 0));
+      const thanh = p.locator('[data-mtv-thanh-xem]');
+      const coThanh = await thanh.isVisible();
+      if (coThanh) { await thanh.click(); await thanh.click({ force: true }).catch(() => {}); }
+      await cho(300);
+      const sauThanh = tenSuKien(lenh);
+      await p.locator('select.mtv-so[name="ribeye-cap_200"]').selectOption('3');
+      await Promise.all([
+        p.waitForNavigation({ waitUntil: 'load', timeout: 30000 }),
+        p.locator('form[data-mtv-form] button[type="submit"]').click(),
+      ]);
+      await choThuVien();
+      const sauDoiGio = tenSuKien(lenh);
+      const goi = suKienTrong(lenh).filter(l => l[1] === 'InitiateCheckout');
+      ok(`${mua}: giỏ rỗng bấm "Xem đơn" → không InitiateCheckout`, JSON.stringify(sauRong) === '["PageView"]', JSON.stringify(sauRong));
+      ok(`${mua}: có giỏ bấm "Xem đơn" → đúng một InitiateCheckout trước khi chuyển trang, chỉ kèm ${JSON.stringify(thamSo(mua))}`,
+         JSON.stringify(sauGui) === '["PageView","InitiateCheckout","PageView"]'
+           && JSON.stringify(goi[0]) === JSON.stringify(['track', 'InitiateCheckout', thamSo(mua)]), JSON.stringify(suKienTrong(lenh)));
+      ok(`${mua}: trang xem đơn, bấm "Xem đơn" của thanh dưới hai lần (cùng giỏ) → không thêm InitiateCheckout`,
+         coThanh && JSON.stringify(sauThanh) === '["PageView","InitiateCheckout","PageView"]', `thanh dưới ${coThanh ? 'hiện' : 'không hiện'} · ${JSON.stringify(sauThanh)}`);
+      ok(`${mua}: đổi giỏ rồi "Xem đơn" → thêm đúng một InitiateCheckout, chỉ kèm tên trang và thứ tiếng`,
+         JSON.stringify(sauDoiGio) === '["PageView","InitiateCheckout","PageView","InitiateCheckout","PageView"]'
+           && goi.every(l => JSON.stringify(l) === JSON.stringify(['track', 'InitiateCheckout', thamSo(mua)])), JSON.stringify(sauDoiGio));
+      ok(`${mua}: địa chỉ sau "Xem đơn" chỉ mang mã gói, số gói, cách nhận`,
+         [...diaChi.searchParams].every(([k, v]) => (/^[a-z0-9-]+_\d+$/.test(k) && /^\d+$/.test(v)) || (k === 'nhan' && /^(quay|giao)$/.test(v)))
+           && diaChi.searchParams.get('ribeye-cap_200') === '2', diaChi.href);
+      await c.close();
     }
     mayGia.datKichBan('day-du');
   });
