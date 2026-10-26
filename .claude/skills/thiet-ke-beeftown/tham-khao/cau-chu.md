@@ -96,9 +96,12 @@ trong `/noi-bo`.
     khác. Không chỗ gửi xe, lối cho xe lăn, mốc gần đó, số phút, số mét, số bước — chưa ai xác nhận, chưa
     ai đo.
   - **Dòng địa chỉ pháp nhân ở chân trang** (`PHAP_NHAN.diaChi` trong `chu.ts`) là địa chỉ trên giấy
-    đăng ký của công ty, **khác** địa chỉ nhà hàng. Giữ nguyên từng ký tự — nó khớp giấy đăng ký đang
-    dùng cho hồ sơ xác minh trên Meta; đổi hay không là việc Khánh quyết. Đừng "sửa cho khớp" với địa chỉ quán, và đừng chép dòng đó
-    ra chỗ khác.
+    chứng nhận đăng ký địa điểm kinh doanh (mục 4, thay đổi lần 2 ngày 20/10/2026), **khác** địa chỉ
+    nhà hàng. Ngay dưới nó là số điện thoại pháp nhân (`PHAP_NHAN.dienThoai`): nhãn "Điện thoại" /
+    "Phone" / "전화" dịch theo trang, số giữ nguyên. Hai dòng khớp Thông tin doanh nghiệp trên Meta cho
+    hồ sơ xác minh doanh nghiệp (Khánh quyết 26/10/2026) — giữ nguyên từng ký tự; đổi là việc Khánh
+    quyết, và phải đổi cả trên Meta. Đừng "sửa cho khớp" với địa chỉ quán, và đừng chép dòng đó ra chỗ
+    khác.
   - Địa chỉ trên trang có hai nguồn: bản công bố trong `/noi-bo` (khóa `dia_chi_hien_thi`, nhóm "Liên
     hệ") thắng bản trong mã. Bot Messenger đọc bản công bố đó trước; chưa công bố thì lùi về cột
     `dia_chi` của dòng `chi_nhanh` (từ 26/10/2026 không còn ô sửa ở `/noi-bo/cai-dat` — chỉ sửa bằng SQL).
@@ -114,7 +117,8 @@ trong `/noi-bo`.
   VAT" chỉ nói về giá trên nhãn khay, không bao giờ mở rộng thành cam kết cho cả hóa đơn.
 - Nhãn món chỉ có hai: **Món sống** (luôn kèm câu cảnh báo) và **Có cồn**. Không tự thêm nhãn chay, dị
   ứng, độ cay, khẩu phần, combo.
-- Pháp nhân ở chân trang giữ nguyên từng ký tự — kiểm thử trình duyệt đọc đúng dòng đó.
+- Pháp nhân ở chân trang (tên · mã số thuế, địa chỉ, điện thoại) giữ nguyên từng ký tự — kiểm thử trình
+  duyệt đọc đúng ba dòng đó.
 
 ## Chữ và số kiểu Việt
 

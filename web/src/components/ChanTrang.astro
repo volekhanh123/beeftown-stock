@@ -12,9 +12,10 @@
  *  3. Pháp nhân, cùng nền đen, ngăn với dải trên bằng một vạch mảnh (--vien: trắng 22 %).
  *     web/kiem-tra/trinh-duyet.mjs đọc chữ của <footer> ĐẦU
  *     TIÊN trên trang: ngay dưới dòng "© … Beeftown · Beef Specialty Restaurant" phải
- *     là hai dòng pháp nhân, đúng từng ký tự; mọi <p> trong chân trang phải hiện.
- *     Ba dòng đó chép nguyên từ layout cũ — mỗi dòng viết liền trên một dòng mã:
- *     compressHTML bỏ dấu cách có xuống dòng giữa hai nút ("·Beef").
+ *     là ba dòng pháp nhân (tên · mã số thuế, địa chỉ, điện thoại), đúng từng ký tự —
+ *     khớp Thông tin doanh nghiệp trên Meta; mọi <p> trong chân trang phải hiện.
+ *     Mỗi dòng viết liền trên một dòng mã: compressHTML bỏ dấu cách có xuống dòng
+ *     giữa hai nút ("·Beef").
  *
  * Chữ trong chân trang không nhỏ hơn 14px (kể cả dải pháp nhân — dải đó cao theo nội
  * dung, không ép chữ nhỏ cho vừa); mọi link cao 48px. do-giao-dien.mjs đo cả hai.
@@ -102,10 +103,12 @@ const c = dich(ngonNgu, {
       <div>
         <p class="chan-dong">© {namVn()} {t.banQuyen} · <span lang="en">{THUONG_HIEU.descriptor}</span></p>
         {/* Pháp nhân — tên và địa chỉ giữ tiếng Việt ở mọi bản (PHAP_NHAN trong lib/chu.ts),
-            lang="vi" để trình đọc màn hình của trang Anh / Hàn đọc đúng giọng. */}
+            lang="vi" để trình đọc màn hình của trang Anh / Hàn đọc đúng giọng. Điện thoại:
+            nhãn theo thứ tiếng của trang, số giữ nguyên và không gãy giữa chừng. */}
         <div class="phap-nhan">
           <p class="chan-dong"><span class="lien" lang="vi">{PHAP_NHAN.ten}</span> · <span class="lien">{t.maSoThue}: {PHAP_NHAN.maSoThue}</span></p>
           <p class="chan-dong" lang="vi">{PHAP_NHAN.diaChi}</p>
+          <p class="chan-dong">{t.dienThoai}: <span class="lien">{PHAP_NHAN.dienThoai}</span></p>
         </div>
       </div>
       <a href={duongDanTuongUng('/quyen-rieng-tu', ngonNgu)}>{t.quyenRiengTu}</a>
@@ -170,8 +173,8 @@ const c = dich(ngonNgu, {
   }
   .chan-dong { margin: 0; color: var(--chu-chinh); }
   /* Dòng pháp nhân: cùng cỡ 14px với dòng ©, màu chữ phụ của nền đen (--da, 16,21 : 1), cách
-     dòng © một khoảng. Mỗi cụm (tên công ty, mã số thuế) không gãy giữa chừng — màn hẹp thì
-     xuống dòng ở dấu "·". */
+     dòng © một khoảng. Mỗi cụm (tên công ty, mã số thuế, số điện thoại) không gãy giữa chừng —
+     màn hẹp thì xuống dòng ở dấu "·". */
   .phap-nhan { margin-top: var(--k-2); }
   .phap-nhan .chan-dong { color: var(--chu-phu); }
   .phap-nhan .lien { white-space: nowrap; }

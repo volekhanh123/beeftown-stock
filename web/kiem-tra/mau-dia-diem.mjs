@@ -42,6 +42,11 @@ function luat(ten, ...mau) {
  * TÊN ĐƯỜNG, TÊN KHU của hai mặt bằng đã khai trước, và phường của chúng khi viết như một vế địa
  * chỉ. Toàn là tên riêng nên tìm được cả trong mã nguồn và HTML thô. "Sài Gòn" đứng một mình thì
  * KHÔNG bắt — "Bia Sài Gòn", "Sài Gòn Thương Tín" là chữ đúng.
+ *
+ * Cùng luật này giữ địa chỉ PHÁP NHÂN (giấy chứng nhận đăng ký địa điểm kinh doanh, sửa 26/10/2026)
+ * ở đúng một chỗ: dòng pháp nhân ở chân trang. Ở mọi chỗ khác nó là "một địa chỉ khác 63 Hồ Tùng
+ * Mậu" — khách đọc thành địa chỉ quán. "An Khánh" đứng một mình thì KHÔNG bắt (tên người), chỉ khi
+ * viết như một vế phường.
  */
 export const TEN_DIA_CHI_KHAC = luat(
   'ghi tên đường hay tên phường của một địa chỉ khác 63 Hồ Tùng Mậu',
@@ -49,6 +54,8 @@ export const TEN_DIA_CHI_KHAC = luat(
   /Nguyễn\s*Thái\s*Học|Nguyen\s*Thai\s*Hoc|Cầu\s*Ông\s*Lãnh|Cau\s*Ong\s*Lanh/iu,
   /phường\s+Sài\s*Gòn|(?:Sài\s*Gòn|Sai\s*Gon|Saigon)\s+Ward|사이공\s*동/iu,
   /(?<![\p{L}\d])P\.\s?Sài\s*Gòn/u,
+  /Võ\s*Trường\s*Toản|Vo\s*Truong\s*Toan|V%C3%B5(?:\+|%20)Tr%C6%B0%E1%BB%9Dng/iu,
+  /phường\s+An\s*Khánh|An\s*Kh[aá]nh\s+Ward|(?<![\p{L}\d])P\.\s?An\s*Khánh/iu,
 );
 
 /**
@@ -149,8 +156,12 @@ export const boPhapNhan = (chu, dongDiaChi) => String(chu ?? '').split(dongDiaCh
 export const CAU_THU = [
   { luat: TEN_DIA_CHI_KHAC,
     bat: ['Tầng 3, 11-21 Hàm Nghi', 'Hàm Nghi 11-21', 'https://maps.google.com/?q=11-21+H%C3%A0m+Nghi', '40–42 Nguyễn Thái Học',
-      'P. Cầu Ông Lãnh', 'phường Sài Gòn', 'Phường Sài Gòn', 'P. Sài Gòn', 'Saigon Ward', '사이공동'],
-    khong: ['Tầng 3, 63 Hồ Tùng Mậu, TP.HCM', 'Bia Sài Gòn', 'Sài Gòn Thương Tín', 'ẩm thực Sài Gòn', 'd="M3 11-21 5"'] },
+      'P. Cầu Ông Lãnh', 'phường Sài Gòn', 'Phường Sài Gòn', 'P. Sài Gòn', 'Saigon Ward', '사이공동',
+      '53 Võ Trường Toản', '53 Vo Truong Toan, An Khanh Ward', 'https://maps.google.com/?q=53+V%C3%B5+Tr%C6%B0%E1%BB%9Dng+To%E1%BA%A3n',
+      'https://www.google.com/maps/search/53%20V%C3%B5%20Tr%C6%B0%E1%BB%9Dng%20To%E1%BA%A3n',
+      'Phường An Khánh', 'phường An Khánh', 'P. An Khánh', 'An Khánh Ward'],
+    khong: ['Tầng 3, 63 Hồ Tùng Mậu, TP.HCM', 'Bia Sài Gòn', 'Sài Gòn Thương Tín', 'ẩm thực Sài Gòn', 'd="M3 11-21 5"',
+      'Khánh quyết 26/10/2026', 'Khánh xác nhận ngày 11/10/2026'] },
   { luat: SO_NHA_KHAC,
     bat: ['Tầng 3, 11-21 Hàm Nghi', '11–21', 'Tầng 3, 11-13-15-17-19-21 Hàm Nghi'],
     khong: ['đến ngày 2026-11-21', 'Tầng 3, 63 Hồ Tùng Mậu, TP.HCM', '11-21-2026'] },

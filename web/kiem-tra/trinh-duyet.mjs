@@ -122,15 +122,21 @@ const ngonNguCua = duong => (duong.startsWith('/en') ? 'en' : duong.startsWith('
 /** Chữ của một khối viết liền một dòng: innerText xuống dòng ở mỗi khối, câu dài thì ở đâu cũng một dấu cách. */
 const motDong = chu => chu.replace(/\s+/g, ' ').trim();
 
-// Chân trang: ngay dưới dòng © là pháp nhân, bằng CHỮ trong HTML (không phải ảnh), tên công ty
-// và địa chỉ đúng từng ký tự ở cả ba thứ tiếng. Chép tay ở đây, KHÔNG đọc PHAP_NHAN trong
+// Chân trang: ngay dưới dòng © là pháp nhân, bằng CHỮ trong HTML (không phải ảnh), tên công ty,
+// địa chỉ và số điện thoại đúng từng ký tự ở cả ba thứ tiếng — khớp Thông tin doanh nghiệp trên Meta
+// (sửa 26/10/2026) cho hồ sơ xác minh doanh nghiệp. Chép tay ở đây, KHÔNG đọc PHAP_NHAN trong
 // lib/chu.ts — sửa nhầm một ký tự ở đó thì phép thử này đỏ.
 const DONG_BAN_QUYEN = /^© \d{4} Beeftown · Beef Specialty Restaurant$/;
 const NHAN_MA_SO_THUE = { vi: 'Mã số thuế', en: 'Tax code', ko: '세금 코드' };
+const NHAN_DIEN_THOAI = { vi: 'Điện thoại', en: 'Phone', ko: '전화' };
 const dongPhapNhan = nn => [
   `CÔNG TY TNHH SLK GROUP · ${NHAN_MA_SO_THUE[nn]}: 0319712805`,
-  'Tầng 3, 11-13-15-17-19-21 Hàm Nghi, Phường Sài Gòn, TP. Hồ Chí Minh',
+  '53 Võ Trường Toản, Phường An Khánh, Thành phố Hồ Chí Minh',
+  `${NHAN_DIEN_THOAI[nn]}: 0961 245 124`,
 ];
+/** Ba dòng ngay dưới dòng ©, đúng thứ tự. */
+const coPhapNhan = (dongChan, iBanQuyen, phapNhan) =>
+  iBanQuyen > -1 && phapNhan.every((dong, i) => dongChan[iBanQuyen + 1 + i] === dong);
 const TRANG_FORM = ['/dat-ban', '/en/book', '/ko/book', '/tuyen-dung', '/en/jobs', '/ko/jobs'];
 const TRANG_HOI_BAN = ['/dat-ban', '/en/book', '/ko/book'];
 const CHU_THANH_CONG = /thành công|\bsuccess|성공/i;
@@ -338,9 +344,8 @@ try {
           ok(`${nhan}: không lỗi JavaScript, không tải hỏng`, !loiJs.length && !taiHong.length,
              [...loiJs, ...taiHong].slice(0, 3).join(' | ')),
           ok(`${nhan}: không tràn ngang`, kq.rong <= kq.khung + 1, `rộng ${kq.rong}px > khung ${kq.khung}px`),
-          ok(`${nhan}: chân trang — ngay dưới dòng "© … Beeftown · Beef Specialty Restaurant" là pháp nhân SLK GROUP, chữ HTML đúng từng ký tự, hiện trên màn hình`,
-             kq.coChan && !kq.chanAn && iBanQuyen > -1
-               && kq.dongChan[iBanQuyen + 1] === phapNhan[0] && kq.dongChan[iBanQuyen + 2] === phapNhan[1],
+          ok(`${nhan}: chân trang — ngay dưới dòng "© … Beeftown · Beef Specialty Restaurant" là pháp nhân SLK GROUP (tên, mã số thuế, địa chỉ, điện thoại), chữ HTML đúng từng ký tự, hiện trên màn hình`,
+             kq.coChan && !kq.chanAn && coPhapNhan(kq.dongChan, iBanQuyen, phapNhan),
              !kq.coChan ? 'trang không có <footer>'
                : kq.chanAn ? 'một dòng chân trang bị ẩn hoặc chữ dưới 14px' : JSON.stringify(kq.dongChan)),
           ok(`${nhan}: đúng một <h1>`, them.soH1 === 1, `${them.soH1} thẻ h1`),
@@ -874,8 +879,8 @@ try {
              /Beeftown/.test(kq.tieuDe) && them.soH1 === 1, `«${kq.tieuDe}», ${them.soH1} thẻ h1`),
           ok(`${nhan}: nội dung chính có link về trang chủ của cả ba thứ tiếng (/, /en, /ko)`, thieuLink.length === 0,
              `thiếu ${thieuLink.join(', ')} — có ${JSON.stringify(kq.linkChinh)}`),
-          ok(`${nhan}: chân trang công khai có pháp nhân SLK GROUP`,
-             iBanQuyen > -1 && kq.dongChan[iBanQuyen + 1] === phapNhan[0] && kq.dongChan[iBanQuyen + 2] === phapNhan[1],
+          ok(`${nhan}: chân trang công khai có pháp nhân SLK GROUP (tên, mã số thuế, địa chỉ, điện thoại)`,
+             coPhapNhan(kq.dongChan, iBanQuyen, phapNhan),
              JSON.stringify(kq.dongChan).slice(0, 200)),
           ok(`${nhan}: không tràn ngang`, kq.rong <= kq.khung + 1, `rộng ${kq.rong}px > khung ${kq.khung}px`),
           ok(`${nhan}: noindex, không canonical, không hreflang, không JSON-LD (dựng không database — sẽ khai sai)`,

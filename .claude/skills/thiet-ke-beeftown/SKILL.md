@@ -341,8 +341,9 @@ với khách công ty. Chi tiết và ví dụ: [tham-khao/cau-chu.md](tham-khao
   của quán thì chưa biết). Mã đã ghi đúng như vậy (`DIA_CHI_NHA_HANG`, `loiLen` trong
   `web/src/lib/chu.ts`). Chỉ nói mấy điều đó: **không ghi tên phường hay quận** (chưa có giấy xác nhận), không gọi là "tòa nhà",
   không kể chuyện đổi địa điểm, không thêm chỗ gửi xe, số phút, số mét, lối cho xe lăn. Dòng địa chỉ
-  pháp nhân ở chân trang là chữ trên giấy đăng ký, **khác** địa chỉ nhà hàng — không sửa, chờ Khánh
-  quyết. Chi tiết, việc chờ Khánh duyệt và kiểm thử gác: [tham-khao/cau-chu.md](tham-khao/cau-chu.md),
+  pháp nhân ở chân trang là chữ trên giấy chứng nhận, **khác** địa chỉ nhà hàng; cùng số điện thoại
+  pháp nhân, nó khớp Thông tin doanh nghiệp trên Meta (Khánh quyết 26/10/2026) — không sửa khi Khánh
+  chưa đổi cả hai nơi. Chi tiết, việc chờ Khánh duyệt và kiểm thử gác: [tham-khao/cau-chu.md](tham-khao/cau-chu.md),
   mục "Dữ kiện cố định".
 
 ## Tiếp cận
