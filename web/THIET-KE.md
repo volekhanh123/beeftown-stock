@@ -419,7 +419,7 @@ Nguyên tắc: logo bộ 21/10/2026, đúng bản màu cho nền, chừa một �
 
 | Việc | Hiện trạng trên trang | Khi có |
 |---|---|---|
-| Giờ mở cửa | Không hiện giờ; JSON-LD không khai giờ | Nhập giờ ở màn chi nhánh trong `/noi-bo`, bật công tắc `gio_phuc_vu_da_chot` (khung giờ của form hỏi bàn và bot Messenger đọc từ đó); trang công khai chưa có chỗ in giờ — thêm khi giờ đã chốt |
+| Giờ mở cửa | Không hiện giờ; JSON-LD không khai giờ | Lưu giờ ở `/noi-bo/cai-dat` — tự bật công tắc `gio_phuc_vu_da_chot` (khung giờ của form hỏi bàn và bot Messenger đọc từ đó); trang công khai chưa có chỗ in giờ — thêm khi giờ đã chốt |
 | Chỗ gửi xe | Không nói | Ghi thông tin thật — thêm vào trang Đến Beeftown |
 | Link Google Maps | Không nút "Chỉ đường" | Công bố `google_maps_url` trong `/noi-bo` — mở thử trên điện thoại, ghim đúng lối vào riêng cạnh GS25 ở 63 Hồ Tùng Mậu |
 | Tên phường của 63 Hồ Tùng Mậu | Trang, thẻ mô tả và JSON-LD không ghi phường, quận | Có giấy xác nhận thì thêm khóa `phuong` vào `DIA_CHI_PHAN` (`src/lib/chu.ts`) và `addressLocality` vào `diaChiCoCauTruc()`, **cùng lúc** sửa kiểm thử đang gác việc không ghi phường: `crm/test/test-cong-khai-dia-diem.mjs` nhóm 4, `test-cong-khai-trang-chu.mjs` nhóm 4, luật `PHUONG_QUAN` và bảng câu thử trong `kiem-tra/mau-dia-diem.mjs`, kiểm tra JSON-LD trong `kiem-tra/trinh-duyet.mjs`, địa chỉ thử của `kiem-tra/thu-day-du.mjs` nhóm 7 |
