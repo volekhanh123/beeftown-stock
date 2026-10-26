@@ -17,7 +17,7 @@
  *   1. Mọi trang công khai (sitemap + danh sách cố định) ở 320, 360, 390, 430, 768, 800, 1024,
  *      1366, 1440 px: trả 200, không lỗi JavaScript, không tải hỏng tài nguyên của chính
  *      trang, không tràn ngang, đúng thuộc tính lang; chân trang có pháp nhân (tên công
- *      ty, mã số thuế, địa chỉ) bằng chữ, ngay dưới dòng ©. Thêm (brief 06/10/2026):
+ *      ty · mã số thuế, địa chỉ, điện thoại) bằng chữ, ngay dưới dòng ©. Thêm (brief 06/10/2026):
  *      đúng một <h1>; mọi <img> có width, height, alt (alt="" cho ảnh trang trí); ảnh
  *      minh họa nằm dưới màn hình đầu thì loading="lazy"; nút, link điều hướng, summary
  *      cao ≥ 48px; chữ trên nền màu đặc đủ tương phản (≥ 4,5:1, chữ lớn ≥ 3:1).
