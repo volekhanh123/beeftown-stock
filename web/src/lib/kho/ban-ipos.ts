@@ -770,7 +770,7 @@ const CHUA_KIEM_GHEP: HaiThuTieng = {
 /** id các món đang dùng (cho NguCanhGhep) — đọc đủ mọi trang; lỗi → ném. */
 async function docIdMonDangDung(client: SupabaseClient): Promise<Set<string>> {
   const ds = await docTungTrang<{ id: string }>((tu, den) =>
-    client.from('kho_mat_hang').select('id').eq('dang_dung', true).order('id').range(tu, den));
+    client.from('kho_mat_hang').select('id', { count: 'exact' }).eq('dang_dung', true).order('id').range(tu, den));
   return new Set(ds.map(r => r.id));
 }
 
