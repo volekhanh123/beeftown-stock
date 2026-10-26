@@ -29,7 +29,7 @@
  *   12. Phiên nháp của từng lô (docLoCuaPhien trên database có phiên nháp thật): tảng đang lóc dở không có nút,
  *       Tảng · ủ có đúng số phiên; đọc hỏng thì ném.
  *   13. Sổ kho: phiên mở bằng Lóc → quét nhãn ô → chốt → kho_doi_soat_ton() rỗng.
- *   14. Trang (đọc mã nguồn): nút, chữ ghép, ve=tang, bảng 5 cột, hướng dẫn.
+ *   14. Trang (đọc mã nguồn): nút, chữ ghép, ve=tang, bảng 5 cột, hướng dẫn; tóm tắt bước 2 đếm số lô, không đếm dòng vào.
  */
 
 import { readFileSync } from 'node:fs';
@@ -617,6 +617,18 @@ await nhom('14 · TRANG (đọc mã nguồn)', async () => {
   ok('Tảng · ủ: cùng luật tangLocDuoc với Pha lóc mới; tảng đang lóc dở → link tới phiên; đọc hỏng → không nút, câu "chưa đọc được"',
      /tangLocDuoc\(ds, cho, dangLoc\)/.test(tang) && /docChoLocTang\(/.test(tang) && /docLoCuaPhien\(/.test(tang)
      && /href=\{`\/noi-bo\/kho\/pha-loc\/\$\{/.test(bangTang) && /loiLoc &&/.test(tang));
+
+  // Lóc một chạm đưa vào MỌI chỗ lóc được của tảng (kho lạnh + quầy) → phiên có hai dòng vào cùng một lô. Tóm tắt "Tảng đem
+  // pha" ở bước 2 phải đếm số lô khác nhau (loVaoPhien, như tiêu đề khung ô mã) — đếm dòng thì một tảng hiện "2 lô".
+  const trangPhien = doc('web/src/pages/noi-bo/kho/pha-loc/[id].astro');
+  const docP1 = P[1] ? await PL.docPhienPha(tk, P[1]) : null;
+  const vaoP1 = docP1?.vao ?? [];
+  ok('Bước 2: tóm tắt "Tảng đem pha" đếm số lô không trùng — phiên mở bằng Lóc #0001 (kho lạnh + quầy: hai dòng vào) là 1 lô · 6,2 kg, không phải "2 lô"',
+     vaoP1.length === 2 && new Set(vaoP1.map(v => v.lo_id)).size === 1 && Math.round(vaoP1.reduce((s, v) => s + Number(v.so_kg), 0) * 1000) === 6200
+     && /const loVaoPhien = \[\.\.\.new Set\(vaoDb\.map\(v => v\.lo_id\)\)\];/.test(trangPhien)
+     && /t\.loKg\(loVaoPhien\.length, kgs\(vaoDb\.reduce\(\(s, v\) => s \+ v\.so_kg, 0\)\)\)/.test(trangPhien)
+     && !/t\.loKg\(vaoDb\.length/.test(trangPhien),
+     `${vaoP1.length} dòng vào · ${new Set(vaoP1.map(v => v.lo_id)).size} lô`);
 
   const hd = id => MUC_HUONG_DAN.find(m => m.id === id);
   const chu = (m, nn) => (m ? [...m.buoc, ...(m.meo ?? [])].map(x => x[nn]).join('\n') : '');
