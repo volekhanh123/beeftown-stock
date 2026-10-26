@@ -235,6 +235,12 @@ export const CAU_EN: Readonly<Record<string, string>> = {
   // 0101 — trigger zalo_oa_url_kiem_tra: link Zalo OA (khóa chỉ chủ, đích đơn Mua thịt về) chỉ nhận https://zalo.me/<mã>
   'Link Zalo OA phải có dạng https://zalo.me/ và mã OA, không thêm gì phía sau.':
     'The Zalo OA link must be https://zalo.me/ followed by the OA ID, with nothing after it.',
+
+  // 0102 — cài đặt bán lẻ: cỡ gói thịt bò dùng chung (ban_le_luu_co_goi). Câu có % ở MAU_EN.
+  'Danh sách cỡ gói không hợp lệ — tải lại trang.': 'Invalid pack size list — reload the page.',
+  'Danh sách có tối đa 30 cỡ gói.': 'The list can have at most 30 pack sizes.',
+  'Tối đa 20 cỡ gói đang dùng — một sản phẩm có tối đa 20 gói.':
+    'At most 20 pack sizes can be in use — a product can have at most 20 packs.',
 };
 
 /**
@@ -369,6 +375,8 @@ export const MAU_EN: ReadonlyArray<readonly [RegExp, (m: RegExpMatchArray) => st
   [/^Ô "(.+?)" phải là Có hoặc Không\.$/, m => `The field "${m[1]}" must be Yes or No.`],
   [/^Mã FABi (.+) đã dùng cho gói khác\.$/, m => `The FABi code ${m[1]} is already used by another pack.`],
   [/^Mã vạch (.+) đã dùng cho gói khác\.$/, m => `The barcode ${m[1]} is already used by another pack.`],
+  // 0102 — cài đặt bán lẻ
+  [/^Cỡ gói (.+) g nhập hai lần\.$/, m => `Pack size ${m[1]} g is entered twice.`],
 ];
 
 export function dichCau(nn: NgonNguNB, cau: string | null | undefined): string {

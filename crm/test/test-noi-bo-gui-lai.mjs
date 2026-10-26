@@ -265,9 +265,9 @@ const TRANG = ['pages/noi-bo/dat-ban.astro', 'pages/noi-bo/tuyen-dung.astro', 'p
                'pages/noi-bo/cai-dat.astro', 'pages/noi-bo/tin-tuyen-dung/[id].astro',
                // Màn soạn món (lib/thuc-don-noi-bo.ts) — cùng luật từ ngày dựng.
                'pages/noi-bo/thuc-don/[id].astro',
-               // Menu bán lẻ (lib/ban-le-noi-bo.ts): danh sách (thêm sản phẩm) và trang sửa. Đối chiếu FABi
-               // không có POST nên không ở đây.
-               'pages/noi-bo/ban-le/index.astro', 'pages/noi-bo/ban-le/[id].astro'];
+               // Menu bán lẻ (lib/ban-le-noi-bo.ts): danh sách (thêm sản phẩm), trang sửa, Cài đặt bán lẻ (lưu
+               // cỡ gói). Đối chiếu FABi không có POST nên không ở đây.
+               'pages/noi-bo/ban-le/index.astro', 'pages/noi-bo/ban-le/[id].astro', 'pages/noi-bo/ban-le/cai-dat.astro'];
 await nhom(`5 · ${TRANG.length} trang CRM: không formData() trần, ghi được thì chuyển hướng 303, câu "không đọc được" một chỗ`, async () => {
   for (const tep of TRANG) {
     const s = docNguon(tep);

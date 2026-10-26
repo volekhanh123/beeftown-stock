@@ -2,7 +2,7 @@
 /**
  * MENU BÁN LẺ — danh sách sản phẩm, thêm sản phẩm
  *
- * Thịt bò mang về (quầy cân theo gram ở giá mỗi kg của Kho → Mặt hàng, online gói cố định) và kim chi
+ * Thịt bò mang về (quầy cân theo gram ở giá mỗi kg của Kho → Mặt hàng, online theo gói) và kim chi
  * (theo hộp, giá cố định). Mỗi sản phẩm một thẻ; bấm vào để sửa ở /noi-bo/ban-le/<id>. Quyền do database
  * quyết định — xem đầu lib/ban-le-noi-bo.ts. Mini App Zalo và website sẽ đọc menu này ở bước sau.
  *
@@ -12,12 +12,17 @@
  * POST duy nhất: thêm sản phẩm, mang ma_gui chống bấm hai lần. Thêm được thì chuyển hướng 303 sang trang
  * sửa của sản phẩm (câu báo đi theo cookie của trang đó); không được thì dựng lại form với đúng chữ đã gõ
  * và CÙNG ma_gui.
+ *
+ * Gói online của thịt mới: các cỡ Đang dùng của Cài đặt bán lẻ (/noi-bo/ban-le/cai-dat, 0102), mỗi cỡ một ô
+ * chọn Bán / Không bán (không ô đánh dấu — ô trống không phân biệt được "Không" với "chưa chọn"). Không có
+ * JavaScript nên ô chọn cỡ hiện cả khi chọn kim chi: chữ trên form nói rõ chỉ dùng cho thịt bò, thư viện bỏ qua
+ * với kim chi. Đọc cài đặt lỗi thì không có ô chọn cỡ (database dùng cài đặt) — không chặn form.
  */
 import NoiBo from '../../../layouts/NoiBo.astro';
 import {
-  docDanhSach, taoSanPham, chonChiNhanhBanLe, cauLoiDoc, cauCanhBao, giaGoi,
+  docDanhSach, docCaiDat, taoSanPham, chonChiNhanhBanLe, cauLoiDoc, cauCanhBao, giaGoi,
   VAI_XEM_BAN_LE, VAI_SUA_BAN_LE, KIEU_SAN_PHAM, CANH_BAO_BAN_LE, TEN_LOAI_BAN_LE, TEN_BAO_QUAN, TRANG_THAI_BAN_LE,
-  type SanPhamBanLe, type ChiNhanhBanLe, type KetQua,
+  type SanPhamBanLe, type ChiNhanhBanLe, type CaiDatBanLe, type KetQua,
 } from '../../../lib/ban-le-noi-bo';
 import { dichNB, nnCua } from '../../../lib/ngon-ngu-noi-bo';
 import { dichCau } from '../../../lib/cau-noi-bo';
@@ -36,6 +41,7 @@ const t = dichNB(nn, {
                 en: 'Beef and kimchi sold to take away. The price per kg here is the counter scale price (the same field as Stock → Items). The Zalo Mini App and the website will read this menu in a later step. FABi is updated by hand from the FABi check list.' },
   chiDoc:     { vi: 'Chỉ chủ và quản lý sửa được menu bán lẻ, kể cả mô tả.', en: 'Only the owner and managers can edit the retail menu, including descriptions.' },
   doiChieu:   { vi: 'Đối chiếu FABi', en: 'FABi check' },
+  caiDat:     { vi: 'Cài đặt bán lẻ', en: 'Retail settings' },
   chiNhanh:   { vi: 'Chi nhánh', en: 'Branch' },
   tonCua:     { vi: (ten: string) => `Tồn ở quầy tính cho ${ten}.`, en: (ten: string) => `Counter stock is shown for ${ten}.` },
   khongCN:    { vi: 'Chưa có chi nhánh nào đang hoạt động — chưa tính được tồn ở quầy.', en: 'No branch is active — counter stock cannot be shown.' },
@@ -71,6 +77,15 @@ const t = dichNB(nn, {
   ma:         { vi: 'Mã', en: 'Code' },
   maGoiY:     { vi: 'Mã cố định cho Mini App và website — không đổi được sau khi tạo. Để trống là tự tạo từ tên: chữ thường không dấu, gạch ngang.',
                 en: 'A fixed code for the Mini App and the website — it cannot be changed later. Leave it empty to make it from the name: lowercase, no accents, hyphens.' },
+  goiOnline:  { vi: 'Gói online cho thịt bò', en: 'Online packs for beef' },
+  goiOnlineGoiY: { vi: 'Chỉ dùng khi chọn Thịt bò. Cỡ lấy từ Cài đặt bán lẻ; thêm cỡ khác ở trang sửa sau khi tạo.',
+                   en: 'Only used when Beef is chosen. Sizes come from Retail settings; add other sizes on the edit page after creating.' },
+  ban:        { vi: 'Bán', en: 'Sell' },
+  khongBan:   { vi: 'Không bán', en: "Don't sell" },
+  caiDatLoi:  { vi: 'Chưa đọc được Cài đặt bán lẻ — sản phẩm thịt mới sẽ có mọi cỡ gói đang dùng; bỏ cỡ không bán ở trang sửa sau khi tạo.',
+                en: 'Could not read the retail settings — a new beef product will get every pack size in use; remove the sizes you do not sell on its page after creating it.' },
+  chuaCoCo:   { vi: 'Cài đặt bán lẻ chưa có cỡ gói nào đang dùng — sản phẩm thịt mới sẽ chưa có gói.',
+                en: 'Retail settings have no pack size in use — new beef products will have no packs.' },
   taoNut:     { vi: 'Thêm sản phẩm', en: 'Add product' },
   daTao:      { vi: 'Đã tạo — điền giá, gói rồi bấm Lưu.', en: 'Created — fill in prices and packs, then press Save.' },
   viecSai:    { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
@@ -97,6 +112,13 @@ const go = (ten: string) => String(daGo?.get(ten) ?? '');
 const maGuiCu = go('ma_gui');
 const maGui = laUuid(maGuiCu) ? maGuiCu : crypto.randomUUID();
 
+// Cỡ gói của form Thêm sản phẩm: các cỡ Đang dùng của Cài đặt bán lẻ (đọc mới mỗi lần dựng — kể cả khi dựng lại
+// form hỏng), chạy song song với đọc chi nhánh và menu bên dưới. Đọc lỗi → không có ô chọn cỡ, form không gửi
+// co_goi_ds (database dùng cài đặt) và trang nói rõ điều đó (caiDatLoi), không im lặng.
+const caiDatHua: Promise<{ caiDat: CaiDatBanLe | null; loi: boolean }> = duocSua
+  ? docCaiDat(client).then(caiDat => ({ caiDat, loi: false }), () => ({ caiDat: null, loi: true }))
+  : Promise.resolve({ caiDat: null, loi: false });
+
 let chiNhanh: ChiNhanhBanLe | null = null;
 let cacChiNhanh: ChiNhanhBanLe[] = [];
 let loiCN: string | null = null;
@@ -109,6 +131,11 @@ try {
 } catch (e) {
   dsLoi = cauLoiDoc(e, nn);
 }
+
+const { caiDat, loi: caiDatLoi } = await caiDatHua;
+const coDangDung = (caiDat?.co_goi ?? []).filter(c => c.dang_dung).map(c => c.so_gam);
+/** Lựa chọn của một cỡ: đã chọn trên form vừa gửi, không thì "Bán". */
+const chonGoi = (n: number) => (go(`goi_${n}`) === 'khong' ? 'khong' : 'ban');
 
 const thamSo = Astro.url.searchParams;
 const nhom = thamSo.get('nhom') === 'thit' || thamSo.get('nhom') === 'kim_chi' ? thamSo.get('nhom')! : 'tat_ca';
@@ -154,6 +181,7 @@ const coGia = (sp: SanPhamBanLe) => sp.gia_de_chot.kg != null || Object.keys(sp.
   {duocSua && (
     <div class="bl-hang-nut">
       <a href="/noi-bo/ban-le/doi-chieu" class="nb-nut phu">{t.doiChieu}</a>
+      <a href="/noi-bo/ban-le/cai-dat" class="nb-nut phu">{t.caiDat}</a>
     </div>
   )}
 
@@ -234,6 +262,29 @@ const coGia = (sp: SanPhamBanLe) => sp.gia_de_chot.kg != null || Object.keys(sp.
           {KIEU_SAN_PHAM.map(k => <option value={k.ma} selected={go('kieu') === k.ma}>{k.ten[nn]}</option>)}
         </select>
       </label>
+      {caiDatLoi && <p class="bl-phu bl-cach">{t.caiDatLoi}</p>}
+      {caiDat && (
+        <fieldset class="nb-o bl-co-goi">
+          <legend>{t.goiOnline}</legend>
+          <small>{t.goiOnlineGoiY}</small>
+          <input type="hidden" name="co_goi_ds" value={coDangDung.join(',')} />
+          {coDangDung.length > 0 ? (
+            <div class="bl-luoi-co">
+              {coDangDung.map(n => (
+                <label class="nb-o">
+                  <span>{t.goi(n)}</span>
+                  <select name={`goi_${n}`}>
+                    <option value="ban" selected={chonGoi(n) === 'ban'}>{t.ban}</option>
+                    <option value="khong" selected={chonGoi(n) === 'khong'}>{t.khongBan}</option>
+                  </select>
+                </label>
+              ))}
+            </div>
+          ) : (
+            <p class="bl-phu">{t.chuaCoCo}</p>
+          )}
+        </fieldset>
+      )}
       <details class="bl-goi-y" open={go('ma') !== ''}>
         <summary>{t.maTom}</summary>
         <label class="nb-o">
@@ -269,5 +320,11 @@ const coGia = (sp: SanPhamBanLe) => sp.gia_de_chot.kg != null || Object.keys(sp.
   .bl-them h2 { margin-top: 0; }
   .bl-goi-y { margin: 0 0 1rem; }
   .bl-goi-y summary { cursor: pointer; font-weight: 600; font-size: .9rem; padding: .7rem 0; min-height: 48px; }
+  /* Ô chọn cỡ gói của form Thêm sản phẩm: khung nhóm (viền --vach của noi-bo.css), mỗi cỡ một select Bán / Không bán. */
+  .bl-co-goi { padding: .5rem .85rem .25rem; min-width: 0; }
+  .bl-co-goi legend { font-weight: 600; font-size: .88rem; padding: 0 .35rem; }
+  .bl-co-goi > .bl-phu { margin: 0 0 .75rem; }
+  .bl-luoi-co { display: grid; gap: 0 1rem; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
+  .bl-luoi-co span { font-variant-numeric: tabular-nums; }
   .bl-nut { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .5rem; }
 </style>

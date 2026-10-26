@@ -6,7 +6,7 @@
  *
  * Màn Menu bán lẻ (web/src/lib/ban-le-noi-bo.ts, web/src/pages/noi-bo/ban-le/) chỉ ẩn nút cho gọn mắt; database
  * (0099) mới là luật. File này giữ hai bên nói cùng một thứ tiếng (thư viện chạy trên database thật ở
- * test-ban-le-web.mjs). Bất biến:
+ * test-ban-le-web.mjs; Cài đặt bán lẻ ở test-ban-le-cai-dat-web.mjs). Bất biến:
  *
  *   1. Vai: VAI_SUA_BAN_LE = mảng vai trong thân ban_le_luu_san_pham / ban_le_tao_san_pham (KHÔNG so với policy
  *      UPDATE ban_le_san_pham_dich — policy đó có marketing, chỉ để máy dịch ghi); VAI_XEM_BAN_LE = policy SELECT
@@ -185,9 +185,11 @@ await nhom('4 · Ba trang: form an toàn, chuyển hướng 303, không JavaScri
   const ds = docNguon('pages/noi-bo/ban-le/index.astro');
   const sua = docNguon('pages/noi-bo/ban-le/[id].astro');
   const dc = docNguon('pages/noi-bo/ban-le/doi-chieu.astro');
-  const BA = [['index.astro', ds], ['[id].astro', sua], ['doi-chieu.astro', dc]];
+  // Cài đặt bán lẻ (0102): cùng luật trang; thư viện và chữ của nó kiểm ở test-ban-le-cai-dat-web.mjs.
+  const cd = docNguon('pages/noi-bo/ban-le/cai-dat.astro');
+  const BA = [['index.astro', ds], ['[id].astro', sua], ['doi-chieu.astro', dc], ['cai-dat.astro', cd]];
 
-  for (const [ten, s] of [['index.astro', ds], ['[id].astro', sua]]) {
+  for (const [ten, s] of [['index.astro', ds], ['[id].astro', sua], ['cai-dat.astro', cd]]) {
     ok(`${ten}: đọc form bằng docFormNoiBo(Astro.request), không request.formData() trần`,
        /docFormNoiBo\(Astro\.request\)/.test(s) && !/request\.formData\(\)/.test(s));
     ok(`${ten}: ghi được thì return chuyenHuongNoiBo(…) (303)`, /return chuyenHuongNoiBo\(/.test(s));
@@ -274,7 +276,7 @@ await nhom('4 · Ba trang: form an toàn, chuyển hướng 303, không JavaScri
   ok('doi-chieu.astro: thẻ dòng là article (link Ghép món không lồng trong link)', /<article class="nb-dong">/.test(dc) && !/<a [^>]*class="nb-dong/.test(dc));
 
   // CLAUDE.md mục 7: Mini App và website CHƯA đọc menu này — không câu nào được nói như đã đọc.
-  const tatCa = [ds, sua, dc, NGUON_LIB].join('\n');
+  const tatCa = [ds, sua, dc, cd, NGUON_LIB].join('\n');
   const SAI = [/tự nhận/, /Mini App (Zalo )?và website (tự )?nhận/, /đọc từ đây/, /Khách thấy trên Mini App/, /Mini App (Zalo )?(đang|đã) đọc/,
     /nhận trong khoảng 1 phút/];
   const thay = SAI.filter(r => r.test(tatCa)).map(String);

@@ -92,7 +92,7 @@ web/
 │  │  ├─ trang-cong-khai.ts ← liên hệ đã công bố (chỉ link http/https), địa chỉ, thứ bậc nút màn đầu, điều hướng
 │  │  ├─ thuc-don.ts   ← đọc thực đơn công khai — không bao giờ ném lỗi, không bao giờ hiện giá chưa duyệt
 │  │  ├─ thuc-don-noi-bo.ts ← màn /noi-bo/thuc-don: sửa tên, mô tả, bản dịch, công bố, gỡ món — không đụng giá
-│  │  ├─ ban-le-noi-bo.ts ← màn /noi-bo/ban-le: menu bán lẻ (thịt mang về, kim chi), giá cân, gói online, đối chiếu FABi
+│  │  ├─ ban-le-noi-bo.ts ← màn /noi-bo/ban-le: menu bán lẻ (thịt mang về, kim chi), giá cân, gói online, cỡ gói (Cài đặt bán lẻ), đối chiếu FABi
 │  │  ├─ anh.ts        ← danh mục ảnh: minh họa hay thật, alt ba thứ tiếng
 │  │  ├─ anh-tao-san.ts ← SINH TỰ ĐỘNG: cỡ ảnh đã dựng — đừng sửa tay
 │  │  ├─ chuoi-cam.js  ← danh sách chữ cấm, dùng chung cho máy quét và máy dịch
@@ -142,7 +142,7 @@ Tên file và biến đặt bằng tiếng Việt, khớp với tên cột trong
 
 **Thực đơn** — trang `/thuc-don` (`/en/menu`, `/ko/menu`) đọc món qua `thuc_don_cong_khai()`. Món chỉ hiện khi đã công bố. Sửa tên, mô tả, bản tiếng Anh và tiếng Hàn, công bố và gỡ từng món: màn `/noi-bo/thuc-don` (chủ nhà hàng, quản lý, marketing; thu ngân chỉ xem). Giá, mức cay, cờ món sống / có cồn và việc bật hai công tắc vẫn làm theo [`THUC-DON.md`](THUC-DON.md). Món đã công bố trình bày theo cuốn menu in "bản sáng" Khánh chốt 11/10/2026 (`ThucDonNhomAnh.astro`): tên nhóm chữ hoa như tiêu đề trang của cuốn, câu dưới tên nhóm (`CAU_NHOM` trong `src/lib/thuc-don.ts`), món dẫn đầu thẻ lớn, các món còn lại thành lưới thẻ có ảnh (`ANH_CUA_MON` trong `src/lib/anh.ts`, theo mã món) — dưới 600px món đứng sau món dẫn đầu là hàng gọn: ảnh nhỏ 128px bên trái, chữ bên phải (nhóm không có món dẫn đầu giữ thẻ to) — không giá, không độ cay. Chưa công bố món nào thì trang giới thiệu theo nhóm của cuốn. Bố cục và lý do: `THIET-KE.md`, mục 1, "Trang Thực đơn".
 
-**Menu bán lẻ** — màn `/noi-bo/ban-le` (database `crm/supabase/migrations/0099_ban_le_menu.sql`): thịt bò mang về và kim chi. Quầy cân thịt theo gram ở giá mỗi kg của Kho → Mặt hàng (sửa ở đây là sửa đúng ô đó; Beeftown Cân gửi xuống cân, cân chỉ nhận tối đa 999.999 đ/kg); online bán gói cố định 200 g / 400 g; kim chi theo hộp, giá cố định. Chủ và quản lý sửa, thu ngân và marketing chỉ xem; chỉ chủ bỏ chữ "Giá thử". FABi sửa tay theo `/noi-bo/ban-le/doi-chieu` (API iPOS chỉ đọc thực đơn). Website đọc menu này ở trang Mua thịt về (0101, giá đã chốt — mục "Mua thịt về" bên dưới); Mini App Zalo chưa — nối ở bước sau.
+**Menu bán lẻ** — màn `/noi-bo/ban-le` (database `crm/supabase/migrations/0099_ban_le_menu.sql`): thịt bò mang về và kim chi. Quầy cân thịt theo gram ở giá mỗi kg của Kho → Mặt hàng (sửa ở đây là sửa đúng ô đó; Beeftown Cân gửi xuống cân, cân chỉ nhận tối đa 999.999 đ/kg); online bán theo gói — cỡ gói của thịt mới ở Cài đặt bán lẻ `/noi-bo/ban-le/cai-dat` (`0102_ban_le_co_goi.sql`: danh sách cỡ dùng chung, thêm / tạm tắt / bỏ từng cỡ; form Thêm sản phẩm hiện các cỡ Đang dùng, chọn Bán / Không bán cho từng cỡ; đổi cài đặt không đụng gói của sản phẩm đã có — sửa gói ở trang từng sản phẩm); kim chi theo hộp, giá cố định. Chủ và quản lý sửa, thu ngân và marketing chỉ xem; chỉ chủ bỏ chữ "Giá thử". FABi sửa tay theo `/noi-bo/ban-le/doi-chieu` (API iPOS chỉ đọc thực đơn). Website đọc menu này ở trang Mua thịt về (0101, giá đã chốt — mục "Mua thịt về" bên dưới); Mini App Zalo chưa — nối ở bước sau.
 
 **Ảnh** — hai loại, hai luật (`src/lib/anh.ts`):
 
