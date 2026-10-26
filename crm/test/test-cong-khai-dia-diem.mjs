@@ -22,8 +22,10 @@
  *      Beeftown của cả ba thứ tiếng: trong khối địa chỉ (LenTang3) và trong thẻ mô tả của trang.
  *   4. JSON-LD: streetAddress là "Tầng 3, 63 Hồ Tùng Mậu"; không có tên phường nào — phường của
  *      63 Hồ Tùng Mậu chưa có giấy xác nhận nên không ghi.
- *   5. Dòng pháp nhân còn nguyên từng ký tự. Dòng này khớp giấy đăng ký đang dùng cho hồ sơ xác
- *      minh trên Meta; đổi nó là việc Khánh quyết, không phải việc của một PR sửa địa điểm.
+ *   5. Dòng pháp nhân còn nguyên từng ký tự. Địa chỉ chép theo mục 4 giấy chứng nhận đăng ký địa điểm
+ *      kinh doanh (thay đổi lần 2 ngày 20/10/2026), cùng số điện thoại, khớp Thông tin doanh nghiệp trên
+ *      Meta (Meta sửa 26/10/2026) cho hồ sơ xác minh doanh nghiệp; đổi nó là việc Khánh quyết, không
+ *      phải việc của một PR sửa địa điểm nhà hàng.
  *   6. Cách ghi địa điểm từng thứ tiếng đúng như Khánh đã quyết; không gọi 63 Hồ Tùng Mậu là "tòa
  *      nhà"; hình và biểu tượng lối lên là thang máy.
  *   7. Bản công bố trong /noi-bo (khóa dia_chi_hien_thi) tới được MỌI chỗ in địa chỉ: không component
@@ -78,8 +80,11 @@ const MO_TA_DEN_BEEFTOWN = {
 const PHAP_NHAN_DUNG = {
   ten: 'CÔNG TY TNHH SLK GROUP',
   maSoThue: '0319712805',
-  diaChi: 'Tầng 3, 11-13-15-17-19-21 Hàm Nghi, Phường Sài Gòn, TP. Hồ Chí Minh',
+  diaChi: '53 Võ Trường Toản, Phường An Khánh, Thành phố Hồ Chí Minh',
+  dienThoai: '0961 245 124',
 };
+// Nhãn trước số điện thoại ở chân trang: dịch theo thứ tiếng, số giữ nguyên.
+const NHAN_DIEN_THOAI = { vi: 'Điện thoại', en: 'Phone', ko: '전화' };
 const DONG_PHAP_NHAN_TRONG_MA = `  diaChi: '${PHAP_NHAN_DUNG.diaChi}',`;
 
 const tuGoc = p => relative(GOC, p).split(sep).join('/');
@@ -159,7 +164,7 @@ await nhom('1 · KHÔNG FILE NÀO CỦA TRANG CÔNG KHAI CÒN ĐỊA CHỈ KHÁC
   const thay = timDong(FILE_CONG_KHAI, TEN_DIA_CHI_KHAC);
   const ngoaiLe = thay.filter(d => d.file === 'web/src/lib/chu.ts' && d.chu === DONG_PHAP_NHAN_TRONG_MA);
   const sai = thay.filter(d => !ngoaiLe.includes(d));
-  ok('Không dòng nào ghi tên đường hay tên phường của địa chỉ khác (Hàm Nghi, Nguyễn Thái Học, Cầu Ông Lãnh, phường Sài Gòn…)',
+  ok('Không dòng nào ghi tên đường hay tên phường của địa chỉ khác (Hàm Nghi, Nguyễn Thái Học, Cầu Ông Lãnh, phường Sài Gòn, Võ Trường Toản…)',
      sai.length === 0, `${sai.length} dòng: ${inDong(sai)}`);
   ok('Ngoại lệ duy nhất là ĐÚNG MỘT dòng: PHAP_NHAN.diaChi trong web/src/lib/chu.ts', ngoaiLe.length === 1,
      `${ngoaiLe.length} dòng khớp`);
@@ -259,14 +264,22 @@ await nhom('4 · JSON-LD: streetAddress ĐÚNG, KHÔNG CÓ TÊN PHƯỜNG', asyn
 // ===========================================================================
 await nhom('5 · DÒNG PHÁP NHÂN Ở CHÂN TRANG CÒN NGUYÊN TỪNG KÝ TỰ', async () => {
   ok(`PHAP_NHAN.diaChi là nguyên văn "${PHAP_NHAN_DUNG.diaChi}"`, PHAP_NHAN.diaChi === PHAP_NHAN_DUNG.diaChi, PHAP_NHAN.diaChi);
+  ok(`PHAP_NHAN.dienThoai là nguyên văn "${PHAP_NHAN_DUNG.dienThoai}"`, PHAP_NHAN.dienThoai === PHAP_NHAN_DUNG.dienThoai, PHAP_NHAN.dienThoai);
   ok('PHAP_NHAN: tên công ty và mã số thuế không đổi; không thêm, không bớt trường nào',
      JSON.stringify(PHAP_NHAN) === JSON.stringify(PHAP_NHAN_DUNG), JSON.stringify(PHAP_NHAN));
+  const chanTrang = docSrc('components', 'ChanTrang.astro');
   ok('ChanTrang.astro in dòng đó nguyên văn, có lang="vi", ở mọi thứ tiếng',
-     docSrc('components', 'ChanTrang.astro').includes('<p class="chan-dong" lang="vi">{PHAP_NHAN.diaChi}</p>'));
-  ok('web/kiem-tra/trinh-duyet.mjs vẫn so chân trang của từng trang với đúng dòng đó',
-     doc(join(WEB, 'kiem-tra', 'trinh-duyet.mjs')).includes(`'${PHAP_NHAN_DUNG.diaChi}',`));
+     chanTrang.includes('<p class="chan-dong" lang="vi">{PHAP_NHAN.diaChi}</p>'));
+  ok('ChanTrang.astro in số điện thoại pháp nhân ngay dưới dòng địa chỉ: nhãn dịch theo thứ tiếng, số giữ nguyên',
+     /<p class="chan-dong" lang="vi">\{PHAP_NHAN\.diaChi\}<\/p>\s*<p class="chan-dong">\{t\.dienThoai\}: <span class="lien">\{PHAP_NHAN\.dienThoai\}<\/span><\/p>/.test(chanTrang));
+  for (const nn of NGON_NGU) {
+    ok(`chu.ts [${nn}]: nhãn trước số điện thoại pháp nhân là "${NHAN_DIEN_THOAI[nn]}"`, chu(nn).dienThoai === NHAN_DIEN_THOAI[nn], chu(nn).dienThoai);
+  }
+  const trinhDuyet = doc(join(WEB, 'kiem-tra', 'trinh-duyet.mjs'));
+  ok('web/kiem-tra/trinh-duyet.mjs vẫn so chân trang của từng trang với đúng dòng đó và số điện thoại',
+     trinhDuyet.includes(`'${PHAP_NHAN_DUNG.diaChi}',`) && trinhDuyet.includes(`: ${PHAP_NHAN_DUNG.dienThoai}\``));
   ok('Địa chỉ nhà hàng và địa chỉ pháp nhân là hai hằng riêng: sửa cái này không đụng cái kia',
-     DIA_CHI_NHA_HANG !== PHAP_NHAN.diaChi && !DIA_CHI_NHA_HANG.includes('Hàm Nghi'));
+     DIA_CHI_NHA_HANG !== PHAP_NHAN.diaChi && !DIA_CHI_NHA_HANG.includes('Võ Trường Toản') && !DIA_CHI_NHA_HANG.includes('An Khánh'));
 });
 
 // ===========================================================================
