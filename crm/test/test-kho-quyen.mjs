@@ -390,6 +390,9 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_luu_ma_giam', 'kho_bat_ma_giam', 'kho_bang_quay', 'kho_can_o_ma', 'kho_bao_cao_ban_gio',
     // 0061: Beeftown Cân báo về kho — ô đang giao cho danh mục cân, máy quầy báo trạng thái / nhật ký cân, trang pha lóc
     'kho_can_giao_o_ma', 'kho_may_can_bao', 'kho_may_can_nhat_ky', 'kho_phien_pha_can',
+    // 0103: mã món iPOS đã bán — security invoker, RLS kho_ipos_dong (xem_gia) lọc; vai khác nhận rỗng
+    // (test-kho-ipos-ma-can.mjs nhóm 6)
+    'kho_ipos_ma_da_ban',
   ].sort();
   const NOI_BO = [
     'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',

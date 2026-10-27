@@ -1,5 +1,5 @@
 /**
- * KHO — THU NGÂN / FABi: MÓN CẦN CÓ TRÊN FABi, BÁN KHÔNG BIẾT TẢNG (chỉ web, không migration)
+ * KHO — THU NGÂN / FABi: MÓN CẦN CÓ TRÊN FABi, FILE NHẬP MÓN CHO FABi, BÁN KHÔNG BIẾT TẢNG
  *
  * Kho chỉ biết một khay bán ra thuộc tảng nào khi dòng hóa đơn iPOS mang MÃ Ô (FABi bán món
  * "<món> ô <số>", mã món = mã ô) — hoặc mã giảm giá (trừ theo hạn gần nhất, có chủ ý: lô cận
@@ -7,10 +7,13 @@
  * chung, món ô chưa có trên FABi: tổng tồn vẫn đúng, đèn iPOS vẫn "Đang chạy tốt", nhưng truy vết tảng hỏng
  * âm thầm. File này cho hai màn thấy chỗ hỏng:
  *
- *   · Ghép món (/noi-bo/kho/ban-ipos/ghep, vai danh_muc): "Món cần có trên FABi" — mỗi ô mã và
- *     mỗi mã giảm đang bật cần một món FABi; đối chiếu thực đơn iPOS (kho_ipos_menu, chỉ có mã
- *     món — mã vạch phải thử bằng một tem). Thực đơn rỗng / chưa đọc → KHÔNG kết luận.
- *     Tải CSV: /noi-bo/kho/ban-ipos/mon-fabi.csv (taoTepMonFabi).
+ *   · Ghép món (/noi-bo/kho/ban-ipos/ghep, vai danh_muc): "Món cần có trên FABi" — mỗi món cân
+ *     (mã cân, 0103), mỗi ô mã và mỗi mã giảm đang bật cần một món FABi; đối chiếu thực đơn iPOS
+ *     (kho_ipos_menu, chỉ có mã món — mã vạch phải thử bằng một tem) và các mã đã từng bán qua iPOS
+ *     (kho_ipos_ma_da_ban, 0103 — đã bán là chắc có trên FABi). Không biết → KHÔNG kết luận.
+ *     Tải CSV đối chiếu: /noi-bo/kho/ban-ipos/mon-fabi.csv (taoTepMonFabi).
+ *     Tải file nhập cho FABi: /noi-bo/kho/ban-ipos/mon-fabi.xlsx (taoTepNhapFabi) — đúng sheet "Menu" của mẫu
+ *     create-item.xlsx ("Thêm món từ file" của FABi, chỉ THÊM món mới): chỉ món chưa bán, chưa ghép, có giá.
  *   · Bán hàng iPOS (/noi-bo/kho/ban-ipos, vai duyet + xem_gia): "Bán không biết tảng · 7 ngày"
  *     — dòng đã trừ kho của món có ô mà không qua ô, không mã giảm; và dòng lệch ô.
  *
@@ -29,6 +32,8 @@ import { soChuSoMa } from './can-tma.ts';
 import { docMatHang } from './danh-muc.ts';
 import { docMaDaGhep } from './ban-ipos.ts';
 import { taoCsv, type CotBaoCao } from './bao-cao.ts';
+import { taoTepExcel } from './tep-excel.ts';
+import { COT_NHAP_FABI, dongNhapFabi } from './fabi-mau.ts';
 import { dichCau } from '../cau-noi-bo.ts';
 
 const bo0 = (x: string | null | undefined) => String(x ?? '').trim().replace(/^0+/, '');
@@ -260,11 +265,13 @@ export const NGUYEN_NHAN_KHONG_BIET_TANG: Record<LoaiKhongBietTang, {
 // =============================================================================
 // MÓN CẦN CÓ TRÊN FABi
 // =============================================================================
-/** 'chua_doc' = thực đơn iPOS rỗng / chưa đọc: không kết luận gì. */
-export type TrenFabi = 'co' | 'ngung_ban' | 'chua_thay' | 'chua_doc';
+/** 'chua_doc' = thực đơn iPOS rỗng / chưa đọc và chưa bán lần nào: không kết luận gì.
+ *  'da_ban' = không có thực đơn, nhưng mã đã có dòng bán qua iPOS (0103) — có trên FABi. */
+export type TrenFabi = 'co' | 'da_ban' | 'ngung_ban' | 'chua_thay' | 'chua_doc';
 
 export interface DongMonFabi {
-  loai: 'o' | 'giam';
+  /** 'can' (0103): mã cân của chính món — FABi đặt mã món = mã vạch = mã cân đệm đủ số, kho tự nhận. */
+  loai: 'can' | 'o' | 'giam';
   mat_hang_id: string;
   tenMonKho: string;
   so_o: number | null;
@@ -280,6 +287,9 @@ export interface DongMonFabi {
   /** Mã iPOS khác đã ghép tay với đúng ô này (FABi tự sinh mã) — null nếu không có. */
   maDaGhep: string | null;
   canhBao: HaiThuTieng[];
+  /** Vào file nhập món cho FABi: chưa thấy trên FABi (chưa bán, không có trong thực đơn), chưa ghép mã này,
+   *  có giá, mã vừa mẫu mã vạch. FABi chỉ THÊM món từ file — món đã có thì không được đưa lại. */
+  vaoFile: boolean;
 }
 
 /** Tên món FABi cho một ô: "<tên món> ô <số>". Không ghi số tảng — ô xoay vòng, số tảng đã in trên tem. */
@@ -293,13 +303,15 @@ export function maVachFabi(ma: string, soChuSo: number): string {
 }
 
 export interface DuLieuMonFabi {
-  matHang: readonly { id: string; ten: string; gia_ban_kg: number | null; dang_dung: boolean }[];
+  matHang: readonly { id: string; ten: string; gia_ban_kg: number | null; dang_dung: boolean; ma_can?: string | null }[];
   oMa: readonly DongOMa[];
   maGiam: readonly DongMaGiam[];
   /** Thực đơn iPOS ĐỦ trang của chi nhánh — rỗng = chưa đọc. */
   menu: readonly { ma_ipos: string; dang_ban: boolean }[];
   daGhep: readonly { ma_ipos: string; kieu: string; mat_hang_id: string | null; o_ma_id?: string | null }[];
   soChuSo: number;
+  /** 0103: mã món iPOS đã từng có dòng bán ở chi nhánh (kho_ipos_ma_da_ban). Không truyền = không biết. */
+  daBan?: readonly string[];
 }
 
 const BO_GHEP_GIAM: HaiThuTieng = {
@@ -309,6 +321,12 @@ const BO_GHEP_GIAM: HaiThuTieng = {
 const BO_GHEP_O: HaiThuTieng = {
   vi: 'Mã ô này đang ghép như món thường hoặc với ô khác — bấm Bỏ ghép (kho tự nhận) hoặc ghép lại với đúng ô.',
   en: 'This slot code is matched as a regular dish or with another slot — press Unmatch (stock recognises it by itself) or match it again with the right slot.',
+};
+/** Mã cân đang ghép tay với món khác / "Không phải hàng kho" / suất / hàng cân nhãn: người ghép đã xác nhận FABi
+ *  có món KHÁC mang mã này (0103). Ghép đúng món đó như món kho thì không sao (thừa). */
+const MA_CAN_LA_MON_KHAC: HaiThuTieng = {
+  vi: 'Mã cân này đang ghép là món khác trên FABi — món cân cần mã riêng: đổi mã cân trong Mặt hàng (rồi gửi lại xuống cân), hoặc đổi mã món kia trên FABi.',
+  en: 'This scale code is matched as a different FABi dish — the weighed dish needs its own code: change the scale code under Items (then send it to the scale again), or change the code of the other dish on FABi.',
 };
 /** Mã đã ghép "Không phải hàng kho" / suất / hàng cân nhãn — người ghép đã xác nhận FABi có món KHÁC mang mã này. */
 const MA_LA_MON_KHAC: Record<'o' | 'giam', HaiThuTieng> = {
@@ -322,17 +340,23 @@ const MA_LA_MON_KHAC: Record<'o' | 'giam', HaiThuTieng> = {
   },
 };
 /** Mã dài hơn số chữ C của mẫu mã vạch: cân từ chối in (can-tma.ts — "Mã cân … dài quá … số"). */
-const maDaiQua = (loai: 'o' | 'giam', ma: string, n: number): HaiThuTieng => ({
+const maDaiQua = (loai: 'can' | 'o' | 'giam', ma: string, n: number): HaiThuTieng => ({
   vi: `Mã ${ma} dài quá ${n} số — cân không in được tem mang mã này (mẫu mã vạch chỉ chứa ${n} số). ${
-    loai === 'o' ? 'Đổi mã ô trong Mặt hàng.' : 'Đổi mã giảm ở Beeftown Cân → thẻ Giảm giá.'}`,
+    loai === 'can' ? 'Đổi mã cân trong Mặt hàng.' : loai === 'o' ? 'Đổi mã ô trong Mặt hàng.' : 'Đổi mã giảm ở Beeftown Cân → thẻ Giảm giá.'}`,
   en: `Code ${ma} is longer than ${n} digits — the scale cannot print a label with it (the barcode pattern holds only ${n} digits). ${
-    loai === 'o' ? 'Change the slot code under Items.' : 'Change the discount code in Beeftown Scale → Discounts tab.'}`,
+    loai === 'can' ? 'Change the scale code under Items.' : loai === 'o' ? 'Change the slot code under Items.' : 'Change the discount code in Beeftown Scale → Discounts tab.'}`,
 });
+/** Món cân chưa có giá bán/kg: Beeftown Cân bỏ qua dòng (cân không bán được) — chưa cần trên FABi. */
+const CHUA_GIA_CAN: HaiThuTieng = {
+  vi: 'Món chưa có giá bán/kg — cân chưa bán được mã này; điền giá trong Mặt hàng trước.',
+  en: 'The item has no price per kg yet — the scale cannot sell this code; fill in the price under Items first.',
+};
 
 /**
- * Mỗi ô mã của món đang dùng và mỗi mã giảm đang bật của món đang dùng → một món cần có trên FABi.
- * Xếp theo tên món, ô trước (theo số ô), mã giảm sau (theo mức giảm). "Trên FABi": có trong thực
- * đơn (so sau khi bỏ số 0 đầu) hoặc — với ô — một mã khác đã ghép tay đúng ô và có trong thực đơn.
+ * Mỗi món đang dùng có mã cân (0103), mỗi ô mã của món đang dùng và mỗi mã giảm đang bật của món đang
+ * dùng → một món cần có trên FABi. Xếp theo tên món: mã cân, rồi ô (theo số ô), rồi mã giảm (theo mức
+ * giảm). "Trên FABi": có trong thực đơn (so sau khi bỏ số 0 đầu) hoặc — với ô — một mã khác đã ghép tay
+ * đúng ô và có trong thực đơn; không thế thì đã có dòng bán qua iPOS (da_ban).
  */
 export function monCanCoTrenFabi(du: DuLieuMonFabi): DongMonFabi[] {
   const mon = new Map(du.matHang.filter(m => m.dang_dung).map(m => [m.id, m]));
@@ -342,15 +366,39 @@ export function monCanCoTrenFabi(du: DuLieuMonFabi): DongMonFabi[] {
     if (k) menu.set(k, (menu.get(k) ?? false) || m.dang_ban);
   }
   const daDoc = du.menu.length > 0;
-  const trangThai = (ma: string): TrenFabi => !daDoc ? 'chua_doc'
-    : menu.has(bo0(ma)) ? (menu.get(bo0(ma)) ? 'co' : 'ngung_ban') : 'chua_thay';
+  const daBan = new Set((du.daBan ?? []).map(bo0).filter(Boolean));
+  // Thực đơn đã đọc là trạng thái HIỆN TẠI của FABi — thắng lịch sử bán (món đã bán có thể đã bị xoá khỏi FABi).
+  // Không có thực đơn (API iPOS DW không đọc được): mã đã bán là chắc có trên FABi; chưa bán → không kết luận.
+  const trangThai = (ma: string): TrenFabi => daDoc
+    ? (menu.has(bo0(ma)) ? (menu.get(bo0(ma)) ? 'co' : 'ngung_ban') : 'chua_thay')
+    : daBan.has(bo0(ma)) ? 'da_ban' : 'chua_doc';
+  /** Vào file nhập món: FABi chưa có mã này (theo những gì kho biết), chưa ai ghép mã này, có giá, mã vừa mẫu. */
+  const vaoFile = (ma: string, tt: TrenFabi, gia: number | null) =>
+    (tt === 'chua_doc' || tt === 'chua_thay') && !ghepTheoMa.has(bo0(ma)) && gia !== null && gia > 0
+    && bo0(ma).length <= du.soChuSo;
   const ghepTheoMa = new Map(du.daGhep.map(g => [bo0(g.ma_ipos), g]));
-  const dai = (loai: 'o' | 'giam', ma: string) => bo0(ma).length > du.soChuSo ? [maDaiQua(loai, bo0(ma), du.soChuSo)] : [];
+  const dai = (loai: 'can' | 'o' | 'giam', ma: string) => bo0(ma).length > du.soChuSo ? [maDaiQua(loai, bo0(ma), du.soChuSo)] : [];
   /** Mã ô / mã giảm đang ghép: như món kho (sai) → bảo Bỏ ghép; kiểu khác (đã xác nhận món khác) → bảo đổi mã. */
   const ghepCanhBao = (loai: 'o' | 'giam', g: DuLieuMonFabi['daGhep'][number] | undefined) =>
     !g ? [] : g.kieu === 'mon' ? [loai === 'o' ? BO_GHEP_O : BO_GHEP_GIAM] : [MA_LA_MON_KHAC[loai]];
 
   const ra: DongMonFabi[] = [];
+  for (const m of mon.values()) {
+    const mc = bo0(m.ma_can);
+    if (!mc) continue;
+    const tt = trangThai(mc);
+    const ghep = ghepTheoMa.get(mc);
+    // Ghép tay đúng món này như món kho: thừa, không sai. Kiểu khác: người ghép đã xác nhận FABi có món KHÁC mang mã.
+    const ghepKhac = !!ghep && !(ghep.kieu === 'mon' && ghep.mat_hang_id === m.id && !ghep.o_ma_id);
+    ra.push({
+      loai: 'can', mat_hang_id: m.id, tenMonKho: m.ten, so_o: null, phan_tram: null,
+      tenGoiY: m.ten.trim().normalize('NFC'), maMon: mc, maVach: maVachFabi(mc, du.soChuSo),
+      giaKg: m.gia_ban_kg, trenFabi: tt, maDaGhep: null,
+      canhBao: [...dai('can', mc), ...(m.gia_ban_kg === null || m.gia_ban_kg <= 0 ? [CHUA_GIA_CAN] : []),
+                ...(ghepKhac ? [MA_CAN_LA_MON_KHAC] : [])],
+      vaoFile: vaoFile(mc, tt, m.gia_ban_kg),
+    });
+  }
   for (const o of [...du.oMa].sort((a, b) => a.so_o - b.so_o)) {
     const m = mon.get(o.mat_hang_id);
     if (!m) continue;
@@ -363,21 +411,26 @@ export function monCanCoTrenFabi(du: DuLieuMonFabi): DongMonFabi[] {
       tenGoiY: tenMonFabiO(m.ten, o.so_o), maMon: o.ma_can, maVach: maVachFabi(o.ma_can, du.soChuSo),
       giaKg: m.gia_ban_kg, trenFabi: tt, maDaGhep: tay?.ma_ipos ?? null,
       canhBao: [...dai('o', o.ma_can), ...(ghep && ghep.o_ma_id !== o.id ? ghepCanhBao('o', ghep) : [])],
+      vaoFile: vaoFile(o.ma_can, tt, m.gia_ban_kg),
     });
   }
   for (const g of [...du.maGiam].sort((a, b) => a.phan_tram - b.phan_tram)) {
     const m = mon.get(g.mat_hang_id);
     if (!m || !g.dang_dung) continue;
+    const gia = m.gia_ban_kg === null ? null : giaGiam(m.gia_ban_kg, g.phan_tram);
+    const tt = trangThai(g.ma_can);
     ra.push({
       loai: 'giam', mat_hang_id: m.id, tenMonKho: m.ten, so_o: null, phan_tram: g.phan_tram,
       tenGoiY: tenGiam(m.ten, g.phan_tram).normalize('NFC'), maMon: g.ma_can, maVach: maVachFabi(g.ma_can, du.soChuSo),
-      giaKg: m.gia_ban_kg === null ? null : giaGiam(m.gia_ban_kg, g.phan_tram), trenFabi: trangThai(g.ma_can), maDaGhep: null,
+      giaKg: gia, trenFabi: tt, maDaGhep: null,
       canhBao: [...dai('giam', g.ma_can), ...ghepCanhBao('giam', ghepTheoMa.get(bo0(g.ma_can)))],
+      vaoFile: vaoFile(g.ma_can, tt, gia),
     });
   }
   const thuTu = new Map([...mon.values()].map(m => [m.id, m.ten]));
+  const THU_TU_LOAI = { can: 0, o: 1, giam: 2 } as const;
   return ra.sort((a, b) => (thuTu.get(a.mat_hang_id) ?? '').localeCompare(thuTu.get(b.mat_hang_id) ?? '', 'vi')
-    || (a.loai === b.loai ? 0 : a.loai === 'o' ? -1 : 1));
+    || THU_TU_LOAI[a.loai] - THU_TU_LOAI[b.loai]);
 }
 
 /** Nhãn và lớp nb-nhan của cột "Trên FABi": có → song (K4 ✓); ngừng bán / chưa thấy → luu-y (K5 "lưu ý", không phải
@@ -386,9 +439,10 @@ export function nhanTrenFabi(tt: TrenFabi): [HaiThuTieng, string] {
   switch (tt) {
     case 'co': return [{ vi: 'Mã món có trên FABi (mã vạch phải thử bằng một tem)',
                          en: 'Dish code is on FABi (check the barcode with one test label)' }, 'song'];
+    case 'da_ban': return [{ vi: 'Đã bán qua FABi — có trên FABi', en: 'Already sold through FABi — it is on FABi' }, 'song'];
     case 'ngung_ban': return [{ vi: 'Có trên FABi nhưng ngừng bán', en: 'On FABi but no longer sold' }, 'luu-y'];
     case 'chua_thay': return [{ vi: 'Chưa thấy trên FABi', en: 'Not seen on FABi' }, 'luu-y'];
-    default: return [{ vi: 'Chưa đọc được thực đơn iPOS', en: 'iPOS menu not read yet' }, 'tat'];
+    default: return [{ vi: 'Chưa bán lần nào — chưa biết đã có trên FABi chưa', en: 'Never sold yet — not known whether it is on FABi' }, 'tat'];
   }
 }
 
@@ -399,11 +453,13 @@ export interface ThemMonFabi {
   menuLuc: string | null;
   maGiam: DongMaGiam[];
   soChuSo: number;
+  /** Mã món iPOS đã có dòng bán ở chi nhánh (0103, kho_ipos_ma_da_ban — RLS xem_gia; vai khác: rỗng). */
+  daBan: string[];
 }
 
-/** Thực đơn iPOS đủ trang, mã giảm, số chữ số mã trong mẫu mã vạch. Lỗi → ném. */
+/** Thực đơn iPOS đủ trang, mã giảm, số chữ số mã trong mẫu mã vạch, mã đã bán. Lỗi → ném. */
 export async function docThemMonFabi(client: SupabaseClient, chiNhanhId: string): Promise<ThemMonFabi> {
-  const [menu, maGiam, caiDat] = await Promise.all([
+  const [menu, maGiam, caiDat, daBan] = await Promise.all([
     docTungTrang<{ ma_ipos: string; dang_ban: boolean; cap_nhat_luc: string }>((tu, den) => client.from('kho_ipos_menu')
       .select('ma_ipos, dang_ban, cap_nhat_luc', { count: 'exact' })
       .eq('chi_nhanh_id', chiNhanhId)
@@ -411,14 +467,19 @@ export async function docThemMonFabi(client: SupabaseClient, chiNhanhId: string)
       .range(tu, den)),
     docMaGiam(client),
     client.from('kho_cai_dat').select('mau_ma_vach').eq('chi_nhanh_id', chiNhanhId).maybeSingle(),
+    client.rpc('kho_ipos_ma_da_ban', { p_chi_nhanh_id: chiNhanhId }),
   ]);
   if (caiDat.error) throw caiDat.error;
+  if (daBan.error) throw daBan.error;
   const menuLuc = menu.reduce<string | null>((x, m) => (!x || Date.parse(m.cap_nhat_luc) > Date.parse(x) ? m.cap_nhat_luc : x), null);
   return {
     menu: menu.map(m => ({ ma_ipos: m.ma_ipos, dang_ban: m.dang_ban !== false })),
     menuLuc,
     maGiam,
     soChuSo: soChuSoMa((caiDat.data as { mau_ma_vach?: string | null } | null)?.mau_ma_vach ?? null),
+    // Hàm trả bảng MỘT cột: PostgREST có thể trả mảng giá trị thay vì mảng dòng — nhận cả hai dạng.
+    daBan: ((daBan.data ?? []) as unknown[]).map(r => String((typeof r === 'object' && r !== null ? (r as { ma_so?: unknown }).ma_so : r) ?? ''))
+      .filter(Boolean),
   };
 }
 
@@ -446,7 +507,8 @@ export async function docMonFabi(client: SupabaseClient, chiNhanhId: string): Pr
     docMatHang(client), docOMa(client), docMaDaGhep(client, chiNhanhId), docThemMonFabi(client, chiNhanhId),
   ]);
   return {
-    dong: monCanCoTrenFabi({ matHang, oMa: [...oMa.values()].flat(), maGiam: them.maGiam, menu: them.menu, daGhep, soChuSo: them.soChuSo }),
+    dong: monCanCoTrenFabi({ matHang, oMa: [...oMa.values()].flat(), maGiam: them.maGiam, menu: them.menu, daGhep,
+                             soChuSo: them.soChuSo, daBan: them.daBan }),
     menuLuc: them.menuLuc,
     soMonMenu: them.menu.length,
   };
@@ -468,6 +530,7 @@ const CAU_TEP = {
     trenFabi: { vi: 'Trên FABi', en: 'On FABi' },
     ghiChu: { vi: 'Ghi chú', en: 'Note' },
   },
+  loaiCan: { vi: 'Mã cân', en: 'Scale code' },
   loaiO: { vi: 'Ô mã', en: 'Rotating code' },
   loaiGiam: { vi: 'Mã giảm', en: 'Discount code' },
   o: { vi: (n: number) => `ô ${n}`, en: (n: number) => `slot ${n}` },
@@ -485,6 +548,10 @@ const CAU_TEP = {
   khongDoc: {
     vi: 'Không đọc được danh sách món cho FABi — chưa tạo file. Thử lại sau ít phút.',
     en: 'Could not read the FABi dish list — no file was created. Try again in a few minutes.',
+  },
+  khongCoMonMoi: {
+    vi: 'Không có món mới nào cần thêm trên FABi — mọi món cân, ô mã, mã giảm đang dùng đã bán qua FABi, đã ghép, hoặc chưa có giá. Xem mục "Món cần có trên FABi" ở trang Ghép món.',
+    en: 'No new dishes need adding on FABi — every weighed item, rotating code and discount code in use has been sold through FABi, is matched, or has no price yet. See "Dishes needed on FABi" on the Match dishes page.',
   },
 } as const;
 
@@ -514,10 +581,10 @@ export function dongCsvMonFabi(ds: readonly DongMonFabi[], nn: NgonNguNB = 'vi')
       ...d.canhBao.map(c => c[nn]),
     ].join(' ');
     return {
-      loai: (d.loai === 'o' ? CAU_TEP.loaiO : CAU_TEP.loaiGiam)[nn],
+      loai: (d.loai === 'can' ? CAU_TEP.loaiCan : d.loai === 'o' ? CAU_TEP.loaiO : CAU_TEP.loaiGiam)[nn],
       tenGoiY: d.tenGoiY, maMon: d.maMon, maVach: d.maVach, banTheo: 'kg', giaKg: d.giaKg,
       monKho: d.tenMonKho,
-      muc: d.loai === 'o' ? CAU_TEP.o[nn](d.so_o ?? 0) : CAU_TEP.giam[nn](d.phan_tram ?? 0),
+      muc: d.loai === 'can' ? '' : d.loai === 'o' ? CAU_TEP.o[nn](d.so_o ?? 0) : CAU_TEP.giam[nn](d.phan_tram ?? 0),
       trenFabi: nhanTrenFabi(d.trenFabi)[0][nn],
       ghiChu,
     };
@@ -547,4 +614,34 @@ export async function taoTepMonFabi(
   const moc = `${vn.slice(0, 10).replace(/-/g, '')}-${vn.slice(11, 16).replace(':', '')}`;
   const tenTep = `mon-fabi-${chiNhanh.ma}-${moc}.csv`.replace(/[^a-zA-Z0-9._-]/g, '_');
   return { status: 200, noiDung: taoCsv(cotMonFabi(nn), dongCsvMonFabi(dong, nn)), tenTep };
+}
+
+// -----------------------------------------------------------------------------
+// FILE NHẬP MÓN CHO FABi (.xlsx — "Thêm món từ file")
+// -----------------------------------------------------------------------------
+/**
+ * Nội dung tải về của /noi-bo/kho/ban-ipos/mon-fabi.xlsx — route chỉ mở phiên (moKhoTai) rồi gọi hàm này.
+ * Vai không có quyền danh mục → 403. Đọc lỗi → 500 kèm câu, KHÔNG BAO GIỜ trả file rỗng hay file thiếu món.
+ * Không có món mới → 200 kèm câu (tenTep null), không file chỉ có dòng tiêu đề.
+ * Tên file ASCII theo giờ Việt Nam: them-mon-fabi-<mã chi nhánh>-<YYYYMMDD>-<HHMM>.xlsx.
+ */
+export async function taoTepNhapFabi(
+  client: SupabaseClient, tuy: { vai: string | null | undefined; chiNhanh: { id: string; ma: string }; nn: NgonNguNB },
+): Promise<{ status: number; noiDung: Uint8Array<ArrayBuffer> | string; tenTep: string | null; soMon: number }> {
+  const { vai, chiNhanh, nn } = tuy;
+  if (!duoc(vai, 'danh_muc')) return { status: 403, noiDung: CAU_TEP.khongQuyen[nn], tenTep: null, soMon: 0 };
+  let dong: DongMonFabi[];
+  try {
+    dong = (await docMonFabi(client, chiNhanh.id)).dong;
+  } catch (e) {
+    const chiTiet = cauLoiKho(e, '');
+    const them = chiTiet && chiTiet !== LOI_KHO_CHUNG.mang.vi ? ` ${dichCau(nn, chiTiet)}` : '';
+    return { status: 500, noiDung: CAU_TEP.khongDoc[nn] + them, tenTep: null, soMon: 0 };
+  }
+  const hang = dongNhapFabi(dong);
+  if (hang.length === 0) return { status: 200, noiDung: CAU_TEP.khongCoMonMoi[nn], tenTep: null, soMon: 0 };
+  const vn = gioVnTuMs(Date.now());
+  const moc = `${vn.slice(0, 10).replace(/-/g, '')}-${vn.slice(11, 16).replace(':', '')}`;
+  const tenTep = `them-mon-fabi-${chiNhanh.ma}-${moc}.xlsx`.replace(/[^a-zA-Z0-9._-]/g, '_');
+  return { status: 200, noiDung: taoTepExcel([{ ten: 'Menu', hang: [[...COT_NHAP_FABI], ...hang] }]), tenTep, soMon: hang.length };
 }

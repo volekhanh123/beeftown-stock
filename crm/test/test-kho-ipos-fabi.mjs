@@ -554,7 +554,9 @@ await nhom('8 · MÓN CẦN CÓ TRÊN FABi — DATABASE, CSV, QUYỀN', async ()
   // Xóa thực đơn (iPOS trả danh mục rỗng) → chưa đọc.
   await duoi(MAY, `select kho_ipos_luu_menu($1, '[]'::jsonb)`, [cnA.id]);
   const a = await docMonFabi(ql, cnA.id);
-  ok('Database: thực đơn rỗng → mọi món "chưa đọc", không món nào "chưa thấy"', a.dong.length === 3 && a.dong.every(x => x.trenFabi === 'chua_doc')
+  // 0103: không có thực đơn nhưng ba mã này đã bán ở các nhóm trên → "Đã bán qua FABi" (chắc có trên FABi), không vào file nhập.
+  ok('Database: thực đơn rỗng → mã đã bán qua iPOS là "đã bán", không món nào "chưa thấy", không món nào vào file nhập',
+     a.dong.length === 3 && a.dong.every(x => x.trenFabi === 'da_ban' && !x.vaoFile)
      && a.soMonMenu === 0 && a.menuLuc === null, JSON.stringify(a.dong.map(x => [x.maMon, x.trenFabi])));
   const m = await duoi(MAY, `select kho_ipos_luu_menu($1, $2::jsonb) as v`, [cnA.id,
     JSON.stringify([{ ma_ipos: '10011', ten_ipos: 'Thăn ngoại ô 1' }, { ma_ipos: 'RIB-O2' }, { ma_ipos: 'THAN' }])]);
