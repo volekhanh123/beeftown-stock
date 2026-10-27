@@ -116,6 +116,8 @@ await nhom('1 · phanTichHoaDon: HÓA ĐƠN iPOS DW THEO TÀI LIỆU', async () 
   ok('datastate 0 → da_huy false', h.da_huy === false);
   ok('raw BỎ khách, nhân viên, thanh toán, ghi chú (không số điện thoại, địa chỉ, tên, mã giao dịch)', coPii(h.raw).length === 0
      && !/membership|vat_customer|address|payment|user_|card|note/.test(JSON.stringify(h.raw)), coPii(h.raw).join());
+  ok('raw giữ mã món đối chiếu item_id_mapping (để biết mã món tự đặt trên FABi đi sang ở đâu)',
+     phanTichHoaDon({ ...x, sale_detail: [{ ...x.sale_detail[0], item_id_mapping: 'BPHU0010' }] }).hoaDon.raw.sale_detail[0].item_id_mapping === 'BPHU0010');
   ok('raw giữ phần hóa đơn (sale_id, datastate, sale.tran_no, sale.store_id, dòng item_id / quantity)', h.raw.sale_id === 'S100'
      && h.raw.datastate === 0 && h.raw.sale.tran_no === 'SS100' && h.raw.sale.store_id === STORE
      && h.raw.sale_detail[2].item_id === 'PHO' && h.raw.sale_detail[2].quantity === 2, JSON.stringify(h.raw).slice(0, 300));
@@ -412,6 +414,22 @@ await nhom('5 · WEBHOOK /hook/ipos: KHÓA, BODY, HÓA ĐƠN, SỬA / XÓA', asy
   const xoa = await hook({ ...x3, datastate: 2 });
   ok('Xóa (datastate 2) → 200; hóa đơn da_huy, dòng da_huy', xoa.status === 200 && (await hoaDonDb('A3')).da_huy === true
      && (await dongCua('A3')).every(d => d.trang_thai === 'da_huy'), JSON.stringify(await dongCua('A3')));
+  // Sửa hóa đơn đã in trên FABi — iPOS xác nhận 27/10/2026: tạo sale_id MỚI có origin_sale_id trỏ hóa đơn
+  // cũ, và gửi lại hóa đơn cũ với datastate = 2. Kho chỉ được còn hàng của hóa đơn mới, đến theo thứ tự nào cũng vậy.
+  const dangCo = async ma => (await dongCua(ma)).filter(d => d.trang_thai !== 'da_huy');
+  for (const [goc, moi, xoaTruoc] of [['G1', 'G2', false], ['H1', 'H2', true]]) {
+    const hdGoc = hoaDonDw(goc, [{ item_id: 'BACHI', quantity: 1 }]);
+    const hdMoi = hoaDonDw(moi, [{ item_id: 'BACHI', quantity: 2 }], { datastate: 1, them: { origin_sale_id: goc } });
+    const kq = [await hook(hdGoc)];
+    if (xoaTruoc) kq.push(await hook({ ...hdGoc, datastate: 2 }), await hook(hdMoi));
+    else kq.push(await hook(hdMoi), await hook({ ...hdGoc, datastate: 2 }));
+    const conGoc = await dangCo(goc);
+    const conMoi = await dangCo(moi);
+    ok(`Sửa hóa đơn kiểu FABi (sale_id mới + hóa đơn cũ datastate 2${xoaTruoc ? ', bản xóa đến TRƯỚC' : ''}) → chỉ còn hàng của hóa đơn mới, không trừ hai lần`,
+       kq.every(r => r.status === 200) && (await hoaDonDb(goc)).da_huy === true && conGoc.length === 0
+       && (await hoaDonDb(moi)).da_huy === false && conMoi.length === 1 && Number(conMoi[0].so_luong) === 2
+       && (await hoaDonDb(moi)).raw?.origin_sale_id === goc, JSON.stringify({ conGoc, conMoi, ma: kq.map(r => r.status) }));
+  }
   const thuong = await hook(hoaDonDw('A4', [], { brand: BRAND.toLowerCase() }));
   ok('brand_id khác hoa thường vẫn khớp chi nhánh', thuong.status === 200 && !!(await hoaDonDb('A4')));
 
