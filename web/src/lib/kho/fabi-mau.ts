@@ -21,9 +21,11 @@ export const COT_NHAP_FABI = [
 ] as const;
 
 /**
- * Giá trị cố định của file nhập: thành phố duy nhất của tài khoản FABi Beeftown; nhóm "Uncategory" (mã nhóm duy nhất
- * đang có); loại "DA" (Đồ ăn); đơn vị "KG" — FABi đọc 5 số trọng lượng trên tem thành kg (00230 → 0,23) rồi nhân
- * giá/kg, nên món cân phải là KG và giá theo 1 kg.
+ * Giá trị cố định của file nhập (cột Nhóm, Loại món, Đơn vị nhận MÃ, không nhận tên — ghi chú của FABi và bảng
+ * tham chiếu ở sheet Template): thành phố duy nhất của tài khoản FABi Beeftown; mã nhóm "ITEM_TYPE_OTHER" (tên
+ * "Uncategory", nhóm duy nhất đang có); mã loại "DA" (Đồ ăn); mã đơn vị "KG" — FABi đọc 5 số trọng lượng trên tem
+ * thành kg (00230 → 0,23) rồi nhân giá/kg, nên món cân phải là KG và giá theo 1 kg. File nhập thử 27/10/2026 dùng
+ * đúng các mã này; file "Xuất, sửa thực đơn" trả lại Nhóm ITEM_TYPE_OTHER / Tên nhóm Uncategory.
  */
 export const MAC_DINH_FABI = { thanhPho: 'Hồ Chí Minh', nhom: 'ITEM_TYPE_OTHER', loaiMon: 'DA', donVi: 'KG' } as const;
 

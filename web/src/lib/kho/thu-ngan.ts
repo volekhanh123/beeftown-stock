@@ -303,12 +303,12 @@ export function maVachFabi(ma: string, soChuSo: number): string {
 }
 
 export interface DuLieuMonFabi {
-  matHang: readonly { id: string; ten: string; gia_ban_kg: number | null; dang_dung: boolean; ma_can?: string | null }[];
+  matHang: readonly { id: string; ten: string; gia_ban_kg: number | null; dang_dung: boolean; ma_can?: string | null; dem_goi?: boolean }[];
   oMa: readonly DongOMa[];
   maGiam: readonly DongMaGiam[];
   /** Thực đơn iPOS ĐỦ trang của chi nhánh — rỗng = chưa đọc. */
   menu: readonly { ma_ipos: string; dang_ban: boolean }[];
-  daGhep: readonly { ma_ipos: string; kieu: string; mat_hang_id: string | null; o_ma_id?: string | null }[];
+  daGhep: readonly { ma_ipos: string; kieu: string; mat_hang_id: string | null; o_ma_id?: string | null; don_vi_ban?: string | null }[];
   soChuSo: number;
   /** 0103: mã món iPOS đã từng có dòng bán ở chi nhánh (kho_ipos_ma_da_ban). Không truyền = không biết. */
   daBan?: readonly string[];
@@ -383,20 +383,29 @@ export function monCanCoTrenFabi(du: DuLieuMonFabi): DongMonFabi[] {
     !g ? [] : g.kieu === 'mon' ? [loai === 'o' ? BO_GHEP_O : BO_GHEP_GIAM] : [MA_LA_MON_KHAC[loai]];
 
   const ra: DongMonFabi[] = [];
+  const coO = new Set(du.oMa.map(o => o.mat_hang_id));
   for (const m of mon.values()) {
     const mc = bo0(m.ma_can);
-    if (!mc) continue;
-    const tt = trangThai(mc);
+    // Món theo tảng có ô mã: món FABi là món ô (dưới) — KHÔNG đưa mã chung: thu ngân quét tem in bằng mã chung thì
+    // FABi không ra món, buộc in lại bằng phím ô (bán mã chung kho không biết tảng — hộp "Bán không biết tảng").
+    if (!mc || coO.has(m.id)) continue;
+    let tt = trangThai(mc);
     const ghep = ghepTheoMa.get(mc);
-    // Ghép tay đúng món này như món kho: thừa, không sai. Kiểu khác: người ghép đã xác nhận FABi có món KHÁC mang mã.
+    // Ghép tay đúng món này như món kho, theo kg: thừa, không sai. Kiểu khác: người ghép đã xác nhận FABi có món KHÁC.
     const ghepKhac = !!ghep && !(ghep.kieu === 'mon' && ghep.mat_hang_id === m.id && !ghep.o_ma_id);
+    // Món đã có trên FABi dưới MÃ KHÁC (FABi tự sinh ITEM-…) mà người dùng đã ghép tay với món này, bán theo cân —
+    // không đưa lại vào file (FABi chỉ thêm món: sẽ thành hai món cho một hàng).
+    const tay = du.daGhep.find(g => bo0(g.ma_ipos) !== mc && g.mat_hang_id === m.id && !g.o_ma_id
+      && (g.kieu === 'mon' || g.kieu === 'goi_can') && (g.don_vi_ban === 'kg' || (g.don_vi_ban == null && !m.dem_goi))) ?? null;
+    if (tay && tt !== 'co' && tt !== 'ngung_ban') tt = daDoc && menu.has(bo0(tay.ma_ipos)) ? (menu.get(bo0(tay.ma_ipos)) ? 'co' : 'ngung_ban')
+      : daDoc ? tt : 'co';
     ra.push({
       loai: 'can', mat_hang_id: m.id, tenMonKho: m.ten, so_o: null, phan_tram: null,
       tenGoiY: m.ten.trim().normalize('NFC'), maMon: mc, maVach: maVachFabi(mc, du.soChuSo),
-      giaKg: m.gia_ban_kg, trenFabi: tt, maDaGhep: null,
+      giaKg: m.gia_ban_kg, trenFabi: tt, maDaGhep: tay?.ma_ipos ?? null,
       canhBao: [...dai('can', mc), ...(m.gia_ban_kg === null || m.gia_ban_kg <= 0 ? [CHUA_GIA_CAN] : []),
                 ...(ghepKhac ? [MA_CAN_LA_MON_KHAC] : [])],
-      vaoFile: vaoFile(mc, tt, m.gia_ban_kg),
+      vaoFile: !tay && vaoFile(mc, tt, m.gia_ban_kg),
     });
   }
   for (const o of [...du.oMa].sort((a, b) => a.so_o - b.so_o)) {
@@ -405,13 +414,15 @@ export function monCanCoTrenFabi(du: DuLieuMonFabi): DongMonFabi[] {
     let tt = trangThai(o.ma_can);
     const tay = du.daGhep.find(g => g.o_ma_id === o.id && bo0(g.ma_ipos) !== bo0(o.ma_can)) ?? null;
     if (daDoc && tt !== 'co' && tay && menu.has(bo0(tay.ma_ipos))) tt = menu.get(bo0(tay.ma_ipos)) ? 'co' : 'ngung_ban';
+    // 0103: không có thực đơn mà đã ghép tay một mã khác với đúng ô này → món ô đã có trên FABi dưới mã đó.
+    if (!daDoc && tay && tt === 'chua_doc') tt = 'co';
     const ghep = ghepTheoMa.get(bo0(o.ma_can));
     ra.push({
       loai: 'o', mat_hang_id: m.id, tenMonKho: m.ten, so_o: o.so_o, phan_tram: null,
       tenGoiY: tenMonFabiO(m.ten, o.so_o), maMon: o.ma_can, maVach: maVachFabi(o.ma_can, du.soChuSo),
       giaKg: m.gia_ban_kg, trenFabi: tt, maDaGhep: tay?.ma_ipos ?? null,
       canhBao: [...dai('o', o.ma_can), ...(ghep && ghep.o_ma_id !== o.id ? ghepCanhBao('o', ghep) : [])],
-      vaoFile: vaoFile(o.ma_can, tt, m.gia_ban_kg),
+      vaoFile: !tay && vaoFile(o.ma_can, tt, m.gia_ban_kg),
     });
   }
   for (const g of [...du.maGiam].sort((a, b) => a.phan_tram - b.phan_tram)) {
@@ -446,6 +457,13 @@ export function nhanTrenFabi(tt: TrenFabi): [HaiThuTieng, string] {
   }
 }
 
+/** Trần đọc mã đã bán một lần (max_rows mặc định của PostgREST trên Supabase). */
+const MA_DA_BAN_TOI_DA = 1000;
+const CAU_QUA_NHIEU_MA_DA_BAN: HaiThuTieng = {
+  vi: 'Có quá nhiều mã món đã bán để đối chiếu FABi (từ 1000 mã) — báo người làm phần mềm.',
+  en: 'Too many sold dish codes to compare with FABi (1000 or more) — tell the software maintainer.',
+};
+
 /** Phần đọc thêm cho mục "Món cần có trên FABi" (trang Ghép món đã có món, ô, mã đã ghép). */
 export interface ThemMonFabi {
   menu: { ma_ipos: string; dang_ban: boolean }[];
@@ -471,6 +489,9 @@ export async function docThemMonFabi(client: SupabaseClient, chiNhanhId: string)
   ]);
   if (caiDat.error) throw caiDat.error;
   if (daBan.error) throw daBan.error;
+  // PostgREST cắt ở max_rows (1000 trên Supabase): thiếu mã đã bán thì file nhập đưa lại món FABi đã có — thà báo
+  // lỗi. Một chi nhánh khó có tới 1000 mã số đã bán (mã cân, ô, mã giảm).
+  if ((daBan.data ?? []).length >= MA_DA_BAN_TOI_DA) throw new Error(CAU_QUA_NHIEU_MA_DA_BAN.vi);
   const menuLuc = menu.reduce<string | null>((x, m) => (!x || Date.parse(m.cap_nhat_luc) > Date.parse(x) ? m.cap_nhat_luc : x), null);
   return {
     menu: menu.map(m => ({ ma_ipos: m.ma_ipos, dang_ban: m.dang_ban !== false })),

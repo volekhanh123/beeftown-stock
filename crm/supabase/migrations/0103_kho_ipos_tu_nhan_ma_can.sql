@@ -14,7 +14,10 @@
 --   · kho_ipos_ghi_dong — dòng bán CHƯA GHÉP, không nhãn cân, mã món iPOS toàn chữ số: bỏ số 0 đầu, trùng
 --     mã cân của một món ĐANG DÙNG → khớp món đó, quantity là số kg (như ô / mã giảm). Thứ tự giữ nguyên:
 --     ghép tay > ô mã > mã giảm > nhãn cân > (mới) mã món = mã cân. Ghép tay "Không phải hàng kho", suất,
---     hàng cân nhãn vẫn thắng — lối thoát khi FABi có món KHÁC mang trùng số.
+--     hàng cân nhãn vẫn thắng — lối thoát khi FABi có món KHÁC mang trùng số. Thêm một lưới: đơn vị FABi của
+--     dòng (raw iPOS DW sale_detail[].unit_id, đọc bằng hàm nội bộ mới kho_ipos_don_vi_dong) mà KHÁC "KG" —
+--     món hộp, chai, món… tình cờ mang số trùng mã cân — thì KHÔNG tự nhận (dòng nằm "Chưa khớp" như cũ).
+--     Không biết đơn vị (hóa đơn kiểu cũ, raw thiếu) thì vẫn nhận.
 --   · ban_le_doi_chieu — dòng mã cân chưa ghép không còn việc "ghep" (chưa ghép đã đúng, như ô / mã giảm).
 --     Ghép sai (món khác, theo gói, có ô, goi_can không mặt hàng) vẫn là sua_ghep.
 --   · Hàm mới kho_ipos_ma_da_ban (security invoker, chỉ đọc): mã món iPOS dạng số đã từng có dòng bán ở chi
@@ -36,6 +39,29 @@
 -- =============================================================================
 -- 1 · GHI MỘT DÒNG — thay THÂN kho_ipos_ghi_dong (cùng chữ ký)
 -- =============================================================================
+-- Đơn vị FABi của một dòng bán, đọc từ raw của hóa đơn (iPOS DW: sale_detail[].unit_id, web giữ khóa này —
+-- TRUONG_IPOS.rawGiu). khoa_dong là sale_detail_id khi mọi dòng có mã riêng, không thì chỉ số dòng (từ 0) —
+-- web/src/lib/kho/ipos.ts phanTichHoaDon. Không thấy → null (không biết). Nội bộ: chỉ kho_ipos_ghi_dong gọi.
+create or replace function kho_ipos_don_vi_dong(p_raw jsonb, p_khoa_dong text)
+returns text
+language sql
+immutable
+set search_path = public
+as $$
+  select nullif(btrim(coalesce(
+    (select x ->> 'unit_id'
+       from jsonb_array_elements(case when jsonb_typeof(p_raw -> 'sale_detail') = 'array'
+                                      then p_raw -> 'sale_detail' else '[]'::jsonb end) x
+      where x ->> 'sale_detail_id' = p_khoa_dong
+      limit 1),
+    case when p_khoa_dong ~ '^[0-9]{1,4}$' and jsonb_typeof(p_raw -> 'sale_detail') = 'array'
+         then p_raw -> 'sale_detail' -> (p_khoa_dong::int) ->> 'unit_id' end
+  )), '');
+$$;
+
+comment on function kho_ipos_don_vi_dong(jsonb, text) is
+  'NỘI BỘ (0103): đơn vị FABi (unit_id) của một dòng bán trong raw hóa đơn iPOS DW, theo sale_detail_id hoặc chỉ số dòng. null = không biết.';
+
 -- kho_ipos_ghi_dong — chép 0054; chỗ đổi ghi 0103: mã món iPOS chưa ghép = mã cân
 -- của món đang dùng → khớp món đó, mặc định bán theo kg (v_tu_ma).
 create or replace function kho_ipos_ghi_dong(p_id uuid)
@@ -158,12 +184,14 @@ begin
       select * into v_mh from kho_mat_hang where id = v_mg.mat_hang_id and dang_dung;   -- 0054
     elsif v_ma is not null then
       select * into v_mh from kho_mat_hang_theo_ma_can(v_ma);   -- 0051: nhận cả mã ô (0049)
-    elsif v_mp.id is null and btrim(v_d.ma_ipos) ~ '^[0-9]+$' then
+    elsif v_mp.id is null and btrim(v_d.ma_ipos) ~ '^[0-9]+$'
+          and coalesce(upper(kho_ipos_don_vi_dong(v_h.raw, v_d.khoa_dong)), 'KG') = 'KG' then
       -- 0103 · Mã món iPOS chưa ghép là MÃ CÂN của một món đang dùng (FABi đặt mã món
       -- = mã cân, thường thêm số 0 đầu cho đủ 5 số: 01011): kho tự nhận như ô / mã giảm.
       -- Chỉ mã cân của chính món — ô và mã giảm đã nhận ở trên; nhãn cân (v_ma) đi trước;
-      -- ghép tay (kể cả goi_can, bo_qua) luôn thắng. Không ghi ma_can vào dòng: lần thử
-      -- lại vẫn đọc quantity như lần đầu (v_tu_sl).
+      -- ghép tay (kể cả goi_can, bo_qua) luôn thắng; đơn vị FABi khác KG (món hộp, chai…
+      -- trùng số) thì không nhận. Không ghi ma_can vào dòng: lần thử lại vẫn đọc quantity
+      -- như lần đầu (v_tu_sl).
       select * into v_mh from kho_mat_hang
       where ma_can = nullif(ltrim(btrim(v_d.ma_ipos), '0'), '') and dang_dung;
       v_tu_ma := v_mh.id is not null;
@@ -761,20 +789,23 @@ comment on function kho_ipos_ma_da_ban(uuid) is
 -- create or replace giữ quyền cũ; thu lại cho chắc, như 0054 (kho_ipos_ghi_dong: chỉ hàm definer khác gọi)
 -- và 0099 (ban_le_doi_chieu: trang nội bộ gọi, tự kiểm vai danh_muc ở câu đầu — test-quyen-ghi-thang-crm.mjs
 -- XEP_LOAI). kho_ipos_ma_da_ban: hàm mới nhận EXECUTE mặc định cho PUBLIC / anon — thu; authenticated gọi được
--- (RLS lọc, test-kho-quyen.mjs GOI_DUOC). Không chép khối "thu hết rồi cấp lại danh sách anon" — danh sách anon
+-- (RLS lọc, test-kho-quyen.mjs GOI_DUOC). kho_ipos_don_vi_dong: nội bộ, thu cả authenticated (NOI_BO). Không chép khối "thu hết rồi cấp lại danh sách anon" — danh sách anon
 -- không đổi.
 do $$
 begin
   execute 'revoke execute on function kho_ipos_ghi_dong(uuid) from public';
   execute 'revoke execute on function ban_le_doi_chieu(uuid) from public';
   execute 'revoke execute on function kho_ipos_ma_da_ban(uuid) from public';
+  execute 'revoke execute on function kho_ipos_don_vi_dong(jsonb, text) from public';
   if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke execute on function kho_ipos_don_vi_dong(jsonb, text) from anon';
     execute 'revoke execute on function kho_ipos_ghi_dong(uuid) from anon';
     execute 'revoke execute on function ban_le_doi_chieu(uuid) from anon';
     execute 'revoke execute on function kho_ipos_ma_da_ban(uuid) from anon';
   end if;
   if exists (select 1 from pg_roles where rolname = 'authenticated') then
     execute 'revoke execute on function kho_ipos_ghi_dong(uuid) from authenticated';
+    execute 'revoke execute on function kho_ipos_don_vi_dong(jsonb, text) from authenticated';
     execute 'grant execute on function ban_le_doi_chieu(uuid) to authenticated';
     execute 'grant execute on function kho_ipos_ma_da_ban(uuid) to authenticated';
   end if;

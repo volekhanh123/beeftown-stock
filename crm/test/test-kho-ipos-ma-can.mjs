@@ -27,7 +27,7 @@ import { phanTichHoaDon } from '../../web/src/lib/kho/ipos.ts';
 import {
   laMaKhoTuNhan, kiemGhep, oThucDon, goiYMatHang, maCanTuNhan, docFormGhep, ganMaIpos,
 } from '../../web/src/lib/kho/ban-ipos.ts';
-import { docMonFabi, taoTepNhapFabi, nhanTrenFabi } from '../../web/src/lib/kho/thu-ngan.ts';
+import { docMonFabi, taoTepNhapFabi, nhanTrenFabi, monCanCoTrenFabi } from '../../web/src/lib/kho/thu-ngan.ts';
 import { COT_NHAP_FABI, dongNhapFabi } from '../../web/src/lib/kho/fabi-mau.ts';
 import { taoTepExcel, crc32, tenCot, KIEU_XLSX } from '../../web/src/lib/kho/tep-excel.ts';
 import { timChuoiCam } from '../../web/src/lib/chuoi-cam.js';
@@ -182,6 +182,25 @@ await nhom('3 · KHÔNG NHẬN BỪA: MÃ CHỮ, MÃ CỦA MÓN NGỪNG DÙNG, M
   ok('"05555" không trùng mã nào → chưa khớp, câu lý do cũ', c.trang_thai === 'chua_khop'
      && c.ly_do === 'Chưa ghép mã iPOS với món trong kho', JSON.stringify(c));
 
+  const [h, kgThuong] = await ban([{ ma: '01011', sl: 1, donVi: 'HOP' }, { ma: '01011', sl: 0.25, donVi: 'kg' }]);
+  ok('"01011" mà đơn vị FABi là HOP (món hộp trùng số) → KHÔNG tự nhận, nằm chưa khớp; đơn vị "kg" chữ thường → nhận',
+     h.trang_thai === 'chua_khop' && h.mat_hang_id === null && kgThuong.trang_thai === 'da_ghi'
+     && kgThuong.mat_hang_id === MH['C-THANNGOAI'].id, JSON.stringify([h, kgThuong]));
+  const raw0 = await duoi(MAY, `select kho_ipos_nhan_callback($1, $2::jsonb) as kq`, [cnA.id, JSON.stringify({
+    ma_hd: 'KHONG-RAW-1', thoi_diem_ban: new Date(Date.now() - 600000).toISOString(), da_huy: false,
+    dong: [{ khoa_dong: '0', ma_ipos: '01013', so_luong: 0.1, thanh_tien: 12000 }] })]);
+  const [kr] = (await db.query(`select d.* from kho_ipos_dong d join kho_ipos_hoa_don h on h.id = d.hoa_don_id
+    where h.ma_hd = 'KHONG-RAW-1'`)).rows;
+  ok('Hóa đơn không có raw (không biết đơn vị) → vẫn tự nhận mã cân', raw0.loi === null && kr?.trang_thai === 'da_ghi'
+     && kr.mat_hang_id === MH['P-VUN'].id, raw0.loi ?? JSON.stringify(kr));
+  const dv = async (raw, khoa) => (await db.query(`select kho_ipos_don_vi_dong($1::jsonb, $2) as v`, [JSON.stringify(raw), khoa])).rows[0].v;
+  const mau = { sale_detail: [{ sale_detail_id: 'SD1', unit_id: 'KG' }, { sale_detail_id: 'SD2', unit_id: ' HOP ' }] };
+  ok('kho_ipos_don_vi_dong: theo sale_detail_id, theo chỉ số dòng, bỏ khoảng trắng; không thấy / raw lạ → null',
+     await dv(mau, 'SD2') === 'HOP' && await dv(mau, '0') === 'KG' && await dv(mau, 'SD9') === null
+     && await dv({ items: [] }, '0') === null && await dv(null, 'SD1') === null);
+  ok('kho_ipos_don_vi_dong là hàm nội bộ — quản lý không gọi được',
+     /permission denied/.test((await duoi(UID.qlA, `select kho_ipos_don_vi_dong('{}'::jsonb, '0')`)).loi ?? ''));
+
   const [g] = await ban([{ ma: '90001', sl: 0.5 }]);
   ok('"90001" là mã giảm 30% của Steak → vẫn nhận là mã giảm (ghi ma_giam_id)', g.trang_thai === 'da_ghi'
      && g.ma_giam_id !== null && g.mat_hang_id === MH['C-THANNGOAI'].id, JSON.stringify(g));
@@ -199,21 +218,22 @@ await nhom('4 · GHÉP TAY LUÔN THẮNG', async () => {
   const [y] = await ban([{ ma: '0001011', sl: 1, donVi: 'GOI' }]);
   ok('Mã "0001011" ghép tay với Nạc vai → trừ Nạc vai (quầy không có → thiếu hàng), không đụng Steak',
      mk.loi === null && y.trang_thai === 'thieu_hang' && y.mat_hang_id === MH['C-NACVAI'].id, mk.loi ?? JSON.stringify(y));
-  ok('Quầy Steak vẫn 1 gói (4 − 0,23 − 0,5 − mã giảm 0,5)', (await tonQuay('C-THANNGOAI')).goi === 1);
+  ok('Quầy Steak còn 0 gói (4 − 0,23 − 0,5 − 0,25 kg − mã giảm 0,5)', (await tonQuay('C-THANNGOAI')).goi === 0,
+     JSON.stringify(await tonQuay('C-THANNGOAI')));
   await doiSoat('Ghép tay thắng');
 });
 
 // ===========================================================================
 await nhom('5 · THIẾU HÀNG → THỬ LẠI VẪN ĐỌC QUANTITY LÀ KG', async () => {
   const [d] = await ban([{ ma: '01013', sl: 2 }]);
-  ok('Bán 2 kg thịt vụn khi quầy còn 0,6 kg → thiếu hàng, câu ghi 2 kg', d.trang_thai === 'thieu_hang'
+  ok('Bán 2 kg thịt vụn khi quầy còn 0,5 kg → thiếu hàng, câu ghi 2 kg', d.trang_thai === 'thieu_hang'
      && d.mat_hang_id === MH['P-VUN'].id && /cần 2 kg/.test(d.ly_do ?? ''), JSON.stringify(d));
   await nhapHang([{ mat_hang_id: MH['P-VUN'].id, so_kg: 3, don_gia_kg: 80000, han_dung: await ngaySau(2) }]);
   const r = await thuLai();
   const d2 = await dongTheoId(d.id);
   ok('Nhập thêm 3 kg → lượt thử lại ghi đúng 2 kg (không đổi thành 2 gói), dòng vẫn không mang mã cân',
      r.loi === null && d2.trang_thai === 'da_ghi' && Number(d2.so_kg) === 2 && d2.ma_can === null
-     && Math.abs((await tonQuay('P-VUN')).kg - 1.6) < 1e-9, r.loi ?? JSON.stringify(d2));
+     && Math.abs((await tonQuay('P-VUN')).kg - 1.5) < 1e-9, r.loi ?? JSON.stringify(d2));
   await doiSoat('Thử lại');
 });
 
@@ -258,8 +278,11 @@ await nhom('7 · WEB THUẦN: NHẬN MÃ CÂN NHƯ DATABASE', async () => {
      && maCanTuNhan('90001', ng) === null);
 
   const ghep = o => docFormGhep(fd(o)).ghep;
-  ok('kiemGhep: mã cân ghép đúng món đó như món kho → được (thừa, không sai)',
+  ok('kiemGhep: mã cân ghép đúng món đó như món kho, theo kg → được (thừa, không sai)',
      kiemGhep(ghep({ ma_ipos: '01011', mat_hang_id: steak, don_vi_ban: 'kg' }), ng, false) === null);
+  ok('kiemGhep: mã cân ghép đúng món đó nhưng theo gói / "theo món kho" (FABi gửi kg — mọi lần bán sẽ lỗi) → cần xác nhận "trùng mã"',
+     kiemGhep(ghep({ ma_ipos: '01011', mat_hang_id: steak, don_vi_ban: 'goi' }), ng, false)?.canXacNhan === 'trung_ma'
+     && kiemGhep(ghep({ ma_ipos: '01011', mat_hang_id: steak, don_vi_ban: '' }), ng, false)?.canXacNhan === 'trung_ma');
   const khac = kiemGhep(ghep({ ma_ipos: '01011', mat_hang_id: MH['C-NACVAI'].id, don_vi_ban: 'goi' }), ng, false);
   ok('kiemGhep: mã cân ghép món KHÁC → cần xác nhận "trùng mã", câu nói mã cân của món nào (vi / en)',
      khac?.canXacNhan === 'trung_ma' && /mã cân 1011/.test(khac.cau.vi) && /scale code 1011/.test(khac.cau.en)
@@ -381,6 +404,37 @@ await nhom('8 · MÓN CẦN CÓ TRÊN FABi CÓ MÓN CÂN · FILE NHẬP .xlsx', 
      && het.soMon === 0 && /Không có món mới/.test(het.noiDung), JSON.stringify(het));
   ok('dongNhapFabi chỉ lấy dòng vaoFile', dongNhapFabi(dong).length === 1);
   await doiSoat('File FABi');
+});
+
+// ===========================================================================
+await nhom('8b · FILE NHẬP KHÔNG THÊM LẠI MÓN ĐÃ CÓ DƯỚI MÃ KHÁC; MÓN THEO TẢNG KHÔNG CÓ MÃ CHUNG', async () => {
+  const mon = [
+    { id: 'm1', ten: 'Steak', gia_ban_kg: 950000, dang_dung: true, ma_can: '1011', dem_goi: true },
+    { id: 'm2', ten: 'Thăn ngoại', gia_ban_kg: 900000, dang_dung: true, ma_can: '1021', dem_goi: true },
+    { id: 'm3', ten: 'Gầu', gia_ban_kg: 500000, dang_dung: true, ma_can: '1031', dem_goi: true },
+  ];
+  const ds = monCanCoTrenFabi({
+    matHang: mon, menu: [], soChuSo: 5, maGiam: [], daBan: [],
+    oMa: [{ id: 'o1', mat_hang_id: 'm2', so_o: 1, ma_can: '10011' }, { id: 'o2', mat_hang_id: 'm2', so_o: 2, ma_can: '10012' }],
+    daGhep: [{ ma_ipos: 'ITEM-HJAE', kieu: 'mon', mat_hang_id: 'm1', o_ma_id: null, don_vi_ban: 'kg' },
+             { ma_ipos: 'ITEM-GOI', kieu: 'mon', mat_hang_id: 'm3', o_ma_id: null, don_vi_ban: 'goi' },
+             { ma_ipos: 'ITEM-O2', kieu: 'mon', mat_hang_id: 'm2', o_ma_id: 'o2', don_vi_ban: 'kg' }],
+  });
+  const t = Object.fromEntries(ds.map(d => [`${d.loai}:${d.maMon}`, d]));
+  ok('Món cân đã có trên FABi dưới mã khác ghép tay theo kg (ITEM-HJAE) → "có", qua mã đó, KHÔNG vào file',
+     t['can:1011']?.trenFabi === 'co' && t['can:1011'].maDaGhep === 'ITEM-HJAE' && t['can:1011'].vaoFile === false, JSON.stringify(t['can:1011']));
+  ok('Mã khác ghép theo GÓI (gói bán lẻ, không phải món cân) → không tính, món cân vẫn vào file',
+     t['can:1031']?.vaoFile === true && t['can:1031'].maDaGhep === null, JSON.stringify(t['can:1031']));
+  ok('Món theo tảng có ô mã → không dòng mã chung (1021), chỉ các ô; ô đã ghép tay mã khác → không vào file',
+     !t['can:1021'] && t['o:10011']?.vaoFile === true && t['o:10012']?.vaoFile === false && t['o:10012'].trenFabi === 'co',
+     JSON.stringify(ds.map(d => [d.loai, d.maMon, d.trenFabi, d.vaoFile])));
+
+  const ql = clientCua(UID.qlA);
+  const nghin = { rpc: (ten, ...a) => (ten === 'kho_ipos_ma_da_ban'
+    ? Promise.resolve({ data: Array.from({ length: 1000 }, (_, i) => String(i + 1)), error: null }) : ql.rpc(ten, ...a)), from: b => ql.from(b) };
+  const t1000 = await taoTepNhapFabi(nghin, { vai: 'quan_ly', chiNhanh: cnA, nn: 'vi' });
+  ok('Mã đã bán chạm trần 1000 dòng (PostgREST có thể đã cắt) → 500 có câu, không file', t1000.status === 500 && t1000.tenTep === null,
+     JSON.stringify(t1000));
 });
 
 // ===========================================================================

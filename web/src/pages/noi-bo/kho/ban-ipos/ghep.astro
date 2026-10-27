@@ -244,7 +244,8 @@ if (k.chiNhanh && k.daKhoiTao) {
       docMaChuaGhep(k.client, k.chiNhanh.id), docMaDaGhep(k.client, k.chiNhanh.id), docMatHang(k.client),
       docMenuIpos(k.client, k.chiNhanh.id, tim),
       maChon ? docMonMenu(k.client, k.chiNhanh.id, maChon) : Promise.resolve(null),
-      maChon ? docTenMaIpos(k.client, k.chiNhanh.id, maChon) : Promise.resolve(null),
+      // Tên chỉ để hiển thị: đọc lỗi thì để trống, không làm hỏng cả trang.
+      maChon ? docTenMaIpos(k.client, k.chiNhanh.id, maChon).catch(() => null) : Promise.resolve(null),
     ]);
     ({ ds: menu, coSau: menuCoSau } = catTrang(trangMenu));
     // 0051: ô mã để ghép món ô trên FABi. Lỗi đọc (database chưa có 0049) → không có nhóm này.

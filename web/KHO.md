@@ -668,7 +668,9 @@ ten_ipos: description, so_luong: quantity, thanh_tien: amount }] }`.
   còn đặt sẵn (nhập file, vd `01011`) thì gửi đúng mã đó. Quy ước: món cân đặt **Mã món = Mã barcode = mã cân đệm đủ
   5 số** (`01011` cho mã cân `1011`). Khi đó kho **tự nhận** (0103, `kho_ipos_ghi_dong`): mã món toàn số, bỏ số 0
   đầu, trùng mã cân của món đang dùng → trừ món đó, quantity là kg — không cần Ghép món; như ô mã (0051) và mã
-  giảm (0054). Thứ tự: ghép tay > ô mã > mã giảm > nhãn cân > mã món = mã cân. Món `ITEM-…` và món không cân
+  giảm (0054). Thứ tự: ghép tay > ô mã > mã giảm > nhãn cân > mã món = mã cân. Đơn vị FABi của dòng
+  (`sale_detail[].unit_id` trong raw, `kho_ipos_don_vi_dong`) khác `KG` — món hộp, chai trùng số — thì không tự nhận;
+  không biết đơn vị (raw thiếu) thì vẫn nhận. Món `ITEM-…` và món không cân
   (hộp, chai) vẫn ghép một lần ở Ghép món; FABi có món KHÁC trùng số thì ghép "Không phải hàng kho" / món khác
   (form đòi tích "Mã này là món khác trên FABi").
 
@@ -688,7 +690,10 @@ ten_ipos: description, so_luong: quantity, thanh_tien: amount }] }`.
 ("Gửi xuống cân" / tự gửi khi kho đổi). FABi không có API tạo / sửa món, nên: Ghép món → **Tải file nhập món cho
 FABi** → FABi CMS → Thực đơn → Món ăn → Tiện ích → **Thêm món từ file**. File gồm mọi món cân (mã cân), ô mã, mã giảm
 đang dùng mà kho **chưa thấy trên FABi** — chưa có dòng bán nào mang mã đó (`kho_ipos_ma_da_ban`, mã số đã bỏ số 0
-đầu, security invoker, RLS `xem_gia`), chưa ghép tay mã đó, có giá, mã vừa mẫu mã vạch. Mỗi dòng: Thành phố "Hồ Chí
+đầu, security invoker, RLS `xem_gia`; chạm 1000 mã — trần max_rows của PostgREST — thì báo lỗi thay vì đoán), chưa ghép
+tay mã đó, chưa ghép tay một mã KHÁC với đúng món / ô đó (món đã có trên FABi dưới mã `ITEM-…`), có giá, mã vừa mẫu
+mã vạch. Món theo tảng có ô mã: chỉ các món ô, không món mã chung (tem in mã chung quét không ra món — buộc in lại
+bằng phím ô). Mỗi dòng: Thành phố "Hồ Chí
 Minh", Tên (tên món kho; ô "<tên> ô <số>"; mã giảm như trên cân), Giá (giá/kg; mã giảm: giá đã giảm), Mã món = Mã
 barcode = mã đệm đủ 5 số, Nhóm `ITEM_TYPE_OTHER`, Loại `DA`, Đơn vị `KG`; cột khác trống. FABi chỉ THÊM món từ file
 (không ghi gì về mã trùng) — món đã tạo trên FABi mà chưa bán thì xoá dòng đó trước khi tải lên. **Đổi giá**: sửa tay

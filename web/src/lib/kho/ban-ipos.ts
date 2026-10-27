@@ -734,9 +734,11 @@ export function kiemGhep(
 ): { cau: HaiThuTieng; canXacNhan: false | 'khong_o' | 'trung_ma' } | null {
   if (ghep.kieu === null) return null;
   const tu = laMaKhoTuNhan(ghep.ma, ng);
-  // 0103: mã cân của món ghép như món kho — đúng món đó thì được (thừa nhưng không sai); món khác hay
-  // một ô là trùng mã như dưới.
-  const canMonKhac = tu?.loai === 'can' && ghep.kieu === 'mon' && (!!ghep.oMa || ghep.matHang !== tu.matHangId);
+  // 0103: mã cân của món ghép như món kho — đúng món đó, bán theo kg thì được (thừa nhưng không sai); món
+  // khác, một ô, hay bán theo gói / suất / "theo món kho" (FABi gửi số kg đọc từ tem — theo gói thì mọi lần
+  // bán đều lỗi "số gói phải là số nguyên") là trùng mã như dưới.
+  const canMonKhac = tu?.loai === 'can' && ghep.kieu === 'mon'
+    && (!!ghep.oMa || ghep.matHang !== tu.matHangId || ghep.donVi !== 'kg');
   if (tu && (ghep.kieu !== 'mon' || canMonKhac)) {
     if (daXacNhanTrungMa) return null;
     const ten = tu.loai === 'giam'
@@ -813,18 +815,11 @@ const CHUA_KIEM_GHEP: HaiThuTieng = {
   en: 'Could not check whether this code is a discount code, a slot code or a scale code — nothing was matched. Try again in a few minutes.',
 };
 
-/** id các món đang dùng (cho NguCanhGhep) — đọc đủ mọi trang; lỗi → ném. */
-async function docIdMonDangDung(client: SupabaseClient): Promise<Set<string>> {
-  const ds = await docTungTrang<{ id: string }>((tu, den) =>
-    client.from('kho_mat_hang').select('id', { count: 'exact' }).eq('dang_dung', true).order('id').range(tu, den));
-  return new Set(ds.map(r => r.id));
-}
-
-/** Món có mã cân (cho NguCanhGhep.monMaCan, 0103) — đọc đủ mọi trang; lỗi → ném. */
-async function docMonMaCan(client: SupabaseClient): Promise<{ id: string; ten: string; ma_can: string | null; dang_dung: boolean }[]> {
+/** Món cho NguCanhGhep: id các món đang dùng và món có mã cân (0103) — MỘT lần đọc đủ mọi trang; lỗi → ném. */
+async function docMonNguCanh(client: SupabaseClient): Promise<Pick<NguCanhGhep, 'monDangDung' | 'monMaCan'>> {
   const ds = await docTungTrang<{ id: string; ten: string; ma_can: string | null; dang_dung: boolean }>((tu, den) =>
     client.from('kho_mat_hang').select('id, ten, ma_can, dang_dung', { count: 'exact' }).order('id').range(tu, den));
-  return ds.filter(m => m.ma_can);
+  return { monDangDung: new Set(ds.filter(m => m.dang_dung).map(m => m.id)), monMaCan: ds.filter(m => m.ma_can) };
 }
 
 export async function ganMaIpos(client: SupabaseClient, chiNhanhId: string, form: FormData): Promise<KetQuaGhep> {
@@ -834,9 +829,8 @@ export async function ganMaIpos(client: SupabaseClient, chiNhanhId: string, form
     // Đọc ô mã, mã giảm và món đang dùng NGAY TRƯỚC khi ghép; đọc lỗi thì không ghép (không đoán).
     let ng: NguCanhGhep;
     try {
-      const [o, g, dangDung, monMaCan] = await Promise.all([
-        docOMa(client), docMaGiam(client), docIdMonDangDung(client), docMonMaCan(client)]);
-      ng = { oMa: [...o.values()].flat(), maGiam: g, monDangDung: dangDung, monMaCan };
+      const [o, g, mon] = await Promise.all([docOMa(client), docMaGiam(client), docMonNguCanh(client)]);
+      ng = { oMa: [...o.values()].flat(), maGiam: g, ...mon };
     } catch {
       return kqHai(false, CHUA_KIEM_GHEP);
     }

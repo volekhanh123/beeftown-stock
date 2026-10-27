@@ -423,6 +423,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_lo_gan_tang_goc',
     // 0051: lô của ô lúc bán, lấy đúng một lô, số gói theo kg của một lô
     'kho_ipos_lo_cua_o', 'kho_ipos_lay_lo_cua_lo', 'kho_ipos_goi_theo_kg_lo',
+    // 0103: đơn vị FABi của một dòng bán (raw iPOS DW) — chỉ kho_ipos_ghi_dong gọi
+    'kho_ipos_don_vi_dong',
     // 0054: giá sau giảm, các trigger chống trùng mã cân giữa món / ô / mã giảm
     'kho_gia_giam', 'kho_ma_giam_kiem', 'kho_o_ma_khong_trung_giam', 'kho_mat_hang_ma_can_khong_trung_giam',
     // 0060: phần tính của kho_ipos_trang_thai, không kiểm quyền — máy báo động đọc qua suc_khoe_so_lieu
