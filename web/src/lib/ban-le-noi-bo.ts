@@ -950,7 +950,7 @@ export function coMoiDaGo(daGo: FormData | null, j: number, caiDat: CaiDatBanLe 
  * Cỡ gói chọn ở form Thêm sản phẩm. soGam null = không gửi p_so_gam (database dùng các cỡ đang dùng của cài đặt;
  * kim chi bỏ qua). Chỉ thịt bán theo cân có danh sách co_goi_ds (ẩn: các cỡ đã hiện trên form, nối dấu phẩy, có
  * thể rỗng) mới gửi: các cỡ chọn "Bán" (goi_N = ban) — kể cả mảng rỗng, kể cả cỡ vừa bị tắt sau khi mở form
- * (người dùng đã chọn rõ) — cộng số gam gõ ở ô "Cỡ khác" goi_khac_0 … goi_khac_2 (gõ trùng cỡ có sẵn thì vẫn một
+ * (người dùng đã chọn rõ) — cộng số gam gõ ở SO_O_GOI_KHAC ô "Cỡ khác" goi_khac_N (gõ trùng cỡ có sẵn thì vẫn một
  * gói, kể cả cỡ đang chọn "Không bán": gõ là muốn bán). Ô gõ đọc bằng docSoNguyen: "1.000" là một nghìn, trống
  * bỏ qua, "1,5" / "300g" / ngoài 50–5000 → loi coGoiSai, không gửi gì; quá SO_GOI_TOI_DA cỡ → quaNhieuGoi. Cỡ lạ trong co_goi_ds (form sửa tay) → bỏ qua.
  */

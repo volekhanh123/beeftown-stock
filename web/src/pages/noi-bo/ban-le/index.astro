@@ -85,6 +85,8 @@ const t = dichNB(nn, {
   goiKhac:    { vi: 'Cỡ khác (gam)', en: 'Other size (grams)' },
   goiKhacGoiY: { vi: 'Từ 50 đến 5000 g — ví dụ 350, hoặc 1000 cho 1 kg. Để trống nếu không thêm.',
                  en: 'From 50 to 5000 g — for example 350, or 1000 for 1 kg. Leave empty to add nothing.' },
+  goiKhacCong: { vi: 'Cộng thêm vào các cỡ chọn Bán ở trên — chỉ muốn cỡ gõ ở đây thì chọn Không bán cho các cỡ trên.',
+                 en: "Added to the sizes set to Sell above — to sell only the sizes typed here, set the sizes above to Don't sell." },
   ban:        { vi: 'Bán', en: 'Sell' },
   khongBan:   { vi: 'Không bán', en: "Don't sell" },
   caiDatLoi:  { vi: 'Chưa đọc được Cài đặt bán lẻ — sản phẩm thịt mới sẽ có mọi cỡ gói đang dùng; bỏ cỡ không bán ở trang sửa sau khi tạo.',
@@ -288,7 +290,7 @@ const coGia = (sp: SanPhamBanLe) => sp.gia_de_chot.kg != null || Object.keys(sp.
           ) : (
             <p class="bl-phu">{t.chuaCoCo}</p>
           )}
-          <p class="bl-phu bl-goi-y-khac" id="goi-khac-goi-y">{t.goiKhacGoiY}</p>
+          <p class="bl-phu bl-goi-y-khac" id="goi-khac-goi-y">{coDangDung.length > 0 ? `${t.goiKhacCong} ${t.goiKhacGoiY}` : t.goiKhacGoiY}</p>
           <div class="bl-luoi-co">
             {Array.from({ length: SO_O_GOI_KHAC }, (_, j) => (
               <label class="nb-o">

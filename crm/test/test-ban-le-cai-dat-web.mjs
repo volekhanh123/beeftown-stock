@@ -594,6 +594,9 @@ await nhom('7c · TRANG: form Thêm sản phẩm có ô gõ gram ("Cỡ khác")'
      /Array\.from\(\{ length: SO_O_GOI_KHAC \}/.test(ds) && /name=\{`goi_khac_\$\{j\}`\}/.test(ds)
      && /name=\{`goi_khac_\$\{j\}`\}[^>]*inputmode="numeric"/.test(ds) && !/type="number"/.test(ds));
   ok('index.astro: dựng lại form hỏng giữ chữ đã gõ ở ô Cỡ khác', /value=\{go\(`goi_khac_\$\{j\}`\)\}/.test(ds));
+  ok('index.astro: có cỡ ở trên thì gợi ý nói rõ cỡ gõ CỘNG THÊM vào các cỡ chọn Bán (muốn riêng cỡ gõ thì chọn Không bán); không có cỡ thì không nói câu đó',
+     /goiKhacCong:\s*\{\s*vi:\s*'Cộng thêm vào các cỡ chọn Bán ở trên[^']*Không bán[^']*',\s*en:\s*"[^"]+"/.test(ds)
+     && /\{coDangDung\.length > 0 \? `\$\{t\.goiKhacCong\} \$\{t\.goiKhacGoiY\}` : t\.goiKhacGoiY\}/.test(ds));
   ok('index.astro: nhãn và gợi ý ô Cỡ khác có vi và en',
      /goiKhac:\s*\{\s*vi:\s*'Cỡ khác \(gam\)',\s*en:\s*'[^']+'/.test(ds) && /goiKhacGoiY:\s*\{\s*vi:\s*'[^']+',\s*en:\s*'[^']+'/.test(ds));
 });
