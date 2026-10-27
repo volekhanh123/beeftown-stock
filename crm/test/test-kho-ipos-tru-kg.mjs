@@ -10,11 +10,13 @@
  * bình của gói trong lô và ghi phần chênh vào hao hụt ở MỖI lần bán (thử thật: tem 0,24 kg, lô 0,5 kg/gói →
  * "hao hụt" 0,26 kg). Phải đúng:
  *   · khay quét lúc cắt = tem lúc bán → không một dòng hao hụt nào, lô về đúng 0 gói 0 kg;
+ *   · kg bán đúng bằng tem một khay đã quét → đúng 1 khay, kể cả khay nặng gấp rưỡi trung bình
+ *     (kho_ipos_mot_khay_quet); FABi gộp hai tem một dòng → số khay có tổng kg gần nhất như cũ;
  *   · lô gõ tay tổng kg (không quét từng khay): các lần bán giữa chừng không hao hụt; chỉ gói CUỐI của lô ghi
  *     một dòng "chênh lệch cân" để lô về đúng 0;
- *   · kg bán vượt kg còn lại của lô → một dòng chênh lệch, không âm kho;
- *   · hủy hóa đơn → trả lại đúng 1 khay và đúng kg đã trừ;
- *   · báo cáo hao hụt gọi các dòng đó là "Chênh lệch cân lúc bán (iPOS)";
+ *   · kg bán vượt kg còn lại của lô → một dòng chênh lệch, không âm kho, gói còn lại không thành 0 kg;
+ *   · hủy hóa đơn → trả lại đúng khay và đúng kg đã trừ, kể cả hóa đơn có dòng chênh lệch;
+ *   · báo cáo hao hụt tách "Chênh lệch cân lúc bán (iPOS) — thiếu" / "— thừa" theo dấu dòng gốc;
  *   · kho_doi_soat_ton() rỗng.
  */
 
@@ -145,8 +147,8 @@ await nhom('1 · CHUẨN BỊ: MÃ CÂN 1011, KHAY RA QUẦY, CHUYỂN SANG TR�
 });
 
 // ===========================================================================
-let loQuet;
-await nhom('2 · CẮT CÓ QUÉT TEM TỪNG KHAY → BÁN ĐÚNG TEM ĐÓ: KHÔNG HAO HỤT NÀO, LÔ VỀ ĐÚNG 0', async () => {
+let loQuet, loVuot, saleVuot;
+await nhom('2 · CẮT CÓ QUÉT TEM TỪNG KHAY → BÁN ĐÚNG TEM ĐÓ: ĐÚNG 1 KHAY, KHÔNG HAO HỤT, LÔ VỀ ĐÚNG 0', async () => {
   const [tang] = await nhapTonDau([{ mat_hang_id: MH['T-THANNGOAI'].id, so_goi: 1, so_kg: 2, don_gia_kg: 600000 }], vt.kho);
   const khay = [0.24, 0.31, 0.33, 0.3];
   loQuet = await phaLoc(tang, { nhanKhay: khay.map(kg => nhan(1011, kg)),
@@ -167,6 +169,38 @@ await nhom('2 · CẮT CÓ QUÉT TEM TỪNG KHAY → BÁN ĐÚNG TEM ĐÓ: KHÔN
      && Number((await db.query(`select count(*) n from kho_so_cai where loai = 'hao_hut' and chung_tu_loai = 'ban_hang'`)).rows[0].n) === 0,
      JSON.stringify({ so: b4.so, t4 }));
   await doiSoat('Quét tem');
+
+  // Khay lệch nhiều: 0,15 · 0,15 · 0,45 (trung bình 0,25). Trước 0104 số khay chỉ suy từ trung bình: 0,45 kg là
+  // 2 khay (0,5 gần hơn 0,25) — trừ dư một khay, khay cuối thành thiếu hàng.
+  const [tang2] = await nhapTonDau([{ mat_hang_id: MH['T-THANNGOAI'].id, so_goi: 1, so_kg: 1, don_gia_kg: 600000 }], vt.kho);
+  const loLech = await phaLoc(tang2, { nhanKhay: [0.15, 0.15, 0.45].map(kg => nhan(1011, kg)) });
+  const n1 = await ban(0.45);
+  const l1 = await tonLo(loLech);
+  ok('Khay 0,45 kg (lô trung bình 0,25) trùng tem một khay đã quét → trừ ĐÚNG 1 khay 0,45 kg; lô còn 2 khay 0,3 kg',
+     n1.d.trang_thai === 'da_ghi' && n1.d.so_goi === 1 && n1.so.length === 1 && tong(n1.ban, 'so_goi') === -1
+     && tong(n1.ban, 'so_kg') === -0.45 && l1.goi === 2 && Math.abs(l1.kg - 0.3) < 1e-9, JSON.stringify({ so: n1.so, l1 }));
+  await ban(0.15);
+  const n3 = await ban(0.15);
+  const l3 = await tonLo(loLech);
+  ok('…bán hai khay 0,15 còn lại → không dòng hao hụt nào, lô về ĐÚNG 0/0',
+     n3.lech.length === 0 && l3.goi === 0 && l3.kg === 0, JSON.stringify({ so: n3.so, l3 }));
+
+  // FABi gộp hai tem cùng món vào một dòng (0,2 + 0,3 = 0,5): không trùng tem khay nào → số khay có tổng kg gần nhất.
+  const [tang3] = await nhapTonDau([{ mat_hang_id: MH['T-THANNGOAI'].id, so_goi: 1, so_kg: 1, don_gia_kg: 600000 }], vt.kho);
+  const loGop = await phaLoc(tang3, { nhanKhay: [0.2, 0.3, 0.4].map(kg => nhan(1011, kg)) });
+  const g1 = await ban(0.5);
+  const lg1 = await tonLo(loGop);
+  ok('Một dòng 0,5 kg (hai tem gộp, không trùng khay nào) → 2 khay, đúng 0,5 kg, không hao hụt; còn 1 khay 0,4 kg',
+     g1.d.so_goi === 2 && g1.lech.length === 0 && tong(g1.ban, 'so_kg') === -0.5 && lg1.goi === 1 && Math.abs(lg1.kg - 0.4) < 1e-9,
+     JSON.stringify({ so: g1.so, lg1 }));
+  const g2 = await ban(0.4);
+  const lg2 = await tonLo(loGop);
+  ok('…khay cuối 0,4 kg → lô về đúng 0/0, không dòng chênh lệch', g2.lech.length === 0 && lg2.goi === 0 && lg2.kg === 0,
+     JSON.stringify({ so: g2.so, lg2 }));
+
+  const noiBo = await duoi(UID.qlA, `select kho_ipos_mot_khay_quet($1, $2, null, 0.45)`, [vt.quay, MH['C-THANNGOAI'].id]);
+  ok('kho_ipos_mot_khay_quet là hàm nội bộ — quản lý không gọi được', /permission denied/.test(noiBo.loi ?? ''), noiBo.loi ?? 'gọi được');
+  await doiSoat('Khay lệch, tem gộp');
 });
 
 // ===========================================================================
@@ -182,28 +216,33 @@ await nhom('3 · LÔ GÕ TAY TỔNG KG: GIỮA CHỪNG KHÔNG HAO HỤT, GÓI CU
   const t2 = await tonLo(lo);
   ok('Khay cuối 0,33 kg mà lô còn 0,35 → bán 0,33 kg + MỘT dòng chênh lệch −0,02 kg ghi rõ, lô về đúng 0/0',
      b2.lech.length === 1 && Number(b2.lech[0].so_kg) === -0.02 && b2.lech[0].so_goi === 0
-     && /Chênh lệch cân khi bán hết lô/.test(b2.lech[0].ghi_chu) && tong(b2.ban, 'so_kg') === -0.33
+     && /^Chênh lệch cân khi bán hết lô ở quầy · iPOS /.test(b2.lech[0].ghi_chu) && tong(b2.ban, 'so_kg') === -0.33
      && t2.goi === 0 && t2.kg === 0, JSON.stringify({ so: b2.so, t2 }));
   await doiSoat('Gõ tay');
 
-  // Nhãn cân vượt kg còn lại của lô (lô gõ tay sai tổng kg): dòng có mã vạch nhãn → đúng 1 khay, kg trên nhãn.
-  // Không âm kho, ghi chênh lệch. (Bán theo số lượng không vượt được: kho chọn số khay có tổng kg gần nhất —
-  // 0,45 kg với lô 0,2 kg/khay là 2 khay, hết lô.)
+  // Nhãn cân vượt kg còn lại của lô (lô gõ tay thiếu kg): dòng có mã vạch nhãn → đúng 1 khay, kg trên nhãn.
+  // (Bán theo số lượng không vượt được: kho chọn số khay có tổng kg gần nhất — 0,45 kg với lô 0,2 kg/khay là 2
+  // khay, hết lô.) Không âm kho; khay còn lại giữ kg trung bình trước lần bán (0,2) — không thành khay 0 kg, để
+  // dòng bán theo số lượng sau đó vẫn tính được số khay.
   const [tang2] = await nhapTonDau([{ mat_hang_id: MH['T-THANNGOAI'].id, so_goi: 1, so_kg: 1, don_gia_kg: 600000 }], vt.kho);
-  const lo2 = await phaLoc(tang2, { ra: [{ mat_hang_id: MH['C-THANNGOAI'].id, so_goi: 2, so_kg: 0.4, xu_ly: 'nhap_kho', vi_tri_id: vt.quay }] });
+  loVuot = await phaLoc(tang2, { ra: [{ mat_hang_id: MH['C-THANNGOAI'].id, so_goi: 2, so_kg: 0.4, xu_ly: 'nhap_kho', vi_tri_id: vt.quay }] });
   const v1 = await ban(0.45, { quetNhan: true });
-  const u1 = await tonLo(lo2);
-  ok('Kg bán 0,45 vượt kg còn lại của lô (0,40) → bán 0,45 kg + chênh lệch +0,05 (ghi rõ), không âm kho; còn 1 khay',
-     v1.d.trang_thai === 'da_ghi' && v1.lech.length === 1 && Number(v1.lech[0].so_kg) === 0.05
-     && /vượt kg còn lại/.test(v1.lech[0].ghi_chu) && u1.goi === 1 && u1.kg === 0, JSON.stringify({ so: v1.so, u1 }));
-  await ban(0.2, { quetNhan: true });
-  const u2 = await tonLo(lo2);
-  ok('…bán khay cuối → lô về đúng 0/0', u2.goi === 0 && u2.kg === 0, JSON.stringify(u2));
+  saleVuot = v1.saleId;
+  const u1 = await tonLo(loVuot);
+  ok('Kg bán 0,45 vượt kg còn lại của lô (0,40) → bán 0,45 kg / 1 khay + chênh lệch +0,25 ghi rõ; khay còn lại giữ 0,2 kg',
+     v1.d.trang_thai === 'da_ghi' && v1.lech.length === 1 && Number(v1.lech[0].so_kg) === 0.25
+     && /^Kg bán vượt kg còn lại của lô · iPOS /.test(v1.lech[0].ghi_chu) && tong(v1.ban, 'so_kg') === -0.45
+     && u1.goi === 1 && Math.abs(u1.kg - 0.2) < 1e-9, JSON.stringify({ so: v1.so, u1 }));
+  const v2 = await ban(0.2);
+  const u2 = await tonLo(loVuot);
+  ok('…khay cuối bán theo số lượng FABi (0,2 kg) → 1 khay, không chênh lệch, lô về đúng 0/0',
+     v2.d.trang_thai === 'da_ghi' && v2.d.so_goi === 1 && v2.lech.length === 0 && u2.goi === 0 && u2.kg === 0,
+     JSON.stringify({ so: v2.so, u2 }));
   await doiSoat('Vượt kg');
 });
 
 // ===========================================================================
-await nhom('4 · HỦY HÓA ĐƠN TRẢ ĐÚNG KHAY VÀ KG · BÁO CÁO HAO HỤT GỌI ĐÚNG TÊN', async () => {
+await nhom('4 · HỦY HÓA ĐƠN TRẢ ĐÚNG KHAY VÀ KG (CẢ KHI CÓ DÒNG CHÊNH LỆCH) · BÁO CÁO TÁCH THIẾU / THỪA', async () => {
   const [tang] = await nhapTonDau([{ mat_hang_id: MH['T-THANNGOAI'].id, so_goi: 1, so_kg: 1, don_gia_kg: 600000 }], vt.kho);
   const lo = await phaLoc(tang, { nhanKhay: [0.27, 0.29].map(kg => nhan(1011, kg)) });
   const b = await ban(0.27, { saleId: 'SALE-HUY-1' });
@@ -215,12 +254,60 @@ await nhom('4 · HỦY HÓA ĐƠN TRẢ ĐÚNG KHAY VÀ KG · BÁO CÁO HAO HỤ
      r.loi === null && b.lech.length === 0 && truoc.goi === 1 && sau.goi === 2 && Math.abs(sau.kg - 0.56) < 1e-9,
      r.loi ?? JSON.stringify({ truoc, sau }));
 
-  const bc = await duoi(UID.qlA, `select * from kho_bao_cao_hao_hut($1, $2::date, $3::date)`, [cnA.id, await ngay(-1), await ngay(1)]);
-  const dongBan = (bc.rows ?? []).filter(x => x.loai_dong === 'hao_hut' && x.mat_hang_id === MH['C-THANNGOAI'].id);
-  ok('Báo cáo hao hụt: dòng chênh lệch lúc bán mang lý do "Chênh lệch cân lúc bán (iPOS)", tổng −0,02 + 0,05 + 0,2',
-     bc.loi === null && dongBan.length === 1 && dongBan[0].ly_do === 'Chênh lệch cân lúc bán (iPOS)'
-     && Math.abs(Number(dongBan[0].so_kg) - 0.23) < 1e-9, bc.loi ?? JSON.stringify(bc.rows));
   await doiSoat('Hủy');
+
+  // Bán nốt hai khay đã trả lại (đúng tem) để lô sau là lô duy nhất ở quầy (bán lấy lô hạn gần nhất trước).
+  await ban(0.27);
+  await ban(0.29);
+  const het = await tonLo(lo);
+  ok('Bán nốt hai khay đã trả lại → lô về đúng 0/0', het.goi === 0 && het.kg === 0, JSON.stringify(het));
+
+  // Hủy hóa đơn mà lần bán đã ghi dòng chênh lệch +0,06 (khay cuối 0,26 kg, lô gõ tay còn 0,2): đảo dòng ban
+  // trước, hao_hut sau — tồn không âm, khay về lại với đúng 0,2 kg của lô.
+  const [tang2] = await nhapTonDau([{ mat_hang_id: MH['T-THANNGOAI'].id, so_goi: 1, so_kg: 1, don_gia_kg: 600000 }], vt.kho);
+  const loGo = await phaLoc(tang2, { ra: [{ mat_hang_id: MH['C-THANNGOAI'].id, so_goi: 2, so_kg: 0.5, xu_ly: 'nhap_kho', vi_tri_id: vt.quay }] });
+  await ban(0.3);
+  const cuoi = await ban(0.26, { saleId: 'SALE-HUY-2' });
+  const hetLo = await tonLo(loGo);
+  ok('Khay cuối 0,26 kg mà lô gõ tay chỉ còn 0,2 kg → không kẹt "thiếu hàng": bán 1 khay 0,26 kg + chênh lệch +0,06, lô về 0/0',
+     cuoi.d.trang_thai === 'da_ghi' && cuoi.d.so_goi === 1 && tong(cuoi.ban, 'so_kg') === -0.26 && cuoi.lech.length === 1
+     && Number(cuoi.lech[0].so_kg) === 0.06 && hetLo.goi === 0 && hetLo.kg === 0, JSON.stringify({ d: cuoi.d.ly_do, so: cuoi.so, hetLo }));
+  const huy2 = phanTichHoaDon(hoaDonFabi(0.26, { saleId: 'SALE-HUY-2', datastate: 2 }));
+  const r2 = await duoi(MAY, `select kho_ipos_nhan_callback($1, $2::jsonb)`, [cnA.id, JSON.stringify(huy2.hoaDon)]);
+  const traLai = await tonLo(loGo);
+  const dao2 = (await db.query(`select count(*)::int n from kho_so_cai where loai = 'dao_nguoc' and chung_tu_id = $1`, [cuoi.d.id])).rows[0].n;
+  ok('Hủy hóa đơn có dòng chênh lệch cân (+0,06) → đảo cả hai dòng, trả lại 1 khay đúng 0,2 kg của lô',
+     r2.loi === null && dao2 === 2 && traLai.goi === 1 && Math.abs(traLai.kg - 0.2) < 1e-9, r2.loi ?? JSON.stringify({ traLai, dao2 }));
+  await doiSoat('Hủy có chênh lệch');
+
+  // Báo cáo: −0,02 (nhóm 3) là "thiếu"; +0,25 (kg vượt, nhóm 3) là "thừa"; +0,06 đã đảo không còn — dòng đảo
+  // (−0,06) xếp theo dấu dòng GỐC nên bù đúng dòng của nó, không lọt sang "thiếu".
+  const baoCao = async () => {
+    const bc = await duoi(UID.qlA, `select * from kho_bao_cao_hao_hut($1, $2::date, $3::date)`, [cnA.id, await ngay(-1), await ngay(1)]);
+    if (bc.loi) throw new Error(bc.loi);
+    return Object.fromEntries(bc.rows.filter(x => x.loai_dong === 'hao_hut' && x.mat_hang_id === MH['C-THANNGOAI'].id)
+      .map(x => [x.ly_do, Number(x.so_kg)]));
+  };
+  const bc1 = await baoCao();
+  ok('Báo cáo hao hụt tách "Chênh lệch cân lúc bán (iPOS) — thiếu" 0,02 kg và "— thừa" 0,25 kg; lần bán đã hủy không còn',
+     Object.keys(bc1).length === 2 && bc1['Chênh lệch cân lúc bán (iPOS) — thiếu'] === 0.02
+     && bc1['Chênh lệch cân lúc bán (iPOS) — thừa'] === 0.25, JSON.stringify(bc1));
+
+  // Hủy lần bán vượt kg (lô đã bán hết): khay 0,45 kg về lại, dòng +0,25 đảo → lô 1 khay 0,2 kg; báo cáo hết "thừa".
+  const huy3 = phanTichHoaDon(hoaDonFabi(0.45, { saleId: saleVuot, datastate: 2 }));
+  const r3 = await duoi(MAY, `select kho_ipos_nhan_callback($1, $2::jsonb)`, [cnA.id, JSON.stringify(huy3.hoaDon)]);
+  const lv = await tonLo(loVuot);
+  const bc2 = await baoCao();
+  ok('Hủy lần bán vượt kg → lô về 1 khay 0,2 kg; báo cáo chỉ còn "— thiếu" 0,02 kg',
+     r3.loi === null && lv.goi === 1 && Math.abs(lv.kg - 0.2) < 1e-9 && Object.keys(bc2).length === 1
+     && bc2['Chênh lệch cân lúc bán (iPOS) — thiếu'] === 0.02, r3.loi ?? JSON.stringify({ lv, bc2 }));
+  await doiSoat('Hủy lần bán vượt kg');
+
+  // Dư từ nửa gói trở lên so với mọi gói đang có (quầy còn 2 khay 0,2 kg; bán 0,55 kg) → vẫn "thiếu hàng" như cũ.
+  const thieu = await ban(0.55);
+  ok('Kg bán dư từ nửa gói trở lên so với mọi gói ở quầy (0,55 so với 0,4) → vẫn thiếu hàng, không trừ gì',
+     thieu.d.trang_thai === 'thieu_hang' && thieu.so.length === 0, JSON.stringify(thieu.d));
+  await doiSoat('Thiếu hàng');
 });
 
 process.exit(ketThuc('iPOS TRỪ ĐÚNG KG TRÊN TEM'));

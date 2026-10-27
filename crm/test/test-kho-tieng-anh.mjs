@@ -316,7 +316,8 @@ nhom('2 · CÂU LỖI DATABASE CỦA KHO CÓ BẢN TIẾNG ANH');
     'Đã bật mã % (giảm %).',
     'Đã tắt mã %. Lần gửi xuống cân sau sẽ bỏ hàng này (qua WiFi thì còn nằm trên cân, nạp USB để xoá hẳn).',
     // 0104 — ghi chú sổ kho của dòng chênh lệch cân lúc bán qua iPOS, lý do trong báo cáo hao hụt
-    'Chênh lệch cân khi bán hết lô · iPOS %', 'Kg bán vượt kg còn lại của lô · iPOS %', 'Chênh lệch cân lúc bán (iPOS)',
+    'Chênh lệch cân khi bán hết lô ở quầy · iPOS %', 'Kg bán vượt kg còn lại của lô · iPOS %',
+    'Chênh lệch cân lúc bán (iPOS) — thiếu', 'Chênh lệch cân lúc bán (iPOS) — thừa',
     // câu rộng (tiền tố + giá trị) — thẻ kho
     'Nhập từ %', 'Pha lóc %',
   ];

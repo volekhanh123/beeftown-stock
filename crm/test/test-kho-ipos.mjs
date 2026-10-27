@@ -385,7 +385,7 @@ await nhom('5 · FEFO, LỆCH KG NHÃN, LÔ VỀ 0/0, GỬI LẠI KHÔNG TRỪ H
   const lechF2 = (await db.query(`select s.so_kg, s.ghi_chu from kho_so_cai s join kho_ipos_dong d on d.id = s.chung_tu_id
     join kho_ipos_hoa_don h on h.id = d.hoa_don_id where h.ma_hd = 'HD-F2' and s.loai = 'hao_hut'`)).rows;
   ok('…chỉ gói CUỐI ghi một dòng chênh lệch cân: 0,49 + 0,51 + 0,47 = 1,47 so với 1,48 còn lại → −0,01 kg (0104)',
-     lechF2.length === 1 && Number(lechF2[0].so_kg) === -0.01 && /^Chênh lệch cân khi bán hết lô · iPOS HD-F2$/.test(lechF2[0].ghi_chu),
+     lechF2.length === 1 && Number(lechF2[0].so_kg) === -0.01 && /^Chênh lệch cân khi bán hết lô ở quầy · iPOS HD-F2$/.test(lechF2[0].ghi_chu),
      JSON.stringify(lechF2));
 
   await luot([hd('HD-F3', phutTruoc(40), [{ so_goi: 5, so_kg: 2.9, ma_can: '101', thanh_tien: 2320000 }])]);

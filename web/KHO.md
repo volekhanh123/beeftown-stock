@@ -721,11 +721,20 @@ trim / pha lóc, không ở lúc bán. Khay cắt ra được cân, in tem và q
 mỗi khay một dòng) — lô ra quầy = số tem, tổng kg tem. Bán khay đó (FABi gửi quantity = kg tem, hay dòng có mã vạch
 nhãn) thì dòng sổ `ban` là −kg bán, −số gói, **không** dòng hao hụt nào: lô giữ phần kg còn lại, đúng bằng tổng các
 khay chưa bán. Trước 0104, mỗi lần bán ghi hao hụt = kg tem − kg trung bình của gói (thử thật: tem 0,24 kg, lô
-0,5 kg/gói → "hao hụt" 0,26 kg). Chỉ hai chỗ còn ghi một dòng `hao_hut` (chứng từ `ban_hang`, báo cáo hao hụt gọi
-là **"Chênh lệch cân lúc bán (iPOS)"**): bán gói CUỐI của lô ở quầy (ghi chú "Chênh lệch cân khi bán hết lô" — lô về
-đúng 0 gói 0 kg; khác 0 khi lô gõ tay tổng kg hay tem bán khác tem lúc cắt) và kg bán vượt kg còn lại của lô ("Kg
-bán vượt kg còn lại của lô" — không bao giờ âm kho). Hủy / sửa hóa đơn đảo đúng từng dòng sổ. Kiểm thử:
-`crm/test/test-kho-ipos-tru-kg.mjs`.
+0,5 kg/gói → "hao hụt" 0,26 kg).
+- **Số khay:** kg bán trùng tem một khay đã quét lúc cắt (lô còn gói ở quầy) → đúng 1 khay
+  (`kho_ipos_mot_khay_quet`) — trước đó chỉ suy từ kg trung bình, khay nặng gấp rưỡi trung bình bị trừ thành 2
+  khay. Không trùng tem nào (FABi gộp hai tem một dòng, lô gõ tay) → số gói có tổng kg gần nhất như cũ; hết gói mà
+  kg bán chỉ dư chưa tới nửa gói → lấy hết gói đang có (`kho_ipos_goi_theo_kg`), không kẹt "thiếu hàng".
+- **Chênh lệch cân** (dòng `hao_hut`, chứng từ `ban_hang`) chỉ còn hai chỗ: bán gói CUỐI của lô ở quầy ("Chênh
+  lệch cân khi bán hết lô ở quầy" — lô về đúng 0 gói 0 kg; khác 0 khi lô gõ tay tổng kg, tem bán khác tem lúc cắt,
+  hay lô chuyển ra quầy nhiều đợt — chuyển kho chia kg theo trung bình, các dòng của các đợt bù trừ nhau), và kg
+  bán từ hết kg còn lại của lô trở lên mà lô còn gói ("Kg bán vượt kg còn lại của lô" — gói còn lại giữ kg trung
+  bình trước lần bán: không âm kho, không gói 0 kg).
+- **Báo cáo hao hụt** tách **"Chênh lệch cân lúc bán (iPOS) — thiếu"** (kho ghi nhiều hơn thịt bán ra) và
+  **"— thừa"** theo dấu của dòng gốc, như kiểm kê thiếu / thừa.
+- Hủy / sửa hóa đơn đảo đúng từng dòng sổ (dòng `ban` trước, `hao_hut` sau — tồn không âm). Kiểm thử:
+  `crm/test/test-kho-ipos-tru-kg.mjs`.
 
 **Mất kết nối / chặn đếm quầy (0042).** Không có hóa đơn ≠ mất kết nối (quán vắng). Đèn đỏ + chuông
 `ipos_mat_ket_noi` khi: lượt cập nhật cuối lỗi (kéo hóa đơn / thử lại; có hóa đơn đọc hỏng hay database từ

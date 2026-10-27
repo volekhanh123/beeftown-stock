@@ -295,7 +295,9 @@ const CAU_DB: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Món này chưa quét gói nào', en: 'No packs of this item have been scanned' },
   //   · hàm trả về / ghi vào bảng cho người đọc
   { vi: 'Mất khi mang ra quầy', en: 'Lost on the way to the counter' },
-  { vi: 'Chênh lệch cân lúc bán (iPOS)', en: 'Weighing difference at sale (iPOS)' },   // 0104 — kho_bao_cao_hao_hut
+  // 0104 — kho_bao_cao_hao_hut: chênh lệch cân lúc bán, thiếu (kho ghi nhiều hơn thịt bán ra) / thừa
+  { vi: 'Chênh lệch cân lúc bán (iPOS) — thiếu', en: 'Weighing difference at sale (iPOS) — short' },
+  { vi: 'Chênh lệch cân lúc bán (iPOS) — thừa', en: 'Weighing difference at sale (iPOS) — over' },
   { vi: 'Nhận thiếu — trả về kho', en: 'Received short — returned to stock' },
   { vi: 'Hủy chuyến — hàng về lại chỗ cũ', en: 'Transfer cancelled — goods back where they were' },
   { vi: 'Mẫu mã vạch trong Cài đặt không hợp lệ', en: 'The barcode pattern in Settings is not valid' },
@@ -1313,7 +1315,7 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
     en: '"{1}" holds slot {2} (code {3}): enter only one stock-in line for this item per butchery session — merge the lines into one, close the session, then transfer what the counter needs' },
 
   // 0104_kho_ipos_tru_dung_kg — bán qua iPOS trừ đúng kg trên tem; ghi chú sổ kho của dòng chênh lệch cân
-  { vi: 'Chênh lệch cân khi bán hết lô · iPOS %', en: 'Weighing difference on selling the last of the batch · iPOS {1}' },
+  { vi: 'Chênh lệch cân khi bán hết lô ở quầy · iPOS %', en: 'Weighing difference on selling the last of the batch at the counter · iPOS {1}' },
   { vi: 'Kg bán vượt kg còn lại của lô · iPOS %', en: 'Kg sold exceeds the kg left in the batch · iPOS {1}' },
 ];
 
