@@ -1,7 +1,7 @@
 ---
 /**
  * Hàng nút lớn để chọn một trong vài thứ hay dùng (nhà cung cấp gần đây, món
- * hay giao) — trang Nhận hàng (GĐ5a).
+ * hay giao) — trang Nhận hàng (GĐ5a); loại mặt hàng ở form Thêm mặt hàng (FormMatHang).
  *
  * Không JavaScript: mỗi nút là một ô radio bọc trong nhãn to, bấm là chọn,
  * gửi form mới lưu. Ô radio vẫn hiện (nhỏ, ở góc) để máy nào không tô được
@@ -13,14 +13,16 @@ interface Props {
   chon?: string;
   /** Nhãn đọc cho người dùng trình đọc màn hình. */
   nhan: string;
+  /** Bắt buộc chọn một (required trên ô radio): gửi khi chưa chọn thì trình duyệt nhắc ngay. */
+  batBuoc?: boolean;
 }
-const { name, ds, chon = '', nhan } = Astro.props;
+const { name, ds, chon = '', nhan, batBuoc = false } = Astro.props;
 ---
 {ds.length > 0 && (
   <div class="nh-chon" role="radiogroup" aria-label={nhan}>
     {ds.map(o => (
       <label class="nh-chon-o">
-        <input type="radio" name={name} value={o.value} checked={o.value === chon} />
+        <input type="radio" name={name} value={o.value} checked={o.value === chon} required={batBuoc} />
         <span class="nh-chon-chu">
           <strong>{o.nhan}</strong>
           {o.phu && <small>{o.phu}</small>}

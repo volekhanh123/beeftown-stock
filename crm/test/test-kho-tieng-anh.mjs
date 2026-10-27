@@ -72,8 +72,9 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
   // Chữ Việt CỐ Ý, không phải câu giao diện bị sót. Mỗi dòng một lý do.
   const CO_Y = [
     // gói danh mục — dữ liệu lưu vào database, câu database, mã lọc:
-    "(loai === 'tang' ? 'tảng' : 'gói')",                                // danh-muc.ts: đơn vị đếm mặc định lưu vào kho_mat_hang.don_vi_goi
-    "loai === 'tang' ? 'tảng' : loai === 'phu_pham' ? 'khay' : 'gói'",   // danh-muc.ts: đơn vị đếm mặc định của hàng mới khi dán Excel
+    // danh-muc.ts (demMacDinh): đơn vị đếm mặc định theo loại, lưu vào kho_mat_hang.don_vi_goi — form thêm mới và dán Excel
+    "if (loai === 'tang') return { dem_goi: true, don_vi_goi: 'tảng' };",
+    "return { dem_goi: true, don_vi_goi: 'gói' };",
     "String(r.don_vi_goi ?? 'gói')",                                     // sua-nhanh.ts: đơn vị đếm mặc định khi database để trống
     "don_vi_goi: m?.don_vi_goi ?? 'gói'",                                // thiet-lap.ts: đơn vị đếm mặc định khi món không còn trong danh mục
     "`${ct.ten} (bản sao)`",                                             // cong-thuc.ts: tên bản sao lưu vào database (dữ liệu chung)

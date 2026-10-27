@@ -3,10 +3,22 @@
  * Form thêm / sửa một mặt hàng. Dùng chung cho "Thêm mặt hàng" và "Sửa".
  * `gt` là giá trị để điền sẵn: từ database khi sửa, hoặc chữ vừa gõ khi báo
  * lỗi. Không gọi database.
+ *
+ * HỎI LOẠI TRƯỚC (Khánh, 27/10/2026: "nhìn nhiều trường thông tin quá bị rối"):
+ *   1. Chọn loại — ba thẻ Tảng nhập / Phần cắt / Phụ phẩm.
+ *   2. Hiện ô chung (tên, nhóm, hạn dùng) và CHỈ các ô riêng của loại đó
+ *      (O_THEO_LOAI, lib/kho/danh-muc.ts — mỗi ô riêng mang data-loai = các loại có nó).
+ *   3. Ô ít dùng (mã, tên khác, MISA, báo trước hạn, cách đếm, thứ tự, tình trạng)
+ *      gập trong "Thông tin thêm" — phần mềm tự điền khi để trống.
+ * Không JavaScript: CSS :has() ẩn / hiện theo ô radio đang chọn, cùng cách
+ * FormUngTuyen. Trình duyệt quá cũ không hiểu :has() thì thấy đủ mọi ô như
+ * trước — vô hại: ô ẩn vẫn được gửi, và luuMatHang bỏ qua ô không thuộc loại.
  */
+import NhanHangChon from './NhanHangChon.astro';
 import TruongThem from './TruongThem.astro';
 import type { DinhNghiaTruong } from '../../lib/kho/truong-them.ts';
-import type { GiaTriFormMatHang } from '../../lib/kho/danh-muc.ts';
+import { LOAI_MAT_HANG, loaiCoO, type GiaTriFormMatHang } from '../../lib/kho/danh-muc.ts';
+import { nhanKho, TEN_LOAI_MAT_HANG_NB } from '../../lib/kho/chung.ts';
 import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
 
 interface Props {
@@ -14,15 +26,19 @@ interface Props {
   dinhNghia: DinhNghiaTruong[];
   coXemGia: boolean;
   nutLuu: string;
+  /** Mở sẵn "Thông tin thêm" — khi dựng lại sau lỗi, để ô bị báo lỗi không nằm trong mục gập. */
+  moThem?: boolean;
 }
-const { gt, dinhNghia, coXemGia, nutLuu } = Astro.props;
-const t = dichNB(nnCua(Astro), {
+const { gt, dinhNghia, coXemGia, nutLuu, moThem = false } = Astro.props;
+const nn = nnCua(Astro);
+const t = dichNB(nn, {
+  loai: { vi: 'Loại mặt hàng *', en: 'Item type *' },
+  tang: { vi: 'Nguyên tảng mua về, đem pha lóc', en: 'Whole primal bought in, to be butchered' },
+  phan_cat: { vi: 'Thịt đã cắt, bán ở quầy', en: 'Cut meat, sold at the counter' },
+  phu_pham: { vi: 'Mỡ, gân, vụn sau pha lóc', en: 'Fat, sinew, trimmings from butchery' },
+  chonLoaiTruoc: { vi: 'Chọn loại trước — form chỉ hiện các ô loại đó cần.', en: 'Choose the type first — the form then shows only the fields that type needs.' },
   ten: { vi: 'Tên mặt hàng *', en: 'Item name *' },
   tenVd: { vi: 'Thăn ngoại cắt lát', en: 'Sliced striploin' },
-  loai: { vi: 'Loại *', en: 'Type *' },
-  loaiPhanCat: { vi: 'Phần cắt (bán ở quầy)', en: 'Cut (sold at the counter)' },
-  loaiTang: { vi: 'Tảng nhập', en: 'Primal (bought in)' },
-  loaiPhuPham: { vi: 'Phụ phẩm (mỡ, gân, vụn…)', en: 'By-product (fat, sinew, trimmings…)' },
   ma: { vi: 'Mã', en: 'Code' },
   maGoiY: { vi: 'Bỏ trống = tự đặt theo tên.', en: 'Leave empty to make one from the name.' },
   nhom: { vi: 'Nhóm', en: 'Category' },
@@ -49,9 +65,11 @@ const t = dichNB(nnCua(Astro), {
   maMisaGoiY: { vi: 'Mã kế toán dùng trong MISA. Trống thì file MISA dùng mã ở trên và đánh dấu "thiếu mã".',
                 en: 'The code the accountant uses in MISA. If empty, the MISA file uses the code above and flags it as "missing code".' },
   demTheo: { vi: 'Đếm theo', en: 'Count by' },
+  demTheoLoai: { vi: 'Theo loại: tảng, gói; phụ phẩm chỉ kg', en: 'By type: primals, packs; by-products kg only' },
   demGoi: { vi: 'Gói / tảng và kg', en: 'Packs / primals and kg' },
   demKg: { vi: 'Chỉ kg (đổ chung khay)', en: 'Kg only (loose in a tray)' },
   donVi: { vi: 'Tên đơn vị đếm', en: 'Counting unit name' },
+  donViGoiY: { vi: 'Trống = theo loại: tảng / gói / khay.', en: 'Empty = by type: primal / pack / tray.' },
   donViVd: { vi: 'gói / tảng / khay', en: 'pack / primal / tray' },
   xuLy: { vi: 'Khi là đầu ra pha lóc, mặc định', en: 'As a butchery output, by default' },
   xuLyGoiY: { vi: 'Chọn lại được ở từng lần pha.', en: 'Can be changed in each butchery session.' },
@@ -62,13 +80,13 @@ const t = dichNB(nnCua(Astro), {
   sauPhaGoiY: { vi: 'Gói quét nhãn lúc pha lóc tự vào chỗ này.', en: 'Packs scanned during butchery go here automatically.' },
   khoLanh: { vi: 'Kho lạnh', en: 'Cold store' },
   quay: { vi: 'Quầy', en: 'Counter' },
-  thuHoi: { vi: 'Giá trị thu hồi/kg (phụ phẩm)', en: 'Recovery value/kg (by-products)' },
+  thuHoi: { vi: 'Giá trị thu hồi/kg', en: 'Recovery value/kg' },
   thuHoiGoiY: { vi: 'Phụ phẩm dùng lại được tính giá trị này, trừ vào giá vốn phần thịt. 0 = không tính.',
                 en: 'Reusable by-products are valued at this, taken off the cost of the meat. 0 = not counted.' },
   thuTu: { vi: 'Thứ tự', en: 'Order' },
   theoTang: { vi: 'Theo dõi theo tảng', en: 'Track each primal' },
-  theoTangGoiY: { vi: 'Chỉ với Tảng nhập. Mỗi tảng nhận vào là một lô riêng: cân riêng, ghi ngày mổ, có số tảng in trên tem.',
-                  en: 'Primals only. Each primal received becomes its own lot: weighed on its own, with its slaughter date and a primal number printed on the label.' },
+  theoTangGoiY: { vi: 'Mỗi tảng nhận vào là một lô riêng: cân riêng, ghi ngày mổ, có số tảng in trên tem.',
+                  en: 'Each primal received becomes its own lot: weighed on its own, with its slaughter date and a primal number printed on the label.' },
   theoTangCo: { vi: 'Có — mỗi tảng một lô', en: 'Yes — one lot per primal' },
   theoTangKhong: { vi: 'Không', en: 'No' },
   bangU: { vi: 'Bảng ủ (tuổi thịt lúc nhận : số ngày ủ)', en: 'Aging table (age when received : aging days)' },
@@ -77,119 +95,142 @@ const t = dichNB(nnCua(Astro), {
   oMa: { vi: 'Ô mã (phần cắt theo tảng)', en: 'Rotating codes (per-primal cuts)' },
   oMaGoiY: { vi: 'Chỉ với phần cắt của món theo tảng. Ví dụ "10011-10019": 9 mã, tạo một lần trên FABi cùng giá. Lóc tảng nào thì kho giao một ô cho tảng đó.',
              en: 'Only for cuts of items tracked per primal. For example "10011-10019": 9 codes, created once on FABi at the same price. Each primal being cut is given one code.' },
+  thongTinThem: { vi: 'Thông tin thêm (không bắt buộc)', en: 'More details (optional)' },
+  thongTinThemGoiY: { vi: 'Để trống được: mã tự đặt theo tên, cách đếm theo loại, báo trước hạn theo cài đặt chung.',
+                      en: 'Can be left empty: the code is made from the name, counting follows the type, the use-by warning follows the general setting.' },
   tinhTrang: { vi: 'Tình trạng', en: 'Status' },
   dangDung: { vi: 'Đang dùng', en: 'In use' },
   ngungDung: { vi: 'Ngừng dùng', en: 'No longer used' },
 });
+// Tên loại dùng chung bảng TEN_LOAI_MAT_HANG_NB (danh sách, bảng dán); dòng nhỏ dưới tên nói loại đó là gì.
+const LOAI = LOAI_MAT_HANG.map(l => ({ value: l, nhan: nhanKho(TEN_LOAI_MAT_HANG_NB, l, nn), phu: t[l] }));
 ---
-<form method="POST" class="nb-the">
+<form method="POST" class="nb-the form-mh">
   <input type="hidden" name="viec" value="luu" />
   {gt.id && <input type="hidden" name="id" value={gt.id} />}
 
-  <div class="kho-luoi">
-    <label class="nb-o"><span>{t.ten}</span>
-      <input type="text" name="ten" required maxlength="120" value={gt.ten} placeholder={t.tenVd} /></label>
-    <label class="nb-o"><span>{t.loai}</span>
-      <select name="loai">
-        <option value="phan_cat" selected={gt.loai === 'phan_cat'}>{t.loaiPhanCat}</option>
-        <option value="tang" selected={gt.loai === 'tang'}>{t.loaiTang}</option>
-        <option value="phu_pham" selected={gt.loai === 'phu_pham'}>{t.loaiPhuPham}</option>
-      </select></label>
-  </div>
+  <p class="mh-nhan">{t.loai}</p>
+  <NhanHangChon name="loai" ds={LOAI} chon={gt.loai} nhan={t.loai} batBuoc />
+  <p class="mh-chua-chon">{t.chonLoaiTruoc}</p>
 
-  <div class="kho-luoi">
-    <label class="nb-o"><span>{t.ma}</span>
-      <small>{t.maGoiY}</small>
-      <input type="text" name="ma" maxlength="30" value={gt.ma} autocapitalize="characters" spellcheck="false" placeholder="C-THANNGOAI" /></label>
-    <label class="nb-o"><span>{t.nhom}</span>
-      <small>{t.nhomGoiY}</small>
-      <input type="text" name="nhom" maxlength="40" value={gt.nhom} /></label>
-    <label class="nb-o"><span>{t.tenKhac}</span>
-      <small>{t.tenKhacGoiY}</small>
-      <input type="text" name="ten_phu" maxlength="120" value={gt.ten_phu} /></label>
-  </div>
+  <div class="mh-sau-loai">
+    <div class="kho-luoi">
+      <label class="nb-o"><span>{t.ten}</span>
+        <input type="text" name="ten" required maxlength="120" value={gt.ten} placeholder={t.tenVd} /></label>
+      <label class="nb-o"><span>{t.nhom}</span>
+        <small>{t.nhomGoiY}</small>
+        <input type="text" name="nhom" maxlength="40" value={gt.nhom} /></label>
+      <label class="nb-o"><span>{t.hanDung}</span>
+        <small>{t.hanDungGoiY}</small>
+        <input type="text" inputmode="numeric" name="han_dung_ngay" value={gt.han_dung_ngay} placeholder="3" /></label>
+    </div>
 
-  <div class="kho-luoi">
-    <label class="nb-o"><span>{t.giaBan}</span>
-      <small>{t.giaBanGoiY}</small>
-      <input type="text" inputmode="numeric" name="gia_ban_kg" value={gt.gia_ban_kg} placeholder={t.giaBanVd} /></label>
-    <label class="nb-o"><span>{t.hanDung}</span>
-      <small>{t.hanDungGoiY}</small>
-      <input type="text" inputmode="numeric" name="han_dung_ngay" value={gt.han_dung_ngay} placeholder="3" /></label>
-    <label class="nb-o"><span>{t.baoTruoc}</span>
-      <small>{t.baoTruocGoiY}</small>
-      <input type="text" inputmode="numeric" name="canh_bao_truoc_ngay" value={gt.canh_bao_truoc_ngay} /></label>
-  </div>
+    <!-- Ô riêng của từng loại: data-loai = các loại có ô đó (loaiCoO). -->
+    <div class="kho-luoi">
+      <label class="nb-o mh-rieng" data-loai={loaiCoO('theo_tang')}><span>{t.theoTang}</span>
+        <small>{t.theoTangGoiY}</small>
+        <select name="theo_tang">
+          <option value="khong" selected={!gt.theo_tang}>{t.theoTangKhong}</option>
+          <option value="co" selected={!!gt.theo_tang}>{t.theoTangCo}</option>
+        </select></label>
+      <label class="nb-o mh-rieng mh-bang-u" data-loai={loaiCoO('bang_u')}><span>{t.bangU}</span>
+        <small>{t.bangUGoiY}</small>
+        <input type="text" name="bang_u" maxlength="120" value={gt.bang_u ?? ''} placeholder="5:18, 10:14, 10" /></label>
+      <label class="nb-o mh-rieng" data-loai={loaiCoO('gia_ban_kg')}><span>{t.giaBan}</span>
+        <small>{t.giaBanGoiY}</small>
+        <input type="text" inputmode="numeric" name="gia_ban_kg" value={gt.gia_ban_kg} placeholder={t.giaBanVd} /></label>
+      <label class="nb-o mh-rieng" data-loai={loaiCoO('ma_can')}><span>{t.maCan}</span>
+        <small>{t.maCanGoiY}</small>
+        <input type="text" inputmode="numeric" name="ma_can" maxlength="6" value={gt.ma_can} /></label>
+      <label class="nb-o mh-rieng" data-loai={loaiCoO('ton_toi_thieu_kg')}><span>{t.quayMin}</span>
+        <small>{t.quayMinGoiY}</small>
+        <input type="text" inputmode="decimal" name="ton_toi_thieu_kg" value={gt.ton_toi_thieu_kg} /></label>
+      <label class="nb-o mh-rieng" data-loai={loaiCoO('muc_kho')}><span>{t.khoMin}</span>
+        <small>{t.khoMinGoiY}</small>
+        <input type="text" inputmode="decimal" name="kho_toi_thieu_kg" value={gt.kho_toi_thieu_kg} /></label>
+      <label class="nb-o mh-rieng" data-loai={loaiCoO('muc_kho')}><span>{t.khoMax}</span>
+        <small>{t.khoMaxGoiY}</small>
+        <input type="text" inputmode="decimal" name="kho_toi_da_kg" value={gt.kho_toi_da_kg} /></label>
+      <label class="nb-o mh-rieng" data-loai={loaiCoO('noi_de_sau_pha')}><span>{t.sauPha}</span>
+        <small>{t.sauPhaGoiY}</small>
+        <select name="noi_de_sau_pha">
+          <option value="" selected={gt.noi_de_sau_pha !== 'quay'}>{t.khoLanh}</option>
+          <option value="quay" selected={gt.noi_de_sau_pha === 'quay'}>{t.quay}</option>
+        </select></label>
+      <label class="nb-o mh-rieng" data-loai={loaiCoO('o_ma')}><span>{t.oMa}</span>
+        <small>{t.oMaGoiY}</small>
+        <input type="text" name="o_ma" maxlength="200" value={gt.o_ma ?? ''} placeholder="10011-10019" inputmode="numeric" /></label>
+      <label class="nb-o mh-rieng" data-loai={loaiCoO('xu_ly_mac_dinh')}><span>{t.xuLy}</span>
+        <small>{t.xuLyGoiY}</small>
+        <select name="xu_ly_mac_dinh">
+          <option value="nhap_kho" selected={gt.xu_ly_mac_dinh === 'nhap_kho'}>{t.xuLyNhapKho}</option>
+          <option value="chuyen_bep" selected={gt.xu_ly_mac_dinh === 'chuyen_bep'}>{t.xuLyBep}</option>
+          <option value="bo" selected={gt.xu_ly_mac_dinh === 'bo'}>{t.xuLyBo}</option>
+        </select></label>
+      {coXemGia && (
+        <label class="nb-o mh-rieng" data-loai={loaiCoO('gia_tri_thu_hoi_kg')}><span>{t.thuHoi}</span>
+          <small>{t.thuHoiGoiY}</small>
+          <input type="text" inputmode="numeric" name="gia_tri_thu_hoi_kg" value={gt.gia_tri_thu_hoi_kg} /></label>
+      )}
+    </div>
 
-  <div class="kho-luoi">
-    <label class="nb-o"><span>{t.maCan}</span>
-      <small>{t.maCanGoiY}</small>
-      <input type="text" inputmode="numeric" name="ma_can" maxlength="6" value={gt.ma_can} /></label>
-    <label class="nb-o"><span>{t.quayMin}</span>
-      <small>{t.quayMinGoiY}</small>
-      <input type="text" inputmode="decimal" name="ton_toi_thieu_kg" value={gt.ton_toi_thieu_kg} /></label>
-    <label class="nb-o"><span>{t.khoMin}</span>
-      <small>{t.khoMinGoiY}</small>
-      <input type="text" inputmode="decimal" name="kho_toi_thieu_kg" value={gt.kho_toi_thieu_kg} /></label>
-    <label class="nb-o"><span>{t.khoMax}</span>
-      <small>{t.khoMaxGoiY}</small>
-      <input type="text" inputmode="decimal" name="kho_toi_da_kg" value={gt.kho_toi_da_kg} /></label>
-    <label class="nb-o"><span>{t.maMisa}</span>
-      <small>{t.maMisaGoiY}</small>
-      <input type="text" name="ma_misa" maxlength="40" value={gt.ma_misa ?? ''} autocapitalize="characters" /></label>
-    <label class="nb-o"><span>{t.demTheo}</span>
-      <select name="dem_goi">
-        <option value="co" selected={gt.dem_goi}>{t.demGoi}</option>
-        <option value="khong" selected={!gt.dem_goi}>{t.demKg}</option>
-      </select></label>
-    <label class="nb-o"><span>{t.donVi}</span>
-      <input type="text" name="don_vi_goi" maxlength="20" value={gt.don_vi_goi} placeholder={t.donViVd} /></label>
-  </div>
+    <TruongThem dinhNghia={dinhNghia} giaTri={gt.truong_them} />
 
-  <div class="kho-luoi">
-    <label class="nb-o"><span>{t.xuLy}</span>
-      <small>{t.xuLyGoiY}</small>
-      <select name="xu_ly_mac_dinh">
-        <option value="nhap_kho" selected={gt.xu_ly_mac_dinh === 'nhap_kho'}>{t.xuLyNhapKho}</option>
-        <option value="chuyen_bep" selected={gt.xu_ly_mac_dinh === 'chuyen_bep'}>{t.xuLyBep}</option>
-        <option value="bo" selected={gt.xu_ly_mac_dinh === 'bo'}>{t.xuLyBo}</option>
-      </select></label>
-    <label class="nb-o"><span>{t.sauPha}</span>
-      <small>{t.sauPhaGoiY}</small>
-      <select name="noi_de_sau_pha">
-        <option value="" selected={gt.noi_de_sau_pha !== 'quay'}>{t.khoLanh}</option>
-        <option value="quay" selected={gt.noi_de_sau_pha === 'quay'}>{t.quay}</option>
-      </select></label>
-    {coXemGia && (
-      <label class="nb-o"><span>{t.thuHoi}</span>
-        <small>{t.thuHoiGoiY}</small>
-        <input type="text" inputmode="numeric" name="gia_tri_thu_hoi_kg" value={gt.gia_tri_thu_hoi_kg} /></label>
-    )}
-    <label class="nb-o"><span>{t.thuTu}</span>
-      <input type="text" inputmode="numeric" name="thu_tu" value={gt.thu_tu} /></label>
-    <label class="nb-o"><span>{t.tinhTrang}</span>
-      <select name="dang_dung">
-        <option value="co" selected={gt.dang_dung}>{t.dangDung}</option>
-        <option value="khong" selected={!gt.dang_dung}>{t.ngungDung}</option>
-      </select></label>
+    <details class="mh-them" open={moThem}>
+      <summary>{t.thongTinThem}</summary>
+      <p class="mh-goi-y">{t.thongTinThemGoiY}</p>
+      <div class="kho-luoi">
+        <label class="nb-o"><span>{t.ma}</span>
+          <small>{t.maGoiY}</small>
+          <input type="text" name="ma" maxlength="30" value={gt.ma} autocapitalize="characters" spellcheck="false" placeholder="C-THANNGOAI" /></label>
+        <label class="nb-o"><span>{t.tenKhac}</span>
+          <small>{t.tenKhacGoiY}</small>
+          <input type="text" name="ten_phu" maxlength="120" value={gt.ten_phu} /></label>
+        <label class="nb-o"><span>{t.baoTruoc}</span>
+          <small>{t.baoTruocGoiY}</small>
+          <input type="text" inputmode="numeric" name="canh_bao_truoc_ngay" value={gt.canh_bao_truoc_ngay} /></label>
+        <label class="nb-o"><span>{t.maMisa}</span>
+          <small>{t.maMisaGoiY}</small>
+          <input type="text" name="ma_misa" maxlength="40" value={gt.ma_misa ?? ''} autocapitalize="characters" /></label>
+        <label class="nb-o"><span>{t.demTheo}</span>
+          <select name="dem_goi">
+            <option value="" selected={gt.dem_goi === null}>{t.demTheoLoai}</option>
+            <option value="co" selected={gt.dem_goi === true}>{t.demGoi}</option>
+            <option value="khong" selected={gt.dem_goi === false}>{t.demKg}</option>
+          </select></label>
+        <label class="nb-o"><span>{t.donVi}</span>
+          <small>{t.donViGoiY}</small>
+          <input type="text" name="don_vi_goi" maxlength="20" value={gt.don_vi_goi} placeholder={t.donViVd} /></label>
+        <label class="nb-o"><span>{t.thuTu}</span>
+          <input type="text" inputmode="numeric" name="thu_tu" value={gt.thu_tu} /></label>
+        <label class="nb-o"><span>{t.tinhTrang}</span>
+          <select name="dang_dung">
+            <option value="co" selected={gt.dang_dung}>{t.dangDung}</option>
+            <option value="khong" selected={!gt.dang_dung}>{t.ngungDung}</option>
+          </select></label>
+      </div>
+    </details>
   </div>
-
-  <div class="kho-luoi">
-    <label class="nb-o"><span>{t.theoTang}</span>
-      <small>{t.theoTangGoiY}</small>
-      <select name="theo_tang">
-        <option value="khong" selected={!gt.theo_tang}>{t.theoTangKhong}</option>
-        <option value="co" selected={!!gt.theo_tang}>{t.theoTangCo}</option>
-      </select></label>
-    <label class="nb-o"><span>{t.bangU}</span>
-      <small>{t.bangUGoiY}</small>
-      <input type="text" name="bang_u" maxlength="120" value={gt.bang_u ?? ''} placeholder="5:18, 10:14, 10" /></label>
-    <label class="nb-o"><span>{t.oMa}</span>
-      <small>{t.oMaGoiY}</small>
-      <input type="text" name="o_ma" maxlength="200" value={gt.o_ma ?? ''} placeholder="10011-10019" inputmode="numeric" /></label>
-  </div>
-
-  <TruongThem dinhNghia={dinhNghia} giaTri={gt.truong_them} />
 
   <button type="submit" class="nb-nut" style="width:100%">{nutLuu}</button>
 </form>
+
+<style>
+  .mh-nhan { margin: 0; font-weight: 700; }
+  .mh-goi-y { margin: .25rem 0 .5rem; font-size: .85rem; color: var(--muc-nhat); }
+  .mh-them { margin: .5rem 0 1rem; border-top: 1px solid var(--kho-vach); padding-top: .75rem; }
+  /* Giữ dấu ▸ của trình duyệt (display: list-item) để thấy bấm được; dòng cao ≥ 44px cho ngón tay. */
+  .mh-them summary { cursor: pointer; font-weight: 700; padding: .65rem 0; }
+
+  /* Hỏi loại trước — xem đầu file. Mọi luật ẩn ô đều có :has() (bản build gộp chúng thành một luật):
+     trình duyệt không hiểu :has() bỏ qua cả luật, thấy đủ mọi ô như trước, và câu "Chọn loại trước"
+     không hiện (ẩn sẵn, chỉ luật có :has() mới hiện nó). */
+  .mh-chua-chon { display: none; margin: 0 0 1rem; color: var(--muc-nhat); }
+  .form-mh:not(:has(input[name="loai"]:checked)) .mh-chua-chon { display: block; }
+  .form-mh:not(:has(input[name="loai"]:checked)) .mh-sau-loai { display: none; }
+  .form-mh:has(input[name="loai"][value="tang"]:checked) .mh-rieng:not([data-loai~="tang"]) { display: none; }
+  .form-mh:has(input[name="loai"][value="phan_cat"]:checked) .mh-rieng:not([data-loai~="phan_cat"]) { display: none; }
+  .form-mh:has(input[name="loai"][value="phu_pham"]:checked) .mh-rieng:not([data-loai~="phu_pham"]) { display: none; }
+  /* Bảng ủ cần ngày mổ của từng tảng: chỉ hiện khi "Theo dõi theo tảng" là Có. */
+  .form-mh:has(select[name="theo_tang"] option[value="khong"]:checked) .mh-bang-u { display: none; }
+</style>
