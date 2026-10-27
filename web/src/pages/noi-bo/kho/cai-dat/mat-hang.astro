@@ -11,6 +11,9 @@
  * Sửa một mặt hàng: bấm "Sửa" → form hiện ở đầu trang (?sua=<id>), để trang
  * danh sách không phải chở cả trăm form.
  *
+ * Form (FormMatHang) hỏi loại trước rồi mới hiện ô của loại đó; ô ít dùng gập
+ * trong "Thông tin thêm", mở sẵn khi dựng lại sau lỗi.
+ *
  * Sửa nhiều món một lượt trong bảng: trang con mat-hang/sua-nhanh (GĐ8c, 0041).
  *
  * "Sau pha để ở" (GĐ5c, 0033): gói quét nhãn lúc pha lóc tự vào kho lạnh hay
@@ -24,7 +27,7 @@ import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.t
 import {
   docMatHang, docGiaTriThuHoi, docDinhNghia, luuMatHang, nhapCsvMatHang, taoDanhMucMau,
   xemTruocDanMatHang, chuKyDan, TEN_COT_DAN_NB,
-  type MatHang, type GiaTriFormMatHang, type XemTruocDan, type DongGhiMatHang, type CotDan,
+  demMacDinh, laLoaiMatHang, type MatHang, type GiaTriFormMatHang, type XemTruocDan, type DongGhiMatHang, type CotDan,
 } from '../../../../lib/kho/danh-muc.ts';
 import {
   boDau, cauLoiKho, dinhDangKg, dinhDangTien, kqHai, nhanKho, TEN_LOAI_MAT_HANG_NB, TEN_NOI_DE_SAU_PHA_NB,
@@ -193,9 +196,11 @@ const COT_MOI: CotDan[] = ['nhom', 'han_dung_ngay', 'gia_ban_kg', 'ma_can', 'ton
 // Số điền sẵn vào ô: "650.000" · "2,5" (tiếng Anh "650,000" · "2.5") — luuMatHang đọc được cả hai. Trống → ''.
 const oTien = (x: number | null | undefined) => (x === null || x === undefined ? '' : x.toLocaleString(nn === 'en' ? 'en-US' : 'vi-VN'));
 const oKg = (x: number | null | undefined) => (x === null || x === undefined ? '' : nn === 'en' ? String(x) : String(x).replace('.', ','));
+// Cách đếm đúng mặc định của loại → form để "Theo loại" (null / ô trống): đổi loại thì cách đếm đổi theo.
 const tuDb = (m: MatHang): GiaTriFormMatHang => ({
   id: m.id, ma: m.ma, ten: m.ten, ten_phu: m.ten_phu ?? '', nhom: m.nhom ?? '', loai: m.loai,
-  dem_goi: m.dem_goi, don_vi_goi: m.don_vi_goi,
+  dem_goi: m.dem_goi === demMacDinh(m.loai).dem_goi ? null : m.dem_goi,
+  don_vi_goi: m.don_vi_goi === demMacDinh(m.loai).don_vi_goi ? '' : m.don_vi_goi,
   han_dung_ngay: m.han_dung_ngay?.toString() ?? '', canh_bao_truoc_ngay: m.canh_bao_truoc_ngay?.toString() ?? '',
   gia_ban_kg: oTien(m.gia_ban_kg),
   xu_ly_mac_dinh: m.xu_ly_mac_dinh, ma_can: m.ma_can ?? '',
@@ -213,8 +218,10 @@ const tuForm = (f: FormData, id?: string): GiaTriFormMatHang => {
   const g = (t: string) => String(f.get(t) ?? '');
   const tt = docTruongThem(f, dinhNghia, undefined, dangSua?.truong_them ?? {}).giaTri;
   return {
-    id, ma: g('ma'), ten: g('ten'), ten_phu: g('ten_phu'), nhom: g('nhom'), loai: g('loai') || 'phan_cat',
-    dem_goi: g('dem_goi') !== 'khong', don_vi_goi: g('don_vi_goi'), han_dung_ngay: g('han_dung_ngay'),
+    id, ma: g('ma'), ten: g('ten'), ten_phu: g('ten_phu'), nhom: g('nhom'), loai: g('loai'),
+    // "Theo loại" = ô trống.
+    dem_goi: g('dem_goi') === 'khong' ? false : g('dem_goi') === 'co' ? true : null,
+    don_vi_goi: g('don_vi_goi'), han_dung_ngay: g('han_dung_ngay'),
     canh_bao_truoc_ngay: g('canh_bao_truoc_ngay'), gia_ban_kg: g('gia_ban_kg'), xu_ly_mac_dinh: g('xu_ly_mac_dinh'),
     ma_can: g('ma_can'), ton_toi_thieu_kg: g('ton_toi_thieu_kg'), noi_de_sau_pha: g('noi_de_sau_pha') === 'quay' ? 'quay' : '',
     kho_toi_thieu_kg: g('kho_toi_thieu_kg'), kho_toi_da_kg: g('kho_toi_da_kg'), ma_misa: g('ma_misa'),
@@ -223,8 +230,9 @@ const tuForm = (f: FormData, id?: string): GiaTriFormMatHang => {
     dang_dung: g('dang_dung') !== 'khong', truong_them: tt, gia_tri_thu_hoi_kg: g('gia_tri_thu_hoi_kg'),
   };
 };
+// Form thêm mới chưa chọn loại (chỉ hiện ba thẻ loại) — trừ khi danh sách đang lọc theo một loại.
 const TRONG: GiaTriFormMatHang = {
-  ma: '', ten: '', ten_phu: '', nhom: '', loai: locLoai || 'phan_cat', dem_goi: true, don_vi_goi: '',
+  ma: '', ten: '', ten_phu: '', nhom: '', loai: laLoaiMatHang(locLoai) ? locLoai : '', dem_goi: null, don_vi_goi: '',
   han_dung_ngay: '', canh_bao_truoc_ngay: '', gia_ban_kg: '', xu_ly_mac_dinh: 'nhap_kho', ma_can: '',
   ton_toi_thieu_kg: '', noi_de_sau_pha: '', kho_toi_thieu_kg: '', kho_toi_da_kg: '', thu_tu: '', dang_dung: true, truong_them: {}, gia_tri_thu_hoi_kg: '',
 };
@@ -329,7 +337,7 @@ const coXemGia = k.duoc('xem_gia');
   {gtSua && (
     <>
       <h2>{t.sua}{dangSua!.ten}</h2>
-      <FormMatHang gt={gtSua} dinhNghia={dinhNghia} coXemGia={coXemGia} nutLuu={t.luuThayDoi} />
+      <FormMatHang gt={gtSua} dinhNghia={dinhNghia} coXemGia={coXemGia} nutLuu={t.luuThayDoi} moThem={!!(nhapLai && idLoi)} />
       <p><a href="/noi-bo/kho/cai-dat/mat-hang">{t.dongKhongSua}</a></p>
     </>
   )}
@@ -345,7 +353,7 @@ const coXemGia = k.duoc('xem_gia');
   <details class="nb-the" open={!gtSua && (matHang.length === 0 || (!!nhapLai && !idLoi))}>
     <summary style="cursor:pointer;font-weight:700">{t.themMot}</summary>
     <div style="margin-top:1rem">
-      <FormMatHang gt={gtMoi} dinhNghia={dinhNghia} coXemGia={coXemGia} nutLuu={t.themMatHang} />
+      <FormMatHang gt={gtMoi} dinhNghia={dinhNghia} coXemGia={coXemGia} nutLuu={t.themMatHang} moThem={!!(nhapLai && !idLoi)} />
     </div>
   </details>
 

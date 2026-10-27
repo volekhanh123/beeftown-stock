@@ -35,7 +35,7 @@ export interface MatHang {
   ten: string;
   ten_phu: string | null;
   nhom: string | null;
-  loai: 'tang' | 'phan_cat' | 'phu_pham';
+  loai: LoaiMatHang;
   dem_goi: boolean;
   don_vi_goi: string;
   han_dung_ngay: number | null;
@@ -124,11 +124,54 @@ export interface CongThuc {
   dong: { id: string; mat_hang_ra_id: string; ty_le_du_kien: number | null; xu_ly: string | null; thu_tu: number }[];
 }
 
+// -----------------------------------------------------------------------------
+// Ô RIÊNG CỦA TỪNG LOẠI MẶT HÀNG
+// -----------------------------------------------------------------------------
+// Form mặt hàng hỏi loại trước, rồi chỉ hiện ô của loại đó (FormMatHang.astro, CSS :has()).
+// Ô chung (tên, nhóm, hạn dùng) và mục gập "Thông tin thêm" không nằm trong bảng này.
+// Ô của loại khác vẫn ở trong form (ẩn) và vẫn được gửi — kể cả số người dùng gõ rồi mới
+// đổi loại — nên luuMatHang BỎ QUA chúng: giữ giá trị cũ khi sửa, mặc định khi thêm mới.
+export const LOAI_MAT_HANG = ['tang', 'phan_cat', 'phu_pham'] as const;
+export type LoaiMatHang = typeof LOAI_MAT_HANG[number];
+
+export type ORiengLoai =
+  | 'theo_tang' | 'bang_u' | 'muc_kho'
+  | 'gia_ban_kg' | 'ma_can' | 'ton_toi_thieu_kg' | 'noi_de_sau_pha' | 'o_ma'
+  | 'gia_tri_thu_hoi_kg' | 'xu_ly_mac_dinh';
+
+/** Ô riêng của từng loại. 'muc_kho' = hai ô kho lạnh tối thiểu / tối đa (gợi ý đặt hàng). */
+export const O_THEO_LOAI: Record<LoaiMatHang, readonly ORiengLoai[]> = {
+  tang:     ['theo_tang', 'bang_u', 'muc_kho'],
+  phan_cat: ['gia_ban_kg', 'ma_can', 'ton_toi_thieu_kg', 'muc_kho', 'noi_de_sau_pha', 'o_ma'],
+  phu_pham: ['gia_tri_thu_hoi_kg', 'xu_ly_mac_dinh'],
+};
+
+export const laLoaiMatHang = (x: string): x is LoaiMatHang => (LOAI_MAT_HANG as readonly string[]).includes(x);
+
+/** Ô `o` có thuộc loại `loai` không. Loại lạ → không ô riêng nào. */
+export const oCuaLoai = (loai: string, o: ORiengLoai): boolean => laLoaiMatHang(loai) && O_THEO_LOAI[loai].includes(o);
+
+/** Các loại có ô `o`, cách nhau dấu cách — giá trị thuộc tính data-loai của FormMatHang. */
+export const loaiCoO = (o: ORiengLoai): string => LOAI_MAT_HANG.filter(l => O_THEO_LOAI[l].includes(o)).join(' ');
+
+/**
+ * Cách đếm mặc định theo loại: tảng đếm từng tảng, phần cắt đếm gói, phụ phẩm chỉ cân (đổ chung khay).
+ * Dùng khi thêm mặt hàng mà ô "Đếm theo" để "Theo loại" và khi dán Excel.
+ */
+export function demMacDinh(loai: string): { dem_goi: boolean; don_vi_goi: string } {
+  if (loai === 'tang') return { dem_goi: true, don_vi_goi: 'tảng' };
+  if (loai === 'phu_pham') return { dem_goi: false, don_vi_goi: 'khay' };
+  return { dem_goi: true, don_vi_goi: 'gói' };
+}
+
 /** Giá trị điền sẵn vào form mặt hàng: từ database khi sửa, hoặc chữ vừa gõ khi báo lỗi. */
 export interface GiaTriFormMatHang {
   id?: string;
+  /** loai '' = chưa chọn (form mới): form chỉ hiện ô chọn loại. */
   ma: string; ten: string; ten_phu: string; nhom: string; loai: string;
-  dem_goi: boolean; don_vi_goi: string; han_dung_ngay: string; canh_bao_truoc_ngay: string;
+  /** null = "Theo loại" (chỉ form thêm mới): luuMatHang dùng demMacDinh(loai). */
+  dem_goi: boolean | null;
+  don_vi_goi: string; han_dung_ngay: string; canh_bao_truoc_ngay: string;
   gia_ban_kg: string; xu_ly_mac_dinh: string; ma_can: string; ton_toi_thieu_kg: string;
   /** '' = kho lạnh (mặc định), 'quay' = quầy. */
   noi_de_sau_pha: string;
@@ -269,13 +312,30 @@ export async function luuMatHang(
                           en: 'The code can only contain unaccented letters, digits and dashes (up to 30 characters), for example C-THANNGOAI.' });
   }
   const loai = s(form, 'loai');
-  if (!['tang', 'phan_cat', 'phu_pham'].includes(loai)) return kqHai(false, { vi: 'Chưa chọn loại mặt hàng.', en: 'Choose the item type.' });
+  if (!laLoaiMatHang(loai)) return kqHai(false, { vi: 'Chưa chọn loại mặt hàng.', en: 'Choose the item type.' });
+  // Ô của loại khác (ẩn trên form, vẫn gửi lên): bỏ qua chữ gửi lên — xem O_THEO_LOAI.
+  //   · thêm mới: mặc định;
+  //   · sửa, cùng loại: giữ giá trị cũ (món cũ có thể còn số từ form trước; sửa ở trang Sửa nhanh);
+  //   · sửa, ĐỔI loại: bỏ — ô của loại cũ không còn nghĩa, và form không còn ô để xóa (vd phụ phẩm
+  //     còn mã cân thì vẫn bị gửi xuống cân, vẫn giữ chỗ mã cân đó). Câu báo kể ra các ô đã bỏ.
+  const coO = (o: ORiengLoai) => oCuaLoai(loai, o);
+  const doiLoai = !!cu && cu.loai !== loai;
+  const oCu = <T,>(x: T | null | undefined): T | null => (doiLoai ? null : (x ?? null));
+  const daBo: HaiThuTieng[] = [];
+  const ghiBo = (o: ORiengLoai, coGiaTri: boolean, ten: HaiThuTieng) => { if (doiLoai && !coO(o) && coGiaTri) daBo.push(ten); };
+  ghiBo('ma_can', !!cu?.ma_can, { vi: `mã cân ${cu?.ma_can}`, en: `scale code ${cu?.ma_can}` });
+  ghiBo('gia_ban_kg', cu?.gia_ban_kg != null, { vi: 'giá bán/kg', en: 'sale price/kg' });
+  ghiBo('ton_toi_thieu_kg', cu?.ton_toi_thieu_kg != null, { vi: 'quầy tối thiểu', en: 'counter minimum' });
+  ghiBo('muc_kho', cu?.kho_toi_thieu_kg != null || cu?.kho_toi_da_kg != null, { vi: 'mức kho lạnh', en: 'cold store levels' });
+  ghiBo('noi_de_sau_pha', cu?.noi_de_sau_pha === 'quay', { vi: 'sau pha để ở quầy', en: 'after butchery to the counter' });
+  ghiBo('xu_ly_mac_dinh', !!cu && cu.xu_ly_mac_dinh !== 'nhap_kho', { vi: 'xử lý sau pha', en: 'default butchery handling' });
+  ghiBo('theo_tang', !!cu?.theo_tang, { vi: 'theo dõi theo tảng', en: 'per-primal tracking' });
 
   const han = docSoNguyen(form.get('han_dung_ngay'), 1, 3650);
   const canhBao = docSoNguyen(form.get('canh_bao_truoc_ngay'), 0, 365);
-  const gia = docTien(form.get('gia_ban_kg'));
-  const tonMin = docKg(form.get('ton_toi_thieu_kg'));
-  const maCan = s(form, 'ma_can').replace(/^0+/, '');
+  const gia = coO('gia_ban_kg') ? docTien(form.get('gia_ban_kg')) : oCu(cu?.gia_ban_kg);
+  const tonMin = coO('ton_toi_thieu_kg') ? docKg(form.get('ton_toi_thieu_kg')) : oCu(cu?.ton_toi_thieu_kg);
+  const maCan = coO('ma_can') ? s(form, 'ma_can').replace(/^0+/, '') : (oCu(cu?.ma_can) ?? '');
   if (Number.isNaN(han)) return kqHai(false, { vi: 'Hạn dùng là số ngày, từ 1 đến 3650.', en: 'Use-by is a number of days, from 1 to 3650.' });
   if (Number.isNaN(canhBao)) return kqHai(false, { vi: 'Số ngày cảnh báo từ 0 đến 365.', en: 'Warning days must be from 0 to 365.' });
   if (Number.isNaN(gia)) return kqHai(false, { vi: 'Giá bán/kg phải là số đồng, ví dụ 650.000.', en: 'The sale price/kg must be an amount in VND, for example 650,000.' });
@@ -284,10 +344,12 @@ export async function luuMatHang(
     return kqHai(false, { vi: 'Mã cân là dãy số (tối đa 6 số), đúng như mã hàng cài trên cân.',
                           en: 'The scale code is a number of up to 6 digits, exactly as set up on the scale.' });
   }
-  // Mức kho lạnh (0039) — chỉ khi form có hai ô này. Ghi qua kho_luu_muc_dat_hang sau khi lưu mặt hàng.
-  const coMucKho = form.has('kho_toi_da_kg') || form.has('kho_toi_thieu_kg');
-  const khoMin = docKg(form.get('kho_toi_thieu_kg'));
-  const khoMax = docKg(form.get('kho_toi_da_kg'));
+  // Mức kho lạnh (0039) — chỉ khi form có hai ô này và loại có ô này; đổi sang loại không có ô này thì
+  // xóa mức cũ (null). Ghi qua kho_luu_muc_dat_hang sau khi lưu mặt hàng.
+  const coMucKho = (coO('muc_kho') && (form.has('kho_toi_da_kg') || form.has('kho_toi_thieu_kg')))
+    || (doiLoai && !coO('muc_kho'));
+  const khoMin = coMucKho && coO('muc_kho') ? docKg(form.get('kho_toi_thieu_kg')) : null;
+  const khoMax = coMucKho && coO('muc_kho') ? docKg(form.get('kho_toi_da_kg')) : null;
   if (Number.isNaN(khoMin) || Number.isNaN(khoMax)) {
     return kqHai(false, { vi: 'Mức kho lạnh là số kg, ví dụ 20 hoặc 12,5.', en: 'Cold store levels are numbers of kg, for example 20 or 12.5.' });
   }
@@ -308,14 +370,31 @@ export async function luuMatHang(
   if (maMisa === undefined) return kqHai(false, CAU.maMisa);
 
   // Theo dõi theo tảng + bảng ủ (0048) — chỉ khi form có hai ô này. Đọc bảng ủ TRƯỚC khi ghi gì.
+  // Món không phải tảng thì luôn tắt (ràng buộc của 0048), kể cả khi ô ẩn còn gửi "co". Bảng ủ chỉ
+  // hiện khi theo dõi theo tảng là Có — tắt thì bỏ qua ô (giữ bảng cũ), không báo lỗi ô người dùng không thấy.
   const theoTang = form.has('theo_tang') ? loai === 'tang' && form.get('theo_tang') === 'co' : undefined;
-  const bangU = form.has('bang_u') ? docChuBangU(String(form.get('bang_u') ?? '')) : null;
+  const bangU = form.has('bang_u') && coO('bang_u') && theoTang !== false ? docChuBangU(String(form.get('bang_u') ?? '')) : null;
   if (bangU?.loi) return kqHai(false, bangU.loi);
-  // Ô mã (0049) — chỉ phần cắt; đọc TRƯỚC khi ghi gì.
-  const oMa = form.has('o_ma') ? docChuOMa(String(form.get('o_ma') ?? '')) : null;
+  // Ô mã (0049) — chỉ phần cắt; đọc TRƯỚC khi ghi gì. Không bỏ qua như các ô riêng khác: món đổi từ
+  // phần cắt sang loại khác mà còn ô mã thì báo, không lặng lẽ để ô mã treo trên món không bán ở quầy.
+  // Kiểm loại trước khi đọc chữ: ô đang ẩn thì báo cách làm, không báo lỗi định dạng của ô không thấy.
+  const chuOMa = form.has('o_ma') ? String(form.get('o_ma') ?? '') : null;
+  if (chuOMa?.trim() && loai !== 'phan_cat') {
+    return kqHai(false, {
+      vi: 'Ô mã chỉ dành cho phần cắt. Muốn đổi loại thì chọn lại Phần cắt, xóa hết ô mã, lưu, rồi mới đổi loại.',
+      en: 'Rotating codes are only for cuts. To change the type, choose Cut again, clear the rotating codes, save, then change the type.',
+    });
+  }
+  const oMa = chuOMa !== null ? docChuOMa(chuOMa) : null;
   if (oMa?.loi) return kqHai(false, oMa.loi);
-  if (oMa && oMa.ma.length && loai !== 'phan_cat') {
-    return kqHai(false, { vi: 'Ô mã chỉ dành cho phần cắt.', en: 'Rotating codes are only for cuts.' });
+
+  // Giá trị thu hồi (phụ phẩm) — đọc TRƯỚC khi ghi gì: chữ sai mà đã thêm mặt hàng thì gửi lại form
+  // thêm mới sẽ vấp trùng mã.
+  const coThuHoi = form.has('gia_tri_thu_hoi_kg') && coO('gia_tri_thu_hoi_kg');
+  const thuHoi = coThuHoi ? docTien(form.get('gia_tri_thu_hoi_kg')) : null;
+  if (Number.isNaN(thuHoi)) {
+    return kqHai(false, { vi: 'Giá trị thu hồi/kg phải là số đồng, ví dụ 30.000.',
+                          en: 'The recovery value/kg must be an amount in VND, for example 30,000.' });
   }
 
   const thuTu = docSoNguyen(form.get('thu_tu'), 0, 99999);
@@ -325,17 +404,21 @@ export async function luuMatHang(
     ma, ten, loai,
     ten_phu: sHoacNull(form, 'ten_phu'),
     nhom: sHoacNull(form, 'nhom'),
-    dem_goi: form.get('dem_goi') !== 'khong',
-    don_vi_goi: s(form, 'don_vi_goi') || (loai === 'tang' ? 'tảng' : 'gói'),
+    // "Đếm theo" để "Theo loại" (ô trống) và đơn vị trống: theo loại đang chọn — tảng → tảng, phần cắt → gói,
+    // phụ phẩm → chỉ kg, khay. Form sửa để "Theo loại" khi món đang đếm đúng mặc định loại của nó, nên đổi
+    // loại thì cách đếm đổi theo; món đã chọn cách đếm riêng thì giữ.
+    dem_goi: s(form, 'dem_goi') === 'khong' ? false : s(form, 'dem_goi') === 'co' ? true : demMacDinh(loai).dem_goi,
+    don_vi_goi: s(form, 'don_vi_goi') || demMacDinh(loai).don_vi_goi,
     han_dung_ngay: han,
     canh_bao_truoc_ngay: canhBao,
     gia_ban_kg: gia,
-    xu_ly_mac_dinh: ['nhap_kho', 'chuyen_bep', 'bo'].includes(s(form, 'xu_ly_mac_dinh'))
-      ? s(form, 'xu_ly_mac_dinh') : 'nhap_kho',
+    xu_ly_mac_dinh: !coO('xu_ly_mac_dinh') ? (oCu(cu?.xu_ly_mac_dinh) ?? 'nhap_kho')
+      : ['nhap_kho', 'chuyen_bep', 'bo'].includes(s(form, 'xu_ly_mac_dinh')) ? s(form, 'xu_ly_mac_dinh') : 'nhap_kho',
     ma_can: maCan || null,
     ton_toi_thieu_kg: tonMin,
     // Sau pha để ở: chỉ 'quay' là khác mặc định; còn lại (kể cả chữ lạ) = kho lạnh.
-    noi_de_sau_pha: s(form, 'noi_de_sau_pha') === 'quay' ? 'quay' : s(form, 'noi_de_sau_pha') === 'kho' ? 'kho' : null,
+    noi_de_sau_pha: !coO('noi_de_sau_pha') ? oCu(cu?.noi_de_sau_pha)
+      : s(form, 'noi_de_sau_pha') === 'quay' ? 'quay' : s(form, 'noi_de_sau_pha') === 'kho' ? 'kho' : null,
     truong_them: giaTri,
     thu_tu: thuTu === null || Number.isNaN(thuTu) ? (cu?.thu_tu ?? 0) : thuTu,
     dang_dung: form.get('dang_dung') !== 'khong',
@@ -381,13 +464,8 @@ export async function luuMatHang(
     }
   }
 
-  // Giá trị thu hồi phụ phẩm nằm ở bảng riêng (số liệu giá vốn).
-  if (form.has('gia_tri_thu_hoi_kg') && id) {
-    const thuHoi = docTien(form.get('gia_tri_thu_hoi_kg'));
-    if (Number.isNaN(thuHoi)) {
-      return kqHai(false, { vi: 'Đã lưu mặt hàng, nhưng giá trị thu hồi phải là số đồng.',
-                            en: 'The item was saved, but the recovery value must be an amount in VND.' });
-    }
+  // Giá trị thu hồi phụ phẩm nằm ở bảng riêng (số liệu giá vốn). Đã đọc và kiểm ở trên.
+  if (coThuHoi && id) {
     const { error } = await client.from('kho_mat_hang_gia')
       .upsert({ mat_hang_id: id, gia_tri_thu_hoi_kg: thuHoi }, { onConflict: 'mat_hang_id' });
     if (error) {
@@ -397,9 +475,14 @@ export async function luuMatHang(
     }
   }
 
-  return kqHai(true, cu
-    ? { vi: `Đã lưu "${ten}".`, en: `Saved "${ten}".` }
-    : { vi: `Đã thêm "${ten}" (mã ${ma}).`, en: `Added "${ten}" (code ${ma}).` });
+  if (!cu) return kqHai(true, { vi: `Đã thêm "${ten}" (mã ${ma}).`, en: `Added "${ten}" (code ${ma}).` });
+  if (daBo.length) {
+    return kqHai(true, {
+      vi: `Đã lưu "${ten}". Đổi loại nên đã bỏ ô của loại cũ: ${daBo.map(x => x.vi).join(', ')}.`,
+      en: `Saved "${ten}". The type changed, so the old type's fields were cleared: ${daBo.map(x => x.en).join(', ')}.`,
+    });
+  }
+  return kqHai(true, { vi: `Đã lưu "${ten}".`, en: `Saved "${ten}".` });
 }
 
 // -----------------------------------------------------------------------------
@@ -782,8 +865,7 @@ export function xemTruocDanMatHang(daCo: MatHangDaCo[], noiDung: string): XemTru
       gia_ban_kg: d.gia_ban_kg ?? null,
       ma_can: d.ma_can ?? null,
       ton_toi_thieu_kg: d.ton_toi_thieu_kg ?? null,
-      dem_goi: loai !== 'phu_pham',
-      don_vi_goi: loai === 'tang' ? 'tảng' : loai === 'phu_pham' ? 'khay' : 'gói',
+      ...demMacDinh(loai),
       noi_de_sau_pha: d.noi_de_sau_pha ?? null,
     });
   }
@@ -1172,7 +1254,7 @@ export async function luuCaiDatGoc(client: SupabaseClient, form: FormData, chiNh
 
 /** Danh sách mặt hàng gom theo loại, để dựng ô chọn có nhóm. nn: ngôn ngữ của tên loại. */
 export function nhomTheoLoai(ds: MatHang[], nn: NgonNguNB = 'vi'): { loai: string; ten: string; hang: MatHang[] }[] {
-  return (['tang', 'phan_cat', 'phu_pham'] as const)
+  return LOAI_MAT_HANG
     .map(loai => ({ loai, ten: TEN_LOAI_MAT_HANG_NB[loai][nn], hang: ds.filter(m => m.loai === loai) }))
     .filter(n => n.hang.length > 0);
 }
