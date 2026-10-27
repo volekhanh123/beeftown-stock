@@ -56,6 +56,8 @@ export const SO_GOI_TOI_DA = 20;
 export const SO_CO_GOI_TOI_DA = 30;
 /** Số ô "Cỡ mới" trên trang Cài đặt bán lẻ (docFormCoGoi đọc đúng chừng này ô). */
 export const SO_DONG_CO_GOI_MOI = 3;
+/** Số ô "Cỡ khác (gam)" trên form Thêm sản phẩm — gõ thẳng số gam ngoài các cỡ có sẵn (coGoiChon đọc đúng chừng này ô). */
+export const SO_O_GOI_KHAC = 3;
 /** Việc của một cỡ đang có trên trang Cài đặt: Đang dùng / Tạm tắt / Bỏ khỏi danh sách. */
 export const VIEC_CO_GOI = ['dung', 'tat', 'bo'] as const;
 /** Số dòng đang có (so_dong_cg) đọc tối đa từ form — rộng hơn SO_CO_GOI_TOI_DA để form hỏng vẫn được nhận ra. */
@@ -945,14 +947,18 @@ export function coMoiDaGo(daGo: FormData | null, j: number, caiDat: CaiDatBanLe 
 }
 
 /**
- * Cỡ gói chọn ở form Thêm sản phẩm. null = không gửi p_so_gam (database dùng các cỡ đang dùng của cài đặt; kim
- * chi bỏ qua). Chỉ thịt bán theo cân có danh sách co_goi_ds (ẩn: các cỡ đã hiện trên form, nối dấu phẩy, có thể
- * rỗng) mới gửi: đúng các cỡ chọn "Bán" (goi_N = ban) — kể cả mảng rỗng, kể cả cỡ vừa bị tắt sau khi mở form
- * (người dùng đã chọn rõ). Cỡ không phải số nguyên 50–5000 trong co_goi_ds → bỏ qua.
+ * Cỡ gói chọn ở form Thêm sản phẩm. soGam null = không gửi p_so_gam (database dùng các cỡ đang dùng của cài đặt;
+ * kim chi bỏ qua). Chỉ thịt bán theo cân có danh sách co_goi_ds (ẩn: các cỡ đã hiện trên form, nối dấu phẩy, có
+ * thể rỗng) mới gửi: các cỡ chọn "Bán" (goi_N = ban) — kể cả mảng rỗng, kể cả cỡ vừa bị tắt sau khi mở form
+ * (người dùng đã chọn rõ) — cộng số gam gõ ở ô "Cỡ khác" goi_khac_0 … goi_khac_2 (gõ trùng cỡ có sẵn thì vẫn một
+ * gói, kể cả cỡ đang chọn "Không bán": gõ là muốn bán). Ô gõ đọc bằng docSoNguyen: "1.000" là một nghìn, trống
+ * bỏ qua, "1,5" / "300g" / ngoài 50–5000 → loi coGoiSai, không gửi gì; quá SO_GOI_TOI_DA cỡ → quaNhieuGoi. Cỡ lạ trong co_goi_ds (form sửa tay) → bỏ qua.
  */
-function coGoiChon(form: FormData, loai: string, cachBan: string): number[] | null {
+function coGoiChon(
+  form: FormData, loai: string, cachBan: string,
+): { soGam: number[] | null; loi: 'coGoiSai' | 'quaNhieuGoi' | null } {
   const ds = form.get('co_goi_ds');
-  if (loai !== 'thit' || cachBan !== 'theo_can' || ds === null) return null;
+  if (loai !== 'thit' || cachBan !== 'theo_can' || ds === null) return { soGam: null, loi: null };
   const chon = new Set<number>();
   for (const x of String(ds).split(',')) {
     const s = x.trim();
@@ -961,7 +967,14 @@ function coGoiChon(form: FormData, loai: string, cachBan: string): number[] | nu
     if (n < 50 || n > 5000) continue;
     if (String(form.get(`goi_${s}`) ?? '') === 'ban') chon.add(n);
   }
-  return [...chon].sort((a, b) => a - b);
+  for (let j = 0; j < SO_O_GOI_KHAC; j++) {
+    const n = docSoNguyen(form.get(`goi_khac_${j}`), 50, 5000);
+    if (n === null) continue;
+    if (Number.isNaN(n)) return { soGam: null, loi: 'coGoiSai' };
+    chon.add(n);
+  }
+  if (chon.size > SO_GOI_TOI_DA) return { soGam: null, loi: 'quaNhieuGoi' };
+  return { soGam: [...chon].sort((a, b) => a - b), loi: null };
 }
 
 // -----------------------------------------------------------------------------
@@ -969,7 +982,7 @@ function coGoiChon(form: FormData, loai: string, cachBan: string): number[] | nu
 // -----------------------------------------------------------------------------
 /**
  * Thêm sản phẩm. Cùng ma_gui (bấm đúp, F5) → database trả sản phẩm đã có, không tạo thêm — gói theo lần đầu, dù
- * lần này chọn cỡ khác. Gói tạo sẵn: coGoiChon().
+ * lần này chọn cỡ khác. Gói tạo sẵn: coGoiChon() — ô gõ gram sai thì trả câu lỗi, không gọi database.
  */
 export async function taoSanPham(
   client: SupabaseClient, form: FormData, nn: NgonNguNB = 'vi',
@@ -984,7 +997,8 @@ export async function taoSanPham(
   // Mã gõ tay (trong ô "Mã") cũng đi qua maTuTen: chữ hoa, dấu, khoảng trắng thành mã hợp lệ.
   const ma = maTuTen(chuCua(form, 'ma') ?? ten);
   if (!ma) return { ok: false, cau: t.maSai };
-  const soGam = coGoiChon(form, loai, cachBan);
+  const { soGam, loi } = coGoiChon(form, loai, cachBan);
+  if (loi) return { ok: false, cau: t[loi] };
 
   // Không có danh sách cỡ (kim chi, form cũ) thì KHÔNG gửi p_so_gam: database dùng các cỡ đang dùng của cài đặt.
   const { data, error } = await chacChan(() => client.rpc('ban_le_tao_san_pham', {
