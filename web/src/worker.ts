@@ -2,18 +2,18 @@
  * LỐI VÀO WORKER — web + nhận hóa đơn iPOS + Cron Trigger (GĐ7a, GĐ7c)
  *
  * `fetch`:
- *   · /hook/ipos/<khóa> → xuLyHookIpos (lib/kho/ipos-hook.ts) — iPOS Hub POST
- *     hóa đơn sang. Chặn TRƯỚC Astro vì chốt chống CSRF của Astro
- *     (security.checkOrigin) trả 403 cho POST "text/plain" không có Origin —
- *     đúng kiểu Hub có thể gửi. Hook không dùng cookie.
+ *   · /hook/ipos/<khóa> → xuLyHookIpos (lib/kho/ipos-hook.ts) — iPOS POST từng
+ *     hóa đơn sang (webhook iPOS DW). Chặn TRƯỚC Astro vì chốt chống CSRF của
+ *     Astro (security.checkOrigin) trả 403 cho POST không có Origin mà
+ *     content-type kiểu form. Hook không dùng cookie.
  *   · /hook/messenger → xuLyHookMessenger (lib/messenger-hook.ts) — webhook Meta
  *     của bot Messenger đặt bàn (GET xác minh, POST sự kiện có chữ ký). Cũng
  *     chặn trước Astro: Meta không gửi Origin, hook không dùng cookie. Truyền
  *     ctx để hook trả 200 ngay và xử lý tin trong ctx.waitUntil.
  *   · mọi đường dẫn khác: đúng handler mặc định của @astrojs/cloudflare.
  * `scheduled`: Cron Trigger khai ở wrangler.toml `[triggers] crons` — mỗi 5 phút
- * chạy `dongBoTatCa` (lib/kho/ipos-dong-bo.ts): thử lại hàng chờ + đọc thực đơn
- * iPOS khi tới hạn. Thiếu bí mật thì chỉ ghi một dòng log; web không bị ảnh hưởng.
+ * chạy `dongBoTatCa` (lib/kho/ipos-dong-bo.ts): kéo bù hóa đơn iPOS vừa cập nhật +
+ * thử lại hàng chờ. Thiếu bí mật thì chỉ ghi một dòng log; web không bị ảnh hưởng.
  * Cùng cron đó chạy SONG SONG `guiZaloTatCa` (lib/zalo-gui.ts): gửi tin Zalo ZBS
  * đến hạn. Hai việc là hai lời waitUntil riêng — cả hai không bao giờ ném lỗi,
  * và việc này hỏng / chậm không chặn việc kia.

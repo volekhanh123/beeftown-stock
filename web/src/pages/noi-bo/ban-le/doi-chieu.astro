@@ -2,7 +2,8 @@
 /**
  * ĐỐI CHIẾU FABi — việc phải làm trên máy thu ngân để khớp với menu bán lẻ (một chi nhánh)
  *
- * FABi (iPOS) sửa TAY: API iPOS chỉ đọc được thực đơn, không tạo hay sửa món được. Trang chỉ đọc
+ * FABi (iPOS) sửa TAY: API iPOS không tạo hay sửa món được; API iPOS DW đang dùng (27/10/2026) cũng
+ * không đọc được thực đơn — kho_ipos_menu không còn được làm mới, dòng cần thực đơn ghi "chưa rõ". Trang chỉ đọc
  * ban_le_doi_chieu() (0099): mã cân, ô mã, mã giảm của mặt hàng bán theo cân; mỗi gói, hộp đang bán; mã
  * FABi còn bán mà menu không có. Không có POST — nên không nằm trong danh sách TRANG của
  * test-noi-bo-gui-lai.mjs.
@@ -31,15 +32,15 @@ if (!(VAI_XEM_BAN_LE as readonly string[]).includes(nhanSu.vai_tro)) return Astr
 const t = dichNB(nn, {
   tieuDe:    { vi: 'Đối chiếu FABi', en: 'FABi check' },
   lui:       { vi: '← Menu bán lẻ', en: '← Retail menu' },
-  dan:       { vi: 'Việc phải làm trên FABi (máy thu ngân) để khớp với menu bán lẻ của chi nhánh này. FABi sửa tay: API iPOS chỉ đọc được thực đơn.',
-               en: 'What to do in FABi (the till) so it matches the retail menu for this branch. FABi is updated by hand: the iPOS API can only read the menu.' },
+  dan:       { vi: 'Việc phải làm trên FABi (máy thu ngân) để khớp với menu bán lẻ của chi nhánh này. FABi sửa tay: API iPOS không tạo hay sửa được món.',
+               en: 'What to do in FABi (the till) so it matches the retail menu for this branch. FABi is updated by hand: the iPOS API cannot create or edit items.' },
   chiSua:    { vi: 'Chỉ chủ và quản lý xem được đối chiếu FABi.', en: 'Only the owner and managers can see the FABi check.' },
   chiNhanh:  { vi: 'Chi nhánh', en: 'Branch' },
   khongCN:   { vi: 'Chưa có chi nhánh nào đang hoạt động.', en: 'No branch is active.' },
-  menuLuc:   { vi: (luc: string) => `Thực đơn FABi đọc lần cuối ${luc} — đối chiếu có thể cũ. Bấm Cập nhật ngay ở`,
-               en: (luc: string) => `The FABi menu was last read at ${luc} — this check may be out of date. Press Update now in` },
-  menuChua:  { vi: 'Thực đơn FABi chưa đọc được — cần nối iPOS — đối chiếu có thể cũ. Bấm Cập nhật ngay ở',
-               en: 'The FABi menu has not been read yet — iPOS needs to be connected — this check may be out of date. Press Update now in' },
+  menuLuc:   { vi: (luc: string) => `Thực đơn FABi đọc lần cuối ${luc} — API iPOS DW đang dùng không đọc lại được, đối chiếu có thể cũ: kiểm tay trên FABi. Kết nối iPOS ở`,
+               en: (luc: string) => `The FABi menu was last read at ${luc} — the iPOS DW API in use cannot read it again, so this check may be out of date: check by hand in FABi. iPOS connection is in` },
+  menuChua:  { vi: 'Chưa có thực đơn FABi — API iPOS DW đang dùng không đọc được thực đơn: dòng "chưa rõ" thì kiểm tay trên FABi. Kết nối iPOS ở',
+               en: 'There is no FABi menu — the iPOS DW API in use cannot read the menu: check the "unknown" rows by hand in FABi. iPOS connection is in' },
   caiDatIpos:{ vi: 'Kho → Cài đặt → iPOS', en: 'Stock → Settings → iPOS' },
   dongBoTat: { vi: 'Đồng bộ iPOS đang tắt.', en: 'iPOS sync is off.' },
   vuaDoi:    { vi: 'iPOS báo thực đơn vừa đổi, chưa đọc lại.', en: 'iPOS reported a menu change that has not been read yet.' },
@@ -69,8 +70,8 @@ const t = dichNB(nn, {
   nhanLam:   { vi: 'Cần làm', en: 'To do' },
   moGhep:    { vi: 'Mở Ghép món', en: 'Open Match dishes' },
   viSao:     { vi: 'Vì sao FABi phải sửa tay', en: 'Why FABi is updated by hand' },
-  viSao1:    { vi: 'API của iPOS chỉ có đường đọc thực đơn, không có đường tạo hay sửa món. Kho đọc thực đơn FABi theo lịch và khi iPOS báo thực đơn đổi, rồi trang này so với menu bán lẻ.',
-               en: 'The iPOS API can only read the menu; it cannot create or edit items. Stock reads the FABi menu on a schedule and when iPOS reports a change, then this page compares it with the retail menu.' },
+  viSao1:    { vi: 'API của iPOS không có đường tạo hay sửa món. API iPOS DW đang dùng chỉ gửi và kéo hóa đơn bán, không đọc được thực đơn — trang này so với menu bán lẻ khi đã có thực đơn FABi, không có thì ghi "chưa rõ".',
+               en: 'The iPOS API has no way to create or edit items. The iPOS DW API in use only sends and fetches sales invoices and cannot read the menu — this page compares against the retail menu when a FABi menu is available, otherwise it says "unknown".' },
   viSao2:    { vi: 'Mỗi gói online là một món trên FABi (mã riêng, giá cố định) để thu ngân bấm khi khách nhận hàng. Kho trừ theo Ghép món: "Bán theo gói, mỗi gói = 0,2 kg".',
                en: 'Each online pack is one item in FABi (its own code, a fixed price) for the cashier to ring up when the customer collects. Stock deducts through Match dishes: "Sold by pack, each pack = 0.2 kg".' },
   viSao3:    { vi: 'Giá trên FABi không được đọc về — so bằng tay với giá phải đặt ở từng dòng.',

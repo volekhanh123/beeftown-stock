@@ -213,8 +213,8 @@ export function cauSuKien(su: SuKien, nn: NgonNguNB = 'vi'): CauSuKien {
         : c({ vi: `${phut} phút`, en: `${phut} minute${phut === 1 ? '' : 's'}` });
       if (e.phu === 'loi') {
         return { tieuDe: c({ vi: 'Không cập nhật được iPOS', en: 'Could not update from iPOS' }),
-                 chiTiet: c({ vi: 'Lần cập nhật gần nhất bị lỗi (thử lại dòng chờ hoặc đọc thực đơn) — mở Kết nối iPOS xem lỗi, bấm "Cập nhật ngay".',
-                              en: 'The last update failed (retrying waiting lines or reading the menu) — open the iPOS connection to see the error, then press "Update now".' }),
+                 chiTiet: c({ vi: 'Lần cập nhật gần nhất bị lỗi (kéo hóa đơn từ iPOS hoặc thử lại dòng chờ) — mở Kết nối iPOS xem lỗi, bấm "Cập nhật ngay".',
+                              en: 'The last update failed (fetching invoices from iPOS or retrying waiting lines) — open the iPOS connection to see the error, then press "Update now".' }),
                  link: '/noi-bo/kho/cai-dat/ipos', nut: xem, muc: 'do' };
       }
       return { tieuDe: c({ vi: 'iPOS lâu không gửi hóa đơn sang', en: 'iPOS has not sent invoices for a while' }),

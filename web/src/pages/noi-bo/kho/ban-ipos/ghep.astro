@@ -105,15 +105,18 @@ const t = dichNB(nn, {
   boGhep: { vi: 'Bỏ ghép', en: 'Unmatch' },
   thucDon: { vi: 'Thực đơn iPOS', en: 'iPOS menu' },
   thucDonGiai: {
-    vi: 'Danh sách món đọc từ iPOS (mỗi giờ, hoặc khi iPOS báo thực đơn đổi). Ghép trước những món thịt bán ở quầy — khỏi đợi có dòng bán mới ghép.',
-    en: 'The dish list read from iPOS (every hour, or when iPOS reports a menu change). Match the meat items sold at the counter in advance — no need to wait for a sale line first.',
+    vi: 'Danh sách món đã đọc được từ iPOS. API iPOS DW đang dùng không có đường đọc thực đơn, nên danh sách này không được làm mới — món hiện ở mục chưa ghép phía trên sau lần bán đầu tiên.',
+    en: 'The dish list already read from iPOS. The iPOS DW API in use has no way to read the menu, so this list is not refreshed — a dish shows up under not matched above after its first sale.',
   },
   timGoiY: { vi: 'Tìm mã, tên món, nhóm', en: 'Search code, dish name, group' },
   timNhan: { vi: 'Tìm món trên thực đơn iPOS', en: 'Search dishes on the iPOS menu' },
   tim: { vi: 'Tìm', en: 'Search' },
   boTim: { vi: 'Bỏ tìm', en: 'Clear search' },
   khongKhop: { vi: 'Không có món nào khớp.', en: 'No dishes match.' },
-  chuaDocMenu: { vi: 'Chưa đọc được thực đơn iPOS — xem màn Kết nối iPOS.', en: 'The iPOS menu has not been read yet — see the iPOS connection screen.' },
+  chuaDocMenu: {
+    vi: 'Chưa có thực đơn iPOS — API iPOS DW không đọc được thực đơn. Ghép món theo các mã chưa ghép phía trên.',
+    en: 'There is no iPOS menu — the iPOS DW API cannot read the menu. Match dishes from the unmatched codes above.',
+  },
   tenMon: { vi: 'Tên món', en: 'Dish name' },
   nhom: { vi: 'Nhóm', en: 'Group' },
   ngungBan: { vi: 'Ngừng bán', en: 'No longer sold' },
@@ -155,8 +158,8 @@ const t = dichNB(nn, {
   },
   khongDocFabi: { vi: 'Không đọc được danh sách món cần có trên FABi.', en: 'Could not read the list of dishes needed on FABi.' },
   chuaDocMenuFabi: {
-    vi: 'Chưa đọc được thực đơn iPOS — chưa biết món nào đã có trên FABi. Xem',
-    en: 'The iPOS menu has not been read yet — it is not known which dishes are already on FABi. See',
+    vi: 'Không có thực đơn iPOS (API iPOS DW không đọc được thực đơn) — phần mềm không biết món nào đã có trên FABi: kiểm tay trên FABi. Xem',
+    en: 'There is no iPOS menu (the iPOS DW API cannot read the menu) — the app does not know which dishes are already on FABi: check by hand in FABi. See',
   },
   ketNoiIpos: { vi: 'Kết nối iPOS', en: 'iPOS connection' },
   menuDocLuc: {

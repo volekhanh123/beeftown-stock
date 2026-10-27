@@ -100,11 +100,14 @@ await nhom('2 · NGÀY GIỜ KHÔNG CÓ THẬT BỊ TỪ CHỐI', async () => {
   ok('docThoiDiem: epoch giây', docThoiDiem(1790000000) === new Date(1790000000 * 1000).toISOString());
 
   // Và cả đường đi của hook: hóa đơn giờ sai → lỗi đọc rõ ràng, không phải hóa đơn
-  const { phanTichCallback } = await nap('kho/ipos.ts');
-  const kq = phanTichCallback({ event_id: 11, sale_manager: {
-    pos_parent: 'BT', pos_id: '1', tran_id: 'T1', tran_date: '31/02/2026 10:00', items: [] } });
-  ok('Hóa đơn iPOS giờ 31/02 → báo "không đọc được giờ bán", không chuyển xuống database',
+  const { phanTichHoaDon, thoiDiemBan } = await nap('kho/ipos.ts');
+  const kq = phanTichHoaDon({ sale_id: 'T1', brand_id: 'BT', created_at: '2026-02-31 10:00', sale: { store_id: '1',
+    date_last: '31/02/2026', hour_last: 10, minute_last: 0 }, sale_detail: [] });
+  ok('Hóa đơn iPOS ngày 31/02, giờ tạo 31/02 → báo "không đọc được giờ bán", không chuyển xuống database',
      kq.loai === 'loi' && /giờ bán/.test(kq.cau), JSON.stringify(kq).slice(0, 200));
+  ok('Giờ in 24:00 / phút 60 không có thật → không ghép thành giờ bán (dùng mốc khác)',
+     thoiDiemBan({ sale: { date_last: 1793034000, hour_last: 24, minute_last: 0 } }) === new Date(1793034000 * 1000).toISOString()
+     && thoiDiemBan({ sale: { date_last: 1793034000, hour_last: 10, minute_last: 60 } }) === new Date(1793034000 * 1000).toISOString());
 });
 
 // ===========================================================================

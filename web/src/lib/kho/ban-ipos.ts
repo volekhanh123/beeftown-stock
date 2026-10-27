@@ -239,7 +239,6 @@ export type CachXuLy = (typeof CACH_XU_LY)[number];
 // -----------------------------------------------------------------------------
 export interface CauHinhGui {
   bat: boolean;
-  api_url: string;
   pos_parent: string;
   pos_id: string;
   vi_tri_ban_id: string;
@@ -248,8 +247,10 @@ export interface CauHinhGui {
   gio_mat_ket_noi: number;
 }
 
-// 0042: iPOS tự đẩy hóa đơn — không còn ô "đường dẫn lấy hóa đơn" (cột DB giữ nguyên, không gửi).
-const COT_CAU_HINH = ['api_url', 'pos_parent', 'pos_id'] as const;
+// 0042: iPOS tự đẩy hóa đơn — không còn ô "đường dẫn lấy hóa đơn". iPOS DW (27/10/2026): không còn
+// ô địa chỉ API — máy chủ là hằng TRUONG_IPOS.goc (cột DB api_url giữ nguyên, không gửi). Mã thương
+// hiệu (brand_id) và mã cửa hàng (store_id) lưu ở hai cột cũ pos_parent / pos_id.
+const COT_CAU_HINH = ['pos_parent', 'pos_id'] as const;
 
 /**
  * Form Kết nối iPOS → object gửi kho_ipos_luu_cau_hinh. Chỉ các khóa database
@@ -267,19 +268,16 @@ export function docFormCauHinhIpos(form: FormData): { cauHinh: CauHinhGui | null
       });
     }
   }
-  const api = chu('api_url').replace(/\/+$/, '');
-  if (api && !/^https:\/\/[A-Za-z0-9.-]+(:[0-9]{1,5})?(\/[A-Za-z0-9._~/-]*)?$/.test(api)) {
-    return hong({
-      vi: 'Địa chỉ iPOS phải bắt đầu bằng https:// và không có dấu ? hay tham số.',
-      en: 'The iPOS address must start with https:// and have no ? or parameters.',
-    });
-  }
-  for (const [k, ten] of [['pos_parent', 'pos_parent'], ['pos_id', 'pos_id']] as const) {
+  const TEN_MA = {
+    pos_parent: { vi: 'Mã thương hiệu', en: 'The brand code' },
+    pos_id: { vi: 'Mã cửa hàng', en: 'The store code' },
+  } as const;
+  for (const k of COT_CAU_HINH) {
     const v = chu(k);
     if (v && !/^[A-Za-z0-9_.-]{1,60}$/.test(v)) {
       return hong({
-        vi: `${ten} chỉ gồm chữ không dấu, số, dấu chấm, gạch (tối đa 60 ký tự).`,
-        en: `${ten} may only contain plain letters (no accents), digits, dots and dashes (at most 60 characters).`,
+        vi: `${TEN_MA[k].vi} chỉ gồm chữ không dấu, số, dấu chấm, gạch (tối đa 60 ký tự).`,
+        en: `${TEN_MA[k].en} may only contain plain letters (no accents), digits, dots and dashes (at most 60 characters).`,
       });
     }
   }
@@ -303,7 +301,7 @@ export function docFormCauHinhIpos(form: FormData): { cauHinh: CauHinhGui | null
   return {
     cauHinh: {
       bat: form.get('bat') === 'co',
-      api_url: api, pos_parent: chu('pos_parent'), pos_id: chu('pos_id'),
+      pos_parent: chu('pos_parent'), pos_id: chu('pos_id'),
       vi_tri_ban_id: vt, gio_mo_cua: mo, gio_dong_cua: dong, gio_mat_ket_noi: mat,
     },
     loi: null,

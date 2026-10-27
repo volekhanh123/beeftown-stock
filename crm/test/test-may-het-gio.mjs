@@ -242,7 +242,9 @@ await nhom('5 · iPOS: cron và hook nhận hóa đơn có hạn giờ', async (
      r2.xong ? r2.v?.join(' | ') : `treo ${r2.ms} ms`);
 
   const KHOA = 'k'.repeat(40);
-  const body = JSON.stringify({ event_id: 12, item_changed: { pos_parent: 'BEEFTOWN', pos_id: '1001' } });   // thực đơn đổi: cần đăng nhập máy
+  // Một hóa đơn iPOS DW hợp lệ: cần đăng nhập máy rồi mới tìm chi nhánh.
+  const body = JSON.stringify({ sale_id: 'S1', datastate: 0, brand_id: 'BRAND-TEST', created_at: 1790000000,
+    sale: { store_id: 'STORETEST001' }, sale_detail: [] });
   const treoHook = supaGia('treo');
   const logHook = [];
   const hook = await trongHan(iposHook.xuLyHookIpos(new Request(`https://beeftown.vn/hook/ipos/${KHOA}`, { method: 'POST', body }), KHOA, {

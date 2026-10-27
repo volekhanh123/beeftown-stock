@@ -1156,8 +1156,8 @@ export async function chotGia(
 // -----------------------------------------------------------------------------
 const CAU_VIEC = {
   khop:              { vi: 'Khớp — không cần làm gì.', en: 'Matches — nothing to do.' },
-  menu_cu:           { vi: 'Chưa rõ: thực đơn FABi đọc đã cũ — cập nhật thực đơn rồi xem lại.',
-                       en: 'Unknown: the FABi menu read is out of date — refresh it, then check again.' },
+  menu_cu:           { vi: 'Chưa rõ: không có thực đơn FABi mới (API iPOS DW không đọc được thực đơn) — kiểm tay trên FABi.',
+                       en: 'Unknown: there is no up-to-date FABi menu (the iPOS DW API cannot read the menu) — check by hand in FABi.' },
   tao_mon:           { vi: (ma: string, gia: string) => `Tạo món mã ${ma} trên FABi, giá ${gia}.`,
                        en: (ma: string, gia: string) => `Create item ${ma} in FABi, price ${gia}.` },
   // Chưa có giá để đặt (gia_phai_dat null): không in "giá —".
