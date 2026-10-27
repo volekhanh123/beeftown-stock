@@ -26,15 +26,14 @@
  *     giờ in = ngày date_last + hour_last:minute_last (giờ VN); sale_detail[]
  *     có sale_detail_id, item_id, description, quantity, amount — KHÔNG mã
  *     vạch, KHÔNG kg từng nhãn. Hai dòng cùng item_id là hai dòng.
- *   · origin_sale_id ("hóa đơn gốc khi sửa / xóa"): CHƯA XÁC NHẬN với iPOS là
- *     sửa giữ nguyên sale_id hay tạo sale_id mới. Ở đây: mỗi sale_id là một hóa
- *     đơn, mỗi lần gửi là trạng thái hiện tại của chính nó (datastate theo từng
- *     bản ghi, như kho dữ liệu) — sửa cùng sale_id thì database đảo ngược rồi ghi
- *     lại (0037); origin_sale_id chỉ giữ trong raw để đối chiếu. Không khóa theo
- *     origin_sale_id: tách hóa đơn (hóa đơn gốc còn, hóa đơn mới trỏ về nó), hay
- *     iPOS gửi cả bản xóa của hóa đơn gốc, thì khóa theo gốc sẽ đè mất hàng đã bán.
- *     Nếu iPOS xác nhận sửa = sale_id mới mà KHÔNG gửi bản xóa hóa đơn gốc thì
- *     phải đổi ở đây (kho trừ hai lần) — web/KHO.md mục 3j, câu hỏi còn mở 1.
+ *   · origin_sale_id ("hóa đơn gốc khi sửa / xóa"): iPOS xác nhận 27/10/2026 —
+ *     sửa hóa đơn đã in thì FABi tạo sale_id MỚI có origin_sale_id trỏ hóa đơn
+ *     cũ, và gửi lại hóa đơn cũ với datastate = 2. Nên mỗi sale_id là một hóa
+ *     đơn, mỗi lần gửi là trạng thái hiện tại của chính nó: hóa đơn mới được ghi,
+ *     hóa đơn cũ bị đảo ngược; cùng sale_id gửi lại nội dung khác thì database
+ *     đảo ngược rồi ghi lại (0037). origin_sale_id chỉ giữ trong raw để đối chiếu
+ *     — KHÔNG khóa theo nó: khóa theo gốc thì bản xóa hóa đơn cũ đến sau sẽ đè mất
+ *     hàng của hóa đơn mới.
  *   · sale.is_temp là cờ "đã in phiếu tạm tính trước khi thanh toán" của hóa đơn
  *     thật, không phải hóa đơn nháp — không lọc theo nó.
  *   · KHÔNG có API đọc thực đơn.
@@ -96,7 +95,7 @@ export const TRUONG_IPOS = {
     sale: ['sale_id', 'origin_sale_id', 'store_id', 'tran_id', 'tran_no', 'tran_date', 'tran_date_orig', 'date_last',
       'hour_last', 'minute_last', 'status', 'is_temp', 'source_id', 'area_id', 'dinner_table_id', 'vat', 'discount_extra',
       'service_charge', 'shift_charge', 'coupon_amount', 'number_people'],
-    dong: ['sale_detail_id', 'item_id', 'description', 'quantity', 'unit_id', 'price_org', 'price_sale', 'amount',
+    dong: ['sale_detail_id', 'item_id', 'item_id_mapping', 'description', 'quantity', 'unit_id', 'price_org', 'price_sale', 'amount',
       'discount', 'discount_amount', 'is_gift', 'is_eat_with', 'parent_item_id', 'package_id', 'promotion_id'],
   },
   /** raw lớn hơn chừng này (ký tự JSON) thì không lưu. */

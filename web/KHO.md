@@ -660,7 +660,13 @@ ten_ipos: description, so_luong: quantity, thanh_tien: amount }] }`.
   lượng, đơn vị, tiền, khuyến mãi). Khách (`membership_*`, `vat_customer_*`, `address_delivery`), nhân
   viên (`user_*`), thanh toán (`sale_payment_method`), ghi chú: không bao giờ vào database. Database vẫn
   có lưới thứ hai `kho_ipos_bo_pii`.
-- Sửa cùng `sale_id` → nội dung khác → database đảo ngược rồi ghi lại (0037); `datastate = 2` → đảo ngược.
+- **Sửa hóa đơn đã in** (iPOS xác nhận 27/10/2026): FABi tạo `sale_id` MỚI có `origin_sale_id` trỏ hóa đơn cũ, và
+  gửi lại hóa đơn cũ với `datastate = 2`. Mỗi `sale_id` là một hóa đơn, nên: hóa đơn mới được ghi, hóa đơn cũ
+  bị đảo ngược — đến theo thứ tự nào cũng vậy (test-kho-ipos-web: "Sửa hóa đơn kiểu FABi …"). Cùng `sale_id`
+  gửi lại với nội dung khác → database đảo ngược rồi ghi lại (0037).
+- **Mã món** (hóa đơn thật 27/10/2026): `item_id` là mã FABi tự sinh dạng `ITEM-XXXX`, không phải mã cân. Món
+  thường ghép một lần ở Ghép món. Ô mã và mã giảm chỉ tự nhận khi `item_id` trùng mã ô / mã giảm — với mã
+  `ITEM-…` thì ghép từng mã với đúng ô ở Ghép món (nhóm "Ô mã").
 
 | Chỗ | Việc |
 |---|---|
@@ -735,16 +741,20 @@ kiểu 32–40 ký tự in hoa + số như token của iPOS).
 2. Cấp token kéo dữ liệu bán hàng (đã có 27/10/2026 — đặt bí mật Worker), mã thương hiệu, mã cửa hàng.
 3. Cho biết món thịt ở quầy bán theo **kg** hay theo **gói** trên FABi → chọn "Bán theo" ở Ghép món.
 
+### Đã xác nhận khi chạy thật (27/10/2026)
+
+1. **Sửa hóa đơn**: iPOS trả lời — `sale_id` mới có `origin_sale_id`, hóa đơn cũ gửi lại với `datastate = 2`
+   (xem "Đọc một hóa đơn" ở trên). Mã không phải đổi.
+2. `dwapis.ipos.vn` **không** chặn Worker Cloudflare: lượt "Cập nhật ngay" và lượt cron 5 phút kéo được hóa
+   đơn thật (`api.foodbook.vn` thì trả "IP Blocked or Access Denied" cho mọi yêu cầu từ máy thử).
+3. iPOS đã cấu hình webhook cho cửa hàng (địa chỉ có khóa mới, đổi ngày 27/10/2026).
+
 ### Câu hỏi còn mở (chưa có trong tài liệu)
 
-1. **Sửa hóa đơn** giữ nguyên `sale_id` (gửi lại với `datastate = 1`) hay tạo `sale_id` mới có
-   `origin_sale_id` trỏ hóa đơn cũ? Nếu tạo mới, hóa đơn cũ có được gửi lại với `datastate = 2` không?
-   (Hiện mỗi `sale_id` là một hóa đơn; `origin_sale_id` chỉ giữ trong raw. Nếu iPOS tạo mới mà không xóa
-   hóa đơn cũ thì kho trừ hai lần.)
-2. `dwapis.ipos.vn` có chặn theo IP không (`api.foodbook.vn` trả "IP Blocked or Access Denied" cho mọi yêu
-   cầu từ máy thử)? Worker Cloudflare không có IP cố định — nếu có chặn thì kéo bù hỏng (đèn đỏ), webhook vẫn chạy.
-3. Header `access_token` iPOS gửi kèm webhook là token nào?
-4. FABi có API danh sách món không (để nối lại đối chiếu FABi)?
+1. Header `access_token` iPOS gửi kèm webhook là token nào?
+2. FABi có API danh sách món không (để nối lại đối chiếu FABi)?
+3. Mã món tự đặt trên FABi có đi sang hóa đơn ở khóa nào không? `item_id` là `ITEM-XXXX`; mẫu webhook của
+   tài liệu có `item_id_mapping` — raw giữ khóa này (thêm 27/10/2026), xem ở hóa đơn thật kế tiếp.
 
 **Chạy thử cục bộ:**
 
