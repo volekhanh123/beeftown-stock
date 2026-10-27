@@ -10,7 +10,7 @@
  *
  * Ngày giờ NGƯỜI NHẬP / MÁY NGOÀI GỬI (không kèm múi) phải qua docGioVnDiaPhuong / isoGioVn:
  * JS tự "lăn" 31/02 thành 03/03 mà không báo, còn Postgres thì từ chối — hóa đơn iPOS giờ
- * sai từng thành lỗi 500 và iPOS Hub gửi lại mãi đúng hóa đơn đó.
+ * sai từng thành lỗi 500 và iPOS gửi lại đúng hóa đơn đó.
  */
 
 const LECH_VN_MS = 7 * 60 * 60 * 1000;

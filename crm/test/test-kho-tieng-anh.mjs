@@ -94,36 +94,30 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     "ghi('tài khoản máy không có chi nhánh nào được đồng bộ (vai phải là may_ipos)')",
     "/chưa bật/i.test(kq.cau)",
     "ghi(`lỗi: ${e instanceof Error ? e.message : String(e)}`)",   // cả ipos-hook.ts
-    // lib/kho/ipos-hook.ts — thân trả lời HTTP cho iPOS Hub (máy đọc; Hub chỉ xét mã HTTP)
-    // và log cho người vận hành; test-kho-ipos-web đọc thân / log nguyên văn.
-    "loi: 'Chỉ nhận POST'",
-    "loi: `Chưa cài bí mật ${TEN_BI_MAT.khoaCallback}`",
-    "loi: 'Không tìm thấy'",
-    "loi: 'Không đọc được nội dung'",
-    "loi: 'Nội dung quá lớn'",
-    "loi: 'Nội dung không phải JSON'",
-    "ghi(`bỏ callback hỏng: ${kq.cau}`)",
-    "'Máy chủ chưa cài tài khoản đồng bộ'",
-    "'Chưa nhận được — thử lại sau'",
+    // lib/kho/ipos-hook.ts — thân trả lời HTTP cho iPOS (máy đọc; iPOS chỉ xét mã HTTP: 200 / 201 là
+    // nhận) và log cho người vận hành; test-kho-ipos-web đọc thân / log nguyên văn.
+    "traLoi(405, 'chi_nhan_post', 'Chỉ nhận POST'",
+    "traLoi(503, 'chua_cai', `Chưa cài bí mật ${TEN_BI_MAT.khoaCallback}`)",
+    "traLoi(404, 'khong_tim_thay', 'Không tìm thấy')",
+    "traLoi(400, 'khong_doc_duoc', 'Không đọc được nội dung')",
+    "traLoi(413, 'qua_lon', 'Nội dung quá lớn')",
+    "traLoi(400, 'khong_phai_json', 'Nội dung không phải JSON')",
+    "ghi(`bỏ hóa đơn hỏng: ${kq.cau}`)",
+    "ghi('bỏ hóa đơn thiếu brand_id / store_id')",
+    "traLoi(400, 'thieu_cua_hang', 'Hóa đơn thiếu \"brand_id\" hoặc \"store_id\"')",
+    "traLoi(503, 'chua_cai', 'Máy chủ chưa cài tài khoản đồng bộ')",
+    "traLoi(503, 'thu_lai', 'Chưa nhận được — thử lại sau')",
     "ghi(`không tìm được chi nhánh: ${e1.message}`)",
-    "loi: 'Lỗi máy chủ — thử lại sau'",
-    "ghi(`không có chi nhánh nào khớp pos_parent / pos_id của callback (event ${kq.loai === 'hoa_don' ? 11 : 12}) — kiểm tra màn Kết nối iPOS`)",
-    "ghi(`không ghi được cờ thực đơn đổi: ${error.message}`)",
+    "traLoi(500, 'loi_may_chu', 'Lỗi máy chủ — thử lại sau')",
+    "ghi('không có chi nhánh nào khớp brand_id / store_id của hóa đơn — kiểm tra màn Kết nối iPOS')",
+    "traLoi(202, 'khong_khop_cua_hang', 'Không có cửa hàng nào khớp brand_id / store_id')",
     "ghi(`không nhận được hóa đơn: ${error.message}`)",
     "ghi(`database từ chối hóa đơn: ${String(t.canh_bao?.[0]?.loi ?? '').slice(0, 200)}`)",
-    "loi: 'Hóa đơn không hợp lệ'",
+    "traLoi(422, 'hoa_don_khong_hop_le', 'Hóa đơn không hợp lệ')",
     "ghi(`đã nhận hóa đơn, lưu ý: ${kq.canhBao.join('; ')}`)",
-    // lib/kho/ipos.ts — ghi chú nguồn tài liệu iPOS, và câu của phanTichCallback: chỉ đi vào
-    // thân trả lời HTTP cho iPOS Hub và log (ipos-hook.ts), không lên màn nào.
-    "nguon: 'Postman \"IPOS HUB API INTERGRATION FOR MERCHANT\" (mục 1 và 6.1)'",
-    "cau: 'Nội dung không phải một object JSON'",
-    "cau: 'Event 12 thiếu khóa \"item_changed\"'",
-    "cau: 'Event 12 thiếu pos_parent hoặc pos_id'",
-    "cau: 'Event 11 thiếu khóa \"sale_manager\"'",
-    "cau: `Event 11 thiếu ${thieu.join(', ')}`",
-    "cau: 'Event 11 không đọc được giờ bán ở khóa \"tran_date\" / \"created_at\"'",
-    "cau: 'Event 11: khóa \"items\" không phải danh sách'",
-    "cau: 'Event 11 có hơn 500 dòng'",
+    // lib/kho/ipos.ts — ghi chú nguồn tài liệu iPOS, và cảnh báo từng dòng của phanTichHoaDon: chỉ
+    // vào log (ipos-hook.ts), không lên màn nào. Câu lỗi một hóa đơn thì có cặp { vi, en } (CAU_HOA_DON).
+    "nguon: 'Postman \"iPOS DW - PARTNERS\" (Kéo chủ động · Đồng bộ realtime)'",
     "canhBao.push(`${khongMa} dòng thiếu \"item_id\"`)",
     "canhBao.push(`${slHong} dòng thiếu hoặc sai \"quantity\"`)",
     // lib/kho/may-chung.ts — nhãn dòng nhật ký "[qua-tai]" (lib/qua-tai.ts ghiQuaTai) cho người

@@ -1,33 +1,47 @@
 /**
- * KHO — ĐỌC DỮ LIỆU iPOS (GĐ7a, sửa lại theo tài liệu thật ở GĐ7c, migration 0042)
+ * KHO — ĐỌC DỮ LIỆU iPOS (GĐ7a; GĐ7c 0042; iPOS DW cho FABi, 27/10/2026)
  *
  * File THUẦN: không gọi mạng, không gọi database, chỉ import gio-vn.ts (cũng
  * thuần). Test Node nạp thẳng được (crm/test/test-kho-ipos-web.mjs).
  *
- * HAI THỨ TIẾNG: câu đọc thực đơn (lỗi, cảnh báo) hiện trên màn Kết nối iPOS
- * nên có bản tiếng Anh (CAU_MENU_IPOS; phanTichMenu trả thêm loiEn,
- * canhBaoEn). Câu của phanTichCallback thì chỉ iPOS Hub (thân trả lời HTTP) và
- * log đọc — giữ tiếng Việt như cũ.
+ * HAI THỨ TIẾNG: câu lỗi kéo hóa đơn và câu lỗi đọc một hóa đơn hiện trên màn
+ * Kết nối iPOS (qua lượt kéo bù) nên có bản tiếng Anh (CAU_KEO_IPOS, CAU_HOA_DON;
+ * phanTichKetQuaKeo trả thêm loiEn, phanTichHoaDon trả thêm cauEn). Cảnh báo
+ * từng dòng (canhBao) chỉ vào log — tiếng Việt.
  *
- * NGUỒN: tài liệu Postman "IPOS HUB API INTERGRATION FOR MERCHANT" của iPOS
- * (mục 1 "Lấy thông tin món ăn, nhà hàng" và mục 6.1 "Event 11: sale_manager").
- * Điều tài liệu nói:
- *   · KHÔNG có API kéo danh sách hóa đơn. Thu ngân in hóa đơn → iPOS Hub POST
- *     JSON thô tới callback_url HTTPS của mình (route /hook/ipos/<khóa>).
- *     Event 11 "sale_manager" = hóa đơn cuối. Hub có thể bắn trùng → chống trùng
- *     theo (pos_parent, pos_id, tran_id): ma_hd = "<pos_id>:<tran_id>" (chi nhánh
- *     đã xác định pos_parent), database bỏ HĐ cùng mã cùng nội dung.
- *   · Dòng hàng chỉ có item_id, item_name, price, quantity, amount,
- *     discount_amount — KHÔNG mã vạch, KHÔNG kg từng nhãn. Hai dòng cùng item_id
- *     là hai dòng riêng (khoa_dong = chỉ số dòng, đếm từ 0).
- *   · membership_id / membership_name (số điện thoại, tên khách), delivery_info
- *     (địa chỉ), payment_info, sale_note: KHÔNG lưu.
- *   · Event 12 "item_changed": thực đơn đổi → đọc lại GET {api_url}/v2/items.
- *   · Không thấy event hủy hóa đơn. Bộ đọc vẫn nhận mềm `is_cancel` / `status`
- *     nếu có (CHƯA XÁC NHẬN với iPOS). Sửa HĐ = bắn lại cùng tran_id, nội dung
- *     khác → database đảo ngược rồi ghi lại (0037).
+ * NGUỒN: tài liệu Postman "iPOS DW - PARTNERS" (documenter.getpostman.com,
+ * collection 4757280/TWDZJwQ1) — iPOS gửi kèm brand_id, mã cửa hàng và token
+ * ngày 27/10/2026. Tài liệu cũ "IPOS HUB API" (Event 11 / 12, /v2/items) KHÔNG
+ * dùng được với FABi: API đó đòi pos_id là số và chặn token này. Điều tài liệu nói:
+ *   · Đồng bộ realtime: iPOS POST từng hóa đơn (JSON) tới webhook của mình —
+ *     route /hook/ipos/<khóa>. Thành công = HTTP 200 / 201 kèm {"data": true};
+ *     khác = thất bại, kèm {"error": {"code", "message"}}. Thất bại thì iPOS
+ *     gửi lại tối đa 5 lần, cách nhau 30 giây. Hóa đơn cũ sửa / xóa cũng gửi lại.
+ *   · Kéo chủ động: GET {goc}/api/v1/partners/get-sales?store_id&brand_id
+ *     &from_update_time&to_update_time&page&page_size, token ở HEADER
+ *     access_token. Khoảng cập nhật từ 15 phút đến 1 ngày; page_size ≤ 1000.
+ *     Kết quả {"data": [hóa đơn]} — mỗi hóa đơn cùng cấu trúc với webhook.
+ *   · Hóa đơn: sale_id (duy nhất trong một brand_id) → ma_hd; datastate 0 mới
+ *     / 1 sửa / 2 xóa; sale.status là trạng thái THANH TOÁN, không phải hủy;
+ *     giờ in = ngày date_last + hour_last:minute_last (giờ VN); sale_detail[]
+ *     có sale_detail_id, item_id, description, quantity, amount — KHÔNG mã
+ *     vạch, KHÔNG kg từng nhãn. Hai dòng cùng item_id là hai dòng.
+ *   · origin_sale_id ("hóa đơn gốc khi sửa / xóa"): CHƯA XÁC NHẬN với iPOS là
+ *     sửa giữ nguyên sale_id hay tạo sale_id mới. Ở đây: mỗi sale_id là một hóa
+ *     đơn, mỗi lần gửi là trạng thái hiện tại của chính nó (datastate theo từng
+ *     bản ghi, như kho dữ liệu) — sửa cùng sale_id thì database đảo ngược rồi ghi
+ *     lại (0037); origin_sale_id chỉ giữ trong raw để đối chiếu. Không khóa theo
+ *     origin_sale_id: tách hóa đơn (hóa đơn gốc còn, hóa đơn mới trỏ về nó), hay
+ *     iPOS gửi cả bản xóa của hóa đơn gốc, thì khóa theo gốc sẽ đè mất hàng đã bán.
+ *     Nếu iPOS xác nhận sửa = sale_id mới mà KHÔNG gửi bản xóa hóa đơn gốc thì
+ *     phải đổi ở đây (kho trừ hai lần) — web/KHO.md mục 3j, câu hỏi còn mở 1.
+ *   · sale.is_temp là cờ "đã in phiếu tạm tính trước khi thanh toán" của hóa đơn
+ *     thật, không phải hóa đơn nháp — không lọc theo nó.
+ *   · KHÔNG có API đọc thực đơn.
+ *   · Khách (membership_*, vat_customer_*, address_delivery…), nhân viên,
+ *     thanh toán: KHÔNG lưu — raw chỉ giữ các khóa trong TRUONG_IPOS.rawGiu.
  *
- * Payload gửi `kho_ipos_nhan_callback` (0042):
+ * Payload gửi `kho_ipos_nhan_callback` / `kho_ipos_nhan` (0042):
  *   { ma_hd, thoi_diem_ban (ISO có múi giờ), da_huy, raw?, dong: [
  *       { khoa_dong, ma_ipos, ten_ipos?, so_luong?, thanh_tien? }] }
  * Đổi so_luong ra kg / gói là việc của DATABASE (theo "bán theo" ở Ghép món).
@@ -35,7 +49,7 @@
  * KHÔNG BAO GIỜ đưa GIÁ TRỊ vào câu cảnh báo — chỉ tên khóa.
  */
 
-import { isoGioVn } from '../gio-vn.ts';
+import { gioVnTuMs, isoGioVn } from '../gio-vn.ts';
 
 /** Câu hai thứ tiếng — cùng khuôn HaiThuTieng (lib/ngon-ngu-noi-bo.ts); file này không import gì. */
 type HaiThuTieng = { readonly vi: string; readonly en: string };
@@ -44,33 +58,47 @@ type HaiThuTieng = { readonly vi: string; readonly en: string };
 // MỌI ĐIỀU VỀ API iPOS NẰM Ở ĐÂY (theo tài liệu Postman nói trên)
 // =============================================================================
 export const TRUONG_IPOS = {
-  nguon: 'Postman "IPOS HUB API INTERGRATION FOR MERCHANT" (mục 1 và 6.1)',
-  /** Địa chỉ máy thử của iPOS (bản thật do iPOS cấp khi ký). */
-  apiThu: 'https://apitest.foodbook.vn/ipos/ws/xpartner',
+  nguon: 'Postman "iPOS DW - PARTNERS" (Kéo chủ động · Đồng bộ realtime)',
+  /** Máy chủ API bản thật (tài liệu ghi bản thử dwapis-dev.ipos.vn). */
+  goc: 'https://dwapis.ipos.vn',
 
-  /** Callback iPOS Hub bắn sang. */
-  suKien: { hoaDon: 11, menuDoi: 12 },
-  /** Body callback tối đa (byte). */
+  /** Body webhook tối đa (byte). */
   bodyToiDa: 256 * 1024,
 
-  /** GET {api_url}/v2/items?access_token&pos_parent&pos_id&menu_type=DELI */
-  menu: {
-    duongDan: '/v2/items',
-    thamSo: { token: 'access_token', posParent: 'pos_parent', posId: 'pos_id', loaiMenu: 'menu_type' },
-    loaiMenu: 'DELI',
-    /** status nghĩa là "không bán nữa". ACTIVE | OUT_OF_STOCK | ONLY_ONLINE | ONLY_OFFLINE vẫn là món đang có. */
-    ngungBan: ['DEACTIVE', 'INACTIVE', 'DELETED'],
-    toiDaMon: 5000,
+  /** GET {goc}/api/v1/partners/get-sales — token ở header, không bao giờ trên URL. */
+  keo: {
+    duongDan: '/api/v1/partners/get-sales',
+    thamSo: {
+      cuaHang: 'store_id', thuongHieu: 'brand_id', tuLuc: 'from_update_time', denLuc: 'to_update_time',
+      trang: 'page', coTrang: 'page_size',
+    },
+    tieuDeToken: 'access_token',
+    /** from_update_time / to_update_time: khoảng từ 15 phút đến 1 ngày (giây). */
+    cuaSoToiThieuGiay: 900,
+    cuaSoToiDaGiay: 86_400,
+    /** Hóa đơn mỗi trang (tối đa của iPOS). */
+    coTrang: 1000,
+    /** Số trang tối đa một cửa sổ — 50 000 hóa đơn một ngày là quá đủ cho một cửa hàng. */
+    trangToiDa: 50,
   },
   /** Thời gian chờ một lần gọi iPOS (ms). */
   timeoutMs: 20_000,
 
-  /** Cờ hủy — tài liệu KHÔNG có; đọc mềm nếu iPOS gửi (chưa xác nhận). */
-  huy: ['is_cancel', 'status'],
-  giaTriHuy: ['cancel', 'canceled', 'cancelled', 'void', 'voided', 'deleted', 'huy', 'da_huy', 'refund', 'refunded'],
+  /** datastate: 0 mới, 1 sửa, 2 xóa. */
+  datastateXoa: 2,
+  /** Dòng tối đa một hóa đơn (database cũng chặn 500). */
+  dongToiDa: 500,
 
-  /** Khóa bị bỏ khỏi `raw` (thông tin khách, thanh toán, token) ở mọi tầng. */
-  boKhoiRaw: /^(membership|member_|customer|khach|delivery|payment|sale_note|note|phone|mobile|tel|email|address|dia_chi|user_|card|token|access_token)|phone|email|address|token/i,
+  /** raw: CHỈ giữ các khóa này — thông tin khách, nhân viên, thanh toán không bao giờ vào database. */
+  rawGiu: {
+    hoaDon: ['sale_id', 'origin_sale_id', 'datastate', 'tran_date', 'brand_id', 'store_id', 'fb_store_id', 'pos_type',
+      'amount', 'amount_org', 'created_at', 'updated_at'],
+    sale: ['sale_id', 'origin_sale_id', 'store_id', 'tran_id', 'tran_no', 'tran_date', 'tran_date_orig', 'date_last',
+      'hour_last', 'minute_last', 'status', 'is_temp', 'source_id', 'area_id', 'dinner_table_id', 'vat', 'discount_extra',
+      'service_charge', 'shift_charge', 'coupon_amount', 'number_people'],
+    dong: ['sale_detail_id', 'item_id', 'description', 'quantity', 'unit_id', 'price_org', 'price_sale', 'amount',
+      'discount', 'discount_amount', 'is_gift', 'is_eat_with', 'parent_item_id', 'package_id', 'promotion_id'],
+  },
   /** raw lớn hơn chừng này (ký tự JSON) thì không lưu. */
   rawToiDa: 30_000,
 } as const;
@@ -89,25 +117,16 @@ export interface DongIpos {
 
 export interface HoaDonIpos {
   ma_hd: string;
-  /** ISO, luôn có múi giờ (tran_date là giờ Việt Nam → +07:00). */
+  /** ISO, luôn có múi giờ. */
   thoi_diem_ban: string;
   da_huy: boolean;
   raw?: unknown;
   dong: DongIpos[];
 }
 
-export type KetQuaCallback =
-  | { loai: 'hoa_don'; posParent: string; posId: string; hoaDon: HoaDonIpos; canhBao: string[] }
-  | { loai: 'menu_doi'; posParent: string; posId: string }
-  | { loai: 'khac'; eventId: number | null }
-  | { loai: 'loi'; cau: string };
-
-export interface MonIpos {
-  ma_ipos: string;
-  ten_ipos?: string;
-  loai?: string;
-  dang_ban: boolean;
-}
+export type KetQuaHoaDon =
+  | { loai: 'hoa_don'; brandId?: string; storeId?: string; hoaDon: HoaDonIpos; canhBao: string[] }
+  | { loai: 'loi'; cau: string; cauEn: string };
 
 // =============================================================================
 // TIỆN ÍCH
@@ -167,196 +186,216 @@ export function docThoiDiem(v: unknown): string | null {
   return null;
 }
 
-function docHuy(v: unknown): boolean {
-  if (v === true || v === 1) return true;
-  if (typeof v === 'string') {
-    const s = v.trim().toLowerCase();
-    if (s === 'true' || s === '1') return true;
-    return (TRUONG_IPOS.giaTriHuy as readonly string[]).includes(s);
-  }
-  return false;
+/** Số nguyên trong [tu, den], hoặc undefined. */
+function soNguyen(v: unknown, tu: number, den: number): number | undefined {
+  const n = so(v);
+  return n !== undefined && Number.isInteger(n) && n >= tu && n <= den ? n : undefined;
 }
 
-/** Bỏ khóa có thông tin khách / thanh toán / token khỏi raw, ở mọi tầng. */
-export function boThongTinKhach(v: unknown, sau = 0): unknown {
-  if (sau > 8) return undefined;
-  if (Array.isArray(v)) return v.map(x => boThongTinKhach(x, sau + 1));
-  if (laObj(v)) {
+/** Epoch giây (≤ 10^11) hoặc mili giây → ms; không phải số dương → undefined. */
+function epochMs(v: unknown): number | undefined {
+  const n = so(v);
+  if (n === undefined || n <= 0) return undefined;
+  const ms = n < 1e11 ? n * 1000 : n;
+  return Number.isNaN(new Date(ms).getTime()) ? undefined : ms;
+}
+
+/**
+ * Giờ in hóa đơn (giờ VN, ISO có múi) hoặc null:
+ *   1. ngày của date_last (thiếu thì tran_date) theo lịch VN + hour_last:minute_last;
+ *   2. thiếu giờ / phút → created_at (mốc đầy đủ);
+ *   3. vẫn thiếu → chính mốc date_last / tran_date.
+ * date_last / tran_date trong tài liệu là 00:00 giờ VN của ngày bán (epoch giây) —
+ * chỉ lấy NGÀY rồi ghép giờ, nên mốc có kèm giờ cũng không bị cộng đôi.
+ */
+export function thoiDiemBan(x: unknown): string | null {
+  if (!laObj(x)) return null;
+  const s = laObj(x.sale) ? x.sale : {};
+  const ngayMs = epochMs(s.date_last) ?? epochMs(s.tran_date) ?? epochMs(x.tran_date);
+  const gio = soNguyen(s.hour_last, 0, 23);
+  const phut = soNguyen(s.minute_last, 0, 59);
+  if (ngayMs !== undefined && gio !== undefined && phut !== undefined) {
+    const [y, m, d] = gioVnTuMs(ngayMs).slice(0, 10).split('-').map(Number);
+    const iso = isoGioVn(y, m, d, gio, phut);
+    if (iso) return iso;
+  }
+  const tao = docThoiDiem(x.created_at);
+  if (tao) return tao;
+  return ngayMs !== undefined ? new Date(ngayMs).toISOString() : null;
+}
+
+/** Chỉ giữ các khóa cho phép (TRUONG_IPOS.rawGiu) — không bao giờ thông tin khách / nhân viên / thanh toán. */
+function rawGon(x: Obj): unknown {
+  const G = TRUONG_IPOS.rawGiu;
+  const lay = (o: unknown, khoa: readonly string[]) => {
     const ra: Obj = {};
-    for (const [k, x] of Object.entries(v)) if (!TRUONG_IPOS.boKhoiRaw.test(k)) ra[k] = boThongTinKhach(x, sau + 1);
+    if (!laObj(o)) return ra;
+    for (const k of khoa) {
+      const v = o[k];
+      if (v === null || ['string', 'number', 'boolean'].includes(typeof v)) ra[k] = v;
+    }
     return ra;
-  }
-  return v;
-}
-
-function rawGon(v: unknown): unknown {
-  const r = boThongTinKhach(v);
+  };
+  const r: Obj = lay(x, G.hoaDon);
+  if (laObj(x.sale)) r.sale = lay(x.sale, G.sale);
+  if (Array.isArray(x.sale_detail)) r.sale_detail = x.sale_detail.map(d => lay(d, G.dong));
   try { return JSON.stringify(r).length <= TRUONG_IPOS.rawToiDa ? r : undefined; } catch { return undefined; }
 }
 
 // =============================================================================
-// CALLBACK — Event 11 sale_manager, Event 12 item_changed
+// HÓA ĐƠN — webhook "Đồng bộ realtime" và từng phần tử của "Kéo chủ động"
 // =============================================================================
 /**
- * Đọc body callback của iPOS Hub. Không bao giờ ném lỗi.
- *   · event_id 11 → { loai: 'hoa_don', posParent, posId, hoaDon }
- *   · event_id 12 → { loai: 'menu_doi', posParent, posId }
- *   · event khác → { loai: 'khac' } (route trả 200, bỏ qua)
- *   · hỏng → { loai: 'loi', cau } (câu chỉ có tên khóa, không giá trị)
+ * Câu lỗi khi đọc một hóa đơn, hai thứ tiếng. Bản tiếng Việt đi vào thân trả lời
+ * HTTP cho iPOS, log, và nhật ký lượt kéo bù. Chỉ tên khóa, không giá trị.
  */
-export function phanTichCallback(json: unknown): KetQuaCallback {
-  if (!laObj(json)) return { loai: 'loi', cau: 'Nội dung không phải một object JSON' };
-  const ev = so(json.event_id);
-  const eventId = ev !== undefined && Number.isInteger(ev) ? ev : null;
+export const CAU_HOA_DON = {
+  khongObject: { vi: 'Nội dung không phải một object JSON', en: 'The content is not a JSON object' },
+  saleHong: { vi: 'Khóa "sale" không phải object', en: 'The "sale" key is not an object' },
+  thieuMa: { vi: 'Hóa đơn thiếu "sale_id"', en: 'The invoice has no "sale_id"' },
+  khongGio: {
+    vi: 'Hóa đơn không đọc được giờ bán ở "date_last" / "tran_date" / "created_at"',
+    en: 'The sale time in "date_last" / "tran_date" / "created_at" could not be read',
+  },
+  dongHong: { vi: 'Khóa "sale_detail" không phải danh sách', en: 'The "sale_detail" key is not a list' },
+  quaDong: {
+    vi: `Hóa đơn có hơn ${TRUONG_IPOS.dongToiDa} dòng`,
+    en: `The invoice has more than ${TRUONG_IPOS.dongToiDa} lines`,
+  },
+} satisfies Record<string, HaiThuTieng>;
 
-  if (eventId === TRUONG_IPOS.suKien.menuDoi) {
-    const ic = json.item_changed;
-    if (!laObj(ic)) return { loai: 'loi', cau: 'Event 12 thiếu khóa "item_changed"' };
-    const posParent = chu(ic.pos_parent, 60);
-    const posId = chu(ic.pos_id, 60);
-    if (!posParent || !posId) return { loai: 'loi', cau: 'Event 12 thiếu pos_parent hoặc pos_id' };
-    return { loai: 'menu_doi', posParent, posId };
-  }
-  if (eventId !== TRUONG_IPOS.suKien.hoaDon) return { loai: 'khac', eventId };
+/**
+ * Đọc MỘT hóa đơn iPOS DW. Không bao giờ ném lỗi.
+ *   · { loai: 'hoa_don', brandId?, storeId?, hoaDon, canhBao } — brandId / storeId
+ *     để hook tìm chi nhánh (kho_ipos_tim_chi_nhanh) và lượt kéo kiểm đúng cửa hàng.
+ *   · hỏng → { loai: 'loi', cau, cauEn } (câu chỉ có tên khóa, không giá trị).
+ */
+export function phanTichHoaDon(x: unknown): KetQuaHoaDon {
+  const C = CAU_HOA_DON;
+  const hong = (c: HaiThuTieng): KetQuaHoaDon => ({ loai: 'loi', cau: c.vi, cauEn: c.en });
+  if (!laObj(x)) return hong(C.khongObject);
+  const s = laObj(x.sale) ? x.sale : null;
+  if (x.sale !== undefined && x.sale !== null && !s) return hong(C.saleHong);
+  const maHd = chu(x.sale_id) ?? chu(s?.sale_id);
+  if (!maHd) return hong(C.thieuMa);
+  const luc = thoiDiemBan(x);
+  if (!luc) return hong(C.khongGio);
+  if (x.sale_detail !== undefined && x.sale_detail !== null && !Array.isArray(x.sale_detail)) return hong(C.dongHong);
+  const ds = (Array.isArray(x.sale_detail) ? x.sale_detail : []) as unknown[];
+  if (ds.length > TRUONG_IPOS.dongToiDa) return hong(C.quaDong);
 
-  const s = json.sale_manager;
-  if (!laObj(s)) return { loai: 'loi', cau: 'Event 11 thiếu khóa "sale_manager"' };
-  const posParent = chu(s.pos_parent, 60);
-  const posId = chu(s.pos_id, 60);
-  const tranId = chu(s.tran_id, 80);
-  const thieu = [!posParent && 'pos_parent', !posId && 'pos_id', !tranId && 'tran_id'].filter(Boolean);
-  if (thieu.length) return { loai: 'loi', cau: `Event 11 thiếu ${thieu.join(', ')}` };
-
-  const luc = docThoiDiem(s.tran_date) ?? docThoiDiem(s.created_at);
-  if (!luc) return { loai: 'loi', cau: 'Event 11 không đọc được giờ bán ở khóa "tran_date" / "created_at"' };
-
-  if (s.items !== undefined && s.items !== null && !Array.isArray(s.items)) {
-    return { loai: 'loi', cau: 'Event 11: khóa "items" không phải danh sách' };
-  }
-  const items = (Array.isArray(s.items) ? s.items : []) as unknown[];
-  if (items.length > 500) return { loai: 'loi', cau: 'Event 11 có hơn 500 dòng' };
+  // khoa_dong = sale_detail_id khi mọi dòng có mã riêng, không trùng; không thì chỉ số dòng (từ 0).
+  const maDong = ds.map(d => (laObj(d) ? chu(d.sale_detail_id) : undefined));
+  const theoMa = maDong.every(m => m !== undefined) && new Set(maDong).size === maDong.length;
 
   const canhBao: string[] = [];
   let khongMa = 0;
   let slHong = 0;
-  const dong: DongIpos[] = items.map((x, i) => {
-    const d: DongIpos = { khoa_dong: String(i) };
-    if (!laObj(x)) { khongMa++; return d; }
-    const ma = chu(x.item_id);
-    if (ma) d.ma_ipos = ma; else khongMa++;
-    const ten = chu(x.item_name, 200);
-    if (ten) d.ten_ipos = ten;
-    const sl = so(x.quantity);
-    if (sl !== undefined && sl >= 0 && sl <= 100000) d.so_luong = Math.round(sl * 1000) / 1000;
+  const dong: DongIpos[] = ds.map((d, i) => {
+    const r: DongIpos = { khoa_dong: theoMa ? maDong[i]! : String(i) };
+    if (!laObj(d)) { khongMa++; return r; }
+    const ma = chu(d.item_id);
+    if (ma) r.ma_ipos = ma; else khongMa++;
+    const ten = chu(d.description, 200);
+    if (ten) r.ten_ipos = ten;
+    const sl = so(d.quantity);
+    if (sl !== undefined && sl >= 0 && sl <= 100000) r.so_luong = Math.round(sl * 1000) / 1000;
     else slHong++;
-    const t = so(x.amount);
-    if (t !== undefined && t >= 0) d.thanh_tien = Math.round(t);
-    return d;
+    const t = so(d.amount);
+    if (t !== undefined && t >= 0) r.thanh_tien = Math.round(t);
+    return r;
   });
   if (khongMa) canhBao.push(`${khongMa} dòng thiếu "item_id"`);
   if (slHong) canhBao.push(`${slHong} dòng thiếu hoặc sai "quantity"`);
 
-  let daHuy = false;
-  for (const k of TRUONG_IPOS.huy) if (s[k] !== undefined && s[k] !== null && docHuy(s[k])) daHuy = true;
-
-  const hoaDon: HoaDonIpos = { ma_hd: `${posId}:${tranId}`, thoi_diem_ban: luc, da_huy: daHuy, dong };
-  const raw = rawGon(s);
+  const hoaDon: HoaDonIpos = {
+    ma_hd: maHd, thoi_diem_ban: luc, da_huy: so(x.datastate) === TRUONG_IPOS.datastateXoa, dong,
+  };
+  const raw = rawGon(x);
   if (raw !== undefined) hoaDon.raw = raw;
-  return { loai: 'hoa_don', posParent: posParent!, posId: posId!, hoaDon, canhBao };
+  const dong0 = ds.find(laObj);
+  const brandId = chu(x.brand_id, 60) ?? chu(s?.brand_id, 60);
+  const storeId = chu(x.store_id, 60) ?? chu(s?.store_id, 60) ?? chu(dong0?.store_id, 60);
+  return { loai: 'hoa_don', ...(brandId ? { brandId } : {}), ...(storeId ? { storeId } : {}), hoaDon, canhBao };
 }
 
 // =============================================================================
-// THỰC ĐƠN — GET /v2/items
+// KÉO CHỦ ĐỘNG — GET /api/v1/partners/get-sales
 // =============================================================================
 /**
- * Câu lỗi / cảnh báo khi đọc thực đơn, hai thứ tiếng. Câu lỗi còn được ghi vào
- * nhật ký lượt (kho_ipos_lan_chay.loi, chỉ tiếng Việt) — dichLoiIpos()
- * (ipos-dong-bo.ts) đọc ngược cho màn tiếng Anh. Chỉ có mã lỗi, không giá trị nào.
+ * Câu lỗi khi kéo hóa đơn, hai thứ tiếng. Câu lỗi còn được ghi vào nhật ký lượt
+ * (kho_ipos_lan_chay.loi, chỉ tiếng Việt) — dichLoiIpos() (ipos-dong-bo.ts) đọc
+ * ngược cho màn tiếng Anh. Chỉ có mã lỗi, không giá trị nào.
  */
-export const CAU_MENU_IPOS = {
+export const CAU_KEO_IPOS = {
   khongObject: { vi: 'iPOS trả về nội dung không phải object', en: 'iPOS returned something that is not an object' },
   baoLoi: {
-    vi: (ma: string) => `iPOS báo lỗi khi đọc thực đơn (mã ${ma}) — kiểm tra pos_parent, pos_id và token`,
-    en: (ma: string) => `iPOS reported an error while reading the menu (code ${ma}) — check pos_parent, pos_id and the token`,
+    vi: (ma: string) => `iPOS báo lỗi khi kéo hóa đơn (mã ${ma}) — kiểm tra mã thương hiệu, mã cửa hàng và token`,
+    en: (ma: string) => `iPOS reported an error while fetching invoices (code ${ma}) — check the brand code, store code and token`,
   },
-  khongItems: { vi: 'Không thấy danh sách món (khóa "items") trong kết quả iPOS', en: 'No item list (key "items") in the iPOS result' },
-  thieuMa: {
-    vi: (n: number) => `${n} món thiếu "store_item_id" / "item_id" — bỏ qua`,
-    en: (n: number) => `${n} ${n === 1 ? 'item is' : 'items are'} missing "store_item_id" / "item_id" — skipped`,
+  khongData: {
+    vi: 'Không thấy danh sách hóa đơn (khóa "data") trong kết quả iPOS',
+    en: 'No invoice list (key "data") in the iPOS result',
   },
 };
 
 /**
- * Đọc danh mục món iPOS → [{ma_ipos, ten_ipos, loai, dang_ban}] cho
- * kho_ipos_luu_menu. KHÔNG lấy giá (ta_price / ots_price bị bỏ).
- * ma_ipos = store_item_id (= item_id dưới máy POS, là mã callback gửi), thiếu
- * thì item_id. Món con (childs — size) cũng là món, có mã riêng.
- * loiEn / canhBaoEn: bản tiếng Anh của loi / canhBao, cùng thứ tự.
+ * Đọc một trang kết quả kéo → danh sách hóa đơn THÔ (mỗi cái đọc tiếp bằng
+ * phanTichHoaDon). loiEn: bản tiếng Anh của loi.
  */
-export function phanTichMenu(json: unknown): {
-  mon: MonIpos[]; loi: string | null; canhBao: string[]; loiEn: string | null; canhBaoEn: string[];
-} {
-  const C = CAU_MENU_IPOS;
-  const hong = (loi: HaiThuTieng) => ({ mon: [], loi: loi.vi, canhBao: [], loiEn: loi.en, canhBaoEn: [] });
+export function phanTichKetQuaKeo(json: unknown): { hoaDon: unknown[]; loi: string | null; loiEn: string | null } {
+  const C = CAU_KEO_IPOS;
+  const hong = (c: HaiThuTieng) => ({ hoaDon: [], loi: c.vi, loiEn: c.en });
   if (!laObj(json)) return hong(C.khongObject);
-  if (laObj(json.error)) {
-    const ma = chu(json.error.code) ?? '?';
+  if (json.error !== undefined && json.error !== null && json.error !== false) {
+    const ma = (laObj(json.error) ? chu(json.error.code, 20) : undefined) ?? '?';
     return hong({ vi: C.baoLoi.vi(ma), en: C.baoLoi.en(ma) });
   }
-  const data = laObj(json.data) ? json.data : json;
-  if (!Array.isArray(data.items)) return hong(C.khongItems);
-  const nhom = new Map<string, string>();
-  if (Array.isArray(data.item_types)) {
-    for (const t of data.item_types) {
-      if (!laObj(t)) continue;
-      const id = chu(t.id) ?? chu(t.type_id) ?? chu(t.item_type_id);
-      const ten = chu(t.name, 100) ?? chu(t.item_type_name, 100);
-      if (id && ten) nhom.set(id, ten);
-    }
-  }
-  const ngung = TRUONG_IPOS.menu.ngungBan as readonly string[];
-  const ra = new Map<string, MonIpos>();
-  let khongMa = 0;
-  const them = (x: unknown, sau: number) => {
-    if (!laObj(x) || sau > 2) return;
-    const ma = chu(x.store_item_id) ?? chu(x.item_id);
-    if (!ma) khongMa++;
-    else if (!ra.has(ma) && ra.size < TRUONG_IPOS.menu.toiDaMon) {
-      const m: MonIpos = { ma_ipos: ma, dang_ban: !ngung.includes(String(x.status ?? '').trim().toUpperCase()) };
-      const ten = chu(x.name, 200) ?? chu(x.item_name, 200);
-      if (ten) m.ten_ipos = ten;
-      const loaiMa = chu(x.type_id) ?? chu(x.item_type_id);
-      const loai = (loaiMa && nhom.get(loaiMa)) ?? loaiMa;
-      if (loai) m.loai = loai.slice(0, 100);
-      ra.set(ma, m);
-    }
-    if (Array.isArray(x.childs)) for (const c of x.childs) them(c, sau + 1);
-  };
-  for (const x of data.items) them(x, 0);
-  const canhBao = khongMa ? [C.thieuMa.vi(khongMa)] : [];
-  const canhBaoEn = khongMa ? [C.thieuMa.en(khongMa)] : [];
-  return { mon: [...ra.values()], loi: null, canhBao, loiEn: null, canhBaoEn };
+  if (!Array.isArray(json.data)) return hong(C.khongData);
+  return { hoaDon: json.data, loi: null, loiEn: null };
 }
 
-export interface NoiIpos {
-  api_url: string;
-  pos_parent: string;
-  pos_id: string;
+export interface CuaHangIpos {
+  /** brand_id — lưu ở cột pos_parent của kho_ipos_cau_hinh. */
+  brandId: string;
+  /** store_id (mã cửa hàng) — lưu ở cột pos_id. */
+  storeId: string;
 }
 
 /**
- * URL đọc thực đơn. CÓ TOKEN — không bao giờ ghi URL này ra log / câu lỗi /
- * database. Dùng `xoaToken` trước khi in bất cứ gì có thể chứa nó.
+ * URL kéo một trang hóa đơn theo khoảng giờ CẬP NHẬT (epoch giây). KHÔNG có
+ * token — token đi ở header `access_token` (TRUONG_IPOS.keo.tieuDeToken).
  */
-export function taoUrlMenu(c: NoiIpos, token: string): string {
-  const goc = (c.api_url || TRUONG_IPOS.apiThu).replace(/\/+$/, '');
-  const u = new URL(goc + TRUONG_IPOS.menu.duongDan);
-  const t = TRUONG_IPOS.menu.thamSo;
-  u.searchParams.set(t.token, token);
-  u.searchParams.set(t.posParent, c.pos_parent);
-  u.searchParams.set(t.posId, c.pos_id);
-  u.searchParams.set(t.loaiMenu, TRUONG_IPOS.menu.loaiMenu);
+export function taoUrlKeo(c: CuaHangIpos, tuGiay: number, denGiay: number, trang: number, goc: string = TRUONG_IPOS.goc): string {
+  const k = TRUONG_IPOS.keo;
+  const u = new URL(goc.replace(/\/+$/, '') + k.duongDan);
+  u.searchParams.set(k.thamSo.cuaHang, c.storeId);
+  u.searchParams.set(k.thamSo.thuongHieu, c.brandId);
+  u.searchParams.set(k.thamSo.tuLuc, String(tuGiay));
+  u.searchParams.set(k.thamSo.denLuc, String(denGiay));
+  u.searchParams.set(k.thamSo.trang, String(trang));
+  u.searchParams.set(k.thamSo.coTrang, String(k.coTrang));
   return u.toString();
+}
+
+/**
+ * Chia [tuMs, denMs] thành các cửa sổ iPOS nhận (epoch giây, mỗi cửa sổ từ 15
+ * phút đến 1 ngày), theo thứ tự thời gian, tối đa `toiDa` cửa sổ. Cửa sổ ngắn
+ * hơn 15 phút thì lùi đầu cửa sổ lại (đọc trùng không sao — database bỏ hóa
+ * đơn trùng). Mốc hỏng hoặc đầu sau cuối → [].
+ */
+export function chiaCuaSo(tuMs: number, denMs: number, toiDa: number): Array<[number, number]> {
+  const { cuaSoToiThieuGiay: ngan, cuaSoToiDaGiay: dai } = TRUONG_IPOS.keo;
+  if (!Number.isFinite(tuMs) || !Number.isFinite(denMs) || tuMs > denMs) return [];
+  const cuoi = Math.floor(denMs / 1000);
+  let dau = Math.min(Math.floor(tuMs / 1000), cuoi - ngan);
+  const ra: Array<[number, number]> = [];
+  while (dau < cuoi && ra.length < toiDa) {
+    const het = Math.min(dau + dai, cuoi);
+    ra.push([Math.min(dau, het - ngan), het]);
+    dau = het;
+  }
+  return ra;
 }
 
 /**

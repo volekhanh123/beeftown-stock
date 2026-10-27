@@ -1,14 +1,19 @@
 ---
 /**
- * KHO — KẾT NỐI iPOS (GĐ7a 0037; GĐ7c 0042: iPOS TỰ ĐẨY hóa đơn sang)
+ * KHO — KẾT NỐI iPOS (GĐ7a 0037; GĐ7c 0042: iPOS TỰ ĐẨY hóa đơn sang;
+ * iPOS DW cho FABi 27/10/2026: webhook + kéo bù; iPOS DW không có API thực đơn)
  *
  * Xem: mọi vai xem kho (đèn, lần nhận hóa đơn cuối, nhật ký). Sửa: chỉ chủ
  * (cai_dat_goc). "Cập nhật ngay": quản lý, chủ (dong_bo_ban) — chạy
- * dongBoIpos (lib/kho/ipos-dong-bo.ts: thử lại hàng chờ + đọc lại thực đơn
- * iPOS) bằng PHIÊN CỦA NGƯỜI BẤM, không service_role.
+ * dongBoIpos (lib/kho/ipos-dong-bo.ts: kéo bù hóa đơn vừa cập nhật + thử lại
+ * hàng chờ) bằng PHIÊN CỦA NGƯỜI BẤM, không service_role.
  *
- * Địa chỉ nhận hóa đơn `{site}/hook/ipos/<IPOS_CALLBACK_KHOA>` để dán vào CMS
- * iPOS: CHỈ CHỦ thấy đủ khóa; người khác thấy khóa bị che.
+ * Mã thương hiệu (brand_id) và mã cửa hàng (store_id) iPOS cấp lưu ở hai cột
+ * cũ pos_parent / pos_id. Không còn ô địa chỉ API: máy chủ iPOS DW là hằng
+ * TRUONG_IPOS.goc (lib/kho/ipos.ts); cột api_url giữ nguyên, không dùng.
+ *
+ * Địa chỉ nhận hóa đơn `{site}/hook/ipos/<IPOS_CALLBACK_KHOA>` để gửi cho kỹ
+ * thuật iPOS làm webhook: CHỈ CHỦ thấy đủ khóa; người khác thấy khóa bị che.
  *
  * Trang này KHÔNG BAO GIỜ in token: chỉ nói "đã cài / chưa cài" bí mật
  * Worker IPOS_ACCESS_TOKEN. Form cấu hình không có ô token; ô nào dán chữ
@@ -90,14 +95,6 @@ const t = dichNB(nn, {
   chuaNhanHd: { vi: 'chưa nhận hóa đơn nào', en: 'no invoice received yet' },
   lanCapNhatCuoi: { vi: 'lần cập nhật cuối:', en: 'last update:' },
   dangChay: { vi: ' · đang chạy', en: ' · running' },
-  thucDonIpos: { vi: 'Thực đơn iPOS:', en: 'iPOS menu:' },
-  soMon: { vi: (n: number) => `${n} món`, en: (n: number) => `${n} ${n === 1 ? 'dish' : 'dishes'}` },
-  docLuc: { vi: ', đọc lúc', en: ', read at' },
-  chuaDocDuoc: { vi: 'chưa đọc được', en: 'not read yet' },
-  menuDoi: {
-    vi: ' · iPOS báo thực đơn vừa đổi, sẽ đọc lại trong 5 phút',
-    en: ' · iPOS reported a menu change; it will be read again within 5 minutes',
-  },
   loiLanCuoi: { vi: 'Lỗi lần cuối:', en: 'Last error:' },
   dongChuaGhep: {
     vi: (_n: number) => 'dòng chưa ghép món',
@@ -118,14 +115,14 @@ const t = dichNB(nn, {
   // Cập nhật ngay
   capNhatNgay: { vi: 'Cập nhật ngay', en: 'Update now' },
   capNhatGiai: {
-    vi: '— thử lại các dòng bán đang chờ (sau khi nhận hàng, ghép món) và đọc lại thực đơn iPOS, không đợi lượt 5 phút. Hóa đơn thì iPOS tự gửi sang, không cần bấm.',
-    en: '— retry the waiting sale lines (after receiving goods or matching dishes) and read the iPOS menu again, without waiting for the 5-minute run. Invoices are sent by iPOS on its own; no need to press anything.',
+    vi: '— kéo lại từ iPOS các hóa đơn vừa cập nhật (bù hóa đơn gửi sang bị lỡ) và thử lại các dòng bán đang chờ (sau khi nhận hàng, ghép món), không đợi lượt 5 phút. Hóa đơn thì iPOS tự gửi sang, không cần bấm.',
+    en: '— fetch the recently updated invoices from iPOS again (making up for any that were missed) and retry the waiting sale lines (after receiving goods or matching dishes), without waiting for the 5-minute run. Invoices are sent by iPOS on its own; no need to press anything.',
   },
   mayChu: { vi: 'Máy chủ', en: 'The server' },
   chuaCaiToken: { vi: 'chưa cài token iPOS', en: 'has no iPOS token yet' },
   chuaCaiTokenGiai: {
-    vi: '— vẫn thử lại được dòng chờ, nhưng chưa đọc được thực đơn. Cách cài: xem mục "Cài lần đầu" bên dưới.',
-    en: '— waiting lines can still be retried, but the menu cannot be read yet. How to set it up: see "First-time setup" below.',
+    vi: '— vẫn thử lại được dòng chờ, nhưng chưa kéo bù được hóa đơn từ iPOS. Cách cài: xem mục "Cài lần đầu" bên dưới.',
+    en: '— waiting lines can still be retried, but invoices cannot be fetched from iPOS yet. How to set it up: see "First-time setup" below.',
   },
   dongBoTat: { vi: 'Đồng bộ đang tắt — chủ nhà hàng bật ở form bên dưới.', en: 'Sync is off — the owner turns it on in the form below.' },
   // Trừ kho theo iPOS
@@ -168,10 +165,11 @@ const t = dichNB(nn, {
     vi: '— hóa đơn iPOS gửi sang được ghi ngay. Tắt thì hóa đơn chỉ được cất lại, chưa trừ kho.',
     en: '— invoices sent by iPOS are recorded right away. When it is off, invoices are only stored, not deducted from stock.',
   },
-  diaChiIpos: { vi: 'Địa chỉ iPOS', en: 'iPOS address' },
-  diaChiIposGiai: {
-    vi: 'Dùng để đọc thực đơn. Mặc định là máy thử của iPOS; khi iPOS cấp địa chỉ thật thì thay.',
-    en: "Used to read the menu. The default is iPOS's test server; replace it when iPOS gives you the real address.",
+  maThuongHieu: { vi: 'Mã thương hiệu (brand_id)', en: 'Brand code (brand_id)' },
+  maCuaHang: { vi: 'Mã cửa hàng (store_id)', en: 'Store code (store_id)' },
+  maIposGiai: {
+    vi: 'Chép đúng từ thư iPOS cấp quyền kéo dữ liệu bán hàng (mã thương hiệu có dạng BRAND-…).',
+    en: 'Copy them exactly from the iPOS email that grants access to sales data (the brand code looks like BRAND-…).',
   },
   quayBan: { vi: 'Quầy bán', en: 'Sales counter' },
   quayBanGiai: { vi: 'Hàng bán trên iPOS được trừ ở quầy này.', en: 'Items sold on iPOS are deducted from this counter.' },
@@ -203,7 +201,7 @@ const t = dichNB(nn, {
   chiChuSua: { vi: 'Chỉ chủ nhà hàng sửa được.', en: 'Only the owner can edit.' },
   // Địa chỉ nhận hóa đơn
   diaChiNhan: { vi: 'Địa chỉ nhận hóa đơn', en: 'Invoice receiving address' },
-  danDiaChi: { vi: 'Dán địa chỉ này vào CMS iPOS (mục callback_url)', en: 'Paste this address into the iPOS CMS (the callback_url field)' },
+  danDiaChi: { vi: 'Gửi địa chỉ này cho kỹ thuật iPOS làm webhook nhận hóa đơn', en: 'Send this address to iPOS technical support as the invoice webhook' },
   phanCuoiChe: {
     vi: 'Phần cuối là khóa bí mật — chỉ chủ nhà hàng xem được đầy đủ.',
     en: 'The last part is a secret key — only the owner can see it in full.',
@@ -220,18 +218,21 @@ const t = dichNB(nn, {
     en: '— iPOS cannot send invoices yet. See step 1 of "First-time setup" below.',
   },
   viecNhoIpos: { vi: 'Việc cần nhờ iPOS', en: 'What to ask iPOS for' },
-  nho1a: { vi: 'Cấu hình', en: 'Set the' },
-  nho1b: { vi: 'của điểm bán là địa chỉ ở trên (trong CMS partner.foodbook.vn).', en: 'of the outlet to the address above (in the partner.foodbook.vn CMS).' },
+  nho1a: { vi: 'Cấu hình', en: 'Set up the' },
+  nho1b: {
+    vi: '("Đồng bộ realtime" của iPOS DW) của cửa hàng là địa chỉ ở trên.',
+    en: '(the "realtime sync" of iPOS DW) for the store with the address above.',
+  },
   nho2a: { vi: 'Bật gửi', en: 'Turn on sending' },
   moiHoaDon: { vi: 'MỌI hóa đơn', en: 'EVERY invoice' },
   nho2b: {
-    vi: 'của điểm bán sang (mặc định iPOS chỉ gửi đơn "liên quan đối tác" như đơn giao hàng, voucher — thiếu bước này thì kho không trừ đủ).',
-    en: 'of the outlet (by default iPOS only sends "partner-related" orders such as deliveries and vouchers — without this step, stock is not fully deducted).',
+    vi: 'của cửa hàng sang, kể cả khi sửa hay xóa hóa đơn — thiếu hóa đơn nào thì kho không trừ hóa đơn đó.',
+    en: 'of the store, including when an invoice is edited or deleted — any invoice that is not sent is not deducted from stock.',
   },
   nho3a: { vi: 'Cấp', en: 'Issue an' },
   nho3b: {
-    vi: 'cho bản chạy thật (người quản lý Cloudflare cài làm bí mật máy chủ, xem bên dưới).',
-    en: 'for the live system (whoever manages Cloudflare sets it as a server secret, see below).',
+    vi: 'kéo dữ liệu bán hàng, kèm mã thương hiệu và mã cửa hàng (người quản lý Cloudflare cài token làm bí mật máy chủ, xem bên dưới).',
+    en: 'for fetching sales data, with the brand code and store code (whoever manages Cloudflare sets the token as a server secret, see below).',
   },
   nho4a: { vi: 'Cho biết món thịt ở quầy bán theo', en: 'Tell us whether the counter meat items are sold by' },
   hayTheo: { vi: 'hay theo', en: 'or by' },
@@ -242,7 +243,7 @@ const t = dichNB(nn, {
   caiLanDau: { vi: 'Cài lần đầu (người quản lý Cloudflare)', en: 'First-time setup (whoever manages Cloudflare)' },
   khoaNhanHd: { vi: 'Khóa nhận hóa đơn:', en: 'Invoice receiving key:' },
   taiKhoanMay: { vi: '· Tài khoản máy:', en: '· Device account:' },
-  tokenIpos: { vi: '· Token iPOS (đọc thực đơn):', en: '· iPOS token (menu reading):' },
+  tokenIpos: { vi: '· Token iPOS (kéo bù hóa đơn):', en: '· iPOS token (fetching missed invoices):' },
   daCai: { vi: 'Đã cài', en: 'Set' },
   chuaCai: { vi: 'Chưa cài', en: 'Not set' },
   cai1a: {
@@ -271,13 +272,13 @@ const t = dichNB(nn, {
     en: '(or Cloudflare → Workers & Pages → beeftown → Settings → Variables and Secrets → Add → type',
   },
   cai4c: {
-    vi: '). Chỉ dùng để đọc thực đơn. Không ghi vào wrangler.toml, không gửi qua Zalo, không dán vào trang này.',
-    en: '). It is only used to read the menu. Never put it in wrangler.toml, never send it over Zalo, never paste it into this page.',
+    vi: '). Dùng để kéo bù hóa đơn từ iPOS. Không ghi vào wrangler.toml, không gửi qua Zalo, không dán vào trang này.',
+    en: '). It is used to fetch missed invoices from iPOS. Never put it in wrangler.toml, never send it over Zalo, never paste it into this page.',
   },
   cai5a: { vi: 'Chủ điền cấu hình ở trên, chọn quầy bán, tích', en: 'The owner fills in the settings above, chooses the sales counter, ticks' },
   cai5b: { vi: ', bấm', en: ', presses' },
   cai5c: { vi: ', gửi địa chỉ nhận hóa đơn cho iPOS, rồi bấm', en: ', sends the invoice receiving address to iPOS, then presses' },
-  cai5d: { vi: 'để đọc thực đơn.', en: 'to read the menu.' },
+  cai5d: { vi: 'để kéo thử hóa đơn từ iPOS.', en: 'to fetch invoices from iPOS as a test.' },
   soChuaCai: { vi: (n: number) => `${n} việc chưa cài`, en: (n: number) => `${n} ${n === 1 ? 'item' : 'items'} not set up` },
   daCaiDu: { vi: 'đã cài đủ', en: 'all set up' },
   chuaCaiThiTat: {
@@ -342,10 +343,6 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
         <p class="kho-phu" style="margin:.35rem 0 0">
           {t.lanNhanHd} <strong>{tt.nhan_hd_luc ? dinhDangThoiDiem(tt.nhan_hd_luc) : t.chuaNhanHd}</strong> · {t.lanCapNhatCuoi} {dinhDangThoiDiem(tt.lan_cuoi_luc)}
           {tt.dang_chay && t.dangChay}
-        </p>
-        <p class="kho-phu" style="margin:.35rem 0 0">
-          {t.thucDonIpos} {tt.so_mon_menu > 0 ? <><a href="/noi-bo/kho/ban-ipos/ghep#thuc-don">{t.soMon(tt.so_mon_menu)}</a>{t.docLuc} {dinhDangThoiDiem(tt.menu_luc)}</> : t.chuaDocDuoc}
-          {tt.menu_can_lam_moi && t.menuDoi}
         </p>
         {tt.lan_cuoi_loi && <p class="kho-phu" style="margin:.35rem 0 0">{t.loiLanCuoi} {dichLoiIpos(tt.lan_cuoi_loi, nn)}</p>}
       </section>
@@ -418,17 +415,13 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
           <input type="hidden" name="viec" value="luu" />
           <label class="kho-tich"><input type="checkbox" name="bat" value="co" checked={batDangChon} />
             <span><strong>{t.batDongBo}</strong> {t.batDongBoGiai}</span></label>
-          <label class="nb-o">
-            <span>{t.diaChiIpos}</span>
-            <small>{t.diaChiIposGiai}</small>
-            <input type="url" name="api_url" value={o('api_url', tt.api_url)} placeholder="https://apitest.foodbook.vn/ipos/ws/xpartner" autocomplete="off" spellcheck="false" />
-          </label>
           <div class="nb-hai">
-            <label class="nb-o"><span>pos_parent</span>
+            <label class="nb-o"><span>{t.maThuongHieu}</span>
               <input type="text" name="pos_parent" value={o('pos_parent', tt.pos_parent)} autocomplete="off" spellcheck="false" /></label>
-            <label class="nb-o"><span>pos_id</span>
+            <label class="nb-o"><span>{t.maCuaHang}</span>
               <input type="text" name="pos_id" value={o('pos_id', tt.pos_id)} autocomplete="off" spellcheck="false" /></label>
           </div>
+          <p class="kho-phu" style="margin:-.25rem 0 .75rem">{t.maIposGiai}</p>
           <label class="nb-o">
             <span>{t.quayBan}</span>
             <small>{t.quayBanGiai}</small>
@@ -455,8 +448,8 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
         <div class="nb-the">
           <dl style="margin:0">
             <dt>{t.dongBo}</dt><dd>{tt.bat ? t.dangBat : t.dangTat}</dd>
-            <dt>{t.diaChiIpos}</dt><dd>{tt.api_url}</dd>
-            <dt>pos_parent · pos_id</dt><dd>{tt.pos_parent ?? '—'} · {tt.pos_id ?? '—'}</dd>
+            <dt>{t.maThuongHieu}</dt><dd>{tt.pos_parent ?? '—'}</dd>
+            <dt>{t.maCuaHang}</dt><dd>{tt.pos_id ?? '—'}</dd>
             <dt>{t.quayBan}</dt><dd>{tenQuay ?? t.chuaChon}</dd>
             <dt>{t.khungGioMo}</dt><dd>{tt.gio_mo_cua}h – {tt.gio_dong_cua}h</dd>
             <dt>{t.baoMatKetNoiSau}</dt><dd>{t.gioKhongNhan(tt.gio_mat_ket_noi)}</dd>
@@ -483,7 +476,7 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
 
         <h3>{t.viecNhoIpos}</h3>
         <ol class="kho-phu" style="margin:.25rem 0 0;padding-left:1.25rem">
-          <li>{t.nho1a} <strong>callback_url</strong> {t.nho1b}</li>
+          <li>{t.nho1a} <strong>webhook</strong> {t.nho1b}</li>
           <li>{t.nho2a} <strong>{t.moiHoaDon}</strong> {t.nho2b}</li>
           <li>{t.nho3a} <strong>access_token</strong> {t.nho3b}</li>
           <li>{t.nho4a} <strong>kg</strong> {t.hayTheo} <strong>{t.goi}</strong> {t.nho4b} <a href="/noi-bo/kho/ban-ipos/ghep">{t.ghepMon}</a>.</li>

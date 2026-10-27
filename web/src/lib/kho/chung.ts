@@ -157,8 +157,8 @@ export const MO_TA_VIEC_NB: Record<ViecKho, { ten: HaiThuTieng; moTa: HaiThuTien
   },
   dong_bo_ban: {
     ten: { vi: 'Đồng bộ iPOS', en: 'iPOS sync' },
-    moTa: { vi: 'Ghi hóa đơn bán iPOS gửi sang để trừ kho ở quầy, thử lại dòng chờ và đọc thực đơn iPOS (máy iPOS tự chạy; quản lý, chủ bấm "Cập nhật ngay").',
-            en: 'Record the iPOS sales invoices sent over to deduct counter stock, retry waiting lines and read the iPOS menu (the iPOS device runs it; managers and the owner can press "Update now").' },
+    moTa: { vi: 'Ghi hóa đơn bán iPOS gửi sang để trừ kho ở quầy, kéo bù hóa đơn từ iPOS và thử lại dòng chờ (máy iPOS tự chạy; quản lý, chủ bấm "Cập nhật ngay").',
+            en: 'Record the iPOS sales invoices sent over to deduct counter stock, fetch missed invoices from iPOS and retry waiting lines (the iPOS device runs it; managers and the owner can press "Update now").' },
   },
 };
 export const MO_TA_VIEC: Record<ViecKho, { ten: string; moTa: string }> = Object.fromEntries(
