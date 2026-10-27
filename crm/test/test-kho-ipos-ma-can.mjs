@@ -9,7 +9,7 @@
  * đây dựng đúng dạng payload thật đó và đi qua chính bộ đọc của web (phanTichHoaDon) rồi
  * kho_ipos_nhan_callback. Phải đúng:
  *   · mã món chưa ghép, toàn số, bỏ số 0 đầu = mã cân của món đang dùng → trừ đúng món đó,
- *     quantity là kg (món đếm gói → gói gần số kg nhất, lệch ghi hao hụt; món cân kg → đúng kg);
+ *     quantity là kg (món đếm gói → gói gần số kg nhất, trừ đúng kg bán — 0104; món cân kg → đúng kg);
  *   · có hay không số 0 đầu, có khoảng trắng đều nhận; mã cân của món ngừng dùng, mã chữ
  *     (ITEM-XXXX), mã số không trùng gì → vẫn "chưa khớp";
  *   · mã giảm giá vẫn nhận là mã giảm (thứ tự ô > mã giảm > mã cân không đổi);
@@ -154,10 +154,10 @@ await nhom('1 · CHUẨN BỊ: MÃ CÂN, MÃ GIẢM, HÀNG Ở QUẦY, CHUYỂN 
 await nhom('2 · MÃ MÓN FABi = MÃ CÂN, CHƯA GHÉP → KHO TỰ NHẬN, BÁN THEO KG', async () => {
   const [d1] = await ban([{ ma: '01011', ten: 'Steak Ribeye Úc', sl: 0.23 }]);
   const s1 = await soCai(d1.id);
-  ok('"01011" 0,23 kg (đúng payload FABi thật) → đã trừ kho Steak: 1 gói nguyên, bán 0,23 kg, lệch ghi hao hụt',
+  ok('"01011" 0,23 kg (đúng payload FABi thật) → đã trừ kho Steak: 1 gói nguyên, bán đúng 0,23 kg, không hao hụt (0104)',
      d1.trang_thai === 'da_ghi' && d1.mat_hang_id === MH['C-THANNGOAI'].id && d1.so_goi === 1 && Number(d1.so_kg) === 0.23
-     && Number(s1.find(s => s.loai === 'ban')?.so_kg) === -0.23 && s1.find(s => s.loai === 'ban')?.so_goi === -1
-     && Number(s1.find(s => s.loai === 'hao_hut')?.so_kg) === -0.27, JSON.stringify({ d1, s1 }));
+     && s1.length === 1 && s1[0].loai === 'ban' && Number(s1[0].so_kg) === -0.23 && s1[0].so_goi === -1,
+     JSON.stringify({ d1, s1 }));
   ok('…không ghép tay nào được tạo; dòng không mang mã cân (thử lại đọc quantity như cũ)',
      Number((await db.query(`select count(*) n from kho_ipos_ma_hang`)).rows[0].n) === 0 && d1.ma_can === null
      && d1.o_ma_id === null && d1.ma_giam_id === null, JSON.stringify(d1));

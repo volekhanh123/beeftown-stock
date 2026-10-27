@@ -712,9 +712,20 @@ cookie nên không có gì để CSRF; chặn trước Astro là đúng chỗ. R
 lại cho `astro dev`.
 
 **"Bán theo" (0042, `kho_ipos_ma_hang.don_vi_ban`).** iPOS chỉ gửi `quantity`. Database đổi:
-`kg` → kg bán = quantity (món đếm gói: lấy gói nguyên theo hạn gần nhất cho tổng kg gần nhất, lệch ghi hao
-hụt); `goi` → số gói = quantity (món theo kg thì kg = quantity × "mỗi gói = … kg"); `suat` → món chế biến,
-dòng `bo_qua`, kho không trừ, định lượng GĐ7b đếm suất từ `so_luong`; trống → theo món kho.
+`kg` → kg bán = quantity (món đếm gói: lấy gói nguyên theo hạn gần nhất cho tổng kg gần nhất, trừ đúng kg
+bán — xem đoạn dưới); `goi` → số gói = quantity (món theo kg thì kg = quantity × "mỗi gói = … kg"); `suat` → món
+chế biến, dòng `bo_qua`, kho không trừ, định lượng GĐ7b đếm suất từ `so_luong`; trống → theo món kho.
+
+**Bán theo kg trừ đúng kg trên tem, không hao hụt lúc bán (0104).** Khánh chốt 27/10/2026: hao hụt ghi ở nhập /
+trim / pha lóc, không ở lúc bán. Khay cắt ra được cân, in tem và quét tem vào phiên pha lóc (`kho_phien_pha_quet`,
+mỗi khay một dòng) — lô ra quầy = số tem, tổng kg tem. Bán khay đó (FABi gửi quantity = kg tem, hay dòng có mã vạch
+nhãn) thì dòng sổ `ban` là −kg bán, −số gói, **không** dòng hao hụt nào: lô giữ phần kg còn lại, đúng bằng tổng các
+khay chưa bán. Trước 0104, mỗi lần bán ghi hao hụt = kg tem − kg trung bình của gói (thử thật: tem 0,24 kg, lô
+0,5 kg/gói → "hao hụt" 0,26 kg). Chỉ hai chỗ còn ghi một dòng `hao_hut` (chứng từ `ban_hang`, báo cáo hao hụt gọi
+là **"Chênh lệch cân lúc bán (iPOS)"**): bán gói CUỐI của lô ở quầy (ghi chú "Chênh lệch cân khi bán hết lô" — lô về
+đúng 0 gói 0 kg; khác 0 khi lô gõ tay tổng kg hay tem bán khác tem lúc cắt) và kg bán vượt kg còn lại của lô ("Kg
+bán vượt kg còn lại của lô" — không bao giờ âm kho). Hủy / sửa hóa đơn đảo đúng từng dòng sổ. Kiểm thử:
+`crm/test/test-kho-ipos-tru-kg.mjs`.
 
 **Mất kết nối / chặn đếm quầy (0042).** Không có hóa đơn ≠ mất kết nối (quán vắng). Đèn đỏ + chuông
 `ipos_mat_ket_noi` khi: lượt cập nhật cuối lỗi (kéo hóa đơn / thử lại; có hóa đơn đọc hỏng hay database từ

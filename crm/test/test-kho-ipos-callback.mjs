@@ -217,11 +217,12 @@ await nhom('2 · CHƯA GHÉP → CHỜ; GHÉP v2 "BÁN THEO KG" CHO MÓN ĐẾM 
   ok('Ghép v2 (bán theo kg) → xử lý lại ngay: da_ghi', g.loi === null && g.rows[0].v.don_vi_ban === 'kg'
      && d.trang_thai === 'da_ghi', g.loi ?? JSON.stringify({ v: g.rows[0].v, d }));
   const so = await soCuaDong(d.id);
-  ok('1,05 kg → 2 gói nguyên lô T1 (1,0 kg sổ, gần nhất), hao_hut +0,05 rồi bán 1,05 kg',
-     d.so_goi === 2 && Number(d.so_kg) === 1.05 && so.every(s => s.lo_id === T1.id)
-       && Number(so.find(s => s.loai === 'hao_hut')?.so_kg) === 0.05
-       && Number(so.find(s => s.loai === 'ban')?.so_kg) === -1.05 && so.find(s => s.loai === 'ban')?.so_goi === -2,
-     JSON.stringify({ d: { so_goi: d.so_goi, so_kg: d.so_kg }, so }));
+  const tT1 = await ton(T1.id, viTri.quay);
+  // 0104: trừ ĐÚNG 1,05 kg, không hao hụt theo kg trung bình của gói — T1 giữ phần kg còn lại.
+  ok('1,05 kg → 2 gói nguyên lô T1 (1,0 kg sổ, gần nhất), bán đúng 1,05 kg, KHÔNG dòng hao hụt; T1 còn 2 gói 0,95 kg',
+     d.so_goi === 2 && Number(d.so_kg) === 1.05 && so.length === 1 && so[0].lo_id === T1.id && so[0].loai === 'ban'
+       && Number(so[0].so_kg) === -1.05 && so[0].so_goi === -2 && tT1.goi === 2 && Math.abs(tT1.kg - 0.95) < 1e-9,
+     JSON.stringify({ d: { so_goi: d.so_goi, so_kg: d.so_kg }, so, tT1 }));
   const { rows: [mp] } = await db.query(`select * from kho_ipos_ma_hang where ma_ipos = 'THAN-KG'`);
   ok('Bảng ghép nhớ tên iPOS và "bán theo"', mp.ten_ipos === 'Thăn bò cân' && mp.don_vi_ban === 'kg');
   await doiSoat('Bán theo kg');

@@ -258,8 +258,8 @@ await nhom('2 · TẢNG A: LÓC, Ô 1 GIỮ LÔ, BÁN HAI HOÁ ĐƠN THEO MÃ Ô
   const giao = (await db.query(`select lo_id from kho_o_ma_giao where o_ma_id = $1 and den_luc is null`, [O1])).rows[0];
   ok('Chốt phiên lóc tảng A: ô 1 gắn lô thăn ngoại cắt (4 kg / 8 gói ở quầy)', !!loO1 && giao?.lo_id === loO1 && await tonKg([loO1]) === 4);
 
-  // Mã món iPOS = mã ô 1 (chưa ghép) → kho tự nhận ô, số lượng là kg; món đếm gói nên trừ gói nguyên,
-  // lệch giữa kg bán và kg sổ của gói ghi thành dòng hao_hut: 0,52 → 1 gói (+0,02) · 0,45 → 1 gói (−0,05).
+  // Mã món iPOS = mã ô 1 (chưa ghép) → kho tự nhận ô, số lượng là kg; món đếm gói nên trừ gói nguyên, đúng kg
+  // bán — từ 0104 không còn dòng hao_hut theo kg trung bình của gói: 0,52 → 1 gói · 0,45 → 1 gói · 1 → 2 gói.
   await gui(hoaDon(201, LUC_1, HD_201));
   await gui(hoaDon(202, LUC_2, HD_202));
   const d = [...await dongHd(201), ...await dongHd(202)];
@@ -273,7 +273,7 @@ await nhom('2 · TẢNG A: LÓC, Ô 1 GIỮ LÔ, BÁN HAI HOÁ ĐƠN THEO MÃ Ô
      n.kg_ban === 1.97 && n.goi_ban === 4 && n.ngay_ban_cuoi === N[-1], JSON.stringify(n));
   ok('Chưa có dòng đảo: báo cáo theo tảng, truy vết, tảng & ô đều bằng sổ ròng',
      bang(r?.kg_ban, n.kg_ban) && bang(lo?.kg_ban, n.kg_ban) && lo?.ngay_ban_cuoi === n.ngay_ban_cuoi
-       && bang(o?.kg_ban, n.kg_ban) && Number(o?.goi_ban) === n.goi_ban && bang(o?.kg_khac, 0.03),
+       && bang(o?.kg_ban, n.kg_ban) && Number(o?.goi_ban) === n.goi_ban && bang(o?.kg_khac, 0),
      JSON.stringify({ bao_cao: r?.kg_ban, lo: [lo?.kg_ban, lo?.ngay_ban_cuoi], o: [o?.kg_ban, o?.goi_ban, o?.kg_khac] }));
   await doiSoat('Bán theo ô');
 });
@@ -285,9 +285,9 @@ await nhom('3 · HỒI QUY: HOÁ ĐƠN iPOS BỊ SỬA MẤT MỘT DÒNG', async
   const d = await dongHd(201);
   const dao = (await db.query(`select count(*)::int as n from kho_so_cai where loai = 'dao_nguoc' and lo_id = $1`, [loO1])).rows[0].n;
   const n = await soRong([loO1]);
-  ok('Kho nhận là hoá đơn sửa: dòng 0,45 kg thành da_huy, bốn dòng sổ bị đảo (2 bán + 2 lệch cân), dòng 0,52 kg ghi lại',
-     kq.hd_sua === 1 && d[0]?.trang_thai === 'da_ghi' && d[1]?.trang_thai === 'da_huy' && dao === 4, JSON.stringify({ kq, dao }));
-  ok('Sổ ròng lô ô 1 sau khi sửa: bán 1,52 kg / 3 gói, quầy còn 2,5 kg', n.kg_ban === 1.52 && n.goi_ban === 3 && await tonKg([loO1]) === 2.5,
+  ok('Kho nhận là hoá đơn sửa: dòng 0,45 kg thành da_huy, hai dòng sổ bán bị đảo, dòng 0,52 kg ghi lại',
+     kq.hd_sua === 1 && d[0]?.trang_thai === 'da_ghi' && d[1]?.trang_thai === 'da_huy' && dao === 2, JSON.stringify({ kq, dao }));
+  ok('Sổ ròng lô ô 1 sau khi sửa: bán 1,52 kg / 3 gói, quầy còn 2,48 kg', n.kg_ban === 1.52 && n.goi_ban === 3 && await tonKg([loO1]) === 2.48,
      JSON.stringify(n));
 
   const { r, tv, lo, o } = await baHamTangA();
@@ -297,10 +297,24 @@ await nhom('3 · HỒI QUY: HOÁ ĐƠN iPOS BỊ SỬA MẤT MỘT DÒNG', async
      bang(tv?.tang?.kg_ban, n.kg_ban) && bang(lo?.kg_ban, n.kg_ban), `đầu trang ${tv?.tang?.kg_ban} · lô ${lo?.kg_ban} · sổ ròng ${n.kg_ban}`);
   ok('HỒI QUY: tảng & ô — ô 1 bán 1,52 kg / 3 gói',
      bang(o?.kg_ban, n.kg_ban) && Number(o?.goi_ban) === n.goi_ban, `kg_ban ${o?.kg_ban} · goi_ban ${o?.goi_ban} · sổ ròng ${n.kg_ban} / ${n.goi_ban}`);
-  // Lệch cân còn hiệu lực chỉ là +0,02 kg của dòng 0,52 (sổ thêm 0,02 kg → "khác" −0,02); dòng −0,05 đã bị đảo.
+  // Từ 0104 lần bán không còn dòng hao hụt theo kg trung bình — chỉ gói cuối của lô / kg vượt lô mới có dòng chênh
+  // lệch cân, và kho_ipos_dao_dong đảo nó cùng dòng bán. Lô ô 1 còn nhiều gói nên chèn tay một dòng chênh lệch
+  // −0,05 kg của dòng 0,45 kg rồi đảo nó (như nhóm 5 làm với dòng huỷ) để khoá quy tắc: kg "khác" của ô không
+  // cộng dòng đã bị đảo.
+  await db.query(`
+    with g as (
+      insert into kho_so_cai (chi_nhanh_id, lo_id, vi_tri_id, mat_hang_id, loai, so_kg, so_goi, chung_tu_loai, chung_tu_id, ghi_chu)
+      values ($1, $2, $3, $4, 'hao_hut', -0.05, 0, 'ban_hang', $5, 'Kiểm thử: chênh lệch cân của dòng 0,45 kg')
+      returning *)
+    insert into kho_so_cai (chi_nhanh_id, lo_id, vi_tri_id, mat_hang_id, loai, so_kg, so_goi, chung_tu_loai, chung_tu_id, dao_cua, ghi_chu)
+    select chi_nhanh_id, lo_id, vi_tri_id, mat_hang_id, 'dao_nguoc', -so_kg, -so_goi, chung_tu_loai, chung_tu_id, id,
+           'Kiểm thử: đảo chênh lệch cân'
+    from g`, [cnA.id, loO1, vt.quay, MH['C-THANNGOAI'].id, d[1].id]);
   const nQuay = await soRong([loO1], ['quay', 'kho', 'cho_huy']);
-  ok('HỒI QUY: tảng & ô — kg "khác" của ô 1 chỉ còn lệch cân của dòng bán còn hiệu lực (−0,02 kg)',
-     bang(o?.kg_khac, nQuay.kg_khac) && nQuay.kg_khac === -0.02, `kg_khac ${o?.kg_khac} · sổ ròng ${nQuay.kg_khac}`);
+  const oSau = await oMa(O1);
+  ok('HỒI QUY: tảng & ô — kg "khác" của ô 1 không cộng dòng chênh lệch cân đã bị đảo (0 kg, quầy vẫn 2,48 kg)',
+     bang(oSau?.kg_khac, nQuay.kg_khac) && nQuay.kg_khac === 0 && await tonKg([loO1]) === 2.48,
+     `kg_khac ${oSau?.kg_khac} · sổ ròng ${nQuay.kg_khac}`);
   const dt = await dangThuc(tangA.id);
   ok('HỒI QUY: đẳng thức tảng A sau khi sửa hoá đơn — thịt + phụ phẩm = bán + bếp + huỷ + còn − lệch cân', dt.dat, dt.chu);
   await doiSoat('Hoá đơn sửa');
@@ -311,8 +325,8 @@ await nhom('4 · HỒI QUY: HOÁ ĐƠN iPOS BỊ HUỶ · NGÀY BÁN CUỐI · B
   const kq = await gui(hoaDon(202, LUC_2, HD_202, true));
   const [d] = await dongHd(202);
   const n = await soRong([loO1]);
-  ok('Kho nhận là hoá đơn huỷ: dòng thành da_huy, sổ ròng lô ô 1 còn bán 0,52 kg / 1 gói, quầy còn 3,5 kg',
-     kq.hd_huy === 1 && d?.trang_thai === 'da_huy' && n.kg_ban === 0.52 && n.goi_ban === 1 && await tonKg([loO1]) === 3.5,
+  ok('Kho nhận là hoá đơn huỷ: dòng thành da_huy, sổ ròng lô ô 1 còn bán 0,52 kg / 1 gói, quầy còn 3,48 kg',
+     kq.hd_huy === 1 && d?.trang_thai === 'da_huy' && n.kg_ban === 0.52 && n.goi_ban === 1 && await tonKg([loO1]) === 3.48,
      JSON.stringify({ kq, n }));
 
   const { r, tv, lo, o } = await baHamTangA();
@@ -324,8 +338,8 @@ await nhom('4 · HỒI QUY: HOÁ ĐƠN iPOS BỊ HUỶ · NGÀY BÁN CUỐI · B
   // giờ bán nằm trong cùng một ngày UTC, nên ngày ở đây phải là ngày sổ theo giờ Việt Nam.
   ok('HỒI QUY: truy vết tảng — ngày bán cuối của lô lùi về hôm kia (lần bán 23:50 còn hiệu lực), không phải ngày của hoá đơn đã huỷ',
      n.ngay_ban_cuoi === N[-2] && lo?.ngay_ban_cuoi === N[-2], `hàm ${lo?.ngay_ban_cuoi} · sổ ròng ${n.ngay_ban_cuoi} · hôm kia ${N[-2]}`);
-  ok('HỒI QUY: tảng & ô — ô 1 bán 0,52 kg / 1 gói, còn 3,5 kg / 7 gói',
-     bang(o?.kg_ban, n.kg_ban) && Number(o?.goi_ban) === n.goi_ban && bang(o?.con_kg, 3.5) && Number(o?.con_goi) === 7,
+  ok('HỒI QUY: tảng & ô — ô 1 bán 0,52 kg / 1 gói, còn 3,48 kg / 7 gói',
+     bang(o?.kg_ban, n.kg_ban) && Number(o?.goi_ban) === n.goi_ban && bang(o?.con_kg, 3.48) && Number(o?.con_goi) === 7,
      `kg_ban ${o?.kg_ban} · goi_ban ${o?.goi_ban} · còn ${o?.con_kg} / ${o?.con_goi}`);
   ok('HỒI QUY: truy vết tảng — mọi lô cắt của tảng A đúng sổ ròng của chính lô đó', (await loLechSo(tv)).length === 0, (await loLechSo(tv)).join(' | '));
 
@@ -354,15 +368,16 @@ await nhom('5 · HỒI QUY: KG HUỶ CŨNG TRỪ DÒNG ĐẢO', async () => {
 
   let n = await soRong([loO1]);
   let x = await baHamTangA();
-  ok('NV quầy báo huỷ 1 gói của lô ô 1, quản lý duyệt → sổ ròng huỷ 0,5 kg; báo cáo, truy vết, tảng & ô đều 0,5 kg',
-     n.kg_huy === 0.5 && bang(x.r?.kg_huy, 0.5) && bang(x.lo?.kg_huy, 0.5) && bang(x.o?.kg_huy, 0.5),
+  // Huỷ theo gói lấy kg trung bình của gói còn lại trong lô: 3,48 kg / 7 gói → 0,497 kg.
+  ok('NV quầy báo huỷ 1 gói của lô ô 1 (3,48 kg / 7 gói), quản lý duyệt → sổ ròng huỷ 0,497 kg; báo cáo, truy vết, tảng & ô đều 0,497 kg',
+     n.kg_huy === 0.497 && bang(x.r?.kg_huy, 0.497) && bang(x.lo?.kg_huy, 0.497) && bang(x.o?.kg_huy, 0.497),
      JSON.stringify({ so: n.kg_huy, bao_cao: x.r?.kg_huy, lo: x.lo?.kg_huy, o: x.o?.kg_huy }));
   // Lô của ô: lóc ra = bán + huỷ + khác + còn (không có dòng nào ở "đang mang ra quầy").
-  ok('HỒI QUY: tảng & ô — ô 1: lóc ra 4 kg = bán + huỷ + khác + còn (0,52 + 0,5 − 0,02 + 3)',
+  ok('HỒI QUY: tảng & ô — ô 1: lóc ra 4 kg = bán + huỷ + khác + còn (0,52 + 0,497 + 0 + 2,983)',
      bang(x.o?.kg_ra, 4) && bang(Number(x.o?.kg_ban) + Number(x.o?.kg_huy) + Number(x.o?.kg_khac) + Number(x.o?.con_kg), x.o?.kg_ra),
      JSON.stringify({ ra: x.o?.kg_ra, ban: x.o?.kg_ban, huy: x.o?.kg_huy, khac: x.o?.kg_khac, con: x.o?.con_kg }));
   let dt = await dangThuc(tangA.id);
-  ok('HỒI QUY: đẳng thức tảng A khi đủ cả bán, bếp, huỷ, còn, lệch cân (4 + 0,3 = 0,52 + 0,3 + 0,5 + 3 − 0,02)', dt.dat, dt.chu);
+  ok('HỒI QUY: đẳng thức tảng A khi đủ cả bán, bếp, huỷ, còn (4 + 0,3 = 0,52 + 0,3 + 0,497 + 2,983)', dt.dat, dt.chu);
 
   // Hiện chưa hàm nào đảo dòng huỷ; chèn tay một dòng đảo để khoá quy tắc "cột nào cộng theo loại dòng
   // sổ thì cũng trừ dòng đảo của loại đó" — hàm đảo dòng huỷ viết sau này sẽ không làm lại lỗi cũ.
@@ -375,9 +390,9 @@ await nhom('5 · HỒI QUY: KG HUỶ CŨNG TRỪ DÒNG ĐẢO', async () => {
     from kho_so_cai s where s.id = $1`, [dongHuy.id]);
   n = await soRong([loO1]);
   x = await baHamTangA();
-  ok('HỒI QUY: dòng huỷ bị đảo → báo cáo theo tảng, truy vết, tảng & ô đều về huỷ 0 kg (hàng về lại "Chờ huỷ": còn 3,5 kg)',
+  ok('HỒI QUY: dòng huỷ bị đảo → báo cáo theo tảng, truy vết, tảng & ô đều về huỷ 0 kg (hàng về lại "Chờ huỷ": còn 3,48 kg)',
      n.kg_huy === 0 && bang(x.r?.kg_huy, 0) && bang(x.tv?.tang?.kg_huy, 0) && bang(x.lo?.kg_huy, 0) && bang(x.o?.kg_huy, 0)
-       && bang(x.r?.kg_con, 3.5) && bang(x.o?.con_kg, 3.5),
+       && bang(x.r?.kg_con, 3.48) && bang(x.o?.con_kg, 3.48),
      JSON.stringify({ so: n.kg_huy, bao_cao: [x.r?.kg_huy, x.r?.kg_con], lo: x.lo?.kg_huy, o: [x.o?.kg_huy, x.o?.con_kg] }));
   dt = await dangThuc(tangA.id);
   ok('HỒI QUY: đẳng thức tảng A sau khi đảo dòng huỷ', dt.dat, dt.chu);
