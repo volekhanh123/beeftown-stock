@@ -14,14 +14,16 @@
  * và CÙNG ma_gui.
  *
  * Gói online của thịt mới: các cỡ Đang dùng của Cài đặt bán lẻ (/noi-bo/ban-le/cai-dat, 0102), mỗi cỡ một ô
- * chọn Bán / Không bán (không ô đánh dấu — ô trống không phân biệt được "Không" với "chưa chọn"). Không có
+ * chọn Bán / Không bán (không ô đánh dấu — ô trống không phân biệt được "Không" với "chưa chọn"), cộng ba ô chữ
+ * "Cỡ khác (gam)" (goi_khac_N) gõ thẳng số gam ngoài các cỡ có sẵn — gõ sai thì thư viện trả câu lỗi, form dựng
+ * lại giữ chữ đã gõ. Cỡ gõ ở đây chỉ vào sản phẩm này, không thêm vào Cài đặt bán lẻ. Không có
  * JavaScript nên ô chọn cỡ hiện cả khi chọn kim chi: chữ trên form nói rõ chỉ dùng cho thịt bò, thư viện bỏ qua
  * với kim chi. Đọc cài đặt lỗi thì không có ô chọn cỡ (database dùng cài đặt) — không chặn form.
  */
 import NoiBo from '../../../layouts/NoiBo.astro';
 import {
   docDanhSach, docCaiDat, taoSanPham, chonChiNhanhBanLe, cauLoiDoc, cauCanhBao, giaGoi,
-  VAI_XEM_BAN_LE, VAI_SUA_BAN_LE, KIEU_SAN_PHAM, CANH_BAO_BAN_LE, TEN_LOAI_BAN_LE, TEN_BAO_QUAN, TRANG_THAI_BAN_LE,
+  VAI_XEM_BAN_LE, VAI_SUA_BAN_LE, SO_O_GOI_KHAC, KIEU_SAN_PHAM, CANH_BAO_BAN_LE, TEN_LOAI_BAN_LE, TEN_BAO_QUAN, TRANG_THAI_BAN_LE,
   type SanPhamBanLe, type ChiNhanhBanLe, type CaiDatBanLe, type KetQua,
 } from '../../../lib/ban-le-noi-bo';
 import { dichNB, nnCua } from '../../../lib/ngon-ngu-noi-bo';
@@ -78,14 +80,19 @@ const t = dichNB(nn, {
   maGoiY:     { vi: 'Mã cố định cho Mini App và website — không đổi được sau khi tạo. Để trống là tự tạo từ tên: chữ thường không dấu, gạch ngang.',
                 en: 'A fixed code for the Mini App and the website — it cannot be changed later. Leave it empty to make it from the name: lowercase, no accents, hyphens.' },
   goiOnline:  { vi: 'Gói online cho thịt bò', en: 'Online packs for beef' },
-  goiOnlineGoiY: { vi: 'Chỉ dùng khi chọn Thịt bò. Cỡ lấy từ Cài đặt bán lẻ; thêm cỡ khác ở trang sửa sau khi tạo.',
-                   en: 'Only used when Beef is chosen. Sizes come from Retail settings; add other sizes on the edit page after creating.' },
+  goiOnlineGoiY: { vi: 'Chỉ dùng khi chọn Thịt bò. Cỡ có sẵn lấy từ Cài đặt bán lẻ; cỡ khác thì gõ số gam bên dưới.',
+                   en: 'Only used when Beef is chosen. Ready sizes come from Retail settings; for another size, type the grams below.' },
+  goiKhac:    { vi: 'Cỡ khác (gam)', en: 'Other size (grams)' },
+  goiKhacGoiY: { vi: 'Từ 50 đến 5000 g — ví dụ 350, hoặc 1000 cho 1 kg. Để trống nếu không thêm.',
+                 en: 'From 50 to 5000 g — for example 350, or 1000 for 1 kg. Leave empty to add nothing.' },
+  goiKhacCong: { vi: 'Cộng thêm vào các cỡ chọn Bán ở trên — chỉ muốn cỡ gõ ở đây thì chọn Không bán cho các cỡ trên.',
+                 en: "Added to the sizes set to Sell above — to sell only the sizes typed here, set the sizes above to Don't sell." },
   ban:        { vi: 'Bán', en: 'Sell' },
   khongBan:   { vi: 'Không bán', en: "Don't sell" },
   caiDatLoi:  { vi: 'Chưa đọc được Cài đặt bán lẻ — sản phẩm thịt mới sẽ có mọi cỡ gói đang dùng; bỏ cỡ không bán ở trang sửa sau khi tạo.',
                 en: 'Could not read the retail settings — a new beef product will get every pack size in use; remove the sizes you do not sell on its page after creating it.' },
-  chuaCoCo:   { vi: 'Cài đặt bán lẻ chưa có cỡ gói nào đang dùng — sản phẩm thịt mới sẽ chưa có gói.',
-                en: 'Retail settings have no pack size in use — new beef products will have no packs.' },
+  chuaCoCo:   { vi: 'Cài đặt bán lẻ chưa có cỡ gói nào đang dùng — gõ số gam ở ô Cỡ khác; để trống thì sản phẩm thịt mới chưa có gói.',
+                en: 'Retail settings have no pack size in use — type the grams under Other size; leave them empty and the new beef product will have no packs.' },
   taoNut:     { vi: 'Thêm sản phẩm', en: 'Add product' },
   daTao:      { vi: 'Đã tạo — điền giá, gói rồi bấm Lưu.', en: 'Created — fill in prices and packs, then press Save.' },
   viecSai:    { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
@@ -283,6 +290,16 @@ const coGia = (sp: SanPhamBanLe) => sp.gia_de_chot.kg != null || Object.keys(sp.
           ) : (
             <p class="bl-phu">{t.chuaCoCo}</p>
           )}
+          <p class="bl-phu bl-goi-y-khac" id="goi-khac-goi-y">{coDangDung.length > 0 ? `${t.goiKhacCong} ${t.goiKhacGoiY}` : t.goiKhacGoiY}</p>
+          <div class="bl-luoi-co">
+            {Array.from({ length: SO_O_GOI_KHAC }, (_, j) => (
+              <label class="nb-o">
+                <span>{t.goiKhac}</span>
+                <input type="text" name={`goi_khac_${j}`} inputmode="numeric" autocomplete="off" maxlength="7"
+                       aria-describedby="goi-khac-goi-y" value={go(`goi_khac_${j}`)} />
+              </label>
+            ))}
+          </div>
         </fieldset>
       )}
       <details class="bl-goi-y" open={go('ma') !== ''}>
@@ -320,10 +337,12 @@ const coGia = (sp: SanPhamBanLe) => sp.gia_de_chot.kg != null || Object.keys(sp.
   .bl-them h2 { margin-top: 0; }
   .bl-goi-y { margin: 0 0 1rem; }
   .bl-goi-y summary { cursor: pointer; font-weight: 600; font-size: .9rem; padding: .7rem 0; min-height: 48px; }
-  /* Ô chọn cỡ gói của form Thêm sản phẩm: khung nhóm (viền --vach của noi-bo.css), mỗi cỡ một select Bán / Không bán. */
+  /* Ô chọn cỡ gói của form Thêm sản phẩm: khung nhóm (viền --vach của noi-bo.css), mỗi cỡ một select Bán / Không bán,
+     dưới là ba ô chữ "Cỡ khác (gam)" gõ thẳng số gam. */
   .bl-co-goi { padding: .5rem .85rem .25rem; min-width: 0; }
   .bl-co-goi legend { font-weight: 600; font-size: .88rem; padding: 0 .35rem; }
   .bl-co-goi > .bl-phu { margin: 0 0 .75rem; }
+  .bl-co-goi > .bl-goi-y-khac { margin: .25rem 0 .5rem; }
   .bl-luoi-co { display: grid; gap: 0 1rem; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
   .bl-luoi-co span { font-variant-numeric: tabular-nums; }
   .bl-nut { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .5rem; }

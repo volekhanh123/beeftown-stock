@@ -380,6 +380,45 @@ await nhom('5d · taoSanPham: chọn cỡ Bán / Không bán, kim chi, form cũ,
                         ...Object.fromEntries(Array.from({ length: 21 }, (_, i) => [`goi_${100 + i * 100}`, 'ban'])) });
   ok('21 cỡ chọn Bán → câu cũ "Một sản phẩm có tối đa 20 gói.", không tạo', q.ok === false && q.cau === 'Một sản phẩm có tối đa 20 gói.', JSON.stringify(q));
 
+  // Gõ thẳng số gam khi thêm món (Khánh 27/10/2026): ô "Cỡ khác (gam)" goi_khac_0 … goi_khac_2, cạnh các cỡ có sẵn
+  ok('Thư viện có SO_O_GOI_KHAC = 3 (số ô "Cỡ khác" trên form Thêm sản phẩm)', BL.SO_O_GOI_KHAC === 3);
+  for (const [ten, o, phai] of [
+    ['Thịt, 300 Bán, 1000 Không bán, gõ thêm "350" và "1.500" → 300, 350, 1500 g',
+     { ten_vi: 'Gõ thêm gram', kieu: 'thit|theo_can', co_goi_ds: '300,1000', goi_300: 'ban', goi_1000: 'khong', goi_khac_0: '350', goi_khac_1: '1.500' }, [300, 350, 1500]],
+    ['Thịt, cài đặt không có cỡ nào (co_goi_ds rỗng), gõ "250", " 500 " → 250, 500 g',
+     { ten_vi: 'Chỉ gõ gram', kieu: 'thit|theo_can', co_goi_ds: '', goi_khac_0: '250', goi_khac_2: ' 500 ' }, [250, 500]],
+    ['Thịt, gõ trùng cỡ có sẵn đang chọn Bán ("300") và trùng nhau ("350", "350") → mỗi cỡ một gói',
+     { ten_vi: 'Gõ trùng', kieu: 'thit|theo_can', co_goi_ds: '300', goi_300: 'ban', goi_khac_0: '300', goi_khac_1: '350', goi_khac_2: '350' }, [300, 350]],
+    ['Thịt, cỡ có sẵn chọn Không bán nhưng gõ lại đúng cỡ đó → gõ là muốn bán: 1000 g',
+     { ten_vi: 'Gõ cỡ không bán', kieu: 'thit|theo_can', co_goi_ds: '300,1000', goi_300: 'khong', goi_1000: 'khong', goi_khac_0: '1000' }, [1000]],
+    ['Kim chi gõ "500" → không gói nào (kim chi bán theo hộp)',
+     { ten_vi: 'Kim chi gõ gram', kieu: 'kim_chi|theo_hop', co_goi_ds: '300', goi_300: 'ban', goi_khac_0: '500' }, []],
+  ]) {
+    const r = await tao(o);
+    const g = r.ok ? await goiCua(r.id) : null;
+    ok(ten, r.ok === true && r.daCo === false && giongNhau(g, phai), `${JSON.stringify(r)} · gói ${JSON.stringify(g)}`);
+  }
+  for (const xau of ['1,5', 'abc', '49', '5001', '300g', '1kg', '-200']) {
+    const n0b = await demSanPham();
+    const ghi = clientGhi();
+    const vi = await BL.taoSanPham(ghi, formTu({ ma_gui: maGui(), ten_vi: 'Gõ sai', kieu: 'thit|theo_can', co_goi_ds: '300', goi_300: 'ban', goi_khac_1: xau }), 'vi');
+    const en = await BL.taoSanPham(ghi, formTu({ ma_gui: maGui(), ten_vi: 'Gõ sai', kieu: 'thit|theo_can', co_goi_ds: '300', goi_300: 'ban', goi_khac_1: xau }), 'en');
+    ok(`Ô "Cỡ khác" gõ "${xau}" → "${CAU.coSai.vi}" / en, KHÔNG gọi database, không tạo`,
+       vi.ok === false && vi.cau === CAU.coSai.vi && en.ok === false && en.cau === CAU.coSai.en && ghi.goi.length === 0
+       && (await demSanPham()) === n0b, `${JSON.stringify(vi)} · ${JSON.stringify(en)} · gọi ${ghi.goi.length}`);
+  }
+  const gian2 = clientGhi({ data: { id: '00000000-0000-4000-8000-00000000c0de', da_co: false }, error: null });
+  await BL.taoSanPham(gian2, formTu({ ma_gui: maGui(), ten_vi: 'E', kieu: 'thit|theo_can', co_goi_ds: '300', goi_300: 'ban', goi_khac_0: '1.000', goi_khac_2: '150' }), 'vi');
+  await BL.taoSanPham(gian2, formTu({ ma_gui: maGui(), ten_vi: 'F', kieu: 'thit|theo_can', goi_khac_0: '700' }), 'vi');
+  const [gE, gF] = gian2.goi.map(x => x.tham);
+  ok('Thư viện gửi p_so_gam gồm cỡ chọn Bán và cỡ gõ thêm, theo gam tăng dần: [150, 300, 1000]', giongNhau(gE?.p_so_gam, [150, 300, 1000]), JSON.stringify(gE));
+  ok('Form không có co_goi_ds (đọc cài đặt lỗi — trang không dựng ô Cỡ khác) → vẫn không gửi p_so_gam', gF && !('p_so_gam' in gF), JSON.stringify(gF));
+  const q2 = await tao({ ten_vi: 'Hai mươi mốt cỡ gõ', kieu: 'thit|theo_can',
+                         co_goi_ds: Array.from({ length: 18 }, (_, i) => 100 + i * 100).join(','),
+                         ...Object.fromEntries(Array.from({ length: 18 }, (_, i) => [`goi_${100 + i * 100}`, 'ban'])),
+                         goi_khac_0: '1950', goi_khac_1: '1960', goi_khac_2: '1970' });
+  ok('18 cỡ Bán + 3 cỡ gõ = 21 → "Một sản phẩm có tối đa 20 gói.", không tạo', q2.ok === false && q2.cau === 'Một sản phẩm có tối đa 20 gói.', JSON.stringify(q2));
+
   // Trả cài đặt về như gieo
   const v3 = await BL.docCaiDat(CHU);
   const ve = await BL.luuCoGoi(CHU, formCaiDat(v3, { ...viecCua(v3, 300, 'bo'), ...viecCua(v3, 1000, 'bo'), ...viecCua(v3, 400, 'dung'), cg_moi_0: '200' }), 'vi');
@@ -487,13 +526,13 @@ await nhom('7 · TRANG: cai-dat.astro, index.astro, [id].astro — đọc mã ng
   ok('index.astro: fieldset "Gói online cho thịt bò" ngay sau ô "Bán thế nào", trước ô mã',
      viTriKieu > 0 && viTriCo > viTriKieu && viTriCo < ds.indexOf('<details class="bl-goi-y"')
      && ds.includes("'Gói online cho thịt bò'") && ds.includes("'Online packs for beef'")
-     && ds.includes("'Chỉ dùng khi chọn Thịt bò. Cỡ lấy từ Cài đặt bán lẻ; thêm cỡ khác ở trang sửa sau khi tạo.'"));
+     && ds.includes("'Chỉ dùng khi chọn Thịt bò. Cỡ có sẵn lấy từ Cài đặt bán lẻ; cỡ khác thì gõ số gam bên dưới.'"));
   ok('index.astro: ô ẩn co_goi_ds = các cỡ đang dùng nối dấu phẩy', /<input type="hidden" name="co_goi_ds" value=\{coDangDung\.join\(','\)\} \/>/.test(ds));
   ok('index.astro: mỗi cỡ một select goi_N "Bán" / "Không bán" (ban / khong), giữ lựa chọn đã gõ khi dựng lại',
      /<select name=\{`goi_\$\{n\}`\}>/.test(ds) && /<option value="ban" selected=\{/.test(ds) && /<option value="khong" selected=\{/.test(ds)
      && /ban:\s+\{ vi: 'Bán', en: 'Sell' \}/.test(ds) && /khongBan:\s+\{ vi: 'Không bán', en: "Don't sell" \}/.test(ds) && /go\(`goi_\$\{n\}`\)/.test(ds));
-  ok('index.astro: cài đặt không có cỡ đang dùng → câu nói rõ thịt mới sẽ chưa có gói',
-     ds.includes("'Cài đặt bán lẻ chưa có cỡ gói nào đang dùng — sản phẩm thịt mới sẽ chưa có gói.'"));
+  ok('index.astro: cài đặt không có cỡ đang dùng → câu chỉ sang ô Cỡ khác, nói rõ để trống thì thịt mới chưa có gói',
+     ds.includes("'Cài đặt bán lẻ chưa có cỡ gói nào đang dùng — gõ số gam ở ô Cỡ khác; để trống thì sản phẩm thịt mới chưa có gói.'"));
   ok('index.astro: đọc cài đặt lỗi → bỏ fieldset (không gửi co_goi_ds), không chặn form (lỗi thành { caiDat: null, loi: true })',
      /docCaiDat\(client\)\.then\(caiDat => \(\{ caiDat, loi: false \}\), \(\) => \(\{ caiDat: null, loi: true \}\)\)/.test(ds)
      && /\{caiDat && \(\s*<fieldset class="nb-o bl-co-goi">/.test(ds));
@@ -547,6 +586,19 @@ await nhom('7b · TRANG: dựng lại sau lỗi, đọc cài đặt hỏng, đ�
   ok('index.astro: đọc cài đặt chạy song song với đọc menu (không await docCaiDat( đứng riêng)',
      /docCaiDat\(client\)\.then\(/.test(ds) && !/await docCaiDat\(/.test(ds));
   ok('[id].astro: đọc cài đặt chạy song song (không await docCaiDat( đứng riêng)', /docCaiDat\(client\)\.then\(/.test(sua) && !/await docCaiDat\(/.test(sua));
+});
+
+await nhom('7c · TRANG: form Thêm sản phẩm có ô gõ gram ("Cỡ khác")', async () => {
+  const ds = docNguon('pages/noi-bo/ban-le/index.astro');
+  ok('index.astro: dựng SO_O_GOI_KHAC ô goi_khac_N trong fieldset cỡ gói, ô chữ inputmode numeric (không type="number")',
+     /Array\.from\(\{ length: SO_O_GOI_KHAC \}/.test(ds) && /name=\{`goi_khac_\$\{j\}`\}/.test(ds)
+     && /name=\{`goi_khac_\$\{j\}`\}[^>]*inputmode="numeric"/.test(ds) && !/type="number"/.test(ds));
+  ok('index.astro: dựng lại form hỏng giữ chữ đã gõ ở ô Cỡ khác', /value=\{go\(`goi_khac_\$\{j\}`\)\}/.test(ds));
+  ok('index.astro: có cỡ ở trên thì gợi ý nói rõ cỡ gõ CỘNG THÊM vào các cỡ chọn Bán (muốn riêng cỡ gõ thì chọn Không bán); không có cỡ thì không nói câu đó',
+     /goiKhacCong:\s*\{\s*vi:\s*'Cộng thêm vào các cỡ chọn Bán ở trên[^']*Không bán[^']*',\s*en:\s*"[^"]+"/.test(ds)
+     && /\{coDangDung\.length > 0 \? `\$\{t\.goiKhacCong\} \$\{t\.goiKhacGoiY\}` : t\.goiKhacGoiY\}/.test(ds));
+  ok('index.astro: nhãn và gợi ý ô Cỡ khác có vi và en',
+     /goiKhac:\s*\{\s*vi:\s*'Cỡ khác \(gam\)',\s*en:\s*'[^']+'/.test(ds) && /goiKhacGoiY:\s*\{\s*vi:\s*'[^']+',\s*en:\s*'[^']+'/.test(ds));
 });
 
 await nhom('8 · SỔ KHO KHỚP', async () => {
