@@ -811,6 +811,8 @@ await nhom('6 · ĐỐI CHIẾU FABi — chi nhánh Q7', async () => {
      r.kq?.menu_cu === true && r.kq?.bat === false && r.kq?.menu_luc === null && r.kq?.so_mon_menu === 0, vi(r));
   ok('…dòng mã cân: menu_cu, KHÔNG nói "tạo món" (không suy từ dữ liệu cũ), không biết trên FABi (null)',
      can?.viec.includes('menu_cu') && !can.viec.includes('tao_mon') && can.tren_fabi === null, JSON.stringify(can));
+  ok('…dòng mã cân CHƯA GHÉP: không việc ghep, không sua_ghep — kho tự nhận mã FABi = mã cân (0103)',
+     can?.ghep === null && !can.viec.includes('ghep') && !can.viec.includes('sua_ghep'), JSON.stringify(can));
   ok('…dòng gói TN-200: menu_cu, chưa ghép', goiDong(r.kq, 'TN-200')?.viec.includes('menu_cu')
      && goiDong(r.kq, 'TN-200')?.viec.includes('ghep') && !goiDong(r.kq, 'TN-200')?.viec.includes('tao_mon'),
      JSON.stringify(goiDong(r.kq, 'TN-200')));

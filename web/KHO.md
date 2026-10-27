@@ -664,9 +664,15 @@ ten_ipos: description, so_luong: quantity, thanh_tien: amount }] }`.
   gửi lại hóa đơn cũ với `datastate = 2`. Mỗi `sale_id` là một hóa đơn, nên: hóa đơn mới được ghi, hóa đơn cũ
   bị đảo ngược — đến theo thứ tự nào cũng vậy (test-kho-ipos-web: "Sửa hóa đơn kiểu FABi …"). Cùng `sale_id`
   gửi lại với nội dung khác → database đảo ngược rồi ghi lại (0037).
-- **Mã món** (hóa đơn thật 27/10/2026): `item_id` là mã FABi tự sinh dạng `ITEM-XXXX`, không phải mã cân. Món
-  thường ghép một lần ở Ghép món. Ô mã và mã giảm chỉ tự nhận khi `item_id` trùng mã ô / mã giảm — với mã
-  `ITEM-…` thì ghép từng mã với đúng ô ở Ghép món (nhóm "Ô mã").
+- **Mã món** (hóa đơn thật 27/10/2026): `item_id` là **Mã món** của FABi — FABi tự sinh `ITEM-XXXX` khi để trống,
+  còn đặt sẵn (nhập file, vd `01011`) thì gửi đúng mã đó. Quy ước: món cân đặt **Mã món = Mã barcode = mã cân đệm đủ
+  5 số** (`01011` cho mã cân `1011`). Khi đó kho **tự nhận** (0103, `kho_ipos_ghi_dong`): mã món toàn số, bỏ số 0
+  đầu, trùng mã cân của món đang dùng → trừ món đó, quantity là kg — không cần Ghép món; như ô mã (0051) và mã
+  giảm (0054). Thứ tự: ghép tay > ô mã > mã giảm > nhãn cân > mã món = mã cân. Đơn vị FABi của dòng
+  (`sale_detail[].unit_id` trong raw, `kho_ipos_don_vi_dong`) khác `KG` — món hộp, chai trùng số — thì không tự nhận;
+  không biết đơn vị (raw thiếu) thì vẫn nhận. Món `ITEM-…` và món không cân
+  (hộp, chai) vẫn ghép một lần ở Ghép món; FABi có món KHÁC trùng số thì ghép "Không phải hàng kho" / món khác
+  (form đòi tích "Mã này là món khác trên FABi").
 
 | Chỗ | Việc |
 |---|---|
@@ -676,8 +682,22 @@ ten_ipos: description, so_luong: quantity, thanh_tien: amount }] }`.
 | `src/worker.ts` | `fetch`: `/hook/ipos/*` → `xuLyHookIpos`, còn lại = `handle` của `@astrojs/cloudflare/handler`; `scheduled` |
 | `/noi-bo/kho/cai-dat/ipos` | Kết nối iPOS: đèn, **lần nhận hóa đơn gần nhất**, **địa chỉ nhận hóa đơn** (chủ thấy đủ khóa, người khác thấy che), việc nhờ iPOS, "Cập nhật ngay" (kéo bù + thử lại hàng chờ, phiên người bấm, `dong_bo_ban`, giới hạn 60 giây), cấu hình (**Mã thương hiệu**, **Mã cửa hàng**, quầy bán, giờ mở cửa, "báo mất kết nối sau … giờ" — không còn ô địa chỉ API: máy chủ là hằng `TRUONG_IPOS.goc`), chuyển nguồn số bán |
 | `/noi-bo/kho/ban-ipos` | Hàng đợi: Chưa khớp → Ghép món; Thiếu hàng → Thử lại / Hàng ngoài sổ / Bỏ qua (`kho_ipos_xu_ly_dong`) |
-| `/noi-bo/kho/ban-ipos/ghep` | Ghép món + **Bán theo** kg / gói (+ "mỗi gói = … kg") / suất (món chế biến) → `kho_ipos_gan_ma_v2`; bảng **Thực đơn iPOS** (`kho_ipos_menu`) không còn được làm mới — món hiện ở mục chưa ghép sau lần bán đầu |
-| `/noi-bo/kho/ban-ipos/mon-fabi.csv` | Danh sách món cần có trên FABi (`danh_muc`) — `taoTepMonFabi` (`lib/kho/thu-ngan.ts`) |
+| `/noi-bo/kho/ban-ipos/ghep` | Ghép món + **Bán theo** kg / gói (+ "mỗi gói = … kg") / suất (món chế biến) → `kho_ipos_gan_ma_v2`; mã trùng mã cân ghi "kho tự nhận", chọn sẵn món và Theo kg (`maCanTuNhan`); bảng **Thực đơn iPOS** (`kho_ipos_menu`) không còn được làm mới — món hiện ở mục chưa ghép sau lần bán đầu |
+| `/noi-bo/kho/ban-ipos/mon-fabi.xlsx` | **File nhập món cho FABi** (`danh_muc`) — đúng sheet "Menu" của mẫu `create-item.xlsx` ("Thêm món từ file"), chỉ món chưa thấy trên FABi — `taoTepNhapFabi` (`lib/kho/thu-ngan.ts`, Excel tự viết ở `lib/kho/tep-excel.ts`) |
+| `/noi-bo/kho/ban-ipos/mon-fabi.csv` | Bảng đối chiếu món cần có trên FABi (`danh_muc`) — `taoTepMonFabi` (`lib/kho/thu-ngan.ts`) |
+
+**Đồng bộ món kho → FABi (0103).** Kho là nơi duy nhất sửa món (tên, mã cân, giá/kg). Cân nhận qua Beeftown Cân
+("Gửi xuống cân" / tự gửi khi kho đổi). FABi không có API tạo / sửa món, nên: Ghép món → **Tải file nhập món cho
+FABi** → FABi CMS → Thực đơn → Món ăn → Tiện ích → **Thêm món từ file**. File gồm mọi món cân (mã cân), ô mã, mã giảm
+đang dùng mà kho **chưa thấy trên FABi** — chưa có dòng bán nào mang mã đó (`kho_ipos_ma_da_ban`, mã số đã bỏ số 0
+đầu, security invoker, RLS `xem_gia`; chạm 1000 mã — trần max_rows của PostgREST — thì báo lỗi thay vì đoán), chưa ghép
+tay mã đó, chưa ghép tay một mã KHÁC với đúng món / ô đó (món đã có trên FABi dưới mã `ITEM-…`), có giá, mã vừa mẫu
+mã vạch. Món theo tảng có ô mã: chỉ các món ô, không món mã chung (tem in mã chung quét không ra món — buộc in lại
+bằng phím ô). Mỗi dòng: Thành phố "Hồ Chí
+Minh", Tên (tên món kho; ô "<tên> ô <số>"; mã giảm như trên cân), Giá (giá/kg; mã giảm: giá đã giảm), Mã món = Mã
+barcode = mã đệm đủ 5 số, Nhóm `ITEM_TYPE_OTHER`, Loại `DA`, Đơn vị `KG`; cột khác trống. FABi chỉ THÊM món từ file
+(không ghi gì về mã trùng) — món đã tạo trên FABi mà chưa bán thì xoá dòng đó trước khi tải lên. **Đổi giá**: sửa tay
+trên FABi cùng lúc với kho (file "Xuất, sửa thực đơn" của FABi sửa được Giá — chưa làm đường vòng này).
 
 **Không còn đọc thực đơn.** iPOS DW không có API thực đơn: `kho_ipos_menu`, `menu_luc`,
 `menu_can_lam_moi`, `kho_ipos_luu_menu`, `kho_ipos_bao_menu_doi` giữ nguyên trong database nhưng web không
@@ -745,6 +765,11 @@ kiểu 32–40 ký tự in hoa + số như token của iPOS).
 
 1. **Sửa hóa đơn**: iPOS trả lời — `sale_id` mới có `origin_sale_id`, hóa đơn cũ gửi lại với `datastate = 2`
    (xem "Đọc một hóa đơn" ở trên). Mã không phải đổi.
+4. **Nhập món FABi bằng file và quét tem cân**: file `create-item.xlsx` (sheet "Menu") với Mã món = Mã barcode =
+   `01011`, đơn vị `KG` — FABi nhận, giữ số 0 đầu (file "Xuất, sửa thực đơn" xác nhận). Quét tem cân thật
+   `2001011002302` (số đầu **20**, mã `01011`, 230 g) trên FABi ra đúng Steak Ribeye Úc, 0,23 kg × 950.000 =
+   218.500 đ — FABi đọc được số đầu 20, không phải đổi cân sang 29 (tài liệu iPOS ghi mặc định 29). Hóa đơn về
+   kho qua webhook sau 36 giây: `item_id` `01011`, `quantity` 0,23, `unit_id` `KG`.
 2. `dwapis.ipos.vn` **không** chặn Worker Cloudflare: lượt "Cập nhật ngay" và lượt cron 5 phút kéo được hóa
    đơn thật (`api.foodbook.vn` thì trả "IP Blocked or Access Denied" cho mọi yêu cầu từ máy thử).
 3. iPOS đã cấu hình webhook cho cửa hàng (địa chỉ có khóa mới, đổi ngày 27/10/2026).
@@ -753,8 +778,8 @@ kiểu 32–40 ký tự in hoa + số như token của iPOS).
 
 1. Header `access_token` iPOS gửi kèm webhook là token nào?
 2. FABi có API danh sách món không (để nối lại đối chiếu FABi)?
-3. Mã món tự đặt trên FABi có đi sang hóa đơn ở khóa nào không? `item_id` là `ITEM-XXXX`; mẫu webhook của
-   tài liệu có `item_id_mapping` — raw giữ khóa này (thêm 27/10/2026), xem ở hóa đơn thật kế tiếp.
+3. ~~Mã món tự đặt trên FABi có đi sang hóa đơn không?~~ Có: `item_id` = Mã món đặt sẵn (27/10/2026, mục 4 ở trên).
+   `item_id_mapping` vẫn chưa thấy giá trị.
 
 **Chạy thử cục bộ:**
 
@@ -1154,12 +1179,13 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   **lúc bán** (`kho_ipos_lo_cua_o`) và trừ đúng lô đó ở quầy (`kho_ipos_lay_lo_cua_lo`); lô không đủ / ô chưa
   gắn lô → trừ theo hạn gần nhất như cũ, `kho_ipos_dong.lech_o` + câu lý do, màn Bán hàng iPOS hiện "Lệch ô".
   Ghép lại bằng `kho_ipos_gan_ma_v2` bỏ ô. `kho_v_ipos_dong` thêm `so_o`, `ma_can_o`, `so_tang`, `lech_o`.
-- **Thu ngân / FABi** (chỉ web, `lib/kho/thu-ngan.ts`, không migration; `test-kho-ipos-fabi.mjs`): kho chỉ biết tảng
-  khi dòng hóa đơn mang mã ô. (1) Ghép món → **Món cần có trên FABi** (`#mon-fabi`, `danh_muc`): mỗi ô mã của món đang
+- **Thu ngân / FABi** (`lib/kho/thu-ngan.ts`; `test-kho-ipos-fabi.mjs`, `test-kho-ipos-ma-can.mjs`): kho chỉ biết tảng
+  khi dòng hóa đơn mang mã ô. (1) Ghép món → **Món cần có trên FABi** (`#mon-fabi`, `danh_muc`): mỗi món đang dùng có mã
+  cân (0103 — "<tên món>", mã vạch = mã cân đệm đủ số; chưa có giá → cảnh báo, không vào file nhập), mỗi ô mã của món đang
   dùng + mỗi mã giảm đang bật một món — tên gợi ý "<tên món> ô <số>" (mã giảm: tên như trên cân), mã món = mã vạch
   (đệm đủ số chữ `C` của mẫu) = mã ô / mã giảm, bán theo kg, giá/kg = giá kho (mã giảm: `giaGiam`). Đối chiếu
   `kho_ipos_menu` (chỉ có mã món — nhãn "có" nói mã vạch phải thử bằng một tem; ô ghép tay mã khác cũng tính);
-  thực đơn rỗng → "Chưa đọc được thực đơn iPOS", không kết luận; kèm giờ đọc thực đơn; mã dài hơn số chữ `C` của mẫu
+  thực đơn rỗng → mã đã bán qua iPOS là "Đã bán qua FABi" (0103, `kho_ipos_ma_da_ban`), chưa bán thì "Chưa bán lần nào — chưa biết đã có trên FABi chưa", không kết luận (thực đơn đã đọc thắng lịch sử bán); kèm giờ đọc thực đơn; mã dài hơn số chữ `C` của mẫu
   → cảnh báo cân không in được tem; nội dung mục chọn bằng `mucMonFabi` (thuần). Tải
   `/noi-bo/kho/ban-ipos/mon-fabi.csv` (link thường, không `download` — 403 / 500 mở trang có câu lỗi) (`taoTepMonFabi`: `taoCsv`, không lách bằng "=", tên file ASCII giờ VN; vai khác
   403; đọc lỗi 500 kèm câu, không file rỗng). (2) Bán hàng iPOS → hộp **Bán không biết tảng · 7 ngày** (`xem_gia`,
