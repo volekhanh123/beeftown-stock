@@ -1,0 +1,526 @@
+-- =============================================================================
+-- BEEFTOWN KHO — 0104 · BÁN QUA iPOS TRỪ ĐÚNG KG TRÊN TEM, KHÔNG HAO HỤT THEO KG TRUNG BÌNH
+-- =============================================================================
+-- PHẢI CHẠY SAU 0103 (bản cuối của kho_ipos_ghi_dong) VÀ 0032 (bản cuối của kho_bao_cao_hao_hut).
+--
+-- Khánh chốt 27/10/2026, sau lần bán thử thật (tem Ribeye 0,24 kg, lô 0,5 kg/gói → kho ghi "hao hụt" 0,26 kg):
+-- "đâu cần phải trừ hao hụt trung bình". Quy trình: tảng nhập về → trim (tảng ủ + thịt thừa) → ủ → cắt từng khay,
+-- mỗi khay đặt lên cân, in tem, QUÉT TEM vào phiên pha lóc (kho_phien_pha_quet — từng khay một dòng, lô ra = số
+-- tem, tổng kg tem). Hao hụt ghi ở nhập / trim / pha lóc — không ở lúc bán.
+--
+-- Trước 0104, món đếm gói bán theo kg (FABi đọc kg từ tem): kho lấy gói gần số kg nhất, trừ kg SỔ của gói (kg
+-- trung bình của lô) và ghi phần chênh với kg tem vào hao hụt ở MỖI lần bán (0042). Từ 0104:
+--   · dòng 'ban' vẫn là −kg bán, −số gói (như cũ); KHÔNG còn dòng hao hụt theo trung bình — lô giữ phần kg còn
+--     lại (cắt có quét tem: đúng bằng tổng các khay chưa bán; bán hết là về đúng 0);
+--   · số khay của dòng bán theo kg: kg đúng bằng tem của một khay đã quét lúc cắt (lô còn gói ở quầy) → MỘT khay
+--     (hàm nội bộ mới kho_ipos_mot_khay_quet). Trước đây chỉ suy từ kg trung bình của gói: khay nặng hơn trung
+--     bình 1,5 lần (0,45 kg, lô trung bình 0,3) bị trừ thành 2 khay. Không khớp tem nào (vd. FABi gộp hai tem một
+--     dòng, lô gõ tay) → như cũ, số gói có tổng kg gần nhất;
+--   · bán gói CUỐI của lô ở quầy → một dòng chênh lệch cân (loại hao_hut, ghi chú "Chênh lệch cân khi bán hết
+--     lô ở quầy") để lô về đúng 0/0 — chỉ khác 0 khi lô gõ tay tổng kg, tem bán khác tem lúc cắt (cân lại), hay
+--     lô chuyển ra quầy nhiều đợt (chuyển kho chia kg theo trung bình — các dòng của các đợt bù trừ nhau);
+--   · kho_ipos_goi_theo_kg: hết gói ở quầy mà kg bán chỉ dư chưa tới nửa gói → lấy hết các gói đang có (gói
+--     cuối ghi chênh lệch cân) thay vì "thiếu hàng" mãi — khay cuối của lô gõ tay nặng hơn kg sổ còn lại;
+--   · kg bán từ hết kg còn lại của lô trở lên mà lô còn gói (lô gõ tay thiếu kg) → một dòng chênh lệch ("Kg bán
+--     vượt kg còn lại của lô") sao cho các gói còn lại giữ kg trung bình trước lần bán — không âm kho, không để
+--     gói 0 kg (gói 0 kg làm số gói theo kg của lần bán sau sai).
+--   · kho_bao_cao_hao_hut: dòng hao_hut của chứng từ ban_hang có lý do "Chênh lệch cân lúc bán (iPOS) — thiếu"
+--     (kho ghi nhiều hơn thịt bán ra) hoặc "— thừa" (bán nhiều hơn kho ghi), tách theo dấu của dòng GỐC như
+--     kiểm kê thiếu / thừa — hai chiều không bù nhau trong một dòng báo cáo. Dòng cũ trước 0104 cũng vậy.
+-- Hủy / sửa hóa đơn: kho_ipos_dao_dong đảo đúng từng dòng sổ (không đổi; dòng ban trước, hao_hut sau — tồn
+-- không âm) → trả đúng khay, đúng kg đã trừ.
+-- Không bảng, cột mới; một hàm nội bộ mới (kho_ipos_mot_khay_quet, không ai ngoài kho_ipos_ghi_dong gọi được).
+-- File cuối định nghĩa kho_ipos_goi_theo_kg, kho_ipos_ghi_dong, kho_bao_cao_hao_hut.
+-- create or replace giữ quyền cũ; khối cuối thu lại cho chắc.
+--
+-- Triển khai: migration và web độc lập (web không đổi cách gọi). Không có câu delete: chạy bằng SQL Editor hoặc
+-- psql. Chỉ chạy lên production sau khi PR được gộp, rồi `npm run doi-chieu` phải báo KHỚP (0104 là file cuối
+-- định nghĩa kho_ipos_goi_theo_kg, kho_ipos_ghi_dong, kho_bao_cao_hao_hut; tạo kho_ipos_mot_khay_quet).
+-- =============================================================================
+
+
+-- =============================================================================
+-- 1 · MỘT KHAY ĐÃ QUÉT LÚC CẮT (hàm nội bộ mới) · SỐ GÓI THEO KG · GHI MỘT DÒNG — thay THÂN
+--     kho_ipos_goi_theo_kg (0042) và kho_ipos_ghi_dong (0103), cùng chữ ký
+-- =============================================================================
+-- Kg bán (quantity FABi đọc từ tem) đúng bằng kg tem của một khay đã quét vào phiên pha lóc (kho_phien_pha_quet,
+-- dòng ra tu_quet), thuộc một lô của món còn gói ở quầy — hay đúng lô p_lo_id (lô của ô mã) khi có → dòng bán là
+-- MỘT khay. Kho không biết khay nào đã bán, nhưng kg trùng tem một khay là đủ để biết dòng này là một khay chứ
+-- không phải hai khay gộp. security invoker: chỉ kho_ipos_ghi_dong (security definer) gọi.
+create or replace function kho_ipos_mot_khay_quet(p_vi_tri_id uuid, p_mat_hang_id uuid, p_lo_id uuid, p_kg numeric)
+returns boolean
+language sql
+stable
+set search_path = public
+as $$
+  select p_kg is not null and exists (
+    select 1
+    from kho_ton t
+    join kho_phien_pha_ra r on r.lo_id = t.lo_id and r.mat_hang_id = t.mat_hang_id and r.tu_quet
+    join kho_phien_pha_quet q on q.phien_pha_id = r.phien_pha_id and q.mat_hang_id = r.mat_hang_id
+    where t.vi_tri_id = p_vi_tri_id and t.mat_hang_id = p_mat_hang_id and t.so_goi > 0
+      and (p_lo_id is null or t.lo_id = p_lo_id)
+      and q.so_kg = p_kg)
+$$;
+
+comment on function kho_ipos_mot_khay_quet(uuid, uuid, uuid, numeric) is
+  'NỘI BỘ (0104). Kg bán đúng bằng tem một khay đã quét lúc cắt (lô của món còn gói ở quầy, hay đúng lô của ô) → true: dòng bán là một khay.';
+
+-- kho_ipos_goi_theo_kg — chép 0042; chỗ đổi ghi 0104 (cuối thân).
+-- Món đếm gói mà iPOS bán theo kg: bao nhiêu gói NGUYÊN ở quầy (thứ tự như
+-- kho_ipos_lay_lo: lô còn hạn theo FEFO, rồi lô hết hạn) cho tổng kg sổ gần kg
+-- bán nhất (ít nhất 1). Quầy không đủ → trả số lớn hơn số gói đang có (để
+-- kho_ipos_lay_lo báo thiếu). Không ghi gì.
+create or replace function kho_ipos_goi_theo_kg(p_vi_tri_id uuid, p_mat_hang_id uuid, p_kg numeric)
+returns int
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_r    record;
+  v_k    numeric;
+  v_tb   numeric;
+  v_cum  numeric := 0;
+  v_prev numeric := 0;
+  v_n    int := 0;
+begin
+  if p_kg is null or p_kg <= 0 then
+    return null;
+  end if;
+  for v_r in
+    select t.so_kg, t.so_goi
+    from kho_ton t join kho_lo l on l.id = t.lo_id
+    where t.vi_tri_id = p_vi_tri_id and t.mat_hang_id = p_mat_hang_id and t.so_goi > 0
+    order by (l.han_dung < hom_nay_vn()), l.han_dung, l.created_at, l.id
+  loop
+    v_k := v_r.so_kg / v_r.so_goi;
+    v_tb := v_k;
+    for i in 1 .. v_r.so_goi loop
+      v_prev := v_cum;
+      v_cum := v_cum + v_k;
+      v_n := v_n + 1;
+      if v_cum >= p_kg - 0.0005 then
+        if v_n > 1 and (p_kg - v_prev) < (v_cum - p_kg) then
+          return v_n - 1;
+        end if;
+        return v_n;
+      end if;
+    end loop;
+  end loop;
+  -- 0104: hết gói ở quầy mà kg bán chỉ dư chưa tới nửa gói (kg trung bình của lô cuối) → lấy hết các gói đang
+  -- có, như luật "gần nhất" ở trên với một gói giả định tiếp theo; lần bán gói cuối ghi chênh lệch cân. Trước
+  -- 0104 khay cuối nặng hơn kg sổ còn lại (0,26 kg, lô còn 0,2) kẹt "thiếu hàng" mãi. Dư nhiều hơn → như cũ.
+  if v_n > 0 and v_tb > 0 and p_kg - v_cum < v_tb / 2 then
+    return v_n;
+  end if;
+  return v_n + greatest(1, ceil((p_kg - v_cum) / coalesce(nullif(v_tb, 0), p_kg)))::int;
+end;
+$$;
+
+comment on function kho_ipos_goi_theo_kg is
+  'NỘI BỘ (0042). Món đếm gói bán theo kg trên iPOS: số gói nguyên ở quầy (còn hạn trước, FEFO) có tổng kg sổ gần kg bán nhất. Quầy không đủ → số lớn hơn số gói đang có; 0104: chỉ dư chưa tới nửa gói → lấy hết các gói đang có.';
+
+-- kho_ipos_ghi_dong — chép 0103; chỗ đổi ghi 0104: số khay của dòng bán theo kg (hai chỗ gọi
+-- kho_ipos_mot_khay_quet) và phần "Ghi sổ" của món đếm gói bán theo kg.
+create or replace function kho_ipos_ghi_dong(p_id uuid)
+returns text
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_d     kho_ipos_dong;
+  v_h     kho_ipos_hoa_don;
+  v_c     kho_ipos_cau_hinh;
+  v_cd    kho_cai_dat;
+  v_mp    kho_ipos_ma_hang;
+  v_mh    kho_mat_hang;
+  v_doc   record;
+  v_ma    text;
+  v_kg    numeric;
+  v_goi   int;
+  v_pb    jsonb;
+  v_px    record;
+  v_e     jsonb;
+  v_n     int;
+  v_i     int := 0;
+  v_so    numeric;
+  v_con   numeric;
+  v_phan  numeric;
+  v_ngay  date;
+  v_nv    uuid;
+  v_tu_sl boolean := false;   -- 0042: số lượng suy từ so_luong (callback, không nhãn)
+  v_dv    text;
+  v_o     uuid;               -- 0051: ô mã của dòng bán
+  v_om    kho_o_ma;
+  v_lo_o  uuid;               -- 0051: lô đang gắn với ô lúc bán
+  v_lech  boolean := false;   -- 0051: có ô mà không trừ được lô của ô
+  v_mg    kho_ma_giam;        -- 0054: mã giảm giá của dòng bán
+  v_tu_ma boolean := false;   -- 0103: mã món iPOS chưa ghép = mã cân của món
+  v_t_kg  numeric;            -- 0104: tồn của lô ở quầy trước dòng này
+  v_t_goi int;
+  v_chenh numeric;            -- 0104: chênh lệch cân (chỉ gói cuối của lô ở quầy / kg vượt lô)
+begin
+  select * into v_d from kho_ipos_dong where id = p_id for update;
+  if not found then
+    return null;
+  end if;
+  if v_d.trang_thai not in ('cho', 'thieu_hang', 'chua_khop', 'loi') then
+    return v_d.trang_thai;
+  end if;
+
+  begin
+    select * into v_h  from kho_ipos_hoa_don where id = v_d.hoa_don_id;
+    select * into v_c  from kho_ipos_cau_hinh where chi_nhanh_id = v_d.chi_nhanh_id;
+    select * into v_cd from kho_cai_dat where chi_nhanh_id = v_d.chi_nhanh_id;
+
+    if v_h.da_huy then
+      update kho_ipos_dong set trang_thai = 'da_huy', ly_do = 'Hóa đơn đã hủy trên iPOS' where id = p_id;
+      return 'da_huy';
+    end if;
+
+    -- Chưa chuyển sang trừ kho theo iPOS: quầy còn "thiếu = đã bán". Để chờ.
+    if v_cd.chi_nhanh_id is null or v_cd.nguon_so_ban <> 'ipos' or v_c.ipos_tu_luc is null then
+      update kho_ipos_dong set trang_thai = 'cho', ly_do = 'Chưa chuyển sang trừ kho theo iPOS' where id = p_id;
+      return 'cho';
+    end if;
+    if v_d.thoi_diem_ban < v_c.ipos_tu_luc then
+      update kho_ipos_dong set trang_thai = 'bo_qua', so_lan_thu = so_lan_thu + 1,
+        ly_do = 'Bán trước mốc chuyển sang iPOS — đã tính trong lần đếm quầy'
+      where id = p_id;
+      return 'bo_qua';
+    end if;
+
+    -- ---- Khớp món ------------------------------------------------------------
+    if v_d.ma_ipos is not null then
+      select * into v_mp from kho_ipos_ma_hang where chi_nhanh_id = v_d.chi_nhanh_id and ma_ipos = v_d.ma_ipos;
+    end if;
+    if v_mp.kieu = 'bo_qua' then
+      update kho_ipos_dong set trang_thai = 'bo_qua', so_lan_thu = so_lan_thu + 1,
+        ly_do = case when v_mp.don_vi_ban = 'suat' then 'Món chế biến — chỉ đếm suất, không trừ kho'
+                     else 'Không phải hàng kho' end
+      where id = p_id;
+      return 'bo_qua';
+    end if;
+
+    v_ma := v_d.ma_can;
+    v_kg := v_d.so_kg;
+    if v_d.ma_vach is not null and v_cd.mau_ma_vach is not null then
+      select * into v_doc from kho_doc_ma_vach(v_d.ma_vach, v_cd.mau_ma_vach, v_cd.so_le_kg);
+      if v_doc.loi is null then
+        v_ma := coalesce(v_ma, v_doc.ma_can);
+        v_kg := coalesce(v_kg, v_doc.so_kg);
+      end if;
+    end if;
+
+    -- 0051 · Ô mã: ghép thẳng (kho_ipos_ma_hang.o_ma_id); hoặc chưa ghép mà mã
+    -- món iPOS trùng mã ô (món ô trên FABi đặt mã = mã cân); hoặc nhãn cân in
+    -- bằng mã ô. Ghép "mon" không kèm ô thì không suy ô từ nhãn.
+    v_o := v_mp.o_ma_id;
+    if v_o is null and v_mp.id is null and v_d.ma_ipos is not null then
+      select o.id into v_o from kho_o_ma o where o.ma_can = nullif(ltrim(btrim(v_d.ma_ipos), '0'), '');
+    end if;
+    if v_o is null and v_ma is not null and (v_mp.id is null or v_mp.kieu = 'goi_can') then
+      select o.id into v_o from kho_o_ma o where o.ma_can = v_ma;
+    end if;
+    if v_o is not null then
+      select * into v_om from kho_o_ma where id = v_o;
+    end if;
+
+    -- 0054 · Mã giảm giá: như ô — mã món iPOS chưa ghép trùng một mã giảm (món
+    -- giảm trên FABi đặt mã = mã cân giảm), hoặc nhãn cân in bằng mã giảm.
+    -- Mã giảm đã tắt vẫn nhận: tem in trước khi tắt vẫn bán được.
+    if v_o is null and v_mp.id is null and v_d.ma_ipos is not null then
+      select * into v_mg from kho_ma_giam g where g.ma_can = nullif(ltrim(btrim(v_d.ma_ipos), '0'), '');
+    end if;
+    if v_o is null and v_mg.id is null and v_ma is not null and (v_mp.id is null or v_mp.kieu = 'goi_can') then
+      select * into v_mg from kho_ma_giam g where g.ma_can = v_ma;
+    end if;
+
+    if v_mp.kieu = 'mon' or (v_mp.kieu = 'goi_can' and v_mp.mat_hang_id is not null) then
+      select * into v_mh from kho_mat_hang where id = v_mp.mat_hang_id;
+    elsif v_om.id is not null then
+      select * into v_mh from kho_mat_hang where id = v_om.mat_hang_id and dang_dung;
+    elsif v_mg.id is not null then
+      select * into v_mh from kho_mat_hang where id = v_mg.mat_hang_id and dang_dung;   -- 0054
+    elsif v_ma is not null then
+      select * into v_mh from kho_mat_hang_theo_ma_can(v_ma);   -- 0051: nhận cả mã ô (0049)
+    elsif v_mp.id is null and btrim(v_d.ma_ipos) ~ '^[0-9]+$'
+          and coalesce(upper(kho_ipos_don_vi_dong(v_h.raw, v_d.khoa_dong)), 'KG') = 'KG' then
+      -- 0103 · Mã món iPOS chưa ghép là MÃ CÂN của một món đang dùng (FABi đặt mã món
+      -- = mã cân, thường thêm số 0 đầu cho đủ 5 số: 01011): kho tự nhận như ô / mã giảm.
+      -- Chỉ mã cân của chính món — ô và mã giảm đã nhận ở trên; nhãn cân (v_ma) đi trước;
+      -- ghép tay (kể cả goi_can, bo_qua) luôn thắng; đơn vị FABi khác KG (món hộp, chai…
+      -- trùng số) thì không nhận. Không ghi ma_can vào dòng: lần thử lại vẫn đọc quantity
+      -- như lần đầu (v_tu_sl).
+      select * into v_mh from kho_mat_hang
+      where ma_can = nullif(ltrim(btrim(v_d.ma_ipos), '0'), '') and dang_dung;
+      v_tu_ma := v_mh.id is not null;
+    end if;
+    if v_om.id is not null and v_om.mat_hang_id is distinct from v_mh.id then
+      v_o := null;   -- ô của món khác: bỏ, trừ theo món đã khớp
+      v_om := null;
+    end if;
+    if v_mg.id is not null and v_mg.mat_hang_id is distinct from v_mh.id then
+      v_mg := null;   -- 0054: mã giảm của món khác: bỏ
+    end if;
+    if v_mh.id is null then
+      update kho_ipos_dong set trang_thai = 'chua_khop', so_lan_thu = so_lan_thu + 1, ma_can = coalesce(ma_can, v_ma),
+        ly_do = case when v_mp.kieu = 'goi_can' then 'Mã cân ' || coalesce(v_ma, '(không đọc được)') || ' chưa gán cho món nào'
+                     else 'Chưa ghép mã iPOS với món trong kho' end
+      where id = p_id;
+      return 'chua_khop';
+    end if;
+
+    if v_c.vi_tri_ban_id is null then
+      raise exception 'Chưa chọn quầy bán trong Kết nối iPOS';
+    end if;
+
+    -- 0051: lô gắn với ô lúc bán (tảng đang dùng ô đó).
+    if v_o is not null then
+      v_lo_o := kho_ipos_lo_cua_o(v_d.chi_nhanh_id, v_o, v_d.thoi_diem_ban);
+    end if;
+
+    -- ---- 0042 · Dòng chỉ có số lượng iPOS (không nhãn cân) ------------------
+    v_tu_sl := v_d.so_luong is not null and v_d.ma_vach is null and v_d.ma_can is null;
+    if v_tu_sl then
+      -- 0051: món có ô mã là món cân trên FABi — mặc định quantity là số kg.
+      -- 0103: mã món = mã cân cũng là món cân (FABi đọc kg từ tem) — kg.
+      v_dv := coalesce(v_mp.don_vi_ban, case when v_o is not null or v_mg.id is not null or v_tu_ma or not v_mh.dem_goi then 'kg' else 'goi' end);
+      if v_d.so_luong <= 0 then
+        raise exception 'Số lượng bán trên iPOS phải lớn hơn 0';
+      end if;
+      if v_dv = 'kg' then
+        v_kg := v_d.so_luong;
+        if v_mh.dem_goi then
+          -- 0104: kg đúng bằng tem một khay đã quét lúc cắt → một khay; không thì số gói có tổng kg gần nhất.
+          v_goi := case when kho_ipos_mot_khay_quet(v_c.vi_tri_ban_id, v_mh.id, v_lo_o, v_kg) then 1
+                        else coalesce(kho_ipos_goi_theo_kg_lo(v_c.vi_tri_ban_id, v_lo_o, v_kg),
+                                      kho_ipos_goi_theo_kg(v_c.vi_tri_ban_id, v_mh.id, v_kg)) end;
+        end if;
+      else
+        if v_d.so_luong <> trunc(v_d.so_luong) then
+          raise exception 'iPOS báo bán % gói "%" — số gói phải là số nguyên. Món này bán theo kg thì đổi "Bán theo" ở Ghép món',
+            replace(trim_scale(v_d.so_luong)::text, '.', ','), v_mh.ten;
+        end if;
+        v_goi := v_d.so_luong::int;
+        if v_mh.dem_goi then
+          v_kg := null;   -- kg lấy theo sổ của gói bán ra
+        elsif v_mp.kg_moi_don_vi is not null then
+          v_kg := round(v_d.so_luong * v_mp.kg_moi_don_vi, 3);
+        else
+          raise exception '"%" tính theo kg mà iPOS bán theo gói — điền "mỗi gói = … kg" ở Ghép món', v_mh.ten;
+        end if;
+      end if;
+    end if;
+
+    if v_mh.dem_goi then
+      v_goi := coalesce(v_goi, v_d.so_goi, 1);
+      if v_goi <= 0 then
+        raise exception 'Số gói bán phải lớn hơn 0';
+      end if;
+    else
+      if v_kg is null or v_kg <= 0 then
+        raise exception '"%" tính theo kg mà dòng iPOS không có số kg', v_mh.ten;
+      end if;
+    end if;
+
+    -- ---- Lấy lô; thiếu thì tự nhận hàng đang mang ra quầy --------------------
+    -- 0051: có ô → lấy đúng lô của ô trước; lô đó thiếu (hoặc ô chưa gắn lô)
+    -- thì trừ theo hạn gần nhất như cũ và đánh dấu lech_o để đối soát.
+    v_pb := kho_ipos_lay_lo_cua_lo(v_c.vi_tri_ban_id, v_mh.id, v_lo_o, v_goi, v_kg);
+    v_lech := v_pb is null and v_o is not null;
+    if v_pb is null then
+      v_pb := kho_ipos_lay_lo(v_c.vi_tri_ban_id, v_mh.id, v_goi, v_kg);
+    end if;
+    if v_pb is null then
+      for v_px in
+        select x.id from kho_phieu_xuat x
+        where x.chi_nhanh_id = v_d.chi_nhanh_id and x.loai = 'chuyen' and x.trang_thai = 'dang_chuyen'
+          and x.vi_tri_den_id = v_c.vi_tri_ban_id
+          and exists (select 1 from kho_chuyen_tren_duong(x.id) t where t.mat_hang_id = v_mh.id)
+        order by x.created_at, x.id
+      loop
+        perform kho_ipos_tu_nhan(v_px.id);
+        if v_tu_sl and v_dv = 'kg' and v_mh.dem_goi then
+          v_goi := case when kho_ipos_mot_khay_quet(v_c.vi_tri_ban_id, v_mh.id, v_lo_o, v_kg) then 1   -- 0104
+                        else coalesce(kho_ipos_goi_theo_kg_lo(v_c.vi_tri_ban_id, v_lo_o, v_kg),
+                                      kho_ipos_goi_theo_kg(v_c.vi_tri_ban_id, v_mh.id, v_kg)) end;
+        end if;
+        v_pb := kho_ipos_lay_lo_cua_lo(v_c.vi_tri_ban_id, v_mh.id, v_lo_o, v_goi, v_kg);
+        v_lech := v_pb is null and v_o is not null;
+        if v_pb is null then
+          v_pb := kho_ipos_lay_lo(v_c.vi_tri_ban_id, v_mh.id, v_goi, v_kg);
+        end if;
+        exit when v_pb is not null;
+      end loop;
+    end if;
+    if v_pb is null then
+      update kho_ipos_dong set trang_thai = 'thieu_hang', so_lan_thu = so_lan_thu + 1,
+        mat_hang_id = v_mh.id, ma_can = coalesce(ma_can, v_ma), o_ma_id = v_o, lo_o_id = v_lo_o, ma_giam_id = v_mg.id,
+        so_kg = case when v_tu_sl then v_kg else coalesce(so_kg, v_kg) end,
+        so_goi = case when v_tu_sl then v_goi else so_goi end,
+        ly_do = 'Quầy không đủ "' || v_mh.ten || '" trên sổ: cần '
+          || case when v_mh.dem_goi then v_goi || ' ' || v_mh.don_vi_goi
+                    || case when v_tu_sl and v_kg is not null then ' (' || replace(trim_scale(v_kg)::text, '.', ',') || ' kg)' else '' end
+                  else replace(trim_scale(v_kg)::text, '.', ',') || ' kg' end
+      where id = p_id;
+      return 'thieu_hang';
+    end if;
+
+    -- ---- Ghi sổ --------------------------------------------------------------
+    v_ngay := ((v_d.thoi_diem_ban at time zone 'utc') + interval '7 hours')::date;
+    v_nv := (nhan_su_hien_tai()).id;
+    v_n := jsonb_array_length(v_pb -> 'lo');
+    select coalesce(sum((x ->> 'so_kg')::numeric), 0) into v_so from jsonb_array_elements(v_pb -> 'lo') x;
+    v_con := v_kg;
+    for v_e in select x from jsonb_array_elements(v_pb -> 'lo') x loop
+      v_i := v_i + 1;
+      if v_mh.dem_goi and v_kg is not null then
+        -- Kg bán chia cho các lô theo kg sổ; lô cuối nhận phần dư.
+        v_phan := case when v_i = v_n then v_con
+                       when v_so > 0 then round(v_kg * (v_e ->> 'so_kg')::numeric / v_so, 3)
+                       else 0 end;
+        v_con := v_con - v_phan;
+        -- 0104 · Trừ ĐÚNG kg bán (kg trên tem), không theo kg trung bình của gói: lô giữ phần kg còn
+        -- lại — khi cắt có quét tem từng khay, đó đúng là tổng các khay chưa bán. Hao hụt ghi ở nhập /
+        -- trim / pha lóc, không ở lúc bán. Chỉ hai chỗ ghi MỘT dòng chênh lệch cân (ghi trước dòng ban —
+        -- tồn không âm): bán gói CUỐI của lô ở quầy → lô về đúng 0/0; kg bán từ hết kg còn lại của lô trở
+        -- lên mà lô còn gói → các gói còn lại giữ kg trung bình trước lần bán (không để gói 0 kg).
+        select t.so_kg, t.so_goi into v_t_kg, v_t_goi from kho_ton t
+        where t.lo_id = (v_e ->> 'lo_id')::uuid and t.vi_tri_id = v_c.vi_tri_ban_id
+        for update;
+        v_chenh := case when (v_e ->> 'so_goi')::int >= coalesce(v_t_goi, 0) then v_phan - coalesce(v_t_kg, 0)
+                        when v_phan >= v_t_kg
+                          then v_phan - round(v_t_kg * (v_e ->> 'so_goi')::int / v_t_goi, 3)
+                        else 0 end;
+        if v_chenh <> 0 then
+          insert into kho_so_cai
+            (chi_nhanh_id, lo_id, vi_tri_id, mat_hang_id, loai, so_kg, so_goi,
+             chung_tu_loai, chung_tu_id, ghi_chu, nguoi_ghi, ngay)
+          values
+            (v_d.chi_nhanh_id, (v_e ->> 'lo_id')::uuid, v_c.vi_tri_ban_id, v_mh.id, 'hao_hut', v_chenh, 0,
+             'ban_hang', p_id,
+             case when (v_e ->> 'so_goi')::int >= coalesce(v_t_goi, 0) then 'Chênh lệch cân khi bán hết lô ở quầy · iPOS '
+                  else 'Kg bán vượt kg còn lại của lô · iPOS ' end || v_h.ma_hd,
+             v_nv, v_ngay);
+        end if;
+      else
+        v_phan := (v_e ->> 'so_kg')::numeric;
+      end if;
+      if v_phan <> 0 or (v_e ->> 'so_goi')::int <> 0 then
+        insert into kho_so_cai
+          (chi_nhanh_id, lo_id, vi_tri_id, mat_hang_id, loai, so_kg, so_goi,
+           chung_tu_loai, chung_tu_id, ghi_chu, nguoi_ghi, ngay)
+        values
+          (v_d.chi_nhanh_id, (v_e ->> 'lo_id')::uuid, v_c.vi_tri_ban_id, v_mh.id, 'ban',
+           -v_phan, -(v_e ->> 'so_goi')::int,
+           'ban_hang', p_id, 'iPOS ' || v_h.ma_hd, v_nv, v_ngay);
+      end if;
+    end loop;
+
+    update kho_ipos_dong set
+      trang_thai = 'da_ghi', so_lan_thu = so_lan_thu + 1, mat_hang_id = v_mh.id,
+      ma_can = coalesce(ma_can, v_ma),
+      so_kg = case when v_tu_sl then coalesce(v_kg, v_so) else coalesce(so_kg, v_kg) end,
+      so_goi = case when v_tu_sl then v_goi else so_goi end,
+      lo_het_han = (v_pb ->> 'het_han')::boolean, ghi_luc = now(),
+      o_ma_id = v_o, lo_o_id = v_lo_o, lech_o = v_lech, ma_giam_id = v_mg.id,
+      ly_do = nullif(concat_ws(' · ',
+                case when (v_pb ->> 'het_han')::boolean then 'Đã bán gói thuộc lô HẾT HẠN' end,
+                case when v_lech then 'Ô ' || v_om.so_o || ' (mã ' || v_om.ma_can || '): '
+                  || case when v_lo_o is null then 'ô chưa gắn tảng lúc bán' else 'lô của tảng không đủ' end
+                  || ' — đã trừ theo hạn gần nhất' end), '')
+    where id = p_id;
+    return 'da_ghi';
+  exception when others then
+    update kho_ipos_dong set trang_thai = 'loi', so_lan_thu = so_lan_thu + 1, ly_do = left(sqlerrm, 300)
+    where id = p_id;
+    return 'loi';
+  end;
+end;
+$$;
+
+
+
+-- =============================================================================
+-- 2 · BÁO CÁO HAO HỤT — thay THÂN kho_bao_cao_hao_hut (cùng chữ ký), chép 0032; chỗ đổi ghi 0104
+-- =============================================================================
+create or replace function kho_bao_cao_hao_hut(p_chi_nhanh_id uuid, p_tu date, p_den date)
+returns table (
+  mat_hang_id uuid, ten text, loai_dong text, ly_do text,
+  so_kg numeric, so_goi int, gia_tri bigint
+)
+language sql
+stable
+set search_path = public
+as $$
+  with dong as (
+    select s.mat_hang_id, coalesce(g.loai, s.loai) as loai, s.so_kg, s.so_goi,
+           s.so_kg * coalesce(lg.gia_von_kg, 0) as gia_tri,
+           s.chung_tu_loai, s.chung_tu_id,
+           coalesce(g.so_kg, s.so_kg) as so_kg_goc   -- 0104: dấu của dòng gốc (dòng đảo theo dòng nó đảo)
+    from kho_so_cai s
+    left join kho_so_cai g on g.id = s.dao_cua
+    left join kho_lo_gia lg on lg.lo_id = s.lo_id
+    where s.chi_nhanh_id = p_chi_nhanh_id and s.ngay between p_tu and p_den
+  ),
+  phan_loai as (
+    select d.*,
+           case when d.loai = 'kiem_ke'
+                then case when d.so_kg < 0 or (d.so_kg = 0 and d.so_goi < 0) then 'kiem_ke_thieu' else 'kiem_ke_thua' end
+                else d.loai end as nhom,
+           case when d.chung_tu_loai = 'phien_pha' then 'Pha lóc chuyển thẳng bếp'
+                when d.loai = 'hao_hut' and d.chung_tu_loai = 'phieu_xuat' then 'Mất khi mang ra quầy'
+                -- 0104: chênh lệch cân lúc bán, tách thiếu / thừa theo dấu của dòng gốc
+                when d.loai = 'hao_hut' and d.chung_tu_loai = 'ban_hang'
+                  then case when d.so_kg_goc < 0 then 'Chênh lệch cân lúc bán (iPOS) — thiếu'
+                            else 'Chênh lệch cân lúc bán (iPOS) — thừa' end
+                else ld.ten end as ten_ly_do
+    from dong d
+    left join kho_phieu_xuat px on d.chung_tu_loai = 'phieu_xuat' and px.id = d.chung_tu_id
+    left join kho_ly_do ld on ld.id = px.ly_do_id
+    where d.loai in ('huy', 'xuat_bep', 'xuat_khac', 'tra_ncc', 'kiem_ke', 'hao_hut')
+  )
+  select x.mat_hang_id, m.ten, x.nhom, x.ten_ly_do,
+         abs(sum(x.so_kg)), abs(sum(x.so_goi))::int, abs(round(sum(x.gia_tri)))::bigint
+  from phan_loai x
+  join kho_mat_hang m on m.id = x.mat_hang_id
+  group by x.mat_hang_id, m.ten, m.loai, m.thu_tu, x.nhom, x.ten_ly_do
+  having sum(x.so_kg) <> 0 or sum(x.so_goi) <> 0
+  order by x.nhom, m.loai, m.thu_tu, m.ten
+$$;
+
+comment on function kho_bao_cao_hao_hut is
+  'Hủy, xuất bếp, xuất khác, trả nhà cung cấp, chênh lệch kiểm kê (thiếu / thừa), hao hụt (mất khi mang ra quầy; 0104: chênh lệch cân lúc bán qua iPOS — thiếu / thừa, gói cuối của lô ở quầy / kg vượt lô) trong kỳ, theo mặt hàng và lý do.';
+
+
+
+-- =============================================================================
+-- 3 · THU QUYỀN — đúng bốn hàm của file này (0008 mục 6)
+-- =============================================================================
+-- create or replace giữ quyền cũ; thu lại cho chắc như 0054 / 0103 (kho_ipos_ghi_dong: chỉ hàm definer khác gọi)
+-- và 0032 (kho_bao_cao_hao_hut: security invoker, trang báo cáo gọi — RLS lọc). kho_ipos_mot_khay_quet,
+-- kho_ipos_goi_theo_kg: nội bộ, thu cả authenticated (test-kho-quyen.mjs NOI_BO). Danh sách anon không đổi.
+do $$
+begin
+  execute 'revoke execute on function kho_ipos_mot_khay_quet(uuid, uuid, uuid, numeric) from public';
+  execute 'revoke execute on function kho_ipos_goi_theo_kg(uuid, uuid, numeric) from public';
+  execute 'revoke execute on function kho_ipos_ghi_dong(uuid) from public';
+  execute 'revoke execute on function kho_bao_cao_hao_hut(uuid, date, date) from public';
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke execute on function kho_ipos_mot_khay_quet(uuid, uuid, uuid, numeric) from anon';
+    execute 'revoke execute on function kho_ipos_goi_theo_kg(uuid, uuid, numeric) from anon';
+    execute 'revoke execute on function kho_ipos_ghi_dong(uuid) from anon';
+    execute 'revoke execute on function kho_bao_cao_hao_hut(uuid, date, date) from anon';
+  end if;
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    execute 'revoke execute on function kho_ipos_mot_khay_quet(uuid, uuid, uuid, numeric) from authenticated';
+    execute 'revoke execute on function kho_ipos_goi_theo_kg(uuid, uuid, numeric) from authenticated';
+    execute 'revoke execute on function kho_ipos_ghi_dong(uuid) from authenticated';
+    execute 'grant execute on function kho_bao_cao_hao_hut(uuid, date, date) to authenticated';
+  end if;
+end
+$$;

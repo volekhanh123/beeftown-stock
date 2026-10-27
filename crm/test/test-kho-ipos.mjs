@@ -357,10 +357,12 @@ await nhom('5 · FEFO, LỆCH KG NHÃN, LÔ VỀ 0/0, GỬI LẠI KHÔNG TRỪ H
   ok('Bán 1 gói thăn: lấy lô CÒN HẠN gần nhất (L2), bỏ qua lô hết hạn L1',
      d.trang_thai === 'da_ghi' && so.every(s => s.lo_id === L2.id) && (await ton(L1.id, viTri.quay)).goi === 2,
      JSON.stringify({ d, so }));
-  const hh = so.find(s => s.loai === 'hao_hut');
   const ban = so.find(s => s.loai === 'ban');
-  ok('Kg nhãn 0,52 ≠ kg sổ 0,5 → hao_hut +0,02 rồi bán 0,52 kg / 1 gói',
-     Number(hh?.so_kg) === 0.02 && hh.so_goi === 0 && Number(ban?.so_kg) === -0.52 && ban.so_goi === -1, JSON.stringify(so));
+  const tL2 = await ton(L2.id, viTri.quay);
+  // 0104: trừ ĐÚNG kg trên nhãn, không hao hụt theo kg trung bình của gói (0,5) — lô giữ phần kg còn lại.
+  ok('Kg nhãn 0,52 (kg TB của gói 0,5) → bán đúng 0,52 kg / 1 gói, KHÔNG dòng hao hụt (0104); L2 còn 3 gói 1,48 kg',
+     so.length === 1 && Number(ban?.so_kg) === -0.52 && ban.so_goi === -1
+       && tL2.goi === 3 && Math.abs(tL2.kg - 1.48) < 1e-9, JSON.stringify({ so, tL2 }));
   const ngayBan = (await db.query(`select ((thoi_diem_ban at time zone 'utc') + interval '7 hours')::date::text as d
     from kho_ipos_dong where id = $1`, [d.id])).rows[0].d;
   ok('Dòng sổ: chứng từ ban_hang = id dòng iPOS, ngày = ngày bán giờ VN', so.every(s => s.chung_tu_loai === 'ban_hang'
@@ -380,6 +382,11 @@ await nhom('5 · FEFO, LỆCH KG NHÃN, LÔ VỀ 0/0, GỬI LẠI KHÔNG TRỪ H
   ])]);
   const t2 = await ton(L2.id, viTri.quay);
   ok('Bán 3 gói cuối của L2 (kg nhãn lệch) → lô về ĐÚNG 0 gói 0 kg', t2.goi === 0 && t2.kg === 0, JSON.stringify(t2));
+  const lechF2 = (await db.query(`select s.so_kg, s.ghi_chu from kho_so_cai s join kho_ipos_dong d on d.id = s.chung_tu_id
+    join kho_ipos_hoa_don h on h.id = d.hoa_don_id where h.ma_hd = 'HD-F2' and s.loai = 'hao_hut'`)).rows;
+  ok('…chỉ gói CUỐI ghi một dòng chênh lệch cân: 0,49 + 0,51 + 0,47 = 1,47 so với 1,48 còn lại → −0,01 kg (0104)',
+     lechF2.length === 1 && Number(lechF2[0].so_kg) === -0.01 && /^Chênh lệch cân khi bán hết lô ở quầy · iPOS HD-F2$/.test(lechF2[0].ghi_chu),
+     JSON.stringify(lechF2));
 
   await luot([hd('HD-F3', phutTruoc(40), [{ so_goi: 5, so_kg: 2.9, ma_can: '101', thanh_tien: 2320000 }])]);
   const [d3] = await dongHd('HD-F3');
@@ -515,11 +522,12 @@ await nhom('9 · HĐ HỦY / SỬA SAU KHI GHI → ĐẢO NGƯỢC', async () =>
   const [d] = await dongHd('HD-F1');
   const so = await soCuaDong(d.id);
   ok('HĐ hủy trên iPOS → dòng da_huy, đếm hd_huy', huy.kq?.hd_huy === 1 && d.trang_thai === 'da_huy', JSON.stringify(huy.kq));
-  ok('Hai dòng sổ (hao_hut, ban) được đảo ngược đúng từng dòng',
-     so.filter(s => s.loai === 'dao_nguoc').length === 2
+  ok('Dòng sổ bán (một dòng từ 0104) được đảo ngược đúng',
+     so.filter(s => s.loai === 'dao_nguoc').length === 1 && so.filter(s => s.loai !== 'dao_nguoc').length === 1
        && so.filter(s => s.loai !== 'dao_nguoc').every(s => so.some(r => r.dao_cua === s.id)), JSON.stringify(so));
   const t = await ton(L2.id, viTri.quay);
-  ok('Gói về lại lô L2 đúng kg sổ (0,5)', t.goi === tonL2.goi + 1 && t.kg === tonL2.kg + 0.5, JSON.stringify(t));
+  ok('Gói về lại lô L2 đúng kg đã trừ (0,52)', t.goi === tonL2.goi + 1 && Math.abs(t.kg - tonL2.kg - 0.52) < 1e-9,
+     JSON.stringify(t));
   const truoc = await soDongSo();
   await luot([hd('HD-F1', phutTruoc(50),
     [{ khoa_dong: 'a', ma_ipos: 'CAN', ma_vach: nhanCan(101, 520), thanh_tien: 416000 }], true)]);
