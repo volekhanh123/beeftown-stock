@@ -1,10 +1,26 @@
-## Thay đổi gì
+## Tóm tắt cho Khánh
 
-<!-- Viết cho người không đọc code: tính năng / lỗi gì, ai dùng, ở màn nào. -->
+<!--
+Khánh đọc mục này (và mục thử ngay dưới) để quyết gộp hay không. Viết cho người không đọc code, mỗi dòng một hai câu,
+không tên hàm, không tên file. Mọi bằng chứng kỹ thuật để trong phần gập "Chi tiết cho người rà soát" bên dưới.
+Workflow "Mô tả PR" kiểm bốn dòng này có chữ; comment "Máy tóm tắt PR" trên PR tự liệt kê việc sau khi gộp.
+-->
+
+- **Thay đổi:** <!-- ai dùng, ở màn nào, khác gì so với trước -->
+- **Rủi ro:** <!-- Thấp / Vừa / Cao — vì sao. Cao khi đụng tiền, tồn kho, quyền, tin gửi khách, trang công khai -->
+- **Cần Khánh quyết:** <!-- câu hỏi cụ thể kèm đề xuất, hoặc "không" -->
+- **Sau khi gộp:** <!-- chép mục "Sau khi gộp" của `cd crm && npm run tom-tat-pr`, thêm việc riêng (bật công tắc, thêm bí mật…); "không cần làm gì" nếu chỉ đổi kiểm thử / tài liệu -->
 
 ## Khánh tự thử thế nào
 
 <!-- Các bước bấm cụ thể trên web / máy quầy / cân để thấy thay đổi. "Không cần thử" nếu chỉ đổi phía trong. -->
+
+<details>
+<summary><b>Chi tiết cho người rà soát</b> — thay đổi kỹ thuật, migration, 9 mục "xong", kiểm thử</summary>
+
+## Thay đổi chi tiết
+
+<!-- Phần trong: cách lưu, hàm / bảng / trang nào đổi, việc để PR sau. -->
 
 ## Migration
 
@@ -31,6 +47,8 @@
 - File kiểm thử mới / sửa: <!-- tên file + số kiểm tra -->
 - `cd crm && npm test`: <!-- dán dòng tổng, ví dụ "TẤT CẢ 5900 KIỂM TRA TRÊN 58 FILE ĐỀU ĐẠT" -->
 - Kết quả `/code-review`: <!-- phát hiện gì, đã sửa gì -->
+
+</details>
 
 ## Sửa lỗi thật?
 

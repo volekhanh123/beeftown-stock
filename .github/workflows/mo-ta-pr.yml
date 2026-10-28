@@ -1,0 +1,93 @@
+# Mô tả PR — chạy mỗi lần mở PR, sửa mô tả, đẩy thêm commit (cả PR nháp; ~20 giây, không cài thư viện).
+#
+#   · Máy tóm tắt: crm/test/tom-tat-pr.mjs đọc diff của PR → MỘT comment trên PR (sửa lại comment cũ, không đăng
+#     thêm): việc sau khi gộp (chạy migration nào, chạy riêng không, deploy web, Beeftown Cân, Mini App), chỗ cần
+#     chú ý (PR lớn, sửa migration cũ, hàm mới chưa có kiểm thử), khu đã đụng, hàm thay thân đổi bao nhiêu dòng.
+#     Mô tả viết tay có thể cũ đi sau khi đánh lại số migration; comment này luôn khớp commit mới nhất.
+#   · Mô tả đủ mục: crm/test/kiem-mo-ta-pr.mjs — "Tóm tắt cho Khánh" đủ bốn dòng có chữ, mức rủi ro, mục thử,
+#     9 mục "xong". Khánh không phải tự soát giấy tờ; check đỏ là phiên làm PR sửa mô tả.
+#
+# PR của Dependabot bỏ qua (không theo mẫu PR; token chỉ đọc). Không job nào ở đây chạy trên main, nên cổng
+# deploy (web/kiem-tra/truoc-deploy.mjs, chỉ đọc workflow "Kiểm thử") không bị ảnh hưởng.
+
+name: Mô tả PR
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+# Sửa mô tả (chỉ chạy job kiểm mô tả) và đẩy commit (chạy cả tóm tắt) ở hai nhóm riêng: sửa mô tả ngay sau khi đẩy
+# không được hủy lượt tóm tắt đang chạy của commit mới — lượt sửa mô tả không tóm tắt lại, comment sẽ kẹt ở commit cũ.
+concurrency:
+  group: mo-ta-pr-${{ github.event.pull_request.number }}-${{ (github.event.action == 'edited' && !github.event.changes.base) && 'mo-ta' || 'ma' }}
+  cancel-in-progress: true
+
+jobs:
+  tom-tat:
+    name: Máy tóm tắt PR
+    # Sửa mô tả không đổi mã: không cần tóm tắt lại. Đổi nhánh gốc (cũng là sự kiện edited) thì diff đổi: tóm tắt lại.
+    if: (github.event.action != 'edited' || github.event.changes.base) && github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0       # cần điểm rẽ nhánh và migration ở main để so
+          filter: blob:none    # nội dung file chỉ tải khi git cần đọc (như job gác migration)
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: web/.node-version
+      # HEAD là commit gộp PR vào main (actions/checkout của pull_request) — đúng thứ sẽ vào main.
+      - name: Tóm tắt thay đổi
+        env:
+          NHANH_GOC: ${{ github.base_ref }}
+        run: |
+          node crm/test/tom-tat-pr.mjs --so-voi "origin/$NHANH_GOC" --den HEAD > tom-tat.md
+          cat tom-tat.md >> "$GITHUB_STEP_SUMMARY"
+      # Không đăng được (PR từ fork: token chỉ đọc) thì bản tóm tắt vẫn ở Summary — không làm PR đỏ.
+      - name: Đăng hoặc sửa comment tóm tắt
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SO: ${{ github.event.pull_request.number }}
+        run: |
+          DAU='<!-- tom-tat-pr -->'
+          CU=$(gh api "repos/$REPO/issues/$SO/comments" --paginate \
+                --jq "[.[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$DAU\")))][0].id // empty" | head -n 1)
+          if [ -z "$CU" ]; then
+            gh pr comment "$SO" --repo "$REPO" --body-file tom-tat.md
+          elif [ "$(gh api "repos/$REPO/issues/comments/$CU" --jq .body)" != "$(cat tom-tat.md)" ]; then
+            # Chỉ sửa khi nội dung khác: phiên Claude đang theo dõi PR không bị đánh thức vì một comment y nguyên.
+            gh api -X PATCH "repos/$REPO/issues/comments/$CU" -F body=@tom-tat.md > /dev/null
+          else
+            echo "Comment tóm tắt đã đúng, không sửa."
+          fi
+
+  mo-ta:
+    name: Mô tả PR đủ mục
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      # Chỉ lấy file kiểm và file ghi phiên bản Node — không cần cả repo.
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            crm/test/kiem-mo-ta-pr.mjs
+            web/.node-version
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: web/.node-version
+      # Mô tả đi qua biến môi trường, không chép vào lệnh: chữ trong mô tả không bao giờ thành lệnh shell.
+      - name: Kiểm mô tả theo mẫu PR
+        env:
+          MO_TA_PR: ${{ github.event.pull_request.body }}
+        run: node crm/test/kiem-mo-ta-pr.mjs

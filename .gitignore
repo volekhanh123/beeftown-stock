@@ -41,6 +41,8 @@
 
 # --- ĐƯỢC PHÉP: hệ thống CRM ---
 !crm/README.md
+# Bản đồ cho phiên Claude làm trong crm/ (tự nạp khi phiên đọc file ở đây; CLAUDE.md gốc, "Bắt đầu phiên").
+!/crm/CLAUDE.md
 !crm/package.json
 !crm/package-lock.json
 !crm/supabase/migrations/*.sql
@@ -60,6 +62,7 @@
 !/web/public/kho/can-wifi/Nap-Can-WiFi.ps1
 # Chương trình Beeftown Cân (.exe) — mã nguồn; dist/ và node_modules/ vẫn bị chặn
 !/can-app/README.md
+!/can-app/CLAUDE.md
 !/can-app/CAN-TMA.md
 # Đặc tả dịch ngược phần mềm TM-xA (Beeftown tự viết, chuyển từ nhánh phan-mem-can-cu 12/10/2026) — chỉ chữ;
 # phần mềm của hãng và mã C# dịch ngược KHÔNG vào repo.
