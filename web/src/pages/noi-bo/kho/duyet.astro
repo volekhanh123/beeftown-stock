@@ -141,7 +141,7 @@ const truoc = (luc: string) => thoiGianTruoc(luc, new Date(), nn);
                 <a href={`/noi-bo/kho/xuat/${p.id}`} class="kho-duyet-the">
                   <span class="kho-duyet-chinh">
                     <strong>{p.so_phieu} · {p.ten_ly_do ?? t.khongLyDo}</strong>
-                    <span>{p.tong_goi > 0 ? t.soGoi(p.tong_goi, donVi.get(p.id)) : ''}{p.tong_kg > 0 && <>{dinhDangKg(p.tong_kg, nn)} kg · </>}{t.o} {p.ten_vi_tri}</span>
+                    <span>{p.tong_goi > 0 ? t.soGoi(p.tong_goi, donVi.get(p.id)) : ''}{p.tong_kg > 0 ? <>{dinhDangKg(p.tong_kg, nn)} kg · {t.o}</> : t.o} {p.ten_vi_tri}</span>
                     <small>{ten.get(p.nguoi_tao ?? '') ?? '—'} {t.bao} · {truoc(p.created_at)}</small>
                   </span>
                   <span class="nb-nut phu">{t.xemAnhDuyet}</span>
