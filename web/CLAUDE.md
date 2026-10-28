@@ -18,7 +18,7 @@ thẳng file `.ts` của `src/lib/`. Tìm test của một file: `cd crm && npm 
 | Kho | bảng "Kho" bên dưới | `src/pages/noi-bo/kho/`, `src/lib/kho/` |
 | Zalo OA | `README.md`, "Zalo" | `src/lib/zalo.ts`, `src/lib/zalo-gui.ts`, `src/pages/noi-bo/zalo/` |
 | Messenger | `README.md`, "Messenger" | `src/pages/hook/messenger.ts`, `src/lib/messenger.ts` |
-| iPOS / FABi | `KHO.md` mục 3j | `src/pages/hook/ipos/`, `src/lib/kho/ipos.ts`, `src/lib/kho/ipos-hook.ts`, `src/lib/kho/ipos-dong-bo.ts` |
+| iPOS / FABi | `KHO.md` mục 3j | `src/pages/hook/ipos/`, `src/lib/kho/ipos.ts`, `src/lib/kho/ipos-hook.ts`, `src/lib/kho/ipos-dong-bo.ts`; file nhập món `mon-fabi.xlsx.ts` (`?da_co=` của extension `mo-rong-fabi/README.md`) |
 | Sức khỏe hệ thống, báo động | `README.md`, "Sức khỏe hệ thống", "Báo động" | `src/lib/suc-khoe.ts`, `src/lib/bao-dong-chinh-sach.ts`, `src/components/SucKhoeHeThong.astro` |
 | Việc chạy theo giờ (cron) | `wrangler.toml` | `src/worker.ts` (hàm `scheduled`) |
 | Bản dịch tự động Anh / Hàn | `README.md`, "Bản dịch tự động" | `src/lib/may-dich.ts`, `src/lib/ban-dich.ts` |

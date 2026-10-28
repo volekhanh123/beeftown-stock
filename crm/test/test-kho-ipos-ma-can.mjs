@@ -27,7 +27,9 @@ import { phanTichHoaDon } from '../../web/src/lib/kho/ipos.ts';
 import {
   laMaKhoTuNhan, kiemGhep, oThucDon, goiYMatHang, maCanTuNhan, docFormGhep, ganMaIpos,
 } from '../../web/src/lib/kho/ban-ipos.ts';
-import { docMonFabi, taoTepNhapFabi, nhanTrenFabi, monCanCoTrenFabi } from '../../web/src/lib/kho/thu-ngan.ts';
+import {
+  docMonFabi, taoTepNhapFabi, nhanTrenFabi, monCanCoTrenFabi, docMaDaCoFabi, cauMaDaCoSai, MA_DA_CO_TOI_DA,
+} from '../../web/src/lib/kho/thu-ngan.ts';
 import { COT_NHAP_FABI, dongNhapFabi } from '../../web/src/lib/kho/fabi-mau.ts';
 import { taoTepExcel, crc32, tenCot, KIEU_XLSX } from '../../web/src/lib/kho/tep-excel.ts';
 import { timChuoiCam } from '../../web/src/lib/chuoi-cam.js';
@@ -435,6 +437,64 @@ await nhom('8b · FILE NHẬP KHÔNG THÊM LẠI MÓN ĐÃ CÓ DƯỚI MÃ KHÁC
   const t1000 = await taoTepNhapFabi(nghin, { vai: 'quan_ly', chiNhanh: cnA, nn: 'vi' });
   ok('Mã đã bán chạm trần 1000 dòng (PostgREST có thể đã cắt) → 500 có câu, không file', t1000.status === 500 && t1000.tenTep === null,
      JSON.stringify(t1000));
+});
+
+// ===========================================================================
+await nhom('8c · MỞ RỘNG FABi GỬI MÃ ĐANG CÓ TRÊN FABi (da_co) — FILE KHÔNG ĐƯA LẠI MÓN ĐÃ TẠO MÀ CHƯA BÁN', async () => {
+  ok('docMaDaCoFabi: không tham số → []; bỏ số 0 đầu, bỏ khoảng trắng, bỏ trùng, bỏ ô rỗng',
+     JSON.stringify(docMaDaCoFabi(null)) === '[]' && JSON.stringify(docMaDaCoFabi('')) === '[]'
+     && JSON.stringify(docMaDaCoFabi(' 01011 , 1011,,1012')) === '["1011","1012"]' && JSON.stringify(docMaDaCoFabi('0,00')) === '[]');
+  ok('docMaDaCoFabi: mã có chữ (ITEM-HJAE), dấu cách giữa số, 17 số, quá 2000 mã → null (route trả 400, không đoán)',
+     docMaDaCoFabi('1011,ITEM-HJAE') === null && docMaDaCoFabi('10 11') === null && docMaDaCoFabi('1'.repeat(17)) === null
+     && docMaDaCoFabi(Array.from({ length: MA_DA_CO_TOI_DA + 1 }, (_, i) => String(i + 1)).join(',')) === null
+     && docMaDaCoFabi(Array.from({ length: MA_DA_CO_TOI_DA }, (_, i) => String(i + 1)).join(','))?.length === MA_DA_CO_TOI_DA);
+  ok('Câu 400 khi da_co sai dạng: vi / en, nói rõ chưa tạo file, ghi đúng trần (16 số, MA_DA_CO_TOI_DA mã)',
+     /chưa tạo file/.test(cauMaDaCoSai('vi')) && /no file was created/.test(cauMaDaCoSai('en'))
+     && cauMaDaCoSai('vi').includes(`tối đa 16 số, tối đa ${MA_DA_CO_TOI_DA} mã`) && cauMaDaCoSai('en').includes(`at most ${MA_DA_CO_TOI_DA} codes`));
+
+  // Hai món cân mới, có giá, chưa bán: 1016 (sườn — 8. còn thiếu giá) và 1018.
+  await db.query(`update kho_mat_hang set gia_ban_kg = 700000 where ma = 'C-SUON'`);
+  const moi = (await db.query(`select ma from kho_mat_hang where ma_can is null and dang_dung order by ma limit 1`)).rows[0].ma;
+  await db.query(`update kho_mat_hang set ma_can = '1018', gia_ban_kg = 400000 where ma = $1`, [moi]);
+  const ql = clientCua(UID.qlA);
+  const maTrongTep = t => docXlsx(t.noiDung).trang[0].slice(1).map(h => h[COT_NHAP_FABI.indexOf('Mã món')]).sort();
+
+  const khong = await taoTepNhapFabi(ql, { vai: 'quan_ly', chiNhanh: cnA, nn: 'vi' });
+  ok('Không gửi da_co → như trước: file 2 món (01016, 01018), soDaCo 0',
+     khong.status === 200 && khong.soMon === 2 && khong.soDaCo === 0 && JSON.stringify(maTrongTep(khong)) === '["01016","01018"]',
+     JSON.stringify({ soMon: khong.soMon, soDaCo: khong.soDaCo }));
+  const mot = await taoTepNhapFabi(ql, { vai: 'quan_ly', chiNhanh: cnA, nn: 'vi', daCoTrenFabi: docMaDaCoFabi('01016,9999') });
+  ok('FABi đã có 01016 (tạo tay, chưa bán) → file chỉ còn 01018; soDaCo 1; mã lạ 9999 không ảnh hưởng',
+     mot.status === 200 && mot.soMon === 1 && mot.soDaCo === 1 && JSON.stringify(maTrongTep(mot)) === '["01018"]',
+     JSON.stringify({ soMon: mot.soMon, soDaCo: mot.soDaCo }));
+  const kieuKhac = await taoTepNhapFabi(ql, { vai: 'quan_ly', chiNhanh: cnA, nn: 'vi', daCoTrenFabi: docMaDaCoFabi('1018') });
+  ok('Mã trên FABi gõ không có số 0 đầu (1018) vẫn khớp mã vạch 01018', kieuKhac.soMon === 1 && kieuKhac.soDaCo === 1
+     && JSON.stringify(maTrongTep(kieuKhac)) === '["01016"]');
+  const het = await taoTepNhapFabi(ql, { vai: 'quan_ly', chiNhanh: cnA, nn: 'vi', daCoTrenFabi: docMaDaCoFabi('01016,01018') });
+  const hetEn = await taoTepNhapFabi(ql, { vai: 'quan_ly', chiNhanh: cnA, nn: 'en', daCoTrenFabi: docMaDaCoFabi('01016,01018') });
+  ok('FABi đã có cả hai → 200, không file, câu kể "đã có trên FABi" (vi / en), soDaCo 2',
+     het.status === 200 && het.tenTep === null && het.soMon === 0 && het.soDaCo === 2 && /đã có trên FABi/.test(het.noiDung)
+     && /already on FABi/.test(hetEn.noiDung), JSON.stringify([het, hetEn]));
+  const rong = await taoTepNhapFabi(ql, { vai: 'quan_ly', chiNhanh: cnA, nn: 'vi', daCoTrenFabi: [] });
+  ok('da_co rỗng (FABi chưa có món mã số nào) → file đủ 2 món', rong.soMon === 2 && rong.soDaCo === 0);
+  ok('Món đã bán (1011, 1013, 1015) vẫn không vào file dù FABi không gửi mã của chúng — da_co chỉ bỏ ra, không thêm vào',
+     !maTrongTep(rong).some(m => ['01011', '01013', '01015'].includes(m)), JSON.stringify(maTrongTep(rong)));
+  for (const [uid, vai] of [[UID.thuKhoA, 'thu_kho'], [UID.nvQuayA, 'nhan_vien_quay'], [UID.keToanA, 'ke_toan']]) {
+    const t = await taoTepNhapFabi(clientCua(uid), { vai, chiNhanh: cnA, nn: 'vi', daCoTrenFabi: ['1016'] });
+    ok(`${vai} gửi da_co → vẫn 403, không file`, t.status === 403 && t.tenTep === null);
+  }
+  const loiMang = { data: null, error: { message: 'TypeError: fetch failed' } };
+  const hong = { rpc: (ten, ...a) => (ten === 'kho_ipos_ma_da_ban' ? Promise.resolve(loiMang) : ql.rpc(ten, ...a)), from: b => ql.from(b) };
+  const t500 = await taoTepNhapFabi(hong, { vai: 'quan_ly', chiNhanh: cnA, nn: 'vi', daCoTrenFabi: ['1016'] });
+  ok('Mất mạng khi đọc, có da_co → vẫn 500 có câu, không file', t500.status === 500 && t500.tenTep === null && typeof t500.noiDung === 'string');
+
+  const route = doc('web/src/pages/noi-bo/kho/ban-ipos/mon-fabi.xlsx.ts');
+  ok('Route: đọc da_co bằng docMaDaCoFabi, sai dạng → 400 câu cauMaDaCoSai, có tham số mới truyền daCoTrenFabi, header x-so-mon / x-so-da-co / x-chi-nhanh',
+     /docMaDaCoFabi\(ctx\.url\.searchParams\.get\('da_co'\)\)/.test(route) && /status: 400/.test(route) && /cauMaDaCoSai\(nn\)/.test(route)
+     && /daCoTrenFabi: coDaCo \? daCo : null/.test(route) && /'x-so-mon'/.test(route) && /'x-so-da-co'/.test(route)
+     && /'x-chi-nhanh': encodeURIComponent\(chiNhanh\.ma\)/.test(route)
+     && !/export const POST/.test(route));
+  await doiSoat('File FABi theo da_co');
 });
 
 // ===========================================================================

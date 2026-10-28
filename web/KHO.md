@@ -695,12 +695,17 @@ ten_ipos: description, so_luong: quantity, thanh_tien: amount }] }`.
 | `/noi-bo/kho/cai-dat/ipos` | Kết nối iPOS: đèn, **lần nhận hóa đơn gần nhất**, **địa chỉ nhận hóa đơn** (chủ thấy đủ khóa, người khác thấy che), việc nhờ iPOS, "Cập nhật ngay" (kéo bù + thử lại hàng chờ, phiên người bấm, `dong_bo_ban`, giới hạn 60 giây), cấu hình (**Mã thương hiệu**, **Mã cửa hàng**, quầy bán, giờ mở cửa, "báo mất kết nối sau … giờ" — không còn ô địa chỉ API: máy chủ là hằng `TRUONG_IPOS.goc`), chuyển nguồn số bán |
 | `/noi-bo/kho/ban-ipos` | Hàng đợi: Chưa khớp → Ghép món; Thiếu hàng → Thử lại / Hàng ngoài sổ / Bỏ qua (`kho_ipos_xu_ly_dong`) |
 | `/noi-bo/kho/ban-ipos/ghep` | Ghép món + **Bán theo** kg / gói (+ "mỗi gói = … kg") / suất (món chế biến) → `kho_ipos_gan_ma_v2`; mã trùng mã cân ghi "kho tự nhận", chọn sẵn món và Theo kg (`maCanTuNhan`); bảng **Thực đơn iPOS** (`kho_ipos_menu`) không còn được làm mới — món hiện ở mục chưa ghép sau lần bán đầu |
-| `/noi-bo/kho/ban-ipos/mon-fabi.xlsx` | **File nhập món cho FABi** (`danh_muc`) — đúng sheet "Menu" của mẫu `create-item.xlsx` ("Thêm món từ file"), chỉ món chưa thấy trên FABi — `taoTepNhapFabi` (`lib/kho/thu-ngan.ts`, Excel tự viết ở `lib/kho/tep-excel.ts`) |
+| `/noi-bo/kho/ban-ipos/mon-fabi.xlsx` | **File nhập món cho FABi** (`danh_muc`) — đúng sheet "Menu" của mẫu `create-item.xlsx` ("Thêm món từ file"), chỉ món chưa thấy trên FABi — `taoTepNhapFabi` (`lib/kho/thu-ngan.ts`, Excel tự viết ở `lib/kho/tep-excel.ts`). `?da_co=` (Mở rộng FABi): mã toàn số đang có trên FABi → bỏ khỏi file (`docMaDaCoFabi`, tối đa 2000 mã, sai dạng → 400); header `x-so-mon`, `x-so-da-co`, `x-chi-nhanh` |
 | `/noi-bo/kho/ban-ipos/mon-fabi.csv` | Bảng đối chiếu món cần có trên FABi (`danh_muc`) — `taoTepMonFabi` (`lib/kho/thu-ngan.ts`) |
 
 **Đồng bộ món kho → FABi (0103).** Kho là nơi duy nhất sửa món (tên, mã cân, giá/kg). Cân nhận qua Beeftown Cân
 ("Gửi xuống cân" / tự gửi khi kho đổi). FABi không có API tạo / sửa món, nên: Ghép món → **Tải file nhập món cho
-FABi** → FABi CMS → Thực đơn → Món ăn → Tiện ích → **Thêm món từ file**. File gồm mọi món cân (mã cân), ô mã, mã giảm
+FABi** → FABi CMS → Thực đơn → Món ăn → Tiện ích → **Thêm món từ file**. Hoặc dùng **Mở rộng FABi**
+(`mo-rong-fabi/`, extension Chrome — 28/10/2026): trên trang Món ăn tại thành phố bấm một nút, extension đọc mã món
+đang có trên FABi ở bảng món, lấy file này kèm `?da_co=` bằng phiên kho của trình duyệt, mở hộp thoại Thêm món từ
+file và đưa file vào; người dùng kiểm bảng xem trước rồi tự bấm Lưu của FABi. Nhờ `da_co`, món đã tạo tay trên FABi
+mà chưa bán lần nào cũng không bị đưa lại (kho chỉ biết món đã bán). Giả định về FABi CMS và việc phải thử trên FABi
+thật: `mo-rong-fabi/README.md`. File gồm mọi món cân (mã cân), ô mã, mã giảm
 đang dùng mà kho **chưa thấy trên FABi** — chưa có dòng bán nào mang mã đó (`kho_ipos_ma_da_ban`, mã số đã bỏ số 0
 đầu, security invoker, RLS `xem_gia`; chạm 1000 mã — trần max_rows của PostgREST — thì báo lỗi thay vì đoán), chưa ghép
 tay mã đó, chưa ghép tay một mã KHÁC với đúng món / ô đó (món đã có trên FABi dưới mã `ITEM-…`), có giá, mã vừa mẫu

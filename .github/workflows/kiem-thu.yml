@@ -151,6 +151,11 @@ jobs:
         if: ${{ !cancelled() }}
         working-directory: can-app
         run: npx bun test/thu-trinh-duyet.ts
+      # Mở rộng FABi (mo-rong-fabi/): nạp extension thật vào Chromium, FABi CMS và kho giả trên máy (HTTPS, chứng chỉ tự ký) —
+      # cookie phiên kho qua service worker, file vào đúng hộp thoại, mọi kiểu hỏng. Cùng Chromium với bước trên.
+      - name: Kiểm thử Mở rộng FABi trong Chromium
+        if: ${{ !cancelled() }}
+        run: node mo-rong-fabi/thu/thu-trinh-duyet.mjs
 
   web:
     name: Web · astro check · build · chữ cấm · trình duyệt

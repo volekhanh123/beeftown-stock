@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "__MSG_ten__",
+  "short_name": "Beeftown FABi",
+  "description": "__MSG_mo_ta__",
+  "version": "1.0.0",
+  "default_locale": "vi",
+  "minimum_chrome_version": "111",
+  "host_permissions": ["https://beeftown.vn/*"],
+  "background": { "service_worker": "nen.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://fabi.ipos.vn/*"],
+      "js": ["chung.js", "trang-fabi.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
