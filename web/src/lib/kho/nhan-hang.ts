@@ -371,8 +371,9 @@ export function docFormDongNhan(
   const dong: DongNhanForm = {
     mat_hang_id: mhId,
     so_kg: s('so_kg'), so_goi: s('so_goi'), so_thung: s('so_thung'),
-    // 0105: món đếm theo cái — ô hạn dùng của nó (ngày in trên sản phẩm) nằm ngoài mục gập.
-    han_dung: mCai?.dem_cai ? (s('hsd_cai') || s('hsd')) : s('hsd'),
+    // 0105: món đếm theo cái — chỉ ô hạn dùng của nó (ngày in trên sản phẩm, ngoài mục gập). Không lấy ô "hsd" của thịt:
+    // ô đó bị CSS giấu nhưng vẫn giữ ngày đã gõ cho món trước, sẽ thành hạn sai mà không ai thấy.
+    han_dung: mCai?.dem_cai ? s('hsd_cai') : s('hsd'),
     ngay_san_xuat: s('nsx'), so_lo_ncc: s('so_lo_ncc').slice(0, 60),
     truong_them: tt.giaTri,
     ngay_mo: s('ngay_mo'),

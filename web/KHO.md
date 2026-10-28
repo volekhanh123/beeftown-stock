@@ -1333,9 +1333,15 @@ hóa đơn từng đồng.
 - **Số kg trên báo cáo:** mọi chỗ cộng kg nhiều món (báo cáo tháng, mua hàng, đánh giá NCC, chỉ số quản trị, danh sách phiếu, trả
   hàng chờ tiền, việc của kế toán) chỉ cộng hàng cân ký; tiền cộng mọi món. Xuất – nhập – tồn có cột **ĐVT**, dòng tổng kg bỏ dòng
   đếm theo cái (`DinhNghiaBaoCao.boCong`); hủy / xuất bếp và mua hàng theo mặt hàng ghi số cái ở cột "Gói / cái", tên kèm đơn vị.
-  "Chi phí thịt" đổi tên thành **Chi phí nguyên liệu** (khóa `chi_phi_thit` giữ nguyên). MISA: ĐVT là tên đơn vị, số lượng là số
-  cái, đơn giá là giá một cái làm tròn, thành tiền là thành tiền của dòng — **số lượng × đơn giá có thể lệch thành tiền vài đồng**
-  với dòng nhập theo giá thùng; kế toán giữ thành tiền khi nhập MISA.
+  "Chi phí thịt" đổi tên thành **Chi phí nguyên liệu** (khóa `chi_phi_thit` giữ nguyên). MISA: dòng nhập theo giá thùng mà số cái
+  chẵn thùng ghi **"thùng"**, số thùng × giá thùng (khớp thành tiền); còn lại ĐVT là tên đơn vị, số lượng là số cái, đơn giá là giá
+  một cái làm tròn — **dòng có lon lẻ thì số lượng × đơn giá có thể lệch thành tiền vài đồng**; kế toán giữ thành tiền khi nhập MISA.
+- **So giá lần trước** (`kho_so_sanh_gia_nhap`): dòng nhập theo thùng so giá THÙNG — chip "Lần trước 380.000 đ" là giá thùng đã
+  điền lần trước (cùng cỡ thùng), không phải giá một lon × 24.
+- **Đổi loại:** món đã dùng trong phiếu, sổ kho, kiểm kê, định lượng món, mã iPOS, công thức / phiên pha, đơn đặt, yêu cầu quầy thì
+  không đổi được giữa hàng cân ký và hàng đếm theo cái. Ghép món iPOS và định lượng món chưa có sốt / đồ uống (đợt 2).
+- **Tồn đầu kỳ:** bảng món có nhóm Sốt, gia vị và Đồ uống — chỉ ô số cái, hạn ghi theo ngày in; `kho_luu_ton_dau_ky` bỏ kg gửi lên,
+  kg = số cái.
 - **Chưa làm (đợt 2):** đồ uống bán trên iPOS tự trừ kho theo mã món, gợi ý đặt hàng theo cái, mức tối thiểu / tối đa. Kim chi
   (bếp tự làm) để PR riêng.
 - Kiểm thử: `crm/test/test-kho-dem-cai.mjs` (database, web, mã nguồn; kết thúc bằng `kho_doi_soat_ton()` rỗng).

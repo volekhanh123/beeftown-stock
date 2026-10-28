@@ -293,7 +293,6 @@ const ch = dichNB(nn, {
     vi: 'Hàng đang nằm ở "Hàng chờ hủy" — không còn tính là hàng ở quầy, chưa ghi mất.',
     en: 'The goods are in "Awaiting write-off" — no longer counted as counter stock, not yet recorded as lost.',
   },
-  daGhiHuy: { vi: (kg: string) => `Đã ghi hủy ${kg} kg.`, en: (kg: string) => `${kg} kg written off.` },
   daGhiHuyChu: { vi: (chu: string) => `Đã ghi hủy ${chu}.`, en: (chu: string) => `${chu} written off.` },
   veChoCu: { vi: 'Hàng đã về lại chỗ cũ.', en: 'The goods went back where they were.' },
   duyetBaoHuy: { vi: 'Duyệt báo hủy', en: 'Approve write-off' },
@@ -679,6 +678,21 @@ const huongDan = choToiDuyet ? 'duyet-huy'
 // Sổ của phiếu: chỉ các dòng rời nơi lấy (chuyển đi / xuất bếp) — đủ để biết lô nào.
 const soCaiLay = soCai.filter(s => s.vi_tri_id === phieu?.vi_tri_id && ['chuyen_di', 'xuat_bep', 'xuat_khac', 'tra_ncc'].includes(s.loai));
 const daHuy = soCai.filter(s => s.loai === 'huy');
+/**
+ * "2 kg, 3 chai": kg của hàng cân ký, rồi số cái theo từng đơn vị của sốt / đồ uống (0105) — câu "Đã ghi hủy" kể đủ
+ * mọi thứ đã rời kho, không chỉ phần kg.
+ */
+const chuDaHuy = (() => {
+  const thit = daHuy.filter(x => !laCaiLo(x.lo_id));
+  const phan = thit.length ? [`${dinhDangKg(Math.abs(thit.reduce((a, x) => a + x.so_kg, 0)), nn)} kg`] : [];
+  const theoDv = new Map<string, number>();
+  for (const x of daHuy.filter(x => laCaiLo(x.lo_id))) {
+    const dv = tenMh.get(loTheoMa.get(x.lo_id ?? '')?.mat_hang_id ?? '')?.don_vi_goi ?? donViPhieu ?? '';
+    theoDv.set(dv, (theoDv.get(dv) ?? 0) + Math.abs(x.so_goi));
+  }
+  for (const [dv, n] of theoDv) phan.push(ch.soGoiDem(n, dv || null));
+  return phan.join(', ');
+})();
 ---
 <Kho k={k} tieuDe={tieuDe} huongDan={huongDan}>
   <h1>{tieuDe}</h1>
@@ -1048,9 +1062,7 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
       {phieu.loai === 'huy' && (
         <p class="kho-phu">
           {phieu.trang_thai === 'cho_duyet' && ch.huyCho}{' '}
-          {phieu.trang_thai === 'da_duyet' && (daHuy.every(x => laCaiLo(x.lo_id))
-            ? ch.daGhiHuyChu(ch.soGoiDem(Math.abs(daHuy.reduce((s, x) => s + x.so_goi, 0)), donViPhieu))
-            : ch.daGhiHuy(dinhDangKg(Math.abs(daHuy.filter(x => !laCaiLo(x.lo_id)).reduce((s, x) => s + x.so_kg, 0)), nn)))}{' '}
+          {phieu.trang_thai === 'da_duyet' && ch.daGhiHuyChu(chuDaHuy)}{' '}
           {phieu.trang_thai === 'tu_choi' && ch.veChoCu}
         </p>
       )}

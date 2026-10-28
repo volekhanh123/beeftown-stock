@@ -26,7 +26,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   BUOC_THIET_LAP_NB, boDau, cauLoiKho, congNgay, docKg, docNgay, docSoNguyen, docTien, duoc,
-  kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB, type ViecKho,
+  kqHai, laDemCai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB, type ViecKho,
 } from './chung.ts';
 
 // =============================================================================
@@ -270,7 +270,7 @@ export function hienSoNguong(n: number | null | undefined, nn: NgonNguNB = 'vi')
 /** Phần của mặt hàng mà lưới tồn đầu kỳ cần. Không có cột tiền nào. */
 export interface MonTonDau {
   id: string; ma: string; ten: string;
-  loai: 'tang' | 'phan_cat' | 'phu_pham';
+  loai: 'tang' | 'phan_cat' | 'phu_pham' | 'gia_vi' | 'do_uong';   // 0105: hai loại đếm theo cái
   dem_goi: boolean; don_vi_goi: string;
   han_dung_ngay: number | null;
   dang_dung: boolean;
@@ -302,6 +302,8 @@ export interface DongTonDau {
   vi_tri_id: string; ten_vi_tri: string;
   mat_hang_id: string; ten_mat_hang: string; ma_mat_hang: string; don_vi_goi: string;
   so_goi: number; so_kg: number;
+  /** Món đếm theo cái (0105): so_kg = so_goi, không cộng vào tổng kg; đơn giá là giá một cái. */
+  dem_cai?: boolean;
   don_gia_kg: number | null;
   /** Hạn ghi trong ô; null = theo hạn mặc định của mặt hàng. */
   han_dung: string | null;
@@ -485,9 +487,11 @@ function kiemDong(o: ODong, ctx: NguCanhTonDau, mon: MonTonDau | null, nn: NgonN
     }
   }
 
-  const kg = docKg(o.kg);
-  if (kg === null) bao({ vi: 'chưa ghi số kg', en: 'kg missing' });
-  else if (Number.isNaN(kg) || kg <= 0) bao({ vi: `số kg "${o.kg}" phải lớn hơn 0, ví dụ 12,5`, en: `kg "${o.kg}" must be more than 0, for example 12.5` });
+  // 0105: sốt, đồ uống không cân — ô kg bỏ qua, kg = số cái (database cũng tự lấy số cái).
+  const cai = !!m && laDemCai({ loai: m.loai });
+  const kg = cai ? null : docKg(o.kg);
+  if (!cai && kg === null) bao({ vi: 'chưa ghi số kg', en: 'kg missing' });
+  else if (!cai && (Number.isNaN(kg) || kg! <= 0)) bao({ vi: `số kg "${o.kg}" phải lớn hơn 0, ví dụ 12,5`, en: `kg "${o.kg}" must be more than 0, for example 12.5` });
 
   const goi = docSoNguyen(o.goi, 0, 100000);
   if (goi !== null && Number.isNaN(goi)) {
@@ -511,13 +515,15 @@ function kiemDong(o: ODong, ctx: NguCanhTonDau, mon: MonTonDau | null, nn: NgonN
     } else if (docNgay(ctx.ngay)) hanSeDung = congNgay(ctx.ngay, m.han_dung_ngay);
   }
 
-  if (loi.length || !m || !noi || kg === null || Number.isNaN(kg)) return loi;
+  if (loi.length || !m || !noi || (!cai && (kg === null || Number.isNaN(kg)))) return loi;
+  const soGoi = goi && !Number.isNaN(goi) ? goi : 0;
   return {
     stt: 0, nguon: o.nguon,
     vi_tri_id: noi.id, ten_vi_tri: noi.ten,
     mat_hang_id: m.id, ten_mat_hang: m.ten, ma_mat_hang: m.ma, don_vi_goi: m.don_vi_goi,
-    so_goi: goi && !Number.isNaN(goi) ? goi : 0,
-    so_kg: kg,
+    so_goi: soGoi,
+    so_kg: cai ? soGoi : kg!,
+    ...(cai ? { dem_cai: true } : {}),
     don_gia_kg: gia === null || Number.isNaN(gia) ? null : gia,
     han_dung: han ?? null,
     han_se_dung: hanSeDung,
@@ -606,7 +612,7 @@ export const O_LUOI = { mh: 'mh_', goi: 'goi_', kg: 'kg_', gia: 'gia_', han: 'ha
 
 /** Món hiện trong bảng của một vị trí: đang dùng, tảng → phần cắt → phụ phẩm (giữ thứ tự danh mục trong từng loại). */
 export function monTrongLuoi(matHang: MonTonDau[]): MonTonDau[] {
-  const thuTu = { tang: 0, phan_cat: 1, phu_pham: 2 } as const;
+  const thuTu = { tang: 0, phan_cat: 1, phu_pham: 2, gia_vi: 3, do_uong: 4 } as const;
   return matHang
     .map((m, i) => ({ m, i }))
     .filter(x => x.m.dang_dung)
@@ -651,8 +657,8 @@ export function tomTatTheoViTri(dong: DongTonDau[]): { vi_tri_id: string; ten: s
   for (const d of dong) {
     const x = ra.get(d.vi_tri_id) ?? { vi_tri_id: d.vi_tri_id, ten: d.ten_vi_tri, so_dong: 0, tong_kg: 0 };
     x.so_dong++;
-    // Cộng theo gam để 0,1 + 0,2 không ra 0,30000000000000004.
-    x.tong_kg = Math.round(x.tong_kg * 1000 + d.so_kg * 1000) / 1000;
+    // Cộng theo gam để 0,1 + 0,2 không ra 0,30000000000000004. Sốt, đồ uống (0105): kg là số cái — không cộng.
+    if (!d.dem_cai) x.tong_kg = Math.round(x.tong_kg * 1000 + d.so_kg * 1000) / 1000;
     ra.set(d.vi_tri_id, x);
   }
   return [...ra.values()];
@@ -718,6 +724,7 @@ export function dongTuGui(gui: DongGuiTonDau[], ctx: Pick<NguCanhTonDau, 'matHan
       vi_tri_id: g.vi_tri_id, ten_vi_tri: vt.get(g.vi_tri_id)?.ten ?? '?',
       mat_hang_id: g.mat_hang_id, ten_mat_hang: m?.ten ?? '?', ma_mat_hang: m?.ma ?? '', don_vi_goi: m?.don_vi_goi ?? 'gói',
       so_goi: g.so_goi, so_kg: g.so_kg, don_gia_kg: g.don_gia_kg ?? null,
+      ...(m && laDemCai({ loai: m.loai }) ? { dem_cai: true } : {}),
       han_dung: g.han_dung ?? null, han_se_dung: g.han_dung ?? hanMacDinh,
     };
   });

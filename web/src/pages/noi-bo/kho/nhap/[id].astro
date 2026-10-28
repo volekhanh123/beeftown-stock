@@ -736,8 +736,8 @@ const huongDan = 'duyet-nhap';
         {dongDb.map((d, i) => {
           const mh = tenMh.get(d.mat_hang_id);
           const ss = soSanh.get(d.id);
-          const heSo = laDongThung(d) ? d.so_trong_thung as number : 1;   // 0105: ô giá thùng
-          const chip = chuSoSanhGia(ss, nn, heSo);
+          // 0105: dòng nhập theo thùng — kho_so_sanh_gia_nhap trả giá lần trước là giá THÙNG, cùng đơn vị với ô giá.
+          const chip = chuSoSanhGia(ss, nn);
           const tt = thanhTienTam(d);
           const gv = giaVon[i];
           return (
@@ -750,7 +750,7 @@ const huongDan = 'duyet-nhap';
               <label class="nb-o"><span>{laDongThung(d) ? t.giaThung(d.so_trong_thung as number, mh?.don_vi_goi ?? '')
                 : mh?.dem_theo_cai ? t.giaMotCai(mh.don_vi_goi) : phieu.loai === 'ton_dau' ? t.giaVonUocTinh : t.donGiaKg}</span>
                 <input type="text" inputmode="numeric" name={`gia_${d.id}`} value={gf.gia[d.id] ?? ''}
-                  placeholder={ss?.gia_truoc ? t.lanTruoc(ss.gia_truoc * heSo) : t.viDuGia} /></label>
+                  placeholder={ss?.gia_truoc ? t.lanTruoc(ss.gia_truoc) : t.viDuGia} /></label>
               {chip && (
                 <p class="dg-chip-hang"><span class:list={['dg-chip', { vuot: chip.vuot }]}
                   title={ss?.so_phieu_truoc ? `${t.phieu} ${ss.so_phieu_truoc} · ${dinhDangNgay(ss.ngay_truoc)}` : undefined}>{chip.chu}{chip.vuot && <>{' · '}<strong>{t.vuotNguong}</strong></>}</span></p>

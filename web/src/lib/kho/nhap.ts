@@ -606,14 +606,11 @@ export async function docNguongGiaMua(client: SupabaseClient, chiNhanhId: string
  * Chữ trên chip của một dòng: "Lần trước 480.000 đ · +8,3%" (tiếng Anh: "Last time
  * 480,000 ₫ · +8.3%"). Chưa có lần trước: null.
  */
-export function chuSoSanhGia(
-  s: SoSanhGia | undefined, nn: NgonNguNB = 'vi',
-  /** 0105: dòng nhập theo thùng — ô giá là giá một thùng, nên giá lần trước (một cái) nhân số cái một thùng. */
-  soTrongThung = 1,
-): { chu: string; vuot: boolean } | null {
+export function chuSoSanhGia(s: SoSanhGia | undefined, nn: NgonNguNB = 'vi'): { chu: string; vuot: boolean } | null {
   if (!s || s.gia_truoc === null) return null;
   const pt = s.chenh_pt === null ? '' : ` · ${s.chenh_pt > 0 ? '+' : ''}${dinhDangPhanTram(s.chenh_pt, 1, nn)}`;
-  const truoc = dinhDangTien(s.gia_truoc * soTrongThung, nn);
+  // 0105: dòng nhập theo thùng — database đã trả giá lần trước là giá một thùng (cùng đơn vị với ô giá).
+  const truoc = dinhDangTien(s.gia_truoc, nn);
   return { chu: { vi: `Lần trước ${truoc}${pt}`, en: `Last time ${truoc}${pt}` }[nn], vuot: s.vuot_nguong };
 }
 

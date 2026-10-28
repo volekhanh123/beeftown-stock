@@ -3,9 +3,9 @@
 -- =============================================================================
 -- PHẢI CHẠY SAU 0097 (bản cuối của kho_ghi_dong_phieu_nhap, kho_duyet_phieu_nhap), 0050 (kho_bao_cao_ncc),
 -- 0042 (kho_su_kien), 0041 (kho_bao_cao_theo_thang, kho_bao_cao_mua_hang), 0040 (kho_du_lieu_misa,
--- kho_tien_tra_hang_goi_y, kho_ds_tra_hang_cho_tien), 0039 (view kho_v_phieu_nhap), 0035 (kho_ds_phieu_nhap_kg),
+-- kho_tien_tra_hang_goi_y, kho_ds_tra_hang_cho_tien), 0039 (view kho_v_phieu_nhap), 0035 (kho_ds_phieu_nhap_kg, kho_luu_ton_dau_ky),
 -- 0032 (kho_chi_so_quan_tri, view kho_v_phieu_xuat), 0031 (kho_dien_gia_phieu_nhap, kho_luu_phieu_nhap,
--- kho_luu_phieu_nhap_kg).
+-- kho_luu_phieu_nhap_kg, kho_so_sanh_gia_nhap).
 --
 -- Khánh chốt 27–28/10/2026: kho quản lý thêm hai nhóm nguyên vật liệu, đếm theo cái (chai, hộp, lon, gói):
 --   · gia_vi  — Sốt, gia vị, đồ khô: mua của nhà cung cấp, ra khỏi kho bằng phiếu Xuất bếp, chai / hộp nguyên;
@@ -34,6 +34,8 @@
 --      danh sách phiếu nhập / xuất / nhận hàng của thủ kho / trả hàng chờ xác nhận tiền, việc "Trả hàng chờ xác
 --      nhận tiền" của kế toán): kg chỉ tính hàng cân ký; tiền vẫn cộng mọi món.
 --   6. Tiền trả hàng NCC tự tính: dòng nhập theo giá thùng tính đúng phần của giá thùng.
+--   7. Tồn đầu kỳ (kho_luu_ton_dau_ky): món đếm theo cái chỉ cần số cái, kg = số cái.
+--   8. So giá với lần trước (kho_so_sanh_gia_nhap): dòng nhập theo thùng so giá một thùng; gia_truoc là giá thùng.
 -- Đợt 2 (PR sau): đồ uống tự trừ qua iPOS theo mã món, gợi ý đặt hàng theo cái, mức tối thiểu / tối đa.
 --
 -- Triển khai: chạy migration TRƯỚC, deploy web SAU (web mới đọc cột dem_theo_cai, so_trong_thung, don_gia_thung;
@@ -63,10 +65,11 @@ comment on column kho_mat_hang.dem_theo_cai is
 comment on column kho_mat_hang.so_trong_thung is
   'Số cái trong một thùng (0105), chỉ món đếm theo cái; null = không nhập theo thùng. Nhập hàng và kiểm kê gõ thùng + lẻ, kho giữ số cái.';
 
--- Món đã có trong phiếu nhập hay sổ kho không đổi được giữa cân ký và đếm theo cái: số kg cũ của nó là cân nặng,
--- không bằng số gói — đổi sang đếm theo cái làm lần ghi sổ sau vỡ bất biến (và ngược lại, kg = số cái thành cân
--- nặng giả). security definer: phải thấy sổ của MỌI chi nhánh (RLS của người sửa chỉ thấy chi nhánh mình). Đọc
--- loai, không đọc dem_theo_cai: cột sinh chưa tính ở trigger BEFORE.
+-- Món đã dùng ở đâu đó không đổi được giữa cân ký và đếm theo cái: số kg cũ của nó là cân nặng, không bằng số gói
+-- — đổi sang đếm theo cái làm lần ghi sổ sau vỡ bất biến (và ngược lại, kg = số cái thành cân nặng giả). "Đâu đó"
+-- gồm cả chỗ SẼ ghi sổ theo kg: định lượng món (gam / suất, iPOS trừ kho), mã món iPOS, công thức pha lóc, đơn đặt
+-- hàng, yêu cầu quầy, kiểm kê, phiên pha. security definer: phải thấy dữ liệu của MỌI chi nhánh (RLS của người sửa
+-- chỉ thấy chi nhánh mình). Đọc loai, không đọc dem_theo_cai: cột sinh chưa tính ở trigger BEFORE.
 create or replace function kho_mat_hang_doi_kieu_dem_kiem()
 returns trigger
 language plpgsql
@@ -76,8 +79,16 @@ as $$
 begin
   if (new.loai in ('gia_vi', 'do_uong')) is distinct from (old.loai in ('gia_vi', 'do_uong'))
      and (exists (select 1 from kho_so_cai s where s.mat_hang_id = old.id)
-          or exists (select 1 from kho_phieu_nhap_dong d where d.mat_hang_id = old.id)) then
-    raise exception 'Món "%" đã có trong phiếu hoặc sổ kho — không đổi được giữa hàng cân ký và hàng đếm theo cái. Tạo món mới đúng loại', old.ten
+          or exists (select 1 from kho_phieu_nhap_dong d where d.mat_hang_id = old.id)
+          or exists (select 1 from kho_phieu_xuat_dong d where d.mat_hang_id = old.id)
+          or exists (select 1 from kho_kiem_ke_dong d where d.mat_hang_id = old.id)
+          or exists (select 1 from kho_dinh_luong d where d.mat_hang_id = old.id)
+          or exists (select 1 from kho_ipos_ma_hang d where d.mat_hang_id = old.id)
+          or exists (select 1 from kho_cong_thuc_pha_dong d where d.mat_hang_ra_id = old.id)
+          or exists (select 1 from kho_phien_pha_ra d where d.mat_hang_id = old.id)
+          or exists (select 1 from kho_don_dat_dong d where d.mat_hang_id = old.id)
+          or exists (select 1 from kho_yeu_cau_quay_dong d where d.mat_hang_id = old.id)) then
+    raise exception 'Món "%" đã dùng trong phiếu, sổ kho, định lượng món hoặc mã iPOS — không đổi được giữa hàng cân ký và hàng đếm theo cái. Tạo món mới đúng loại', old.ten
       using errcode = 'check_violation';
   end if;
   return new;
@@ -558,12 +569,14 @@ begin
     returning kho_phieu_nhap.id, kho_phieu_nhap.phien_ban into v_id, v_pb;
   else
     -- Đơn giá đang có, theo mặt hàng: dòng đầu tiên của mỗi món.
-    -- 0105: kèm giá thùng (dòng nhập theo giá thùng) — mất nó thì thành tiền thành giá một cái làm tròn.
+    -- 0105: kèm giá thùng và số cái một thùng LÚC ĐIỀN GIÁ (dòng nhập theo giá thùng) — mất giá thùng thì thành tiền
+    -- thành giá một cái làm tròn; lấy số cái một thùng mới của danh mục thì tiền của phiếu đổi theo danh mục.
     select coalesce(jsonb_object_agg(x.mat_hang_id::text, x.don_gia_kg), '{}'),
-           coalesce(jsonb_object_agg(x.mat_hang_id::text, x.don_gia_thung) filter (where x.don_gia_thung is not null), '{}')
+           coalesce(jsonb_object_agg(x.mat_hang_id::text, jsonb_build_object('gia', x.don_gia_thung, 'n', x.so_trong_thung))
+                      filter (where x.don_gia_thung is not null), '{}')
       into v_gia, v_gia_thung
     from (
-      select distinct on (d.mat_hang_id) d.mat_hang_id, d.don_gia_kg, d.don_gia_thung
+      select distinct on (d.mat_hang_id) d.mat_hang_id, d.don_gia_kg, d.don_gia_thung, d.so_trong_thung
       from kho_phieu_nhap_dong d
       where d.phieu_nhap_id = p_id
       order by d.mat_hang_id, d.thu_tu, d.id
@@ -594,13 +607,15 @@ begin
     where d.phieu_nhap_id = v_id and v_gia ? d.mat_hang_id::text;
   end if;
 
-  -- 0105: giá thùng đã điền đi theo mặt hàng sang dòng mới (dòng mới vẫn có quy đổi thùng); giá một cái tính lại
-  -- theo số cái một thùng của dòng mới.
+  -- 0105: giá thùng đã điền đi theo mặt hàng sang dòng mới, CÙNG số cái một thùng lúc điền giá — danh mục đổi số
+  -- cái một thùng sau đó (24 → 12) thì tiền của phiếu không đổi theo.
   if v_gia_thung <> '{}'::jsonb then
     update kho_phieu_nhap_dong d
-    set don_gia_thung = (v_gia_thung ->> d.mat_hang_id::text)::bigint,
-        don_gia_kg    = round((v_gia_thung ->> d.mat_hang_id::text)::numeric / d.so_trong_thung)::bigint
-    where d.phieu_nhap_id = v_id and v_gia_thung ? d.mat_hang_id::text and d.so_trong_thung is not null;
+    set so_trong_thung = (v_gia_thung -> d.mat_hang_id::text ->> 'n')::int,
+        don_gia_thung  = (v_gia_thung -> d.mat_hang_id::text ->> 'gia')::bigint,
+        don_gia_kg     = round((v_gia_thung -> d.mat_hang_id::text ->> 'gia')::numeric
+                               / (v_gia_thung -> d.mat_hang_id::text ->> 'n')::int)::bigint
+    where d.phieu_nhap_id = v_id and v_gia_thung ? d.mat_hang_id::text;
   end if;
 
   return query select v_id, v_pb, false;
@@ -768,12 +783,14 @@ begin
           using errcode = 'insufficient_privilege';
       end if;
 
-      -- 0105: kèm giá thùng (dòng nhập theo giá thùng) — mất nó thì thành tiền thành giá một cái làm tròn.
+      -- 0105: kèm giá thùng và số cái một thùng LÚC ĐIỀN GIÁ (dòng nhập theo giá thùng) — mất giá thùng thì thành tiền
+      -- thành giá một cái làm tròn; lấy số cái một thùng mới của danh mục thì tiền của phiếu đổi theo danh mục.
       select coalesce(jsonb_object_agg(x.mat_hang_id::text, x.don_gia_kg), '{}'),
-             coalesce(jsonb_object_agg(x.mat_hang_id::text, x.don_gia_thung) filter (where x.don_gia_thung is not null), '{}')
+             coalesce(jsonb_object_agg(x.mat_hang_id::text, jsonb_build_object('gia', x.don_gia_thung, 'n', x.so_trong_thung))
+                        filter (where x.don_gia_thung is not null), '{}')
         into v_gia, v_gia_thung
       from (
-        select distinct on (d.mat_hang_id) d.mat_hang_id, d.don_gia_kg, d.don_gia_thung
+        select distinct on (d.mat_hang_id) d.mat_hang_id, d.don_gia_kg, d.don_gia_thung, d.so_trong_thung
         from kho_phieu_nhap_dong d
         where d.phieu_nhap_id = p_id
         order by d.mat_hang_id, d.thu_tu, d.id
@@ -813,13 +830,15 @@ begin
     where d.phieu_nhap_id = v_id and v_gia ? d.mat_hang_id::text;
   end if;
 
-  -- 0105: giá thùng đã điền đi theo mặt hàng sang dòng mới (dòng mới vẫn có quy đổi thùng); giá một cái tính lại
-  -- theo số cái một thùng của dòng mới.
+  -- 0105: giá thùng đã điền đi theo mặt hàng sang dòng mới, CÙNG số cái một thùng lúc điền giá — danh mục đổi số
+  -- cái một thùng sau đó (24 → 12) thì tiền của phiếu không đổi theo.
   if v_gia_thung <> '{}'::jsonb then
     update kho_phieu_nhap_dong d
-    set don_gia_thung = (v_gia_thung ->> d.mat_hang_id::text)::bigint,
-        don_gia_kg    = round((v_gia_thung ->> d.mat_hang_id::text)::numeric / d.so_trong_thung)::bigint
-    where d.phieu_nhap_id = v_id and v_gia_thung ? d.mat_hang_id::text and d.so_trong_thung is not null;
+    set so_trong_thung = (v_gia_thung -> d.mat_hang_id::text ->> 'n')::int,
+        don_gia_thung  = (v_gia_thung -> d.mat_hang_id::text ->> 'gia')::bigint,
+        don_gia_kg     = round((v_gia_thung -> d.mat_hang_id::text ->> 'gia')::numeric
+                               / (v_gia_thung -> d.mat_hang_id::text ->> 'n')::int)::bigint
+    where d.phieu_nhap_id = v_id and v_gia_thung ? d.mat_hang_id::text;
   end if;
 
   return query select v_id, v_pb, false;
@@ -1237,8 +1256,15 @@ begin
         v_n := v_n + 1;
         return query select v_n, 'mua_hang'::text, v_p.ngay_nhap, v_p.so_phieu, v_p.so_hoa_don, v_p.ngay_hoa_don,
           v_ma_ncc, v_p.ten_ncc, v_p.ncc_mst, coalesce(v_d.mh_ma_misa, v_d.mh_ma), v_d.mh_ten,
-          case when v_d.mh_dem_cai then v_d.mh_dvt else 'kg' end,
-          v_d.so_kg, v_d.don_gia_kg, v_d.thanh_tien, v_ts_pt, v_thue[v_i],
+          -- 0105: dòng nhập theo giá thùng, số cái chẵn thùng → ghi theo thùng (2 thùng × 380.000 = 760.000: số lượng ×
+          -- đơn giá đúng bằng thành tiền). Có lon lẻ → số cái × giá một cái làm tròn; thành tiền vẫn của dòng.
+          case when v_d.don_gia_thung is not null and v_d.so_kg % v_d.so_trong_thung = 0 then 'thùng'
+               when v_d.mh_dem_cai then v_d.mh_dvt else 'kg' end,
+          case when v_d.don_gia_thung is not null and v_d.so_kg % v_d.so_trong_thung = 0
+               then v_d.so_kg / v_d.so_trong_thung else v_d.so_kg end,
+          case when v_d.don_gia_thung is not null and v_d.so_kg % v_d.so_trong_thung = 0
+               then v_d.don_gia_thung else v_d.don_gia_kg end,
+          v_d.thanh_tien, v_ts_pt, v_thue[v_i],
           v_tk ->> 'tk_no_hang', v_tk ->> 'tk_co_ncc', v_tk ->> 'tk_thue', null::text, v_dg,
           v_thieu_ncc or v_d.mh_ma_misa is null, v_p.id;
       end loop;
@@ -1552,17 +1578,20 @@ begin
   with pn as (
     select p.id, p.nha_cung_cap_id as ncc, p.tien_thue, p.chi_phi_khac, p.da_doi_chieu, p.tien_hoa_don,
            p.ngay_nhap, p.ngay_hoa_don,
-           -- 0105: kg và giá TB/kg chỉ tính hàng cân ký (món đếm theo cái: kg là số cái).
+           -- 0105: kg và giá TB/kg chỉ tính hàng cân ký (món đếm theo cái: kg là số cái) — tien_kg; tien_hang vẫn
+           -- là mọi dòng để so với tiền hóa đơn (lệch hóa đơn).
            (select coalesce(sum(d.so_kg), 0) from kho_phieu_nhap_dong d join kho_mat_hang m on m.id = d.mat_hang_id
              where d.phieu_nhap_id = p.id and not m.dem_theo_cai) as kg,
+           (select coalesce(sum(d.thanh_tien), 0) from kho_phieu_nhap_dong d where d.phieu_nhap_id = p.id) as tien_hang,
            (select coalesce(sum(d.thanh_tien), 0) from kho_phieu_nhap_dong d join kho_mat_hang m on m.id = d.mat_hang_id
-             where d.phieu_nhap_id = p.id and not m.dem_theo_cai) as tien_hang
+             where d.phieu_nhap_id = p.id and not m.dem_theo_cai) as tien_kg
     from kho_phieu_nhap p
     where p.chi_nhanh_id = p_chi_nhanh_id and p.loai = 'mua' and p.trang_thai = 'da_duyet'
       and p.nha_cung_cap_id is not null and p.ngay_nhap between p_tu and p_den
   ),
   pn_ncc as (
-    select pn.ncc, count(*)::int as so_phieu, sum(pn.kg) as kg, sum(pn.tien_hang) as tien_hang,
+    -- 0105: tien_hang của nhóm chỉ dùng chia giá TB/kg → tiền hàng cân ký; lệch hóa đơn vẫn so tiền mọi dòng.
+    select pn.ncc, count(*)::int as so_phieu, sum(pn.kg) as kg, sum(pn.tien_kg) as tien_hang,
            count(*) filter (where pn.da_doi_chieu
                               and pn.tien_hoa_don <> pn.tien_hang + pn.tien_thue + pn.chi_phi_khac)::int as lech
     from pn group by pn.ncc
@@ -1790,8 +1819,9 @@ from kho_phieu_nhap p
 left join kho_nha_cung_cap ncc on ncc.id = p.nha_cung_cap_id
 left join kho_vi_tri v on v.id = p.vi_tri_id
 left join lateral (
+  -- 0105: tổng kg và tổng tảng / gói chỉ hàng cân ký (chai / lon không cộng chung với gói); tiền mọi dòng.
   select count(*) as so_dong, sum(dd.so_kg) filter (where not m.dem_theo_cai) as tong_kg,
-         sum(dd.so_goi) as tong_goi, sum(dd.thanh_tien) as tien_hang
+         sum(dd.so_goi) filter (where not m.dem_theo_cai) as tong_goi, sum(dd.thanh_tien) as tien_hang
   from kho_phieu_nhap_dong dd join kho_mat_hang m on m.id = dd.mat_hang_id
   where dd.phieu_nhap_id = p.id
 ) d on true
@@ -1817,7 +1847,12 @@ left join kho_vi_tri vd on vd.id = p.vi_tri_den_id
 left join kho_ly_do ld on ld.id = p.ly_do_id
 left join kho_yeu_cau_quay yc on yc.id = p.yeu_cau_id
 left join lateral (
-  select count(*) as so_dong, sum(dd.so_goi) as tong_goi, sum(dd.so_kg) filter (where not m.dem_theo_cai) as tong_kg,
+  -- 0105: kg chỉ hàng cân ký. Số gói: phiếu chỉ có chai / lon thì là số cái (web ghi đơn vị chung của phiếu); phiếu
+  -- có cả thịt thì chỉ gói thịt — chai / lon không cộng chung với gói.
+  select count(*) as so_dong,
+         case when bool_and(m.dem_theo_cai) then sum(dd.so_goi) else sum(dd.so_goi) filter (where not m.dem_theo_cai) end
+           as tong_goi,
+         sum(dd.so_kg) filter (where not m.dem_theo_cai) as tong_kg,
          sum(dd.so_goi_nhan) as tong_goi_nhan, sum(dd.so_kg_nhan) filter (where not m.dem_theo_cai) as tong_kg_nhan
   from kho_phieu_xuat_dong dd join kho_mat_hang m on m.id = dd.mat_hang_id
   where dd.phieu_xuat_id = p.id
@@ -1868,8 +1903,9 @@ begin
     left join kho_nha_cung_cap n on n.id = p.nha_cung_cap_id
     left join kho_vi_tri v on v.id = p.vi_tri_id
     left join lateral (
-      -- 0105: tổng kg không cộng món đếm theo cái (kg của nó là số cái).
-      select count(*) as so_dong, sum(dd.so_kg) filter (where not m.dem_theo_cai) as tong_kg, sum(dd.so_goi) as tong_goi
+      -- 0105: tổng kg và tổng tảng / gói không cộng món đếm theo cái (số của nó là chai / lon).
+      select count(*) as so_dong, sum(dd.so_kg) filter (where not m.dem_theo_cai) as tong_kg,
+             sum(dd.so_goi) filter (where not m.dem_theo_cai) as tong_goi
       from kho_phieu_nhap_dong dd join kho_mat_hang m on m.id = dd.mat_hang_id
       where dd.phieu_nhap_id = p.id
     ) d on true
@@ -2213,6 +2249,276 @@ begin
       where f.chi_nhanh_id = p_chi_nhanh_id and f.trang_thai = 'nhap'
         and f.created_at < now() - interval '1 day';
   end if;
+end;
+$$;
+
+-- So giá với lần nhập trước (chép 0031): dòng nhập theo thùng so giá THÙNG.
+create or replace function kho_so_sanh_gia_nhap(p_id uuid)
+returns table (
+  dong_id uuid, mat_hang_id uuid, don_gia_kg bigint, gia_truoc bigint,
+  ngay_truoc date, so_phieu_truoc text, chenh_pt numeric, vuot_nguong boolean
+)
+language sql
+stable
+set search_path = public
+as $$
+  select d.id, d.mat_hang_id, d.don_gia_kg, g.truoc::bigint, t.ngay_nhap, t.so_phieu,
+         c.chenh_pt,
+         coalesce(abs(c.chenh_pt) > cd.nguong_gia_mua_pt, false)
+  from kho_phieu_nhap p
+  join kho_phieu_nhap_dong d on d.phieu_nhap_id = p.id
+  left join kho_cai_dat cd on cd.chi_nhanh_id = p.chi_nhanh_id
+  left join lateral (
+    select d2.don_gia_kg, d2.don_gia_thung, d2.so_trong_thung, p2.ngay_nhap, p2.so_phieu   -- 0105: kèm giá thùng
+    from kho_phieu_nhap_dong d2
+    join kho_phieu_nhap p2 on p2.id = d2.phieu_nhap_id
+    where p2.chi_nhanh_id = p.chi_nhanh_id
+      and p2.loai = 'mua' and p2.trang_thai = 'da_duyet'
+      and p2.nha_cung_cap_id = p.nha_cung_cap_id
+      and p2.id <> p.id
+      and d2.mat_hang_id = d.mat_hang_id
+      and d2.don_gia_kg > 0
+      and (p.trang_thai <> 'da_duyet'
+           or p2.ngay_nhap < p.ngay_nhap
+           or (p2.ngay_nhap = p.ngay_nhap and p2.duyet_luc < p.duyet_luc))
+    order by p2.ngay_nhap desc, p2.duyet_luc desc nulls last, d2.thu_tu
+    limit 1
+  ) t on true
+  -- 0105: dòng nhập theo thùng (có so_trong_thung) — ô giá là giá một thùng, nên so giá THÙNG: lần trước cùng số cái
+  -- một thùng thì đúng giá thùng đã điền (380.000, không phải 15.833 × 24 = 379.992); khác cỡ thùng hay chỉ có giá một
+  -- cái thì giá một cái × số cái một thùng của dòng này. gia_truoc theo cùng đơn vị đó.
+  cross join lateral (
+    select case when d.so_trong_thung is not null
+                then coalesce(d.don_gia_thung, d.don_gia_kg * d.so_trong_thung)
+                else d.don_gia_kg end as hien,
+           case when d.so_trong_thung is not null
+                then coalesce(case when t.so_trong_thung = d.so_trong_thung then t.don_gia_thung end,
+                              t.don_gia_kg * d.so_trong_thung)
+                else t.don_gia_kg end as truoc
+  ) g
+  cross join lateral (
+    select case when g.hien > 0 and g.truoc > 0
+                then round((g.hien - g.truoc) * 100.0 / g.truoc, 1) end as chenh_pt
+  ) c
+  where p.id = p_id
+  order by d.thu_tu, d.id
+$$;
+
+-- =============================================================================
+-- 9b · TỒN ĐẦU KỲ — món đếm theo cái nhập số cái, kg = số cái (thay THÂN 0035, cùng chữ ký)
+-- =============================================================================
+create or replace function kho_luu_ton_dau_ky(p_chi_nhanh_id uuid, p_ma_gui uuid, p_ngay date, p_dong jsonb)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_nv       nhan_su;
+  v_cd       kho_cai_dat;
+  v_xem_gia  boolean;
+  v_tu_duyet boolean;
+  v_da_co    boolean;
+  v_dong     jsonb;
+  v_khoa     text;
+  v_i        int := 0;
+  v_vt       uuid;
+  v_mh       kho_mat_hang;
+  v_kg       numeric;
+  v_goi      int;
+  v_gia      bigint;
+  v_han      date;
+  a_vt       uuid[] := '{}';
+  a_mh       uuid[] := '{}';
+  a_goi      int[] := '{}';
+  a_kg       numeric[] := '{}';
+  a_gia      bigint[] := '{}';
+  a_han      date[] := '{}';
+  v_ds_vt    uuid[] := '{}';
+  v_id       uuid;
+  v_pb       int;
+  v_tt       int;
+  j          int;
+  c_khoa     constant text[] := array['vi_tri_id', 'mat_hang_id', 'so_goi', 'so_kg', 'don_gia_kg', 'han_dung'];
+  c_uuid     constant text := '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
+begin
+  if not kho_duoc(p_chi_nhanh_id, 'nhap') then
+    raise exception 'Tài khoản của bạn không được nhập tồn đầu kỳ' using errcode = 'insufficient_privilege';
+  end if;
+  v_nv := nhan_su_hien_tai();
+  v_xem_gia := kho_duoc(p_chi_nhanh_id, 'xem_gia');
+
+  select * into v_cd from kho_cai_dat where chi_nhanh_id = p_chi_nhanh_id for update;
+  if not found then
+    raise exception 'Chi nhánh chưa bắt đầu dùng kho — vào Cài đặt kho, bấm "Bắt đầu dùng kho"'
+      using errcode = 'check_violation';
+  end if;
+  if p_ma_gui is null then
+    raise exception 'Thiếu mã gửi — tải lại trang rồi làm lại' using errcode = 'check_violation';
+  end if;
+
+  v_da_co := exists (select 1 from kho_phieu_nhap p
+                     where p.ma_gui_chung = p_ma_gui and p.loai = 'ton_dau' and p.chi_nhanh_id = p_chi_nhanh_id);
+
+  if not v_da_co then
+    if p_ngay is null or p_ngay > hom_nay_vn() then
+      raise exception 'Ngày tồn đầu kỳ không được trống hay sau hôm nay' using errcode = 'check_violation';
+    end if;
+    if p_ngay < hom_nay_vn() - 90 then
+      raise exception 'Ngày tồn đầu kỳ quá 90 ngày trước — kiểm tra lại ngày' using errcode = 'check_violation';
+    end if;
+    if p_dong is null or jsonb_typeof(p_dong) <> 'array' or jsonb_array_length(p_dong) = 0 then
+      raise exception 'Chưa có dòng hàng nào' using errcode = 'check_violation';
+    end if;
+    if jsonb_array_length(p_dong) > 500 then
+      raise exception 'Tối đa 500 dòng một lần — chia thành nhiều lần' using errcode = 'check_violation';
+    end if;
+
+    -- Lượt 1: kiểm hết mọi dòng trước khi ghi gì.
+    for v_dong in select value from jsonb_array_elements(p_dong) loop
+      v_i := v_i + 1;
+      if jsonb_typeof(v_dong) <> 'object' then
+        raise exception 'Dòng % không hợp lệ', v_i using errcode = 'check_violation';
+      end if;
+      for v_khoa in select jsonb_object_keys(v_dong) loop
+        if not (v_khoa = any(c_khoa)) then
+          raise exception 'Dòng %: trường "%" không được nhận', v_i, v_khoa using errcode = 'check_violation';
+        end if;
+      end loop;
+
+      if jsonb_typeof(v_dong -> 'vi_tri_id') is distinct from 'string'
+         or (v_dong ->> 'vi_tri_id') !~* c_uuid
+         or not exists (select 1 from kho_vi_tri
+                        where id = (v_dong ->> 'vi_tri_id')::uuid and chi_nhanh_id = p_chi_nhanh_id
+                          and dang_dung and loai in ('kho', 'quay')) then
+        raise exception 'Dòng %: chọn nơi để là một kho hoặc quầy đang dùng của chi nhánh này', v_i
+          using errcode = 'check_violation';
+      end if;
+      v_vt := (v_dong ->> 'vi_tri_id')::uuid;
+
+      if jsonb_typeof(v_dong -> 'mat_hang_id') is distinct from 'string'
+         or (v_dong ->> 'mat_hang_id') !~* c_uuid then
+        raise exception 'Dòng %: chưa chọn mặt hàng', v_i using errcode = 'check_violation';
+      end if;
+      select * into v_mh from kho_mat_hang where id = (v_dong ->> 'mat_hang_id')::uuid;
+      if not found or not v_mh.dang_dung then
+        raise exception 'Dòng %: mặt hàng không có hoặc đã ngừng dùng', v_i using errcode = 'check_violation';
+      end if;
+
+      -- 0105: món đếm theo cái không cân — bỏ qua so_kg gửi lên, kg = số cái (gán ngay sau khi đọc số cái).
+      if not v_mh.dem_theo_cai then
+        if jsonb_typeof(v_dong -> 'so_kg') is distinct from 'number' then
+          raise exception 'Dòng % (%): chưa nhập số kg', v_i, v_mh.ten using errcode = 'check_violation';
+        end if;
+        v_kg := (v_dong ->> 'so_kg')::numeric;
+        if v_kg <= 0 or v_kg >= 1000000 or v_kg <> round(v_kg, 3) then
+          raise exception 'Dòng % (%): số kg phải lớn hơn 0, tối đa 3 số lẻ', v_i, v_mh.ten
+            using errcode = 'check_violation';
+        end if;
+      end if;
+
+      v_goi := 0;
+      if v_dong ? 'so_goi' and v_dong -> 'so_goi' <> 'null'::jsonb then
+        if jsonb_typeof(v_dong -> 'so_goi') <> 'number'
+           or (v_dong ->> 'so_goi')::numeric <> trunc((v_dong ->> 'so_goi')::numeric)
+           or (v_dong ->> 'so_goi')::numeric < 0
+           or (v_dong ->> 'so_goi')::numeric > 100000 then
+          raise exception 'Dòng % (%): số % phải là số nguyên không âm', v_i, v_mh.ten, v_mh.don_vi_goi
+            using errcode = 'check_violation';
+        end if;
+        v_goi := (v_dong ->> 'so_goi')::int;
+      end if;
+      if v_mh.dem_goi and v_goi = 0 then
+        raise exception 'Dòng % (%): chưa nhập số %', v_i, v_mh.ten, v_mh.don_vi_goi
+          using errcode = 'check_violation';
+      end if;
+      if v_mh.dem_theo_cai then
+        v_kg := v_goi;   -- 0105: món đếm theo cái luôn dem_goi, nên v_goi > 0 ở đây
+      end if;
+
+      v_gia := 0;
+      if v_dong ? 'don_gia_kg' and v_dong -> 'don_gia_kg' <> 'null'::jsonb then
+        if not v_xem_gia then
+          raise exception 'Tài khoản của bạn không điền giá — để trống cột đơn giá, kế toán điền khi duyệt'
+            using errcode = 'insufficient_privilege';
+        end if;
+        if jsonb_typeof(v_dong -> 'don_gia_kg') <> 'number'
+           or (v_dong ->> 'don_gia_kg')::numeric <> trunc((v_dong ->> 'don_gia_kg')::numeric)
+           or (v_dong ->> 'don_gia_kg')::numeric < 0
+           or (v_dong ->> 'don_gia_kg')::numeric >= 10000000000000 then
+          raise exception 'Dòng % (%): đơn giá phải là số đồng không âm', v_i, v_mh.ten
+            using errcode = 'check_violation';
+        end if;
+        v_gia := (v_dong ->> 'don_gia_kg')::bigint;
+      end if;
+
+      if coalesce(v_dong ->> 'han_dung', '') <> '' then
+        begin
+          v_han := (v_dong ->> 'han_dung')::date;
+        exception when others then
+          raise exception 'Dòng % (%): hạn dùng không hợp lệ', v_i, v_mh.ten using errcode = 'check_violation';
+        end;
+        if v_han < p_ngay - 3650 or v_han > p_ngay + 3650 then
+          raise exception 'Dòng % (%): hạn dùng không hợp lệ', v_i, v_mh.ten using errcode = 'check_violation';
+        end if;
+      elsif v_mh.han_dung_ngay is not null then
+        v_han := p_ngay + v_mh.han_dung_ngay;
+      else
+        raise exception 'Dòng % (%): chưa có hạn dùng, và mặt hàng chưa cài hạn mặc định', v_i, v_mh.ten
+          using errcode = 'check_violation';
+      end if;
+
+      a_vt  := a_vt  || v_vt;
+      a_mh  := a_mh  || v_mh.id;
+      a_goi := a_goi || v_goi;
+      a_kg  := a_kg  || v_kg;
+      a_gia := a_gia || v_gia;
+      a_han := a_han || v_han;
+      if not (v_vt = any(v_ds_vt)) then
+        v_ds_vt := v_ds_vt || v_vt;
+      end if;
+    end loop;
+
+    -- Lượt 2: mỗi vị trí một phiếu, theo thứ tự xuất hiện trong lưới.
+    v_tu_duyet := v_cd.cho_tu_duyet and kho_duoc(p_chi_nhanh_id, 'duyet_nhap');
+    foreach v_vt in array v_ds_vt loop
+      insert into kho_phieu_nhap
+        (chi_nhanh_id, so_phieu, ma_gui, ma_gui_chung, loai, vi_tri_id, ngay_nhap, nguoi_tao)
+      values
+        (p_chi_nhanh_id, kho_sinh_so(p_chi_nhanh_id, 'TD'),
+         md5(p_ma_gui::text || ':' || v_vt::text)::uuid, p_ma_gui, 'ton_dau', v_vt, p_ngay, v_nv.id)
+      returning id, phien_ban into v_id, v_pb;
+
+      v_tt := 0;
+      for j in 1..cardinality(a_vt) loop
+        continue when a_vt[j] <> v_vt;
+        v_tt := v_tt + 1;
+        insert into kho_phieu_nhap_dong
+          (phieu_nhap_id, chi_nhanh_id, thu_tu, mat_hang_id, so_goi, so_kg, don_gia_kg, han_dung)
+        values
+          (v_id, p_chi_nhanh_id, v_tt, a_mh[j], a_goi[j], a_kg[j], a_gia[j], a_han[j]);
+      end loop;
+
+      -- Gửi luôn (tồn đầu kỳ không kiểm ô bắt buộc — 0031). Tự duyệt khi được.
+      perform kho_gui_duyet_phieu_nhap(v_id, v_pb);
+      if v_tu_duyet then
+        perform kho_duyet_phieu_nhap(v_id);
+      end if;
+    end loop;
+  end if;
+
+  return (
+    select jsonb_build_object(
+      'da_co', v_da_co,
+      'phieu', coalesce(jsonb_agg(jsonb_build_object(
+                 'vi_tri_id',  p.vi_tri_id,
+                 'phieu_id',   p.id,
+                 'so_phieu',   p.so_phieu,
+                 'trang_thai', p.trang_thai,
+                 'so_dong',    (select count(*)::int from kho_phieu_nhap_dong d where d.phieu_nhap_id = p.id))
+               order by p.so_phieu), '[]'::jsonb))
+    from kho_phieu_nhap p
+    where p.ma_gui_chung = p_ma_gui and p.loai = 'ton_dau' and p.chi_nhanh_id = p_chi_nhanh_id);
 end;
 $$;
 

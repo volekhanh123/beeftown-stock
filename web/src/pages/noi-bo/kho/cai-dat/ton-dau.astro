@@ -27,7 +27,7 @@ import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { docViTri } from '../../../../lib/kho/danh-muc.ts';
 import {
-  boDau, cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangTien, homNayVn, kqHai, laUuid, nhanKho, TEN_LOAI_MAT_HANG_NB,
+  boDau, cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangTien, homNayVn, kqHai, laDemCai, laUuid, nhanKho, TEN_LOAI_MAT_HANG_NB,
   type KetQua,
 } from '../../../../lib/kho/chung.ts';
 import {
@@ -113,6 +113,8 @@ const t = dichNB(nn, {
   ariaGoi: { vi: (dv: string, ten: string) => `Số ${dv} ${ten}`, en: (_dv: string, ten: string) => `Pack count, ${ten}` },
   ariaGia: { vi: (ten: string) => `Đơn giá mỗi kg ${ten}`, en: (ten: string) => `Unit price per kg, ${ten}` },
   giaVd: { vi: 'đ/kg', en: '₫/kg' },
+  giaVdCai: { vi: (dv: string) => `đ/${dv}`, en: (dv: string) => `₫/${dv}` },
+  hanIn: { vi: ' · ghi hạn in trên sản phẩm', en: ' · enter the use-by printed on the product' },
   ariaHan: { vi: (ten: string) => `Hạn dùng ${ten}`, en: (ten: string) => `Use-by, ${ten}` },
   danExcel: { vi: 'Dán từ Excel (nhiều nơi một lượt)', en: 'Paste from Excel (several locations at once)' },
   dan1: { vi: 'Trong Excel chọn các ô (nên chọn cả ', en: 'In Excel, select the cells (best to include the ' },
@@ -216,7 +218,8 @@ const timMon = luoiLai ? String(luoiLai.get('tim') ?? '').trim().slice(0, 60) : 
 const timKhop = (m: MonTonDau) => !timMon || boDau(`${m.ten} ${m.ma}`).toLowerCase().includes(boDau(timMon).toLowerCase());
 /** Món đã gõ ít nhất một ô (gói, kg, giá, hạn). */
 const daDien = (i: number) => [O_LUOI.goi, O_LUOI.kg, O_LUOI.gia, O_LUOI.han].some(o => oLuoi(`${o}${i}`).trim() !== '');
-const nhomLuoi = (['tang', 'phan_cat', 'phu_pham'] as const)
+// 0105: sốt, gia vị, đồ uống có nhóm riêng — chỉ ô số cái, không ô kg; hạn ghi theo ngày in trên sản phẩm.
+const nhomLuoi = (['tang', 'phan_cat', 'phu_pham', 'gia_vi', 'do_uong'] as const)
   .map(loai => {
     const tat = mon.map((m, i) => ({ m, i })).filter(x => x.m.loai === loai);
     return { loai, tat, hang: tat.filter(x => timKhop(x.m)), dien: tat.filter(x => daDien(x.i)).length };
@@ -278,8 +281,8 @@ const ngayMin = congNgay(homNay, -90);
                   <td>{d.ten_vi_tri}</td>
                   <td><strong>{d.ten_mat_hang}</strong><br /><span class="kho-phu">{d.ma_mat_hang}</span></td>
                   <td class="so">{d.so_goi > 0 ? `${d.so_goi} ${d.don_vi_goi}` : '—'}</td>
-                  <td class="so">{dinhDangKg(d.so_kg, nn)}</td>
-                  {coGia && <td class="so">{d.don_gia_kg !== null ? dinhDangTien(d.don_gia_kg, nn) : <span class="kho-phu">{t.dienLucDuyet}</span>}</td>}
+                  <td class="so">{d.dem_cai ? '—' : dinhDangKg(d.so_kg, nn)}</td>
+                  {coGia && <td class="so">{d.don_gia_kg !== null ? <>{dinhDangTien(d.don_gia_kg, nn)}{d.dem_cai ? `/${d.don_vi_goi}` : ''}</> : <span class="kho-phu">{t.dienLucDuyet}</span>}</td>}
                   <td>{d.han_se_dung ? dinhDangNgay(d.han_se_dung) : '—'}{!d.han_dung && d.han_se_dung ? <><br /><span class="kho-phu">{t.hanMacDinh}</span></> : ''}</td>
                 </tr>
               ))}
@@ -348,15 +351,17 @@ const ngayMin = congNgay(homNay, -90);
                         <td>
                           <input type="hidden" name={`${O_LUOI.mh}${i}`} value={m.id} />
                           <strong>{m.ten}</strong><br />
-                          <span class="kho-phu">{m.ma}{m.han_dung_ngay !== null ? t.hanNgay(m.han_dung_ngay) : t.chuaCoHan}</span>
+                          <span class="kho-phu">{m.ma}{laDemCai(m) ? t.hanIn : m.han_dung_ngay !== null ? t.hanNgay(m.han_dung_ngay) : t.chuaCoHan}</span>
                         </td>
                         <td><input class="td-o" type="text" inputmode="numeric" name={`${O_LUOI.goi}${i}`} value={oLuoi(`${O_LUOI.goi}${i}`)}
                           aria-label={t.ariaGoi(m.don_vi_goi, m.ten)} placeholder={m.dem_goi ? m.don_vi_goi : '—'} /></td>
-                        <td><input class="td-o" type="text" inputmode="decimal" name={`${O_LUOI.kg}${i}`} value={oLuoi(`${O_LUOI.kg}${i}`)}
-                          aria-label={`Kg ${m.ten}`} placeholder="kg" /></td>
+                        {laDemCai(m) ? <td class="kho-phu">—</td> : (
+                          <td><input class="td-o" type="text" inputmode="decimal" name={`${O_LUOI.kg}${i}`} value={oLuoi(`${O_LUOI.kg}${i}`)}
+                            aria-label={`Kg ${m.ten}`} placeholder="kg" /></td>
+                        )}
                         {coGia && (
                           <td><input class="td-o rong" type="text" inputmode="numeric" name={`${O_LUOI.gia}${i}`} value={oLuoi(`${O_LUOI.gia}${i}`)}
-                            aria-label={t.ariaGia(m.ten)} placeholder={t.giaVd} /></td>
+                            aria-label={t.ariaGia(m.ten)} placeholder={laDemCai(m) ? t.giaVdCai(m.don_vi_goi) : t.giaVd} /></td>
                         )}
                         <td><input class="td-o rong" type="date" name={`${O_LUOI.han}${i}`} value={oLuoi(`${O_LUOI.han}${i}`)}
                           aria-label={t.ariaHan(m.ten)} /></td>

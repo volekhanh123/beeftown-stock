@@ -30,6 +30,7 @@ import { docFormDienGia, dienGiaTuPhieu, thanhTienDong, xemTruocGiaVon, chuSoSan
 import { docDongTraHang } from '../../web/src/lib/kho/cong-no.ts';
 import { docFormPhieuXuat } from '../../web/src/lib/kho/xuat.ts';
 import { viecVoiLo } from '../../web/src/lib/kho/ton.ts';
+import { xemTruocDanTonDau, tomTatTheoViTri, monTrongLuoi } from '../../web/src/lib/kho/thiet-lap.ts';
 import { BAO_CAO, docBaoCao, docMuaHang, dinhNghiaMuaHang, dinhNghiaTheoThang, tinhTong, tomTatXnt } from '../../web/src/lib/kho/bao-cao.ts';
 import { docFormKiemKe, payloadTuDong, chuKyDong, daDemDong } from '../../web/src/lib/kho/kiem-ke.ts';
 import { readFileSync } from 'node:fs';
@@ -213,6 +214,23 @@ await nhom('2 · NHẬN THEO THÙNG → GIÁ THÙNG → DUYỆT: THÀNH TIỀN K
   ok('Tương ớt: đúng 1 thùng → 600.000 đ (khớp hóa đơn từng đồng)', Number(ds[1].thanh_tien) === 600000);
   ok('Muối: 10 gói × 7.000 = 70.000 đ (giá một gói như cũ)', Number(ds[2].thanh_tien) === 70000 && ds[2].don_gia_thung === null);
 
+  // Rút về, sửa lại sau khi danh mục đổi số cái một thùng (24 → 12): giá thùng đi kèm số cái một thùng LÚC ĐIỀN GIÁ,
+  // tiền của phiếu không đổi theo danh mục.
+  const suoi = await taoMon(UID.qlA, { ma: 'DU-SUOI', ten: 'Nước suối chai', loai: 'do_uong', so_trong_thung: 24 });
+  const rs = await luuKg(UID.thuKhoA, { dong: [{ mat_hang_id: suoi.rows[0].id, so_goi: 48, han_dung: hsd }] });
+  const R = rs.rows?.[0]?.phieu_id;
+  await guiDuyet(UID.thuKhoA, R);
+  await dienGia(UID.keToanA, R, [{ dong_id: (await dongNhap(R))[0].id, don_gia_thung: 120000 }]);
+  const truocDoi = (await dongNhap(R))[0];
+  await duoi(UID.qlA, `update kho_mat_hang set so_trong_thung = 12 where id = $1`, [suoi.rows[0].id]);
+  const rut = await duoi(UID.thuKhoA, `select kho_rut_phieu_nhap($1)`, [R]);
+  const luuLai = await luuKg(UID.thuKhoA, { id: R, phienBan: await phienBan(R), dong: [{ mat_hang_id: suoi.rows[0].id, so_goi: 48, han_dung: hsd }] });
+  const sauDoi = (await dongNhap(R))[0];
+  ok('Lưu lại sau khi danh mục đổi 24 → 12 chai một thùng: vẫn 48 × 120.000 / 24 = 240.000 đ, giữ số cái một thùng 24',
+    !rs.loi && !rut.loi && !luuLai.loi && Number(truocDoi.thanh_tien) === 240000 && Number(sauDoi.thanh_tien) === 240000
+    && sauDoi.so_trong_thung === 24 && Number(sauDoi.don_gia_thung) === 120000 && Number(sauDoi.don_gia_kg) === 5000,
+    rs.loi ?? rut.loi ?? luuLai.loi ?? JSON.stringify({ truoc: truocDoi.thanh_tien, sau: sauDoi.thanh_tien, n: sauDoi.so_trong_thung }));
+
   const sai = await dienGia(UID.keToanA, P1, [{ dong_id: ds[2].id, don_gia_thung: 100000 }]);
   ok('Giá thùng cho món không quy đổi thùng → báo, không lưu', /không có quy đổi thùng/.test(sai.loi ?? ''), sai.loi ?? 'lưu được');
   const am = await dienGia(UID.keToanA, P1, [{ dong_id: ds[0].id, don_gia_thung: -1 }]);
@@ -251,6 +269,21 @@ await nhom('2 · NHẬN THEO THÙNG → GIÁ THÙNG → DUYỆT: THÀNH TIỀN K
     /3 lô hàng đã vào kho/.test(lan1.rows?.[0]?.cau ?? '') && /đã được duyệt trước đó/.test(lan2.rows?.[0]?.cau ?? '')
     && Number((await db.query(`select count(*) from kho_lo l join kho_phieu_nhap_dong d on d.id = l.phieu_nhap_dong_id
                                where d.phieu_nhap_id = $1`, [P1])).rows[0].count) === 3, lan1.loi ?? lan1.rows?.[0]?.cau);
+  // So giá lần sau cùng nhà cung cấp: dòng thùng so GIÁ THÙNG (380.000 → 399.000 = +5,0%), không 15.833 × 24.
+  const p3 = (await luuKg(UID.thuKhoA, { dong: [{ mat_hang_id: MH['DU-TIGER'].id, so_goi: 24, han_dung: hsd },
+    { mat_hang_id: MH['GV-MUOI'].id, so_goi: 5, han_dung: hsd }] })).rows[0].phieu_id;
+  await guiDuyet(UID.thuKhoA, p3);
+  const ds3 = await dongNhap(p3);
+  await dienGia(UID.keToanA, p3, [{ dong_id: ds3[0].id, don_gia_thung: 399000 }, { dong_id: ds3[1].id, don_gia_kg: 7000 }]);
+  const ss = (await duoi(UID.keToanA, `select * from kho_so_sanh_gia_nhap($1)`, [p3])).rows ?? [];
+  const ssBia = ss.find(r => r.dong_id === ds3[0].id);
+  const ssMuoi = ss.find(r => r.dong_id === ds3[1].id);
+  ok('So giá lần trước: bia (dòng thùng) lần trước 380.000 đ / thùng, +5,0%; muối 7.000 đ / gói, 0%',
+    Number(ssBia?.gia_truoc) === 380000 && Number(ssBia.chenh_pt) === 5 && Number(ssMuoi?.gia_truoc) === 7000 && Number(ssMuoi.chenh_pt) === 0,
+    JSON.stringify(ss));
+  await duoi(UID.thuKhoA, `select kho_rut_phieu_nhap($1)`, [p3]);
+  await duoi(UID.thuKhoA, `select kho_huy_phieu_nhap($1, 'Phiếu thử so giá')`, [p3]);
+
   const lBia = await lo(ds[0].id);
   ok('Lô bia: giá trị 839.167 đ, 53 cái, giá vốn một lon 15.833,3396 đ, hạn = ngày ghi',
     Number(lBia.gia_tri) === 839167 && Number(lBia.kg_goc) === 53 && Math.abs(Number(lBia.gv) - 839167 / 53) < 0.0001
@@ -355,6 +388,28 @@ await nhom('4 · XUẤT BẾP, KIỂM KÊ, TRẢ HÀNG: SỔ KHO so_kg = SỐ C�
       skBia && skBia.so === null, JSON.stringify(skBia ?? sk.loi));
   }
 
+  // Danh sách phiếu: tổng gói của phiếu chỉ có chai / hộp = số cái; phiếu có cả thịt → chỉ gói thịt (không cộng chung).
+  const thit = (await db.query(`select t.mat_hang_id, m.dem_goi from kho_ton t join kho_mat_hang m on m.id = t.mat_hang_id
+    where t.vi_tri_id = $1 and not m.dem_theo_cai and t.so_goi >= 1 and t.so_kg >= 1 order by t.so_kg desc limit 1`, [viTri.kho])).rows[0];
+  const tron = await xuat(UID.thuKhoA, { loai: 'xuat_bep', lyDo: lyDoBep, dong: [
+    { mat_hang_id: MH['GV-TUONG'].id, so_goi: 2 }, { mat_hang_id: thit.mat_hang_id, so_goi: 1 }] });
+  const tronId = tron.rows?.[0]?.phieu_id;
+  const vxDs = (await db.query(`select v.id, v.tong_goi::int as tong_goi, v.tong_kg,
+      (select bool_and(m.dem_theo_cai) from kho_phieu_xuat_dong d join kho_mat_hang m on m.id = d.mat_hang_id where d.phieu_xuat_id = v.id) as chi_cai,
+      (select sum(d.so_goi)::int from kho_phieu_xuat_dong d where d.phieu_xuat_id = v.id) as goi_moi_dong
+    from kho_v_phieu_xuat v where v.chi_nhanh_id = $1`, [cnA.id])).rows;
+  const vTron = vxDs.find(r => r.id === tronId);
+  ok('kho_v_phieu_xuat: phiếu chỉ có hộp tương → tổng gói = số hộp; phiếu tương + thịt → chỉ 1 gói thịt, kg chỉ của thịt',
+    tron.loi === null && vxDs.filter(r => r.chi_cai).length > 0 && vxDs.filter(r => r.chi_cai).every(r => r.tong_goi === r.goi_moi_dong)
+    && vTron?.tong_goi === 1 && Number(vTron.tong_kg) > 0, tron.loi ?? JSON.stringify({ vTron, cai: vxDs.filter(r => r.chi_cai) }));
+  const vn = (await db.query(`select tong_goi, tong_kg from kho_v_phieu_nhap where id = $1`, [P1])).rows[0];
+  ok('kho_v_phieu_nhap: phiếu chỉ có bia, sốt, muối → tổng tảng / gói và tổng kg trống (không "75 tảng / gói")',
+    !Number(vn.tong_goi) && !Number(vn.tong_kg), JSON.stringify(vn));
+  const dsKg = await duoi(UID.thuKhoA, `select * from kho_ds_phieu_nhap_kg($1, null, null, null, null, false, 200, 0)`, [cnA.id]);
+  const dsP1 = (dsKg.rows ?? []).find(r => r.id === P1);
+  ok('kho_ds_phieu_nhap_kg (danh sách nhận hàng của thủ kho): phiếu chỉ có chai / lon không có tổng tảng / gói',
+    dsKg.loi === null && dsP1 && !Number(dsP1.tong_goi) && !Number(dsP1.tong_kg), dsKg.loi ?? JSON.stringify(dsP1));
+
   ok('Sổ kho: mọi dòng của món đếm theo cái có so_kg = so_goi', (await soCaiLech()).length === 0, JSON.stringify(await soCaiLech()));
 });
 
@@ -371,6 +426,13 @@ await nhom('5 · CHỐT BẤT BIẾN', async () => {
 
   const doi = await duoi(UID.qlA, `update kho_mat_hang set loai = 'phan_cat' where id = $1`, [MH['DU-TIGER'].id]);
   ok('Đồ uống đã có sổ kho không đổi được sang phần cắt', /không đổi được giữa hàng cân ký và hàng đếm theo cái/.test(doi.loi ?? ''), doi.loi ?? 'đổi được');
+  // Món chưa từng nhập nhưng đã có định lượng món (gam / suất — iPOS sẽ trừ theo kg): cũng không đổi được sang sốt.
+  const cDl = (await db.query(`insert into kho_mat_hang (ma, ten, loai) values ('C-DLUONG', 'Thăn nướng định lượng', 'phan_cat') returning id`)).rows[0].id;
+  const mon = (await db.query(`insert into kho_mon (chi_nhanh_id, ten) values ($1, 'Combo nướng') returning id`, [cnA.id])).rows[0].id;
+  await db.query(`insert into kho_dinh_luong (chi_nhanh_id, mon_id, mat_hang_id, gram) values ($1, $2, $3, 30)`, [cnA.id, mon, cDl]);
+  const doiDl = await duoi(UID.qlA, `update kho_mat_hang set loai = 'gia_vi', dem_goi = true, ma_can = null where id = $1`, [cDl]);
+  ok('Món có định lượng món (30 g / suất) không đổi được sang sốt, gia vị',
+    /định lượng món hoặc mã iPOS — không đổi được giữa hàng cân ký và hàng đếm theo cái/.test(doiDl.loi ?? ''), doiDl.loi ?? 'đổi được');
   const doi2 = await duoi(UID.qlB, `update kho_mat_hang set loai = 'gia_vi', dem_goi = true where ma = 'C-THANNGOAI'`);
   // Thăn ngoại cắt lát của danh mục mẫu chưa có sổ ở chi nhánh nào trong file này → đổi được về mặt sổ;
   // nhưng nếu có sổ ở chi nhánh A thì quản lý chi nhánh B cũng bị chặn (trigger đọc sổ mọi chi nhánh).
@@ -390,6 +452,10 @@ await nhom('6 · MISA, BÁO CÁO', async () => {
   ok('MISA: bia đơn vị "lon", số lượng 53, thành tiền 839.167', bia?.dvt === 'lon' && Number(bia.so_luong) === 53
     && Number(bia.thanh_tien) === 839167, JSON.stringify(bia));
   ok('MISA: thịt vẫn "kg"', thit?.dvt === 'kg');
+  const tuong = misa.find(r => r.ref_id === P1 && r.ten_hang === 'Tương ớt Hàn');
+  ok('MISA: tương ớt đúng 1 thùng giá thùng → "thùng", 1 × 600.000 = 600.000 (số lượng × đơn giá = thành tiền)',
+    tuong?.dvt === 'thùng' && Number(tuong.so_luong) === 1 && Number(tuong.don_gia) === 600000 && Number(tuong.thanh_tien) === 600000,
+    JSON.stringify(tuong));
   ok('MISA: tổng thành tiền dòng hàng của phiếu đầu = 1.509.167 đ (khớp hóa đơn)',
     misa.filter(r => r.ref_id === P1 && r.ma_hang).reduce((a, r) => a + Number(r.thanh_tien), 0) === 1509167);
 
@@ -409,6 +475,14 @@ await nhom('6 · MISA, BÁO CÁO', async () => {
     [cnA.id, await ngay(-1), await ngay(1)])).rows[0];
   ok('Đánh giá NCC: tổng kg 50 (thịt), giá TB/kg 380.000', Number(ncc2.tong_kg) === 50 && Number(ncc2.gia_tb_kg) === 380000,
     JSON.stringify(ncc2));
+  // Phiếu có bia đã đối chiếu, tiền hóa đơn = mọi dòng + thuế + chi phí: không phải lệch hóa đơn.
+  await db.query(`update kho_phieu_nhap p set da_doi_chieu = true,
+      tien_hoa_don = (select sum(d.thanh_tien) from kho_phieu_nhap_dong d where d.phieu_nhap_id = p.id) + p.tien_thue + p.chi_phi_khac
+    where p.id = $1`, [P1]);
+  const ncc3 = (await duoi(UID.qlA, `select * from kho_bao_cao_ncc($1, $2::date, $3::date)`,
+    [cnA.id, await ngay(-1), await ngay(1)])).rows[0];
+  ok('Đánh giá NCC: phiếu có bia đối chiếu đúng tiền hóa đơn không tính là lệch; giá TB/kg vẫn 380.000',
+    ncc3?.so_lan_lech_hoa_don === 0 && Number(ncc3.gia_tb_kg) === 380000, JSON.stringify(ncc3));
 
   // --- Web: bảng báo cáo, dòng tổng, thẻ tóm tắt ---
   const qlWeb = (await taoClientPg({ db, duoi, duoiAnon }))(UID.qlA);
@@ -521,6 +595,9 @@ await nhom('8 · NHẬN HÀNG, ĐIỀN GIÁ — HÀM THUẦN VÀ MÃ NGUỒN', a
   let r = docFormDongNhan(f({ mh: BIA, so_thung: '2', so_goi: '5', hsd_cai: '2027-04-30', so_kg: '12,5', hsd: '2026-01-01' }), [], mon);
   ok('Bia: 2 thùng + 5 lon = 53 lon, kg gõ (12,5) bỏ qua, hạn = ô hạn in trên sản phẩm',
     r.loi.length === 0 && r.luu?.so_goi === 53 && r.luu.so_kg === 53 && r.luu.han_dung === '2027-04-30', r.loi.join());
+  const conSot = docFormDongNhan(f({ mh: BIA, so_goi: '5', hsd_cai: '', hsd: '2026-11-02' }), [], mon);
+  ok('Bia: ô hạn của thịt (bị giấu, còn ngày cũ) không thay cho "Hạn dùng in trên sản phẩm" — vẫn báo thiếu hạn',
+    conSot.luu === null && conSot.loi.length > 0, JSON.stringify(conSot));
   r = docFormDongNhan(f({ mh: BIA, so_thung: '2', so_goi: '' }), [], mon);
   ok('Bia thiếu hạn dùng → "Ghi hạn dùng in trên Bia Tiger lon" (vi / en)',
     r.luu === null && /Ghi hạn dùng in trên Bia Tiger lon/.test(r.loi.join()) && /use-by date printed on/.test(r.loiEn.join()));
@@ -574,7 +651,8 @@ await nhom('8 · NHẬN HÀNG, ĐIỀN GIÁ — HÀM THUẦN VÀ MÃ NGUỒN', a
   const gv2 = xemTruocGiaVon([{ so_kg: 10, thanh_tien: 5000000 }, { so_kg: 30, thanh_tien: 9000000 }], 40000, 0,
     { chi_phi_vao_gia_von: true, vat_vao_gia_von: false });
   ok('Xem trước giá vốn: chỉ thịt chia theo kg như cũ', gv2[0].gia_tri === 5010000 && gv2[1].gia_tri === 9030000);
-  ok('Chip "Lần trước" của dòng thùng nhân số cái một thùng', chuSoSanhGia({ gia_truoc: 15833, chenh_pt: 0, vuot_nguong: false }, 'vi', 24)?.chu === 'Lần trước 379.992 đ · 0,0%');
+  ok('Chip "Lần trước": in đúng giá database trả (giá thùng với dòng thùng — không tự nhân)',
+    chuSoSanhGia({ gia_truoc: 380000, chenh_pt: 5, vuot_nguong: false }, 'vi')?.chu === 'Lần trước 380.000 đ · +5,0%');
 
   const nh = doc('web/src/pages/noi-bo/kho/nhan-hang/[id].astro');
   ok('Form nhận hàng: ô số thùng, ô hạn dùng in trên sản phẩm, ô "món khác" có món đếm theo cái',
@@ -671,9 +749,57 @@ await nhom('9 · XUẤT BẾP, KIỂM KÊ, TRẢ HÀNG — HÀM THUẦN VÀ MÃ 
     /laDemCai\(m\) \? khoa === 'dang_dung'/.test(sn) && /\['gia_vi', t\.giaVi\], \['do_uong', t\.doUong\]/.test(sn));
   const tkh = doc('web/src/pages/noi-bo/kho/the-kho/[mat_hang_id].astro');
   ok('Thẻ kho: món đếm theo cái không có cột kg', /const coKg = !laDemCai\(mh\);/.test(tkh) && /\{coKg && <th class="so">\{t\.cotKg\}<\/th>\}/.test(tkh));
+  ok('Ghép món iPOS: chưa có sốt, đồ uống trong danh sách (trừ theo mã món làm ở đợt 2)',
+    /const dangDung = matHang\.filter\(m => m\.dang_dung && !laDemCai\(m\)\);/.test(doc('web/src/pages/noi-bo/kho/ban-ipos/ghep.astro')));
+  ok('Định lượng món: ChonMatHang không bật demCai (sốt, đồ uống chưa vào định lượng gam)',
+    !/demCai/.test(doc('web/src/pages/noi-bo/kho/cai-dat/dinh-luong.astro')));
+  ok('Phiếu hủy đã duyệt: câu "Đã ghi hủy" kể cả kg thịt lẫn số chai / lon (chuDaHuy)',
+    /ch\.daGhiHuyChu\(chuDaHuy\)/.test(tx) && /phan\.push\(ch\.soGoiDem\(n, dv \|\| null\)\)/.test(tx));
   const tk = doc('web/src/pages/noi-bo/kho/kiem-ke/[id].astro');
   ok('Màn kiểm kê: ô số thùng k{i}_thung khi món có quy đổi; "thêm mặt hàng" có món đếm theo cái',
     /name=\{`k\$\{i\}_thung`\}/.test(tk) && /<ChonMatHang name="them_mat_hang"[^>]*demCai/.test(tk));
+});
+
+// ===========================================================================
+await nhom('10 · TỒN ĐẦU KỲ: SỐ CÁI, KHÔNG KG', async () => {
+  // Database: kg gửi lên (8,6) bị bỏ, kg = số cái; tự duyệt không vướng chốt so_kg = so_goi của sổ kho.
+  const td = await duoi(UID.qlA, `select kho_luu_ton_dau_ky($1, $2, $3::date, $4::jsonb) as kq`, [cnA.id, maGui(), homNay,
+    JSON.stringify([{ vi_tri_id: viTri.kho, mat_hang_id: MH['DU-TIGER'].id, so_goi: 12, so_kg: 8.6, han_dung: await ngay(200) }])]);
+  const ptd = td.rows?.[0]?.kq?.phieu?.[0];
+  let tt = ptd?.trang_thai;
+  if (ptd && tt !== 'da_duyet') {
+    const d = await duoi(UID.qlA, `select kho_duyet_phieu_nhap($1)`, [ptd.phieu_id]);
+    tt = d.loi ?? 'da_duyet';
+  }
+  const dongTd = ptd ? (await db.query(`select so_kg, so_goi from kho_phieu_nhap_dong where phieu_nhap_id = $1`, [ptd.phieu_id])).rows : [];
+  ok('kho_luu_ton_dau_ky: 12 lon (kg gửi 8,6 bị bỏ) → dòng so_kg = so_goi = 12, duyệt vào sổ được',
+    !td.loi && tt === 'da_duyet' && dongTd.length === 1 && Number(dongTd[0].so_kg) === 12 && dongTd[0].so_goi === 12,
+    td.loi ?? JSON.stringify({ tt, dongTd }));
+  const thieu = await duoi(UID.qlA, `select kho_luu_ton_dau_ky($1, $2, $3::date, $4::jsonb) as kq`, [cnA.id, maGui(), homNay,
+    JSON.stringify([{ vi_tri_id: viTri.kho, mat_hang_id: MH['DU-TIGER'].id, so_kg: 3, han_dung: await ngay(200) }])]);
+  ok('kho_luu_ton_dau_ky: món đếm theo cái không ghi số cái → "chưa nhập số lon"', /chưa nhập số lon/.test(thieu.loi ?? ''), thieu.loi ?? 'ghi được');
+
+  // Web: dán / bảng món — ô kg của sốt, đồ uống bỏ qua; tổng kg theo nơi không cộng số cái.
+  const VT = '00000000-0000-4000-8000-0000000000d1';
+  const ctx = {
+    matHang: [
+      { id: '00000000-0000-4000-8000-0000000000d2', ma: 'DU-X', ten: 'Bia X', loai: 'do_uong', dem_goi: true, don_vi_goi: 'lon', han_dung_ngay: null, dang_dung: true },
+      { id: '00000000-0000-4000-8000-0000000000d3', ma: 'C-X', ten: 'Thăn X', loai: 'phan_cat', dem_goi: true, don_vi_goi: 'gói', han_dung_ngay: 5, dang_dung: true },
+    ],
+    viTri: [{ id: VT, ten: 'Kho lạnh', loai: 'kho', dang_dung: true }],
+    viTriMacDinh: VT, coGia: true, ngay: '2026-10-28',
+  };
+  const xt = xemTruocDanTonDau('DU-X;;24;8,6;16000;01/03/2027\nDU-X;;6;;;01/03/2027\nC-X;;2;1,5;;', ctx);
+  ok('Dán tồn đầu kỳ: bia 24 lon → so_kg 24 (kg gõ bỏ qua); dòng không ghi kg vẫn nhận',
+    xt.loi.length === 0 && xt.dong.length === 3 && xt.dong[0].so_kg === 24 && xt.dong[0].dem_cai === true && xt.dong[1].so_kg === 6
+    && xt.dong[2].so_kg === 1.5, JSON.stringify(xt));
+  ok('Tóm tắt theo nơi: tổng kg chỉ hàng cân ký (1,5)', tomTatTheoViTri(xt.dong)[0]?.tong_kg === 1.5, JSON.stringify(tomTatTheoViTri(xt.dong)));
+  const xt2 = xemTruocDanTonDau('DU-X;;;;;01/03/2027', ctx);
+  ok('Dán tồn đầu kỳ: bia không ghi số lon → báo "chưa ghi số lon"', /chưa ghi số lon/.test(xt2.loi.join()), xt2.loi.join());
+  ok('Bảng món: sốt, đồ uống xếp sau thịt', monTrongLuoi(ctx.matHang).map(m => m.ma).join() === 'C-X,DU-X');
+  const tdTrang = doc('web/src/pages/noi-bo/kho/cai-dat/ton-dau.astro');
+  ok('Màn tồn đầu kỳ: nhóm sốt, đồ uống; dòng của chúng không có ô kg',
+    /\['tang', 'phan_cat', 'phu_pham', 'gia_vi', 'do_uong'\]/.test(tdTrang) && /\{laDemCai\(m\) \? <td class="kho-phu">—<\/td> :/.test(tdTrang));
 });
 
 const ds = (await db.query(`select * from kho_doi_soat_ton()`)).rows;

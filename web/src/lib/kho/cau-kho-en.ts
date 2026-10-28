@@ -1319,8 +1319,8 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Kg bán vượt kg còn lại của lô · iPOS %', en: 'Kg sold exceeds the kg left in the batch · iPOS {1}' },
 
   // 0105_kho_mon_dem_cai — sốt, gia vị, đồ khô, đồ uống: món đếm theo cái (so_kg = số cái), nhập theo giá thùng
-  { vi: 'Món "%" đã có trong phiếu hoặc sổ kho — không đổi được giữa hàng cân ký và hàng đếm theo cái. Tạo món mới đúng loại',
-    en: '"{1}" is already on a note or in the stock ledger — it cannot switch between weighed goods and goods counted by the piece. Create a new item of the right type' },
+  { vi: 'Món "%" đã dùng trong phiếu, sổ kho, định lượng món hoặc mã iPOS — không đổi được giữa hàng cân ký và hàng đếm theo cái. Tạo món mới đúng loại',
+    en: '"{1}" is already used on a note, in the stock ledger, in a dish recipe or an iPOS code — it cannot switch between weighed goods and goods counted by the piece. Create a new item of the right type' },
   { vi: 'Món đếm theo cái "%": số kg phải bằng số % trong sổ kho',
     en: 'Item counted by the piece "{1}": the kg must equal the number of {2} in the stock ledger' },
   { vi: 'Dòng % (%): số % quá lớn — kiểm tra lại', en: 'Line {1} ({2}): the number of {3} is too large — check it again' },
