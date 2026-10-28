@@ -8,9 +8,9 @@ rà soát" *sau khi* tính năng đã gộp. Mục tiêu: chặn chúng *trướ
 
 | Thư mục | Nội dung | Đọc thêm |
 |---|---|---|
-| `web/` | Website Astro trên Cloudflare Workers: trang công khai vi/en/ko, `/noi-bo`, kho, Zalo, Messenger, iPOS | `web/README.md`, `web/KHO.md` |
-| `crm/` | Database Supabase (`supabase/migrations/`) và **toàn bộ kiểm thử** (`test/`, chạy trên PGlite) | `crm/README.md` |
-| `can-app/` | Beeftown Cân (Windows `.exe`, Bun): gửi giá xuống cân TMA, máy quầy | `can-app/README.md` |
+| `web/` | Website Astro trên Cloudflare Workers: trang công khai vi/en/ko, `/noi-bo`, kho, Zalo, Messenger, iPOS | `web/CLAUDE.md` (bản đồ), `web/README.md`, `web/KHO.md` |
+| `crm/` | Database Supabase (`supabase/migrations/`) và **toàn bộ kiểm thử** (`test/`, chạy trên PGlite) | `crm/CLAUDE.md`, `crm/README.md` |
+| `can-app/` | Beeftown Cân (Windows `.exe`, Bun): gửi giá xuống cân TMA, máy quầy | `can-app/CLAUDE.md`, `can-app/README.md` |
 | `mini-app/` | Mini App Zalo (React, zmp-cli): khách chọn khay thịt mang về, đơn mở sẵn trong chat Zalo OA. Không máy chủ, không database, `package.json` và lệnh đưa lên riêng | `mini-app/CLAUDE.md`, `mini-app/README.md` |
 | `mo-rong-fabi/` | Mở rộng FABi (extension Chrome, Manifest V3): trên FABi CMS, đưa món mới của kho vào hộp thoại "Thêm món từ file" — người dùng tự bấm Lưu. Không `package.json`, cài bằng "Tải tiện ích đã giải nén" | `mo-rong-fabi/README.md` |
 
@@ -28,6 +28,21 @@ Quy ước chung:
 - Việc giao diện, màu, câu chữ, ảnh, ấn phẩm: làm theo skill `.claude/skills/thiet-ke-beeftown/`
   (tự nạp khi việc khớp mô tả). Mã đổi thì sửa skill cùng PR — `test-ky-nang-thiet-ke.mjs` bắt mã màu,
   đường dẫn, tên biểu tượng, lớp CSS lệch; số đo và tên hàm thì tự giữ.
+
+## Bắt đầu phiên — đọc ít, tra nhiều
+
+Mỗi thư mục có `CLAUDE.md` riêng, tự nạp khi phiên đọc file trong đó: việc gì đọc mục nào, sửa file nào, chạy kiểm thử
+nào, sửa một hàm thì phải đụng những chỗ nào. Đọc đúng mục nó chỉ — đừng đọc cả README hay `web/KHO.md`.
+Tra tên bằng máy thay vì lục hàng chục nghìn dòng migration:
+
+```bash
+cd crm
+npm run tim -- <hàm SQL | bảng | file>   # bản cuối ở migration nào, ai gọi, test nào nhắc, danh sách quyền phải xếp vào
+npm run tim -- <hàm> --than              # nguyên văn bản cuối, để chép khi viết migration thay thân
+npm run tom-tat-pr                       # nhánh này đụng khu nào, cỡ bao nhiêu, việc sau khi gộp
+```
+
+Làm tiếp một tính năng đã có đợt trước: đọc issue nhãn `viec-tiep` của nó (mục "Chia việc thành PR"), không đọc lại PR cũ.
 
 ## Cài và chạy kiểm thử
 
@@ -102,13 +117,29 @@ Mỗi tính năng hoặc bản sửa phải trả lời đủ 9 mục trong mô 
 - Lỗi báo qua issue nhãn `loi-that`: tên kiểm tra bắt đầu bằng `HỒI QUY #<số issue>`, PR ghi `Sửa #<số>`.
 - Hàm SQL mới phải được ít nhất một file test nhắc tên (`test-quy-trinh.mjs` kiểm).
 
+## Chia việc thành PR
+
+Khánh là người duyệt duy nhất và không đọc code. PR nhỏ, một việc, thì đọc được trong hai phút và ít lỗi lọt.
+
+- **Một PR, một thay đổi người dùng thấy được.** Lỗi gặp dọc đường mà không thuộc việc đang làm: PR riêng, hoặc issue.
+- **Cỡ:** dưới khoảng 1.500 dòng mã + SQL thật sự đổi — không tính kiểm thử, tài liệu, thân hàm chép nguyên văn.
+  `npm run tom-tat-pr` đo; comment "Máy tóm tắt PR" nhắc khi vượt.
+- **Tính năng lớn chia đợt.** Mỗi đợt gộp được một mình, main vẫn đúng sau mỗi đợt (đợt 1 database + màn chính,
+  đợt 2 iPOS, đợt 3 báo cáo…). Phần còn lại: mở issue theo mẫu "Việc tiếp theo" (`.github/ISSUE_TEMPLATE/viec-tiep.yml`)
+  — đã quyết gì, còn gì, nằm ở hàm / file / mục tài liệu nào. PR đợt sau ghi `Tiếp #<số>`.
+- **Nhánh.** Mỗi phiên một nhánh. PR của nhánh đã gộp thì việc mới bắt đầu lại từ `origin/main`. Nhiều phiên chạy song
+  song thì chia theo khu (kho / trang công khai / Beeftown Cân / Mini App) để ít đụng cùng file và cùng số migration.
+
 ## Trước khi mở PR
 
 1. `git fetch origin --prune && git merge origin/main` — rồi `npm run kiem-migration`.
 2. Chạy đủ kiểm thử phần đã đụng (mục trên). `crm` thì luôn chạy toàn bộ `npm test`.
 3. Chạy `/code-review` (mức high) trên diff so với `origin/main`; thêm `/security-review` khi đụng
    quyền, `security definer`, webhook, đăng nhập.
-4. Điền mẫu PR: 9 mục, cách Khánh tự thử, migration và thứ tự triển khai.
+4. `cd crm && npm run tom-tat-pr`, rồi điền mẫu PR. Phần Khánh đọc ở trên cùng: "Tóm tắt cho Khánh" (bốn dòng, không
+   tên hàm, không tên file; "Sau khi gộp" chép từ `tom-tat-pr`) và cách tự thử. 9 mục, migration, kiểm thử để trong phần
+   gập "Chi tiết cho người rà soát". Kiểm trước: `node test/kiem-mo-ta-pr.mjs --tep <file mô tả>` — workflow
+   "Mô tả PR" đỏ khi thiếu mục.
 5. CI đỏ trên PR của mình là việc của mình. Comment "Số migration của PR này không còn hợp lệ"
    nghĩa là PR khác vừa gộp cùng số — đánh lại số ngay.
 
@@ -125,6 +156,7 @@ Mỗi tính năng hoặc bản sửa phải trả lời đủ 9 mục trong mô 
 | Khi nào | Chạy gì | Thời gian |
 |---|---|---|
 | Đẩy nhánh có đổi migration | `gac-nhanh.yml`: số migration, trùng với nhánh khác | ~30 giây |
+| Mở / sửa mô tả / đẩy thêm vào PR (cả nháp) | `mo-ta-pr.yml`: comment "Máy tóm tắt PR" (`tom-tat-pr.mjs` — việc sau khi gộp, cỡ, chỗ cần chú ý; sửa lại comment cũ), mô tả đủ mục (`kiem-mo-ta-pr.mjs`) | ~20 giây |
 | Mở / cập nhật PR không phải nháp; bấm "Ready for review" | `kiem-thu.yml`: database, kho, Zalo, Messenger, Beeftown Cân, Mở rộng FABi; web: astro check, build, đóng gói thử, chữ cấm, trình duyệt. PR nháp bỏ qua hai job này (đỡ phút CI) — chạy đủ kiểm thử trên máy trước khi đẩy | ~10 phút |
 | Main nhận commit | như PR, rồi comment vào PR đang mở nào vừa bị trùng số migration | ~10 phút |
 | 00:30 giờ VN mỗi đêm | quét chữ cấm trên beeftown.vn thật; toàn bộ với `TZ=Asia/Ho_Chi_Minh` khi main có commit trong 48 giờ qua, đêm Chủ nhật, đêm đầu / cuối tháng, hoặc không hỏi được GitHub (job `co-doi`). Cổng deploy bỏ qua lượt đêm không kiểm mã (`web/kiem-tra/ket-qua-ci.mjs`) | ~1 phút / ~10 phút |

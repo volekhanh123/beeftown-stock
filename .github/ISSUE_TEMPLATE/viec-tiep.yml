@@ -1,0 +1,60 @@
+name: Việc tiếp theo
+description: Phần còn lại của một tính năng làm theo đợt — phiên sau bắt đầu từ đây, không phải đọc lại PR cũ
+title: "Việc tiếp: "
+labels: [viec-tiep]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Phiên làm PR mở issue này khi PR chỉ làm một đợt của tính năng (CLAUDE.md, "Chia việc thành PR"). Ghi đủ để
+        phiên sau làm tiếp mà **không phải mò lại**: đã quyết gì, còn gì, nằm ở đâu. Phiên làm tiếp ghi
+        `Tiếp #<số issue>` trong mô tả PR, và đóng issue khi làm xong phần cuối.
+  - type: textarea
+    id: viec
+    attributes:
+      label: Việc gì (cho người không đọc code)
+      placeholder: "Đồ uống bán trên iPOS tự trừ kho theo mã món — đợt 2 của món đếm theo cái."
+    validations:
+      required: true
+  - type: input
+    id: pr_truoc
+    attributes:
+      label: PR các đợt trước
+      placeholder: "#125 (đợt 1: database, nhận hàng, tồn, báo cáo)"
+    validations:
+      required: true
+  - type: textarea
+    id: da_quyet
+    attributes:
+      label: Khánh đã quyết (kèm ngày)
+      description: Quyết định không ghi ở đây thì phiên sau phải hỏi lại.
+      placeholder: |
+        - 27/10/2026: đồ uống không có nút "Lấy ra quầy".
+    validations:
+      required: true
+  - type: textarea
+    id: con_lai
+    attributes:
+      label: Còn phải làm
+      placeholder: |
+        - [ ] Ghép món iPOS liệt kê đồ uống
+        - [ ] Gợi ý đặt hàng theo cái
+    validations:
+      required: true
+  - type: textarea
+    id: cho_trong_ma
+    attributes:
+      label: Chỗ trong mã
+      description: Hàm SQL (bản cuối ở migration nào — `cd crm && npm run tim -- <tên>`), file web, mục tài liệu, file kiểm thử.
+      placeholder: |
+        - Hàm: kho_ipos_ghi_dong (bản cuối 0106), kho_mat_hang.dem_theo_cai (0105)
+        - Web: web/src/lib/kho/ban-ipos.ts, web/src/pages/noi-bo/kho/ban-ipos/ghep.astro
+        - Tài liệu: web/KHO.md mục 3s
+        - Kiểm thử mẫu: crm/test/test-kho-dem-cai.mjs
+    validations:
+      required: true
+  - type: textarea
+    id: con_mo
+    attributes:
+      label: Câu hỏi còn mở, việc phải thử thật
+      placeholder: "MISA giữ thành tiền hay tính lại khi dòng có lon lẻ — Khánh thử nhập thật một dòng."
