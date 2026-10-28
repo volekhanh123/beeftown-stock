@@ -119,7 +119,7 @@ const nhanTrangThai = (tt: string): [string, string] => {
               <p class="nh-ly-do">{t.lyDoTraVe} {p.ly_do}</p>
             )}
             <p class="nb-dong-tom">
-              {dinhDangNgay(p.ngay_nhap)} · {t.soMon(p.so_dong)} · {dinhDangKg(p.tong_kg, nn)} kg{p.tong_goi > 0 && <> · {p.tong_goi} {t.tangGoi}</>}
+              {dinhDangNgay(p.ngay_nhap)} · {t.soMon(p.so_dong)}{p.tong_kg > 0 && <> · {dinhDangKg(p.tong_kg, nn)} kg</>}{p.tong_goi > 0 && <> · {p.tong_goi} {t.tangGoi}</>}
               {p.ten_vi_tri && p.ten_vi_tri !== noiChinh && <> · {t.vao} {p.ten_vi_tri}</>}
               {p.loai === 'mua' && p.so_anh === 0 && <> · <strong>{t.chuaChupAnh}</strong></>}
             </p>

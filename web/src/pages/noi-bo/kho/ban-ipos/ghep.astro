@@ -39,7 +39,7 @@ import BaoKho from '../../../../components/kho/BaoKho.astro';
 import PhanTrang from '../../../../components/kho/PhanTrang.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { docMatHang, type MatHang } from '../../../../lib/kho/danh-muc.ts';
-import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, dinhDangTien, type KetQua } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, dinhDangTien, laDemCai, type KetQua } from '../../../../lib/kho/chung.ts';
 import { docTimDs, catTrang, linkDs } from '../../../../lib/kho/tim-ds.ts';
 import {
   docMaChuaGhep, docMaDaGhep, docMenuIpos, docMonMenu, docTenMaIpos, ganMaIpos, goiYMatHang, goiYOMa, maCanTuNhan, oThucDon,
@@ -268,7 +268,9 @@ if (maChon) {
   }
 }
 const daGhepTheoMa = new Map(daGhep.map(m => [m.ma_ipos, m]));
-const dangDung = matHang.filter(m => m.dang_dung);
+// Sốt, đồ uống (0105) chưa ghép được: kho trừ đồ uống theo mã món iPOS (1 chai / lon mỗi suất) làm ở đợt 2 — ghép bây
+// giờ thì dòng bán bị trừ theo kg / gói ở quầy và báo lỗi.
+const dangDung = matHang.filter(m => m.dang_dung && !laDemCai(m));
 const tenMon = new Map(matHang.map(m => [m.id, m.ten]));
 const cacO = [...oMaTheoMon.values()].flat()
   .map(o => ({ ...o, ten: tenMon.get(o.mat_hang_id) ?? '—' }))

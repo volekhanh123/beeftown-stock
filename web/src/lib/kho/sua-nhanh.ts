@@ -62,7 +62,7 @@ export const O_SUA_NHANH: readonly { khoa: OSuaNhanh; ten: string; kieu: KieuO }
 
 export interface MonSuaNhanh {
   id: string; ma: string; ten: string; nhom: string | null;
-  loai: 'tang' | 'phan_cat' | 'phu_pham';
+  loai: 'tang' | 'phan_cat' | 'phu_pham' | 'gia_vi' | 'do_uong';   // 0105: hai loại đếm theo cái
   dem_goi: boolean; don_vi_goi: string; thu_tu: number;
   gia_ban_kg: number | null; han_dung_ngay: number | null; ma_can: string | null;
   quay_toi_thieu_goi: number | null; quay_toi_da_goi: number | null; ton_toi_thieu_kg: number | null;

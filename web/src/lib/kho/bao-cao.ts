@@ -28,7 +28,10 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, congNgay, dinhDangNgay, docTungTrang, duoc, type ViecKho, type HaiThuTieng, type NgonNguNB } from './chung.ts';
+import {
+  cauLoiKho, congNgay, dinhDangNgay, docTungTrang, duoc, laDemCai, type ViecKho, type HaiThuTieng, type NgonNguNB,
+} from './chung.ts';
+import { LOAI_DEM_CAI } from './danh-muc.ts';
 
 export type KieuCot = 'chu' | 'kg' | 'tien' | 'so' | 'pt';
 export interface CotBaoCao { khoa: string; ten: string; kieu: KieuCot; tienMat?: boolean }
@@ -50,6 +53,11 @@ export interface DinhNghiaBaoCao {
    * "trả nhà cung cấp" thành một số là sai nghĩa.
    */
   tongTheo?: string;
+  /**
+   * Dòng có trường `khiCo` (true) không cộng vào các cột `cot` của dòng tổng — số của nó khác đơn vị (0105: sốt,
+   * đồ uống ghi số chai / lon ở cột kg; cộng với kg thịt là sai nghĩa). Cột tiền vẫn cộng mọi dòng.
+   */
+  boCong?: { khiCo: string; cot: string[] };
   /** Bảng trống: nói việc gì sinh ra số liệu và chỗ làm việc đó. */
   khiTrong: { cau: string; link: { ten: string; href: string }[] };
 }
@@ -68,6 +76,7 @@ export interface DinhNghiaHai {
   cong?: string[];
   chiaTong?: DinhNghiaBaoCao['chiaTong'];
   tongTheo?: string;
+  boCong?: DinhNghiaBaoCao['boCong'];
   khiTrong: { cau: HaiThuTieng; link: { ten: HaiThuTieng; href: string }[] };
 }
 
@@ -112,11 +121,13 @@ const BAO_CAO_HAI: Record<string, DinhNghiaHai> = {
   'xuat-nhap-ton': {
     ten: { vi: 'Xuất – nhập – tồn', en: 'Stock movement' },
     moTa: {
-      vi: 'Theo mặt hàng, theo ngày chứng từ. Chuyển giữa kho và quầy không tính. Hao hụt = hàng mất khi mang ra quầy. Giá trị theo giá vốn từng lô.',
-      en: 'By item, by document date. Transfers between the store and the counter are not counted. Loss = goods lost on the way to the counter. Values at the cost of each lot.',
+      vi: 'Theo mặt hàng, theo ngày chứng từ. Chuyển giữa kho và quầy không tính. Hao hụt = hàng mất khi mang ra quầy. Giá trị theo giá vốn từng lô. Sốt, gia vị, đồ uống: các cột kg ghi số chai / lon… theo cột ĐVT, không cộng vào tổng kg.',
+      en: 'By item, by document date. Transfers between the store and the counter are not counted. Loss = goods lost on the way to the counter. Values at the cost of each lot. Sauces, spices, drinks: the kg columns hold the number of bottles / cans… (see the Unit column) and are left out of the kg totals.',
     },
     cot: [
       { khoa: 'ten', ten: { vi: 'Mặt hàng', en: 'Item' }, kieu: 'chu' },
+      // 0105: docBaoCao ghi "kg" cho hàng cân ký, tên đơn vị ("lon", "chai") cho món đếm theo cái.
+      { khoa: 'don_vi_goi', ten: { vi: 'ĐVT', en: 'Unit' }, kieu: 'chu' },
       { khoa: 'dau_kg', ten: { vi: 'Tồn đầu kg', en: 'Opening kg' }, kieu: 'kg' },
       { khoa: 'dau_gia_tri', ten: { vi: 'Tồn đầu tiền', en: 'Opening value' }, kieu: 'tien', tienMat: true },
       { khoa: 'nhap_kg', ten: { vi: 'Nhập kg', en: 'Received kg' }, kieu: 'kg' },
@@ -145,6 +156,11 @@ const BAO_CAO_HAI: Record<string, DinhNghiaHai> = {
       'huy_kg', 'huy_gia_tri', 'tra_ncc_kg', 'kiem_ke_kg', 'kiem_ke_gia_tri', 'hao_hut_kg', 'hao_hut_gia_tri',
       'cuoi_kg', 'cuoi_gia_tri',
     ],
+    boCong: {
+      khiCo: 'dem_cai',
+      cot: ['dau_kg', 'nhap_kg', 'pha_ra_kg', 'pha_vao_kg', 'ban_kg', 'xuat_bep_kg', 'xuat_khac_kg', 'huy_kg', 'tra_ncc_kg',
+            'kiem_ke_kg', 'hao_hut_kg', 'cuoi_kg'],
+    },
     khiTrong: {
       cau: {
         vi: 'Kho chưa có hàng nào tính tới ngày cuối kỳ. Số liệu có khi phiếu nhập hàng được duyệt',
@@ -192,11 +208,13 @@ const BAO_CAO_HAI: Record<string, DinhNghiaHai> = {
       { khoa: 'ten', ten: { vi: 'Mặt hàng', en: 'Item' }, kieu: 'chu' },
       { khoa: 'ly_do', ten: { vi: 'Lý do', en: 'Reason' }, kieu: 'chu' },
       { khoa: 'so_kg', ten: { vi: 'Kg', en: 'Kg' }, kieu: 'kg' },
-      { khoa: 'so_goi', ten: { vi: 'Gói', en: 'Packs' }, kieu: 'so' },
+      { khoa: 'so_goi', ten: { vi: 'Gói / cái', en: 'Packs / units' }, kieu: 'so' },
       { khoa: 'gia_tri', ten: { vi: 'Giá vốn', en: 'Cost' }, kieu: 'tien', tienMat: true },
     ],
     cong: ['so_kg', 'so_goi', 'gia_tri'],
     tongTheo: 'loai_dong',
+    // 0105: dòng sốt / đồ uống (docBaoCao): không kg, số chai / lon ở cột "Gói / cái" — không cộng với gói thịt.
+    boCong: { khiCo: 'dem_cai', cot: ['so_kg', 'so_goi'] },
     khiTrong: {
       cau: {
         vi: 'Chưa có phiếu hủy, xuất bếp, xuất khác, trả nhà cung cấp hay kiểm kê lệch sổ nào được duyệt trong kỳ',
@@ -329,6 +347,27 @@ export async function docBaoCao(
   if (kq.error) return { dong: [], loi: cauLoiKho(kq.error) };
   const dong = (kq.data ?? []) as Record<string, unknown>[];
   if (ten === 'hao-hut') for (const d of dong) d.loai_dong = TEN_LOAI_DONG_HAO_HUT_NB[String(d.loai_dong)]?.[nn] ?? d.loai_dong;
+  // 0105 · món đếm theo cái (sốt, đồ uống): số kg trong sổ là số cái. Xuất – nhập – tồn: cột ĐVT ghi tên đơn vị (hàng
+  // cân ký ghi "kg"), dòng tổng không cộng kg của nó. Hủy / xuất bếp: bỏ kg, số cái ở cột "Gói / cái", tên kèm đơn vị.
+  if (ten === 'xuat-nhap-ton') {
+    for (const d of dong) {
+      d.dem_cai = laDemCai({ loai: d.loai as string | null });
+      d.don_vi_goi = d.dem_cai ? d.don_vi_goi : 'kg';
+    }
+  }
+  if (ten === 'hao-hut' && dong.length) {
+    const { data: cai, error } = await client.from('kho_mat_hang').select('id, don_vi_goi').in('loai', [...LOAI_DEM_CAI]);
+    if (error) return { dong: [], loi: cauLoiKho(error) };
+    const dv = new Map((cai ?? []).map(m => [m.id as string, String(m.don_vi_goi ?? '')]));
+    for (const d of dong) {
+      const donVi = dv.get(String(d.mat_hang_id));
+      if (donVi === undefined) continue;
+      d.dem_cai = true;
+      d.so_goi = d.so_kg === null || d.so_kg === undefined ? d.so_goi : Math.round(Number(d.so_kg));
+      d.so_kg = null;
+      d.ten = donVi ? `${d.ten} (${donVi})` : d.ten;
+    }
+  }
   if (ten === 'ban') for (const d of dong) d.nguon = TEN_NGUON_BAN_NB[String(d.nguon)]?.[nn] ?? d.nguon;
   if (ten === 'thu-hoi') for (const d of dong) d.ten_nha_cung_cap = d.ten_nha_cung_cap ?? CAU_BAO_CAO.nccKhongRo[nn];
   return { dong, loi: null };
@@ -361,7 +400,9 @@ export function tinhTong(dn: DinhNghiaBaoCao, dong: Record<string, unknown>[], n
     if (ds) ds.push(d); else nhom.set(khoaNhom, [d]);
   }
   return [...nhom].map(([khoaNhom, ds]) => {
-    const cong = (khoa: string) => ds.reduce((s, d) => s + (Number(d[khoa]) || 0), 0);
+    const bo = new Set(dn.boCong?.cot ?? []);
+    const cong = (khoa: string) => ds.reduce((s, d) =>
+      (bo.has(khoa) && d[dn.boCong!.khiCo] === true ? s : s + (Number(d[khoa]) || 0)), 0);
     const so: Record<string, number> = {};
     for (const khoa of dn.cong ?? []) so[khoa] = lamTron(cong(khoa), kieu.get(khoa));
     for (const [khoa, { tu, mau, nhan = 1 }] of Object.entries(dn.chiaTong ?? {})) {
@@ -464,12 +505,12 @@ export function kyNhanh(homNay: string, nn: NgonNguNB = 'vi'): { ten: string; tu
 export const NGAY_TOI_DA_KY = 366;
 
 const MO_TA_THEO_THANG = {
-  vi: 'Mỗi tháng một dòng, theo ngày chứng từ. Nhập gồm cả tồn đầu kỳ. Hao hụt = mất khi mang ra quầy + kiểm kê thiếu − kiểm kê thừa. Pha lóc mất = kg tảng đem pha − kg pha ra (phần bỏ, hao khi pha). Tồn cuối = tồn đầu + nhập − các loại xuất.',
-  en: 'One row per month, by document date. Received includes opening stock. Loss = lost on the way to the counter + stocktake shortages − stocktake surpluses. Butchery loss = kg of primal into butchery − kg out of butchery (discarded, lost while cutting). Closing = opening + received − every kind of issue.',
+  vi: 'Mỗi tháng một dòng, theo ngày chứng từ. Nhập gồm cả tồn đầu kỳ. Hao hụt = mất khi mang ra quầy + kiểm kê thiếu − kiểm kê thừa. Pha lóc mất = kg tảng đem pha − kg pha ra (phần bỏ, hao khi pha). Tồn cuối = tồn đầu + nhập − các loại xuất. Kg chỉ tính hàng cân ký; sốt, gia vị, đồ uống có trong cột tiền.',
+  en: 'One row per month, by document date. Received includes opening stock. Loss = lost on the way to the counter + stocktake shortages − stocktake surpluses. Butchery loss = kg of primal into butchery − kg out of butchery (discarded, lost while cutting). Closing = opening + received − every kind of issue. Kg counts weighed goods only; sauces, spices and drinks are in the value columns.',
 };
 const MO_TA_THEO_THANG_GIA = {
-  vi: ' Chi phí thịt = bán + xuất bếp + xuất khác + hủy + hao hụt (giá vốn). Doanh thu = mọi dòng hóa đơn iPOS của tháng.',
-  en: ' Meat cost = sold + to kitchen + other issues + write-offs + losses (at cost). Revenue = every iPOS invoice line of the month.',
+  vi: ' Chi phí nguyên liệu = bán + xuất bếp + xuất khác + hủy + hao hụt (giá vốn) — thịt, sốt, gia vị, đồ uống. Doanh thu = mọi dòng hóa đơn iPOS của tháng.',
+  en: ' Ingredient cost = sold + to kitchen + other issues + write-offs + losses (at cost) — meat, sauces, spices, drinks. Revenue = every iPOS invoice line of the month.',
 };
 
 /**
@@ -494,7 +535,8 @@ export function dinhNghiaTheoThang(coGia: boolean, nn: NgonNguNB = 'vi'): DinhNg
     ...cap('pha_mat', { vi: 'Pha lóc mất', en: 'Butchery loss' }),
     ...cap('ton_cuoi', { vi: 'Tồn cuối', en: 'Closing' }),
     ...(coGia ? [
-      { khoa: 'chi_phi_thit', ten: { vi: 'Chi phí thịt', en: 'Meat cost' }, kieu: 'tien' as const, tienMat: true },
+      // Khóa giữ tên cũ; từ 0105 gồm cả sốt, gia vị, đồ uống nên tên cột là "nguyên liệu".
+      { khoa: 'chi_phi_thit', ten: { vi: 'Chi phí nguyên liệu', en: 'Ingredient cost' }, kieu: 'tien' as const, tienMat: true },
       { khoa: 'doanh_thu', ten: { vi: 'Doanh thu iPOS', en: 'iPOS revenue' }, kieu: 'tien' as const, tienMat: true },
       { khoa: 'chi_phi_tren_doanh_thu_pt', ten: { vi: 'Chi phí / doanh thu %', en: 'Cost / revenue %' }, kieu: 'pt' as const },
     ] : []),
@@ -534,16 +576,16 @@ export const TEN_NHOM_MUA: Record<string, string> = chiVi(TEN_NHOM_MUA_NB);
 
 const MO_TA_MUA = {
   chung: {
-    vi: 'Phiếu nhập mua đã duyệt có ngày nhập trong kỳ (không gồm tồn đầu kỳ, nợ đầu kỳ). Giá TB/kg = tiền hàng ÷ kg. Tỷ trọng = phần tiền hàng trong tổng tiền hàng của kỳ.',
-    en: 'Approved purchase receipts with a receipt date in the period (opening stock and opening balances not included). Avg price/kg = goods value ÷ kg. Share = the row\'s part of the total goods value for the period.',
+    vi: 'Phiếu nhập mua đã duyệt có ngày nhập trong kỳ (không gồm tồn đầu kỳ, nợ đầu kỳ). Giá TB/kg = tiền hàng ÷ kg, chỉ tính hàng cân ký. Tỷ trọng = phần tiền hàng trong tổng tiền hàng của kỳ.',
+    en: 'Approved purchase receipts with a receipt date in the period (opening stock and opening balances not included). Avg price/kg = goods value ÷ kg, weighed goods only. Share = the row\'s part of the total goods value for the period.',
   },
   ncc: {
     vi: ' Phải trả = tiền hóa đơn nếu đã đối chiếu, chưa thì tổng phiếu.',
     en: ' Payable = the invoice amount if reconciled, otherwise the receipt total.',
   },
   matHang: {
-    vi: ' Thuế và chi phí khác ghi theo phiếu nên không chia theo món.',
-    en: ' Tax and other costs are recorded per receipt, so they are not split by item.',
+    vi: ' Thuế và chi phí khác ghi theo phiếu nên không chia theo món. Sốt, gia vị, đồ uống: số chai / lon… ở cột Gói / cái, giá là giá một chai / lon (đơn vị ghi sau tên).',
+    en: ' Tax and other costs are recorded per receipt, so they are not split by item. Sauces, spices, drinks: the number of bottles / cans… is in the Packs / units column and the prices are per bottle / can (unit after the name).',
   },
 } satisfies Record<string, HaiThuTieng>;
 
@@ -558,7 +600,8 @@ export function dinhNghiaMuaHang(nhom: 'ncc' | 'mat_hang', nn: NgonNguNB = 'vi')
       ? { khoa: 'so_mat_hang', ten: { vi: 'Số mặt hàng', en: 'Items' }, kieu: 'so' }
       : { khoa: 'so_ncc', ten: { vi: 'Số NCC', en: 'Suppliers' }, kieu: 'so' },
     { khoa: 'so_kg', ten: { vi: 'Kg', en: 'Kg' }, kieu: 'kg' },
-    { khoa: 'so_goi', ten: { vi: 'Gói', en: 'Packs' }, kieu: 'so' },
+    // Theo NCC, database chỉ cộng gói của hàng cân ký; theo mặt hàng, dòng sốt / đồ uống ghi số cái ở đây.
+    { khoa: 'so_goi', ten: laNcc ? { vi: 'Gói', en: 'Packs' } : { vi: 'Gói / cái', en: 'Packs / units' }, kieu: 'so' },
     { khoa: 'tien_hang', ten: { vi: 'Tiền hàng', en: 'Goods value' }, kieu: 'tien', tienMat: true },
     ...(laNcc ? [
       { khoa: 'tien_thue', ten: { vi: 'Thuế', en: 'Tax' }, kieu: 'tien' as const, tienMat: true },
@@ -580,7 +623,10 @@ export function dinhNghiaMuaHang(nhom: 'ncc' | 'mat_hang', nn: NgonNguNB = 'vi')
     cot,
     // Số phiếu không cộng: một phiếu có nhiều món / mỗi NCC đếm riêng.
     cong: ['so_kg', 'so_goi', 'tien_hang', ...(laNcc ? ['tien_thue', 'chi_phi_khac', 'tong_tien'] : [])],
-    chiaTong: { gia_tb_kg: { tu: 'tien_hang', mau: 'so_kg' } },
+    // 0105: giá TB/kg chung = tiền hàng cân ký ÷ kg (tien_kg — cột ẩn, docMuaHang điền); dòng sốt / đồ uống không cộng
+    // số cái vào kg / gói.
+    chiaTong: { gia_tb_kg: { tu: 'tien_kg', mau: 'so_kg' } },
+    boCong: { khiCo: 'dem_cai', cot: ['so_kg', 'so_goi'] },
     khiTrong: {
       cau: { vi: 'Chưa có phiếu nhập mua nào được duyệt trong kỳ', en: 'No purchase receipt was approved in this period' },
       link: [{ ten: LINK.nhap, href: '/noi-bo/kho/nhap' }],
@@ -664,10 +710,29 @@ export async function docMuaHang(
     p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den, p_nhom: nhom,
   });
   if (error) return { dong: [], loi: cauLoiKho(error) };
+  // 0105 · món đếm theo cái (theo mặt hàng): kg là số cái → bỏ kg, số cái ở cột "Gói / cái", tên kèm đơn vị; giá là giá
+  // một cái. tien_kg (cột ẩn) = tiền hàng cân ký cho giá TB/kg của dòng tổng. Theo NCC, database đã chỉ cộng hàng cân ký
+  // vào kg và giá TB/kg (tiền hàng thì cộng mọi món) → tien_kg = giá TB/kg × kg (lệch làm tròn dưới 0,5 đ/kg).
+  let donViCai = new Map<string, string>();
+  if (nhom === 'mat_hang' && (data ?? []).length) {
+    const mh = await client.from('kho_mat_hang').select('id, don_vi_goi').in('loai', [...LOAI_DEM_CAI]);
+    if (mh.error) return { dong: [], loi: cauLoiKho(mh.error) };
+    donViCai = new Map((mh.data ?? []).map(m => [m.id as string, String(m.don_vi_goi ?? '')]));
+  }
   const dong = ((data ?? []) as Record<string, unknown>[]).map(r => {
     const d: Record<string, unknown> = { ...r };
     for (const k of ['so_phieu', 'so_ncc', 'so_mat_hang', 'so_kg', 'so_goi', 'tien_hang', 'tien_thue', 'chi_phi_khac',
       'tong_tien', 'gia_tb_kg', 'gia_thap_kg', 'gia_cao_kg', 'ty_trong_pt']) d[k] = soHoa(r[k]);
+    const donVi = donViCai.get(String(r.id));
+    if (donVi !== undefined) {
+      d.dem_cai = true;
+      d.so_goi = d.so_kg === null ? d.so_goi : Math.round(d.so_kg as number);
+      d.so_kg = null;
+      d.ten = donVi ? `${d.ten} (${donVi})` : d.ten;
+      d.tien_kg = 0;
+    } else {
+      d.tien_kg = nhom === 'ncc' ? (d.gia_tb_kg as number | null ?? 0) * (d.so_kg as number | null ?? 0) : d.tien_hang;
+    }
     return d;
   });
   return { dong, loi: null };
@@ -724,11 +789,13 @@ export interface TomTatKy {
 /**
  * Cộng các dòng xuất – nhập – tồn (kho_bao_cao_xnt_v2) thành thẻ tóm tắt.
  * Hao hụt = mất khi mang ra quầy + kiểm kê thiếu − kiểm kê thừa (kiem_ke_kg
- * mang dấu: + thừa, − thiếu). Chi phí thịt = bán + xuất bếp + xuất khác + hủy +
+ * mang dấu: + thừa, − thiếu). Chi phí nguyên liệu (khóa chi_phi_thit) = bán + xuất bếp + xuất khác + hủy +
  * hao hụt — cùng định nghĩa với kho_bao_cao_theo_thang và kho_chi_so_quan_tri.
  */
 export function tomTatXnt(dong: Record<string, unknown>[]): TomTatKy {
-  const c = (k: string) => dong.reduce((s, d) => s + (Number(d[k]) || 0), 0);
+  // 0105: cột kg của sốt / đồ uống là số chai / lon — kg chỉ cộng hàng cân ký, tiền cộng mọi dòng.
+  const thit = dong.filter(d => !laDemCai({ loai: d.loai as string | null }));
+  const c = (k: string) => (k.endsWith('_kg') ? thit : dong).reduce((s, d) => s + (Number(d[k]) || 0), 0);
   const kg = (x: number) => Math.round(x * 1000) / 1000;
   const hhKg = c('hao_hut_kg') - c('kiem_ke_kg');
   const hhTien = c('hao_hut_gia_tri') - c('kiem_ke_gia_tri');

@@ -30,7 +30,7 @@ import {
   type DongTheKho, type MatHangTheKho,
 } from '../../../../lib/kho/the-kho.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, homNayVn, nhanKho, TEN_LOAI_MAT_HANG_NB, TEN_LOAI_SO_CAI_NB, TEN_LOAI_VI_TRI_NB,
+  cauLoiKho, dinhDangKg, dinhDangNgay, homNayVn, laDemCai, nhanKho, TEN_LOAI_MAT_HANG_NB, TEN_LOAI_SO_CAI_NB, TEN_LOAI_VI_TRI_NB,
 } from '../../../../lib/kho/chung.ts';
 import { chuTang, docLoTang } from '../../../../lib/kho/tang.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
@@ -126,6 +126,8 @@ const tangChu = (loId: string | null) => chuTang(soTangLo.get(loId ?? '')?.so_ta
 
 const tong = tongKy(dong);
 const coGoi = !!mh?.dem_goi;
+// Sốt, đồ uống (0105): kg trong sổ chỉ là bản chép của số chai / lon — thẻ chỉ hiện số cái, không cột kg.
+const coKg = !laDemCai(mh);
 const dvg = mh?.don_vi_goi ?? t.goi;
 const tenNoi = boLoc.viTri ? (viTri.find(v => v.id === boLoc.viTri)?.ten ?? '') : t.caChiNhanh;
 const nhanh = khoangNhanh(homNay, nn);
@@ -183,10 +185,21 @@ const tenLoai = (d: DongTheKho) => (nn === 'vi' ? d.ten_loai : (TEN_LOAI_SO_CAI_
       ) : !loiDoc && (
         <>
           <section class="the-tong" aria-label={t.tongKy}>
-            <div><span>{t.tonDau}</span><b>{dinhDangKg(tong.dau_kg, nn)} kg</b>{coGoi && <small>{tong.dau_goi} {dvg}</small>}</div>
-            <div><span>{t.nhapKy}</span><b>+{dinhDangKg(tong.nhap_kg, nn)} kg</b>{coGoi && <small>+{tong.nhap_goi} {dvg}</small>}</div>
-            <div><span>{t.xuatKy}</span><b>−{dinhDangKg(tong.xuat_kg, nn)} kg</b>{coGoi && <small>−{tong.xuat_goi} {dvg}</small>}</div>
-            <div class:list={['cuoi', { am: am(tong.cuoi_kg) }]}><span>{t.tonCuoi}</span><b>{dinhDangKg(tong.cuoi_kg, nn)} kg</b>{coGoi && <small>{tong.cuoi_goi} {dvg}</small>}</div>
+            {coKg ? (
+              <>
+                <div><span>{t.tonDau}</span><b>{dinhDangKg(tong.dau_kg, nn)} kg</b>{coGoi && <small>{tong.dau_goi} {dvg}</small>}</div>
+                <div><span>{t.nhapKy}</span><b>+{dinhDangKg(tong.nhap_kg, nn)} kg</b>{coGoi && <small>+{tong.nhap_goi} {dvg}</small>}</div>
+                <div><span>{t.xuatKy}</span><b>−{dinhDangKg(tong.xuat_kg, nn)} kg</b>{coGoi && <small>−{tong.xuat_goi} {dvg}</small>}</div>
+                <div class:list={['cuoi', { am: am(tong.cuoi_kg) }]}><span>{t.tonCuoi}</span><b>{dinhDangKg(tong.cuoi_kg, nn)} kg</b>{coGoi && <small>{tong.cuoi_goi} {dvg}</small>}</div>
+              </>
+            ) : (
+              <>
+                <div><span>{t.tonDau}</span><b>{tong.dau_goi} {dvg}</b></div>
+                <div><span>{t.nhapKy}</span><b>+{tong.nhap_goi} {dvg}</b></div>
+                <div><span>{t.xuatKy}</span><b>−{tong.xuat_goi} {dvg}</b></div>
+                <div class:list={['cuoi', { am: am(tong.cuoi_goi) }]}><span>{t.tonCuoi}</span><b>{tong.cuoi_goi} {dvg}</b></div>
+              </>
+            )}
           </section>
 
           <NutIn chu={t.inThe} />
@@ -198,7 +211,7 @@ const tenLoai = (d: DongTheKho) => (nn === 'vi' ? d.ten_loai : (TEN_LOAI_SO_CAI_
               <table class="kho-bang the-bang">
                 <thead><tr>
                   <th>{t.ngay}</th><th>{t.viec}</th><th>{t.chungTu}</th><th>{t.oDauLo}</th>
-                  <th class="so">{t.cotKg}</th>
+                  {coKg && <th class="so">{t.cotKg}</th>}
                   {coGoi && <th class="so">{t.cotDv(dvg)}</th>}
                   <th>{t.ghiChu}</th>
                 </tr></thead>
@@ -210,7 +223,7 @@ const tenLoai = (d: DongTheKho) => (nn === 'vi' ? d.ten_loai : (TEN_LOAI_SO_CAI_
                           <td class="o-ngay" data-nhan={t.ngay}>{dinhDangNgay(d.ngay ?? boLoc.tu)}</td>
                           <td class="o-viec" data-nhan={t.viec}><strong>{tenLoai(d)}</strong></td>
                           <td class="o-ct"></td><td class="o-noi"></td>
-                          <td class:list={['so o-kg', { am: am(d.ton_kg) }]} data-nhan={t.cotKg}><b>{dinhDangKg(d.ton_kg, nn)}</b></td>
+                          {coKg && <td class:list={['so o-kg', { am: am(d.ton_kg) }]} data-nhan={t.cotKg}><b>{dinhDangKg(d.ton_kg, nn)}</b></td>}
                           {coGoi && <td class="so o-goi" data-nhan={t.cotDv(dvg)}><b>{d.ton_goi}</b></td>}
                           <td class="o-ghi"></td>
                         </tr>
@@ -225,9 +238,11 @@ const tenLoai = (d: DongTheKho) => (nn === 'vi' ? d.ten_loai : (TEN_LOAI_SO_CAI_
                           {d.so_chung_tu ? (link ? <a href={link}>{d.so_chung_tu}</a> : d.so_chung_tu) : '—'}
                         </td>
                         <td class="o-noi" data-nhan={t.oDauLo}>{d.vi_tri ?? '—'}{d.ma_lo && <span class="kho-phu">{' · '}{d.ma_lo}{tangChu(d.lo_id) && <>{' · '}<strong>{tangChu(d.lo_id)}</strong></>}</span>}</td>
-                        <td class:list={['so o-kg', { am: am(d.ton_kg) }]} data-nhan={t.cotKg}>
-                          <b>{thayDoi(d.nhap_kg, d.xuat_kg, kgChu)}</b><small>{t.ton} {dinhDangKg(d.ton_kg, nn)}</small>
-                        </td>
+                        {coKg && (
+                          <td class:list={['so o-kg', { am: am(d.ton_kg) }]} data-nhan={t.cotKg}>
+                            <b>{thayDoi(d.nhap_kg, d.xuat_kg, kgChu)}</b><small>{t.ton} {dinhDangKg(d.ton_kg, nn)}</small>
+                          </td>
+                        )}
                         {coGoi && (
                           <td class="so o-goi" data-nhan={t.cotDv(dvg)}>
                             <b>{thayDoi(d.nhap_goi, d.xuat_goi, String)}</b><small>{t.ton} {d.ton_goi}</small>

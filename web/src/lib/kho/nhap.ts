@@ -105,6 +105,9 @@ export interface DongPhieuNhap {
   so_kg_thuc: number | null;
   /** Số tảng của dòng (0097): cấp lúc lưu dòng; dòng đã duyệt mang đúng số của lô. */
   so_tang: number | null;
+  /** Món đếm theo cái (0105): số cái một thùng chép lúc ghi dòng, giá một thùng (thành tiền tính từ đây). */
+  so_trong_thung?: number | null;
+  don_gia_thung?: number | null;
 }
 
 /** Một dòng như đang hiện trên form — giữ nguyên chữ người dùng gõ để điền lại khi báo lỗi. */
@@ -183,7 +186,7 @@ export async function docPhieuNhap(
 
   const { data: dong, error: loiDong } = await client
     .from('kho_phieu_nhap_dong')
-    .select('id, thu_tu, mat_hang_id, so_goi, so_kg, don_gia_kg, thanh_tien, so_lo_ncc, ngay_san_xuat, han_dung, truong_them, lo_id, ngay_mo, so_kg_thuc, so_tang')
+    .select('id, thu_tu, mat_hang_id, so_goi, so_kg, don_gia_kg, thanh_tien, so_lo_ncc, ngay_san_xuat, han_dung, truong_them, lo_id, ngay_mo, so_kg_thuc, so_tang, so_trong_thung, don_gia_thung')
     .eq('phieu_nhap_id', id).order('thu_tu');
   if (loiDong) throw loiDong;
 
@@ -205,6 +208,8 @@ export async function docPhieuNhap(
       ...d, so_kg: Number(d.so_kg), don_gia_kg: Number(d.don_gia_kg), thanh_tien: Number(d.thanh_tien),
       so_kg_thuc: d.so_kg_thuc == null ? null : Number(d.so_kg_thuc),
       so_tang: d.so_tang == null ? null : Number(d.so_tang),
+      so_trong_thung: d.so_trong_thung == null ? null : Number(d.so_trong_thung),
+      don_gia_thung: d.don_gia_thung == null ? null : Number(d.don_gia_thung),
     })) as DongPhieuNhap[],
     maLo,
     soTang,
@@ -604,6 +609,7 @@ export async function docNguongGiaMua(client: SupabaseClient, chiNhanhId: string
 export function chuSoSanhGia(s: SoSanhGia | undefined, nn: NgonNguNB = 'vi'): { chu: string; vuot: boolean } | null {
   if (!s || s.gia_truoc === null) return null;
   const pt = s.chenh_pt === null ? '' : ` · ${s.chenh_pt > 0 ? '+' : ''}${dinhDangPhanTram(s.chenh_pt, 1, nn)}`;
+  // 0105: dòng nhập theo thùng — database đã trả giá lần trước là giá một thùng (cùng đơn vị với ô giá).
   const truoc = dinhDangTien(s.gia_truoc, nn);
   return { chu: { vi: `Lần trước ${truoc}${pt}`, en: `Last time ${truoc}${pt}` }[nn], vuot: s.vuot_nguong };
 }
@@ -643,8 +649,24 @@ export function dienGiaTuPhieu(p: PhieuNhap, dong: DongPhieuNhap[]): DienGiaForm
     han_thanh_toan: p.han_thanh_toan ?? '',
     tien_thue: tien(p.tien_thue),
     chi_phi_khac: tien(p.chi_phi_khac),
-    gia: Object.fromEntries(dong.map(d => [d.id, tien(d.don_gia_kg)])),
+    // 0105: dòng có quy đổi thùng nhập giá MỘT THÙNG. Chưa có giá thùng mà có giá một cái (lưu ở nơi khác) → giá
+    // một cái × số cái một thùng: lưu lại ra đúng thành tiền cũ, không bao giờ xóa giá đang có.
+    gia: Object.fromEntries(dong.map(d => [d.id, tien(d.so_trong_thung
+      ? d.don_gia_thung ?? d.don_gia_kg * d.so_trong_thung
+      : d.don_gia_kg)])),
   };
+}
+
+/** Dòng nhập theo thùng (0105): có số cái một thùng → ô giá là giá một thùng. */
+export const laDongThung = (d: { so_trong_thung?: number | null }): boolean => !!d.so_trong_thung && d.so_trong_thung >= 2;
+
+/**
+ * Thành tiền của một dòng theo đơn giá đang gõ — đúng công thức cột thanh_tien (0105): dòng thùng = số cái × giá
+ * thùng / số cái một thùng, còn lại số kg (hay số cái) × đơn giá. null = ô chưa có số.
+ */
+export function thanhTienDong(d: { so_kg: number; so_trong_thung?: number | null }, gia: number | null): number | null {
+  if (gia === null || Number.isNaN(gia)) return null;
+  return laDongThung(d) ? Math.round(d.so_kg * gia / (d.so_trong_thung as number)) : Math.round(d.so_kg * gia);
 }
 
 export interface KetQuaDocDienGia {
@@ -652,8 +674,8 @@ export interface KetQuaDocDienGia {
   loi: string[];
   /** Cùng các lỗi của loi, cùng thứ tự, bằng tiếng Anh. */
   loiEn: string[];
-  /** Gửi thẳng vào p_gia của kho_dien_gia_phieu_nhap. */
-  payload: { dong_id: string; don_gia_kg: number }[];
+  /** Gửi thẳng vào p_gia của kho_dien_gia_phieu_nhap — dòng thùng gửi don_gia_thung (0105). */
+  payload: ({ dong_id: string; don_gia_kg: number } | { dong_id: string; don_gia_thung: number })[];
 }
 
 /**
@@ -663,8 +685,10 @@ export interface KetQuaDocDienGia {
  */
 export function docFormDienGia(
   form: FormData,
-  dong: { id: string; thu_tu?: number }[],
+  dong: { id: string; thu_tu?: number; so_trong_thung?: number | null }[],
   loai: 'mua' | 'ton_dau',
+  /** Món đếm theo cái của từng dòng (0105): đơn vị, để câu lỗi nói đúng "giá một lon". */
+  donViCai: Map<string, string> = new Map(),
 ): KetQuaDocDienGia {
   const s = (ten: string) => String(form.get(ten) ?? '').trim();
   const loi: string[] = [];
@@ -678,16 +702,20 @@ export function docFormDienGia(
     chi_phi_khac: loai === 'mua' ? s('chi_phi_khac') : '',
     gia: {},
   };
-  const payload: { dong_id: string; don_gia_kg: number }[] = [];
+  const payload: KetQuaDocDienGia['payload'] = [];
   dong.forEach((d, i) => {
     const chu = s(`gia_${d.id}`);
     giaTri.gia[d.id] = chu;
     const gia = docTien(chu);
+    const dv = donViCai.get(d.id);
     if (Number.isNaN(gia)) {
-      bao({ vi: `Dòng ${i + 1}: đơn giá là số đồng mỗi kg (ví dụ 480.000)`, en: `Line ${i + 1}: the unit price is VND per kg (for example 480,000)` });
+      bao(laDongThung(d)
+        ? { vi: `Dòng ${i + 1}: giá là số đồng một thùng (ví dụ 380.000)`, en: `Line ${i + 1}: the price is VND per case (for example 380,000)` }
+        : dv ? { vi: `Dòng ${i + 1}: giá là số đồng một ${dv} (ví dụ 15.000)`, en: `Line ${i + 1}: the price is VND per ${dv} (for example 15,000)` }
+        : { vi: `Dòng ${i + 1}: đơn giá là số đồng mỗi kg (ví dụ 480.000)`, en: `Line ${i + 1}: the unit price is VND per kg (for example 480,000)` });
       return;
     }
-    payload.push({ dong_id: d.id, don_gia_kg: gia ?? 0 });
+    payload.push(laDongThung(d) ? { dong_id: d.id, don_gia_thung: gia ?? 0 } : { dong_id: d.id, don_gia_kg: gia ?? 0 });
   });
   if (giaTri.ngay_hoa_don && docNgay(giaTri.ngay_hoa_don) === undefined) bao(LOI_DAU.ngayHoaDon);
   if (giaTri.han_thanh_toan && docNgay(giaTri.han_thanh_toan) === undefined) bao(LOI_DAU.hanTra);
@@ -721,10 +749,12 @@ export async function dienGiaPhieu(
 // -----------------------------------------------------------------------------
 /**
  * Cùng công thức với kho_duyet_phieu_nhap(): tiền hàng + chi phí khác chia
- * theo kg + thuế chia theo tiền hàng (mỗi khoản khi cài đặt bật).
+ * theo kg + thuế chia theo tiền hàng (mỗi khoản khi cài đặt bật). 0105: phiếu
+ * có món đếm theo cái (`cai`: kg của nó là số cái) → chi phí khác chia theo tiền
+ * hàng như thuế. gia_von_kg của dòng đếm theo cái là giá vốn một cái.
  */
 export function xemTruocGiaVon(
-  dong: { so_kg: number; thanh_tien: number; so_kg_thuc?: number | null }[],
+  dong: { so_kg: number; thanh_tien: number; so_kg_thuc?: number | null; cai?: boolean }[],
   chiPhiKhac: number,
   tienThue: number,
   caiDat: { chi_phi_vao_gia_von: boolean; vat_vao_gia_von: boolean } | null,
@@ -732,7 +762,8 @@ export function xemTruocGiaVon(
   const kg = dong.map(d => d.so_kg);
   const hang = dong.map(d => d.thanh_tien);
   const tongHang = hang.reduce((a, b) => a + b, 0);
-  const cp = chiaSoDuLonNhat(caiDat?.chi_phi_vao_gia_von ? chiPhiKhac : 0, kg);
+  const coCai = dong.some(d => d.cai);
+  const cp = chiaSoDuLonNhat(caiDat?.chi_phi_vao_gia_von ? chiPhiKhac : 0, coCai && tongHang > 0 ? hang : kg);
   const vat = chiaSoDuLonNhat(caiDat?.vat_vao_gia_von ? tienThue : 0, tongHang > 0 ? hang : kg);
   return dong.map((d, i) => {
     const giaTri = d.thanh_tien + cp[i] + vat[i];

@@ -133,6 +133,9 @@ const t = dichNB(nn, {
   chuaDem: { vi: 'Chưa đếm', en: 'Not counted' },
   daQuetNhan: { vi: (n: number) => `Đã quét ${n} nhãn`, en: (n: number) => `${n} ${s(n, 'label', 'labels')} scanned` },
   soDv: { vi: (dv: string) => `Số ${dv}`, en: (dv: string) => `Number of ${dv}` },
+  // 0105: món đếm theo cái có quy đổi thùng
+  soThung: { vi: (n: number) => `Số thùng (1 thùng = ${n})`, en: (n: number) => `Cases (1 case = ${n})` },
+  soLe: { vi: (dv: string) => `Số ${dv} lẻ`, en: (dv: string) => `Loose ${dv}` },
   kgNeuCan: { vi: 'Kg (nếu cân)', en: 'Kg (if weighed)' },
   soKg: { vi: 'Số kg', en: 'Kg' },
   hetThat: {
@@ -515,12 +518,19 @@ const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
                   {!daDem[i] && <span class="kho-phu">{t.chuaDem}</span>}
                   {!d.lo_id && (nhanQuet.get(d.mat_hang_id) ?? 0) > 0 && <span class="kho-phu">{t.daQuetNhan(nhanQuet.get(d.mat_hang_id) ?? 0)}</span>}</p>
                 <div class="kk-o">
+                  {/* 0105: món đếm theo cái — thùng + lẻ (khi có quy đổi thùng), không ô kg. */}
+                  {mh?.dem_theo_cai && mh.so_trong_thung && (
+                    <label class="nb-o"><span>{t.soThung(mh.so_trong_thung)}</span>
+                      <input type="text" inputmode="numeric" name={`k${i}_thung`} value={d.thung ?? ''} /></label>
+                  )}
                   {mh?.dem_goi && (
-                    <label class="nb-o"><span>{t.soDv(mh.don_vi_goi)}</span>
+                    <label class="nb-o"><span>{mh.dem_theo_cai && mh.so_trong_thung ? t.soLe(mh.don_vi_goi) : t.soDv(mh.don_vi_goi)}</span>
                       <input type="text" inputmode="numeric" name={`k${i}_goi`} value={d.goi} /></label>
                   )}
-                  <label class="nb-o"><span>{mh?.dem_goi ? t.kgNeuCan : t.soKg}</span>
-                    <input type="text" inputmode="decimal" name={`k${i}_kg`} value={d.kg} /></label>
+                  {!mh?.dem_theo_cai && (
+                    <label class="nb-o"><span>{mh?.dem_goi ? t.kgNeuCan : t.soKg}</span>
+                      <input type="text" inputmode="decimal" name={`k${i}_kg`} value={d.kg} /></label>
+                  )}
                   <label class="kho-tich kk-het" title={t.hetThat(mh?.dem_goi ? mh.don_vi_goi : null)}>
                     <input type="checkbox" name={`k${i}_het`} value="co" checked={d.het} />
                     {t.daHetThat}
@@ -534,7 +544,7 @@ const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
             <details class="nb-the">
               <summary style="cursor:pointer;font-weight:600;min-height:48px;display:flex;align-items:center">{t.thayMatHang}</summary>
               <div style="margin-top:.75rem">
-                <label class="nb-o"><span>{t.matHang}</span><ChonMatHang name="them_mat_hang" matHang={matHang} /></label>
+                <label class="nb-o"><span>{t.matHang}</span><ChonMatHang name="them_mat_hang" matHang={matHang} demCai /></label>
                 <div class="kho-luoi">
                   <label class="nb-o"><span>{t.soGoi}</span><input type="text" inputmode="numeric" name="them_goi" /></label>
                   <label class="nb-o"><span>{t.soKg}</span><input type="text" inputmode="decimal" name="them_kg" /></label>
@@ -601,11 +611,11 @@ const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
                         {d.xac_nhan_het && <><br /><span class="kho-phu">{t.xacNhanHet}</span></>}</td>
                       <td class="so" style={coChenh(d) ? 'font-weight:700' : ''}>
                         {mh?.dem_goi && c.dg !== 0 ? `${c.dg > 0 ? '+' : ''}${c.dg}${dv}` : ''}{' '}
-                        {c.dk !== null && c.dk !== 0 ? <>{mh?.dem_goi && c.dg !== 0 && <br />}{c.uoc ? '≈ ' : ''}{c.dk > 0 ? '+' : ''}{dinhDangKg(c.dk, nn)} kg</> : ''}{' '}
+                        {!mh?.dem_theo_cai && c.dk !== null && c.dk !== 0 ? <>{mh?.dem_goi && c.dg !== 0 && <br />}{c.uoc ? '≈ ' : ''}{c.dk > 0 ? '+' : ''}{dinhDangKg(c.dk, nn)} kg</> : ''}{' '}
                         {!coChenh(d) && '0'}
                       </td>
-                      <td class="so">{mh?.dem_goi ? `${d.so_goi_so ?? 0}${dv} · ` : ''}{dinhDangKg(d.so_kg_so, nn)} kg</td>
-                      <td class="so">{mh?.dem_goi ? `${d.so_goi_dem ?? '—'}${dv}` : ''}{d.so_kg_dem !== null ? `${mh?.dem_goi ? ' · ' : ''}${dinhDangKg(d.so_kg_dem, nn)} kg` : ''}
+                      <td class="so">{mh?.dem_theo_cai ? `${d.so_goi_so ?? 0}${dv}` : <>{mh?.dem_goi ? `${d.so_goi_so ?? 0}${dv} · ` : ''}{dinhDangKg(d.so_kg_so, nn)} kg</>}</td>
+                      <td class="so">{mh?.dem_goi ? `${d.so_goi_dem ?? '—'}${dv}` : ''}{!mh?.dem_theo_cai && d.so_kg_dem !== null ? `${mh?.dem_goi ? ' · ' : ''}${dinhDangKg(d.so_kg_dem, nn)} kg` : ''}
                         {!d.lo_id && (nhanQuet.get(d.mat_hang_id) ?? 0) > 0 && (
                           <><br /><span class="kho-phu">{t.quetNhanGhiTay(nhanQuet.get(d.mat_hang_id) ?? 0, d.so_goi_them)}</span></>
                         )}
@@ -632,8 +642,8 @@ const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
                         <tr>
                           <td>{mh?.ten ?? '—'}</td>
                           <td>{moTaLo(l.lo_id)}</td>
-                          <td class="so">{mh?.dem_goi ? `${l.so_goi_so} · ` : ''}{dinhDangKg(l.so_kg_so, nn)} kg</td>
-                          <td class="so">{mh?.dem_goi ? `${l.so_goi_moi ?? '—'} · ` : ''}{dinhDangKg(l.so_kg_moi, nn)} kg</td>
+                          <td class="so">{mh?.dem_theo_cai ? `${l.so_goi_so} ${mh.don_vi_goi}` : <>{mh?.dem_goi ? `${l.so_goi_so} · ` : ''}{dinhDangKg(l.so_kg_so, nn)} kg</>}</td>
+                          <td class="so">{mh?.dem_theo_cai ? `${l.so_goi_moi ?? '—'} ${mh.don_vi_goi}` : <>{mh?.dem_goi ? `${l.so_goi_moi ?? '—'} · ` : ''}{dinhDangKg(l.so_kg_moi, nn)} kg</>}</td>
                         </tr>
                       );
                     })}

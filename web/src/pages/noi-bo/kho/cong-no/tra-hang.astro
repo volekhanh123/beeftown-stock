@@ -35,7 +35,8 @@ import {
 import { docTimDs } from '../../../../lib/kho/tim-ds.ts';
 import { chuTang, docLoTang } from '../../../../lib/kho/tang.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, dinhDangTien, laUuid, kqHai, trangThaiKho, type HaiThuTieng, type KetQua,
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, dinhDangTien, laDemCai, laUuid, kqHai, soCaiChu, trangThaiKho,
+  type HaiThuTieng, type KetQua,
 } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
@@ -69,6 +70,13 @@ const t = dichNB(nn, {
   },
   muaGia: { vi: (gia: string) => ` · mua ${gia}/kg`, en: (gia: string) => ` · bought at ${gia}/kg` },
   soKgTra: { vi: 'Số kg trả', en: 'Kg returned' },
+  soCaiTra: { vi: (dv: string) => `Số ${dv} trả`, en: (dv: string) => `${dv} returned` },
+  // Lô món đếm theo cái (0105): "còn 3 thùng + 5 lon (77 lon)" thay cho số kg.
+  loTaiDayCai: {
+    vi: (ma: string, viTri: string, so: string) => `lô ${ma} · ở ${viTri} còn ${so}`,
+    en: (ma: string, viTri: string, so: string) => `lot ${ma} · ${so} left at ${viTri}`,
+  },
+  muaGiaCai: { vi: (gia: string, dv: string) => ` · mua ${gia}/${dv}`, en: (gia: string, dv: string) => ` · bought at ${gia}/${dv}` },
   soGoi: { vi: (dv: string) => `Số ${dv}`, en: (dv: string) => `Number of ${dv}` },
   tienGiamTru: { vi: 'Tiền giảm trừ công nợ', en: 'Amount taken off payables' },
   deTrongTuTinh: {
@@ -146,7 +154,7 @@ const t = dichNB(nn, {
   hang: { vi: 'Hàng', en: 'Item' },
   lo: { vi: 'Lô', en: 'Lot' },
   oDau: { vi: 'Ở đâu', en: 'Where' },
-  conKg: { vi: 'Còn (kg)', en: 'Left (kg)' },
+  conKg: { vi: 'Còn', en: 'Left' },
   nhapHan: { vi: (a: string, b: string) => `nhập ${a} · hạn ${b}`, en: (a: string, b: string) => `received ${a} · use by ${b}` },
 });
 const cn = k.chiNhanh;
@@ -173,12 +181,15 @@ try {
     matHang = mh; ton = tn;
     tenNcc = ds.find(n => n.id === phieu?.nha_cung_cap_id)?.ten ?? '';
   } else {
-    const [tn, ct] = await Promise.all([
+    // Danh mục để lấy số chai / lon một thùng của món đếm theo cái (0105).
+    const [tn, ct, mh] = await Promise.all([
       docTon(k.client, cn.id),
       keToan && cheDo === 'ds' ? docTraHangChoTien(k.client, cn.id) : Promise.resolve([] as TraHangChoTien[]),
+      docMatHang(k.client),
     ]);
     ton = tn;
     choTien = ct;
+    matHang = mh;
   }
 } catch (e) {
   loiDoc = cauLoiKho(e, t.khongDoc);
@@ -188,6 +199,8 @@ if (phieu && (phieu.loai !== 'mua' || phieu.trang_thai !== 'da_duyet')) {
   return chuyenHuong(Astro, `/noi-bo/kho/nhap/${phieu.id}`, kqHai(false, CAU.chiPhieuMua));
 }
 
+/** Lô của món đếm theo cái (0105): số của nó là chai / lon, kg chỉ là bản chép của số cái. */
+const laCaiLo = (x: DongTon) => laDemCai({ loai: x.loai_hang });
 /** Lô trả được: hàng nhập mua, đang ở kho lạnh / quầy, còn kg. */
 const traDuoc = (x: DongTon) => x.nguon === 'nhap' && (x.loai_vi_tri === 'kho' || x.loai_vi_tri === 'quay') && x.so_kg > 0;
 
@@ -246,6 +259,8 @@ if (form) {
   }
 }
 const tenMh = new Map(matHang.map(m => [m.id, m]));
+/** Số cái một thùng của món trong lô (để ghi "3 thùng + 5 lon"); không có thì chỉ ghi tổng số cái. */
+const thungCua = (x: DongTon) => tenMh.get(x.mat_hang_id)?.so_trong_thung ?? null;
 const giaTri = (ten: string) => (form ? String(form.get(ten) ?? '') : '');
 // Khi trình duyệt cuộn tới ô đang gõ, chừa khoảng cao bằng thanh nút dính đáy
 // + thanh menu đáy của khung kho, để ô không bị che.
@@ -280,12 +295,26 @@ const [choKeToan] = trangThaiKho('cho_xac_nhan_tien', nn);
               {loTaiDay.map((x, i) => {
                 const d = dongTheoLo.get(x.lo_id)!;
                 const mh = tenMh.get(x.mat_hang_id);
-                return (
+                const ma = `${maLo.get(x.lo_id) ?? x.ma_lo}${tangCua(x.lo_id)}`;
+                // Món đếm theo cái (0105): chỉ ô số chai / lon, không ô kg; đơn giá là giá một cái.
+                return laCaiLo(x) ? (
+                  <div>
+                    <input type="hidden" name={`t${i}_lo`} value={x.lo_id} />
+                    <input type="hidden" name={`t${i}_cai`} value="1" />
+                    <div class="dau">
+                      <b>{mh?.ten ?? x.ten_hang}</b>
+                      <span class="kho-phu">{t.loTaiDayCai(ma, x.ten_vi_tri, soCaiChu(x.so_goi, x.don_vi_goi, mh?.so_trong_thung, nn))}{t.muaGiaCai(dinhDangTien(d.don_gia_kg, nn), x.don_vi_goi)}</span>
+                    </div>
+                    <div class="kho-luoi">
+                      <label class="nb-o"><span>{t.soCaiTra(x.don_vi_goi)}</span><input type="text" inputmode="numeric" name={`t${i}_goi`} value={giaTri(`t${i}_goi`)} style={CHUA_CHO} /></label>
+                    </div>
+                  </div>
+                ) : (
                   <div>
                     <input type="hidden" name={`t${i}_lo`} value={x.lo_id} />
                     <div class="dau">
                       <b>{mh?.ten ?? x.ten_hang}</b>
-                      <span class="kho-phu">{t.loTaiDay(`${maLo.get(x.lo_id) ?? x.ma_lo}${tangCua(x.lo_id)}`, x.ten_vi_tri, dinhDangKg(x.so_kg, nn))}{x.dem_goi ? ` · ${x.so_goi} ${x.don_vi_goi}` : ''}{t.muaGia(dinhDangTien(d.don_gia_kg, nn))}</span>
+                      <span class="kho-phu">{t.loTaiDay(ma, x.ten_vi_tri, dinhDangKg(x.so_kg, nn))}{x.dem_goi ? ` · ${x.so_goi} ${x.don_vi_goi}` : ''}{t.muaGia(dinhDangTien(d.don_gia_kg, nn))}</span>
                     </div>
                     <div class="kho-luoi">
                       <label class="nb-o"><span>{t.soKgTra}</span><input type="text" inputmode="decimal" name={`t${i}_kg`} value={giaTri(`t${i}_kg`)} style={CHUA_CHO} /></label>
@@ -322,11 +351,23 @@ const [choKeToan] = trangThaiKho('cho_xac_nhan_tien', nn);
         <input type="hidden" name="t0_lo" value={loChon.lo_id} />
         <div class="nb-the">
           <p style="margin:0 0 .25rem"><b>{loChon.ten_hang}</b></p>
-          <p class="kho-phu" style="margin:0 0 .75rem">{t.loNhapO(`${loChon.ma_lo}${tangCua(loChon.lo_id)}`, dinhDangNgay(loChon.ngay_dong_goi), loChon.ten_vi_tri)}<strong>{dinhDangKg(loChon.so_kg, nn)} kg</strong>{t.conLai}{loChon.dem_goi ? ` · ${loChon.so_goi} ${loChon.don_vi_goi}` : ''}</p>
-          <div class="kho-luoi">
-            <label class="nb-o"><span>{t.soKgTra}</span><input type="text" inputmode="decimal" name="t0_kg" value={giaTri('t0_kg')} required style={CHUA_CHO} /></label>
-            {loChon.dem_goi && <label class="nb-o"><span>{t.soGoi(loChon.don_vi_goi)}</span><input type="text" inputmode="numeric" name="t0_goi" value={giaTri('t0_goi')} style={CHUA_CHO} /></label>}
-          </div>
+          {laCaiLo(loChon) ? (
+            <>
+              <input type="hidden" name="t0_cai" value="1" />
+              <p class="kho-phu" style="margin:0 0 .75rem">{t.loNhapO(`${loChon.ma_lo}${tangCua(loChon.lo_id)}`, dinhDangNgay(loChon.ngay_dong_goi), loChon.ten_vi_tri)}<strong>{soCaiChu(loChon.so_goi, loChon.don_vi_goi, thungCua(loChon), nn)}</strong>{t.conLai}</p>
+              <div class="kho-luoi">
+                <label class="nb-o"><span>{t.soCaiTra(loChon.don_vi_goi)}</span><input type="text" inputmode="numeric" name="t0_goi" value={giaTri('t0_goi')} required style={CHUA_CHO} /></label>
+              </div>
+            </>
+          ) : (
+            <>
+              <p class="kho-phu" style="margin:0 0 .75rem">{t.loNhapO(`${loChon.ma_lo}${tangCua(loChon.lo_id)}`, dinhDangNgay(loChon.ngay_dong_goi), loChon.ten_vi_tri)}<strong>{dinhDangKg(loChon.so_kg, nn)} kg</strong>{t.conLai}{loChon.dem_goi ? ` · ${loChon.so_goi} ${loChon.don_vi_goi}` : ''}</p>
+              <div class="kho-luoi">
+                <label class="nb-o"><span>{t.soKgTra}</span><input type="text" inputmode="decimal" name="t0_kg" value={giaTri('t0_kg')} required style={CHUA_CHO} /></label>
+                {loChon.dem_goi && <label class="nb-o"><span>{t.soGoi(loChon.don_vi_goi)}</span><input type="text" inputmode="numeric" name="t0_goi" value={giaTri('t0_goi')} style={CHUA_CHO} /></label>}
+              </div>
+            </>
+          )}
           <label class="nb-o"><span>{t.lyDoTra}</span><input type="text" name="ghi_chu" value={giaTri('ghi_chu')} maxlength="500" placeholder={t.viDuLyDoTra} style={CHUA_CHO} /></label>
           <label class="nb-o"><span>{t.anhHangTra}</span><input type="file" name="anh" accept="image/*,application/pdf" multiple style={CHUA_CHO} /></label>
           <p class="kho-phu" style="margin:0">{t.roiKhoNgay}</p>
@@ -356,7 +397,7 @@ const [choKeToan] = trangThaiKho('cho_xac_nhan_tien', nn);
                 <span class="nb-nhan cho" style="text-transform:none">{choKeToan}</span>
               </div>
               <dl>
-                <dt>{t.hangTra}</dt><dd>{dinhDangKg(p.tong_kg, nn)} kg{p.tong_goi > 0 ? ` · ${p.tong_goi} ${t.goiTang(p.tong_goi)}` : ''} · {t.soLo(p.so_dong)} · {t.phieuNhap} <a href={`/noi-bo/kho/nhap/${p.phieu_nhap_id}`}>{p.so_phieu_nhap}</a></dd>
+                <dt>{t.hangTra}</dt><dd>{p.tong_kg > 0 ? `${dinhDangKg(p.tong_kg, nn)} kg · ` : ''}{p.tong_goi > 0 ? `${p.tong_goi} ${t.goiTang(p.tong_goi)} · ` : ''}{t.soLo(p.so_dong)} · {t.phieuNhap} <a href={`/noi-bo/kho/nhap/${p.phieu_nhap_id}`}>{p.so_phieu_nhap}</a></dd>
                 <dt>{t.nguoiGhi}</dt><dd>{p.nguoi_ghi ?? '—'} · {dinhDangThoiDiem(p.created_at)}</dd>
                 {p.ghi_chu && <><dt>{t.lyDo}</dt><dd>{p.ghi_chu}</dd></>}
                 <dt>{t.tuTinh}</dt><dd><strong>{dinhDangTien(p.so_tien_goi_y, nn)}</strong> <span class="kho-phu">{t.tuTinhGiai}</span></dd>
@@ -409,7 +450,9 @@ const [choKeToan] = trangThaiKho('cho_xac_nhan_tien', nn);
                       <td><strong>{x.ten_hang}</strong><br /><span class="kho-phu">{x.ma_hang}</span></td>
                       <td>{x.ma_lo}{tangCua(x.lo_id)}<br /><span class="kho-phu">{t.nhapHan(dinhDangNgay(x.ngay_dong_goi), dinhDangNgay(x.han_dung))}</span></td>
                       <td>{x.ten_vi_tri}</td>
-                      <td class="so"><b>{dinhDangKg(x.so_kg, nn)}</b>{x.dem_goi ? <><br /><span class="kho-phu">{x.so_goi} {x.don_vi_goi}</span></> : null}</td>
+                      <td class="so">{laCaiLo(x)
+                        ? <b>{soCaiChu(x.so_goi, x.don_vi_goi, thungCua(x), nn)}</b>
+                        : <><b>{dinhDangKg(x.so_kg, nn)} kg</b>{x.dem_goi ? <><br /><span class="kho-phu">{x.so_goi} {x.don_vi_goi}</span></> : null}</>}</td>
                       <td><a class="nb-nut phu" style="white-space:nowrap" href={`${DUONG}?lo=${x.lo_id}&vi_tri=${x.vi_tri_id}`}>{t.traLoNay}</a></td>
                     </tr>
                   ))}

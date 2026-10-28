@@ -53,6 +53,10 @@ export interface MatHang {
   ma_misa?: string | null;
   /** Theo dõi theo tảng (0048): mỗi tảng nhận vào là một lô có ngày mổ, số tảng. Chỉ món loại tảng. */
   theo_tang?: boolean;
+  /** Món đếm theo cái (0105, cột sinh từ loai): sốt, gia vị, đồ khô, đồ uống — so_kg luôn bằng so_goi. */
+  dem_theo_cai?: boolean;
+  /** Số cái trong một thùng (0105, chỉ món đếm theo cái); null = không nhập theo thùng. */
+  so_trong_thung?: number | null;
   truong_them: GiaTriTruong;
   dang_dung: boolean;
   thu_tu: number;
@@ -128,22 +132,35 @@ export interface CongThuc {
 // Ô RIÊNG CỦA TỪNG LOẠI MẶT HÀNG
 // -----------------------------------------------------------------------------
 // Form mặt hàng hỏi loại trước, rồi chỉ hiện ô của loại đó (FormMatHang.astro, CSS :has()).
-// Ô chung (tên, nhóm, hạn dùng) và mục gập "Thông tin thêm" không nằm trong bảng này.
+// Ô chung (tên, nhóm) và các ô khác của mục gập "Thông tin thêm" không nằm trong bảng này.
 // Ô của loại khác vẫn ở trong form (ẩn) và vẫn được gửi — kể cả số người dùng gõ rồi mới
 // đổi loại — nên luuMatHang BỎ QUA chúng: giữ giá trị cũ khi sửa, mặc định khi thêm mới.
-export const LOAI_MAT_HANG = ['tang', 'phan_cat', 'phu_pham'] as const;
+// 0105: thêm hai loại đếm theo cái — Sốt, gia vị, đồ khô (gia_vi) và Đồ uống (do_uong).
+export const LOAI_MAT_HANG = ['tang', 'phan_cat', 'phu_pham', 'gia_vi', 'do_uong'] as const;
 export type LoaiMatHang = typeof LOAI_MAT_HANG[number];
+/** Loại đếm theo cái (0105) — cột sinh kho_mat_hang.dem_theo_cai. */
+export const LOAI_DEM_CAI: readonly LoaiMatHang[] = ['gia_vi', 'do_uong'];
+export const laLoaiDemCai = (loai: string): boolean => (LOAI_DEM_CAI as readonly string[]).includes(loai);
 
 export type ORiengLoai =
+  | 'han_dung_ngay' | 'dem_goi' | 'don_vi_goi'
   | 'theo_tang' | 'bang_u' | 'muc_kho'
   | 'gia_ban_kg' | 'ma_can' | 'ton_toi_thieu_kg' | 'noi_de_sau_pha' | 'o_ma'
-  | 'gia_tri_thu_hoi_kg' | 'xu_ly_mac_dinh';
+  | 'gia_tri_thu_hoi_kg' | 'xu_ly_mac_dinh'
+  | 'don_vi_cai' | 'so_trong_thung';
 
-/** Ô riêng của từng loại. 'muc_kho' = hai ô kho lạnh tối thiểu / tối đa (gợi ý đặt hàng). */
+/**
+ * Ô riêng của từng loại. 'muc_kho' = hai ô kho lạnh tối thiểu / tối đa (gợi ý đặt hàng). Thịt: hạn dùng (số
+ * ngày kể từ ngày nhập), cách đếm và tên đơn vị (mục "Thông tin thêm"). Món đếm theo cái (0105): đơn vị (ô
+ * don_vi_cai, bắt buộc, lưu vào don_vi_goi) và số cái một thùng — không hạn dùng theo ngày (ghi ngày in trên
+ * sản phẩm lúc nhận hàng), luôn đếm. Mức tối thiểu / tối đa và mã món iPOS của đồ uống: đợt 2.
+ */
 export const O_THEO_LOAI: Record<LoaiMatHang, readonly ORiengLoai[]> = {
-  tang:     ['theo_tang', 'bang_u', 'muc_kho'],
-  phan_cat: ['gia_ban_kg', 'ma_can', 'ton_toi_thieu_kg', 'muc_kho', 'noi_de_sau_pha', 'o_ma'],
-  phu_pham: ['gia_tri_thu_hoi_kg', 'xu_ly_mac_dinh'],
+  tang:     ['han_dung_ngay', 'dem_goi', 'don_vi_goi', 'theo_tang', 'bang_u', 'muc_kho'],
+  phan_cat: ['han_dung_ngay', 'dem_goi', 'don_vi_goi', 'gia_ban_kg', 'ma_can', 'ton_toi_thieu_kg', 'muc_kho', 'noi_de_sau_pha', 'o_ma'],
+  phu_pham: ['han_dung_ngay', 'dem_goi', 'don_vi_goi', 'gia_tri_thu_hoi_kg', 'xu_ly_mac_dinh'],
+  gia_vi:   ['don_vi_cai', 'so_trong_thung'],
+  do_uong:  ['don_vi_cai', 'so_trong_thung'],
 };
 
 export const laLoaiMatHang = (x: string): x is LoaiMatHang => (LOAI_MAT_HANG as readonly string[]).includes(x);
@@ -159,6 +176,7 @@ export const loaiCoO = (o: ORiengLoai): string => LOAI_MAT_HANG.filter(l => O_TH
  * Dùng khi thêm mặt hàng mà ô "Đếm theo" để "Theo loại" và khi dán Excel.
  */
 export function demMacDinh(loai: string): { dem_goi: boolean; don_vi_goi: string } {
+  if (laLoaiDemCai(loai)) return { dem_goi: true, don_vi_goi: 'cái' };   // 0105: form bắt buộc ghi đơn vị
   if (loai === 'tang') return { dem_goi: true, don_vi_goi: 'tảng' };
   if (loai === 'phu_pham') return { dem_goi: false, don_vi_goi: 'khay' };
   return { dem_goi: true, don_vi_goi: 'gói' };
@@ -172,6 +190,8 @@ export interface GiaTriFormMatHang {
   /** null = "Theo loại" (chỉ form thêm mới): luuMatHang dùng demMacDinh(loai). */
   dem_goi: boolean | null;
   don_vi_goi: string; han_dung_ngay: string; canh_bao_truoc_ngay: string;
+  /** Món đếm theo cái (0105): đơn vị (chai, lon, hộp…) và số cái trong một thùng ('' = không quy đổi). */
+  don_vi_cai: string; so_trong_thung: string;
   gia_ban_kg: string; xu_ly_mac_dinh: string; ma_can: string; ton_toi_thieu_kg: string;
   /** '' = kho lạnh (mặc định), 'quay' = quầy. */
   noi_de_sau_pha: string;
@@ -279,7 +299,7 @@ export async function luuDinhNghia(client: SupabaseClient, form: FormData, daCo:
 export async function docMatHang(client: SupabaseClient): Promise<MatHang[]> {
   const { data, error } = await client
     .from('kho_mat_hang')
-    .select('id, ma, ten, ten_phu, nhom, loai, dem_goi, don_vi_goi, han_dung_ngay, canh_bao_truoc_ngay, gia_ban_kg, xu_ly_mac_dinh, ma_can, ton_toi_thieu_kg, noi_de_sau_pha, kho_toi_thieu_kg, kho_toi_da_kg, ma_misa, theo_tang, truong_them, dang_dung, thu_tu')
+    .select('id, ma, ten, ten_phu, nhom, loai, dem_goi, don_vi_goi, han_dung_ngay, canh_bao_truoc_ngay, gia_ban_kg, xu_ly_mac_dinh, ma_can, ton_toi_thieu_kg, noi_de_sau_pha, kho_toi_thieu_kg, kho_toi_da_kg, ma_misa, theo_tang, dem_theo_cai, so_trong_thung, truong_them, dang_dung, thu_tu')
     .order('loai').order('thu_tu').order('ten');
   if (error) throw error;
   return (data ?? []).map(r => ({
@@ -330,8 +350,24 @@ export async function luuMatHang(
   ghiBo('noi_de_sau_pha', cu?.noi_de_sau_pha === 'quay', { vi: 'sau pha để ở quầy', en: 'after butchery to the counter' });
   ghiBo('xu_ly_mac_dinh', !!cu && cu.xu_ly_mac_dinh !== 'nhap_kho', { vi: 'xử lý sau pha', en: 'default butchery handling' });
   ghiBo('theo_tang', !!cu?.theo_tang, { vi: 'theo dõi theo tảng', en: 'per-primal tracking' });
+  ghiBo('han_dung_ngay', cu?.han_dung_ngay != null, { vi: 'hạn dùng (ngày)', en: 'use-by (days)' });
 
-  const han = docSoNguyen(form.get('han_dung_ngay'), 1, 3650);
+  // Món đếm theo cái (0105): đơn vị bắt buộc (lưu vào don_vi_goi), số cái một thùng 2–10000 hoặc trống; luôn đếm.
+  const demCai = laLoaiDemCai(loai);
+  const donViCai = s(form, 'don_vi_cai');
+  if (demCai && !donViCai) {
+    return kqHai(false, { vi: 'Nhập đơn vị: chai, lon, hộp, gói…', en: 'Enter the unit: bottle, can, jar, pack…' });
+  }
+  if (donViCai.length > 20) {
+    return kqHai(false, { vi: 'Đơn vị tối đa 20 ký tự.', en: 'The unit can be at most 20 characters.' });
+  }
+  const soTrongThung = coO('so_trong_thung') ? docSoNguyen(form.get('so_trong_thung'), 2, 10000) : null;
+  if (Number.isNaN(soTrongThung)) {
+    return kqHai(false, { vi: 'Số cái trong một thùng là số nguyên từ 2 đến 10.000 (bỏ trống nếu không nhập theo thùng).',
+                          en: 'The number per case must be a whole number from 2 to 10,000 (leave it empty if not bought by the case).' });
+  }
+
+  const han = coO('han_dung_ngay') ? docSoNguyen(form.get('han_dung_ngay'), 1, 3650) : oCu(cu?.han_dung_ngay);
   const canhBao = docSoNguyen(form.get('canh_bao_truoc_ngay'), 0, 365);
   const gia = coO('gia_ban_kg') ? docTien(form.get('gia_ban_kg')) : oCu(cu?.gia_ban_kg);
   const tonMin = coO('ton_toi_thieu_kg') ? docKg(form.get('ton_toi_thieu_kg')) : oCu(cu?.ton_toi_thieu_kg);
@@ -406,9 +442,12 @@ export async function luuMatHang(
     nhom: sHoacNull(form, 'nhom'),
     // "Đếm theo" để "Theo loại" (ô trống) và đơn vị trống: theo loại đang chọn — tảng → tảng, phần cắt → gói,
     // phụ phẩm → chỉ kg, khay. Form sửa để "Theo loại" khi món đang đếm đúng mặc định loại của nó, nên đổi
-    // loại thì cách đếm đổi theo; món đã chọn cách đếm riêng thì giữ.
-    dem_goi: s(form, 'dem_goi') === 'khong' ? false : s(form, 'dem_goi') === 'co' ? true : demMacDinh(loai).dem_goi,
-    don_vi_goi: s(form, 'don_vi_goi') || demMacDinh(loai).don_vi_goi,
+    // loại thì cách đếm đổi theo; món đã chọn cách đếm riêng thì giữ. Món đếm theo cái (0105): luôn đếm, đơn
+    // vị là ô "Đơn vị" của nó (ràng buộc kho_mat_hang_dem_cai_hop_le).
+    dem_goi: demCai ? true
+      : s(form, 'dem_goi') === 'khong' ? false : s(form, 'dem_goi') === 'co' ? true : demMacDinh(loai).dem_goi,
+    don_vi_goi: demCai ? donViCai : s(form, 'don_vi_goi') || demMacDinh(loai).don_vi_goi,
+    so_trong_thung: soTrongThung,
     han_dung_ngay: han,
     canh_bao_truoc_ngay: canhBao,
     gia_ban_kg: gia,
@@ -586,6 +625,9 @@ const LOAI_DAN: Record<string, MatHang['loai']> = {
   'phan cat': 'phan_cat', 'cat': 'phan_cat',
   'phu pham': 'phu_pham',
   'primal': 'tang', 'cut': 'phan_cat', 'by product': 'phu_pham', 'byproduct': 'phu_pham',
+  // 0105: nhận ra chữ để báo đúng (món mới loại này thêm ở form — cần đơn vị, quy đổi thùng).
+  'sot': 'gia_vi', 'gia vi': 'gia_vi', 'sot gia vi': 'gia_vi', 'do kho': 'gia_vi', 'sauce': 'gia_vi', 'spice': 'gia_vi',
+  'do uong': 'do_uong', 'drink': 'do_uong', 'drinks': 'do_uong',
 };
 
 // Tiêu đề cột → cột. So sau khi bỏ dấu, bỏ ký tự lạ và bỏ đơn vị ở cuối
@@ -824,6 +866,17 @@ export function xemTruocDanMatHang(daCo: MatHangDaCo[], noiDung: string): XemTru
       if (d.ton_toi_thieu_kg !== undefined) sau.ton_toi_thieu_kg = d.ton_toi_thieu_kg;
       // Ghi "kho lạnh" cho món đang để trống (= kho lạnh) thì không tính là đổi.
       if (d.noi_de_sau_pha !== undefined && d.noi_de_sau_pha !== (truoc.noi_de_sau_pha ?? 'kho')) sau.noi_de_sau_pha = d.noi_de_sau_pha;
+      // 0105: cân ký ↔ đếm theo cái chỉ đổi ở form (cần đơn vị, cách đếm); món đếm theo cái không có mã cân.
+      if (laLoaiDemCai(sau.loai) !== laLoaiDemCai(truoc.loai)) {
+        bao({ vi: `Dòng ${d.so}: "${cu.ten}" — đổi giữa hàng cân ký và hàng đếm theo cái (sốt, gia vị, đồ uống) làm ở nút Sửa của món`,
+              en: `Row ${d.so}: "${cu.ten}" — switching between weighed goods and goods counted by the piece (sauces, spices, drinks) is done with the item's Edit button` });
+        continue;
+      }
+      if (laLoaiDemCai(sau.loai) && sau.ma_can) {
+        bao({ vi: `Dòng ${d.so}: "${cu.ten}" đếm theo cái — không có mã cân`,
+              en: `Row ${d.so}: "${cu.ten}" is counted by the piece — it has no scale code` });
+        continue;
+      }
       const cotDoi = COT_DAN.filter(c => c !== 'ma' && sau[c] !== truoc[c]);
       if (cotDoi.length) {
         kq.sua.push({ id: cu.id, ma: cu.ma, ten: cu.ten, dang_dung: cu.dang_dung, truoc, sau, cot_doi: cotDoi });
@@ -832,6 +885,11 @@ export function xemTruocDanMatHang(daCo: MatHangDaCo[], noiDung: string): XemTru
     }
 
     // Mặt hàng mới.
+    if (d.loai !== undefined && laLoaiDemCai(d.loai)) {
+      bao({ vi: `Dòng ${d.so}: sốt, gia vị, đồ uống thêm từng món ở "+ Thêm một mặt hàng" (cần đơn vị và số cái một thùng)`,
+            en: `Row ${d.so}: add sauces, spices and drinks one by one with "+ Add an item" (they need a unit and a number per case)` });
+      continue;
+    }
     if (d.ten === undefined) {
       bao({ vi: `Dòng ${d.so}: mã ${d.ma} chưa có trong danh mục — mặt hàng mới cần có Tên`,
             en: `Row ${d.so}: code ${d.ma} is not in the catalog — a new item needs a Name` });

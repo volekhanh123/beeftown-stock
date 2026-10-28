@@ -39,7 +39,7 @@ import { docMatHang, type MatHang } from '../../../lib/kho/danh-muc.ts';
 import { linkTheKho } from '../../../lib/kho/the-kho.ts';
 import { chuTang, docLoTang } from '../../../lib/kho/tang.ts';
 import {
-  cauLoiKho, chuTinhTrangHan, dinhDangKg, dinhDangNgay, dinhDangNgayNgan, dinhDangTien, nhanKho,
+  cauLoiKho, chuTinhTrangHan, dinhDangKg, dinhDangNgay, dinhDangNgayNgan, dinhDangTien, laDemCai, nhanKho, soCaiChu,
   TEN_LOAI_MAT_HANG_NB, TEN_LOAI_VI_TRI_NB,
 } from '../../../lib/kho/chung.ts';
 import { dichNB } from '../../../lib/ngon-ngu-noi-bo.ts';
@@ -133,8 +133,8 @@ if (k.chiNhanh) {
     [ton, gia, matHang] = await Promise.all([
       docTon(k.client, k.chiNhanh.id),
       xemGia ? docGiaTon(k.client, k.chiNhanh.id) : Promise.resolve(new Map()),
-      // Mức tối thiểu ở quầy nằm trong danh mục — chỉ đọc khi cần lọc "dưới mức".
-      duoiMuc ? docMatHang(k.client) : Promise.resolve([] as MatHang[]),
+      // Danh mục: mức tối thiểu ở quầy (lọc "dưới mức") và số cái một thùng của món đếm theo cái (0105).
+      docMatHang(k.client),
     ]);
   } catch (e) {
     loiDoc = cauLoiKho(e, ch.khongDoc);
@@ -158,7 +158,11 @@ const tangChu = (t: DongTon) => chuTang(soTangLo.get(t.lo_id)?.so_tang, nn);
 const giaCua = (t: DongTon) => gia.get(`${t.lo_id}|${t.vi_tri_id}`);
 const coGia = xemGia && gia.size > 0;
 const tongGiaTri = coGia ? loc.reduce((s, t) => s + (giaCua(t)?.gia_tri ?? 0), 0) : 0;
-const tongKg = Math.round(loc.reduce((s, t) => s + t.so_kg * 1000, 0)) / 1000;
+// 0105: món đếm theo cái (sốt, gia vị, đồ uống) — kg của nó là số cái: không cộng vào tổng kg, hiện số cái.
+const laCai = (loai: string) => laDemCai({ loai });
+const tongKg = Math.round(loc.filter(t => !laCai(t.loai_hang)).reduce((s, t) => s + t.so_kg * 1000, 0)) / 1000;
+const coThit = loc.some(t => !laCai(t.loai_hang));
+const thungCua = new Map(matHang.map(m => [m.id, m.so_trong_thung ?? null]));
 
 // Tóm tắt đang lọc gì — một dòng, hiện ngay trên nút "Lọc".
 const TEN_HAN: Record<string, string> = { het_han: ch.daHetHan, sap_het: ch.sapHetHan };
@@ -177,7 +181,8 @@ const HANG_LOC: { ten: string; khoa: 'vi_tri' | 'han' | 'loai' | 'duoi_muc'; dan
   { ten: ch.hanDung, khoa: 'han', dangChon: han,
     chon: [['', ch.moiHan], ['sap_het', ch.sapHetHan], ['het_han', ch.daHetHan]] },
   { ten: ch.loaiHang, khoa: 'loai', dangChon: loai,
-    chon: [['', ch.moiLoai], ['tang', ch.tang], ['phan_cat', ch.phanCat], ['phu_pham', ch.phuPham]] },
+    chon: [['', ch.moiLoai], ['tang', ch.tang], ['phan_cat', ch.phanCat], ['phu_pham', ch.phuPham],
+      ['gia_vi', nhanKho(TEN_LOAI_MAT_HANG_NB, 'gia_vi', nn)], ['do_uong', nhanKho(TEN_LOAI_MAT_HANG_NB, 'do_uong', nn)]] },
   { ten: ch.monOQuay, khoa: 'duoi_muc', dangChon: duoiMuc ? '1' : '',
     chon: [['', ch.moiMon], ['1', ch.duoiMucToiThieu]] },
 ];
@@ -229,7 +234,7 @@ const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as con
   </details>
 
   <p class="nb-dan ton-tong">
-    <strong>{loc.length}</strong> {ch.lo(loc.length)} · <strong>{nhom.length}</strong> {ch.matHang(nhom.length)} · <strong>{dinhDangKg(tongKg, nn)} kg</strong>
+    <strong>{loc.length}</strong> {ch.lo(loc.length)} · <strong>{nhom.length}</strong> {ch.matHang(nhom.length)}{coThit && <> · <strong>{dinhDangKg(tongKg, nn)} kg</strong></>}
     {coGia && <> · {ch.giaTri} <strong>{dinhDangTien(tongGiaTri, nn)}</strong></>}
     {tim && <>{' '}· {ch.timChu} “{tim}”</>}
     {coLoc && <>{' '}· <a href="/noi-bo/kho/ton">{ch.boLoc}</a></>}
@@ -280,8 +285,9 @@ const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as con
           <small>{ch.soLo(g.so_lo)}</small>
         </span>
         <span class="so">
+          {laCai(g.loai_hang) ? <b class="kho-so">{soCaiChu(g.so_goi, g.don_vi_goi, thungCua.get(g.mat_hang_id), nn)}</b> : <>
           <b class="kho-so">{dinhDangKg(g.so_kg, nn)} kg</b>
-          {g.dem_goi && <span class="kho-so"> · {g.so_goi} {g.don_vi_goi}</span>}
+          {g.dem_goi && <span class="kho-so"> · {g.so_goi} {g.don_vi_goi}</span>}</>}
           <br /><span class={`kho-han ${g.tinh_trang_xau_nhat}`} title={`${ch.hanSomNhat} ${dinhDangNgay(g.han_som_nhat)}`}>{chuTinhTrangHan(g.tinh_trang_xau_nhat, nn)}{' · '}{dinhDangNgayNgan(g.han_som_nhat)}</span>
         </span>
       </summary>
@@ -293,7 +299,7 @@ const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as con
         </p>
         <table class="kho-bang ton-lo">
           <thead><tr>
-            <th>{ch.cotHan}</th><th>{ch.oDau}</th><th class="so">Kg</th>{g.dem_goi && <th class="so">{g.don_vi_goi}</th>}
+            <th>{ch.cotHan}</th><th>{ch.oDau}</th>{!laCai(g.loai_hang) && <th class="so">Kg</th>}{g.dem_goi && <th class="so">{g.don_vi_goi}</th>}
             <th>{ch.cotLo}</th>
             {vanHanh && <th><span class="kho-an">{ch.lamGi}</span></th>}
           </tr></thead>
@@ -307,7 +313,7 @@ const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as con
                     <span class="kho-phu">{conNgay(t)}</span>
                   </td>
                   <td class="o-noi" data-nhan={ch.oDau}>{t.ten_vi_tri}</td>
-                  <td class="so o-kg" data-nhan="Kg"><b>{dinhDangKg(t.so_kg, nn)}</b></td>
+                  {!laCai(g.loai_hang) && <td class="so o-kg" data-nhan="Kg"><b>{dinhDangKg(t.so_kg, nn)}</b></td>}
                   {g.dem_goi && <td class="so o-goi" data-nhan={g.don_vi_goi}><b>{t.so_goi}</b></td>}
                   <td class="o-lo" data-nhan={ch.cotLo}>{t.ma_lo}{tangChu(t) && <>{' · '}<strong>{tangChu(t)}</strong></>}
                     {linkTraNcc(t) && <>{' '}<a class="kho-phu" href={linkTraNcc(t)!} aria-label={ch.traNccLo(t.ma_lo)}>{ch.traNcc}</a></>}</td>

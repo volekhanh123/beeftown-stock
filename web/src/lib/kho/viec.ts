@@ -263,13 +263,13 @@ export function cauSuKien(su: SuKien, nn: NgonNguNB = 'vi'): CauSuKien {
     }
     // ---- 0040 · Trả hàng hai bước; NCC đổi số tài khoản ngân hàng ------------
     case 'tra_hang_cho_tien': {
-      // Kế toán: ma = số phiếu trả hàng (XT-), ten = tên NCC, so = tổng kg trả.
+      // Kế toán: ma = số phiếu trả hàng (XT-), ten = tên NCC, so = tổng kg trả (null khi chỉ có chai / lon — 0105).
       const phan = [e.ten, kg(e.so)].filter(Boolean).join(' — ');
       return { tieuDe: e.ma ? c({ vi: `Trả hàng ${e.ma} chờ xác nhận tiền`, en: `Return ${e.ma} needs the amount confirmed` })
                             : c({ vi: 'Trả hàng chờ xác nhận tiền', en: 'A return needs the amount confirmed' }),
                chiTiet: (phan ? `${phan}. ` : '')
-                 + c({ vi: 'Thủ kho đã ghi số kg trả — ghi số tiền nhà cung cấp trừ vào công nợ.',
-                       en: 'The storekeeper recorded the kg returned — enter the amount the supplier deducts from what we owe.' }),
+                 + c({ vi: 'Thủ kho đã ghi hàng trả — ghi số tiền nhà cung cấp trừ vào công nợ.',
+                       en: 'The storekeeper recorded the returned goods — enter the amount the supplier deducts from what we owe.' }),
                link: '/noi-bo/kho/cong-no/tra-hang#cho-tien', nut: c({ vi: 'Xác nhận tiền', en: 'Confirm amount' }), muc: 'vang' };
     }
     case 'ncc_doi_tai_khoan': {

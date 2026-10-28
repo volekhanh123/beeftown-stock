@@ -1308,6 +1308,44 @@ bằng vai anon, hàm chỉ trả `het` / `sap_het` / `con` của từng phần 
   trừ kho theo iPOS và quầy ghi hàng ra vào đúng lúc: kho ghi thiếu thì khách thấy "tạm hết" khi quầy còn hàng. Tắt hay hỏng bất kỳ
   cách nào thì không gói nào bị ghi tạm hết. Kiểm thử: `crm/test/test-mua-thit-ve.mjs`.
 
+## 3s. Sốt, gia vị, đồ uống: món đếm theo cái (migration 0105, đợt 1)
+
+Hai loại mặt hàng mới — `gia_vi` "Sốt, gia vị, đồ khô" và `do_uong` "Đồ uống" — đếm theo chai, lon, hộp, gói, không cân.
+Khánh chốt 27–28/10/2026: nhập và kiểm kê theo thùng (1 thùng = N cái, ghi ở món), sốt ra khỏi kho bằng phiếu Xuất bếp (chai /
+hộp nguyên), đồ uống một chỗ để, không mang ra quầy; hạn dùng là ngày in trên sản phẩm, ghi lúc nhận; thành tiền phiếu nhập khớp
+hóa đơn từng đồng.
+
+- **Cách lưu:** đi đường "đếm gói" sẵn có — `dem_goi = true`, `don_vi_goi` = tên đơn vị, `so_goi` = số cái — và **`so_kg` luôn
+  bằng `so_goi`** (trigger `kho_so_cai_dem_cai_kiem` chặn ở sổ kho). Cột sinh `kho_mat_hang.dem_theo_cai` đánh dấu món; web dùng
+  `laDemCai(m)` (`lib/kho/chung.ts`, có cột thì theo cột, không thì theo loại). Món đã có phiếu / sổ không đổi được giữa hàng cân
+  ký và hàng đếm theo cái (trigger `kho_mat_hang_doi_kieu_dem_kiem`).
+- **Thùng:** `kho_mat_hang.so_trong_thung` (2–10000, trống = không nhập theo thùng). Nhận hàng và kiểm kê có ô **Số thùng** +
+  ô số lẻ; web cộng ra số cái (`docDongDemCai` của `lib/kho/nhan-hang.ts`, `payloadTuDong` của `lib/kho/kiem-ke.ts`). Chữ hiện:
+  `soCaiChu` → "2 thùng + 5 lon (53 lon)".
+- **Giá thùng:** dòng phiếu nhập chép `so_trong_thung` lúc ghi và có `don_gia_thung`; `thanh_tien` = `round(so_kg × don_gia_thung
+  ÷ so_trong_thung)` (SET EXPRESSION, Postgres 17) — 53 lon × 380.000 / 24 = 839.167 đ, đúng hóa đơn. `don_gia_kg` giữ giá một cái
+  làm tròn, chỉ để xem / so giá. Vai không xem giá không gửi được `don_gia_thung` (như `don_gia_kg`). Phiếu có món đếm theo cái chia
+  chi phí khác theo tiền hàng (`xemTruocGiaVon` của `lib/kho/nhap.ts` cùng cách). Phiếu có dòng đếm theo cái không mở lưới soạn —
+  sửa dòng ở màn Nhận hàng.
+- **Màn ẩn / hiện ô:** `ChonMatHang` chỉ liệt kê sốt / đồ uống khi bật `demCai` (nhận hàng, xuất — trừ phiếu mang ra quầy — kiểm
+  kê); lựa chọn mang `data-cai` / `data-thung`, CSS `:has()` giấu ô kg, hiện ô thùng. Pha lóc, công thức, quầy, đặt hàng chưa có
+  sốt / đồ uống (đợt 2 làm đặt hàng).
+- **Số kg trên báo cáo:** mọi chỗ cộng kg nhiều món (báo cáo tháng, mua hàng, đánh giá NCC, chỉ số quản trị, danh sách phiếu, trả
+  hàng chờ tiền, việc của kế toán) chỉ cộng hàng cân ký; tiền cộng mọi món. Xuất – nhập – tồn có cột **ĐVT**, dòng tổng kg bỏ dòng
+  đếm theo cái (`DinhNghiaBaoCao.boCong`); hủy / xuất bếp và mua hàng theo mặt hàng ghi số cái ở cột "Gói / cái", tên kèm đơn vị.
+  "Chi phí thịt" đổi tên thành **Chi phí nguyên liệu** (khóa `chi_phi_thit` giữ nguyên). MISA: dòng nhập theo giá thùng mà số cái
+  chẵn thùng ghi **"thùng"**, số thùng × giá thùng (khớp thành tiền); còn lại ĐVT là tên đơn vị, số lượng là số cái, đơn giá là giá
+  một cái làm tròn — **dòng có lon lẻ thì số lượng × đơn giá có thể lệch thành tiền vài đồng**; kế toán giữ thành tiền khi nhập MISA.
+- **So giá lần trước** (`kho_so_sanh_gia_nhap`): dòng nhập theo thùng so giá THÙNG — chip "Lần trước 380.000 đ" là giá thùng đã
+  điền lần trước (cùng cỡ thùng), không phải giá một lon × 24.
+- **Đổi loại:** món đã dùng trong phiếu, sổ kho, kiểm kê, định lượng món, mã iPOS, công thức / phiên pha, đơn đặt, yêu cầu quầy thì
+  không đổi được giữa hàng cân ký và hàng đếm theo cái. Ghép món iPOS và định lượng món chưa có sốt / đồ uống (đợt 2).
+- **Tồn đầu kỳ:** bảng món có nhóm Sốt, gia vị và Đồ uống — chỉ ô số cái, hạn ghi theo ngày in; `kho_luu_ton_dau_ky` bỏ kg gửi lên,
+  kg = số cái.
+- **Chưa làm (đợt 2):** đồ uống bán trên iPOS tự trừ kho theo mã món, gợi ý đặt hàng theo cái, mức tối thiểu / tối đa. Kim chi
+  (bếp tự làm) để PR riêng.
+- Kiểm thử: `crm/test/test-kho-dem-cai.mjs` (database, web, mã nguồn; kết thúc bằng `kho_doi_soat_ton()` rỗng).
+
 ## 4. Cài như app (PWA)
 
 `public/kho/manifest.json`: mở `/noi-bo/kho?nguon=app`, trong phạm vi `/noi-bo/`, chạy như app riêng

@@ -146,7 +146,7 @@ const moTa = (p: PhieuXuatTom) =>
               <span class={`nb-nhan ${lop}`}>{nhan}</span>
             </div>
             <p class="nb-dong-tom">
-              {moTa(p)} · {t.soDong(p.so_dong)} · {p.tong_goi ? `${t.soGoi(p.tong_goi, donVi.get(p.id))} · ` : ''}{dinhDangKg(p.tong_kg, nn)} kg
+              {moTa(p)} · {t.soDong(p.so_dong)} · {p.tong_goi ? `${t.soGoi(p.tong_goi, donVi.get(p.id))}${p.tong_kg > 0 ? ' · ' : ''}` : ''}{p.tong_kg > 0 && <>{dinhDangKg(p.tong_kg, nn)} kg</>}
               {p.ten_ly_do && <> · {p.ten_ly_do}</>}
             </p>
           </a>

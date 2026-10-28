@@ -9,7 +9,11 @@
  */
 interface Props {
   name: string;
-  ds: { value: string; nhan: string; phu?: string | null }[];
+  /**
+   * cai / thung (0105): món đếm theo cái và số cái một thùng — thành data-cai / data-thung trên ô radio, để CSS
+   * :has() của form hiện đúng ô (thùng + lẻ thay ô kg). Không dùng cho gì khác.
+   */
+  ds: { value: string; nhan: string; phu?: string | null; cai?: boolean; thung?: number | null }[];
   chon?: string;
   /** Nhãn đọc cho người dùng trình đọc màn hình. */
   nhan: string;
@@ -22,7 +26,8 @@ const { name, ds, chon = '', nhan, batBuoc = false } = Astro.props;
   <div class="nh-chon" role="radiogroup" aria-label={nhan}>
     {ds.map(o => (
       <label class="nh-chon-o">
-        <input type="radio" name={name} value={o.value} checked={o.value === chon} required={batBuoc} />
+        <input type="radio" name={name} value={o.value} checked={o.value === chon} required={batBuoc}
+               data-cai={o.cai ? '' : undefined} data-thung={o.cai && o.thung ? String(o.thung) : undefined} />
         <span class="nh-chon-chu">
           <strong>{o.nhan}</strong>
           {o.phu && <small>{o.phu}</small>}

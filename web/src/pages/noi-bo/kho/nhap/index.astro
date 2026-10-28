@@ -115,7 +115,7 @@ const noiChinh = phoBienNhat(ds.map(p => p.ten_vi_tri));
               <span class={`nb-nhan ${lop}`}>{nhan}</span>
             </div>
             <p class="nb-dong-tom">
-              {dinhDangNgay(p.ngay_nhap)} · {t.soDong(p.so_dong)} · {dinhDangKg(p.tong_kg, nn)} kg · <strong class="kho-so">{dinhDangTien(p.tong_tien, nn)}</strong>
+              {dinhDangNgay(p.ngay_nhap)} · {t.soDong(p.so_dong)}{p.tong_kg > 0 && <> · {dinhDangKg(p.tong_kg, nn)} kg</>} · <strong class="kho-so">{dinhDangTien(p.tong_tien, nn)}</strong>
               {p.ten_vi_tri && p.ten_vi_tri !== noiChinh && <> · {t.vao} {p.ten_vi_tri}</>}
             </p>
           </a>

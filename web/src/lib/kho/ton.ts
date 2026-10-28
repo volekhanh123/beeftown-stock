@@ -7,7 +7,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { boDau, docTungTrang, type HaiThuTieng, type NgonNguNB } from './chung.ts';
+import { boDau, docTungTrang, laDemCai, type HaiThuTieng, type NgonNguNB } from './chung.ts';
 
 export interface DongTon {
   lo_id: string;
@@ -16,7 +16,7 @@ export interface DongTon {
   ma_hang: string;
   ten_hang: string;
   nhom: string | null;
-  loai_hang: 'tang' | 'phan_cat' | 'phu_pham';
+  loai_hang: 'tang' | 'phan_cat' | 'phu_pham' | 'gia_vi' | 'do_uong';   // 0105: hai loại đếm theo cái
   dem_goi: boolean;
   don_vi_goi: string;
   vi_tri_id: string;
@@ -181,7 +181,7 @@ export interface BoLocTon {
   viTri: '' | 'kho' | 'quay' | 'cho_huy';
   /** Hai mức RIÊNG BIỆT: "sắp hết" không gồm lô đã hết hạn. */
   han: '' | 'het_han' | 'sap_het';
-  loai: '' | 'tang' | 'phan_cat' | 'phu_pham';
+  loai: '' | 'tang' | 'phan_cat' | 'phu_pham' | 'gia_vi' | 'do_uong';
   /** Chỉ món quầy dưới mức tối thiểu (xem quaySapHet). */
   duoiMuc: boolean;
   tim: string;
@@ -195,7 +195,7 @@ export function docBoLocTon(q: URLSearchParams): BoLocTon {
   return {
     viTri: chon(q.get('vi_tri'), ['kho', 'quay', 'cho_huy'] as const),
     han: chon(q.get('han'), ['het_han', 'sap_het'] as const),
-    loai: chon(q.get('loai'), ['tang', 'phan_cat', 'phu_pham'] as const),
+    loai: chon(q.get('loai'), ['tang', 'phan_cat', 'phu_pham', 'gia_vi', 'do_uong'] as const),
     duoiMuc: q.get('duoi_muc') === '1',
     tim: (q.get('q') ?? q.get('tim') ?? '').trim().slice(0, 80),
   };
@@ -234,6 +234,7 @@ export function locTon(ds: DongTon[], b: BoLocTon, chiMatHang: Set<string> | nul
  * Việc làm nhanh với một lô (vai "van_hanh"): link mở sẵn phiếu với đúng nơi
  * lấy và đúng lô. Hết hạn → chỉ còn "Báo hủy". Hàng ở chỗ chờ hủy, hàng đang
  * mang ra quầy (0032 — chỉ nhận / hủy chuyến mới đụng được) → không có gì.
+ * Sốt, đồ uống (0105) để một chỗ, không mang ra quầy — không có "Lấy ra quầy".
  */
 export function viecVoiLo(t: DongTon, nn: NgonNguNB = 'vi'): { ma: 'chuyen' | 'xuat_bep' | 'huy'; ten: string; link: string }[] {
   if (t.loai_vi_tri === 'cho_huy' || t.loai_vi_tri === 'dang_chuyen' || (t.so_kg <= 0 && t.so_goi <= 0)) return [];
@@ -242,7 +243,7 @@ export function viecVoiLo(t: DongTon, nn: NgonNguNB = 'vi'): { ma: 'chuyen' | 'x
   const ten = TEN_VIEC_VOI_LO;
   if (t.tinh_trang_han === 'het_han') return [{ ma: 'huy', ten: ten.huy[nn], link: link('huy') }];
   return [
-    ...(t.loai_vi_tri === 'kho' ? [{ ma: 'chuyen' as const, ten: ten.chuyen[nn], link: link('chuyen') }] : []),
+    ...(t.loai_vi_tri === 'kho' && !laDemCai({ loai: t.loai_hang }) ? [{ ma: 'chuyen' as const, ten: ten.chuyen[nn], link: link('chuyen') }] : []),
     { ma: 'xuat_bep', ten: ten.xuat_bep[nn], link: link('xuat_bep') },
     { ma: 'huy', ten: ten.huy[nn], link: link('huy') },
   ];

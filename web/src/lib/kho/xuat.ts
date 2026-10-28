@@ -37,7 +37,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, dinhDangKg, dinhDangNgay, docKg, docSoNguyen, donViChung, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { cauLoiKho, dinhDangKg, dinhDangNgay, docKg, docSoNguyen, donViChung, kqHai, laDemCai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { gomTheoMaCan, tachDanhSachMa } from './ma-vach.ts';
 import { oDangGiao, taoBangTraMaCan, traMaCan, type KhopMaCan, type MaGiamDeTra, type OMaDeTra } from './tra-ma-can.ts';
 import { chuTang } from './tang.ts';
@@ -230,7 +230,8 @@ export interface KetQuaDocXuat {
 type BaoLoi = (c: HaiThuTieng) => void;
 
 export function docFormPhieuXuat(
-  form: FormData, matHang: { id: string; ten: string; dem_goi: boolean; don_vi_goi?: string | null }[],
+  form: FormData,
+  matHang: { id: string; ten: string; dem_goi: boolean; don_vi_goi?: string | null; dem_theo_cai?: boolean }[],
 ): KetQuaDocXuat {
   const loi: string[] = [];
   const loiEn: string[] = [];
@@ -282,10 +283,11 @@ export function docFormPhieuXuat(
 }
 
 function docDong(
-  m: { dem_goi: boolean; don_vi_goi?: string | null }, goiChu: string, kgChu: string, nhan: HaiThuTieng, bao: BaoLoi,
+  m: { dem_goi: boolean; don_vi_goi?: string | null; dem_theo_cai?: boolean }, goiChu: string, kgChu: string, nhan: HaiThuTieng, bao: BaoLoi,
 ): Record<string, unknown> | null {
   const goi = docSoNguyen(goiChu, 0, 100000);
-  const kg = docKg(kgChu);
+  // 0105: món đếm theo cái (sốt, đồ uống) không có kg — ô kg (ẩn trên form) bỏ qua, chỉ gửi số cái.
+  const kg = m.dem_theo_cai ? null : docKg(kgChu);
   // Đơn vị đếm của chính món ("khay", "tảng"…) — món không mang đơn vị thì chữ chung.
   const dv = { vi: m.don_vi_goi || GOI_MAC_DINH.vi, en: m.don_vi_goi || GOI_MAC_DINH.en };
   if (Number.isNaN(goi)) { bao({ vi: `${nhan.vi}: số ${dv.vi} là số nguyên`, en: `${nhan.en}: the number of ${dv.en} must be a whole number` }); return null; }
@@ -701,11 +703,11 @@ export async function docDonViPhieuXuat(client: SupabaseClient, phieuIds: readon
   try {
     const [d, m] = await Promise.all([
       client.from('kho_phieu_xuat_dong').select('phieu_xuat_id, mat_hang_id').in('phieu_xuat_id', ids),
-      client.from('kho_mat_hang').select('id, dem_goi, don_vi_goi'),
+      client.from('kho_mat_hang').select('id, dem_goi, don_vi_goi, loai'),
     ]);
     // Đủ 1.000 dòng là mức PostgREST cắt bớt mà không báo: không chắc đã thấy hết món của phiếu → dùng chữ chung.
     if (d.error || m.error || (d.data ?? []).length >= 1000) return ra;
-    const mon = new Map((m.data ?? []).map(r => [r.id as string, r as { dem_goi: boolean; don_vi_goi: string | null }]));
+    const mon = new Map((m.data ?? []).map(r => [r.id as string, r as { dem_goi: boolean; don_vi_goi: string | null; loai: string }]));
     const theoPhieu = new Map<string, string[]>();
     for (const r of d.data ?? []) {
       const id = r.phieu_xuat_id as string;
@@ -714,7 +716,9 @@ export async function docDonViPhieuXuat(client: SupabaseClient, phieuIds: readon
     for (const [id, cacMon] of theoPhieu) {
       // Một món của phiếu không có trong danh mục đọc được → không chắc đơn vị, bỏ qua phiếu đó.
       if (cacMon.some(x => !mon.has(x))) continue;
-      const dv = donViChung(cacMon.map(x => mon.get(x)));
+      // 0105: phiếu có cả thịt thì tong_goi (kho_v_phieu_xuat) chỉ cộng gói thịt → đơn vị chỉ xét món thịt.
+      const thit = cacMon.filter(x => !laDemCai(mon.get(x)));
+      const dv = donViChung((thit.length ? thit : cacMon).map(x => mon.get(x)));
       if (dv) ra.set(id, dv);
     }
   } catch { return new Map(); }

@@ -312,7 +312,10 @@ export function docFormDauNhan(
 export interface DongNhanForm {
   mat_hang_id: string;
   so_kg: string;
+  /** Món đếm theo cái (0105): số lẻ (ngoài thùng) — hay số cái khi món không quy đổi thùng. Thịt: số tảng / gói. */
   so_goi: string;
+  /** Món đếm theo cái có quy đổi thùng (0105): số thùng. */
+  so_thung: string;
   han_dung: string;
   ngay_san_xuat: string;
   so_lo_ncc: string;
@@ -322,15 +325,19 @@ export interface DongNhanForm {
 }
 
 export function dongNhanTrong(): DongNhanForm {
-  return { mat_hang_id: '', so_kg: '', so_goi: '', han_dung: '', ngay_san_xuat: '', so_lo_ncc: '', truong_them: {}, ngay_mo: '', so_kg_thuc: '' };
+  return { mat_hang_id: '', so_kg: '', so_goi: '', so_thung: '', han_dung: '', ngay_san_xuat: '', so_lo_ncc: '', truong_them: {}, ngay_mo: '', so_kg_thuc: '' };
 }
 
-/** Dòng đã lưu → chữ điền vào form sửa. */
-export function dongNhanVaoForm(d: DongNhan): DongNhanForm {
+/** Dòng đã lưu → chữ điền vào form sửa. Món đếm theo cái có quy đổi thùng: tách lại thùng + lẻ (0105). */
+export function dongNhanVaoForm(d: DongNhan, m?: MonKiem): DongNhanForm {
+  const n = m?.dem_cai && m.so_trong_thung && m.so_trong_thung >= 2 ? m.so_trong_thung : 0;
+  const thung = n ? Math.floor(d.so_goi / n) : 0;
+  const le = n ? d.so_goi - thung * n : d.so_goi;
   return {
     mat_hang_id: d.mat_hang_id,
-    so_kg: String(d.so_kg).replace('.', ','),
-    so_goi: d.so_goi ? String(d.so_goi) : '',
+    so_kg: m?.dem_cai ? '' : String(d.so_kg).replace('.', ','),
+    so_goi: le ? String(le) : '',
+    so_thung: thung ? String(thung) : '',
     han_dung: d.han_dung ?? '',
     ngay_san_xuat: d.ngay_san_xuat ?? '',
     so_lo_ncc: d.so_lo_ncc ?? '',
@@ -340,8 +347,11 @@ export function dongNhanVaoForm(d: DongNhan): DongNhanForm {
   };
 }
 
-/** Thông tin mặt hàng cần để kiểm dòng: có đếm tảng/gói không, gọi là gì. */
-export interface MonKiem { ten: string; dem_goi: boolean; don_vi_goi: string; theo_tang?: boolean }
+/** Thông tin mặt hàng cần để kiểm dòng: có đếm tảng/gói không, gọi là gì; món đếm theo cái và số cái một thùng (0105). */
+export interface MonKiem {
+  ten: string; dem_goi: boolean; don_vi_goi: string; theo_tang?: boolean;
+  dem_cai?: boolean; so_trong_thung?: number | null;
+}
 
 /**
  * Đọc form MỘT dòng (bước 2). Mặt hàng: nút lớn (radio `mh`) hoặc ô chọn
@@ -356,10 +366,15 @@ export function docFormDongNhan(
 ): { dong: DongNhanForm; loi: string[]; loiEn: string[]; luu: DongLuu | null } {
   const s = (ten: string) => String(form.get(ten) ?? '').trim();
   const tt = docTruongThem(form, dinhNghiaLo, 0, cu);
+  const mhId = s('mh_khac') || s('mh');
+  const mCai = laUuid(mhId) ? mon.get(mhId) : undefined;
   const dong: DongNhanForm = {
-    mat_hang_id: s('mh_khac') || s('mh'),
-    so_kg: s('so_kg'), so_goi: s('so_goi'),
-    han_dung: s('hsd'), ngay_san_xuat: s('nsx'), so_lo_ncc: s('so_lo_ncc').slice(0, 60),
+    mat_hang_id: mhId,
+    so_kg: s('so_kg'), so_goi: s('so_goi'), so_thung: s('so_thung'),
+    // 0105: món đếm theo cái — chỉ ô hạn dùng của nó (ngày in trên sản phẩm, ngoài mục gập). Không lấy ô "hsd" của thịt:
+    // ô đó bị CSS giấu nhưng vẫn giữ ngày đã gõ cho món trước, sẽ thành hạn sai mà không ai thấy.
+    han_dung: mCai?.dem_cai ? s('hsd_cai') : s('hsd'),
+    ngay_san_xuat: s('nsx'), so_lo_ncc: s('so_lo_ncc').slice(0, 60),
     truong_them: tt.giaTri,
     ngay_mo: s('ngay_mo'),
     so_kg_thuc: s('kg_thuc'),
@@ -367,8 +382,9 @@ export function docFormDongNhan(
   const loi: string[] = [];
   const loiEn: string[] = [];
   const bao = (c: HaiThuTieng) => { loi.push(c.vi); loiEn.push(c.en); };
-  const m = laUuid(dong.mat_hang_id) ? mon.get(dong.mat_hang_id) : undefined;
+  const m = mCai;
   if (!m) bao({ vi: 'Chọn món hàng', en: 'Choose an item' });
+  if (m?.dem_cai) return docDongDemCai(dong, m, tt, loi, loiEn);
   const kg = docKg(dong.so_kg);
   if (kg === null) bao({ vi: 'Nhập số kg (ví dụ 12,5)', en: 'Enter the kg (for example 12.5)' });
   else if (Number.isNaN(kg) || kg <= 0) bao({ vi: 'Số kg chưa đúng (ví dụ 12,5)', en: 'The kg is not valid (for example 12.5)' });
@@ -414,6 +430,48 @@ export function docFormDongNhan(
     ...(thuc !== null ? { so_kg_thuc: thuc } : {}),
   };
   if (luu && m?.theo_tang) luu.so_goi = 1;
+  return { dong, loi, loiEn, luu };
+}
+
+/**
+ * Dòng của món đếm theo cái (0105): số thùng × số cái một thùng + số lẻ, không kg (database đặt so_kg = số cái),
+ * PHẢI có hạn dùng (ngày in trên sản phẩm — không tự cộng ngày như thịt). Chai, lon nguyên: số nguyên.
+ */
+function docDongDemCai(
+  dong: DongNhanForm, m: MonKiem, tt: { giaTri: GiaTriTruong; loi: string[]; loiEn: string[] }, loi: string[], loiEn: string[],
+): { dong: DongNhanForm; loi: string[]; loiEn: string[]; luu: DongLuu | null } {
+  const bao = (c: HaiThuTieng) => { loi.push(c.vi); loiEn.push(c.en); };
+  const n = m.so_trong_thung && m.so_trong_thung >= 2 ? m.so_trong_thung : 0;
+  const thung = n ? docSoNguyen(dong.so_thung, 0, 100000) : null;
+  const le = docSoNguyen(dong.so_goi, 0, 1000000);
+  if (Number.isNaN(thung)) bao({ vi: 'Số thùng là số nguyên (ví dụ 2)', en: 'The number of cases must be a whole number (for example 2)' });
+  if (Number.isNaN(le)) {
+    bao({ vi: `Số ${m.don_vi_goi} là số nguyên (ví dụ 5) — chai, lon nguyên`,
+          en: `The number of ${m.don_vi_goi} must be a whole number (for example 5)` });
+  }
+  const tong = (Number.isNaN(thung) ? 0 : (thung ?? 0) * n) + (Number.isNaN(le) ? 0 : (le ?? 0));
+  if (!Number.isNaN(thung) && !Number.isNaN(le) && tong <= 0) {
+    bao(n ? { vi: `Nhập số thùng hoặc số ${m.don_vi_goi} lẻ của ${m.ten}`, en: `Enter the number of cases or loose ${m.don_vi_goi} for ${m.ten}` }
+          : { vi: `Nhập số ${m.don_vi_goi} của ${m.ten}`, en: `Enter the number of ${m.don_vi_goi} for ${m.ten}` });
+  } else if (tong >= 1000000) {
+    bao({ vi: `Số ${m.don_vi_goi} quá lớn — kiểm tra lại`, en: `The number of ${m.don_vi_goi} is too large — check it again` });
+  }
+  const hsd = docNgay(dong.han_dung);
+  const nsx = docNgay(dong.ngay_san_xuat);
+  if (hsd === undefined) bao({ vi: 'Hạn dùng không phải ngày có thật', en: 'The use-by date is not a real date' });
+  else if (!hsd) bao({ vi: `Ghi hạn dùng in trên ${m.ten}`, en: `Enter the use-by date printed on ${m.ten}` });
+  if (nsx === undefined) bao({ vi: 'Ngày sản xuất không phải ngày có thật', en: 'The production date is not a real date' });
+  loi.push(...tt.loi);
+  loiEn.push(...tt.loiEn);
+  const luu: DongLuu | null = loi.length ? null : {
+    mat_hang_id: dong.mat_hang_id,
+    so_kg: tong,
+    so_goi: tong,
+    so_lo_ncc: dong.so_lo_ncc || null,
+    ngay_san_xuat: nsx || null,
+    han_dung: hsd || null,
+    truong_them: tt.giaTri,
+  };
   return { dong, loi, loiEn, luu };
 }
 

@@ -46,7 +46,7 @@ import {
   type DauNhan, type DongNhanForm, type KetQuaLuuNhan, type MonKiem, type NccNhap, type PhieuNhan,
 } from '../../../../lib/kho/nhan-hang.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangThoiDiem, homNayVn, kqHai, trangThaiKho, type KetQua,
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangThoiDiem, homNayVn, kqHai, soCaiChu, trangThaiKho, type KetQua,
 } from '../../../../lib/kho/chung.ts';
 import { hienThiGiaTri, type DinhNghiaTruong, type GiaTriTruong } from '../../../../lib/kho/truong-them.ts';
 import { soTangChu } from '../../../../lib/kho/tang.ts';
@@ -141,6 +141,12 @@ const t = dichNB(nn, {
     en: (dv: string | undefined) => `Number of ${dv ?? 'pieces / packs'}`,
   },
   viDuGoi: { vi: 'ví dụ 2', en: 'e.g. 2' },
+  // 0105: món đếm theo cái
+  soThung: { vi: (n: number | null | undefined) => `Số thùng${n ? ` (1 thùng = ${n})` : ''}`,
+             en: (n: number | null | undefined) => `Number of cases${n ? ` (1 case = ${n})` : ''}` },
+  soCai: { vi: (dv: string | undefined) => `Số ${dv ?? 'chai, lon, hộp'} *`, en: (dv: string | undefined) => `Number of ${dv ?? 'bottles, cans, jars'} *` },
+  soLe: { vi: (dv: string | undefined) => `Số ${dv ?? 'chai, lon'} lẻ (ngoài thùng)`, en: (dv: string | undefined) => `Loose ${dv ?? 'bottles, cans'} (outside full cases)` },
+  hsdCai: { vi: 'Hạn dùng in trên sản phẩm *', en: 'Use-by date printed on the product *' },
   ngayMo: { vi: 'Ngày mổ (món theo dõi theo tảng)', en: 'Slaughter date (items tracked per primal)' },
   // Gọn 22/10/2026: giải thích dài nằm ở nút "?" (Hướng dẫn, mục nhận hàng).
   ngayMoGoiY: { vi: 'Mỗi dòng là MỘT tảng, cân riêng.', en: 'Each line is ONE primal, weighed on its own.' },
@@ -199,7 +205,12 @@ if (!phieu && !loiDoc) {
 
 const soanDuoc = !!phieu && (phieu.trang_thai === 'nhap' || phieu.trang_thai === 'tu_choi');
 const laNguoiTao = !!phieu?.nguoi_tao && phieu.nguoi_tao === k.nhanSu.id;
-const mon = new Map<string, MonKiem>(matHang.map(m => [m.id, { ten: m.ten, dem_goi: m.dem_goi, don_vi_goi: m.don_vi_goi, theo_tang: !!m.theo_tang }]));
+const mon = new Map<string, MonKiem>(matHang.map(m => [m.id, {
+  ten: m.ten, dem_goi: m.dem_goi, don_vi_goi: m.don_vi_goi, theo_tang: !!m.theo_tang,
+  dem_cai: !!m.dem_theo_cai, so_trong_thung: m.so_trong_thung ?? null,   // 0105
+}]));
+/** Dòng của món đếm theo cái (0105): số cái thay kg, không cộng vào tổng kg. */
+const laDongCai = (id: string) => !!mon.get(id)?.dem_cai;
 // 0048: có món theo dõi theo tảng thì form thêm dòng có ô ngày mổ.
 const coTheoTang = matHang.some(m => m.theo_tang && m.dang_dung);
 
@@ -327,7 +338,7 @@ const soTangVua = phieu && soanDuoc && !form
 const soTangCuaPhieu = (phieu?.dong ?? []).filter(d => d.so_tang != null).map(d => soTangChu(d.so_tang));
 const tiep = Astro.url.searchParams.get('tiep') ?? '';
 const tiepMo = Astro.url.searchParams.get('mo') ?? '';
-const dongHien: DongNhanForm = dongForm ?? (dongSua ? dongNhanVaoForm(dongSua)
+const dongHien: DongNhanForm = dongForm ?? (dongSua ? dongNhanVaoForm(dongSua, mon.get(dongSua.mat_hang_id))
   : mon.get(tiep)?.theo_tang ? { ...dongNhanTrong(), mat_hang_id: tiep, ngay_mo: /^\d{4}-\d{2}-\d{2}$/.test(tiepMo) ? tiepMo : '' }
   : dongNhanTrong());
 
@@ -353,8 +364,10 @@ const dauHien: DauNhan | null = dauForm ?? (phieu ? {
   so_hoa_don: phieu.so_hoa_don ?? '', truong_them: phieu.truong_them,
 } : null);
 
-const tongKg = phieu ? phieu.dong.reduce((s, d) => s + d.so_kg, 0) : 0;
-const tongGoi = phieu ? phieu.dong.reduce((s, d) => s + (d.so_goi || 0), 0) : 0;
+// 0105: tổng kg, tảng / gói chỉ tính thịt — món đếm theo cái đã nằm trong số món.
+const tongKg = phieu ? phieu.dong.filter(d => !laDongCai(d.mat_hang_id)).reduce((s, d) => s + d.so_kg, 0) : 0;
+const tongGoi = phieu ? phieu.dong.filter(d => !laDongCai(d.mat_hang_id)).reduce((s, d) => s + (d.so_goi || 0), 0) : 0;
+const coThit = !!phieu?.dong.some(d => !laDongCai(d.mat_hang_id));
 const vanDe = phieu && man === 'gui' ? kiemTruocKhiGui(phieu, dnPhieu, dnLo, nn) : [];
 const ten = phieu ? await tenNhanSu(k.client, [phieu.nguoi_tao, phieu.nguoi_gui, phieu.nguoi_duyet]) : new Map<string, string>();
 // Nhãn trạng thái cho thủ kho: "Bị trả về" dễ hiểu hơn "Bị từ chối".
@@ -405,7 +418,7 @@ const tieuDe = phieu ? t.tdPhieu(phieu.so_phieu) : t.tdChung;
     <div class="nb-the nh-xong">
       <p class="nh-xong-dau">{t.daGuiSo} {phieu.so_phieu}</p>
       <p>{t.seDuyet}</p>
-      <p class="kho-phu">{t.soMon(phieu.dong.length)} · {dinhDangKg(tongKg, nn)} kg{tongGoi > 0 && <> · {tongGoi} {t.tangGoi}</>}</p>
+      <p class="kho-phu">{t.soMon(phieu.dong.length)}{coThit && <> · {dinhDangKg(tongKg, nn)} kg</>}{tongGoi > 0 && <> · {tongGoi} {t.tangGoi}</>}</p>
       <div class="kho-nut-nhanh">
         <a class="nb-nut nh-lon" href={`${DS}/moi`}>{t.nhanTiep}</a>
         <a class="nb-nut phu nh-lon" href="/noi-bo/kho">{t.veTrangChu}</a>
@@ -490,7 +503,7 @@ const tieuDe = phieu ? t.tdPhieu(phieu.so_phieu) : t.tdChung;
     // CÁC DÒNG ĐÃ CÂN
     // =====================================================================
     <>
-      <h2>{t.hangDaCan}{phieu.dong.length > 0 && <> · {t.soMon(phieu.dong.length)} · {dinhDangKg(tongKg, nn)} kg{tongGoi > 0 && <> · {tongGoi} {t.tangGoi}</>}</>}</h2>
+      <h2>{t.hangDaCan}{phieu.dong.length > 0 && <> · {t.soMon(phieu.dong.length)}{coThit && <> · {dinhDangKg(tongKg, nn)} kg</>}{tongGoi > 0 && <> · {tongGoi} {t.tangGoi}</>}</>}</h2>
       {(phieu.so_tang_bo ?? []).length > 0 && (
         <p class="kho-phu">{t.soTangBo((phieu.so_tang_bo ?? []).map(soTangChu).join(', '))}</p>
       )}
@@ -504,7 +517,9 @@ const tieuDe = phieu ? t.tdPhieu(phieu.so_phieu) : t.tdChung;
                 <span class="nh-so">{i + 1}</span>
                 <strong class="nh-ten">{d.ten_mat_hang}</strong>
               </div>
-              <p class="nh-kg"><b>{dinhDangKg(d.so_kg, nn)} kg</b>{d.theo_tang ? <> · {t.motTang}{d.so_tang != null && <>{' '}<strong>{soTangChu(d.so_tang)}</strong></>}</> : d.so_goi > 0 && <> · {soGoiChu(d.so_goi, d.don_vi_goi)}</>}
+              <p class="nh-kg">{laDongCai(d.mat_hang_id) ? <b>{soCaiChu(d.so_goi, d.don_vi_goi, mon.get(d.mat_hang_id)?.so_trong_thung, nn)}</b> : <>
+                <b>{dinhDangKg(d.so_kg, nn)} kg</b>{d.theo_tang ? <> · {t.motTang}{d.so_tang != null && <>{' '}<strong>{soTangChu(d.so_tang)}</strong></>}</> : d.so_goi > 0 && <> · {soGoiChu(d.so_goi, d.don_vi_goi)}</>}
+                </>}
                 {d.ngay_mo && <> · {t.moNgay(dinhDangNgay(d.ngay_mo))}</>}
                 {(() => { const h = haoRepack(d.so_kg, d.so_kg_thuc); return h
                   ? <span class="nh-repack">{t.sauRepack(dinhDangKg(d.so_kg_thuc as number, nn), dinhDangKg(h.kg, nn), dinhDangPhanTram(h.pt, 1, nn))}</span>
@@ -558,16 +573,24 @@ const tieuDe = phieu ? t.tdPhieu(phieu.so_phieu) : t.tdChung;
         <div class="nb-o">
           <span>{t.monGi}</span>
           <NhanHangChon name="mh" nhan={t.monHayGiao} chon={chonONut ? dongHien.mat_hang_id : ''}
-            ds={monNut.map(m => ({ value: m.id, nhan: m.ten, phu: m.nhom }))} />
+            ds={monNut.map(m => ({ value: m.id, nhan: m.ten, phu: m.nhom, cai: m.dem_theo_cai, thung: m.so_trong_thung }))} />
           <ChonMatHang name="mh_khac" matHang={matHang} chon={chonONut ? '' : dongHien.mat_hang_id}
-            trong={monNut.length ? t.monKhac : t.chonMon} />
+            trong={monNut.length ? t.monKhac : t.chonMon} demCai />
         </div>
 
+        {/* 0105: chọn món đếm theo cái (sốt, gia vị, đồ uống) thì CSS :has() giấu ô kg, hiện số thùng + lẻ và hạn
+            dùng in trên sản phẩm — xem cuối file. Trình duyệt không hiểu :has() thấy đủ các ô; máy chủ đọc theo món. */}
         <div class="kho-luoi">
-          <label class="nb-o"><span>{t.soKg}</span>
+          <label class="nb-o nh-chi-thit"><span>{t.soKg}</span>
             <input type="text" inputmode="decimal" name="so_kg" value={dongHien.so_kg} placeholder={t.viDuKg} class="nh-o-lon" /></label>
-          <label class="nb-o"><span>{t.soDonVi(monDangChon?.don_vi_goi)}</span>
+          <label class="nb-o nh-chi-thung"><span>{t.soThung(monDangChon?.so_trong_thung)}</span>
+            <input type="text" inputmode="numeric" name="so_thung" value={dongHien.so_thung} placeholder={t.viDuGoi} class="nh-o-lon" /></label>
+          <label class="nb-o"><span class="nh-nhan-goi">{t.soDonVi(monDangChon?.dem_cai ? undefined : monDangChon?.don_vi_goi)}</span><span
+            class="nh-nhan-cai">{t.soCai(monDangChon?.dem_cai ? monDangChon.don_vi_goi : undefined)}</span><span
+            class="nh-nhan-le">{t.soLe(monDangChon?.dem_cai ? monDangChon.don_vi_goi : undefined)}</span>
             <input type="text" inputmode="numeric" name="so_goi" value={dongHien.so_goi} placeholder={t.viDuGoi} class="nh-o-lon" /></label>
+          <label class="nb-o nh-chi-cai"><span>{t.hsdCai}</span>
+            <input type="date" name="hsd_cai" value={monDangChon?.dem_cai ? dongHien.han_dung : ''} /></label>
         </div>
 
         {coTheoTang && (
@@ -589,11 +612,11 @@ const tieuDe = phieu ? t.tdPhieu(phieu.so_phieu) : t.tdChung;
         <details open={!!(dongHien.han_dung || (!coTheoTang && dongHien.so_kg_thuc)) || undefined}>
           <summary>{t.themChiTiet}{dnLo.some(x => !x.bat_buoc && x.dang_dung) ? t.thongTinKhac : ''}</summary>
           <div class="kho-luoi">
-            <label class="nb-o"><span>{t.hanDung}</span>
+            <label class="nb-o nh-chi-thit"><span>{t.hanDung}</span>
               <small>{t.boTrongHsd}</small>
-              <input type="date" name="hsd" value={dongHien.han_dung} /></label>
+              <input type="date" name="hsd" value={monDangChon?.dem_cai ? '' : dongHien.han_dung} /></label>
             {!coTheoTang && (
-              <label class="nb-o"><span>{t.kgThucMonThuong}</span>
+              <label class="nb-o nh-chi-thit"><span>{t.kgThucMonThuong}</span>
                 <input type="text" inputmode="decimal" name="kg_thuc" value={dongHien.so_kg_thuc} placeholder={t.viDuKg} /></label>
             )}
           </div>
@@ -667,6 +690,16 @@ const tieuDe = phieu ? t.tdPhieu(phieu.so_phieu) : t.tdChung;
 </Kho>
 
 <style>
+  /* 0105: form thêm dòng theo món đang chọn (thẻ món hay ô "món khác" mang data-cai / data-thung). Món đếm theo
+     cái: ẩn ô kg và hạn dùng tự tính, hiện số thùng (khi có quy đổi) + số lẻ và hạn dùng in trên sản phẩm. Luật nào
+     cũng có :has() — trình duyệt không hiểu :has() thấy đủ mọi ô, máy chủ đọc đúng ô theo món (docFormDongNhan). */
+  .nh-them:has(:is(input, option)[data-cai]:checked) .nh-chi-thit,
+  .nh-them:has(:is(input, option)[data-cai]:checked) .nh-nhan-goi,
+  .nh-them:has(:is(input, option)[data-thung]:checked) .nh-nhan-cai,
+  .nh-them:not(:has(:is(input, option)[data-cai]:checked)) .nh-chi-cai,
+  .nh-them:not(:has(:is(input, option)[data-cai]:checked)) .nh-nhan-cai,
+  .nh-them:not(:has(:is(input, option)[data-thung]:checked)) .nh-chi-thung,
+  .nh-them:not(:has(:is(input, option)[data-thung]:checked)) .nh-nhan-le { display: none; }
   .nh-buoc { margin: 0 0 .15rem; font-size: .85rem; font-weight: 700; color: var(--muc-nhat); }
   .nh-lon { min-height: 56px; font-size: 1.05rem; }
   .nh-tep { font-size: 16px; min-height: 48px; }

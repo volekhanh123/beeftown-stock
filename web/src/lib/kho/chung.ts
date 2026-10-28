@@ -341,6 +341,20 @@ export function dinhDangNgay(iso: string | null | undefined): string {
   return nam && thang && ngay ? `${ngay}/${thang}/${nam}` : iso;
 }
 
+/**
+ * Số cái của món đếm theo cái (0105) thành chữ. Có quy đổi thùng và đủ một thùng: "2 thùng + 5 lon (53 lon)",
+ * chẵn thùng "2 thùng (48 lon)"; không quy đổi hay chưa đủ thùng: "53 lon". Tên đơn vị là dữ liệu (không dịch).
+ */
+export function soCaiChu(so: number, donVi: string, soTrongThung?: number | null, nn: NgonNguNB = 'vi'): string {
+  const dv = donVi || DON_VI_GOI_CHUNG[nn];
+  const tong = `${Math.round(so).toLocaleString(VUNG_SO[nn])} ${dv}`;
+  if (!soTrongThung || soTrongThung < 2 || so < soTrongThung) return tong;
+  const thung = Math.floor(so / soTrongThung);
+  const le = so - thung * soTrongThung;
+  const chuThung = { vi: `${thung} thùng`, en: `${thung} ${thung === 1 ? 'case' : 'cases'}` }[nn];
+  return `${chuThung}${le ? ` + ${le} ${dv}` : ''} (${tong})`;
+}
+
 /** Chữ chung khi không biết đơn vị đếm của món — cũng là giá trị mặc định của cột kho_mat_hang.don_vi_goi (0019). */
 export const DON_VI_GOI_CHUNG: HaiThuTieng = { vi: 'gói', en: 'packs' };
 
@@ -436,7 +450,21 @@ export const TEN_LOAI_MAT_HANG_NB: Record<string, HaiThuTieng> = {
   tang: { vi: 'Tảng nhập', en: 'Primal (bought in)' },
   phan_cat: { vi: 'Phần cắt', en: 'Cut' },
   phu_pham: { vi: 'Phụ phẩm', en: 'By-product' },
+  // 0105: món đếm theo cái
+  gia_vi: { vi: 'Sốt, gia vị, đồ khô', en: 'Sauces, spices, dry goods' },
+  do_uong: { vi: 'Đồ uống', en: 'Drinks' },
 };
+
+/**
+ * Món đếm theo cái (0105): sốt, gia vị, đồ khô (gia_vi) và đồ uống (do_uong). Lượng là số cái (so_goi, đơn vị
+ * don_vi_goi: chai, lon, hộp…); so_kg của món này luôn bằng so_goi (database giữ) — KHÔNG phải cân nặng: không hiện
+ * chữ "kg", không cộng vào tổng kg. Dùng cột kho_mat_hang.dem_theo_cai khi có, không thì loai.
+ */
+export function laDemCai(m: { dem_theo_cai?: boolean | null; loai?: string | null } | null | undefined): boolean {
+  if (!m) return false;
+  if (typeof m.dem_theo_cai === 'boolean') return m.dem_theo_cai;
+  return m.loai === 'gia_vi' || m.loai === 'do_uong';
+}
 export const TEN_LOAI_MAT_HANG: Record<string, string> = chiVi(TEN_LOAI_MAT_HANG_NB);
 
 export const TEN_LOAI_VI_TRI_NB: Record<string, HaiThuTieng> = {

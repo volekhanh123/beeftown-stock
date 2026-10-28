@@ -224,12 +224,13 @@ export async function docPhienPha(
 /** Thông tin lô (mã, hạn) cho các lô đang hiện trên trang. */
 export async function docThongTinLo(
   client: SupabaseClient, ids: string[],
-): Promise<Map<string, { ma_lo: string; han_dung: string }>> {
-  const ra = new Map<string, { ma_lo: string; han_dung: string }>();
+): Promise<Map<string, { ma_lo: string; han_dung: string; mat_hang_id?: string }>> {
+  const ra = new Map<string, { ma_lo: string; han_dung: string; mat_hang_id?: string }>();
   const ds = [...new Set(ids.filter(laUuid))];
   if (ds.length === 0) return ra;
-  const { data } = await client.from('kho_lo').select('id, ma_lo, han_dung').in('id', ds);
-  for (const l of data ?? []) ra.set(l.id, { ma_lo: l.ma_lo, han_dung: l.han_dung });
+  // 0105: kèm món của lô — trang xuất hiện số cái thay kg cho món đếm theo cái.
+  const { data } = await client.from('kho_lo').select('id, ma_lo, han_dung, mat_hang_id').in('id', ds);
+  for (const l of data ?? []) ra.set(l.id, { ma_lo: l.ma_lo, han_dung: l.han_dung, mat_hang_id: l.mat_hang_id });
   return ra;
 }
 

@@ -116,6 +116,10 @@ const t = dichNB(nn, {
   tang: { vi: 'Tảng', en: 'Primals' },
   phanCat: { vi: 'Phần cắt', en: 'Cuts' },
   phuPham: { vi: 'Phụ phẩm', en: 'By-products' },
+  giaVi: { vi: 'Sốt, gia vị', en: 'Sauces, spices' },
+  doUong: { vi: 'Đồ uống', en: 'Drinks' },
+  donViThung: { vi: (dv: string, n: number | null | undefined) => `${dv}${n ? ` · 1 thùng = ${n}` : ''}`,
+                en: (dv: string, n: number | null | undefined) => `${dv}${n ? ` · 1 case = ${n}` : ''}` },
   timVd: { vi: 'Tìm tên, mã…', en: 'Search name, code…' },
   tim: { vi: 'Tìm', en: 'Search' },
   khongCo: { vi: 'Không có mặt hàng nào.', en: 'No items.' },
@@ -201,6 +205,8 @@ const tuDb = (m: MatHang): GiaTriFormMatHang => ({
   id: m.id, ma: m.ma, ten: m.ten, ten_phu: m.ten_phu ?? '', nhom: m.nhom ?? '', loai: m.loai,
   dem_goi: m.dem_goi === demMacDinh(m.loai).dem_goi ? null : m.dem_goi,
   don_vi_goi: m.don_vi_goi === demMacDinh(m.loai).don_vi_goi ? '' : m.don_vi_goi,
+  // 0105: món đếm theo cái — đơn vị ở ô riêng của nó, số cái một thùng.
+  don_vi_cai: m.dem_theo_cai ? m.don_vi_goi : '', so_trong_thung: m.so_trong_thung?.toString() ?? '',
   han_dung_ngay: m.han_dung_ngay?.toString() ?? '', canh_bao_truoc_ngay: m.canh_bao_truoc_ngay?.toString() ?? '',
   gia_ban_kg: oTien(m.gia_ban_kg),
   xu_ly_mac_dinh: m.xu_ly_mac_dinh, ma_can: m.ma_can ?? '',
@@ -222,6 +228,7 @@ const tuForm = (f: FormData, id?: string): GiaTriFormMatHang => {
     // "Theo loại" = ô trống.
     dem_goi: g('dem_goi') === 'khong' ? false : g('dem_goi') === 'co' ? true : null,
     don_vi_goi: g('don_vi_goi'), han_dung_ngay: g('han_dung_ngay'),
+    don_vi_cai: g('don_vi_cai'), so_trong_thung: g('so_trong_thung'),
     canh_bao_truoc_ngay: g('canh_bao_truoc_ngay'), gia_ban_kg: g('gia_ban_kg'), xu_ly_mac_dinh: g('xu_ly_mac_dinh'),
     ma_can: g('ma_can'), ton_toi_thieu_kg: g('ton_toi_thieu_kg'), noi_de_sau_pha: g('noi_de_sau_pha') === 'quay' ? 'quay' : '',
     kho_toi_thieu_kg: g('kho_toi_thieu_kg'), kho_toi_da_kg: g('kho_toi_da_kg'), ma_misa: g('ma_misa'),
@@ -233,6 +240,7 @@ const tuForm = (f: FormData, id?: string): GiaTriFormMatHang => {
 // Form thêm mới chưa chọn loại (chỉ hiện ba thẻ loại) — trừ khi danh sách đang lọc theo một loại.
 const TRONG: GiaTriFormMatHang = {
   ma: '', ten: '', ten_phu: '', nhom: '', loai: laLoaiMatHang(locLoai) ? locLoai : '', dem_goi: null, don_vi_goi: '',
+  don_vi_cai: '', so_trong_thung: '',
   han_dung_ngay: '', canh_bao_truoc_ngay: '', gia_ban_kg: '', xu_ly_mac_dinh: 'nhap_kho', ma_can: '',
   ton_toi_thieu_kg: '', noi_de_sau_pha: '', kho_toi_thieu_kg: '', kho_toi_da_kg: '', thu_tu: '', dang_dung: true, truong_them: {}, gia_tri_thu_hoi_kg: '',
 };
@@ -378,7 +386,7 @@ const coXemGia = k.duoc('xem_gia');
 
   <h2>{t.danhMuc(matHang.length)}</h2>
   <nav class="kho-dh" aria-label={t.locLoai}>
-    {[['', t.tatCa], ['tang', t.tang], ['phan_cat', t.phanCat], ['phu_pham', t.phuPham]].map(([v, ten]) => (
+    {[['', t.tatCa], ['tang', t.tang], ['phan_cat', t.phanCat], ['phu_pham', t.phuPham], ['gia_vi', t.giaVi], ['do_uong', t.doUong]].map(([v, ten]) => (
       <a href={v ? `/noi-bo/kho/cai-dat/mat-hang?loai=${v}` : '/noi-bo/kho/cai-dat/mat-hang'} aria-current={locLoai === v ? 'page' : undefined}>{ten}</a>
     ))}
   </nav>
@@ -397,8 +405,9 @@ const coXemGia = k.duoc('xem_gia');
           {ds.map(m => (
             <tr style={m.dang_dung ? '' : 'opacity:.5'}>
               <td><strong>{m.ten}</strong><br /><span class="kho-phu">{m.ma}{m.nhom ? ` · ${m.nhom}` : ''}{m.ten_phu ? ` · ${m.ten_phu}` : ''}{!m.dang_dung ? t.ngungDungNho : ''}</span></td>
-              <td>{nhanKho(TEN_LOAI_MAT_HANG_NB, m.loai, nn)}{m.theo_tang && <><br /><span class="kho-phu" title={moTaBangU(bangU.get(m.id) ?? [], nn)}>{t.theoTangNho}</span></>}</td>
-              <td class="so">{m.gia_ban_kg !== null ? dinhDangTien(m.gia_ban_kg, nn) : (m.loai === 'phan_cat' ? <span class="kho-han sap_het">{t.chuaCoGia}</span> : '—')}</td>
+              <td>{nhanKho(TEN_LOAI_MAT_HANG_NB, m.loai, nn)}{m.theo_tang && <><br /><span class="kho-phu" title={moTaBangU(bangU.get(m.id) ?? [], nn)}>{t.theoTangNho}</span></>}
+                {m.dem_theo_cai && <><br /><span class="kho-phu">{t.donViThung(m.don_vi_goi, m.so_trong_thung)}</span></>}</td>
+              <td class="so">{m.gia_ban_kg !== null && !m.dem_theo_cai ? dinhDangTien(m.gia_ban_kg, nn) : (m.loai === 'phan_cat' ? <span class="kho-han sap_het">{t.chuaCoGia}</span> : '—')}</td>
               <td class="so">{m.han_dung_ngay ? t.soNgay(m.han_dung_ngay) : '—'}</td>
               <td><a href={`/noi-bo/kho/cai-dat/mat-hang?sua=${m.id}${locLoai ? `&loai=${locLoai}` : ''}`}>{t.suaNut}</a></td>
             </tr>
