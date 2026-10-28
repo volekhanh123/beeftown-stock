@@ -168,7 +168,6 @@ if (!ten) {
   process.exit(2);
 }
 
-const migration = docMigration();
 const laFile = /\.(ts|tsx|mjs|js|astro|css|sql|md)$/.test(ten);
 
 if (laFile) {
@@ -179,14 +178,17 @@ if (laFile) {
     .filter(f => f === ten || f.endsWith('/' + goc));
   console.log(`${DAM(ten)}`);
   inNhom('File trong repo', coThat);
+  // Đúng tên file: "/danh-muc'" hay "/danh-muc.ts'", không phải "/danh-muc-can.ts".
+  const dungTen = new RegExp(`/${thoat(khongDuoi)}(\\.(ts|tsx|mjs|js))?['"]`);
   const nhapTu = gitGrep(`/${khongDuoi}`, CHO_MA, { nguyenTu: false })
-    .filter(d => /\bfrom\s+['"]|import\(\s*['"]|require\(/.test(d.chu) && !coThat.includes(d.tep));
+    .filter(d => /\bfrom\s+['"]|import\(\s*['"]|require\(/.test(d.chu) && dungTen.test(d.chu) && !coThat.includes(d.tep));
   inNhom('Ai import', gomTheoFile(nhapTu));
   inNhom('Kiểm thử nhắc tên', gomTheoFile(gitGrep(goc, CHO_TEST, { nguyenTu: false }), 3, 12));
   inNhom('Tài liệu nhắc tên', gomTheoFile(gitGrep(goc, ['*.md'], { nguyenTu: false }), 3));
   process.exit(0);
 }
 
+const migration = docMigration();
 const ham = timHam(ten, migration);
 const banTao = ham.filter(l => l.loai === 'tao');
 
@@ -220,7 +222,8 @@ console.log(DAM(ten));
 
 if (taoHam.length) {
   const cuoi = taoHam.at(-1);
-  const xoaSau = ham.filter(l => l.loai === 'xoa' && l.tep >= cuoi.tep);
+  // Xoá đứng TRƯỚC bản cuối trong cùng file (drop chữ ký cũ rồi create lại) không tính.
+  const xoaSau = ham.filter(l => l.loai === 'xoa' && (l.tep > cuoi.tep || (l.tep === cuoi.tep && l.dong > cuoi.dong)));
   console.log(`\n${DAM('Hàm SQL')} — viết ${taoHam.length} lần; bản cuối ${DAM(`crm/supabase/migrations/${cuoi.tep}:${cuoi.dong}`)}`);
   console.log(`  ${cuoi.ngonNgu} · ${cuoi.definer ? 'security definer' : 'security invoker'}`
     + (cuoi.definer ? (cuoi.searchPath ? ' · có set search_path' : DO(' · THIẾU set search_path')) : '')
@@ -253,8 +256,9 @@ const goiRpc = goi.filter(d => new RegExp(`\\.(rpc|from)\\(\\s*['"\`]${thoat(ten
 inNhom('Mã gọi qua .rpc() / .from()', gomTheoFile(goiRpc));
 inNhom('Mã nhắc tên ở chỗ khác', gomTheoFile(goi.filter(d => !goiRpc.includes(d))));
 inNhom('Kiểm thử nhắc tên (nhắc nhiều nhất trước)', gomTheoFile(gitGrep(ten, CHO_TEST), 4, 12));
-inNhom('Danh sách xếp loại (quyền, hàm nội bộ…)', timTrongDanhSach(ten));
-if (taoHam.length && !timTrongDanhSach(ten).length) {
+const danhSach = timTrongDanhSach(ten);
+inNhom('Danh sách xếp loại (quyền, hàm nội bộ…)', danhSach);
+if (taoHam.length && !danhSach.length) {
   console.log(MO('  Hàm mới gọi được từ ngoài (anon / authenticated) phải nằm trong DUOC_PHEP (test-an-toan.mjs),'
     + ' GOI_DUOC / NOI_BO (test-kho-quyen.mjs, test-zalo.mjs, test-messenger.mjs) — xem crm/CLAUDE.md.'));
 }

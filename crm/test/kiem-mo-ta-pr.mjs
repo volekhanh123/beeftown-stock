@@ -46,7 +46,8 @@ function phanMuc(than, tieuDe) {
 /** @returns danh sách lỗi (chuỗi) — rỗng là đạt */
 export function kiemMoTa(thanGoc) {
   const loi = [];
-  const than = boChuThich((thanGoc ?? '').replace(/\r\n/g, '\n'));
+  // NFC: bộ gõ để kiểu "Unicode tổ hợp" (NFD) ra "Thấp" là chữ a + dấu rời — so khớp phải ra cùng một chữ.
+  const than = boChuThich((thanGoc ?? '').normalize('NFC').replace(/\r\n/g, '\n'));
 
   const tomTat = phanMuc(than, 'Tóm tắt cho Khánh');
   if (tomTat === null) loi.push('Thiếu mục "## Tóm tắt cho Khánh" (mẫu PR).');

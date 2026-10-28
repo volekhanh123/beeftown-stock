@@ -54,7 +54,10 @@ const giaTri = ten => { const i = thamSo.indexOf(ten); return i >= 0 ? thamSo[i 
 // Xếp file vào khu
 // ---------------------------------------------------------------------------
 
-/** [khu, mẫu đường dẫn, loại] — loại: ma (mã chạy thật), sql, test, tai-lieu. Mẫu đầu tiên khớp thì thắng. */
+/**
+ * [khu, mẫu đường dẫn, loại] — loại: ma (mã chạy thật), sql, test, tai-lieu. Mẫu đầu tiên khớp thì thắng.
+ * package-lock.json thuộc khu của nó (đổi thư viện web vẫn phải deploy) nhưng loại 'khoa': không tính vào cỡ PR.
+ */
 export const KHU = [
   ['Database (migration)', /^crm\/supabase\/migrations\//, 'sql'],
   ['Kiểm thử', /^(crm\/test|can-app\/test|web\/kiem-tra)\//, 'test'],
@@ -68,33 +71,79 @@ export const KHU = [
   ['Web — ảnh, file tĩnh', /^web\/public\//, 'ma'],
   ['Web — cấu hình, công cụ', /^web\//, 'ma'],
   ['Beeftown Cân', /^can-app\/(src|scripts)\//, 'ma'],
-  ['Mini App Zalo', /^mini-app\/(src|scripts|app-config\.json|index\.html|vite\.config)/, 'ma'],
+  ['Mini App Zalo', /^mini-app\/(src|scripts|app-config\.json|index\.html|vite\.config|package(-lock)?\.json)/, 'ma'],
   ['Sao lưu', /^crm\/sao-luu\//, 'ma'],
   ['CI (GitHub Actions)', /^\.github\/workflows\//, 'ma'],
   ['Khác', /./, 'ma'],
 ];
 
 export function xepKhu(tep) {
-  for (const [ten, mau, loai] of KHU) if (mau.test(tep)) return { ten, loai };
-  return { ten: 'Khác', loai: 'ma' };
+  const khoa = /(^|\/)package-lock\.json$/.test(tep);
+  for (const [ten, mau, loai] of KHU) if (mau.test(tep)) return { ten, loai: khoa ? 'khoa' : loai };
+  return { ten: 'Khác', loai: khoa ? 'khoa' : 'ma' };
 }
 
 // ---------------------------------------------------------------------------
 // Đọc migration mới
 // ---------------------------------------------------------------------------
 
-/** Bỏ chú thích -- và chuỗi '…' để tìm câu lệnh thật (delete trong chú thích hay trong chữ không tính). */
-const boChuThichVaChuoi = s => s.replace(/'(?:[^']|'')*'/g, "''").replace(/--[^\n]*/g, '');
+/**
+ * Bỏ chú thích (-- và /* *\/) và chuỗi '…' để tìm câu lệnh thật: delete trong chú thích hay trong chữ không tính.
+ * Đọc MỘT lượt từ trái sang phải — dấu nháy lẻ trong chú thích ("-- câu 'Số điện thoại") không được ghép với dấu
+ * nháy của dòng sau mà nuốt mất câu lệnh ở giữa. Thân hàm $$ … $$ giữ nguyên: delete trong thân cũng tính (Supabase
+ * MCP đòi xác nhận theo chữ của cả file).
+ */
+export function boChuThichVaChuoi(s) {
+  let ra = '';
+  for (let i = 0; i < s.length;) {
+    if (s.startsWith('--', i)) { const h = s.indexOf('\n', i); i = h < 0 ? s.length : h; continue; }
+    if (s.startsWith('/*', i)) { const h = s.indexOf('*/', i + 2); i = h < 0 ? s.length : h + 2; ra += ' '; continue; }
+    if (s[i] === "'") {
+      let j = i + 1;
+      while (j < s.length && !(s[j] === "'" && s[j + 1] !== "'")) j += s[j] === "'" ? 2 : 1;
+      ra += "''";
+      i = j + 1;
+      continue;
+    }
+    ra += s[i++];
+  }
+  return ra;
+}
+
+/** Tên trong câu drop (bỏ public. và nháy kép) → mẫu tìm câu tạo lại nó. */
+const TAO_LAI = {
+  function: t => `create\\s+(?:or\\s+replace\\s+)?function\\s+(?:public\\.)?"?${t}"?\\s*\\(`,
+  trigger: t => `create\\s+(?:or\\s+replace\\s+)?(?:constraint\\s+)?trigger\\s+"?${t}"?\\b`,
+  policy: t => `create\\s+policy\\s+"?${t}"?(?:\\s|$)`,
+  index: t => `create\\s+(?:unique\\s+)?index\\s+(?:concurrently\\s+)?(?:if\\s+not\\s+exists\\s+)?"?${t}"?\\b`,
+  view: t => `create\\s+(?:or\\s+replace\\s+)?(?:materialized\\s+)?view\\s+(?:public\\.)?"?${t}"?\\b`,
+  table: t => `create\\s+table\\s+(?:if\\s+not\\s+exists\\s+)?(?:public\\.)?"?${t}"?\\b`,
+  type: t => `create\\s+type\\s+(?:public\\.)?"?${t}"?\\b`,
+  column: t => `add\\s+column\\s+(?:if\\s+not\\s+exists\\s+)?"?${t}"?\\b`,
+};
+
+/** Câu drop mà file KHÔNG tạo lại sau đó — drop chữ ký cũ rồi create, drop trigger rồi tạo lại thì không kể. */
+function dropThat(sach) {
+  const ra = [];
+  const re = /\bdrop\s+(table|column|function|view|type|policy|trigger|index)\s+(?:if\s+exists\s+)?("[^"]+"|[\w.]+)/gi;
+  for (const m of sach.matchAll(re)) {
+    const loai = m[1].toLowerCase();
+    const ten = m[2].replace(/^public\./i, '').replace(/^"|"$/g, '');
+    const sau = sach.slice(m.index + m[0].length);
+    if (new RegExp(TAO_LAI[loai](ten.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'i').test(sau)) continue;
+    ra.push(`${loai} ${ten}`);
+  }
+  return ra;
+}
 
 export function docMigrationMoi(tep, s) {
   const sach = boChuThichVaChuoi(s);
   return {
     tep,
     so: tep.slice(0, 4),
-    themEnum: /alter\s+type\s+\w+\s+add\s+value/i.test(sach),
+    themEnum: /alter\s+type\s+(?:public\.)?"?\w+"?\s+add\s+value/i.test(sach),
     coDelete: /\bdelete\s+from\b/i.test(sach),
-    coDrop: [...sach.matchAll(/\bdrop\s+(table|column|function|view|type|policy|trigger|index)\s+(?:if\s+exists\s+)?([\w.]+)/gi)]
-      .map(m => `${m[1].toLowerCase()} ${m[2]}`),
+    coDrop: dropThat(sach),
     bangMoi: [...sach.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?(\w+)/gi)].map(m => m[1]),
     cotMoi: [...sach.matchAll(/alter\s+table\s+(?:only\s+)?(?:public\.)?(\w+)\s+add\s+column\s+(?:if\s+not\s+exists\s+)?(\w+)/gi)]
       .map(m => `${m[1]}.${m[2]}`),
@@ -133,7 +182,7 @@ export function tomTat({ tep, migMoi, hamDaCo, nhacTrongTest, phienBanCan, tepCa
     m.sqlThat = Math.max(0, sqlThat);
   }
   const khu = new Map();
-  const cong = { ma: 0, sql: 0, test: 0, 'tai-lieu': 0 };
+  const cong = { ma: 0, sql: 0, test: 0, 'tai-lieu': 0, khoa: 0 };
   for (const f of tep) {
     const { ten, loai } = xepKhu(f.tep);
     if (!khu.has(ten)) khu.set(ten, { so: 0, them: 0, bot: 0 });
@@ -331,9 +380,14 @@ if (laFileChinh) {
     for (const [ten, h] of banCuoiTheoTen(ra)) hamDaCo.set(ten, h);
   }
 
+  // Cùng bộ file với test-quy-trinh.mjs nhóm 1 (mọi .mjs của crm/test trừ chính nó, .ts của can-app/test): máy tóm tắt
+  // và cổng kiểm không được nói khác nhau.
   const nhacTrongTest = ten => {
-    try { execFileSync('git', ['grep', '-q', '-w', '-F', '-e', ten, den, '--', 'crm/test', 'can-app/test'], { cwd: GOC, stdio: 'ignore' }); return true; }
-    catch { return false; }   // git grep -q: mã 1 khi không thấy
+    try {
+      execFileSync('git', ['grep', '-q', '-w', '-F', '-e', ten, den, '--', 'crm/test/*.mjs', ':!crm/test/test-quy-trinh.mjs', 'can-app/test/*.ts'],
+        { cwd: GOC, stdio: 'ignore' });
+      return true;
+    } catch { return false; }   // git grep -q: mã 1 khi không thấy
   };
 
   const phienBan = ref => git(['show', `${ref}:can-app/src/main.ts`], { im: true }).match(/const PHIEN_BAN = '([^']+)'/)?.[1] ?? null;

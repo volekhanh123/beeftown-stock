@@ -19,15 +19,17 @@ on:
 permissions:
   contents: read
 
+# Sửa mô tả (chỉ chạy job kiểm mô tả) và đẩy commit (chạy cả tóm tắt) ở hai nhóm riêng: sửa mô tả ngay sau khi đẩy
+# không được hủy lượt tóm tắt đang chạy của commit mới — lượt sửa mô tả không tóm tắt lại, comment sẽ kẹt ở commit cũ.
 concurrency:
-  group: mo-ta-pr-${{ github.event.pull_request.number }}
+  group: mo-ta-pr-${{ github.event.pull_request.number }}-${{ (github.event.action == 'edited' && !github.event.changes.base) && 'mo-ta' || 'ma' }}
   cancel-in-progress: true
 
 jobs:
   tom-tat:
     name: Máy tóm tắt PR
-    # Sửa mô tả không đổi mã: không cần tóm tắt lại.
-    if: github.event.action != 'edited' && github.event.pull_request.user.login != 'dependabot[bot]'
+    # Sửa mô tả không đổi mã: không cần tóm tắt lại. Đổi nhánh gốc (cũng là sự kiện edited) thì diff đổi: tóm tắt lại.
+    if: (github.event.action != 'edited' || github.event.changes.base) && github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

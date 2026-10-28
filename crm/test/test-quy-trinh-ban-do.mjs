@@ -203,6 +203,12 @@ await nhom('4 · tim.mjs TÌM ĐÚNG BẢN CUỐI, IN NGUYÊN VĂN', async () =>
   ok('Tra một bảng: thấy câu tạo bảng và các lần thêm cột', /tạo bảng 0020_kho_so_cai_nhap\.sql:\d+/.test(bang) && /sửa bảng 0105_/.test(bang));
   const tepWeb = boMau(node('tim.mjs', ['nhan-hang.ts']).ra);
   ok('Tra một file: thấy trang import nó', tepWeb.includes('web/src/pages/noi-bo/kho/nhan-hang/moi.astro'));
+  // drop chữ ký cũ rồi create lại trong cùng file (0102) không phải "xoá sau bản cuối".
+  ok('Drop đứng trước bản cuối trong cùng file: không báo xoá', !boMau(node('tim.mjs', ['ban_le_tao_san_pham']).ra).includes('Có lệnh xoá sau bản cuối'));
+  const dm = boMau(node('tim.mjs', ['danh-muc.ts']).ra);
+  const aiImport = dm.slice(dm.indexOf('Ai import'), dm.indexOf('Kiểm thử nhắc tên'));
+  ok('Tra file: "danh-muc.ts" không kéo theo file chỉ import danh-muc-can.ts',
+     aiImport.includes('can-app/src/nghiep-vu.ts') && !aiImport.includes('can-app/src/quay.ts'));
   const khong = node('tim.mjs', ['khong_co_ten_nay_dau']);
   ok('Tên không có: chạy hết, không ném lỗi', khong.ma === 0 && boMau(khong.ra).includes('(không có)'));
 });
@@ -245,8 +251,24 @@ drop function if exists kho_bo_di(uuid);
   ok('Hàm mới chưa test nào nhắc: cần chú ý', coMig.includes('Hàm mới `kho_moi_khong_test`'));
   ok('Hàm thay thân: ghi số dòng đổi so với bản trước', coMig.includes('thay thân `kho_cu` (+3 / −1)'));
   ok('Cột mới ghi trong mục migration', coMig.includes('`kho_mat_hang.so_moi`'));
-  const chiChuThich = docMigrationMoi('0201_x.sql', "-- delete from a;\nselect 'delete from b';\n");
+  const chiChuThich = docMigrationMoi('0201_x.sql', "-- delete from a;\nselect 'delete from b';\n/* delete from c */\n");
   ok('delete trong chú thích hay trong chuỗi chữ không tính', !chiChuThich.coDelete);
+  ok('Dấu nháy lẻ trong chú thích không nuốt câu lệnh sau nó',
+     docMigrationMoi('0203_x.sql', "-- câu cũ: 'Số điện thoại\ndelete from kho_x where id = '1';\n").coDelete
+     && docMigrationMoi('0204_x.sql', "-- it's\nalter type vai_tro add value 'may_moi';\n").themEnum);
+  ok('Thêm giá trị enum cho kiểu có public. hay nháy kép: vẫn là chạy RIÊNG',
+     docMigrationMoi('0205_x.sql', "alter type public.vai_tro add value 'x';").themEnum
+     && docMigrationMoi('0206_x.sql', 'alter type "vai_tro" add value \'x\';').themEnum);
+  const taoLai = docMigrationMoi('0207_x.sql', `
+drop trigger if exists t1 on a; create trigger t1 after insert on a for each row execute function f();
+drop function if exists f(int); create or replace function f(p text) returns int language sql as $$ select 1 $$;
+drop policy if exists "doc ca nha" on b; create policy "doc ca nha" on b for select using (true);
+drop index if exists i1; create index i1 on a (x);
+drop policy if exists "chi chu" on b;
+drop table cu;
+alter table a drop column y;`);
+  ok('Drop rồi tạo lại trong cùng file (trigger, hàm đổi tham số, policy, chỉ mục): không báo',
+     JSON.stringify(taoLai.coDrop) === JSON.stringify(['policy chi chu', 'table cu', 'column y']), JSON.stringify(taoLai.coDrop));
 
   const suaCu = chay({ tep: [f('crm/supabase/migrations/0001_nen_mong.sql', 1, 1, 'M')] });
   ok('Sửa migration đã có trên main: cần chú ý', suaCu.includes('Sửa migration đã có trên main'));
@@ -259,6 +281,12 @@ drop function if exists kho_bo_di(uuid);
   const lib = chay({ tep: [f('web/src/lib/kho/can-tma.ts')], tepCan: new Set(['web/src/lib/kho/can-tma.ts']) });
   ok('Đổi file web/src/lib mà Beeftown Cân đóng gói: nhắc ở cần chú ý', lib.includes('Beeftown Cân đóng gói cả `kho/can-tma.ts`'));
 
+  const khoa = chay({ tep: [f('web/package-lock.json', 4000, 3000), f('web/package.json', 1, 1)] });
+  ok('package-lock.json không tính vào cỡ PR, nhưng đổi thư viện web vẫn phải deploy',
+     !khoa.includes('PR lớn') && khoa.includes('Deploy web'));
+  ok('Đổi mini-app/package.json: nhắc đưa Mini App lên Zalo', chay({ tep: [f('mini-app/package.json')] }).includes('dua-len-zalo.cmd'));
+  ok('Hàm mới "có test nhắc" tính trên cùng bộ file với test-quy-trinh.mjs nhóm 1 (bỏ chính file đó)',
+     doc('crm/test/tom-tat-pr.mjs').includes("':!crm/test/test-quy-trinh.mjs'"));
   const lon = chay({ tep: [f('web/src/lib/kho/nhap.ts', NGUONG_PR_LON, 1)] });
   ok(`Quá ${NGUONG_PR_LON} dòng mã: nhắc tách PR`, lon.includes('**PR lớn:**'));
   ok(`Đúng ${NGUONG_PR_LON} dòng: không nhắc`, !chay({ tep: [f('web/src/lib/kho/nhap.ts', NGUONG_PR_LON, 0)] }).includes('PR lớn'));
@@ -309,6 +337,7 @@ await nhom('6 · MÔ TẢ PR: MẪU VÀ MÁY KIỂM KHỚP NHAU', async () => {
   ok('Thiếu hẳn mục: bị từ chối', kiemMoTa(du.replace(/- \[ \] `gio-vn`[^\n]*\n  - `Tên kiểm tra`\n/, '')).some(l => l.includes('Thiếu mục `gio-vn`')));
   ok('Mô tả rỗng (PR mở không theo mẫu): bị từ chối, không ném lỗi', kiemMoTa('').length > 0 && kiemMoTa(null).length > 0);
   ok('Xuống dòng kiểu Windows (\\r\\n) vẫn đọc được', kiemMoTa(du.replace(/\n/g, '\r\n')).length === 0);
+  ok('Gõ bằng "Unicode tổ hợp" (NFD): "Rủi ro: Thấp" vẫn đạt', kiemMoTa(du.replace('Vừa — đổi', 'Thấp — đổi').normalize('NFD')).length === 0);
 });
 
 // ===========================================================================
@@ -323,6 +352,9 @@ await nhom('7 · WORKFLOW mo-ta-pr.yml', async () => {
   ok('Comment tìm lại bằng đúng dấu của tom-tat-pr.mjs, chỉ sửa khi khác', y.includes(`DAU='${DAU_COMMENT}'`) && y.includes('!= "$(cat tom-tat.md)"'));
   ok('Không đăng được comment (token chỉ đọc) không làm PR đỏ', /name: Đăng hoặc sửa comment tóm tắt\n\s+continue-on-error: true/.test(y));
   ok('Quyền ghi PR chỉ ở job tóm tắt; mặc định chỉ đọc', /^permissions:\n  contents: read\n/m.test(y) && (y.match(/pull-requests: write/g) ?? []).length === 1);
+  ok('Sửa mô tả và đẩy commit ở hai nhóm chạy riêng: sửa mô tả không hủy lượt tóm tắt của commit mới',
+     /group: mo-ta-pr-\$\{\{ github\.event\.pull_request\.number \}\}-\$\{\{ \(github\.event\.action == 'edited' && !github\.event\.changes\.base\) && 'mo-ta' \|\| 'ma' \}\}/.test(y));
+  ok('Đổi nhánh gốc (sự kiện edited) thì tóm tắt lại', y.includes("(github.event.action != 'edited' || github.event.changes.base)"));
   ok('Bỏ qua PR của Dependabot', (y.match(/github\.event\.pull_request\.user\.login != 'dependabot\[bot\]'/g) ?? []).length === 2);
   ok('Không chạy trên main: cổng deploy không đọc workflow này', !/^\s+push:/m.test(y) && doc('web/kiem-tra/truoc-deploy.mjs').includes("const WORKFLOW = 'kiem-thu.yml'"));
 });
