@@ -42,13 +42,13 @@ import {
 import {
   docPhieuNhap, docSoTangBo, luuPhieuNhap, guiDuyet, rutPhieu, duyetPhieu, tuChoiPhieu, huyPhieu,
   dauTuPhieu, dongTuPhieu, dongTrong, xemTruocGiaVon,
-  docSoSanhGia, docNguongGiaMua, chuSoSanhGia, cauCanhBaoGia, dienGiaTuPhieu, docFormDienGia, dienGiaPhieu,
+  docSoSanhGia, docNguongGiaMua, chuSoSanhGia, cauCanhBaoGia, dienGiaTuPhieu, docFormDienGia, dienGiaPhieu, laDongThung, thanhTienDong,
   type DauForm, type DongForm, type PhieuNhap, type DongPhieuNhap, type SoSanhGia, type DienGiaForm,
 } from '../../../../lib/kho/nhap.ts';
 import { linkAnh } from '../../../../lib/kho/anh.ts';
 import { docCongNoMotPhieu } from '../../../../lib/kho/cong-no.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangThoiDiem, dinhDangTien, docTien, homNayVn, kqHai, laUuid,
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangThoiDiem, dinhDangTien, docTien, homNayVn, kqHai, laUuid, soCaiChu,
   trangThaiKho, type KetQua,
 } from '../../../../lib/kho/chung.ts';
 import { CO_KHONG, type DinhNghiaTruong } from '../../../../lib/kho/truong-them.ts';
@@ -147,6 +147,12 @@ const t = dichNB(nn, {
   viDuGoi: { vi: 'ví dụ 1', en: 'e.g. 1' },
   giaVonUocTinh: { vi: 'Giá vốn ước tính/kg', en: 'Estimated cost/kg' },
   donGiaKg: { vi: 'Đơn giá/kg', en: 'Unit price/kg' },
+  // 0105: món đếm theo cái
+  giaThung: { vi: (n: number, dv: string) => `Giá một thùng (${n} ${dv})`, en: (n: number, dv: string) => `Price per case (${n} ${dv})` },
+  giaMotCai: { vi: (dv: string) => `Giá một ${dv}`, en: (dv: string) => `Price per ${dv}` },
+  motThung: { vi: 'một thùng', en: 'per case' },
+  motCai: { vi: (dv: string) => `một ${dv}`, en: (dv: string) => `per ${dv}` },
+  suaDongNhanHang: { vi: 'Sửa dòng hàng (số thùng, số lon, hạn dùng) ở màn Nhận hàng →', en: 'Edit the lines (cases, units, use-by) on the Receiving screen →' },
   viDuGia: { vi: 'ví dụ 480.000', en: 'e.g. 480,000' },
   hanDung: { vi: 'Hạn dùng', en: 'Use-by date' },
   themChiTiet: { vi: 'Thêm chi tiết: ngày sản xuất, số lô của nhà cung cấp', en: 'More details: production date, supplier lot no.' },
@@ -311,7 +317,13 @@ const loai: 'mua' | 'ton_dau' = phieu?.loai
   ?? (Astro.url.searchParams.get('loai') === 'ton_dau' ? 'ton_dau' : 'mua');
 const laNguoiTao = !!phieu?.nguoi_tao && phieu.nguoi_tao === k.nhanSu.id;
 const conNhap = phieu?.trang_thai === 'nhap' || phieu?.trang_thai === 'tu_choi';
-const coTheSoan = k.duoc('nhap') && (moi || conNhap);
+// 0105: món đếm theo cái (sốt, gia vị, đồ uống) — số lượng nhập ở màn Nhận hàng (thùng + lẻ), giá ở form điền
+// giá (giá một thùng). Lưới soạn của trang này là cho thịt: phiếu có dòng đếm theo cái không soạn ở đây (lưu lại
+// từ lưới làm mất giá thùng của dòng).
+const mhTheoId = new Map(matHang.map(m => [m.id, m]));
+const laDongCai = (id: string) => !!mhTheoId.get(id)?.dem_theo_cai;
+const coDongCai = dongDb.some(d => laDongCai(d.mat_hang_id));
+const coTheSoan = k.duoc('nhap') && (moi || conNhap) && !coDongCai;
 // ?soan=1: người duyệt (có quyền nhap) muốn sửa cả dòng hàng, số kg.
 const muonSoan = Astro.url.searchParams.get('soan') === '1';
 // Điền giá: phiếu chờ duyệt; hoặc nháp / bị trả mà người xem không phải
@@ -393,7 +405,8 @@ if (form) {
         en: 'Prices can no longer be filled in on this receipt (approved or cancelled), or your account cannot approve goods receipts.',
       });
     } else {
-      const docGia = docFormDienGia(form, dongDb, phieu.loai);
+      const docGia = docFormDienGia(form, dongDb, phieu.loai,
+        new Map(dongDb.filter(d => laDongCai(d.mat_hang_id)).map(d => [d.id, mhTheoId.get(d.mat_hang_id)?.don_vi_goi ?? ''])));
       const luu = await dienGiaPhieu(k.client, phieu.id, Number(form.get('phien_ban')), docGia);
       if (!luu.ok) {
         bao = luu;
@@ -472,7 +485,8 @@ if (phieu && phieu.loai === 'mua' && phieu.trang_thai === 'da_duyet') {
 }
 const tienHang = dongDb.reduce((s, d) => s + d.thanh_tien, 0);
 const tongTien = phieu ? tienHang + phieu.tien_thue + phieu.chi_phi_khac : 0;
-const giaVon = phieu && (dienGiaDuoc || phieu.trang_thai === 'cho_duyet') ? xemTruocGiaVon(dongDb, phieu.chi_phi_khac, phieu.tien_thue, caiDat) : [];
+const giaVon = phieu && (dienGiaDuoc || phieu.trang_thai === 'cho_duyet')
+  ? xemTruocGiaVon(dongDb.map(d => ({ ...d, cai: laDongCai(d.mat_hang_id) })), phieu.chi_phi_khac, phieu.tien_thue, caiDat) : [];
 const tieuDe = moi ? (loai === 'ton_dau' ? t.tdTonDau : t.tdLap) : t.tdPhieu(phieu?.so_phieu ?? '');
 const choToiDuyet = dienGiaDuoc && phieu?.trang_thai === 'cho_duyet';
 
@@ -489,10 +503,7 @@ if (dienGiaDuoc && phieu) {
 const gf: DienGiaForm | null = dienGiaDuoc && phieu ? (giaForm ?? dienGiaTuPhieu(phieu, dongDb)) : null;
 const canhBaoGia = cauCanhBaoGia(soSanh.values(), nguongGia, nn);
 // Thành tiền tạm tính theo chữ đang ở ô đơn giá (không JavaScript: bấm Lưu giá để tính lại).
-const thanhTienTam = (d: DongPhieuNhap) => {
-  const g = docTien(gf?.gia[d.id]);
-  return g !== null && !Number.isNaN(g) ? Math.round(g * d.so_kg) : null;
-};
+const thanhTienTam = (d: DongPhieuNhap) => thanhTienDong(d, docTien(gf?.gia[d.id]));   // 0105: dòng thùng
 const tienHangTam = dongDb.reduce((s, d) => s + (thanhTienTam(d) ?? 0), 0);
 const tienThem = (v: string | undefined) => { const n = docTien(v); return n !== null && !Number.isNaN(n) ? n : 0; };
 const tongTam = tienHangTam + (loai === 'mua' ? tienThem(gf?.tien_thue) + tienThem(gf?.chi_phi_khac) : 0);
@@ -712,6 +723,9 @@ const huongDan = 'duyet-nhap';
         {coTheSoan && (
           <p style="margin:.5rem 0 0"><a href={`/noi-bo/kho/nhap/${phieu.id}?soan=1`}>{t.suaDongKg}</a></p>
         )}
+        {coDongCai && conNhap && k.duoc('nhap') && (
+          <p style="margin:.5rem 0 0"><a href={`/noi-bo/kho/nhan-hang/${phieu.id}`}>{t.suaDongNhanHang}</a></p>
+        )}
       </div>
 
       <form method="POST">
@@ -722,7 +736,8 @@ const huongDan = 'duyet-nhap';
         {dongDb.map((d, i) => {
           const mh = tenMh.get(d.mat_hang_id);
           const ss = soSanh.get(d.id);
-          const chip = chuSoSanhGia(ss, nn);
+          const heSo = laDongThung(d) ? d.so_trong_thung as number : 1;   // 0105: ô giá thùng
+          const chip = chuSoSanhGia(ss, nn, heSo);
           const tt = thanhTienTam(d);
           const gv = giaVon[i];
           return (
@@ -730,17 +745,18 @@ const huongDan = 'duyet-nhap';
               <span class="so-thu-tu">{i + 1}</span>
               <p class="dg-ten">
                 <strong>{mh?.ten ?? '—'}</strong>{d.so_tang != null && <> · {chuTang(d.so_tang, nn)}</>}<br />
-                <span class="kho-phu">{kgs(d.so_kg)} {d.so_kg_thuc != null ? t.kgNcc : 'kg'}{d.so_kg_thuc != null && <> {t.sauRepack(kgs(d.so_kg_thuc), dinhDangPhanTram(haoRepack(d.so_kg, d.so_kg_thuc)?.pt, 1, nn))}</>}{d.so_goi ? ` · ${d.so_goi} ${mh?.don_vi_goi ?? t.goi}` : ''} · {t.han} {dinhDangNgay(d.han_dung)}{d.so_lo_ncc ? ` · ${t.loNcc(d.so_lo_ncc)}` : ''}</span>
+                <span class="kho-phu">{mh?.dem_theo_cai ? soCaiChu(d.so_goi, mh.don_vi_goi, d.so_trong_thung, nn) : <>{kgs(d.so_kg)} {d.so_kg_thuc != null ? t.kgNcc : 'kg'}{d.so_kg_thuc != null && <> {t.sauRepack(kgs(d.so_kg_thuc), dinhDangPhanTram(haoRepack(d.so_kg, d.so_kg_thuc)?.pt, 1, nn))}</>}{d.so_goi ? ` · ${d.so_goi} ${mh?.don_vi_goi ?? t.goi}` : ''}</>} · {t.han} {dinhDangNgay(d.han_dung)}{d.so_lo_ncc ? ` · ${t.loNcc(d.so_lo_ncc)}` : ''}</span>
               </p>
-              <label class="nb-o"><span>{phieu.loai === 'ton_dau' ? t.giaVonUocTinh : t.donGiaKg}</span>
+              <label class="nb-o"><span>{laDongThung(d) ? t.giaThung(d.so_trong_thung as number, mh?.don_vi_goi ?? '')
+                : mh?.dem_theo_cai ? t.giaMotCai(mh.don_vi_goi) : phieu.loai === 'ton_dau' ? t.giaVonUocTinh : t.donGiaKg}</span>
                 <input type="text" inputmode="numeric" name={`gia_${d.id}`} value={gf.gia[d.id] ?? ''}
-                  placeholder={ss?.gia_truoc ? t.lanTruoc(ss.gia_truoc) : t.viDuGia} /></label>
+                  placeholder={ss?.gia_truoc ? t.lanTruoc(ss.gia_truoc * heSo) : t.viDuGia} /></label>
               {chip && (
                 <p class="dg-chip-hang"><span class:list={['dg-chip', { vuot: chip.vuot }]}
                   title={ss?.so_phieu_truoc ? `${t.phieu} ${ss.so_phieu_truoc} · ${dinhDangNgay(ss.ngay_truoc)}` : undefined}>{chip.chu}{chip.vuot && <>{' · '}<strong>{t.vuotNguong}</strong></>}</span></p>
               )}
               <p class="kho-phu" style="margin:.4rem 0 0">{t.thanhTienTam} <strong>{tt !== null && tt > 0 ? tien(tt) : '—'}</strong>
-                {gv && d.don_gia_kg > 0 && Math.round(gv.gia_von_kg) !== d.don_gia_kg && <>{' '}· {t.vaoKho} {tien(gv.gia_von_kg)}/kg</>}</p>
+                {gv && d.don_gia_kg > 0 && Math.round(gv.gia_von_kg) !== d.don_gia_kg && <>{' '}· {t.vaoKho} {tien(gv.gia_von_kg)}/{mh?.dem_theo_cai ? mh.don_vi_goi : 'kg'}</>}</p>
             </div>
           );
         })}
@@ -849,9 +865,16 @@ const huongDan = 'duyet-nhap';
                     <><br /><span class="kho-phu">{dnLo.filter(x => d.truong_them?.[x.khoa] !== undefined).map(x => `${x.nhan}: ${d.truong_them[x.khoa] === true ? CO_KHONG.co[nn] : d.truong_them[x.khoa] === false ? CO_KHONG.khong[nn] : d.truong_them[x.khoa]}`).join(' · ')}</span></>
                   )}
                 </td>
+                {laDongCai(d.mat_hang_id) ? <>
+                  <td class="so">—</td>
+                  <td class="so">{soCaiChu(d.so_goi, tenMh.get(d.mat_hang_id)?.don_vi_goi ?? '', d.so_trong_thung, nn)}</td>
+                  <td class="so">{d.don_gia_thung != null ? <>{tien(d.don_gia_thung)}<br /><span class="kho-phu">{t.motThung}</span></>
+                    : <>{tien(d.don_gia_kg)}<br /><span class="kho-phu">{t.motCai(tenMh.get(d.mat_hang_id)?.don_vi_goi ?? '')}</span></>}</td>
+                </> : <>
                 <td class="so">{kgs(d.so_kg)}{d.so_kg_thuc != null && <><br /><span class="kho-phu">{t.sauRepack(kgs(d.so_kg_thuc), dinhDangPhanTram(haoRepack(d.so_kg, d.so_kg_thuc)?.pt, 1, nn))}</span></>}</td>
                 <td class="so">{d.so_goi || '—'}</td>
                 <td class="so">{tien(d.don_gia_kg)}</td>
+                </>}
                 <td class="so">{tien(d.thanh_tien)}</td>
                 <td>{dinhDangNgay(d.han_dung)}</td>
                 {/* 0097: phiếu chờ duyệt cũng in được số tảng (số của dòng); đã duyệt thì số của lô — hai số bằng nhau. */}
@@ -859,7 +882,7 @@ const huongDan = 'duyet-nhap';
                 {giaVon.length > 0 && <td class="so">{tien(giaVon[i]?.gia_von_kg)}</td>}
               </tr>
             ))}
-            <tr class="tong"><td>{t.tienHang}</td><td class="so">{kgs(dongDb.reduce((s, d) => s + d.so_kg, 0))}</td><td></td><td></td><td class="so">{tien(tienHang)}</td><td colspan={giaVon.length > 0 ? 3 : 2}></td></tr>
+            <tr class="tong"><td>{t.tienHang}</td><td class="so">{kgs(dongDb.filter(d => !laDongCai(d.mat_hang_id)).reduce((s, d) => s + d.so_kg, 0))}</td><td></td><td></td><td class="so">{tien(tienHang)}</td><td colspan={giaVon.length > 0 ? 3 : 2}></td></tr>
             {phieu.loai === 'mua' && <>
               <tr><td colspan="4">{t.thue}</td><td class="so">{tien(phieu.tien_thue)}</td><td colspan={giaVon.length > 0 ? 3 : 2}></td></tr>
               <tr><td colspan="4">{t.chiPhiKhac}</td><td class="so">{tien(phieu.chi_phi_khac)}</td><td colspan={giaVon.length > 0 ? 3 : 2}></td></tr>

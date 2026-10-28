@@ -28,7 +28,7 @@
 --      theo cái chia chi phí khác theo tiền hàng (như thuế) thay vì theo kg.
 --   4. MISA: đơn vị tính của món đếm theo cái là tên đơn vị của nó, không "kg".
 --   5. Báo cáo / view cộng kg nhiều món (tháng, mua hàng theo NCC, đánh giá NCC, chỉ số quản trị, tổng kg của
---      danh sách phiếu nhập / xuất): kg chỉ tính hàng cân ký; tiền vẫn cộng mọi món.
+--      danh sách phiếu nhập / xuất / nhận hàng của thủ kho): kg chỉ tính hàng cân ký; tiền vẫn cộng mọi món.
 --   6. Tiền trả hàng NCC tự tính: dòng nhập theo giá thùng tính đúng phần của giá thùng.
 -- Đợt 2 (PR sau): đồ uống tự trừ qua iPOS theo mã món, gợi ý đặt hàng theo cái, mức tối thiểu / tối đa.
 --
@@ -1818,6 +1818,72 @@ left join lateral (
   from kho_phieu_xuat_dong dd join kho_mat_hang m on m.id = dd.mat_hang_id
   where dd.phieu_xuat_id = p.id
 ) d on true;
+
+-- Danh sách phiếu nhận hàng của thủ kho (chỉ kg, không tiền — chép 0035).
+create or replace function kho_ds_phieu_nhap_kg(
+  p_chi_nhanh_id uuid,
+  p_trang_thai   text,
+  p_q            text,
+  p_tu           date,
+  p_den          date,
+  p_cua_toi      boolean,
+  p_gioi_han     int,
+  p_bo_qua       int
+)
+returns table (
+  id uuid, so_phieu text, loai text, trang_thai text, ten_nha_cung_cap text,
+  ten_vi_tri text, ngay_nhap date, so_hoa_don text, so_dong int, tong_kg numeric,
+  tong_goi int, so_anh int, ly_do text, nguoi_tao uuid, created_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_nv  uuid;
+  v_tim text;
+begin
+  if not kho_duoc(p_chi_nhanh_id, 'nhap') then
+    raise exception 'Tài khoản của bạn không được xem phiếu nhận hàng ở chi nhánh này'
+      using errcode = 'insufficient_privilege';
+  end if;
+  v_nv := (nhan_su_hien_tai()).id;
+
+  v_tim := nullif(btrim(coalesce(p_q, '')), '');
+  if v_tim is not null then
+    v_tim := '%' || replace(replace(replace(left(v_tim, 60), '\', '\\'), '%', '\%'), '_', '\_') || '%';
+  end if;
+
+  return query
+    select p.id, p.so_phieu, p.loai, p.trang_thai, n.ten, v.ten,
+           p.ngay_nhap, p.so_hoa_don,
+           coalesce(d.so_dong, 0)::int, coalesce(d.tong_kg, 0)::numeric, coalesce(d.tong_goi, 0)::int,
+           cardinality(p.anh)::int, p.ly_do, p.nguoi_tao, p.created_at
+    from kho_phieu_nhap p
+    left join kho_nha_cung_cap n on n.id = p.nha_cung_cap_id
+    left join kho_vi_tri v on v.id = p.vi_tri_id
+    left join lateral (
+      -- 0105: tổng kg không cộng món đếm theo cái (kg của nó là số cái).
+      select count(*) as so_dong, sum(dd.so_kg) filter (where not m.dem_theo_cai) as tong_kg, sum(dd.so_goi) as tong_goi
+      from kho_phieu_nhap_dong dd join kho_mat_hang m on m.id = dd.mat_hang_id
+      where dd.phieu_nhap_id = p.id
+    ) d on true
+    where p.chi_nhanh_id = p_chi_nhanh_id
+      and p.loai <> 'no_dau'   -- 0035
+      and (p_trang_thai is null or p.trang_thai = p_trang_thai)
+      and (p_tu is null or p.ngay_nhap >= p_tu)
+      and (p_den is null or p.ngay_nhap <= p_den)
+      and (not coalesce(p_cua_toi, false) or p.nguoi_tao = v_nv)
+      and (v_tim is null
+           or p.so_phieu ilike v_tim
+           or n.ten ilike v_tim
+           or p.so_hoa_don ilike v_tim)
+    order by p.ngay_nhap desc, p.created_at desc, p.id
+    limit least(greatest(coalesce(p_gioi_han, 30), 1), 200)
+    offset greatest(coalesce(p_bo_qua, 0), 0);
+end;
+$$;
 
 
 -- =============================================================================

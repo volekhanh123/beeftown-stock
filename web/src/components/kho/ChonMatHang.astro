@@ -1,6 +1,9 @@
 ---
 /**
- * Ô chọn mặt hàng, gom theo loại (tảng / phần cắt / phụ phẩm) và nhóm.
+ * Ô chọn mặt hàng, gom theo loại (tảng / phần cắt / phụ phẩm) và nhóm. Món đếm theo cái (0105: sốt, gia vị,
+ * đồ uống) CHỈ hiện khi trang bật `demCai` — nhận hàng, phiếu nhập, xuất, kiểm kê; pha lóc, quầy, công thức,
+ * đặt hàng không thấy chúng. Lựa chọn của món đếm theo cái mang data-cai (và data-thung khi có quy đổi thùng)
+ * cho CSS :has() của form.
  * Chữ hiện chỉ "tên · nhóm" — thêm "(MÃ)" thì trên điện thoại tên bị cắt giữa
  * chừng. Mã vẫn nằm trong title (rê chuột trên máy tính thấy).
  * Mặt hàng đã ngừng dùng chỉ hiện khi đang là giá trị được chọn sẵn (dữ liệu
@@ -12,6 +15,7 @@ import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
 interface MatHangChon {
   id: string; ma: string; ten: string; nhom: string | null;
   loai: string; dang_dung: boolean;
+  dem_theo_cai?: boolean; so_trong_thung?: number | null;
 }
 interface Props {
   name: string;
@@ -20,6 +24,8 @@ interface Props {
   loai?: string[];
   batBuoc?: boolean;
   trong?: string;
+  /** Hiện cả món đếm theo cái (0105). */
+  demCai?: boolean;
 }
 const nn = nnCua(Astro);
 const t = dichNB(nn, {
@@ -27,9 +33,9 @@ const t = dichNB(nn, {
   ma: { vi: 'mã', en: 'code' },
   ngungDung: { vi: ' — ngừng dùng', en: ' — no longer used' },
 });
-const { name, matHang, chon = '', loai, batBuoc = false, trong = t.trong } = Astro.props;
+const { name, matHang, chon = '', loai, batBuoc = false, trong = t.trong, demCai = false } = Astro.props;
 const ds = matHang.filter(m => (m.dang_dung || m.id === chon) && (!loai || loai.includes(m.loai)));
-const nhom = ['tang', 'phan_cat', 'phu_pham']
+const nhom = (demCai ? ['tang', 'phan_cat', 'phu_pham', 'gia_vi', 'do_uong'] : ['tang', 'phan_cat', 'phu_pham'])
   .map(l => ({ l, ten: TEN_LOAI_MAT_HANG_NB[l][nn], hang: ds.filter(m => m.loai === l) }))
   .filter(n => n.hang.length > 0);
 ---
@@ -38,7 +44,9 @@ const nhom = ['tang', 'phan_cat', 'phu_pham']
   {nhom.map(n => (
     <optgroup label={n.ten}>
       {n.hang.map(m => (
-        <option value={m.id} selected={m.id === chon} title={`${m.ten} · ${t.ma} ${m.ma}`}>
+        <option value={m.id} selected={m.id === chon} title={`${m.ten} · ${t.ma} ${m.ma}`}
+                data-cai={m.dem_theo_cai ? '' : undefined}
+                data-thung={m.dem_theo_cai && m.so_trong_thung ? String(m.so_trong_thung) : undefined}>
           {m.ten}{m.nhom ? ` · ${m.nhom}` : ''}{!m.dang_dung ? t.ngungDung : ''}
         </option>
       ))}

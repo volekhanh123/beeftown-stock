@@ -24,7 +24,15 @@
 
 import { dungDatabase, taoBoDem, taoClientPg, UID, maGui } from './kho-chung.mjs';
 import { luuMatHang, docMatHang, xemTruocDanMatHang, demMacDinh, laLoaiDemCai, LOAI_DEM_CAI } from '../../web/src/lib/kho/danh-muc.ts';
-import { laDemCai, TEN_LOAI_MAT_HANG_NB } from '../../web/src/lib/kho/chung.ts';
+import { laDemCai, soCaiChu, TEN_LOAI_MAT_HANG_NB } from '../../web/src/lib/kho/chung.ts';
+import { docFormDongNhan, dongNhanVaoForm } from '../../web/src/lib/kho/nhan-hang.ts';
+import { docFormDienGia, dienGiaTuPhieu, thanhTienDong, xemTruocGiaVon, chuSoSanhGia } from '../../web/src/lib/kho/nhap.ts';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const GOC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+const doc = p => readFileSync(join(GOC, p), 'utf8');
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — MÓN ĐẾM THEO CÁI (SỐT, ĐỒ UỐNG)');
 const { db, cnA, cnB, duoi, duoiAnon } = await dungDatabase();
@@ -437,6 +445,95 @@ await nhom('7 · DANH MỤC WEB: luuMatHang, DÁN EXCEL, HÀM THUẦN', async ()
   ok('Dán: mã cân cho món đếm theo cái → báo', xt.sua.length === 0 && /không có mã cân/.test(xt.loi.join()), xt.loi.join());
   xt = xemTruocDanMatHang(daCo, 'Mã\tNhóm\nGV-KIKKO\tSốt Nhật');
   ok('Dán: đổi nhóm của sốt đã có → cập nhật được', xt.sua.length === 1 && xt.loi.length === 0, xt.loi.join());
+});
+
+// ===========================================================================
+await nhom('8 · NHẬN HÀNG, ĐIỀN GIÁ — HÀM THUẦN VÀ MÃ NGUỒN', async () => {
+  const BIA = '00000000-0000-4000-8000-0000000000a1';
+  const THIT = '00000000-0000-4000-8000-0000000000a2';
+  const MUOI = '00000000-0000-4000-8000-0000000000a3';
+  const mon = new Map([
+    [BIA, { ten: 'Bia Tiger lon', dem_goi: true, don_vi_goi: 'lon', dem_cai: true, so_trong_thung: 24 }],
+    [THIT, { ten: 'Thăn ngoại', dem_goi: true, don_vi_goi: 'gói' }],
+    [MUOI, { ten: 'Muối', dem_goi: true, don_vi_goi: 'gói', dem_cai: true, so_trong_thung: null }],
+  ]);
+  const f = o => ({ get: k => o[k] ?? null });
+  let r = docFormDongNhan(f({ mh: BIA, so_thung: '2', so_goi: '5', hsd_cai: '2027-04-30', so_kg: '12,5', hsd: '2026-01-01' }), [], mon);
+  ok('Bia: 2 thùng + 5 lon = 53 lon, kg gõ (12,5) bỏ qua, hạn = ô hạn in trên sản phẩm',
+    r.loi.length === 0 && r.luu?.so_goi === 53 && r.luu.so_kg === 53 && r.luu.han_dung === '2027-04-30', r.loi.join());
+  r = docFormDongNhan(f({ mh: BIA, so_thung: '2', so_goi: '' }), [], mon);
+  ok('Bia thiếu hạn dùng → "Ghi hạn dùng in trên Bia Tiger lon" (vi / en)',
+    r.luu === null && /Ghi hạn dùng in trên Bia Tiger lon/.test(r.loi.join()) && /use-by date printed on/.test(r.loiEn.join()));
+  r = docFormDongNhan(f({ mh: BIA, so_thung: '', so_goi: '', hsd_cai: '2027-04-30' }), [], mon);
+  ok('Bia không số thùng, không số lẻ → "Nhập số thùng hoặc số lon lẻ"', /Nhập số thùng hoặc số lon lẻ/.test(r.loi.join()));
+  r = docFormDongNhan(f({ mh: BIA, so_thung: '1,5', so_goi: '2', hsd_cai: '2027-04-30' }), [], mon);
+  ok('Số thùng lẻ (1,5) → báo số nguyên', r.luu === null && /Số thùng là số nguyên/.test(r.loi.join()));
+  r = docFormDongNhan(f({ mh: BIA, so_goi: '3', hsd_cai: '2027-02-31' }), [], mon);
+  ok('Hạn 31/02 → "không phải ngày có thật"', /không phải ngày có thật/.test(r.loi.join()));
+  r = docFormDongNhan(f({ mh: MUOI, so_thung: '9', so_goi: '10', hsd_cai: '2027-01-01' }), [], mon);
+  ok('Muối không quy đổi thùng: ô thùng ẩn bỏ qua, 10 gói', r.luu?.so_goi === 10, r.loi.join());
+  r = docFormDongNhan(f({ mh_khac: BIA, mh: THIT, so_goi: '24', hsd_cai: '2027-01-01' }), [], mon);
+  ok('Ô "món khác" thắng thẻ món: chọn bia ở ô khác → đọc theo bia', r.luu?.so_goi === 24, r.loi.join());
+  r = docFormDongNhan(f({ mh: THIT, so_kg: '12,5', so_goi: '2', hsd_cai: '2027-01-01' }), [], mon);
+  ok('Thịt: vẫn đọc kg (12,5), hạn ô thịt (trống → mặc định), không lấy hạn của ô sốt',
+    r.luu?.so_kg === 12.5 && r.luu.han_dung === null, r.loi.join());
+
+  const vf = dongNhanVaoForm({ mat_hang_id: BIA, so_goi: 53, so_kg: 53 }, mon.get(BIA));
+  ok('Sửa dòng 53 lon: form tách lại 2 thùng + 5 lon, ô kg trống', vf.so_thung === '2' && vf.so_goi === '5' && vf.so_kg === '');
+  const vf2 = dongNhanVaoForm({ mat_hang_id: MUOI, so_goi: 10, so_kg: 10 }, mon.get(MUOI));
+  ok('Sửa dòng muối (không thùng): 10 gói, không ô thùng', vf2.so_thung === '' && vf2.so_goi === '10');
+
+  ok('soCaiChu: "2 thùng + 5 lon (53 lon)" · "2 thùng (48 lon)" · "10 lon" · tiếng Anh "2 cases + 5 lon (53 lon)"',
+    soCaiChu(53, 'lon', 24) === '2 thùng + 5 lon (53 lon)' && soCaiChu(48, 'lon', 24) === '2 thùng (48 lon)'
+    && soCaiChu(10, 'lon', 24) === '10 lon' && soCaiChu(10, 'gói') === '10 gói' && soCaiChu(53, 'lon', 24, 'en') === '2 cases + 5 lon (53 lon)'
+    && soCaiChu(1200, 'lon', 24) === '50 thùng (1.200 lon)');
+
+  // Điền giá
+  const dong = [{ id: 'd1', so_trong_thung: 24 }, { id: 'd2', so_trong_thung: null }, { id: 'd3' }];
+  const fd = new FormData();
+  fd.set('gia_d1', '380.000'); fd.set('gia_d2', '7.000'); fd.set('gia_d3', '480.000');
+  const g = docFormDienGia(fd, dong, 'mua', new Map([['d2', 'gói']]));
+  ok('Điền giá: dòng thùng gửi don_gia_thung, dòng khác don_gia_kg ("380.000" = 380 nghìn)',
+    JSON.stringify(g.payload) === JSON.stringify([{ dong_id: 'd1', don_gia_thung: 380000 }, { dong_id: 'd2', don_gia_kg: 7000 }, { dong_id: 'd3', don_gia_kg: 480000 }]));
+  const fd2 = new FormData(); fd2.set('gia_d1', 'ba trăm'); fd2.set('gia_d2', 'x'); fd2.set('gia_d3', '1');
+  const g2 = docFormDienGia(fd2, dong, 'mua', new Map([['d2', 'gói']]));
+  ok('Điền giá sai chữ: câu nói đúng "một thùng" / "một gói" (vi / en)',
+    /giá là số đồng một thùng/.test(g2.loi[0]) && /một gói/.test(g2.loi[1]) && /per case/.test(g2.loiEn[0]));
+  const pf = dienGiaTuPhieu({ so_hoa_don: null, ngay_hoa_don: null, han_thanh_toan: null, tien_thue: 0, chi_phi_khac: 0 },
+    [{ id: 'a', so_trong_thung: 24, don_gia_thung: 380000, don_gia_kg: 15833 }, { id: 'b', so_trong_thung: 24, don_gia_thung: null, don_gia_kg: 16000 },
+     { id: 'c', so_trong_thung: null, don_gia_kg: 7000 }]);
+  ok('Mở form điền giá: dòng thùng hiện giá thùng; dòng thùng chỉ có giá một lon → nhân 24 (lưu lại không đổi tiền)',
+    pf.gia.a === '380.000' && pf.gia.b === '384.000' && pf.gia.c === '7.000', JSON.stringify(pf.gia));
+  ok('thanhTienDong: 53 lon × 380.000 / 24 = 839.167; 10 gói × 7.000 = 70.000; chưa có giá → null',
+    thanhTienDong({ so_kg: 53, so_trong_thung: 24 }, 380000) === 839167 && thanhTienDong({ so_kg: 10 }, 7000) === 70000
+    && thanhTienDong({ so_kg: 10 }, null) === null);
+  const gv = xemTruocGiaVon([{ so_kg: 10, thanh_tien: 5000000 }, { so_kg: 24, thanh_tien: 380000, cai: true }], 53800, 0,
+    { chi_phi_vao_gia_von: true, vat_vao_gia_von: false });
+  ok('Xem trước giá vốn: phiếu có bia chia chi phí theo tiền (50.000 / 3.800) — khớp hàm duyệt',
+    gv[0].gia_tri === 5050000 && gv[1].gia_tri === 383800, JSON.stringify(gv));
+  const gv2 = xemTruocGiaVon([{ so_kg: 10, thanh_tien: 5000000 }, { so_kg: 30, thanh_tien: 9000000 }], 40000, 0,
+    { chi_phi_vao_gia_von: true, vat_vao_gia_von: false });
+  ok('Xem trước giá vốn: chỉ thịt chia theo kg như cũ', gv2[0].gia_tri === 5010000 && gv2[1].gia_tri === 9030000);
+  ok('Chip "Lần trước" của dòng thùng nhân số cái một thùng', chuSoSanhGia({ gia_truoc: 15833, chenh_pt: 0, vuot_nguong: false }, 'vi', 24)?.chu === 'Lần trước 379.992 đ · 0,0%');
+
+  const nh = doc('web/src/pages/noi-bo/kho/nhan-hang/[id].astro');
+  ok('Form nhận hàng: ô số thùng, ô hạn dùng in trên sản phẩm, ô "món khác" có món đếm theo cái',
+    /name="so_thung"/.test(nh) && /name="hsd_cai"/.test(nh) && /<ChonMatHang name="mh_khac"[^>]*demCai/.test(nh)
+    && /cai: m\.dem_theo_cai, thung: m\.so_trong_thung/.test(nh));
+  ok('Form nhận hàng: CSS :has() giấu ô kg khi chọn món đếm theo cái, hiện ô thùng khi có quy đổi',
+    nh.includes('.nh-them:has(:is(input, option)[data-cai]:checked) .nh-chi-thit')
+    && nh.includes('.nh-them:not(:has(:is(input, option)[data-thung]:checked)) .nh-chi-thung'));
+  const chon = doc('web/src/components/kho/ChonMatHang.astro');
+  ok('ChonMatHang: món đếm theo cái chỉ hiện khi bật demCai; lựa chọn mang data-cai / data-thung',
+    /demCai \? \['tang', 'phan_cat', 'phu_pham', 'gia_vi', 'do_uong'\] : \['tang', 'phan_cat', 'phu_pham'\]/.test(chon)
+    && /data-cai=/.test(chon) && /data-thung=/.test(chon));
+  for (const tr of ['pha-loc/[id].astro', 'cai-dat/cong-thuc.astro', 'quay/yeu-cau/index.astro', 'dat-hang/moi.astro', 'dat-hang/[id].astro']) {
+    ok(`Màn ${tr}: không bật demCai (pha lóc, công thức, quầy, đặt hàng không có sốt / đồ uống ở đợt 1)`,
+      !/demCai/.test(doc(`web/src/pages/noi-bo/kho/${tr}`)));
+  }
+  const np = doc('web/src/pages/noi-bo/kho/nhap/[id].astro');
+  ok('Phiếu nhập: phiếu có dòng đếm theo cái không mở lưới soạn, có link sửa ở màn Nhận hàng',
+    /const coTheSoan = k\.duoc\('nhap'\) && \(moi \|\| conNhap\) && !coDongCai;/.test(np) && /t\.suaDongNhanHang/.test(np));
 });
 
 const ds = (await db.query(`select * from kho_doi_soat_ton()`)).rows;
