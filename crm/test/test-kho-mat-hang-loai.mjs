@@ -39,9 +39,10 @@ const MOI_O_RIENG = [...new Set(Object.values(O_THEO_LOAI).flat())];
 
 // ===========================================================================
 await nhom('1 · BẢNG Ô THEO LOẠI — HÀM THUẦN', async () => {
-  const rangBuoc = doc('crm/supabase/migrations/0019_kho_danh_muc.sql')
-    .match(/kho_mat_hang_loai_hop_le\s+check \(loai in \(([^)]*)\)\)/)?.[1] ?? '';
-  ok('LOAI_MAT_HANG đúng ba loại của ràng buộc kho_mat_hang_loai_hop_le (0019)',
+  // Bản cuối của ràng buộc: 0105 (thêm gia_vi, do_uong) — trước đó 0019.
+  const rangBuoc = [...doc('crm/supabase/migrations/0105_kho_mon_dem_cai.sql')
+    .matchAll(/kho_mat_hang_loai_hop_le\s+check \(loai in \(([^)]*)\)\)/g)].at(-1)?.[1] ?? '';
+  ok('LOAI_MAT_HANG đúng các loại của ràng buộc kho_mat_hang_loai_hop_le (bản cuối, 0105)',
     JSON.stringify([...LOAI_MAT_HANG].sort()) === JSON.stringify(rangBuoc.split(',').map(x => x.trim().replace(/'/g, '')).sort()),
     rangBuoc);
   ok('Tảng nhập: theo dõi theo tảng, bảng ủ, mức kho lạnh — không giá bán, mã cân, quầy, thu hồi',
@@ -76,6 +77,8 @@ await nhom('2 · MÃ NGUỒN FORM', async () => {
   const nhan = [...form.matchAll(/<label class="nb-o mh-rieng[^"]*" data-loai=\{loaiCoO\('(\w+)'\)\}>[\s\S]*?name="(\w+)"/g)]
     .map(m => [m[1], m[2]]);
   const TEN_O = {
+    han_dung_ngay: ['han_dung_ngay'], dem_goi: ['dem_goi'], don_vi_goi: ['don_vi_goi'],
+    don_vi_cai: ['don_vi_cai'], so_trong_thung: ['so_trong_thung'],
     theo_tang: ['theo_tang'], bang_u: ['bang_u'], gia_ban_kg: ['gia_ban_kg'], ma_can: ['ma_can'],
     ton_toi_thieu_kg: ['ton_toi_thieu_kg'], muc_kho: ['kho_toi_thieu_kg', 'kho_toi_da_kg'],
     noi_de_sau_pha: ['noi_de_sau_pha'], o_ma: ['o_ma'], xu_ly_mac_dinh: ['xu_ly_mac_dinh'],
@@ -94,8 +97,9 @@ await nhom('2 · MÃ NGUỒN FORM', async () => {
   const mucGap = form.slice(form.indexOf('<details class="mh-them"'), form.indexOf('</details>'));
   /** Thẻ <label …> mở ngay trước ô tên `ten`. */
   const nhanCua = ten => { const i = form.indexOf(`name="${ten}"`); const j = form.lastIndexOf('<label', i); return form.slice(j, form.indexOf('>', j) + 1); };
-  ok('Ô chung (tên, nhóm, hạn dùng) hiện ngay, không phải ô riêng, không nằm trong mục gập',
-    ['ten', 'nhom', 'han_dung_ngay'].every(ten => truocMucGap.includes(`name="${ten}"`) && nhanCua(ten) === '<label class="nb-o">'));
+  ok('Ô chung (tên, nhóm) hiện ngay, không phải ô riêng, không nằm trong mục gập; hạn dùng (ngày) là ô riêng của thịt (0105)',
+    ['ten', 'nhom'].every(ten => truocMucGap.includes(`name="${ten}"`) && nhanCua(ten) === '<label class="nb-o">')
+    && truocMucGap.includes('name="han_dung_ngay"') && loaiCoO('han_dung_ngay') === 'tang phan_cat phu_pham');
   ok('Ô ít dùng gập trong "Thông tin thêm": mã, tên khác, báo trước hạn, MISA, đếm theo, đơn vị, thứ tự, tình trạng',
     ['ma', 'ten_phu', 'canh_bao_truoc_ngay', 'ma_misa', 'dem_goi', 'don_vi_goi', 'thu_tu', 'dang_dung']
       .every(ten => mucGap.includes(`name="${ten}"`) && !truocMucGap.includes(`name="${ten}"`)));

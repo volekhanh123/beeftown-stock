@@ -5,8 +5,9 @@
  * lỗi. Không gọi database.
  *
  * HỎI LOẠI TRƯỚC (Khánh, 27/10/2026: "nhìn nhiều trường thông tin quá bị rối"):
- *   1. Chọn loại — ba thẻ Tảng nhập / Phần cắt / Phụ phẩm.
- *   2. Hiện ô chung (tên, nhóm, hạn dùng) và CHỈ các ô riêng của loại đó
+ *   1. Chọn loại — năm thẻ Tảng nhập / Phần cắt / Phụ phẩm / Sốt, gia vị, đồ khô / Đồ uống (0105: hai loại
+ *      cuối đếm theo cái — ô Đơn vị và Số cái trong một thùng, không hạn dùng theo ngày, không cách đếm).
+ *   2. Hiện ô chung (tên, nhóm) và CHỈ các ô riêng của loại đó
  *      (O_THEO_LOAI, lib/kho/danh-muc.ts — mỗi ô riêng mang data-loai = các loại có nó).
  *   3. Ô ít dùng (mã, tên khác, MISA, báo trước hạn, cách đếm, thứ tự, tình trạng)
  *      gập trong "Thông tin thêm" — phần mềm tự điền khi để trống.
@@ -36,6 +37,14 @@ const t = dichNB(nn, {
   tang: { vi: 'Nguyên tảng mua về, đem pha lóc', en: 'Whole primal bought in, to be butchered' },
   phan_cat: { vi: 'Thịt đã cắt, bán ở quầy', en: 'Cut meat, sold at the counter' },
   phu_pham: { vi: 'Mỡ, gân, vụn sau pha lóc', en: 'Fat, sinew, trimmings from butchery' },
+  gia_vi: { vi: 'Đếm theo chai, hộp, gói — xuất bếp bằng phiếu', en: 'Counted by bottle, jar, pack — issued to the kitchen' },
+  do_uong: { vi: 'Đếm theo chai, lon — bán trên iPOS', en: 'Counted by bottle, can — sold on iPOS' },
+  donViCai: { vi: 'Đơn vị *', en: 'Unit *' },
+  donViCaiGoiY: { vi: 'Kho đếm theo đơn vị này: chai, lon, hộp, gói…', en: 'Stock is counted in this unit: bottle, can, jar, pack…' },
+  donViCaiVd: { vi: 'lon', en: 'can' },
+  soTrongThung: { vi: 'Số cái trong một thùng', en: 'Number per case' },
+  soTrongThungGoiY: { vi: 'Ví dụ 24: nhập hàng, kiểm kê gõ "2 thùng + 5" — kho tự đổi ra số cái. Trống = không nhập theo thùng.',
+                      en: 'For example 24: receiving and stock counts take "2 cases + 5" — stock is kept in units. Empty = not bought by the case.' },
   chonLoaiTruoc: { vi: 'Chọn loại trước — form chỉ hiện các ô loại đó cần.', en: 'Choose the type first — the form then shows only the fields that type needs.' },
   ten: { vi: 'Tên mặt hàng *', en: 'Item name *' },
   tenVd: { vi: 'Thăn ngoại cắt lát', en: 'Sliced striploin' },
@@ -104,6 +113,8 @@ const t = dichNB(nn, {
 });
 // Tên loại dùng chung bảng TEN_LOAI_MAT_HANG_NB (danh sách, bảng dán); dòng nhỏ dưới tên nói loại đó là gì.
 const LOAI = LOAI_MAT_HANG.map(l => ({ value: l, nhan: nhanKho(TEN_LOAI_MAT_HANG_NB, l, nn), phu: t[l] }));
+/** Gợi ý ô Đơn vị của món đếm theo cái — dữ liệu lưu vào database (như "gói", "tảng"), không dịch. */
+const DON_VI_GOI_Y = ['chai', 'lon', 'hộp', 'gói', 'hũ', 'bịch', 'túi', 'cái'];
 ---
 <form method="POST" class="nb-the form-mh">
   <input type="hidden" name="viec" value="luu" />
@@ -120,13 +131,23 @@ const LOAI = LOAI_MAT_HANG.map(l => ({ value: l, nhan: nhanKho(TEN_LOAI_MAT_HANG
       <label class="nb-o"><span>{t.nhom}</span>
         <small>{t.nhomGoiY}</small>
         <input type="text" name="nhom" maxlength="40" value={gt.nhom} /></label>
-      <label class="nb-o"><span>{t.hanDung}</span>
+      <label class="nb-o mh-rieng" data-loai={loaiCoO('han_dung_ngay')}><span>{t.hanDung}</span>
         <small>{t.hanDungGoiY}</small>
         <input type="text" inputmode="numeric" name="han_dung_ngay" value={gt.han_dung_ngay} placeholder="3" /></label>
     </div>
 
     <!-- Ô riêng của từng loại: data-loai = các loại có ô đó (loaiCoO). -->
     <div class="kho-luoi">
+      <label class="nb-o mh-rieng" data-loai={loaiCoO('don_vi_cai')}><span>{t.donViCai}</span>
+        <small>{t.donViCaiGoiY}</small>
+        <input type="text" name="don_vi_cai" maxlength="20" value={gt.don_vi_cai} placeholder={t.donViCaiVd}
+               list={`mh-don-vi-${gt.id ?? 'moi'}`} autocomplete="off" />
+        <datalist id={`mh-don-vi-${gt.id ?? 'moi'}`}>
+          {DON_VI_GOI_Y.map(d => <option value={d} />)}
+        </datalist></label>
+      <label class="nb-o mh-rieng" data-loai={loaiCoO('so_trong_thung')}><span>{t.soTrongThung}</span>
+        <small>{t.soTrongThungGoiY}</small>
+        <input type="text" inputmode="numeric" name="so_trong_thung" maxlength="5" value={gt.so_trong_thung} placeholder="24" /></label>
       <label class="nb-o mh-rieng" data-loai={loaiCoO('theo_tang')}><span>{t.theoTang}</span>
         <small>{t.theoTangGoiY}</small>
         <select name="theo_tang">
@@ -192,13 +213,13 @@ const LOAI = LOAI_MAT_HANG.map(l => ({ value: l, nhan: nhanKho(TEN_LOAI_MAT_HANG
         <label class="nb-o"><span>{t.maMisa}</span>
           <small>{t.maMisaGoiY}</small>
           <input type="text" name="ma_misa" maxlength="40" value={gt.ma_misa ?? ''} autocapitalize="characters" /></label>
-        <label class="nb-o"><span>{t.demTheo}</span>
+        <label class="nb-o mh-rieng" data-loai={loaiCoO('dem_goi')}><span>{t.demTheo}</span>
           <select name="dem_goi">
             <option value="" selected={gt.dem_goi === null}>{t.demTheoLoai}</option>
             <option value="co" selected={gt.dem_goi === true}>{t.demGoi}</option>
             <option value="khong" selected={gt.dem_goi === false}>{t.demKg}</option>
           </select></label>
-        <label class="nb-o"><span>{t.donVi}</span>
+        <label class="nb-o mh-rieng" data-loai={loaiCoO('don_vi_goi')}><span>{t.donVi}</span>
           <small>{t.donViGoiY}</small>
           <input type="text" name="don_vi_goi" maxlength="20" value={gt.don_vi_goi} placeholder={t.donViVd} /></label>
         <label class="nb-o"><span>{t.thuTu}</span>
@@ -231,6 +252,8 @@ const LOAI = LOAI_MAT_HANG.map(l => ({ value: l, nhan: nhanKho(TEN_LOAI_MAT_HANG
   .form-mh:has(input[name="loai"][value="tang"]:checked) .mh-rieng:not([data-loai~="tang"]) { display: none; }
   .form-mh:has(input[name="loai"][value="phan_cat"]:checked) .mh-rieng:not([data-loai~="phan_cat"]) { display: none; }
   .form-mh:has(input[name="loai"][value="phu_pham"]:checked) .mh-rieng:not([data-loai~="phu_pham"]) { display: none; }
+  .form-mh:has(input[name="loai"][value="gia_vi"]:checked) .mh-rieng:not([data-loai~="gia_vi"]) { display: none; }
+  .form-mh:has(input[name="loai"][value="do_uong"]:checked) .mh-rieng:not([data-loai~="do_uong"]) { display: none; }
   /* Bảng ủ cần ngày mổ của từng tảng: chỉ hiện khi "Theo dõi theo tảng" là Có. */
   .form-mh:has(select[name="theo_tang"] option[value="khong"]:checked) .mh-bang-u { display: none; }
 </style>

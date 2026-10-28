@@ -436,7 +436,21 @@ export const TEN_LOAI_MAT_HANG_NB: Record<string, HaiThuTieng> = {
   tang: { vi: 'Tảng nhập', en: 'Primal (bought in)' },
   phan_cat: { vi: 'Phần cắt', en: 'Cut' },
   phu_pham: { vi: 'Phụ phẩm', en: 'By-product' },
+  // 0105: món đếm theo cái
+  gia_vi: { vi: 'Sốt, gia vị, đồ khô', en: 'Sauces, spices, dry goods' },
+  do_uong: { vi: 'Đồ uống', en: 'Drinks' },
 };
+
+/**
+ * Món đếm theo cái (0105): sốt, gia vị, đồ khô (gia_vi) và đồ uống (do_uong). Lượng là số cái (so_goi, đơn vị
+ * don_vi_goi: chai, lon, hộp…); so_kg của món này luôn bằng so_goi (database giữ) — KHÔNG phải cân nặng: không hiện
+ * chữ "kg", không cộng vào tổng kg. Dùng cột kho_mat_hang.dem_theo_cai khi có, không thì loai.
+ */
+export function laDemCai(m: { dem_theo_cai?: boolean | null; loai?: string | null } | null | undefined): boolean {
+  if (!m) return false;
+  if (typeof m.dem_theo_cai === 'boolean') return m.dem_theo_cai;
+  return m.loai === 'gia_vi' || m.loai === 'do_uong';
+}
 export const TEN_LOAI_MAT_HANG: Record<string, string> = chiVi(TEN_LOAI_MAT_HANG_NB);
 
 export const TEN_LOAI_VI_TRI_NB: Record<string, HaiThuTieng> = {

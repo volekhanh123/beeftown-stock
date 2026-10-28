@@ -22,7 +22,9 @@
  *   7. giờ VN: hạn dùng ngày không có thật bị từ chối; kho_doi_soat_ton() rỗng.
  */
 
-import { dungDatabase, taoBoDem, UID, maGui } from './kho-chung.mjs';
+import { dungDatabase, taoBoDem, taoClientPg, UID, maGui } from './kho-chung.mjs';
+import { luuMatHang, docMatHang, xemTruocDanMatHang, demMacDinh, laLoaiDemCai, LOAI_DEM_CAI } from '../../web/src/lib/kho/danh-muc.ts';
+import { laDemCai, TEN_LOAI_MAT_HANG_NB } from '../../web/src/lib/kho/chung.ts';
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — MÓN ĐẾM THEO CÁI (SỐT, ĐỒ UỐNG)');
 const { db, cnA, cnB, duoi, duoiAnon } = await dungDatabase();
@@ -385,6 +387,56 @@ await nhom('6 · MISA, BÁO CÁO', async () => {
     [cnA.id, await ngay(-1), await ngay(1)])).rows[0];
   ok('Đánh giá NCC: tổng kg 50 (thịt), giá TB/kg 380.000', Number(ncc2.tong_kg) === 50 && Number(ncc2.gia_tb_kg) === 380000,
     JSON.stringify(ncc2));
+});
+
+// ===========================================================================
+await nhom('7 · DANH MỤC WEB: luuMatHang, DÁN EXCEL, HÀM THUẦN', async () => {
+  ok('laDemCai: theo cột dem_theo_cai, không có thì theo loại', laDemCai({ dem_theo_cai: true }) && !laDemCai({ dem_theo_cai: false, loai: 'gia_vi' })
+    && laDemCai({ loai: 'do_uong' }) && !laDemCai({ loai: 'phan_cat' }) && !laDemCai(null));
+  ok('Hai loại đếm theo cái có tên vi / en', LOAI_DEM_CAI.every(l => TEN_LOAI_MAT_HANG_NB[l]?.vi && TEN_LOAI_MAT_HANG_NB[l]?.en)
+    && laLoaiDemCai('gia_vi') && !laLoaiDemCai('tang'));
+  ok('demMacDinh của món đếm theo cái: luôn đếm', demMacDinh('do_uong').dem_goi === true);
+
+  const clientCua = await taoClientPg({ db, duoi, duoiAnon });
+  const ql = clientCua(UID.qlA);
+  const taoForm = o => { const f = new FormData(); for (const [k, v] of Object.entries({ viec: 'luu', ...o })) f.set(k, v); return f; };
+  const mot = async ma => (await db.query(`select * from kho_mat_hang where ma = $1`, [ma])).rows[0];
+
+  // Ô ẩn của thịt (hạn dùng, cách đếm, mã cân, giá bán) gửi kèm — bị bỏ qua.
+  let kq = await luuMatHang(ql, taoForm({ ten: 'Nước tương Kikkoman', ma: 'GV-KIKKO', loai: 'gia_vi', don_vi_cai: 'chai',
+    so_trong_thung: '12', han_dung_ngay: '3', dem_goi: 'khong', don_vi_goi: 'khay', ma_can: '555', gia_ban_kg: '1.000' }), []);
+  let m = await mot('GV-KIKKO');
+  ok('Thêm sốt qua form: đơn vị chai, 1 thùng = 12, luôn đếm; hạn dùng (ngày), mã cân, giá bán ẩn bị bỏ qua',
+    kq.ok && m.dem_goi === true && m.don_vi_goi === 'chai' && m.so_trong_thung === 12 && m.han_dung_ngay === null
+    && m.ma_can === null && m.gia_ban_kg === null && m.dem_theo_cai === true, kq.cau);
+  kq = await luuMatHang(ql, taoForm({ ten: 'Soju', ma: 'DU-SOJU', loai: 'do_uong', so_trong_thung: '20' }), []);
+  ok('Đồ uống thiếu đơn vị → "Nhập đơn vị" (vi / en)', !kq.ok && /Nhập đơn vị/.test(kq.cau) && !!kq.cauEn, kq.cau);
+  kq = await luuMatHang(ql, taoForm({ ten: 'Soju', ma: 'DU-SOJU', loai: 'do_uong', don_vi_cai: 'chai', so_trong_thung: '1' }), []);
+  ok('Số cái một thùng = 1 → báo (từ 2 đến 10.000)', !kq.ok && /từ 2 đến 10\.000/.test(kq.cau), kq.cau);
+  kq = await luuMatHang(ql, taoForm({ ten: 'Soju', ma: 'DU-SOJU', loai: 'do_uong', don_vi_cai: 'chai', so_trong_thung: '' }), []);
+  ok('Không quy đổi thùng (trống) lưu được', kq.ok && (await mot('DU-SOJU')).so_trong_thung === null, kq.cau);
+  kq = await luuMatHang(ql, taoForm({ ten: 'Thăn cắt', ma: 'C-THU', loai: 'phan_cat', so_trong_thung: '24', don_vi_cai: 'lon' }), []);
+  m = await mot('C-THU');
+  ok('Phần cắt: ô "số cái một thùng", "đơn vị" ẩn bị bỏ qua — so_trong_thung trống, đơn vị gói',
+    kq.ok && m.so_trong_thung === null && m.don_vi_goi === 'gói', kq.cau);
+
+  // Sửa: món đã có sổ kho đổi loại → database chặn, câu đi lên trang.
+  const bia = (await docMatHang(ql)).find(x => x.ma === 'DU-TIGER');
+  kq = await luuMatHang(ql, taoForm({ id: bia.id, ten: bia.ten, ma: bia.ma, loai: 'phan_cat' }), [], bia);
+  ok('Đổi đồ uống đã có sổ sang phần cắt qua form → báo, không đổi', !kq.ok && (await mot('DU-TIGER')).loai === 'do_uong', kq.cau);
+  kq = await luuMatHang(ql, taoForm({ id: bia.id, ten: 'Bia Tiger lon 330ml', ma: bia.ma, loai: 'do_uong', don_vi_cai: 'lon', so_trong_thung: '24' }), [], bia);
+  ok('Sửa tên đồ uống: lưu được, đơn vị và quy đổi giữ', kq.ok && (await mot('DU-TIGER')).ten === 'Bia Tiger lon 330ml', kq.cau);
+
+  // Dán Excel.
+  const daCo = (await docMatHang(ql)).map(x => ({ ...x }));
+  let xt = xemTruocDanMatHang(daCo, 'Tên\tLoại\nNước mắm\tsốt');
+  ok('Dán: sốt mới → báo thêm ở form (cần đơn vị, số cái một thùng)', xt.them.length === 0 && /thêm từng món/.test(xt.loi.join()), xt.loi.join());
+  xt = xemTruocDanMatHang(daCo, 'Mã\tLoại\nT-THANLUNG\tđồ uống');
+  ok('Dán: đổi tảng sang đồ uống → báo làm ở nút Sửa', xt.sua.length === 0 && /nút Sửa/.test(xt.loi.join()), xt.loi.join());
+  xt = xemTruocDanMatHang(daCo, 'Mã\tMã cân\nGV-KIKKO\t777');
+  ok('Dán: mã cân cho món đếm theo cái → báo', xt.sua.length === 0 && /không có mã cân/.test(xt.loi.join()), xt.loi.join());
+  xt = xemTruocDanMatHang(daCo, 'Mã\tNhóm\nGV-KIKKO\tSốt Nhật');
+  ok('Dán: đổi nhóm của sốt đã có → cập nhật được', xt.sua.length === 1 && xt.loi.length === 0, xt.loi.join());
 });
 
 const ds = (await db.query(`select * from kho_doi_soat_ton()`)).rows;
