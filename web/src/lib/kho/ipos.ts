@@ -31,17 +31,24 @@
  *     cũ, và gửi lại hóa đơn cũ với datastate = 2. Nên mỗi sale_id là một hóa
  *     đơn, mỗi lần gửi là trạng thái hiện tại của chính nó: hóa đơn mới được ghi,
  *     hóa đơn cũ bị đảo ngược; cùng sale_id gửi lại nội dung khác thì database
- *     đảo ngược rồi ghi lại (0037). origin_sale_id chỉ giữ trong raw để đối chiếu
- *     — KHÔNG khóa theo nó: khóa theo gốc thì bản xóa hóa đơn cũ đến sau sẽ đè mất
- *     hàng của hóa đơn mới.
+ *     đảo ngược rồi ghi lại (0037). KHÔNG khóa theo origin_sale_id: khóa theo gốc
+ *     thì bản xóa hóa đơn cũ đến sau sẽ đè mất hàng của hóa đơn mới.
+ *   · HỦY hóa đơn X (thử thật 28/10/2026): webhook KHÔNG gửi lại X — FABi gửi một
+ *     hóa đơn MỚI sale_id "X_DEL", datastate 2, origin_sale_id = X, cùng
+ *     sale_detail_id với X, quantity / amount ÂM. X chỉ về datastate 2 ở lượt kéo
+ *     (5 phút sau). Nên bản datastate 2 có sale_id ĐÚNG origin_sale_id + "_DEL"
+ *     → ma_hd_goc = X, database hủy X ngay và giữ X hủy (0108). Chỉ đúng mẫu đó:
+ *     hóa đơn sửa (datastate 0 / 1), hay hóa đơn hủy khác chỉ trỏ origin_sale_id
+ *     (tách, gộp, hóa đơn sửa bị hủy sau) — hóa đơn gốc có thể vẫn là hàng đã
+ *     bán — không mang ma_hd_goc, không hủy gì.
  *   · sale.is_temp là cờ "đã in phiếu tạm tính trước khi thanh toán" của hóa đơn
  *     thật, không phải hóa đơn nháp — không lọc theo nó.
  *   · KHÔNG có API đọc thực đơn.
  *   · Khách (membership_*, vat_customer_*, address_delivery…), nhân viên,
  *     thanh toán: KHÔNG lưu — raw chỉ giữ các khóa trong TRUONG_IPOS.rawGiu.
  *
- * Payload gửi `kho_ipos_nhan_callback` / `kho_ipos_nhan` (0042):
- *   { ma_hd, thoi_diem_ban (ISO có múi giờ), da_huy, raw?, dong: [
+ * Payload gửi `kho_ipos_nhan_callback` / `kho_ipos_nhan` (0042; ma_hd_goc 0108):
+ *   { ma_hd, thoi_diem_ban (ISO có múi giờ), da_huy, ma_hd_goc?, raw?, dong: [
  *       { khoa_dong, ma_ipos, ten_ipos?, so_luong?, thanh_tien? }] }
  * Đổi so_luong ra kg / gói là việc của DATABASE (theo "bán theo" ở Ghép món).
  *
@@ -85,6 +92,8 @@ export const TRUONG_IPOS = {
 
   /** datastate: 0 mới, 1 sửa, 2 xóa. */
   datastateXoa: 2,
+  /** Hủy hóa đơn X trên FABi: webhook gửi hóa đơn MỚI sale_id = X + hậu tố này, origin_sale_id = X (28/10/2026). */
+  hauToHuy: '_DEL',
   /** Dòng tối đa một hóa đơn (database cũng chặn 500). */
   dongToiDa: 500,
 
@@ -119,6 +128,8 @@ export interface HoaDonIpos {
   /** ISO, luôn có múi giờ. */
   thoi_diem_ban: string;
   da_huy: boolean;
+  /** Bản hủy "X_DEL" của FABi: X — hóa đơn database phải hủy ngay (0108). Chỉ có khi da_huy. */
+  ma_hd_goc?: string;
   raw?: unknown;
   dong: DongIpos[];
 }
@@ -282,6 +293,9 @@ export function phanTichHoaDon(x: unknown): KetQuaHoaDon {
   if (x.sale_detail !== undefined && x.sale_detail !== null && !Array.isArray(x.sale_detail)) return hong(C.dongHong);
   const ds = (Array.isArray(x.sale_detail) ? x.sale_detail : []) as unknown[];
   if (ds.length > TRUONG_IPOS.dongToiDa) return hong(C.quaDong);
+  const huy = so(x.datastate) === TRUONG_IPOS.datastateXoa;
+  const goc = chu(x.origin_sale_id) ?? chu(s?.origin_sale_id);
+  const maHdGoc = huy && goc && maHd === goc + TRUONG_IPOS.hauToHuy ? goc : undefined;
 
   // khoa_dong = sale_detail_id khi mọi dòng có mã riêng, không trùng; không thì chỉ số dòng (từ 0).
   const maDong = ds.map(d => (laObj(d) ? chu(d.sale_detail_id) : undefined));
@@ -299,7 +313,7 @@ export function phanTichHoaDon(x: unknown): KetQuaHoaDon {
     if (ten) r.ten_ipos = ten;
     const sl = so(d.quantity);
     if (sl !== undefined && sl >= 0 && sl <= 100000) r.so_luong = Math.round(sl * 1000) / 1000;
-    else slHong++;
+    else if (!(maHdGoc && sl !== undefined && sl < 0 && sl >= -100000)) slHong++; // "X_DEL": quantity âm là đúng mẫu FABi
     const t = so(d.amount);
     if (t !== undefined && t >= 0) r.thanh_tien = Math.round(t);
     return r;
@@ -308,7 +322,7 @@ export function phanTichHoaDon(x: unknown): KetQuaHoaDon {
   if (slHong) canhBao.push(`${slHong} dòng thiếu hoặc sai "quantity"`);
 
   const hoaDon: HoaDonIpos = {
-    ma_hd: maHd, thoi_diem_ban: luc, da_huy: so(x.datastate) === TRUONG_IPOS.datastateXoa, dong,
+    ma_hd: maHd, thoi_diem_ban: luc, da_huy: huy, ...(maHdGoc ? { ma_hd_goc: maHdGoc } : {}), dong,
   };
   const raw = rawGon(x);
   if (raw !== undefined) hoaDon.raw = raw;

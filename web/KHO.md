@@ -649,7 +649,7 @@ hóa đơn chỉ còn đường kéo. Khoảng chồng 15 phút giữa hai lư�
 bỏ vì trùng (cùng `ma_hd`, cùng băm).
 
 **Đọc một hóa đơn** (`phanTichHoaDon` → `kho_ipos_nhan_callback` / `kho_ipos_nhan`):
-`{ ma_hd: sale_id, thoi_diem_ban, da_huy: datastate = 2, raw, dong: [{ khoa_dong, ma_ipos: item_id,
+`{ ma_hd: sale_id, thoi_diem_ban, da_huy: datastate = 2, ma_hd_goc?, raw, dong: [{ khoa_dong, ma_ipos: item_id,
 ten_ipos: description, so_luong: quantity, thanh_tien: amount }] }`.
 - `thoi_diem_ban` = ngày của `sale.date_last` (thiếu thì `tran_date`) theo lịch VN + `hour_last:minute_last`;
   thiếu giờ phút thì `created_at`. Tài liệu ghi `date_last`, `tran_date` là 00:00 giờ VN (epoch giây).
@@ -664,6 +664,18 @@ ten_ipos: description, so_luong: quantity, thanh_tien: amount }] }`.
   gửi lại hóa đơn cũ với `datastate = 2`. Mỗi `sale_id` là một hóa đơn, nên: hóa đơn mới được ghi, hóa đơn cũ
   bị đảo ngược — đến theo thứ tự nào cũng vậy (test-kho-ipos-web: "Sửa hóa đơn kiểu FABi …"). Cùng `sale_id`
   gửi lại với nội dung khác → database đảo ngược rồi ghi lại (0037).
+- **Hủy hóa đơn** (thử thật 28/10/2026, 0108): webhook **không** gửi lại hóa đơn X với `datastate = 2` — FABi gửi
+  một hóa đơn MỚI `sale_id` = `X_DEL`, `datastate = 2`, `origin_sale_id` = X, cùng `sale_detail_id` với X,
+  `quantity` / `amount` **âm**. X chỉ về `datastate = 2` ở lượt kéo (cron 5 phút). Trước 0108 kho cất `X_DEL` như
+  một hóa đơn hủy rỗng và X còn trừ kho tới lượt kéo đó ("hủy rồi mà món không trả lại kho" — production trả kho
+  muộn 4,5 phút). Từ 0108: bản `datastate = 2` có `sale_id` **đúng** `origin_sale_id` + `_DEL`
+  (`TRUONG_IPOS.hauToHuy`) → `ma_hd_goc` = X (`phanTichHoaDon`; quantity âm của bản này không thành cảnh báo).
+  `kho_ipos_nhan_hd` cất `ma_hd_goc` vào cột cùng tên của `X_DEL` và hủy X trong cùng chi nhánh **ngay**: đảo mọi
+  dòng đã ghi (trả đúng khay, đúng kg), dòng X "Hóa đơn đã hủy trên iPOS". X đã có `X_DEL` thì mọi bản X đến sau
+  là hủy (FABi không mở lại hóa đơn đã hủy): bản X gửi lại khi lần đầu lỗi mà đến **sau** `X_DEL`, bản kéo còn
+  `datastate = 0` — không trừ kho. Gửi lại `X_DEL`, X `datastate = 2` của lượt kéo: không trả kho lần hai. Chỉ đúng
+  mẫu `X_DEL`: hóa đơn sửa (`datastate` 0 / 1), hóa đơn hủy khác chỉ trỏ `origin_sale_id` (tách, gộp, hóa đơn sửa
+  bị hủy sau — hóa đơn gốc có thể vẫn là hàng đã bán) không hủy gì (test-kho-ipos-huy-del).
 - **Mã món** (hóa đơn thật 27/10/2026): `item_id` là **Mã món** của FABi — FABi tự sinh `ITEM-XXXX` khi để trống,
   còn đặt sẵn (nhập file, vd `01011`) thì gửi đúng mã đó. Quy ước: món cân đặt **Mã món = Mã barcode = mã cân đệm đủ
   5 số** (`01011` cho mã cân `1011`). Khi đó kho **tự nhận** (0103, `kho_ipos_ghi_dong`): mã món toàn số, bỏ số 0

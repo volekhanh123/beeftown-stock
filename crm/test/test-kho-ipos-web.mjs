@@ -129,6 +129,26 @@ await nhom('1 · phanTichHoaDon: HÓA ĐƠN iPOS DW THEO TÀI LIỆU', async () 
   ok('datastate 1 (sửa) → không hủy (database đảo ngược rồi ghi lại theo băm)', phanTichHoaDon(hoaDonDw('S103', [], { datastate: 1 })).hoaDon.da_huy === false);
   ok('sale.status 0 (chưa thanh toán) KHÔNG phải hủy', phanTichHoaDon(hoaDonDw('S104', [], { sale: { status: 0 } })).hoaDon.da_huy === false);
 
+  // Hủy trên FABi (thử thật 28/10/2026): bản MỚI "X_DEL", datastate 2, origin_sale_id = X, quantity âm (0108).
+  const del = phanTichHoaDon(hoaDonDw('S107_DEL', [{ item_id: '01011', quantity: -1.2, amount: -1140000 }],
+    { datastate: 2, sale: { origin_sale_id: 'S107' }, them: { origin_sale_id: 'S107' } }));
+  ok('Bản hủy "X_DEL" (datastate 2, origin_sale_id = X) → ma_hd_goc = X, da_huy; quantity âm không thành cảnh báo',
+     del.hoaDon.ma_hd === 'S107_DEL' && del.hoaDon.ma_hd_goc === 'S107' && del.hoaDon.da_huy === true
+     && del.canhBao.length === 0, JSON.stringify({ h: del.hoaDon, c: del.canhBao }));
+  const chiSale = phanTichHoaDon(hoaDonDw('S108_DEL', [], { datastate: 2, sale: { origin_sale_id: 'S108' } }));
+  ok('origin_sale_id chỉ có trong "sale" (gốc null) → vẫn đọc ma_hd_goc', chiSale.hoaDon.ma_hd_goc === 'S108');
+  ok('Hóa đơn sửa (datastate 0 / 1 có origin_sale_id) → KHÔNG ma_hd_goc — không hủy hóa đơn cũ',
+     [0, 1].every(ds => phanTichHoaDon(hoaDonDw('S109', [], { datastate: ds, them: { origin_sale_id: 'S100' } })).hoaDon.ma_hd_goc === undefined));
+  ok('datastate 2 mà origin_sale_id rỗng / trùng chính nó → KHÔNG ma_hd_goc',
+     ['', '  ', 'S110'].every(g => phanTichHoaDon(hoaDonDw('S110', [], { datastate: 2, them: { origin_sale_id: g } })).hoaDon.ma_hd_goc === undefined)
+     && phanTichHoaDon(hoaDonDw('S111', [], { datastate: 2 })).hoaDon.ma_hd_goc === undefined);
+  ok('Hóa đơn hủy trỏ origin_sale_id mà sale_id không đúng "<gốc>_DEL" (tách, gộp, hóa đơn sửa bị hủy) → KHÔNG ma_hd_goc',
+     ['S113', 'S113_DEL2', 'S100_DEL'].every(id => phanTichHoaDon(hoaDonDw(id, [], { datastate: 2, them: { origin_sale_id: 'S107' } })).hoaDon.ma_hd_goc === undefined));
+  ok('Hóa đơn thường quantity âm → vẫn cảnh báo dòng sai "quantity"',
+     phanTichHoaDon(hoaDonDw('S112', [{ item_id: 'A', quantity: -1 }])).canhBao.some(c => c.includes('quantity')));
+  ok('Bản "X_DEL" có dòng thiếu quantity → vẫn cảnh báo (chỉ quantity âm là đúng mẫu)',
+     phanTichHoaDon(hoaDonDw('S114_DEL', [{ item_id: 'A' }], { datastate: 2, them: { origin_sale_id: 'S114' } })).canhBao.some(c => c.includes('quantity')));
+
   const trungMa = phanTichHoaDon(hoaDonDw('S105', [{ item_id: 'A', quantity: 1, sale_detail_id: 'X' }, { item_id: 'B', quantity: 1, sale_detail_id: 'X' }]));
   ok('sale_detail_id trùng → khoa_dong theo chỉ số dòng (từ 0)', trungMa.hoaDon.dong.map(d => d.khoa_dong).join() === '0,1');
   const thieuMaDong = phanTichHoaDon({ ...hoaDonDw('S106', []), sale_detail: [{ item_id: 'A', quantity: 1 }, { item_id: 'B', quantity: 1, sale_detail_id: 'Y' }] });
