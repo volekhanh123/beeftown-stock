@@ -230,7 +230,8 @@ export interface KetQuaDocXuat {
 type BaoLoi = (c: HaiThuTieng) => void;
 
 export function docFormPhieuXuat(
-  form: FormData, matHang: { id: string; ten: string; dem_goi: boolean; don_vi_goi?: string | null }[],
+  form: FormData,
+  matHang: { id: string; ten: string; dem_goi: boolean; don_vi_goi?: string | null; dem_theo_cai?: boolean }[],
 ): KetQuaDocXuat {
   const loi: string[] = [];
   const loiEn: string[] = [];
@@ -282,10 +283,11 @@ export function docFormPhieuXuat(
 }
 
 function docDong(
-  m: { dem_goi: boolean; don_vi_goi?: string | null }, goiChu: string, kgChu: string, nhan: HaiThuTieng, bao: BaoLoi,
+  m: { dem_goi: boolean; don_vi_goi?: string | null; dem_theo_cai?: boolean }, goiChu: string, kgChu: string, nhan: HaiThuTieng, bao: BaoLoi,
 ): Record<string, unknown> | null {
   const goi = docSoNguyen(goiChu, 0, 100000);
-  const kg = docKg(kgChu);
+  // 0105: món đếm theo cái (sốt, đồ uống) không có kg — ô kg (ẩn trên form) bỏ qua, chỉ gửi số cái.
+  const kg = m.dem_theo_cai ? null : docKg(kgChu);
   // Đơn vị đếm của chính món ("khay", "tảng"…) — món không mang đơn vị thì chữ chung.
   const dv = { vi: m.don_vi_goi || GOI_MAC_DINH.vi, en: m.don_vi_goi || GOI_MAC_DINH.en };
   if (Number.isNaN(goi)) { bao({ vi: `${nhan.vi}: số ${dv.vi} là số nguyên`, en: `${nhan.en}: the number of ${dv.en} must be a whole number` }); return null; }

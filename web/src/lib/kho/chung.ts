@@ -351,7 +351,7 @@ export function soCaiChu(so: number, donVi: string, soTrongThung?: number | null
   if (!soTrongThung || soTrongThung < 2 || so < soTrongThung) return tong;
   const thung = Math.floor(so / soTrongThung);
   const le = so - thung * soTrongThung;
-  const chuThung = nn === 'en' ? `${thung} ${thung === 1 ? 'case' : 'cases'}` : `${thung} thùng`;
+  const chuThung = { vi: `${thung} thùng`, en: `${thung} ${thung === 1 ? 'case' : 'cases'}` }[nn];
   return `${chuThung}${le ? ` + ${le} ${dv}` : ''} (${tong})`;
 }
 

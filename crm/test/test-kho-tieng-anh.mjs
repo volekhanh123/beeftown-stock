@@ -75,6 +75,9 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     // danh-muc.ts (demMacDinh): đơn vị đếm mặc định theo loại, lưu vào kho_mat_hang.don_vi_goi — form thêm mới và dán Excel
     "if (loai === 'tang') return { dem_goi: true, don_vi_goi: 'tảng' };",
     "return { dem_goi: true, don_vi_goi: 'gói' };",
+    "if (laLoaiDemCai(loai)) return { dem_goi: true, don_vi_goi: 'cái' };",   // 0105: sốt, đồ uống — người nhập đổi thành chai / lon
+    // FormMatHang.astro: gợi ý đơn vị đếm của sốt / đồ uống (datalist) — chữ lưu vào kho_mat_hang.don_vi_goi, dữ liệu chung
+    "const DON_VI_GOI_Y = ['chai', 'lon', 'hộp', 'gói', 'hũ', 'bịch', 'túi', 'cái'];",
     "String(r.don_vi_goi ?? 'gói')",                                     // sua-nhanh.ts: đơn vị đếm mặc định khi database để trống
     "don_vi_goi: m?.don_vi_goi ?? 'gói'",                                // thiet-lap.ts: đơn vị đếm mặc định khi món không còn trong danh mục
     "`${ct.ten} (bản sao)`",                                             // cong-thuc.ts: tên bản sao lưu vào database (dữ liệu chung)

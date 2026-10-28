@@ -193,6 +193,11 @@ export interface DongDemForm {
   kg: string;
   het: boolean;
   /**
+   * Món đếm theo cái có quy đổi thùng (0105): số thùng đếm được — số cái = thùng × số cái một thùng + goi (số lẻ).
+   * Mở lại trang thì ô thùng trống, goi là cả số cái (database chỉ giữ số cái).
+   */
+  thung?: string;
+  /**
    * Số của dòng này trong database lúc mở trang (chuKyDong), đi kèm trong ô
    * ẩn k{i}_goc. null / không có = dòng mới thêm trên máy này (quét, thêm tay).
    */
@@ -205,13 +210,16 @@ export function khoaDong(d: { mat_hang_id: string; lo_id: string }): string {
 }
 
 /** "Chữ ký" số đếm của một dòng, để biết dòng đã bị sửa chưa. Kg "1.5" hay "1,5" là một. */
-export function chuKyDong(d: { goi: string; kg: string; het: boolean }): string {
-  return [d.goi.trim(), d.kg.trim().replace('.', ','), d.het ? '1' : '0'].join('|');
+export function chuKyDong(d: { goi: string; kg: string; het: boolean; thung?: string }): string {
+  const k = [d.goi.trim(), d.kg.trim().replace('.', ','), d.het ? '1' : '0'];
+  // 0105: số thùng chỉ góp vào chữ ký khi có — dòng không thùng giữ đúng chữ ký cũ.
+  if (d.thung?.trim()) k.push(`t${d.thung.trim()}`);
+  return k.join('|');
 }
 
 /** Dòng đã có số đếm chưa — tích "Đã hết thật" cũng là đã đếm (= 0). Giống so_dong_da_dem của 0023. */
-export function daDemDong(d: { goi: string; kg: string; het: boolean }, demGoi: boolean): boolean {
-  return d.het || (demGoi ? d.goi.trim() !== '' : d.kg.trim() !== '');
+export function daDemDong(d: { goi: string; kg: string; het: boolean; thung?: string }, demGoi: boolean): boolean {
+  return d.het || (demGoi ? d.goi.trim() !== '' || !!d.thung?.trim() : d.kg.trim() !== '');
 }
 
 export function dongDemTuDb(ds: DongKiemKe[]): DongDemForm[] {
@@ -230,7 +238,7 @@ export function dongDemTuDb(ds: DongKiemKe[]): DongDemForm[] {
 
 export function docFormKiemKe(
   form: FormData,
-  matHang: { id: string; ten: string; dem_goi: boolean }[],
+  matHang: MatHangDem[],
 ): { dong: DongDemForm[]; loi: string[]; loiEn: string[]; payload: Record<string, unknown>[] } {
   const dong: DongDemForm[] = [];
   const soDong = docSoNguyen(form.get('so_dong'), 0, 2000) ?? 0;
@@ -240,6 +248,7 @@ export function docFormKiemKe(
     dong.push({
       mat_hang_id: g('mh'), lo_id: g('lo'), goi: g('goi'), kg: g('kg'), het: form.get(`k${i}_het`) === 'co',
       goc: typeof goc === 'string' ? goc : null,
+      ...(g('thung') ? { thung: g('thung') } : {}),   // 0105
     });
   }
   const them = String(form.get('them_mat_hang') ?? '').trim();
@@ -254,10 +263,15 @@ export function docFormKiemKe(
   return { dong, ...payloadTuDong(dong, matHang) };
 }
 
+/** Mặt hàng cần để đọc số đếm — món đếm theo cái và số cái một thùng (0105) khi có. */
+export interface MatHangDem {
+  id: string; ten: string; dem_goi: boolean; don_vi_goi?: string; dem_theo_cai?: boolean; so_trong_thung?: number | null;
+}
+
 /** Dòng đang hiện trên form → p_dong của kho_luu_kiem_ke, kèm lỗi gõ sai (loi / loiEn song song). */
 export function payloadTuDong(
   dong: DongDemForm[],
-  matHang: { id: string; ten: string; dem_goi: boolean }[],
+  matHang: MatHangDem[],
 ): { loi: string[]; loiEn: string[]; payload: Record<string, unknown>[] } {
   const loi: string[] = [];
   const loiEn: string[] = [];
@@ -268,11 +282,19 @@ export function payloadTuDong(
     const m = mh.get(d.mat_hang_id);
     if (!m) { bao({ vi: 'Một dòng không hợp lệ — tải lại trang', en: 'A line is not valid — reload the page' }); continue; }
     const nhan = `"${m.ten}"`;
-    const goi = docSoNguyen(d.goi, 0, 100000);
-    const kg = docKg(d.kg);
+    let goi = docSoNguyen(d.goi, 0, 100000);
+    // 0105: món đếm theo cái — không kg (ô kg không có trên form); thùng × số cái một thùng + số lẻ.
+    const kg = m.dem_theo_cai ? null : docKg(d.kg);
+    const n = m.dem_theo_cai && m.so_trong_thung && m.so_trong_thung >= 2 ? m.so_trong_thung : 0;
+    const thung = n ? docSoNguyen(d.thung ?? '', 0, 100000) : null;
+    if (Number.isNaN(thung)) {
+      bao({ vi: `${nhan}: số thùng là số nguyên`, en: `${nhan}: the number of cases must be a whole number` });
+    } else if (thung !== null && !Number.isNaN(goi)) {
+      goi = thung * n + (goi ?? 0);
+    }
     if (Number.isNaN(goi)) {
-      bao({ vi: `${nhan}: số ${m.dem_goi ? 'gói' : 'đếm'} là số nguyên`,
-            en: `${nhan}: the ${m.dem_goi ? 'pack count' : 'count'} must be a whole number` });
+      bao({ vi: `${nhan}: số ${m.dem_theo_cai ? m.don_vi_goi || 'cái' : m.dem_goi ? 'gói' : 'đếm'} là số nguyên`,
+            en: `${nhan}: the ${m.dem_theo_cai ? `number of ${m.don_vi_goi || 'units'}` : m.dem_goi ? 'pack count' : 'count'} must be a whole number` });
     }
     if (Number.isNaN(kg)) bao({ vi: `${nhan}: số kg chưa đúng (ví dụ 1,25)`, en: `${nhan}: the kg is not right (for example 1.25)` });
     const p: Record<string, unknown> = { mat_hang_id: d.mat_hang_id, xac_nhan_het: d.het };

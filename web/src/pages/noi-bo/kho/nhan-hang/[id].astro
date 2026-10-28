@@ -142,8 +142,8 @@ const t = dichNB(nn, {
   },
   viDuGoi: { vi: 'ví dụ 2', en: 'e.g. 2' },
   // 0105: món đếm theo cái
-  soThung: { vi: (n: number | null | undefined) => n ? `Số thùng (1 thùng = ${n})` : 'Số thùng',
-             en: (n: number | null | undefined) => n ? `Number of cases (1 case = ${n})` : 'Number of cases' },
+  soThung: { vi: (n: number | null | undefined) => `Số thùng${n ? ` (1 thùng = ${n})` : ''}`,
+             en: (n: number | null | undefined) => `Number of cases${n ? ` (1 case = ${n})` : ''}` },
   soCai: { vi: (dv: string | undefined) => `Số ${dv ?? 'chai, lon, hộp'} *`, en: (dv: string | undefined) => `Number of ${dv ?? 'bottles, cans, jars'} *` },
   soLe: { vi: (dv: string | undefined) => `Số ${dv ?? 'chai, lon'} lẻ (ngoài thùng)`, en: (dv: string | undefined) => `Loose ${dv ?? 'bottles, cans'} (outside full cases)` },
   hsdCai: { vi: 'Hạn dùng in trên sản phẩm *', en: 'Use-by date printed on the product *' },

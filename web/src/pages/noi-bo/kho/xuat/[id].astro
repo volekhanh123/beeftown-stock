@@ -73,7 +73,7 @@ import {
 import { linkAnh } from '../../../../lib/kho/anh.ts';
 import { huyTraHangChoTien } from '../../../../lib/kho/cong-no.ts';
 import {
-  cauLoiKho, chuTinhTrangHan, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, donViChung, homNayVn, kqHai, laUuid, nhanKho,
+  cauLoiKho, chuTinhTrangHan, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, donViChung, homNayVn, kqHai, laDemCai, laUuid, nhanKho,
   trangThaiKho, TEN_LOAI_SO_CAI_NB, type HaiThuTieng, type KetQua, type NgonNguNB,
 } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
@@ -188,6 +188,7 @@ const ch = dichNB(nn, {
   chonMatHang: { vi: '— chọn mặt hàng —', en: '— choose an item —' },
   noiTrong: { vi: '— nơi này đang trống —', en: '— nothing here —' },
   soGoi: { vi: 'Số gói', en: 'Packs' },
+  soCai: { vi: 'Số chai, lon, hộp', en: 'Bottles, cans, jars' },
   soKg: { vi: 'Số kg', en: 'Kg' },
   goiYKg: { vi: 'hàng theo kg / kg quét được', en: 'goods by kg / scanned kg' },
   themDong: { vi: '+ Thêm một dòng', en: '+ Add a line' },
@@ -293,6 +294,7 @@ const ch = dichNB(nn, {
     en: 'The goods are in "Awaiting write-off" — no longer counted as counter stock, not yet recorded as lost.',
   },
   daGhiHuy: { vi: (kg: string) => `Đã ghi hủy ${kg} kg.`, en: (kg: string) => `${kg} kg written off.` },
+  daGhiHuyChu: { vi: (chu: string) => `Đã ghi hủy ${chu}.`, en: (chu: string) => `${chu} written off.` },
   veChoCu: { vi: 'Hàng đã về lại chỗ cũ.', en: 'The goods went back where they were.' },
   duyetBaoHuy: { vi: 'Duyệt báo hủy', en: 'Approve write-off' },
   duyetGhiHuy: { vi: 'Duyệt — ghi hủy', en: 'Approve — record write-off' },
@@ -632,6 +634,8 @@ const [loTheoMa, soTangLo] = await Promise.all([
 ]);
 /** "tảng #0001" của một lô; lô không thuộc tảng nào thì rỗng. */
 const tangChu = (loId: string | null | undefined) => chuTang(soTangLo.get(loId ?? '')?.so_tang, nn);
+/** Lô của món đếm theo cái (0105): kg của nó là số cái — không hiện, không cộng vào kg. */
+const laCaiLo = (loId: string | null | undefined) => !!tenMh.get(loTheoMa.get(loId ?? '')?.mat_hang_id ?? '')?.dem_theo_cai;
 /** " · tảng #0001" để nối ngay sau mã lô. */
 const tangCua = (loId: string | null | undefined) => (tangChu(loId) ? ` · ${tangChu(loId)}` : '');
 const ten = phieu ? await tenNhanSu(k.client, [phieu.nguoi_tao, phieu.nguoi_duyet, phieu.nguoi_nhan, phieu.nguoi_xu_ly]) : new Map<string, string>();
@@ -769,12 +773,14 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
                 <div class="kho-dong-hang">
                   <span class="so-thu-tu">{i + 1}</span>
                   <label class="nb-o" style="margin-top:.4rem"><span>{ch.matHang}</span>
-                    <ChonMatHang name={`d${i}_mat_hang`} matHang={mhChon.length ? [...mhChon, ...matHang.filter(m => m.id === d.mat_hang_id && !hangTaiTu.has(m.id))] : matHang} chon={d.mat_hang_id} trong={mhChon.length ? ch.chonMatHang : ch.noiTrong} />
+                    <ChonMatHang name={`d${i}_mat_hang`} matHang={mhChon.length ? [...mhChon, ...matHang.filter(m => m.id === d.mat_hang_id && !hangTaiTu.has(m.id))] : matHang} chon={d.mat_hang_id} trong={mhChon.length ? ch.chonMatHang : ch.noiTrong} demCai={loai !== 'chuyen'} />
                   </label>
+                  {/* 0105: chọn món đếm theo cái (sốt, đồ uống) thì CSS :has() giấu ô kg, nhãn thành "Số chai, lon…".
+                      Phiếu mang ra quầy không có các món này (để một chỗ, không chuyển). */}
                   <div class="kho-luoi">
-                    <label class="nb-o"><span>{ch.soGoi}</span>
+                    <label class="nb-o"><span class="xb-nhan-goi">{ch.soGoi}</span><span class="xb-nhan-cai">{ch.soCai}</span>
                       <input type="text" inputmode="numeric" name={`d${i}_so_goi`} value={d.so_goi} /></label>
-                    <label class="nb-o"><span>{ch.soKg}</span>
+                    <label class="nb-o xb-chi-thit"><span>{ch.soKg}</span>
                       <input type="text" inputmode="decimal" name={`d${i}_so_kg`} value={d.so_kg} placeholder={i === 0 ? ch.goiYKg : undefined} /></label>
                   </div>
                 </div>
@@ -801,7 +807,7 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
                           <input type="hidden" name={`l${i}_mat_hang`} value={t.mat_hang_id} />
                           <div class="dau">
                             <b>{t.ten_hang}</b>
-                            <span class="kho-phu">{ch.lo} {t.ma_lo}{tangChu(t.lo_id) && <>{' · '}<strong>{tangChu(t.lo_id)}</strong></>} · {ch.conTruoc}{t.dem_goi ? `${t.so_goi} ${t.don_vi_goi} · ` : ''}{dinhDangKg(t.so_kg, nn)} kg{ch.conSau} ·{' '}
+                            <span class="kho-phu">{ch.lo} {t.ma_lo}{tangChu(t.lo_id) && <>{' · '}<strong>{tangChu(t.lo_id)}</strong></>} · {ch.conTruoc}{laDemCai({ loai: t.loai_hang }) ? `${t.so_goi} ${t.don_vi_goi}` : <>{t.dem_goi ? `${t.so_goi} ${t.don_vi_goi} · ` : ''}{dinhDangKg(t.so_kg, nn)} kg</>}{ch.conSau} ·{' '}
                               <span class={`kho-han ${t.tinh_trang_han}`}>{chuTinhTrangHan(t.tinh_trang_han, nn)}{' · '}{ch.hsd} {dinhDangNgay(t.han_dung)}</span></span>
                           </div>
                           {khoa ? (
@@ -812,8 +818,10 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
                                 <label class="nb-o"><span>{ch.soDv(t.don_vi_goi)}</span>
                                   <input type="text" inputmode="numeric" name={`l${i}_so_goi`} value={cu?.so_goi ?? ''} /></label>
                               )}
-                              <label class="nb-o"><span>{ch.soKg}{t.dem_goi ? ch.neuCan : ''}</span>
-                                <input type="text" inputmode="decimal" name={`l${i}_so_kg`} value={cu?.so_kg ?? ''} /></label>
+                              {!laDemCai({ loai: t.loai_hang }) && (
+                                <label class="nb-o"><span>{ch.soKg}{t.dem_goi ? ch.neuCan : ''}</span>
+                                  <input type="text" inputmode="decimal" name={`l${i}_so_kg`} value={cu?.so_kg ?? ''} /></label>
+                              )}
                             </div>
                           )}
                         </div>
@@ -1002,9 +1010,13 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
               return (
               <tr>
                 <td>{m?.ten ?? '—'}</td>
+                {m?.dem_theo_cai ? <>
+                  <td class="so">{d.so_goi} {m.don_vi_goi}</td><td class="so">—</td><td class="so">—</td>
+                </> : <>
                 <td class="so">{d.so_goi || '—'}</td>
                 <td class="so">{dinhDangKg(d.so_kg, nn)}</td>
                 <td class="so">{d.so_kg_do !== null ? dinhDangKg(d.so_kg_do, nn) : '—'}</td>
+                </>}
                 {coCotNhan && (
                   <td class="so">{m?.dem_goi ? (d.so_goi_nhan ?? '—') : d.so_kg_nhan !== null ? dinhDangKg(d.so_kg_nhan, nn) : '—'}{thieu && <strong>{ch.thieuNgoac}</strong>}</td>
                 )}
@@ -1027,7 +1039,7 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
                 <td>{dinhDangNgay(loTheoMa.get(s.lo_id)?.han_dung)}</td>
                 <td>{nhanKho(TEN_LOAI_SO_CAI_NB, s.loai, nn)}</td>
                 <td class="so">{Math.abs(s.so_goi) || '—'}</td>
-                <td class="so">{dinhDangKg(Math.abs(s.so_kg), nn)}</td>
+                <td class="so">{laCaiLo(s.lo_id) ? '—' : dinhDangKg(Math.abs(s.so_kg), nn)}</td>
               </tr>
             ))}
           </tbody>
@@ -1036,7 +1048,9 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
       {phieu.loai === 'huy' && (
         <p class="kho-phu">
           {phieu.trang_thai === 'cho_duyet' && ch.huyCho}{' '}
-          {phieu.trang_thai === 'da_duyet' && ch.daGhiHuy(dinhDangKg(Math.abs(daHuy.reduce((s, x) => s + x.so_kg, 0)), nn))}{' '}
+          {phieu.trang_thai === 'da_duyet' && (daHuy.every(x => laCaiLo(x.lo_id))
+            ? ch.daGhiHuyChu(ch.soGoiDem(Math.abs(daHuy.reduce((s, x) => s + x.so_goi, 0)), donViPhieu))
+            : ch.daGhiHuy(dinhDangKg(Math.abs(daHuy.filter(x => !laCaiLo(x.lo_id)).reduce((s, x) => s + x.so_kg, 0)), nn)))}{' '}
           {phieu.trang_thai === 'tu_choi' && ch.veChoCu}
         </p>
       )}
@@ -1107,6 +1121,11 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
 </Kho>
 
 <style>
+  /* 0105: mỗi dòng "theo mặt hàng" — chọn món đếm theo cái (lựa chọn mang data-cai) thì giấu ô kg, nhãn số gói thành
+     "Số chai, lon, hộp". Luật nào cũng có :has(): trình duyệt không hiểu thì thấy đủ ô, xuat.ts bỏ kg của món này. */
+  .kho-dong-hang:has(option[data-cai]:checked) .xb-chi-thit,
+  .kho-dong-hang:has(option[data-cai]:checked) .xb-nhan-goi,
+  .kho-dong-hang:not(:has(option[data-cai]:checked)) .xb-nhan-cai { display: none; }
   /* Báo hủy: lô còn hạn xa nằm trong mục gập (22/10/2026). */
   .xh-lo-them > summary { cursor: pointer; font-weight: 600; min-height: 44px; display: list-item; padding: .6rem 0; }
   /* Báo hủy 3 bước */

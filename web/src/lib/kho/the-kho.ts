@@ -176,7 +176,7 @@ export interface MatHangTheKho {
   id: string;
   ma: string;
   ten: string;
-  loai: 'tang' | 'phan_cat' | 'phu_pham';
+  loai: 'tang' | 'phan_cat' | 'phu_pham' | 'gia_vi' | 'do_uong';   // 0105: hai loại đếm theo cái
   dem_goi: boolean;
   don_vi_goi: string;
 }

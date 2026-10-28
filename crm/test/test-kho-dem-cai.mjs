@@ -27,6 +27,10 @@ import { luuMatHang, docMatHang, xemTruocDanMatHang, demMacDinh, laLoaiDemCai, L
 import { laDemCai, soCaiChu, TEN_LOAI_MAT_HANG_NB } from '../../web/src/lib/kho/chung.ts';
 import { docFormDongNhan, dongNhanVaoForm } from '../../web/src/lib/kho/nhan-hang.ts';
 import { docFormDienGia, dienGiaTuPhieu, thanhTienDong, xemTruocGiaVon, chuSoSanhGia } from '../../web/src/lib/kho/nhap.ts';
+import { docDongTraHang } from '../../web/src/lib/kho/cong-no.ts';
+import { docFormPhieuXuat } from '../../web/src/lib/kho/xuat.ts';
+import { viecVoiLo } from '../../web/src/lib/kho/ton.ts';
+import { docFormKiemKe, payloadTuDong, chuKyDong, daDemDong } from '../../web/src/lib/kho/kiem-ke.ts';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -339,6 +343,15 @@ await nhom('4 · XUẤT BẾP, KIỂM KÊ, TRẢ HÀNG: SỔ KHO so_kg = SỐ C�
     const xId = Object.values(tra.rows[0]).find(v => typeof v === 'string' && /^[0-9a-f-]{36}$/.test(v));
     const tien = (await db.query(`select kho_tien_tra_hang_goi_y($1) as t`, [xId])).rows[0].t;
     ok('Tiền trả hàng tự tính: 24 lon = đúng 380.000 đ (giá thùng)', Number(tien) === 380000, String(tien));
+    const cho = await duoi(UID.keToanA, `select * from kho_ds_tra_hang_cho_tien($1)`, [cnA.id]);
+    const dongCho = (cho.rows ?? []).find(r => r.phieu_xuat_id === xId);
+    ok('kho_ds_tra_hang_cho_tien: 24 lon không cộng vào tổng kg / tổng gói, vẫn đếm 1 lô, gợi ý 380.000 đ',
+      dongCho && Number(dongCho.tong_kg) === 0 && Number(dongCho.tong_goi) === 0 && dongCho.so_dong === 1
+        && Number(dongCho.so_tien_goi_y) === 380000, JSON.stringify(dongCho ?? cho.loi));
+    const sk = await duoi(UID.keToanA, `select kho_thong_bao($1, 300) as v`, [cnA.id]);
+    const skBia = (sk.rows?.[0]?.v?.su_kien ?? []).find(r => r.khoa === 'tra_hang_cho_tien' && r.ref_id === xId);
+    ok('kho_su_kien "Trả hàng chờ xác nhận tiền": phiếu chỉ có lon → số kg để trống (không in "24 kg")',
+      skBia && skBia.so === null, JSON.stringify(skBia ?? sk.loi));
   }
 
   ok('Sổ kho: mọi dòng của món đếm theo cái có so_kg = so_goi', (await soCaiLech()).length === 0, JSON.stringify(await soCaiLech()));
@@ -534,6 +547,86 @@ await nhom('8 · NHẬN HÀNG, ĐIỀN GIÁ — HÀM THUẦN VÀ MÃ NGUỒN', a
   const np = doc('web/src/pages/noi-bo/kho/nhap/[id].astro');
   ok('Phiếu nhập: phiếu có dòng đếm theo cái không mở lưới soạn, có link sửa ở màn Nhận hàng',
     /const coTheSoan = k\.duoc\('nhap'\) && \(moi \|\| conNhap\) && !coDongCai;/.test(np) && /t\.suaDongNhanHang/.test(np));
+});
+
+// ===========================================================================
+await nhom('9 · XUẤT BẾP, KIỂM KÊ, TRẢ HÀNG — HÀM THUẦN VÀ MÃ NGUỒN', async () => {
+  const BIA = '00000000-0000-4000-8000-0000000000b1';
+  const MUOI = '00000000-0000-4000-8000-0000000000b2';
+  const THIT = '00000000-0000-4000-8000-0000000000b3';
+  const LO1 = '00000000-0000-4000-8000-0000000000c1';
+  const LO2 = '00000000-0000-4000-8000-0000000000c2';
+  const mh = [
+    { id: BIA, ten: 'Bia Tiger lon', dem_goi: true, don_vi_goi: 'lon', dem_theo_cai: true, so_trong_thung: 24 },
+    { id: MUOI, ten: 'Muối', dem_goi: true, don_vi_goi: 'gói', dem_theo_cai: true, so_trong_thung: null },
+    { id: THIT, ten: 'Thăn ngoại', dem_goi: true, don_vi_goi: 'gói', dem_theo_cai: false },
+  ];
+  const f = o => ({ get: k => o[k] ?? null });
+
+  // Xuất bếp: món đếm theo cái chỉ gửi số cái; kg gõ nhầm (ô ẩn) bỏ qua.
+  let x = docFormPhieuXuat(f({ so_dong: '2', d0_mat_hang: BIA, d0_so_goi: '6', d0_so_kg: '9,9', d1_mat_hang: THIT, d1_so_goi: '2', d1_so_kg: '1,5' }), mh);
+  ok('Xuất bếp: 6 lon → chỉ so_goi (kg ô ẩn bỏ qua); thịt vẫn gửi cả kg',
+    x.loi.length === 0 && JSON.stringify(x.payload) === JSON.stringify([{ mat_hang_id: BIA, so_goi: 6 }, { mat_hang_id: THIT, so_goi: 2, so_kg: 1.5 }]),
+    JSON.stringify(x));
+  x = docFormPhieuXuat(f({ so_dong: '1', d0_mat_hang: BIA, d0_so_goi: '', d0_so_kg: '2' }), mh);
+  ok('Xuất bếp: món đếm theo cái chưa ghi số lon → báo "chưa nhập số lon"',
+    x.payload.length === 0 && /chưa nhập số lon/.test(x.loi.join()) && /number of lon not entered/.test(x.loiEn.join()), x.loi.join());
+  x = docFormPhieuXuat(f({ so_dong: '0', so_lo: '1', l0_lo: LO1, l0_mat_hang: BIA, l0_so_goi: '3', l0_so_kg: '' }), mh);
+  ok('Xuất bếp theo lô: 3 lon của lô → { lo_id, so_goi: 3 }',
+    x.loi.length === 0 && JSON.stringify(x.payload) === JSON.stringify([{ mat_hang_id: BIA, lo_id: LO1, so_goi: 3 }]), JSON.stringify(x));
+
+  // Kiểm kê: thùng × số cái một thùng + số lẻ.
+  let kk = payloadTuDong([{ mat_hang_id: BIA, lo_id: '', goi: '5', kg: '1,5', het: false, thung: '2' }], mh);
+  ok('Kiểm kê: 2 thùng + 5 lon = 53 lon, kg gõ (1,5) bỏ qua',
+    kk.loi.length === 0 && kk.payload[0].so_goi_dem === 53 && !('so_kg_dem' in kk.payload[0]), JSON.stringify(kk));
+  kk = payloadTuDong([{ mat_hang_id: BIA, lo_id: '', goi: '', kg: '', het: false, thung: '3' }], mh);
+  ok('Kiểm kê: chỉ ghi 3 thùng (ô lẻ trống) = 72 lon', kk.payload[0].so_goi_dem === 72, JSON.stringify(kk.payload));
+  kk = payloadTuDong([{ mat_hang_id: MUOI, lo_id: '', goi: '11', kg: '', het: false, thung: '2' }], mh);
+  ok('Kiểm kê: món không có quy đổi thùng — ô thùng (không có trên form) bỏ qua', kk.payload[0].so_goi_dem === 11, JSON.stringify(kk.payload));
+  kk = payloadTuDong([{ mat_hang_id: BIA, lo_id: '', goi: '', kg: '', het: false, thung: '1,5' }], mh);
+  ok('Kiểm kê: số thùng không nguyên → báo', /số thùng là số nguyên/.test(kk.loi.join()) && /number of cases/.test(kk.loiEn.join()), kk.loi.join());
+  kk = payloadTuDong([{ mat_hang_id: BIA, lo_id: '', goi: '2,5', kg: '', het: false }], mh);
+  ok('Kiểm kê: số lon không nguyên → câu nói "số lon"', /số lon là số nguyên/.test(kk.loi.join()) && /number of lon/.test(kk.loiEn.join()), kk.loi.join());
+  kk = payloadTuDong([{ mat_hang_id: BIA, lo_id: '', goi: '', kg: '', het: true }], mh);
+  ok('Kiểm kê: tích "Đã hết thật" ô trống → 0 lon', kk.loi.length === 0 && kk.payload[0].so_goi_dem === 0, JSON.stringify(kk.payload));
+  const fk = docFormKiemKe(f({ so_dong: '1', k0_mh: BIA, k0_lo: '', k0_goi: '1', k0_kg: '', k0_thung: '1' }), mh);
+  ok('docFormKiemKe đọc ô k{i}_thung: 1 thùng + 1 lon = 25', fk.loi.length === 0 && fk.payload[0].so_goi_dem === 25, JSON.stringify(fk));
+  ok('Chữ ký dòng: dòng không thùng giữ chữ ký cũ; ghi thêm thùng là dòng đã sửa',
+    chuKyDong({ goi: '5', kg: '', het: false }) === '5||0' && chuKyDong({ goi: '5', kg: '', het: false, thung: '2' }) === '5||0|t2');
+  ok('Dòng chỉ ghi thùng là đã đếm', daDemDong({ goi: '', kg: '', het: false, thung: '2' }, true)
+    && !daDemDong({ goi: '', kg: '', het: false, thung: '' }, true));
+
+  // Trả hàng nhà cung cấp: lô đếm theo cái (t{i}_cai = 1) gửi so_kg = so_goi = số cái.
+  let tr = docDongTraHang(f({ so_dong: '2', t0_lo: LO1, t0_cai: '1', t0_goi: '24', t0_kg: '99', t1_lo: LO2, t1_kg: '4,5', t1_goi: '1' }));
+  ok('Trả hàng: 24 lon → { so_kg: 24, so_goi: 24 } (kg gõ nhầm bỏ qua); dòng thịt như cũ',
+    tr.loi.length === 0 && JSON.stringify(tr.dong) === JSON.stringify([{ lo_id: LO1, so_kg: 24, so_goi: 24 }, { lo_id: LO2, so_kg: 4.5, so_goi: 1 }]),
+    JSON.stringify(tr));
+  tr = docDongTraHang(f({ so_dong: '1', t0_lo: LO1, t0_cai: '1', t0_goi: '', t0_kg: '3' }));
+  ok('Trả hàng: lô đếm theo cái chỉ ghi kg → báo ghi số chai / lon', tr.dong.length === 0 && /ghi số chai \/ lon \/ hộp trả/.test(tr.loi.join())
+    && /bottles \/ cans \/ boxes/.test(tr.loiEn.join()), tr.loi.join());
+  tr = docDongTraHang(f({ so_dong: '1', t0_lo: LO1, t0_cai: '1', t0_goi: '2,5' }));
+  ok('Trả hàng: số lon không nguyên → báo', tr.dong.length === 0 && tr.loi.length === 1, tr.loi.join());
+  tr = docDongTraHang(f({ so_dong: '1', t0_lo: LO1, t0_cai: '1', t0_goi: '0' }));
+  ok('Trả hàng: 0 lon → báo (không gửi dòng rỗng)', tr.dong.length === 0 && tr.loi.length === 1, tr.loi.join());
+
+  const th = doc('web/src/pages/noi-bo/kho/cong-no/tra-hang.astro');
+  ok('Màn trả hàng: lô đếm theo cái có ô ẩn t{i}_cai, không ô kg; đơn giá theo cái',
+    /name=\{`t\$\{i\}_cai`\} value="1"/.test(th) && /name="t0_cai" value="1"/.test(th) && /t\.muaGiaCai\(/.test(th) && /laDemCai\(\{ loai: x\.loai_hang \}\)/.test(th));
+  const tx = doc('web/src/pages/noi-bo/kho/xuat/[id].astro');
+  ok('Màn phiếu xuất: chọn được món đếm theo cái (trừ phiếu mang ra quầy), CSS giấu ô kg khi chọn món đó',
+    /<ChonMatHang name=\{`d\$\{i\}_mat_hang`\}.* demCai=\{loai !== 'chuyen'\} \/>/.test(tx) && /:has\(option\[data-cai\]:checked\)/.test(tx));
+  const loBiaTon = { loai_vi_tri: 'kho', so_kg: 24, so_goi: 24, tinh_trang_han: 'con_han', vi_tri_id: LO2, lo_id: LO1, loai_hang: 'do_uong' };
+  ok('Tồn kho: lô đồ uống ở kho không có "Lấy ra quầy" (để một chỗ), vẫn có xuất bếp / báo hủy; lô thịt vẫn có',
+    JSON.stringify(viecVoiLo(loBiaTon).map(v => v.ma)) === '["xuat_bep","huy"]'
+    && viecVoiLo({ ...loBiaTon, loai_hang: 'phan_cat' })[0].ma === 'chuyen');
+  const sn = doc('web/src/pages/noi-bo/kho/cai-dat/mat-hang/sua-nhanh.astro');
+  ok('Sửa nhanh: sốt, đồ uống chỉ có ô Tình trạng; có lọc hai loại mới',
+    /laDemCai\(m\) \? khoa === 'dang_dung'/.test(sn) && /\['gia_vi', t\.giaVi\], \['do_uong', t\.doUong\]/.test(sn));
+  const tkh = doc('web/src/pages/noi-bo/kho/the-kho/[mat_hang_id].astro');
+  ok('Thẻ kho: món đếm theo cái không có cột kg', /const coKg = !laDemCai\(mh\);/.test(tkh) && /\{coKg && <th class="so">\{t\.cotKg\}<\/th>\}/.test(tkh));
+  const tk = doc('web/src/pages/noi-bo/kho/kiem-ke/[id].astro');
+  ok('Màn kiểm kê: ô số thùng k{i}_thung khi món có quy đổi; "thêm mặt hàng" có món đếm theo cái',
+    /name=\{`k\$\{i\}_thung`\}/.test(tk) && /<ChonMatHang name="them_mat_hang"[^>]*demCai/.test(tk));
 });
 
 const ds = (await db.query(`select * from kho_doi_soat_ton()`)).rows;

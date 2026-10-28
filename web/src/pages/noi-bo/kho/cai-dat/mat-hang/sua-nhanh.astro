@@ -19,7 +19,7 @@ import {
   CHU_XOA, NHOM_CHUA_CO, O_SUA_NHANH_NB, docFormSuaNhanh, docMonSuaNhanh, giaTriO, laLoiPhienBan, locMonSuaNhanh, loiTheoMon,
   suaNhanhMatHang, type MonSuaNhanh, type OSuaNhanh, type LoiDongSuaNhanh,
 } from '../../../../../lib/kho/sua-nhanh.ts';
-import { boDau, cauLoiKho, kqHai, nhanKho, TEN_LOAI_MAT_HANG_NB, type KetQua } from '../../../../../lib/kho/chung.ts';
+import { boDau, cauLoiKho, kqHai, laDemCai, nhanKho, TEN_LOAI_MAT_HANG_NB, type KetQua } from '../../../../../lib/kho/chung.ts';
 import { dichCau } from '../../../../../lib/cau-noi-bo.ts';
 import { dichNB } from '../../../../../lib/ngon-ngu-noi-bo.ts';
 
@@ -48,6 +48,8 @@ const t = dichNB(nn, {
   tang: { vi: 'Tảng', en: 'Primals' },
   phanCat: { vi: 'Phần cắt', en: 'Cuts' },
   phuPham: { vi: 'Phụ phẩm', en: 'By-products' },
+  giaVi: { vi: 'Sốt, gia vị', en: 'Sauces, spices' },
+  doUong: { vi: 'Đồ uống', en: 'Drinks' },
   locNhom: { vi: 'Lọc theo nhóm', en: 'Filter by category' },
   moiNhom: { vi: 'Mọi nhóm', en: 'All categories' },
   chuaCoNhom: { vi: 'Chưa có nhóm', en: 'No category' },
@@ -111,7 +113,9 @@ const linkLoc = (thay: Record<string, string>) => {
   return `/noi-bo/kho/cai-dat/mat-hang/sua-nhanh${s ? `?${s}` : ''}`;
 };
 const oCua = (m: MonSuaNhanh, khoa: OSuaNhanh) => chuGo.get(m.id)?.[khoa] ?? giaTriO(m, khoa, nn);
-const coO = (m: MonSuaNhanh, khoa: OSuaNhanh) => !(khoa === 'noi_de_sau_pha' && m.loai === 'tang');
+// Sốt, đồ uống (0105): giá bán / kg, hạn theo ngày, mã cân, mức kg, nơi để sau pha không dùng — chỉ sửa tình trạng
+// ở đây (mức tối thiểu / tối đa theo cái làm ở đợt sau). Database cũng chặn mã cân của món đếm theo cái.
+const coO = (m: MonSuaNhanh, khoa: OSuaNhanh) => (laDemCai(m) ? khoa === 'dang_dung' : !(khoa === 'noi_de_sau_pha' && m.loai === 'tang'));
 const kieuNhap = (khoa: OSuaNhanh) => (khoa === 'ma_can' || khoa.endsWith('_goi') || khoa === 'han_dung_ngay' || khoa === 'gia_ban_kg' ? 'numeric' : 'decimal');
 ---
 <Kho k={k} huongDan="sua-nhanh" tieuDe={t.tieuDe} rong>
@@ -128,7 +132,7 @@ const kieuNhap = (khoa: OSuaNhanh) => (khoa === 'ma_can' || khoa.endsWith('_goi'
   </div>
 
   <nav class="kho-dh" aria-label={t.locLoai}>
-    {[['', t.tatCa], ['tang', t.tang], ['phan_cat', t.phanCat], ['phu_pham', t.phuPham]].map(([v, ten]) => (
+    {[['', t.tatCa], ['tang', t.tang], ['phan_cat', t.phanCat], ['phu_pham', t.phuPham], ['gia_vi', t.giaVi], ['do_uong', t.doUong]].map(([v, ten]) => (
       <a href={linkLoc({ loai: v })} aria-current={loc.loai === v ? 'page' : undefined}>{ten}</a>
     ))}
   </nav>
@@ -169,7 +173,7 @@ const kieuNhap = (khoa: OSuaNhanh) => (khoa === 'ma_can' || khoa.endsWith('_goi'
                       <input type="hidden" name="id" value={m.id} />
                       <input type="hidden" name={`pb_${m.id}`} value={m.phien_ban} />
                       <strong>{m.ten}</strong>
-                      <span class="kho-phu">{m.ma} · {nhanKho(TEN_LOAI_MAT_HANG_NB, m.loai, nn)}{m.nhom ? ` · ${m.nhom}` : ''}{!m.dem_goi ? t.khongDemGoi : ''}</span>
+                      <span class="kho-phu">{m.ma} · {nhanKho(TEN_LOAI_MAT_HANG_NB, m.loai, nn)}{m.nhom ? ` · ${m.nhom}` : ''}{laDemCai(m) ? ` · ${m.don_vi_goi}` : !m.dem_goi ? t.khongDemGoi : ''}</span>
                     </th>
                     {O_SUA_NHANH_NB.map(o => {
                       const ten = `${o.khoa}_${m.id}`;

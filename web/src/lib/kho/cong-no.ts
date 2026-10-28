@@ -67,7 +67,30 @@ const CAU_TRA_HANG = {
   loSai: { vi: 'Lô không hợp lệ — tải lại trang', en: 'Invalid lot — reload the page' } as HaiThuTieng,
   kg: (i: number): HaiThuTieng => ({ vi: `Dòng ${i}: ghi số kg trả (ví dụ 4,5)`, en: `Line ${i}: enter the kg returned (for example 4.5)` }),
   goi: (i: number): HaiThuTieng => ({ vi: `Dòng ${i}: số tảng / gói là số nguyên`, en: `Line ${i}: the number of primals / packs must be a whole number` }),
+  cai: (i: number): HaiThuTieng => ({ vi: `Dòng ${i}: ghi số chai / lon / hộp trả (số nguyên, ví dụ 3)`, en: `Line ${i}: enter the number of bottles / cans / boxes returned (a whole number, for example 3)` }),
 };
+
+/**
+ * Một dòng trả hàng t{i}_*: null = dòng bỏ trống; lỗi thì báo qua `bao` và trả null.
+ * Lô món đếm theo cái (t{i}_cai = 1, ẩn): chỉ ô số cái t{i}_goi, gửi so_kg = so_goi —
+ * database (kho_so_cai_dem_cai_kiem) vẫn chặn nếu form bị sửa tay.
+ */
+function docMotDongTra(s: (t: string) => string, i: number, bao: (c: HaiThuTieng) => void): Record<string, unknown> | null {
+  const lo = s(`t${i}_lo`);
+  const kgChu = s(`t${i}_kg`);
+  const goiChu = s(`t${i}_goi`);
+  if (!kgChu && !goiChu) return null;
+  if (!laUuid(lo)) { bao(CAU_TRA_HANG.loSai); return null; }
+  const goi = docSoNguyen(goiChu, 0, 100000);
+  if (s(`t${i}_cai`) === '1') {
+    if (goi === null || Number.isNaN(goi) || goi <= 0) { bao(CAU_TRA_HANG.cai(i + 1)); return null; }
+    return { lo_id: lo, so_kg: goi, so_goi: goi };
+  }
+  const kg = docKg(kgChu);
+  if (kg === null || Number.isNaN(kg) || kg <= 0) { bao(CAU_TRA_HANG.kg(i + 1)); return null; }
+  if (Number.isNaN(goi)) { bao(CAU_TRA_HANG.goi(i + 1)); return null; }
+  return goi !== null ? { lo_id: lo, so_kg: kg, so_goi: goi } : { lo_id: lo, so_kg: kg };
+}
 
 /** " Lưu ý: <ảnh chưa tải được>" nối sau câu báo (rỗng khi mọi ảnh đều lên). */
 function cauAnhLoi(tai: { loi: string[]; loiEn: string[] }): HaiThuTieng {
@@ -426,7 +449,7 @@ export function huyThanhToan(client: SupabaseClient, id: string, lyDo: string): 
   return cauTraVe(client.rpc('kho_huy_thanh_toan', { p_id: id, p_ly_do: lyDo }));
 }
 
-/** Trả hàng: dòng t{i}_lo (ẩn), t{i}_kg, t{i}_goi; so_tien_giam_tru bỏ trống = tự tính. */
+/** Trả hàng: dòng t{i}_lo (ẩn), t{i}_kg, t{i}_goi (t{i}_cai: lô món đếm theo cái); so_tien_giam_tru bỏ trống = tự tính. */
 export async function traHangNcc(
   client: SupabaseClient, chiNhanhId: string, form: FormData, ctx: { phieuNhapId: string; viTriId: string },
 ): Promise<KetQua & { id?: string }> {
@@ -437,23 +460,15 @@ export async function traHangNcc(
   const dong: Record<string, unknown>[] = [];
   const soDong = docSoNguyen(form.get('so_dong'), 0, 200) ?? 0;
   for (let i = 0; i < (Number.isNaN(soDong) ? 0 : soDong); i++) {
-    const lo = s(`t${i}_lo`);
-    const kgChu = s(`t${i}_kg`);
-    const goiChu = s(`t${i}_goi`);
-    if (!kgChu && !goiChu) continue;
-    const kg = docKg(kgChu);
-    const goi = docSoNguyen(goiChu, 0, 100000);
-    if (!laUuid(lo)) { bao(CAU_TRA_HANG.loSai); continue; }
-    if (kg === null || Number.isNaN(kg) || kg <= 0) { bao(CAU_TRA_HANG.kg(i + 1)); continue; }
-    if (Number.isNaN(goi)) { bao(CAU_TRA_HANG.goi(i + 1)); continue; }
-    dong.push(goi !== null ? { lo_id: lo, so_kg: kg, so_goi: goi } : { lo_id: lo, so_kg: kg });
+    const d = docMotDongTra(s, i, bao);
+    if (d) dong.push(d);
   }
   const tienChu = s('so_tien_giam_tru');
   const tien = tienChu ? docTien(tienChu) : null;
   if (tien !== null && Number.isNaN(tien)) {
     bao({ vi: 'Số tiền giảm trừ là số đồng (hoặc để trống để tự tính)', en: 'The deduction must be in VND (or leave it empty to have it calculated)' });
   }
-  if (!dong.length && !loi.length) bao({ vi: 'Chưa ghi số kg trả ở lô nào.', en: 'No kg entered for any lot.' });
+  if (!dong.length && !loi.length) bao({ vi: 'Chưa ghi số trả ở lô nào.', en: 'No quantity entered for any lot.' });
   if (loi.length) return { ok: false, cau: loi.join(' · '), cauEn: loiEn.join(' · ') };
   const maGui = s('ma_gui');
   if (!laUuid(maGui)) return kqHai(false, CAU.formCu);
@@ -1370,7 +1385,7 @@ export function boDoiChieuGop(client: SupabaseClient, id: string, lyDo: string):
 }
 
 // --- Trả hàng hai bước -----------------------------------------------------------
-/** Dòng trả hàng: t{i}_lo (ẩn), t{i}_kg, t{i}_goi; dòng bỏ trống thì bỏ qua. */
+/** Dòng trả hàng: t{i}_lo (ẩn), t{i}_kg, t{i}_goi (t{i}_cai: lô món đếm theo cái); dòng bỏ trống thì bỏ qua. */
 export function docDongTraHang(form: { get(ten: string): unknown }): { dong: Record<string, unknown>[]; loi: string[]; loiEn: string[] } {
   const s = (t: string) => String(form.get(t) ?? '').trim();
   const loi: string[] = [];
@@ -1379,18 +1394,10 @@ export function docDongTraHang(form: { get(ten: string): unknown }): { dong: Rec
   const dong: Record<string, unknown>[] = [];
   const soDong = docSoNguyen(form.get('so_dong'), 0, 200) ?? 0;
   for (let i = 0; i < (Number.isNaN(soDong) ? 0 : soDong); i++) {
-    const lo = s(`t${i}_lo`);
-    const kgChu = s(`t${i}_kg`);
-    const goiChu = s(`t${i}_goi`);
-    if (!kgChu && !goiChu) continue;
-    const kg = docKg(kgChu);
-    const goi = docSoNguyen(goiChu, 0, 100000);
-    if (!laUuid(lo)) { bao(CAU_TRA_HANG.loSai); continue; }
-    if (kg === null || Number.isNaN(kg) || kg <= 0) { bao(CAU_TRA_HANG.kg(i + 1)); continue; }
-    if (Number.isNaN(goi)) { bao(CAU_TRA_HANG.goi(i + 1)); continue; }
-    dong.push(goi !== null ? { lo_id: lo, so_kg: kg, so_goi: goi } : { lo_id: lo, so_kg: kg });
+    const d = docMotDongTra(s, i, bao);
+    if (d) dong.push(d);
   }
-  if (!dong.length && !loi.length) bao({ vi: 'Chưa ghi số kg trả.', en: 'No kg entered.' });
+  if (!dong.length && !loi.length) bao({ vi: 'Chưa ghi số trả.', en: 'No quantity entered.' });
   return { dong, loi, loiEn };
 }
 

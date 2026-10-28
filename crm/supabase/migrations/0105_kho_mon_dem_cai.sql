@@ -28,7 +28,8 @@
 --      theo cái chia chi phí khác theo tiền hàng (như thuế) thay vì theo kg.
 --   4. MISA: đơn vị tính của món đếm theo cái là tên đơn vị của nó, không "kg".
 --   5. Báo cáo / view cộng kg nhiều món (tháng, mua hàng theo NCC, đánh giá NCC, chỉ số quản trị, tổng kg của
---      danh sách phiếu nhập / xuất / nhận hàng của thủ kho): kg chỉ tính hàng cân ký; tiền vẫn cộng mọi món.
+--      danh sách phiếu nhập / xuất / nhận hàng của thủ kho / trả hàng chờ xác nhận tiền): kg chỉ tính hàng cân
+--      ký; tiền vẫn cộng mọi món.
 --   6. Tiền trả hàng NCC tự tính: dòng nhập theo giá thùng tính đúng phần của giá thùng.
 -- Đợt 2 (PR sau): đồ uống tự trừ qua iPOS theo mã món, gợi ý đặt hàng theo cái, mức tối thiểu / tối đa.
 --
@@ -1882,6 +1883,333 @@ begin
     order by p.ngay_nhap desc, p.created_at desc, p.id
     limit least(greatest(coalesce(p_gioi_han, 30), 1), 200)
     offset greatest(coalesce(p_bo_qua, 0), 0);
+end;
+$$;
+
+-- Hàng trả nhà cung cấp chờ kế toán xác nhận tiền (chép 0040).
+create or replace function kho_ds_tra_hang_cho_tien(p_chi_nhanh_id uuid)
+returns table (
+  phieu_xuat_id uuid, so_phieu text, ngay date, phieu_nhap_id uuid, so_phieu_nhap text,
+  nha_cung_cap_id uuid, ten_nha_cung_cap text, tong_kg numeric, tong_goi int, so_dong int,
+  so_tien_goi_y bigint, nguoi_ghi text, ghi_chu text, so_anh int, created_at timestamptz
+)
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+#variable_conflict use_column
+begin
+  if not kho_duoc(p_chi_nhanh_id, 'ke_toan') then
+    raise exception 'Tài khoản của bạn không xem được trả hàng chờ xác nhận tiền' using errcode = 'insufficient_privilege';
+  end if;
+  return query
+    select x.id, x.so_phieu, x.ngay, p.id, p.so_phieu, p.nha_cung_cap_id, n.ten,
+           coalesce(d.kg, 0), coalesce(d.goi, 0)::int, coalesce(d.n, 0)::int,
+           kho_tien_tra_hang_goi_y(x.id), ns.ho_ten, x.ghi_chu, coalesce(cardinality(x.anh), 0), x.created_at
+    from kho_phieu_xuat x
+    join kho_phieu_nhap p on p.id = x.phieu_nhap_id
+    left join kho_nha_cung_cap n on n.id = p.nha_cung_cap_id
+    left join nhan_su ns on ns.id = x.nguoi_tao
+    left join lateral (
+      -- 0105: tổng kg và tổng gói / tảng không cộng món đếm theo cái (số của nó là chai / lon, không
+      -- cộng chung với gói / tảng được); số lô vẫn đếm mọi dòng.
+      select sum(dd.so_kg) filter (where not m.dem_theo_cai) as kg,
+             sum(dd.so_goi) filter (where not m.dem_theo_cai) as goi, count(*) as n
+      from kho_phieu_xuat_dong dd join kho_mat_hang m on m.id = dd.mat_hang_id
+      where dd.phieu_xuat_id = x.id
+    ) d on true
+    where x.chi_nhanh_id = p_chi_nhanh_id and x.loai = 'tra_ncc' and x.trang_thai = 'cho_xac_nhan_tien'
+    order by x.created_at, x.so_phieu;
+end;
+$$;
+
+-- Việc của kế toán "Trả hàng chờ xác nhận tiền": số kg trả (chép 0042, bản cuối của kho_su_kien).
+create or replace function kho_su_kien(p_chi_nhanh_id uuid)
+returns table (khoa text, nhom text, ref_id uuid, ref2 uuid, ma text, ten text, phu text, so numeric, luc timestamptz)
+language plpgsql
+stable
+set search_path = public
+as $$
+declare
+  v_ns       nhan_su;
+  v_cd       kho_cai_dat;
+  v_chi_quay boolean;
+  v_hom_nay  date := hom_nay_vn();
+  v_tu       timestamptz := now() - interval '30 days';
+begin
+  v_ns := nhan_su_hien_tai();
+  select * into v_cd from kho_cai_dat where chi_nhanh_id = p_chi_nhanh_id;
+  if v_ns.id is null or v_cd.chi_nhanh_id is null or not kho_duoc(p_chi_nhanh_id, 'xem') then
+    return;
+  end if;
+  v_chi_quay := v_ns.vai_tro = 'nhan_vien_quay';
+
+  -- ---- Việc của chính mình bị trả về --------------------------------------
+  if kho_duoc(p_chi_nhanh_id, 'nhap') then
+    return query
+      select 'nhap_bi_tu_choi', 'van_hanh', p.id, null::uuid, p.so_phieu, p.ly_do, null::text, null::numeric, p.duyet_luc
+      from kho_phieu_nhap p
+      where p.chi_nhanh_id = p_chi_nhanh_id and p.trang_thai = 'tu_choi'
+        and p.nguoi_tao = v_ns.id and p.duyet_luc >= v_tu;
+  end if;
+
+  if kho_duoc(p_chi_nhanh_id, 'van_hanh') then
+    return query
+      select 'huy_bi_tu_choi', 'van_hanh', x.id, null::uuid, x.so_phieu, x.ly_do_tu_choi, null::text, null::numeric, x.duyet_luc
+      from kho_phieu_xuat x
+      where x.chi_nhanh_id = p_chi_nhanh_id and x.loai = 'huy' and x.trang_thai = 'tu_choi'
+        and x.nguoi_tao = v_ns.id and x.duyet_luc >= v_tu;
+
+    return query
+      select 'kiem_ke_tra_ve', 'van_hanh', k.id, k.vi_tri_id, k.so_phieu, k.ly_do, v.loai, null::numeric, k.updated_at
+      from kho_kiem_ke k
+      join kho_vi_tri v on v.id = k.vi_tri_id
+      where k.chi_nhanh_id = p_chi_nhanh_id and k.trang_thai = 'dang_dem'
+        and k.ly_do is not null and k.updated_at >= v_tu
+        and (not v_chi_quay or v.loai = 'quay');
+  end if;
+
+  -- ---- 0032 · Mang hàng ra quầy ---------------------------------------------
+  -- Thủ kho (và quản lý): quầy có yêu cầu đang chờ.
+  if kho_duoc(p_chi_nhanh_id, 'van_hanh') and not v_chi_quay then
+    return query
+      select 'yeu_cau_quay', 'van_hanh', y.id, y.vi_tri_id, y.so_phieu, v.ten, v.loai,
+             (select count(*) from kho_yeu_cau_quay_dong d where d.yeu_cau_id = y.id)::numeric, y.created_at
+      from kho_yeu_cau_quay y
+      join kho_vi_tri v on v.id = y.vi_tri_id
+      where y.chi_nhanh_id = p_chi_nhanh_id and y.trang_thai = 'cho';
+  end if;
+
+  -- NV quầy (và quản lý): hàng đang mang ra, chờ bấm nhận. Quá gio_nhac_chuyen
+  -- giờ thì phu = 'qua_gio' (mức đỏ) và mốc dời tới lúc quá giờ — thành thông
+  -- báo chưa đọc lần nữa. so = số gói.
+  if v_chi_quay or kho_duoc(p_chi_nhanh_id, 'duyet') then
+    return query
+      select 'hang_dang_chuyen', 'van_hanh', x.id, x.vi_tri_den_id, x.so_phieu, v.ten,
+             coalesce(case when x.created_at <= now() - make_interval(hours => v_cd.gio_nhac_chuyen)
+                           then 'qua_gio' end, 'quay'),
+             (select coalesce(sum(d.so_goi), 0) from kho_phieu_xuat_dong d where d.phieu_xuat_id = x.id)::numeric,
+             case when x.created_at <= now() - make_interval(hours => v_cd.gio_nhac_chuyen)
+                  then x.created_at + make_interval(hours => v_cd.gio_nhac_chuyen) else x.created_at end
+      from kho_phieu_xuat x
+      join kho_vi_tri v on v.id = x.vi_tri_den_id
+      where x.chi_nhanh_id = p_chi_nhanh_id and x.loai = 'chuyen' and x.trang_thai = 'dang_chuyen';
+  end if;
+
+  -- ---- Hạn dùng (NV quầy: chỉ hàng ở quầy) ---------------------------------
+  return query
+    select case when t.tinh_trang_han = 'het_han' then 'het_han' else 'sap_het_han' end,
+           'van_hanh', t.lo_id, t.vi_tri_id, t.ma_lo, t.ten_hang || ' · ' || t.ten_vi_tri, t.loai_vi_tri,
+           case when t.dem_goi then t.so_goi::numeric else t.so_kg end,
+           case when t.tinh_trang_han = 'het_han'
+                then kho_luc_vn(t.han_dung + 1, 0)
+                else kho_luc_vn(t.han_dung - coalesce(m.canh_bao_truoc_ngay, v_cd.canh_bao_truoc_ngay, 1), 0)
+           end
+    from kho_v_ton t
+    join kho_mat_hang m on m.id = t.mat_hang_id
+    where t.chi_nhanh_id = p_chi_nhanh_id and t.loai_vi_tri in ('kho', 'quay')
+      and t.tinh_trang_han in ('het_han', 'sap_het')
+      and (not v_chi_quay or t.loai_vi_tri = 'quay');
+
+  -- ---- Quầy dưới mức tối thiểu (không tính gói đã hết hạn) -----------------
+  return query
+    select 'quay_duoi_muc', 'van_hanh', m.id, null::uuid, m.ma, m.ten, null::text, coalesce(c.con_kg, 0),
+           coalesce(q.lan_cuoi, kho_luc_vn(v_hom_nay, 0))
+    from kho_mat_hang m
+    left join lateral (
+      select sum(t.so_kg) as con_kg
+      from kho_v_ton t
+      where t.chi_nhanh_id = p_chi_nhanh_id and t.mat_hang_id = m.id
+        and t.loai_vi_tri = 'quay' and t.tinh_trang_han <> 'het_han'
+    ) c on true
+    left join lateral (
+      -- Mốc = lần cuối hàng này ra/vào quầy: đọc rồi thì chỉ báo lại khi quầy động tới nó.
+      select max(s.created_at) as lan_cuoi
+      from kho_so_cai s
+      join kho_vi_tri v on v.id = s.vi_tri_id
+      where s.chi_nhanh_id = p_chi_nhanh_id and s.mat_hang_id = m.id and v.loai = 'quay'
+    ) q on true
+    where m.dang_dung and m.ton_toi_thieu_kg is not null
+      and coalesce(c.con_kg, 0) < m.ton_toi_thieu_kg;
+
+  -- ---- Quầy chưa đếm hôm qua (sau giờ chốt ngày) ---------------------------
+  if (kho_duoc(p_chi_nhanh_id, 'van_hanh') or kho_duoc(p_chi_nhanh_id, 'duyet'))
+     and bay_gio_vn() >= v_hom_nay::timestamp + make_interval(hours => v_cd.gio_chot_ngay) then
+    return query
+      select 'quay_chua_dem', 'van_hanh', v.id, v.id, null::text, v.ten, 'quay'::text, null::numeric,
+             kho_luc_vn(v_hom_nay, v_cd.gio_chot_ngay)
+      from kho_vi_tri v
+      where v.chi_nhanh_id = p_chi_nhanh_id and v.loai = 'quay' and v.dang_dung
+        and (exists (select 1 from kho_ton t where t.vi_tri_id = v.id and (t.so_kg > 0 or t.so_goi > 0))
+             or exists (select 1 from kho_so_cai s where s.vi_tri_id = v.id and s.ngay = v_hom_nay - 1))
+        and not exists (
+          select 1 from kho_kiem_ke k
+          where k.vi_tri_id = v.id and k.gui_luc >= kho_luc_vn(v_hom_nay - 1, 10));
+  end if;
+
+  -- ---- Chờ duyệt ------------------------------------------------------------
+  -- 0031: phiếu nhập theo quyền duyet_nhap (có kế toán); hủy và kiểm kê vẫn duyet.
+  if kho_duoc(p_chi_nhanh_id, 'duyet_nhap') then
+    return query
+      select 'cho_duyet_nhap', 'nhac_nho', p.id, p.nha_cung_cap_id, p.so_phieu, n.ten, null::text, null::numeric, coalesce(p.gui_luc, p.updated_at)
+      from kho_phieu_nhap p
+      left join kho_nha_cung_cap n on n.id = p.nha_cung_cap_id
+      where p.chi_nhanh_id = p_chi_nhanh_id and p.trang_thai = 'cho_duyet';
+  end if;
+
+  if kho_duoc(p_chi_nhanh_id, 'duyet') then
+    return query
+      select 'cho_duyet_huy', 'nhac_nho', x.id, x.vi_tri_id, x.so_phieu, v.ten, v.loai, null::numeric, x.created_at
+      from kho_phieu_xuat x
+      join kho_vi_tri v on v.id = x.vi_tri_id
+      where x.chi_nhanh_id = p_chi_nhanh_id and x.loai = 'huy' and x.trang_thai = 'cho_duyet';
+
+    -- 0032: quầy nhận thiếu — quản lý trả về kho hoặc ghi mất. so = số gói thiếu.
+    return query
+      select 'chuyen_nhan_thieu', 'nhac_nho', x.id, x.vi_tri_den_id, x.so_phieu, v.ten, v.loai,
+             (select coalesce(sum(d.so_goi - coalesce(d.so_goi_nhan, 0)), 0) from kho_phieu_xuat_dong d
+               where d.phieu_xuat_id = x.id)::numeric,
+             coalesce(x.nhan_luc, x.updated_at)
+      from kho_phieu_xuat x
+      join kho_vi_tri v on v.id = x.vi_tri_den_id
+      where x.chi_nhanh_id = p_chi_nhanh_id and x.loai = 'chuyen' and x.trang_thai = 'nhan_thieu';
+
+    return query
+      select 'cho_duyet_kiem_ke', 'nhac_nho', k.id, k.vi_tri_id, k.so_phieu, v.ten, v.loai, null::numeric, coalesce(k.gui_luc, k.updated_at)
+      from kho_kiem_ke k
+      join kho_vi_tri v on v.id = k.vi_tri_id
+      where k.chi_nhanh_id = p_chi_nhanh_id and k.trang_thai = 'cho_duyet';
+
+    -- 0033: pha lóc thu hồi thấp hơn dự kiến quá ngưỡng — tới khi quản lý bấm
+    -- "Đã xem". so = thu hồi %, phu = dự kiến % (chữ số, dấu chấm), ten = tên tảng.
+    return query
+      select 'thu_hoi_thap', 'nhac_nho', f.id, f.mat_hang_vao_id, f.so_phieu, m.ten, f.ty_le_du_kien::text,
+             f.ty_le_thu_hoi::numeric, f.chot_luc
+      from kho_phien_pha f
+      join kho_mat_hang m on m.id = f.mat_hang_vao_id
+      where f.chi_nhanh_id = p_chi_nhanh_id and f.trang_thai = 'da_chot'
+        and f.thu_hoi_thap and f.da_xem_luc is null;
+  end if;
+
+  -- ---- 0037 · Bán hàng iPOS (quản lý, chủ) ----------------------------------
+  -- ipos_cho_xu_ly: so = số dòng chưa khớp + thiếu hàng; phu = số chưa khớp.
+  -- Mốc = dòng chờ mới nhất vào hộp thư (thử lại mỗi lượt không làm "chưa đọc" lại).
+  if kho_duoc(p_chi_nhanh_id, 'duyet') then
+    return query
+      select 'ipos_cho_xu_ly', 'nhac_nho', null::uuid, null::uuid, null::text, null::text,
+             (count(*) filter (where d.trang_thai = 'chua_khop'))::text, count(*)::numeric, max(d.created_at)
+      from kho_ipos_dong d
+      where d.chi_nhanh_id = p_chi_nhanh_id and d.trang_thai in ('chua_khop', 'thieu_hang')
+      having count(*) > 0;
+
+    -- ipos_mat_ket_noi (0042 — iPOS tự đẩy hóa đơn): phu = 'loi' (lượt thử lại /
+    -- đọc thực đơn cuối bị lỗi) | 'cham' (trong giờ mở cửa, quá gio_mat_ket_noi
+    -- giờ không nhận hóa đơn nào); so = số phút từ hóa đơn cuối nhận được
+    -- (null = chưa nhận hóa đơn nào).
+    return query
+      select 'ipos_mat_ket_noi', 'he_thong', null::uuid, null::uuid, null::text, null::text,
+             coalesce(case when c.loi_tu_luc is not null then 'loi' end, 'cham'),
+             round(extract(epoch from now() - c.nhan_hd_luc) / 60)::numeric,
+             case when c.loi_tu_luc is not null then c.loi_tu_luc
+                  else kho_ipos_moc_nhan(c) + make_interval(hours => c.gio_mat_ket_noi) end
+      from kho_ipos_cau_hinh c
+      where c.chi_nhanh_id = p_chi_nhanh_id and kho_ipos_mat_ket_noi(c);
+
+    -- ---- 0038 · Định lượng: bếp nhận lệch định mức (7 ngày gần nhất) --------
+    -- Chỉ tính khi chi nhánh có định lượng (không tốn công cho chi nhánh chưa dùng).
+    if exists (select 1 from kho_dinh_luong dl where dl.chi_nhanh_id = p_chi_nhanh_id)
+       and exists (select 1 from kho_dinh_muc_ban(p_chi_nhanh_id, v_hom_nay - 6, v_hom_nay)) then
+      return query
+        select 'dinh_muc_lech', 'nhac_nho', t.mat_hang_id, null::uuid, m.ma, m.ten,
+               (t.kg_xuat_bep - t.kg_ly_thuyet)::text,
+               round((t.kg_xuat_bep - t.kg_ly_thuyet) / t.kg_ly_thuyet * 100, 1),
+               kho_luc_vn(v_hom_nay, 0)
+        from kho_dinh_muc_tinh(p_chi_nhanh_id, v_hom_nay - 6, v_hom_nay) t
+        join kho_mat_hang m on m.id = t.mat_hang_id
+        where t.kg_ly_thuyet > 0
+          and abs(t.kg_xuat_bep - t.kg_ly_thuyet) > t.kg_ly_thuyet * v_cd.nguong_dinh_muc_pt / 100;
+    end if;
+  end if;
+
+  -- ---- 0039 · Đơn đặt hàng quá ngày giao mà chưa nhận chút nào (quản lý, chủ)
+  -- so = số ngày trễ, phu = ngày giao dự kiến (YYYY-MM-DD), mốc = 0 giờ ngày
+  -- sau ngày giao dự kiến.
+  if kho_duoc(p_chi_nhanh_id, 'duyet') then
+    return query
+      select 'don_dat_tre', 'nhac_nho', d.id, d.nha_cung_cap_id, d.so_phieu, n.ten,
+             to_char(d.ngay_giao_du_kien, 'YYYY-MM-DD'), (v_hom_nay - d.ngay_giao_du_kien)::numeric,
+             kho_luc_vn(d.ngay_giao_du_kien + 1, 0)
+      from kho_don_dat d
+      join kho_nha_cung_cap n on n.id = d.nha_cung_cap_id
+      where d.chi_nhanh_id = p_chi_nhanh_id and d.trang_thai = 'da_gui'
+        and d.ngay_giao_du_kien < v_hom_nay;
+  end if;
+
+  -- ---- Công nợ (chỉ số phiếu, không số tiền) --------------------------------
+  if kho_duoc(p_chi_nhanh_id, 'ke_toan') then
+    return query
+      select 'cong_no_qua_han', 'nhac_nho', c.id, c.nha_cung_cap_id, c.so_phieu, c.ten_nha_cung_cap, null::text,
+             c.so_ngay_qua_han::numeric, kho_luc_vn(c.han_thanh_toan + 1, 0)
+      from kho_v_cong_no_phieu c
+      where c.chi_nhanh_id = p_chi_nhanh_id and c.qua_han;
+
+    return query
+      select 'cong_no_den_han', 'nhac_nho', c.id, c.nha_cung_cap_id, c.so_phieu, c.ten_nha_cung_cap, null::text,
+             (c.han_thanh_toan - v_hom_nay)::numeric, kho_luc_vn(c.han_thanh_toan - 7, 0)
+      from kho_v_cong_no_phieu c
+      where c.chi_nhanh_id = p_chi_nhanh_id and c.con_no > 0
+        and c.han_thanh_toan between v_hom_nay and v_hom_nay + 7;
+
+    return query
+      select 'chua_doi_chieu', 'nhac_nho', c.id, c.nha_cung_cap_id, c.so_phieu, c.ten_nha_cung_cap, null::text, null::numeric,
+             coalesce(p.duyet_luc, p.updated_at)
+      from kho_v_cong_no_phieu c
+      join kho_phieu_nhap p on p.id = c.id
+      where c.chi_nhanh_id = p_chi_nhanh_id and not c.da_doi_chieu;
+
+    -- 0040: thủ kho đã ghi kg hàng trả NCC, chờ kế toán xác nhận số tiền giảm
+    -- trừ. so = tổng kg trả (không tiền), mốc = lúc ghi.
+    return query
+      select 'tra_hang_cho_tien', 'nhac_nho', x.id, pn.nha_cung_cap_id, x.so_phieu, n.ten, null::text,
+             -- 0105: số kg trả chỉ cộng hàng cân ký; phiếu chỉ có chai / lon thì để trống (không in "24 kg" cho 24 lon).
+             (select sum(d.so_kg) filter (where not m.dem_theo_cai)
+                from kho_phieu_xuat_dong d join kho_mat_hang m on m.id = d.mat_hang_id
+               where d.phieu_xuat_id = x.id)::numeric,
+             x.created_at
+      from kho_phieu_xuat x
+      join kho_phieu_nhap pn on pn.id = x.phieu_nhap_id
+      left join kho_nha_cung_cap n on n.id = pn.nha_cung_cap_id
+      where x.chi_nhanh_id = p_chi_nhanh_id and x.loai = 'tra_ncc' and x.trang_thai = 'cho_xac_nhan_tien';
+  end if;
+
+  -- ---- 0040 · Số tài khoản ngân hàng NCC bị đổi (chỉ chủ) --------------------
+  -- Chỉ khi số tài khoản CŨ đã có (đổi thật, không phải điền lần đầu) và số
+  -- (bỏ dấu cách) hoặc ngân hàng thật sự khác — gõ thêm dấu cách không báo. NCC dùng
+  -- chung mọi chi nhánh nên chi nhánh nào chủ cũng thấy. ma = số tài khoản mới,
+  -- ten = tên NCC, phu = người đổi, mốc = lúc đổi.
+  if kho_duoc(p_chi_nhanh_id, 'cai_dat_goc') then
+    return query
+      select 'ncc_doi_tai_khoan', 'nhac_nho', k.id, k.nha_cung_cap_id, k.so_tai_khoan_moi, n.ten, ns.ho_ten,
+             null::numeric, k.luc
+      from kho_ncc_tk_nhat_ky k
+      join kho_nha_cung_cap n on n.id = k.nha_cung_cap_id
+      left join nhan_su ns on ns.id = k.nguoi_doi
+      where k.so_tai_khoan_cu is not null and k.luc >= v_tu
+        and (regexp_replace(k.so_tai_khoan_cu, '\s', '', 'g')
+               is distinct from regexp_replace(coalesce(k.so_tai_khoan_moi, ''), '\s', '', 'g')
+             or lower(btrim(coalesce(k.ngan_hang_cu, ''))) is distinct from lower(btrim(coalesce(k.ngan_hang_moi, ''))));
+  end if;
+
+  -- ---- Phiên pha lóc để nháp quá một ngày ------------------------------------
+  if kho_duoc(p_chi_nhanh_id, 'pha_loc') then
+    return query
+      select 'pha_nhap_lau', 'he_thong', f.id, null::uuid, f.so_phieu, m.ten, null::text, null::numeric, f.created_at + interval '1 day'
+      from kho_phien_pha f
+      join kho_mat_hang m on m.id = f.mat_hang_vao_id
+      where f.chi_nhanh_id = p_chi_nhanh_id and f.trang_thai = 'nhap'
+        and f.created_at < now() - interval '1 day';
+  end if;
 end;
 $$;
 
