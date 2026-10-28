@@ -2,8 +2,10 @@
 -- BEEFTOWN KHO — 0105 · SỐT, GIA VỊ, ĐỒ KHÔ VÀ ĐỒ UỐNG: MÓN ĐẾM THEO CÁI (đợt 1)
 -- =============================================================================
 -- PHẢI CHẠY SAU 0097 (bản cuối của kho_ghi_dong_phieu_nhap, kho_duyet_phieu_nhap), 0050 (kho_bao_cao_ncc),
--- 0041 (kho_bao_cao_theo_thang, kho_bao_cao_mua_hang), 0040 (kho_du_lieu_misa, kho_tien_tra_hang_goi_y),
--- 0039 (view kho_v_phieu_nhap), 0032 (kho_chi_so_quan_tri, view kho_v_phieu_xuat), 0031 (kho_dien_gia_phieu_nhap).
+-- 0042 (kho_su_kien), 0041 (kho_bao_cao_theo_thang, kho_bao_cao_mua_hang), 0040 (kho_du_lieu_misa,
+-- kho_tien_tra_hang_goi_y, kho_ds_tra_hang_cho_tien), 0039 (view kho_v_phieu_nhap), 0035 (kho_ds_phieu_nhap_kg),
+-- 0032 (kho_chi_so_quan_tri, view kho_v_phieu_xuat), 0031 (kho_dien_gia_phieu_nhap, kho_luu_phieu_nhap,
+-- kho_luu_phieu_nhap_kg).
 --
 -- Khánh chốt 27–28/10/2026: kho quản lý thêm hai nhóm nguyên vật liệu, đếm theo cái (chai, hộp, lon, gói):
 --   · gia_vi  — Sốt, gia vị, đồ khô: mua của nhà cung cấp, ra khỏi kho bằng phiếu Xuất bếp, chai / hộp nguyên;
@@ -25,11 +27,12 @@
 --      khi có (SET EXPRESSION — Postgres 17), dòng cũ không đổi.
 --   3. kho_ghi_dong_phieu_nhap: món đếm theo cái không cần kg (so_kg = so_goi), phải ghi hạn dùng, nhận
 --      don_gia_thung. kho_dien_gia_phieu_nhap: kế toán điền giá thùng. kho_duyet_phieu_nhap: phiếu có món đếm
---      theo cái chia chi phí khác theo tiền hàng (như thuế) thay vì theo kg.
+--      theo cái chia chi phí khác theo tiền hàng (như thuế) thay vì theo kg. kho_luu_phieu_nhap(_kg): vai không
+--      xem giá không gửi được don_gia_thung (như don_gia_kg); lưu lại phiếu giữ giá thùng đã điền.
 --   4. MISA: đơn vị tính của món đếm theo cái là tên đơn vị của nó, không "kg".
 --   5. Báo cáo / view cộng kg nhiều món (tháng, mua hàng theo NCC, đánh giá NCC, chỉ số quản trị, tổng kg của
---      danh sách phiếu nhập / xuất / nhận hàng của thủ kho / trả hàng chờ xác nhận tiền): kg chỉ tính hàng cân
---      ký; tiền vẫn cộng mọi món.
+--      danh sách phiếu nhập / xuất / nhận hàng của thủ kho / trả hàng chờ xác nhận tiền, việc "Trả hàng chờ xác
+--      nhận tiền" của kế toán): kg chỉ tính hàng cân ký; tiền vẫn cộng mọi món.
 --   6. Tiền trả hàng NCC tự tính: dòng nhập theo giá thùng tính đúng phần của giá thùng.
 -- Đợt 2 (PR sau): đồ uống tự trừ qua iPOS theo mã món, gợi ý đặt hàng theo cái, mức tối thiểu / tối đa.
 --

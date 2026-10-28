@@ -30,6 +30,7 @@ import { docFormDienGia, dienGiaTuPhieu, thanhTienDong, xemTruocGiaVon, chuSoSan
 import { docDongTraHang } from '../../web/src/lib/kho/cong-no.ts';
 import { docFormPhieuXuat } from '../../web/src/lib/kho/xuat.ts';
 import { viecVoiLo } from '../../web/src/lib/kho/ton.ts';
+import { BAO_CAO, docBaoCao, docMuaHang, dinhNghiaMuaHang, dinhNghiaTheoThang, tinhTong, tomTatXnt } from '../../web/src/lib/kho/bao-cao.ts';
 import { docFormKiemKe, payloadTuDong, chuKyDong, daDemDong } from '../../web/src/lib/kho/kiem-ke.ts';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -408,6 +409,52 @@ await nhom('6 · MISA, BÁO CÁO', async () => {
     [cnA.id, await ngay(-1), await ngay(1)])).rows[0];
   ok('Đánh giá NCC: tổng kg 50 (thịt), giá TB/kg 380.000', Number(ncc2.tong_kg) === 50 && Number(ncc2.gia_tb_kg) === 380000,
     JSON.stringify(ncc2));
+
+  // --- Web: bảng báo cáo, dòng tổng, thẻ tóm tắt ---
+  const qlWeb = (await taoClientPg({ db, duoi, duoiAnon }))(UID.qlA);
+  const [tu, den] = [await ngay(-1), await ngay(1)];
+  const xnt = await docBaoCao(qlWeb, 'xuat-nhap-ton', cnA.id, tu, den);
+  const xBia = xnt.dong.find(d => d.ten === 'Bia Tiger lon');
+  const xThit = xnt.dong.filter(d => !d.dem_cai);
+  ok('Xuất – nhập – tồn (web): bia có ĐVT "lon", thịt "kg"; có cột ĐVT',
+    xnt.loi === null && xBia?.don_vi_goi === 'lon' && xBia.dem_cai === true && xThit.length > 0 && xThit.every(d => d.don_vi_goi === 'kg')
+    && BAO_CAO['xuat-nhap-ton'].cot[1].khoa === 'don_vi_goi', xnt.loi ?? JSON.stringify(xBia));
+  const tongXnt = tinhTong(BAO_CAO['xuat-nhap-ton'], xnt.dong)[0];
+  const cong = (ds, k) => Math.round(ds.reduce((a, d) => a + (Number(d[k]) || 0), 0) * 1000) / 1000;
+  ok('Xuất – nhập – tồn: dòng tổng kg chỉ cộng hàng cân ký, tiền cộng mọi dòng',
+    tongXnt.so.cuoi_kg === cong(xThit, 'cuoi_kg') && tongXnt.so.nhap_kg === cong(xThit, 'nhap_kg')
+    && tongXnt.so.cuoi_gia_tri === cong(xnt.dong, 'cuoi_gia_tri') && cong(xnt.dong, 'cuoi_kg') > tongXnt.so.cuoi_kg,
+    JSON.stringify(tongXnt.so));
+  const tt = tomTatXnt(xnt.dong);
+  ok('Thẻ tóm tắt kỳ: kg chỉ hàng cân ký, tiền gồm cả bia / sốt', tt.ton_cuoi_kg === cong(xThit, 'cuoi_kg')
+    && tt.ton_cuoi_tien === cong(xnt.dong, 'cuoi_gia_tri'), JSON.stringify(tt));
+
+  const hh = await docBaoCao(qlWeb, 'hao-hut', cnA.id, tu, den);
+  const hBia = hh.dong.filter(d => d.dem_cai);
+  ok('Hủy, xuất bếp (web): dòng bia / muối không kg, số cái ở cột "Gói / cái", tên kèm đơn vị',
+    hh.loi === null && hBia.length > 0 && hBia.every(d => d.so_kg === null && Number.isInteger(d.so_goi) && / \((lon|gói|hộp)\)$/.test(d.ten)),
+    hh.loi ?? JSON.stringify(hh.dong));
+  const tongHh = tinhTong(BAO_CAO['hao-hut'], hh.dong);
+  ok('Hủy, xuất bếp: "Cộng" gói chỉ cộng gói thịt, tiền cộng mọi dòng',
+    tongHh.every(t => {
+      const nhom = hh.dong.filter(d => `Cộng ${d.loai_dong}` === t.nhan);
+      return (t.so.so_goi ?? 0) === cong(nhom.filter(d => !d.dem_cai), 'so_goi') && t.so.gia_tri === cong(nhom, 'gia_tri');
+    }), JSON.stringify(tongHh));
+
+  const muaMh = await docMuaHang(qlWeb, cnA.id, tu, den, 'mat_hang');
+  const mBia = muaMh.dong.find(d => d.dem_cai);
+  ok('Mua hàng theo mặt hàng (web): bia "Bia Tiger lon (lon)", 77 ở cột Gói / cái, không kg, giá một lon',
+    muaMh.loi === null && mBia?.ten === 'Bia Tiger lon (lon)' && mBia.so_kg === null && mBia.so_goi === 77
+    && mBia.gia_tb_kg === Math.round((839167 + 380000) / 77), muaMh.loi ?? JSON.stringify(mBia));
+  const tongMh = tinhTong(dinhNghiaMuaHang('mat_hang'), muaMh.dong)[0];
+  ok('Mua hàng theo mặt hàng: dòng tổng kg 50, giá TB/kg = tiền thịt ÷ kg thịt (380.000)',
+    tongMh.so.so_kg === 50 && tongMh.so.gia_tb_kg === 380000, JSON.stringify(tongMh.so));
+  const muaNcc = await docMuaHang(qlWeb, cnA.id, tu, den, 'ncc');
+  const tongNcc = tinhTong(dinhNghiaMuaHang('ncc'), muaNcc.dong)[0];
+  ok('Mua hàng theo NCC: dòng tổng giá TB/kg 380.000 (không chia tiền bia / sốt cho kg thịt)',
+    muaNcc.loi === null && tongNcc.so.gia_tb_kg === 380000 && tongNcc.so.tien_hang > 19000000, JSON.stringify(tongNcc.so));
+  ok('Nhãn: "Chi phí nguyên liệu" thay "Chi phí thịt" ở báo cáo tháng',
+    dinhNghiaTheoThang(true).cot.find(c => c.khoa === 'chi_phi_thit')?.ten === 'Chi phí nguyên liệu');
 });
 
 // ===========================================================================

@@ -1125,8 +1125,8 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
         en: 'Press the name of the report you need (or **View** at the end of the line) — it opens for the selected period. Need a file: **CSV** at the end of the line. Need paper: **Print report**.' },
     ],
     meo: [
-      { vi: '**Theo tháng**: mỗi tháng một dòng, chọn năm. Chi phí thịt / doanh thu cho biết thịt chiếm bao nhiêu % doanh thu.',
-        en: '**By month**: one line per month; choose the year. Meat cost / revenue shows what % of revenue goes on meat.' },
+      { vi: '**Theo tháng**: mỗi tháng một dòng, chọn năm. Chi phí nguyên liệu / doanh thu cho biết thịt, sốt, gia vị, đồ uống chiếm bao nhiêu % doanh thu.',
+        en: '**By month**: one line per month; choose the year. Ingredient cost / revenue shows what % of revenue goes on meat, sauces, spices and drinks.' },
       { vi: '**Mua hàng**: bấm **Theo nhà cung cấp** hoặc **Theo mặt hàng** — thấy giá TB, thấp nhất, cao nhất một kg.',
         en: '**Purchases**: press **By supplier** or **By item** — see the average, lowest and highest price per kg.' },
       { vi: '**Sổ thanh toán** (kế toán): mọi khoản trả tiền, bù trừ, NCC hoàn tiền theo ngày; khoản đã hủy có tình trạng **Đã hủy**, tiền bằng 0.',
