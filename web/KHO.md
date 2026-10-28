@@ -736,6 +736,18 @@ khay chưa bán. Trước 0104, mỗi lần bán ghi hao hụt = kg tem − kg t
 - Hủy / sửa hóa đơn đảo đúng từng dòng sổ (dòng `ban` trước, `hao_hut` sau — tồn không âm). Kiểm thử:
   `crm/test/test-kho-ipos-tru-kg.mjs`.
 
+**Khay của tảng nào trừ đúng lô tảng đó — theo tem đã quét lúc cắt (0106).** Khánh chốt 28/10/2026: nhiều tảng
+cắt ra quầy cùng lúc, FABi chỉ gửi "mã món + kg", không nói khay của tảng nào; trước 0106 kho trừ lô hạn gần nhất
+(khay các tảng cắt cùng ngày cùng hạn → luôn trừ tảng cắt trước, truy vết / báo cáo theo tảng lệch). Món đếm gói
+bán MỘT khay có kg, không ô mã: `kho_ipos_lo_theo_tem` tìm lô ở quầy còn khay tem đúng kg đó **chưa bán** (số tem kg
+đó quét vào phiên cắt ra lô, trừ số dòng sổ `ban` đúng 1 khay kg đó của lô chưa bị đảo — hủy hóa đơn thì tem lại là
+chưa bán); nhiều lô → lô hạn gần nhất **trong các lô đó**; không lô nào → hạn gần nhất như cũ. Ô mã (0051) vẫn đi
+trước và vẫn là cách chắc 100% (cần món FABi cho từng ô); cách theo tem không cần cài gì thêm. Còn có thể lệch giữa
+các tảng (tổng món vẫn đúng, không tệ hơn trước 0106): hai tảng có khay cùng kg tới gram; khay rời lô không qua
+một dòng bán đúng 1 khay (hủy / xuất theo khay, kiểm kê thiếu, FABi gộp nhiều khay một dòng) — tem vẫn tính chưa
+bán; lô chia ở kho và quầy (khay tem đúng kg có thể còn ở kho). Chỉ mục `kho_phien_pha_ra_lo_quet_idx` cho phần
+đếm tem theo lô. Kiểm thử: `crm/test/test-kho-ipos-tem-tang.mjs`.
+
 **Mất kết nối / chặn đếm quầy (0042).** Không có hóa đơn ≠ mất kết nối (quán vắng). Đèn đỏ + chuông
 `ipos_mat_ket_noi` khi: lượt cập nhật cuối lỗi (kéo hóa đơn / thử lại; có hóa đơn đọc hỏng hay database từ
 chối cũng tính là lỗi, nhưng **không** chặn mốc — chặn thì một hóa đơn hỏng kẹt mãi), hoặc TRONG giờ mở cửa
