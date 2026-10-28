@@ -94,6 +94,17 @@
 !/mini-app/src/**/*.css
 !/mini-app/scripts/*.ts
 
+# --- ĐƯỢC PHÉP: Mở rộng FABi (extension Chrome: món mới của kho → "Thêm món từ file" của FABi CMS) ---
+# Mở từng file, không mở cả thư mục. Không ảnh, không file khóa: extension không cần bí mật nào.
+!/mo-rong-fabi/README.md
+!/mo-rong-fabi/manifest.json
+!/mo-rong-fabi/chung.js
+!/mo-rong-fabi/nen.js
+!/mo-rong-fabi/trang-fabi.js
+!/mo-rong-fabi/_locales/vi/messages.json
+!/mo-rong-fabi/_locales/en/messages.json
+!/mo-rong-fabi/thu/thu-trinh-duyet.mjs
+
 # --- ĐƯỢC PHÉP: ứng dụng web (Astro + Cloudflare Workers) ---
 # Mở theo ĐUÔI FILE chứ không mở cả thư mục. Nhờ vậy file mật thêm vào web/
 # sau này (xlsx, pdf, ảnh chụp) vẫn tự động bị chặn ở mục bên dưới — đúng

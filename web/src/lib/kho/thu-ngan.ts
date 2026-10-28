@@ -574,7 +574,38 @@ const CAU_TEP = {
     vi: 'Không có món mới nào cần thêm trên FABi — mọi món cân, ô mã, mã giảm đang dùng đã bán qua FABi, đã ghép, hoặc chưa có giá. Xem mục "Món cần có trên FABi" ở trang Ghép món.',
     en: 'No new dishes need adding on FABi — every weighed item, rotating code and discount code in use has been sold through FABi, is matched, or has no price yet. See "Dishes needed on FABi" on the Match dishes page.',
   },
+  /** Mở rộng FABi gửi kèm danh sách mã đang có trên FABi (da_co) — câu kể thêm "đã có trên FABi". */
+  khongCoMonMoiDaCo: {
+    vi: 'Không có món mới nào cần thêm trên FABi — mọi món cân, ô mã, mã giảm đang dùng đã có trên FABi, đã bán qua FABi, đã ghép, hoặc chưa có giá. Xem mục "Món cần có trên FABi" ở trang Ghép món.',
+    en: 'No new dishes need adding on FABi — every weighed item, rotating code and discount code in use is already on FABi, has been sold through FABi, is matched, or has no price yet. See "Dishes needed on FABi" on the Match dishes page.',
+  },
 } as const;
+
+/**
+ * Tối đa số mã "đang có trên FABi" một lần tải (Beeftown dùng vài chục món). Địa chỉ thì Mở rộng FABi tự giới hạn
+ * (DIA_CHI_TOI_DA trong mo-rong-fabi/chung.js) trước khi gửi — 2000 mã 16 số không vừa một địa chỉ.
+ */
+export const MA_DA_CO_TOI_DA = 2000;
+/** Mã món FABi dài nhất (ô Mã món của FABi CMS cho tối đa 16 ký tự). */
+const MA_FABI_TOI_DA = 16;
+const MA_DA_CO_SAI: HaiThuTieng = {
+  vi: `Danh sách mã món đang có trên FABi gửi kèm không đọc được (mỗi mã chỉ gồm chữ số, tối đa ${MA_FABI_TOI_DA} số, tối đa ${MA_DA_CO_TOI_DA} mã) — chưa tạo file.`,
+  en: `The list of dish codes already on FABi that came with the request could not be read (digits only, at most ${MA_FABI_TOI_DA} digits each, at most ${MA_DA_CO_TOI_DA} codes) — no file was created.`,
+};
+
+/**
+ * Đọc tham số `da_co` của /noi-bo/kho/ban-ipos/mon-fabi.xlsx: mã món TOÀN SỐ đang có trên FABi, cách nhau dấu phẩy —
+ * Mở rộng FABi (mo-rong-fabi/) đọc ở bảng món của FABi CMS và gửi kèm, để file không đưa lại món đã tạo trên FABi
+ * mà chưa bán lần nào (kho chỉ biết món đã bán). Mã có chữ (ITEM-…) không bao giờ trùng mã cân / ô / giảm của kho,
+ * nên extension không gửi. Trả mã đã bỏ số 0 đầu, không trùng; không có tham số → []; sai dạng → null (route trả 400,
+ * không đoán: bỏ qua một mã đọc hỏng là đưa lại món đã có).
+ */
+export function docMaDaCoFabi(chuoi: string | null | undefined): string[] | null {
+  if (chuoi == null) return [];
+  const ma = chuoi.split(',').map(x => x.trim()).filter(Boolean);
+  if (ma.length > MA_DA_CO_TOI_DA || ma.some(x => x.length > MA_FABI_TOI_DA || !/^\d+$/.test(x))) return null;
+  return [...new Set(ma.map(bo0).filter(Boolean))];
+}
 
 /** Cột của file CSV món FABi (taoCsv: BOM, dấu chấm phẩy). Mã món / mã vạch là chữ — không lách bằng "=". */
 export function cotMonFabi(nn: NgonNguNB = 'vi'): CotBaoCao[] {
@@ -644,25 +675,41 @@ export async function taoTepMonFabi(
  * Nội dung tải về của /noi-bo/kho/ban-ipos/mon-fabi.xlsx — route chỉ mở phiên (moKhoTai) rồi gọi hàm này.
  * Vai không có quyền danh mục → 403. Đọc lỗi → 500 kèm câu, KHÔNG BAO GIỜ trả file rỗng hay file thiếu món.
  * Không có món mới → 200 kèm câu (tenTep null), không file chỉ có dòng tiêu đề.
+ * `daCoTrenFabi` (docMaDaCoFabi — Mở rộng FABi đọc ở bảng món FABi CMS): món mang mã đó đã có trên FABi → không vào
+ * file, đếm ở `soDaCo`. Không truyền → như trước (kho chỉ biết món đã bán, đã ghép).
  * Tên file ASCII theo giờ Việt Nam: them-mon-fabi-<mã chi nhánh>-<YYYYMMDD>-<HHMM>.xlsx.
  */
 export async function taoTepNhapFabi(
-  client: SupabaseClient, tuy: { vai: string | null | undefined; chiNhanh: { id: string; ma: string }; nn: NgonNguNB },
-): Promise<{ status: number; noiDung: Uint8Array<ArrayBuffer> | string; tenTep: string | null; soMon: number }> {
+  client: SupabaseClient,
+  tuy: { vai: string | null | undefined; chiNhanh: { id: string; ma: string }; nn: NgonNguNB; daCoTrenFabi?: readonly string[] | null },
+): Promise<{ status: number; noiDung: Uint8Array<ArrayBuffer> | string; tenTep: string | null; soMon: number; soDaCo: number }> {
   const { vai, chiNhanh, nn } = tuy;
-  if (!duoc(vai, 'danh_muc')) return { status: 403, noiDung: CAU_TEP.khongQuyen[nn], tenTep: null, soMon: 0 };
+  if (!duoc(vai, 'danh_muc')) return { status: 403, noiDung: CAU_TEP.khongQuyen[nn], tenTep: null, soMon: 0, soDaCo: 0 };
   let dong: DongMonFabi[];
   try {
     dong = (await docMonFabi(client, chiNhanh.id)).dong;
   } catch (e) {
     const chiTiet = cauLoiKho(e, '');
     const them = chiTiet && chiTiet !== LOI_KHO_CHUNG.mang.vi ? ` ${dichCau(nn, chiTiet)}` : '';
-    return { status: 500, noiDung: CAU_TEP.khongDoc[nn] + them, tenTep: null, soMon: 0 };
+    return { status: 500, noiDung: CAU_TEP.khongDoc[nn] + them, tenTep: null, soMon: 0, soDaCo: 0 };
   }
-  const hang = dongNhapFabi(dong);
-  if (hang.length === 0) return { status: 200, noiDung: CAU_TEP.khongCoMonMoi[nn], tenTep: null, soMon: 0 };
+  const daCo = new Set((tuy.daCoTrenFabi ?? []).map(bo0).filter(Boolean));
+  const coTren = (d: DongMonFabi) => daCo.has(bo0(d.maMon)) || daCo.has(bo0(d.maVach));
+  const soDaCo = dong.filter(d => d.vaoFile && coTren(d)).length;
+  const hang = dongNhapFabi(dong.map(d => (d.vaoFile && coTren(d) ? { ...d, vaoFile: false } : d)));
+  if (hang.length === 0) {
+    const cau = tuy.daCoTrenFabi ? CAU_TEP.khongCoMonMoiDaCo : CAU_TEP.khongCoMonMoi;
+    return { status: 200, noiDung: cau[nn], tenTep: null, soMon: 0, soDaCo };
+  }
   const vn = gioVnTuMs(Date.now());
   const moc = `${vn.slice(0, 10).replace(/-/g, '')}-${vn.slice(11, 16).replace(':', '')}`;
   const tenTep = `them-mon-fabi-${chiNhanh.ma}-${moc}.xlsx`.replace(/[^a-zA-Z0-9._-]/g, '_');
-  return { status: 200, noiDung: taoTepExcel([{ ten: 'Menu', hang: [[...COT_NHAP_FABI], ...hang] }]), tenTep, soMon: hang.length };
+  return {
+    status: 200, noiDung: taoTepExcel([{ ten: 'Menu', hang: [[...COT_NHAP_FABI], ...hang] }]), tenTep, soMon: hang.length, soDaCo,
+  };
+}
+
+/** Câu 400 của route khi tham số da_co sai dạng (docMaDaCoFabi trả null). */
+export function cauMaDaCoSai(nn: NgonNguNB): string {
+  return MA_DA_CO_SAI[nn];
 }

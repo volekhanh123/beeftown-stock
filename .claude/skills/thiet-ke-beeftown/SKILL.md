@@ -32,6 +32,7 @@ Mỗi khu có CSS, layout và số thứ tiếng riêng. Xác định trước k
 | Nội bộ (`/noi-bo`) | Chủ, quản lý, nhân viên | `web/src/layouts/NoiBo.astro` · `chung.css` + `noi-bo.css` | vi / en | [tham-khao/noi-bo-va-kho.md](tham-khao/noi-bo-va-kho.md) |
 | Kho (`/noi-bo/kho`) | Thủ kho, quầy, kế toán — nhiều trên điện thoại | `web/src/layouts/Kho.astro` · `chung.css` + `kho.css` + `kho-khung.css` | vi / en | [tham-khao/noi-bo-va-kho.md](tham-khao/noi-bo-va-kho.md) |
 | Beeftown Cân (`can-app/`) | Máy tính ở quầy | `can-app/src/*.html` | vi | [tham-khao/noi-bo-va-kho.md](tham-khao/noi-bo-va-kho.md) |
+| Mở rộng FABi (`mo-rong-fabi/`) | Chủ, quản lý trên FABi CMS | `mo-rong-fabi/trang-fabi.js` (khung trong Shadow DOM, CSS khai trong file) | vi / en | [tham-khao/noi-bo-va-kho.md](tham-khao/noi-bo-va-kho.md) |
 | Ấn phẩm ngoài web | Khách trên mạng xã hội, tại quán | — | vi (en / ko khi cần) | [tham-khao/an-pham.md](tham-khao/an-pham.md) |
 
 **Mọi khu web chung một bảng màu** — bảng 22/10/2026 (mục "Màu"), từ PR "Đổi nhận diện website";

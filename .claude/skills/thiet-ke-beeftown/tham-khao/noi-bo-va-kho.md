@@ -242,3 +242,16 @@ Thẻ nào hiện cho vai nào nằm một chỗ: hàm `mucDuocThay` trong khố
 (NV quầy, thủ kho chỉ thẻ Quầy). Phần mới: tìm chỗ trong thẻ có sẵn trước (bản 2.11 gom từ mười thẻ để gọn); câu chỉ
 đường viết "thẻ Thiết lập cân → Mẫu tem". Kiểm thử: `can-app/test/thu-giao-dien-gon.ts` (đọc mã) và `can-app/test/thu-trinh-duyet.ts`
 (mở trang trong Chromium cho từng vai).
+
+## Mở rộng FABi (`mo-rong-fabi/`)
+
+Extension Chrome chèn một khung nhỏ vào FABi CMS (trang Món ăn tại thành phố, góc trái dưới) — người xem là chủ,
+quản lý trên máy tính. Khung nằm trong Shadow DOM, CSS khai ngay trong `mo-rong-fabi/trang-fabi.js` (không đọc được
+token của web): **mã màu viết thẳng, chỉ mã của bảng** (`#FFFFFF`, `#000000`, `#BD0000`, `#8F0000`, `#E2E2E2`,
+`#555555`, `#767676` — `crm/test/test-mo-rong-fabi.mjs` nhóm 4 gác). Thẻ trắng viền `#767676` (nổi trên trang FABi
+trắng, không bóng đổ), một nút chính đỏ 48px, nút "Ẩn" viền xám; đang làm thì nút tối đi (`aria-busy`), không mờ.
+Trạng thái theo bảy kiểu ở trên: dừng / lỗi là K2 (viền đỏ 2px, tam giác "!" vẽ bằng `clip-path`), xong là K4 (viền
+đen, "✓"), việc của người dùng là K5 (vạch `#555555` bên trái). Phông Montserrat nếu máy có, không tải từ mạng. Câu
+vi / en theo ngôn ngữ trình duyệt (`CAU` trong `mo-rong-fabi/chung.js`); nhãn của FABi (Tiện ích, Lưu…) giữ tiếng
+Việt trong câu tiếng Anh để người dùng tìm thấy nút. Ảnh chụp từng trạng thái:
+`node mo-rong-fabi/thu/thu-trinh-duyet.mjs --chup <thư mục>`.

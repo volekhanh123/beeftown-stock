@@ -14,6 +14,7 @@ Khi hai file nói khác nhau thì làm theo `CLAUDE.md` và báo chỗ lệch tr
 | `web/THIET-KE.md` | Giao diện trang công khai đang chạy: màu theo vai (mục 2; `/noi-bo` và kho dùng cùng token), chữ, thành phần |
 | `web/src/lib/chuoi-cam.js` | Danh sách chữ cấm trên trang công khai, kèm lý do |
 | `mini-app/CLAUDE.md` | Mini App Zalo: tình trạng trên Zalo, lệnh, việc được làm và phải hỏi Khánh (không đọc hay commit `mini-app/.env`; đổi chữ khách thấy phải hỏi trước) |
+| `mo-rong-fabi/README.md` | Mở rộng FABi (extension Chrome): cách cài, giả định về giao diện FABi CMS, việc Khánh phải thử trên FABi thật |
 
 ## Khi viết mã
 
