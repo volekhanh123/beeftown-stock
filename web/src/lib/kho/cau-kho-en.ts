@@ -1317,6 +1317,18 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
   // 0104_kho_ipos_tru_dung_kg — bán qua iPOS trừ đúng kg trên tem; ghi chú sổ kho của dòng chênh lệch cân
   { vi: 'Chênh lệch cân khi bán hết lô ở quầy · iPOS %', en: 'Weighing difference on selling the last of the batch at the counter · iPOS {1}' },
   { vi: 'Kg bán vượt kg còn lại của lô · iPOS %', en: 'Kg sold exceeds the kg left in the batch · iPOS {1}' },
+
+  // 0105_kho_mon_dem_cai — sốt, gia vị, đồ khô, đồ uống: món đếm theo cái (so_kg = số cái), nhập theo giá thùng
+  { vi: 'Món "%" đã có trong phiếu hoặc sổ kho — không đổi được giữa hàng cân ký và hàng đếm theo cái. Tạo món mới đúng loại',
+    en: '"{1}" is already on a note or in the stock ledger — it cannot switch between weighed goods and goods counted by the piece. Create a new item of the right type' },
+  { vi: 'Món đếm theo cái "%": số kg phải bằng số % trong sổ kho',
+    en: 'Item counted by the piece "{1}": the kg must equal the number of {2} in the stock ledger' },
+  { vi: 'Dòng % (%): số % quá lớn — kiểm tra lại', en: 'Line {1} ({2}): the number of {3} is too large — check it again' },
+  { vi: 'Dòng % (%): món này không có quy đổi thùng — nhập giá một %',
+    en: 'Line {1} ({2}): this item has no case size — enter the price of one {3}' },
+  { vi: 'Dòng % (%): chưa ghi hạn dùng in trên sản phẩm', en: 'Line {1} ({2}): enter the use-by date printed on the product' },
+  { vi: 'Giá thứ %: món này không có quy đổi thùng — nhập giá một đơn vị',
+    en: 'Price {1}: this item has no case size — enter the price of one unit' },
 ];
 
 type Mau = readonly [RegExp, (m: RegExpMatchArray) => string];

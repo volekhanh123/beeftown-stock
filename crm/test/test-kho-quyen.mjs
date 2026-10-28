@@ -435,6 +435,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_luc_can_vn',
     // 0088: trigger trả ô mã không có lô nhập kho khi chốt phiên lóc
     'kho_phien_pha_chot_tra_o_ma',
+    // 0105: trigger chốt bất biến của món đếm theo cái (sổ kho so_kg = so_goi; không đổi loại món đã có sổ)
+    'kho_so_cai_dem_cai_kiem', 'kho_mat_hang_doi_kieu_dem_kiem',
   ].sort();
 
   const { rows } = await db.query(`
