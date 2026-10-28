@@ -16,9 +16,9 @@
 --      pha lóc), so_ngay_u (hôm nay giờ VN − ngày bắt đầu ủ). Tảng ủ không có bảng ủ (Khánh: "ủ không cần quan
 --      tâm") → tinh_trang_u 'chua_co_bang_u', ngay_u_xong null; lóc một chạm (tangLocDuoc, locMotTang) dùng được.
 --   2. kho_phien_pha_dung_trinh_tu (trigger mới, BEFORE UPDATE OF trang_thai, nháp → đã chốt), chỉ với hai loại món:
---      · món vào có công thức đang dùng ra một món TẢNG (công thức Trim): phiên phải ra ít nhất một tảng nhập kho
---        (có số tảng), và mọi đầu ra không bỏ đi phải nằm trong các công thức đang dùng của món vào — không cắt
---        thẳng ra khay;
+--      · món vào có công thức đang dùng ra một món TẢNG (công thức Trim): phiên phải ra ít nhất một tảng nhập kho,
+--        và mọi đầu ra không bỏ đi phải nằm trong các công thức TRIM đang dùng của món vào — không cắt thẳng ra khay
+--        (một công thức cắt thẳng cũ còn bật cũng không mở lại đường tắt);
 --      · món vào là TẢNG Ủ (món tảng nằm trong đầu ra của công thức đang dùng của món khác) mà có công thức đang
 --        dùng: mọi đầu ra không bỏ đi phải nằm trong công thức đó — không ra vụn.
 --      Đầu ra "bỏ" (xu_ly bo) luôn được. Món khác không đổi gì. Chặn ở lúc chốt (cả dòng gõ tay lẫn dòng quét nhãn);
@@ -80,17 +80,17 @@ comment on view kho_v_tang is
 -- =============================================================================
 -- 2 · ĐÚNG TRÌNH TỰ LÚC CHỐT PHIÊN (trigger mới)
 -- =============================================================================
+-- security invoker: chỉ chạy trong kho_chot_phien_pha (security definer, đã kiểm vai pha_loc); chỉ đọc danh mục.
 create or replace function kho_phien_pha_dung_trinh_tu()
 returns trigger
 language plpgsql
-security definer
 set search_path = public
 as $$
 declare
   v_vao  kho_mat_hang;
   v_trim boolean;   -- món vào phải trim: có công thức đang dùng ra một món tảng
   v_u    boolean;   -- món vào là tảng ủ có công thức (cắt) đang dùng
-  v_sai  text;
+  v_sai  kho_mat_hang;
 begin
   select * into v_vao from kho_mat_hang where id = new.mat_hang_vao_id;
   v_trim := exists (
@@ -106,28 +106,35 @@ begin
     return new;
   end if;
 
-  -- Đầu ra không bỏ đi phải nằm trong một công thức đang dùng của món vào.
-  select m.ten into v_sai
+  -- Đầu ra không bỏ đi phải nằm trong một công thức đang dùng của món vào — với món phải trim: công thức TRIM.
+  select m.* into v_sai
   from kho_phien_pha_ra r
   join kho_mat_hang m on m.id = r.mat_hang_id
   where r.phien_pha_id = new.id and r.xu_ly <> 'bo'
-    and not exists (select 1 from kho_cong_thuc_pha c join kho_cong_thuc_pha_dong d on d.cong_thuc_id = c.id
-                    where c.mat_hang_vao_id = new.mat_hang_vao_id and c.dang_dung and d.mat_hang_ra_id = r.mat_hang_id)
+    and not exists (
+      select 1 from kho_cong_thuc_pha c join kho_cong_thuc_pha_dong d on d.cong_thuc_id = c.id
+      where c.mat_hang_vao_id = new.mat_hang_vao_id and c.dang_dung and d.mat_hang_ra_id = r.mat_hang_id
+        and (not v_trim or exists (select 1 from kho_cong_thuc_pha_dong d2 join kho_mat_hang m2 on m2.id = d2.mat_hang_ra_id
+                                   where d2.cong_thuc_id = c.id and m2.loai = 'tang')))
   order by r.thu_tu, r.id
   limit 1;
-  if v_sai is not null and v_trim then
+  if v_sai.id is not null and v_trim and v_sai.loai = 'phan_cat' then
     raise exception '"%" chưa ra được từ "%": phải Trim ra tảng ủ trước, ủ xong mới cắt khay — bỏ dòng này rồi chốt',
-      v_sai, v_vao.ten using errcode = 'check_violation';
+      v_sai.ten, v_vao.ten using errcode = 'check_violation';
   end if;
-  if v_sai is not null then
+  if v_sai.id is not null and v_trim then
+    raise exception '"%" không có trong công thức Trim của "%" — thêm vào công thức, hoặc ghi là bỏ đi, rồi chốt',
+      v_sai.ten, v_vao.ten using errcode = 'check_violation';
+  end if;
+  if v_sai.id is not null then
     raise exception '"%" không có trong công thức cắt của "%" — tảng ủ chỉ cắt ra khay; bỏ dòng này rồi chốt',
-      v_sai, v_vao.ten using errcode = 'check_violation';
+      v_sai.ten, v_vao.ten using errcode = 'check_violation';
   end if;
 
-  -- Trim luôn ra tảng ủ (nhập kho, có số tảng).
+  -- Trim luôn ra tảng ủ (nhập kho; món đếm tảng thì có số tảng).
   if v_trim and not exists (
     select 1 from kho_phien_pha_ra r join kho_mat_hang m on m.id = r.mat_hang_id
-    where r.phien_pha_id = new.id and m.loai = 'tang' and r.xu_ly = 'nhap_kho' and r.so_goi > 0) then
+    where r.phien_pha_id = new.id and m.loai = 'tang' and r.xu_ly = 'nhap_kho' and (r.so_goi > 0 or not m.dem_goi)) then
     raise exception 'Trim "%" phải ra một tảng ủ — nhập kg tảng ủ (1 tảng) rồi chốt', v_vao.ten
       using errcode = 'check_violation';
   end if;
@@ -148,7 +155,8 @@ create trigger kho_phien_pha_dung_trinh_tu_trigger
 -- =============================================================================
 -- 3 · THU QUYỀN — đúng hàm vừa tạo (0008 mục 6)
 -- =============================================================================
--- Hàm trigger mới: CREATE cho PUBLIC quyền EXECUTE — thu khỏi PUBLIC, anon và authenticated như 0088. View thay
+-- Hàm trigger mới (security invoker): CREATE cho PUBLIC quyền EXECUTE — thu khỏi PUBLIC, anon và authenticated như
+-- 0088. View thay
 -- bằng create or replace: quyền giữ nguyên. Danh sách anon không đổi.
 do $$
 begin

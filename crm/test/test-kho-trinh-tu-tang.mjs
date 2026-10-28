@@ -8,14 +8,18 @@
  * Trim: nguyên tảng → MỘT tảng ủ (vẫn một khối) + vụn thừa. Cắt: tảng ủ → khay, không ra vụn. Nguyên tảng và tảng
  * ủ là hai mục khác nhau ở màn Tảng · ủ. Phải đúng:
  *   · nguyên tảng có công thức Trim → chốt phiên chặn: ra thẳng khay; không ra tảng ủ nào; tảng ủ chỉ vào kho;
+ *   · chỉ công thức TRIM mở đường: công thức cắt thẳng cũ còn bật không cho cắt thẳng ra khay; phụ phẩm ngoài công
+ *     thức Trim → câu nói thêm vào công thức hoặc ghi bỏ đi (không nói sai là "phải trim trước");
  *   · tảng ủ có công thức Cắt → chốt phiên chặn: ra thứ ngoài công thức (vụn); dòng bỏ đi (xu_ly bo) vẫn được;
  *   · món không có công thức Trim (thăn ngoại của danh mục mẫu) → không đổi gì;
  *   · kho_v_tang: nguyên tảng (loai_tang nguyen) và tảng ủ (loai_tang u, số tảng + ngày mổ của tảng gốc, ngày bắt
- *     đầu ủ = ngày trim, số ngày đã ủ theo giờ Việt Nam); trim xong nguyên tảng rời view, cắt xong tảng ủ rời view;
+ *     đầu ủ = ngày trim, số ngày đã ủ theo giờ Việt Nam — 23:50 vẫn 0 ngày, 00:10 hôm sau là 1 ngày); trim xong nguyên
+ *     tảng rời view, cắt xong tảng ủ rời view;
  *   · kho_doi_soat_ton() rỗng.
  */
 
-import { dungDatabase, taoBoDem, UID, maGui } from './kho-chung.mjs';
+import { dungDatabase, taoBoDem, UID, maGui, datGioDatabase, traGioDatabase } from './kho-chung.mjs';
+import { monCoTrim } from '../../web/src/lib/kho/tang.ts';
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — TẢNG → TRIM → TẢNG Ủ → CẮT ĐÚNG TRÌNH TỰ');
 const { db, cnA, cnB, duoi } = await dungDatabase();
@@ -113,6 +117,27 @@ await nhom('2 · TRIM: NGUYÊN TẢNG LUÔN RA TẢNG Ủ — KHÔNG CẮT THẲ
      && Number((await db.query(`select so_kg from kho_ton where lo_id = $1`, [tang1.id])).rows[0].so_kg) === 6.1, thang.loi ?? 'chốt được');
   await db.query(`update kho_phien_pha set trang_thai = 'da_huy' where id = $1`, [thang.id]);
 
+  // Công thức cắt thẳng cũ còn bật (T-RIB → C-RIB) không mở lại đường tắt: chỉ công thức Trim tính.
+  const cu = (await duoi(UID.qlA, `insert into kho_cong_thuc_pha (mat_hang_vao_id, ten) values ($1, 'Cắt thẳng (cũ)') returning id`, [MH['T-RIB'].id])).rows[0].id;
+  await duoi(UID.qlA, `insert into kho_cong_thuc_pha_dong (cong_thuc_id, mat_hang_ra_id, thu_tu) values ($1, $2, 1)`, [cu, MH['C-RIB'].id]);
+  const tat = await phaLoc(tang1, MH['T-RIB'].id, [
+    { mat_hang_id: MH['T-RIB-U'].id, so_goi: 1, so_kg: 0.1, xu_ly: 'nhap_kho', vi_tri_id: vt.kho },
+    { mat_hang_id: MH['C-RIB'].id, so_goi: 12, so_kg: 4, xu_ly: 'nhap_kho', vi_tri_id: vt.quay },
+  ]);
+  ok('Có thêm công thức cắt thẳng cũ còn bật: tảng ủ 0,1 kg + 12 khay vẫn bị chặn (chỉ công thức Trim mở đường)',
+     tat.trang_thai === 'nhap' && /"Ribeye cut" chưa ra được từ "Ribeye nguyên tảng"/.test(tat.loi ?? ''), tat.loi ?? 'chốt được');
+  await db.query(`update kho_phien_pha set trang_thai = 'da_huy' where id = $1`, [tat.id]);
+  await db.query(`update kho_cong_thuc_pha set dang_dung = false where id = $1`, [cu]);
+
+  const phuPham = await phaLoc(tang1, MH['T-RIB'].id, [
+    { mat_hang_id: MH['T-RIB-U'].id, so_goi: 1, so_kg: 5.3, xu_ly: 'nhap_kho', vi_tri_id: vt.kho },
+    { mat_hang_id: MH['P-GAN'].id, so_kg: 0.3, xu_ly: 'nhap_kho', vi_tri_id: vt.kho },
+  ]);
+  ok('Phụ phẩm ngoài công thức Trim (không phải khay) → chặn với câu đúng: thêm vào công thức hoặc ghi là bỏ đi',
+     phuPham.trang_thai === 'nhap' && /không có trong công thức Trim của "Ribeye nguyên tảng" — thêm vào công thức, hoặc ghi là bỏ đi/.test(phuPham.loi ?? ''),
+     phuPham.loi ?? 'chốt được');
+  await db.query(`update kho_phien_pha set trang_thai = 'da_huy' where id = $1`, [phuPham.id]);
+
   const khongU = await phaLoc(tang1, MH['T-RIB'].id, [{ mat_hang_id: MH['P-VUN'].id, so_kg: 0.5, xu_ly: 'nhap_kho', vi_tri_id: vt.kho }]);
   ok('Trim mà không ra tảng ủ nào (chỉ vụn) → chốt bị chặn',
      khongU.trang_thai === 'nhap' && /Trim "Ribeye nguyên tảng" phải ra một tảng ủ/.test(khongU.loi ?? ''), khongU.loi ?? 'chốt được');
@@ -133,6 +158,15 @@ await nhom('2 · TRIM: NGUYÊN TẢNG LUÔN RA TẢNG Ủ — KHÔNG CẮT THẲ
      v.filter(x => x.loai_tang === 'nguyen').map(x => x.so_tang).join() === '2' && u && u.lo_id === tangU1.id && u.so_tang === 1
      && u.ngay_mo === await ngay(-18) && u.tuoi_ngay === 18 && u.ngay_bat_dau_u === homNay && u.so_ngay_u === 0
      && Number(u.so_kg) === 5.3 && u.so_goi === 1, JSON.stringify(v));
+
+  // Giờ Việt Nam: ngày trim là hôm nay — 23:50 hôm nay vẫn 0 ngày, 00:10 hôm sau là 1 ngày.
+  await datGioDatabase(db, `${homNay}T23:50:00+07:00`);
+  const toi = (await viewTang()).find(x => x.loai_tang === 'u');
+  await datGioDatabase(db, `${await ngay(1)}T00:10:00+07:00`);
+  const sang = (await viewTang()).find(x => x.loai_tang === 'u');
+  await traGioDatabase(db);
+  ok('Đã ủ theo giờ Việt Nam: 23:50 ngày trim → 0 ngày; 00:10 hôm sau → 1 ngày (bắt đầu ủ vẫn là ngày trim)',
+     toi?.so_ngay_u === 0 && sang?.so_ngay_u === 1 && sang?.ngay_bat_dau_u === homNay, JSON.stringify({ toi, sang }));
   await doiSoat('Trim');
 });
 
@@ -166,8 +200,18 @@ await nhom('4 · MÓN KHÔNG CÓ CÔNG THỨC TRIM KHÔNG ĐỔI GÌ', async () 
     { mat_hang_id: MH['P-VUN'].id, so_kg: 0.4, xu_ly: 'nhap_kho', vi_tri_id: vt.kho },
   ]);
   ok('Thăn ngoại (không có công thức Trim) lóc thẳng ra phần cắt + vụn như trước', p.loi === null && p.trang_thai === 'da_chot', p.loi ?? '');
-  const fn = await duoi(UID.qlA, `select kho_phien_pha_dung_trinh_tu()`);
-  ok('kho_phien_pha_dung_trinh_tu là hàm trigger nội bộ — quản lý không gọi được', fn.loi !== null, fn.loi ?? 'gọi được');
+  const quyen = (await db.query(`select has_function_privilege('authenticated', 'kho_phien_pha_dung_trinh_tu()', 'execute') a,
+    has_function_privilege('anon', 'kho_phien_pha_dung_trinh_tu()', 'execute') b,
+    (select prosecdef from pg_proc where proname = 'kho_phien_pha_dung_trinh_tu') definer`)).rows[0];
+  ok('kho_phien_pha_dung_trinh_tu: hàm trigger nội bộ (security invoker) — authenticated và anon không có quyền gọi',
+     quyen.a === false && quyen.b === false && quyen.definer === false, JSON.stringify(quyen));
+  const [ct, dongCt, monTang] = await Promise.all([
+    db.query(`select id, mat_hang_vao_id from kho_cong_thuc_pha where dang_dung`),
+    db.query(`select cong_thuc_id, mat_hang_ra_id from kho_cong_thuc_pha_dong`),
+    db.query(`select id from kho_mat_hang where loai = 'tang'`)]);
+  const trim = monCoTrim(ct.rows, dongCt.rows, new Set(monTang.rows.map(r => r.id)));
+  ok('Web (monCoTrim): chỉ Ribeye nguyên tảng có nút "Trim"; thăn ngoại và tảng ủ giữ nút "Lóc" / "Cắt"',
+     trim.size === 1 && trim.has(MH['T-RIB'].id), JSON.stringify([...trim]));
   await doiSoat('Không công thức Trim');
 });
 

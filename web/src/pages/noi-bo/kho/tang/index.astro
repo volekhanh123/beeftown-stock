@@ -31,7 +31,7 @@ import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho } from '../../../../lib/kho/trang.ts';
 import { cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangPhanTram, homNayVn, nhanKho, phoBienNhat } from '../../../../lib/kho/chung.ts';
 import {
-  cauConU, cauKhongThayTang, docBaoCaoTang, docTangTon, soTangChu, timTangTheoSo, TINH_TRANG_BAN_NB, TINH_TRANG_U_NB,
+  cauConU, cauKhongThayTang, docBaoCaoTang, docMonTrim, docTangTon, soTangChu, timTangTheoSo, TINH_TRANG_BAN_NB, TINH_TRANG_U_NB,
   type DongTang, type TangTon, type TinhTrangU,
 } from '../../../../lib/kho/tang.ts';
 import { docChoLocTang, docDanhSachPhienPha, docLoCuaPhien, tangLocDuoc } from '../../../../lib/kho/pha-loc.ts';
@@ -72,6 +72,8 @@ const t = dichNB(nn, {
   daBan: { vi: 'Đã bán', en: 'Sold' },
   con: { vi: 'Còn', en: 'Left' },
   tinhTrang: { vi: 'Tình trạng', en: 'Status' },
+  loc: { vi: 'Lóc', en: 'Cut' },
+  locTang: { vi: (so: string) => `Lóc tảng ${so}`, en: (so: string) => `Cut primal ${so}` },
   dangLoc: { vi: (sp: string) => `Đang lóc · ${sp}`, en: (sp: string) => `Being cut · ${sp}` },
   khongDocLoc: {
     vi: 'Chưa đọc được tảng nào đang lóc — nút Trim / Cắt tạm ẩn, tải lại trang.',
@@ -120,10 +122,16 @@ if (cn && ds.length > 0 && k.duoc('pha_loc') && k.daKhoiTao) {
     loiLoc = true;
   }
 }
-const daLocHien = daLoc.filter(d => d.ngay_loc !== null);
-// 0107: nguyên tảng (lô nhận hàng) và tảng ủ (sau trim) là hai mục.
+// 0107: nguyên tảng (lô nhận hàng) và tảng ủ (sau trim) là hai mục. Tảng đang ủ chưa cắt không hiện lại ở "Đã lóc"
+// (báo cáo theo tảng coi lần trim là lần lóc đầu). Món có công thức Trim: nút "Trim", mục "Nguyên tảng — chờ trim".
 const nguyen = ds.filter(x => x.loai_tang !== 'u');
 const dangU = ds.filter(x => x.loai_tang === 'u').sort((a, b) => (b.so_ngay_u ?? 0) - (a.so_ngay_u ?? 0) || (a.so_tang ?? 0) - (b.so_tang ?? 0));
+const soDangU = new Set(dangU.map(x => x.so_tang).filter(x => x !== null));
+const daLocHien = daLoc.filter(d => d.ngay_loc !== null && !soDangU.has(d.so_tang));
+let monTrim = new Set<string>();
+if (cn && nguyen.length > 0) {
+  try { monTrim = await docMonTrim(k.client); } catch { /* đọc hỏng: nhãn "Lóc" và tình trạng ủ như cũ */ }
+}
 const NHOM: TinhTrangU[] = ['san_sang', 'dang_u', 'chua_co_bang_u'];
 const theoNhom = NHOM.map(tt => ({ tt, ds: nguyen.filter(x => x.tinh_trang_u === tt) })).filter(x => x.ds.length);
 // Gọn 22/10/2026 (Khánh duyệt): bảng tảng còn 5 cột — bỏ Ngày mổ (đã có Tuổi), Hạn dùng (tảng đang ủ xem Ủ xong)
@@ -154,7 +162,7 @@ const noiChinh = phoBienNhat(ds.map(x => x.vi_tri));
 
   {theoNhom.map(g => (
     <section class="nb-the">
-      <h2 style="margin-top:0">{g.tt === 'chua_co_bang_u' ? t.nguyenTang : nhanKho(TINH_TRANG_U_NB, g.tt, nn)} · {t.soTang(g.ds.length)}</h2>
+      <h2 style="margin-top:0">{g.tt === 'chua_co_bang_u' && g.ds.every(x => monTrim.has(x.mat_hang_id)) ? t.nguyenTang : nhanKho(TINH_TRANG_U_NB, g.tt, nn)} · {t.soTang(g.ds.length)}</h2>
       <div class="kho-bang-khung">
         <table class="kho-bang">
           <thead><tr>
@@ -173,7 +181,7 @@ const noiChinh = phoBienNhat(ds.map(x => x.vi_tri));
                       <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
                       <input type="hidden" name="lo_id" value={x.lo_id} />
                       <input type="hidden" name="ve" value="tang" />
-                      <button type="submit" name="viec" value="loc_tang" class="nb-nut phu" aria-label={t.trimTang(soTangChu(x.so_tang))}>{t.trim}</button>
+                      <button type="submit" name="viec" value="loc_tang" class="nb-nut phu" aria-label={monTrim.has(x.mat_hang_id) ? t.trimTang(soTangChu(x.so_tang)) : t.locTang(soTangChu(x.so_tang))}>{monTrim.has(x.mat_hang_id) ? t.trim : t.loc}</button>
                     </form>
                   )}
                 </td>
