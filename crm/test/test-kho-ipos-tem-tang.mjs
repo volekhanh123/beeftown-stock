@@ -164,8 +164,9 @@ await nhom('2 · HAI TẢNG CẮT CÙNG NGÀY: BÁN KHAY CỦA TẢNG SAU → TR
      JSON.stringify({ lo: loCuaBan(b1), A: a1, B: bb1 }));
   const b2 = await ban(0.31);
   ok('Khay 0,31 kg (tem của tảng A) → trừ lô A', loCuaBan(b2).length === 1 && loCuaBan(b2)[0] === A, JSON.stringify(loCuaBan(b2)));
-  const b3 = await ban(0.35);
-  ok('Khay 0,35 kg (tem của tảng B) → trừ lô B', loCuaBan(b3).length === 1 && loCuaBan(b3)[0] === B, JSON.stringify(loCuaBan(b3)));
+  const b3 = await ban(0.35, { quetNhan: true });
+  ok('Dòng mang mã vạch tem 0,35 kg (tảng B; kg đọc từ nhãn) → trừ lô B',
+     b3.d.ma_vach !== null && loCuaBan(b3).length === 1 && loCuaBan(b3)[0] === B, JSON.stringify({ d: b3.d.ma_vach, lo: loCuaBan(b3) }));
 
   const noiBo = await duoi(UID.qlA, `select kho_ipos_lo_theo_tem($1, $2, 0.42)`, [vt.quay, MH['C-THANNGOAI'].id]);
   ok('kho_ipos_lo_theo_tem là hàm nội bộ — quản lý không gọi được', /permission denied/.test(noiBo.loi ?? ''), noiBo.loi ?? 'gọi được');

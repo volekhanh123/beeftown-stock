@@ -12,9 +12,15 @@
 --     của lô trừ số dòng sổ 'ban' đúng 1 khay kg đó của lô chưa bị đảo (hủy / sửa hóa đơn trả khay về) — lô hạn
 --     gần nhất trong các lô đó (cùng thứ tự với kho_ipos_lay_lo); không lô nào → null;
 --   · kho_ipos_ghi_dong: ô mã vẫn đi trước (0051); rồi lô theo tem; rồi hạn gần nhất như cũ.
--- Ô mã (0049–0051) vẫn dùng được khi cần chắc 100%; cách này không cần thêm món FABi hay cài cân. Hai tảng có
--- khay cùng kg tới gram thì lấy tảng hạn gần nhất trong hai tảng đó — chỗ duy nhất có thể lệch giữa các tảng.
--- Không bảng, cột mới; một hàm nội bộ mới. create or replace giữ quyền cũ; khối cuối thu lại cho chắc.
+-- Ô mã (0049–0051) vẫn dùng được khi cần chắc 100%; cách này không cần thêm món FABi hay cài cân. Chỗ còn có thể
+-- lệch giữa các tảng (tổng món vẫn đúng; không tệ hơn trước 0106 — trước đó mọi lần bán đều theo hạn):
+--   · hai tảng có khay cùng kg tới gram → tảng hạn gần nhất trong hai tảng đó;
+--   · kho không biết khay nào rời lô bằng đường khác một dòng bán đúng 1 khay (hủy / xuất theo khay, kiểm kê
+--     thiếu, một dòng FABi gộp nhiều khay): tem của khay đó vẫn tính là chưa bán;
+--   · lô chia ở kho và quầy (món "sau pha để ở kho", chuyển ra quầy từng đợt): khay tem đúng kg có thể còn ở kho.
+--     Ribeye cut cắt thẳng ra quầy nên không gặp.
+-- Không bảng, cột mới; một hàm nội bộ mới, một chỉ mục mới (kho_phien_pha_ra theo lô — hàm đếm tem theo lô).
+-- create or replace giữ quyền cũ; khối cuối thu lại cho chắc.
 --
 -- Triển khai: migration và web độc lập (web không đổi cách gọi). Không có câu xoá: chạy bằng SQL Editor hoặc
 -- psql. Chỉ chạy lên production sau khi PR được gộp, rồi `npm run doi-chieu` phải báo KHỚP (0106 là file cuối
@@ -25,6 +31,9 @@
 -- =============================================================================
 -- 1 · LÔ THEO TEM (hàm nội bộ mới)
 -- =============================================================================
+-- Đếm tem theo lô ra: trước 0106 kho_phien_pha_ra chỉ có chỉ mục theo phiên.
+create index if not exists kho_phien_pha_ra_lo_quet_idx on kho_phien_pha_ra(lo_id) where tu_quet;
+
 -- Lô ở quầy (còn gói) của món có khay tem đúng p_kg chưa bán: số tem kg đó quét vào phiên cắt ra lô (dòng ra
 -- tu_quet) trừ số dòng sổ 'ban' đúng một khay kg đó của lô mà chưa bị đảo. Nhiều lô → hạn gần nhất (lô còn hạn
 -- trước, như kho_ipos_lay_lo). Không lô nào → null. security invoker: chỉ kho_ipos_ghi_dong (security definer) gọi.
