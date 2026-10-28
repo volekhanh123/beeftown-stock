@@ -116,6 +116,7 @@ await nhom('3 · FILE CỦA QUY TRÌNH CÓ MẶT VÀ ĐƯỢC GIT THEO DÕI', as
     '.github/workflows/dong-goi-can.yml',
     '.github/workflows/sao-luu.yml',
     '.github/workflows/mini-app.yml',
+    '.github/workflows/mo-ta-pr.yml',
     '.github/dependabot.yml',
     'crm/sao-luu/sao-luu.sh',
     'crm/sao-luu/khoi-phuc.sh',
@@ -123,6 +124,10 @@ await nhom('3 · FILE CỦA QUY TRÌNH CÓ MẶT VÀ ĐƯỢC GIT THEO DÕI', as
     'crm/sao-luu/ghi-luot.sql',
     '.github/pull_request_template.md',
     '.github/ISSUE_TEMPLATE/bao-loi.yml',
+    '.github/ISSUE_TEMPLATE/viec-tiep.yml',
+    'crm/CLAUDE.md',
+    'web/CLAUDE.md',
+    'can-app/CLAUDE.md',
   ];
   for (const f of CAN) {
     let biChan = false;

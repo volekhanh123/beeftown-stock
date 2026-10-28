@@ -11,6 +11,8 @@
     "test:ci": "node test/chay-tat-ca.mjs --tat-ca",
     "kiem-migration": "node test/kiem-migration.mjs",
     "so-migration": "node test/kiem-migration.mjs --so-tiep",
+    "tim": "node test/tim.mjs",
+    "tom-tat-pr": "node test/tom-tat-pr.mjs",
     "test:quy-trinh": "node test/test-quy-trinh.mjs",
     "test:db": "node test/chay-test.mjs",
     "test:rls": "node test/test-phan-quyen.mjs",

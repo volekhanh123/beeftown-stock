@@ -14,11 +14,13 @@ Khi hai file nói khác nhau thì làm theo `CLAUDE.md` và báo chỗ lệch tr
 | `web/THIET-KE.md` | Giao diện trang công khai đang chạy: màu theo vai (mục 2; `/noi-bo` và kho dùng cùng token), chữ, thành phần |
 | `web/src/lib/chuoi-cam.js` | Danh sách chữ cấm trên trang công khai, kèm lý do |
 | `mini-app/CLAUDE.md` | Mini App Zalo: tình trạng trên Zalo, lệnh, việc được làm và phải hỏi Khánh (không đọc hay commit `mini-app/.env`; đổi chữ khách thấy phải hỏi trước) |
+| `crm/CLAUDE.md`, `web/CLAUDE.md`, `can-app/CLAUDE.md` | Bản đồ của từng thư mục: việc gì đọc mục nào, sửa file nào, thêm hàm SQL thì đụng những chỗ nào, chạy kiểm thử nào. Làm trong thư mục nào thì đọc file của thư mục đó trước — đừng đọc cả README |
 
 ## Khi viết mã
 
 - Làm đúng `CLAUDE.md`: tên hàm, biến, chú thích, tài liệu viết tiếng Việt không tắt; kiểm thử viết trước khi sửa lỗi; điền đủ mẫu PR.
 - `.gitignore` chặn hết rồi mở từng file. File mới phải có dòng `!đường-dẫn`; kiểm bằng `git status --short`.
+- Tra tên trước khi lục: `cd crm && npm run tim -- <hàm SQL | bảng | file>` (bản cuối ở migration nào, ai gọi, test nào nhắc); `npm run tim -- <hàm> --than` in nguyên văn bản cuối để chép khi thay thân.
 - `CLAUDE.md` yêu cầu chạy `/code-review`, là lệnh của Claude. Agent khác thay bằng việc tự rà soát diff so với `origin/main` theo mục "Code Review Rules" bên dưới, rồi ghi kết quả vào mục "Kiểm thử" của mẫu PR.
 - Không tự gộp PR. Không deploy. Không chạy migration lên database thật.
 - Không đưa khóa, token, mật khẩu, chuỗi kết nối hay file `.env` vào commit, vào mô tả PR hay vào nhận xét.
@@ -28,6 +30,9 @@ Khi hai file nói khác nhau thì làm theo `CLAUDE.md` và báo chỗ lệch tr
 Viết nhận xét bằng tiếng Việt. Mỗi nhận xét ghi: file và dòng, điều gì sai, sai trong tình huống nào.
 
 Quy trình (chi tiết từng mục ở `CLAUDE.md`):
+
+- Đọc comment "Máy tóm tắt PR" trước (workflow `mo-ta-pr.yml`): khu đã đụng, việc sau khi gộp, hàm thay thân đổi bao nhiêu dòng. Rà soát migration thay thân theo phần đã đổi (`cd crm && npm run tim -- <hàm> --khac`), không đọc lại nguyên văn phần chép.
+- Báo khi "Tóm tắt cho Khánh" của mô tả PR có tên hàm, tên file hay chữ kỹ thuật, hoặc mức rủi ro thấp hơn thực tế (đụng tiền, tồn kho, quyền, tin gửi khách, trang công khai mà ghi "Thấp").
 
 - Mô tả PR phải trả lời đủ 9 mục `quyen`, `bam-hai-lan`, `gio-vn`, `chu-va-so`, `mat-mang`, `ton-kho`, `cau-chu`, `migration`, `dich-vu-ngoai`. Mỗi mục có tên kiểm tra chứng minh hoặc câu "không áp dụng vì …". Thiếu mục nào thì báo mục đó.
 - Báo khi PR tắt, bỏ qua hay nới một kiểm thử; khi sửa một migration đã có trên `main`; khi đổi chữ của một câu `raise exception` cũ.
