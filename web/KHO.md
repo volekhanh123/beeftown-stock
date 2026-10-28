@@ -736,6 +736,18 @@ khay chưa bán. Trước 0104, mỗi lần bán ghi hao hụt = kg tem − kg t
 - Hủy / sửa hóa đơn đảo đúng từng dòng sổ (dòng `ban` trước, `hao_hut` sau — tồn không âm). Kiểm thử:
   `crm/test/test-kho-ipos-tru-kg.mjs`.
 
+**Tảng → Trim → tảng ủ → Cắt, đúng trình tự (0107).** Khánh chốt 28/10/2026: "Từ tảng thì lúc trim ban đầu nó sẽ luôn ra
+tảng ủ. Tảng ủ xong mới ra Ribeye khay." Trim: nguyên tảng → MỘT tảng ủ (vẫn một khối) + vụn thừa — hao hụt ghi ở
+đây; Cắt: tảng ủ → khay, không ra vụn (phần kg tảng ủ không thành khay là hao hụt ủ). Trigger
+`kho_phien_pha_dung_trinh_tu` chặn lúc chốt phiên (cả dòng gõ tay và dòng quét nhãn): món vào có công thức đang dùng
+ra một món **tảng** (công thức Trim) phải ra ít nhất một tảng nhập kho và chỉ ra món trong công thức — không cắt
+thẳng ra khay; tảng ủ (món tảng là đầu ra của công thức Trim của món khác) có công thức cắt thì chỉ ra món trong
+công thức. Dòng bỏ đi (xu_ly `bo`) luôn được; món không có công thức Trim không đổi gì. Màn **Tảng · ủ**
+(`kho_v_tang`, 0107 thêm `loai_tang`, `ngay_bat_dau_u`, `so_ngay_u`): bảng trên là **nguyên tảng — chờ trim** (lô
+nhận hàng, nút "Trim"); bảng **Tảng ủ (đã trim)** là lô món loại tảng sinh từ pha lóc, mang số tảng và ngày mổ của
+tảng gốc (`tang_goc_id`), ngày bắt đầu ủ (ngày trim), đã ủ bao nhiêu ngày, nút "Cắt". Hai nút cùng lóc một chạm
+(`locMotTang` gắn đúng công thức của món). Kiểm thử: `crm/test/test-kho-trinh-tu-tang.mjs`.
+
 **Khay của tảng nào trừ đúng lô tảng đó — theo tem đã quét lúc cắt (0106).** Khánh chốt 28/10/2026: nhiều tảng
 cắt ra quầy cùng lúc, FABi chỉ gửi "mã món + kg", không nói khay của tảng nào; trước 0106 kho trừ lô hạn gần nhất
 (khay các tảng cắt cùng ngày cùng hạn → luôn trừ tảng cắt trước, truy vết / báo cáo theo tảng lệch). Món đếm gói

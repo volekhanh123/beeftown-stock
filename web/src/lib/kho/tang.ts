@@ -161,6 +161,36 @@ export interface TangTon {
   so_kg: number;
   so_goi: number;
   vi_tri: string | null;
+  /** 0107: 'nguyen' = nguyên tảng (lô nhận hàng); 'u' = tảng ủ sau trim (lô pha lóc, số tảng của tảng gốc). */
+  loai_tang: 'nguyen' | 'u';
+  /** 0107: tảng ủ — ngày trim (bắt đầu ủ) và số ngày đã ủ (giờ VN); nguyên tảng → null. */
+  ngay_bat_dau_u: string | null;
+  so_ngay_u: number | null;
+}
+
+/**
+ * 0107: món có công thức Trim đang dùng — công thức ra một món loại tảng (tảng ủ). Màn Tảng · ủ ghi nút "Trim" và
+ * mục "Nguyên tảng — chờ trim" cho các món này; món khác giữ nút "Lóc", nhãn tình trạng ủ như cũ.
+ */
+export function monCoTrim(
+  congThuc: readonly { id: string; mat_hang_vao_id: string }[],
+  dong: readonly { cong_thuc_id: string; mat_hang_ra_id: string }[],
+  monTang: ReadonlySet<string>,
+): Set<string> {
+  const ctTrim = new Set(dong.filter(d => monTang.has(d.mat_hang_ra_id)).map(d => d.cong_thuc_id));
+  return new Set(congThuc.filter(c => ctTrim.has(c.id)).map(c => c.mat_hang_vao_id));
+}
+
+export async function docMonTrim(client: SupabaseClient): Promise<Set<string>> {
+  const [ct, dong, tang] = await Promise.all([
+    client.from('kho_cong_thuc_pha').select('id, mat_hang_vao_id').eq('dang_dung', true),
+    client.from('kho_cong_thuc_pha_dong').select('cong_thuc_id, mat_hang_ra_id'),
+    client.from('kho_mat_hang').select('id').eq('loai', 'tang'),
+  ]);
+  if (ct.error) throw ct.error;
+  if (dong.error) throw dong.error;
+  if (tang.error) throw tang.error;
+  return monCoTrim(ct.data ?? [], dong.data ?? [], new Set((tang.data ?? []).map(r => r.id as string)));
 }
 
 /**
@@ -169,7 +199,7 @@ export interface TangTon {
  */
 export async function docTangTon(client: SupabaseClient, chiNhanhId: string): Promise<TangTon[]> {
   const { data, error } = await client.from('kho_v_tang')
-    .select('lo_id, ma_lo, so_tang, mat_hang_id, ma_hang, ten_hang, ngay_mo, ngay_nhan, ngay_u_xong, han_dung, tuoi_ngay, con_ngay_u, tinh_trang_u, so_kg, so_goi, vi_tri')
+    .select('lo_id, ma_lo, so_tang, mat_hang_id, ma_hang, ten_hang, ngay_mo, ngay_nhan, ngay_u_xong, han_dung, tuoi_ngay, con_ngay_u, tinh_trang_u, so_kg, so_goi, vi_tri, loai_tang, ngay_bat_dau_u, so_ngay_u')
     .eq('chi_nhanh_id', chiNhanhId);
   if (error) throw error;
   return sapTang((data ?? []).map(r => ({
@@ -178,6 +208,9 @@ export async function docTangTon(client: SupabaseClient, chiNhanhId: string): Pr
     so_goi: Number(r.so_goi ?? 0),
     tuoi_ngay: r.tuoi_ngay === null ? null : Number(r.tuoi_ngay),
     con_ngay_u: r.con_ngay_u === null ? null : Number(r.con_ngay_u),
+    loai_tang: r.loai_tang === 'u' ? 'u' : 'nguyen',
+    ngay_bat_dau_u: r.ngay_bat_dau_u ?? null,
+    so_ngay_u: r.so_ngay_u === null || r.so_ngay_u === undefined ? null : Number(r.so_ngay_u),
   })) as TangTon[]);
 }
 

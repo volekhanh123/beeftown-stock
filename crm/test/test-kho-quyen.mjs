@@ -429,6 +429,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_ipos_mot_khay_quet',
     // 0106: lô còn khay tem đúng kg bán — chỉ kho_ipos_ghi_dong gọi
     'kho_ipos_lo_theo_tem',
+    // 0107: trigger chốt phiên lóc giữ trình tự tảng → trim → tảng ủ → cắt
+    'kho_phien_pha_dung_trinh_tu',
     // 0054: giá sau giảm, các trigger chống trùng mã cân giữa món / ô / mã giảm
     'kho_gia_giam', 'kho_ma_giam_kiem', 'kho_o_ma_khong_trung_giam', 'kho_mat_hang_ma_can_khong_trung_giam',
     // 0060: phần tính của kho_ipos_trang_thai, không kiểm quyền — máy báo động đọc qua suc_khoe_so_lieu

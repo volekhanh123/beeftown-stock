@@ -1329,6 +1329,16 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Dòng % (%): chưa ghi hạn dùng in trên sản phẩm', en: 'Line {1} ({2}): enter the use-by date printed on the product' },
   { vi: 'Giá thứ %: món này không có quy đổi thùng — nhập giá một đơn vị',
     en: 'Price {1}: this item has no case size — enter the price of one unit' },
+
+  // 0107_kho_trinh_tu_tang_u — chốt phiên lóc giữ trình tự tảng → trim → tảng ủ → cắt
+  { vi: '"%" chưa ra được từ "%": phải Trim ra tảng ủ trước, ủ xong mới cắt khay — bỏ dòng này rồi chốt',
+    en: '"{1}" cannot come straight from "{2}": trim it into an aging primal first, cut trays only after aging — remove this line, then close' },
+  { vi: '"%" không có trong công thức Trim của "%" — thêm vào công thức, hoặc ghi là bỏ đi, rồi chốt',
+    en: '"{1}" is not in the trimming recipe of "{2}" — add it to the recipe or record it as discarded, then close' },
+  { vi: '"%" không có trong công thức cắt của "%" — tảng ủ chỉ cắt ra khay; bỏ dòng này rồi chốt',
+    en: '"{1}" is not in the cutting recipe of "{2}" — an aging primal is only cut into trays; remove this line, then close' },
+  { vi: 'Trim "%" phải ra một tảng ủ — nhập kg tảng ủ (1 tảng) rồi chốt',
+    en: 'Trimming "{1}" must give one aging primal — enter the aging primal\'s kg (1 primal), then close' },
 ];
 
 type Mau = readonly [RegExp, (m: RegExpMatchArray) => string];
