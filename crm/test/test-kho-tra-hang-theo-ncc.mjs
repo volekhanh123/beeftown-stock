@@ -16,7 +16,7 @@
 
 import { dungDatabase, taoBoDem, taoClientPg, UID, maGui } from './kho-chung.mjs';
 import {
-  docNccCuaLo, khoaNccLo, nutNccTraHang, traHangGhiKg, huyTraHangChoTien, NCC_KHONG_RO,
+  docNccCuaLo, khoaNccLo, nutNccTraHang, traHangGhiKg, huyTraHangChoTien, NCC_KHONG_RO, TEN_NCC_KHONG_RO,
 } from '../../web/src/lib/kho/cong-no.ts';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -115,6 +115,13 @@ await nhom('2 · ĐÚNG LÔ, ĐÚNG NHÀ CUNG CẤP', async () => {
     ds.size === 3 && ds.has(loNacVai.id) && ds.has(loThan.id) && ds.has(loThanQuay.id) && !ds.has(loVun.id), JSON.stringify([...ds]));
   ok('Lô nạc vai → Bò Úc (id và tên)', ds.get(loNacVai.id)?.nha_cung_cap_id === NCC['Bò Úc'] && ds.get(loNacVai.id)?.ten_nha_cung_cap === 'Bò Úc');
   ok('khoaNccLo: lô mua → id NCC; lô tồn đầu → null', khoaNccLo(loThan.id, ds) === NCC['Đông Á'] && khoaNccLo(loVun.id, ds) === null);
+  // Đọc từng trang (docTungTrang, PostgREST trả tối đa 1.000 dòng / lần): hàm xếp theo lô nên các trang nối khít.
+  const tk = clientCua(UID.thuKhoA);
+  const trang = await Promise.all([0, 1, 2].map(i => tk.rpc('kho_ncc_cua_lo', { p_chi_nhanh_id: cnA.id }, { count: 'exact' }).range(i, i)));
+  const noi = trang.flatMap(x => x.data.map(r => r.lo_id));
+  ok('Đọc từng trang một dòng: tổng 3, ba trang nối khít theo thứ tự lô, không trùng không sót',
+    trang.every(x => x.count === 3 && x.data.length === 1) && noi.join() === [...ds.keys()].sort().join()
+      && JSON.stringify(noi) === JSON.stringify([...noi].sort()), JSON.stringify(noi));
   const nut = nutNccTraHang([loNacVai.id, loThan.id, loThanQuay.id, loThan.id, loVun.id], ds);
   ok('Nút NCC: Bò Úc (1 lô), Đông Á (2 lô — một lô ở hai nơi đếm một); xếp theo tên có dấu',
     nut.map(n => `${n.ten}:${n.so}`).join() === 'Bò Úc:1,Đông Á:2', JSON.stringify(nut));
@@ -146,21 +153,29 @@ await nhom('3 · NÚT NHÀ CUNG CẤP (THUẦN)', async () => {
   const nut = nutNccTraHang(['l1', 'l2', 'l3', 'l4', 'l5', 'l9'], gia);
   ok('Xếp tên tiếng Việt (Ánh Dương, Bò Úc, Đông Á); "Không rõ nhà cung cấp" cuối; lô lạ không tính',
     nut.map(n => `${n.ten}:${n.so}`).join() === 'Ánh Dương:1,Bò Úc:1,Đông Á:2,Không rõ nhà cung cấp:1', JSON.stringify(nut));
-  ok('Nút "Không rõ" mang khóa NCC_KHONG_RO; khoaNccLo của lô phiếu không ghi NCC cũng vậy',
-    nut[3].id === NCC_KHONG_RO && khoaNccLo('l2', gia) === NCC_KHONG_RO);
+  ok('Nút "Không rõ" mang khóa NCC_KHONG_RO và chữ TEN_NCC_KHONG_RO (dùng chung với "Trả cho: …"); khoaNccLo cũng vậy',
+    nut[3].id === NCC_KHONG_RO && nut[3].ten === TEN_NCC_KHONG_RO.vi && khoaNccLo('l2', gia) === NCC_KHONG_RO);
   ok('Tiếng Anh: "Supplier not recorded"', nutNccTraHang(['l2'], gia, 'en')[0]?.ten === 'Supplier not recorded');
 });
 
 // ===========================================================================
 await nhom('4 · MÃ NGUỒN TRANG TRẢ HÀNG', async () => {
   const tr = doc('web/src/pages/noi-bo/kho/cong-no/tra-hang.astro');
-  ok('Đọc NCC của lô cùng lượt với tồn; lỗi thì null — không lọc, mọi lô như trước',
-    /docNccCuaLo\(k\.client, cn\.id\)\.catch\(\(\) => null\)/.test(tr) && /!nccLo \|\| khoaNccLo\(x\.lo_id, nccLo\) !== null/.test(tr));
+  ok('Đọc NCC của lô cùng lượt với tồn; lỗi thì null — không lọc; không chọn NCC thì mọi lô như trước (không bỏ lô nào)',
+    /docNccCuaLo\(k\.client, cn\.id\)\.catch\(\(\) => null\)/.test(tr) && /const loMua = ton\.filter\(traDuoc\);/.test(tr));
+  const cn = doc('web/src/lib/kho/cong-no.ts');
+  const mg = doc('crm/supabase/migrations/0112_kho_tra_hang_theo_ncc.sql');
+  ok('docNccCuaLo đọc từng trang (docTungTrang, count exact, range); hàm xếp theo lô',
+    /docTungTrang\(\(tu, den\) => client\s*\.rpc\('kho_ncc_cua_lo', \{ p_chi_nhanh_id: chiNhanhId \}, \{ count: 'exact' \}\)\s*\.range\(tu, den\)\)/.test(cn)
+      && /order by l\.id;/.test(mg));
+  ok('?ncc= cũ (NCC đã hết hàng trả được): báo, hiện mọi lô',
+    /const nccCu = !!q\.get\('ncc'\) && !nccChon && !!nccLo;/.test(tr) && /\{nccCu && <div class="nb-bao luu-y" role="status"><p>\{t\.nccHetHang\}/.test(tr));
   ok('?ncc= chỉ nhận NCC có trong hàng nút; lọc đúng khóa',
     /const nccChon = nutNcc\.find\(n => n\.id === q\.get\('ncc'\)\) \?\? null;/.test(tr) && /khoaNccLo\(x\.lo_id, nccLo\) === nccChon\.id/.test(tr));
-  ok('Hàng nút chỉ hiện khi có từ hai nút; ô tìm giữ ?ncc=; tên NCC ở từng lô và ở bước ghi kg',
-    /\{nutNcc\.length > 1 && \(\s*<nav class="kho-dh"/.test(tr) && /<input type="hidden" name="ncc" value=\{nccChon\.id\} \/>/.test(tr)
-      && /t\.traCho\(tenNccLo\(loChon\.lo_id\) \|\| t\.khongRoNcc\)/.test(tr));
+  ok('Hàng nút hiện khi có từ hai nút hoặc đang lọc (luôn có "Tất cả" để bỏ lọc); ô tìm giữ ?ncc=; tên NCC ở từng lô và bước ghi kg',
+    /\{\(nutNcc\.length > 1 \|\| nccChon\) && \(\s*<nav class="kho-dh"/.test(tr) && /<input type="hidden" name="ncc" value=\{nccChon\.id\} \/>/.test(tr)
+      && /t\.traCho\(tenNccLo\(loChon\.lo_id\) \|\| TEN_NCC_KHONG_RO\[nn\]\)/.test(tr));
+  ok('"← Chọn lô khác" chỉ giữ ?ncc= khi có hàng nút', /nccLo && nutNcc\.length > 1 && khoaNccLo\(loChon\.lo_id, nccLo\)/.test(tr));
 });
 
 const dsTon = (await db.query(`select * from kho_doi_soat_ton()`)).rows;

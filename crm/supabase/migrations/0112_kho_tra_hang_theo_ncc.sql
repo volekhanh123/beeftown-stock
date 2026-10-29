@@ -15,7 +15,8 @@
 --   1. kho_ncc_cua_lo(chi nhánh) — hàm đọc mới, vai nhap hoặc ke_toan của chi nhánh (đúng quyền màn trả hàng và
 --      kho_tra_hang_ghi_kg): mỗi lô của phiếu MUA ĐÃ DUYỆT ở chi nhánh còn tồn ở kho / quầy → NCC của phiếu và tên
 --      NCC (null nếu phiếu không ghi NCC; NCC đã ngừng giao dịch vẫn có tên — hàng của họ vẫn trả được). Lô tồn đầu,
---      lô pha lóc ra không có: kho_tra_hang_ghi_kg cũng không nhận chúng.
+--      lô pha lóc ra không có: kho_tra_hang_ghi_kg cũng không nhận chúng. Đi từ kho_ton (hàng đang có) chứ không từ mọi
+--      lô từng nhập; xếp theo lô để web đọc từng trang 1.000 dòng (docTungTrang) nối khít.
 --   2. Thu quyền: authenticated gọi được (tự kiểm vai ở câu đầu), anon thì không.
 -- =============================================================================
 
@@ -41,14 +42,17 @@ begin
     join kho_phieu_nhap_dong d on d.id = l.phieu_nhap_dong_id
     join kho_phieu_nhap p on p.id = d.phieu_nhap_id
     left join kho_nha_cung_cap n on n.id = p.nha_cung_cap_id
-    where l.chi_nhanh_id = p_chi_nhanh_id
+    where l.id in (
+        select t.lo_id
+        from kho_ton t
+        join kho_vi_tri v on v.id = t.vi_tri_id
+        where t.chi_nhanh_id = p_chi_nhanh_id and v.loai in ('kho', 'quay') and (t.so_kg > 0 or t.so_goi > 0)
+      )
+      and l.chi_nhanh_id = p_chi_nhanh_id
       and p.chi_nhanh_id = p_chi_nhanh_id
       and p.loai = 'mua'
       and p.trang_thai = 'da_duyet'
-      and exists (
-        select 1 from kho_v_ton t
-        where t.lo_id = l.id and t.chi_nhanh_id = p_chi_nhanh_id and t.loai_vi_tri in ('kho', 'quay')
-      );
+    order by l.id;
 end;
 $$;
 
