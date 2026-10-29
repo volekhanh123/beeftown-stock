@@ -41,14 +41,14 @@ const boMau = s => s.replace(/\x1b\[[0-9;]*m/g, '');
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — QUY TRÌNH: BẢN ĐỒ VÀ CÔNG CỤ GIẢM TẢI RÀ SOÁT');
 
-const BAN_DO = ['CLAUDE.md', 'AGENTS.md', 'crm/CLAUDE.md', 'web/CLAUDE.md', 'can-app/CLAUDE.md'];
+const BAN_DO = ['CLAUDE.md', 'AGENTS.md', 'crm/CLAUDE.md', 'web/CLAUDE.md', 'can-app/CLAUDE.md', 'may-chu-don/CLAUDE.md'];
 // Cả file mới chưa commit (không bị .gitignore chặn): bản đồ viết cùng lúc với file nó nhắc.
 const TEP_GIT = git(['ls-files', '--cached', '--others', '--exclude-standard']).split('\n').filter(Boolean);
 const TEN_TEP = new Set(TEP_GIT.map(f => f.split('/').pop()));
 const migration = readdirSync(join(GOC, 'crm/supabase/migrations')).filter(f => f.endsWith('.sql')).sort()
   .map(f => readFileSync(join(GOC, 'crm/supabase/migrations', f), 'utf8')).join('\n');
 const HAM_SQL = new Set(cacCauHam(migration).map(h => h.ten));
-const SCRIPT_NPM = new Set(['crm', 'web', 'can-app', 'mini-app']
+const SCRIPT_NPM = new Set(['crm', 'web', 'can-app', 'mini-app', 'may-chu-don']
   .flatMap(d => Object.keys(JSON.parse(doc(`${d}/package.json`)).scripts ?? {})));
 
 /** Đường dẫn trong `…` có thật: tính từ gốc repo, từ thư mục của bản đồ, hoặc (tên trần) có file trùng tên. */
