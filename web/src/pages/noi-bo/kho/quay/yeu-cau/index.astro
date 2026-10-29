@@ -10,6 +10,11 @@
  * Nhiều quầy thì đổi quầy bằng link ?vt=<quầy> (GET) — danh sách gợi ý là của
  * quầy đó. "Thêm dòng" gửi lại form (viec = them_dong), giữ nguyên số đã gõ
  * và ma_gui. Không có JavaScript.
+ *
+ * "Kho đang có" (29/10/2026): dưới món sắp hết là các phần cắt / phụ phẩm kho lạnh còn (lô chưa hết hạn, kho_v_ton),
+ * mỗi món một ô số `k_<món>` và dòng "Kho còn 4 gói · 2,1 kg · HSD 30/10" (chuConTon) — không phải lục cả danh mục.
+ * Dòng thêm (ô chọn đủ món) gập lại cho món không có trong danh sách — mở sẵn khi đã bấm "+ Thêm dòng" hay dòng có chữ.
+ * Đọc tồn lỗi thì báo và mở sẵn dòng thêm.
  */
 import Kho from '../../../../../layouts/Kho.astro';
 import TheTrangCon from '../../../../../components/kho/TheTrangCon.astro';
@@ -18,9 +23,10 @@ import BieuTuong from '../../../../../components/kho/BieuTuong.astro';
 import ChonMatHang from '../../../../../components/kho/ChonMatHang.astro';
 import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../../lib/kho/trang.ts';
 import { docViTri, type ViTri } from '../../../../../lib/kho/danh-muc.ts';
+import { docTon, chuConTon, type DongTon } from '../../../../../lib/kho/ton.ts';
 import {
   docMatHangQuay, docGoiYRaQuay, docDanhSachYeuCau, docDonViYeuCau, docFormYeuCau, taoYeuCau, soDeNghi, cauSoLuong,
-  type GoiYRaQuay, type MatHangQuay, type YeuCauQuay,
+  monKhoChoQuay, type GoiYRaQuay, type MatHangQuay, type YeuCauQuay,
 } from '../../../../../lib/kho/quay.ts';
 import {
   cauLoiKho, dinhDangKg, dinhDangThoiDiem, kqHai, laUuid, trangThaiKho, type HaiThuTieng, type KetQua,
@@ -77,6 +83,16 @@ const t = dichNB(nn, {
   },
   soDvAn: { vi: (ten: string, dv: string) => `${ten} — số ${dv}`, en: (ten: string, dv: string) => `${ten} — quantity (${dv})` },
   themMon: { vi: 'Thêm món khác', en: 'Add other items' },
+  khoDangCo: {
+    vi: 'Kho đang có — ghi số cần lấy ở món muốn thêm:',
+    en: 'In the store now — enter how many you need next to the items you want:',
+  },
+  khongDocTon: {
+    vi: 'Chưa đọc được tồn kho — mạng hoặc database đang trục trặc. Chọn món ở các dòng dưới, hoặc tải lại trang.',
+    en: 'Could not read the stock — the connection or the database is having trouble. Choose items on the lines below, or reload the page.',
+  },
+  khoTrong: { vi: 'Kho lạnh chưa có phần cắt nào còn hạn.', en: 'The cold store has no in-date cut items.' },
+  monKhac: { vi: 'Món không có trong danh sách', en: 'Item not in the list' },
   themMonGoiY: {
     vi: 'Món đếm gói: ghi số gói. Món bán theo ký: ghi số kg (vd. 1,5).',
     en: 'Items counted in packs: enter the number of packs. Items sold by weight: enter the kg (e.g. 1.5).',
@@ -138,6 +154,10 @@ if (form && choGui) {
 // ---------------------------------------------------------------------------
 let goiY: GoiYRaQuay[] = [];
 let yeuCau: YeuCauQuay[] = [];
+// Tồn kho lạnh cho "Kho đang có" — đọc cùng lúc với phần dưới nhưng riêng: lỗi thì chỉ mất danh sách (null), có câu
+// báo, vẫn thêm món ở dòng thêm.
+const huaTon: Promise<DongTon[] | null> = choGui && quay
+  ? docTon(k.client, cn.id).catch(() => null) : Promise.resolve([]);
 let ten = new Map<string, string>();
 /** Đơn vị đếm chung của từng yêu cầu ("khay") — cho dòng "1 món · 10 khay". */
 let donVi = new Map<string, string>();
@@ -151,6 +171,9 @@ try {
     tenNhanSu(k.client, yeuCau.map(y => y.nguoi_tao)), docDonViYeuCau(k.client, yeuCau.map(y => y.id), matHang),
   ]);
 } catch (e) { loiDoc = loiDoc ?? cauLoiKho(e, t.khongDocYc); }
+const tonDoc = await huaTon;
+const loiTon = tonDoc === null;
+const ton = tonDoc ?? [];
 
 const dangCho = yeuCau.filter(y => y.trang_thai === 'cho').sort((a, b) => a.created_at.localeCompare(b.created_at));
 const khac = yeuCau.filter(y => y.trang_thai !== 'cho');
@@ -161,6 +184,11 @@ const goiYCo = goiY.filter(conKho);
 const goiYHetKho = goiY.filter(g => !conKho(g));
 const idGoiY = new Set(goiYCo.map(g => g.mat_hang_id));
 const mhTheoId = new Map(matHang.map(m => [m.id, m]));
+// Phần cắt / phụ phẩm kho lạnh còn hạn, trừ món đã ở danh sách sắp hết; xếp theo tên.
+const khoCo = monKhoChoQuay(ton, new Set(matHang.filter(m => m.dang_dung).map(m => m.id)), idGoiY);
+const idKhoCo = new Set(khoCo.map(m => m.mat_hang_id));
+/** Ô số của "Kho đang có": gửi lại form thì giữ số đã gõ. */
+const giaTriKho = (id: string) => String(form?.get(`k_${id}`) ?? '');
 /** Giá trị ô: gửi lại form thì giữ số đã gõ, lần đầu thì số gợi ý. */
 const giaTriGoiY = (g: GoiYRaQuay) => {
   const cu = form?.get(`g_${g.mat_hang_id}`);
@@ -259,20 +287,46 @@ const nhan = (tt: string) => ((x: [string, string]) => [x[0], x[1] || 'nhap'])(t
       )}
 
       <h2>{t.themMon}</h2>
-      <p class="kho-phu">{t.themMonGoiY}</p>
-      {dongThem.map(d => (
-        <div class="yc-them">
-          <label class="nb-o">
-            <span>{t.mon(d.i + 1)}</span>
-            <ChonMatHang name={`t${d.i}_mat_hang`} matHang={matHang.filter(m => !idGoiY.has(m.id) || m.id === d.mh)} chon={d.mh} />
-          </label>
-          <label class="nb-o">
-            <span>{t.soLuong}{d.mh && mhTheoId.get(d.mh) ? ` (${mhTheoId.get(d.mh)!.dem_goi ? mhTheoId.get(d.mh)!.don_vi_goi || t.goi : 'kg'})` : ''}</span>
-            <input type="text" inputmode="decimal" name={`t${d.i}_so`} value={d.so} autocomplete="off" />
-          </label>
-        </div>
-      ))}
-      <button type="submit" name="viec" value="them_dong" class="nb-nut phu" formnovalidate>{t.themDong}</button>
+      {loiTon && <div class="nb-bao luu-y" role="alert"><p>{t.khongDocTon}</p></div>}
+      {!loiTon && !loiDoc && khoCo.length === 0 && <p class="kho-phu">{t.khoTrong}</p>}
+      {khoCo.length > 0 && (
+        <>
+          <p class="kho-phu">{t.khoDangCo}</p>
+          <ul class="kho-dong-ds yc-ds">
+            {khoCo.map(m => (
+              <li>
+                <span>
+                  <strong>{m.ten_hang}</strong>
+                  <small>{chuConTon(m, nn, { vi: 'Kho còn', en: 'Store has' })}</small>
+                </span>
+                <label class="nb-o yc-o">
+                  <span class="an">{t.soDvAn(m.ten_hang, m.dem_goi ? m.don_vi_goi || t.goi : 'kg')}</span>
+                  <input type="text" inputmode={m.dem_goi ? 'numeric' : 'decimal'} name={`k_${m.mat_hang_id}`}
+                    value={giaTriKho(m.mat_hang_id)} autocomplete="off" />
+                  <small>{m.dem_goi ? m.don_vi_goi || t.goi : 'kg'}</small>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      <details class="yc-them-khac" open={loiTon || khoCo.length === 0 || soDong > 3 || dongThem.some(d => d.mh || d.so) || undefined}>
+        <summary>{t.monKhac}</summary>
+        <p class="kho-phu">{t.themMonGoiY}</p>
+        {dongThem.map(d => (
+          <div class="yc-them">
+            <label class="nb-o">
+              <span>{t.mon(d.i + 1)}</span>
+              <ChonMatHang name={`t${d.i}_mat_hang`} matHang={matHang.filter(m => (!idGoiY.has(m.id) && !idKhoCo.has(m.id)) || m.id === d.mh)} chon={d.mh} />
+            </label>
+            <label class="nb-o">
+              <span>{t.soLuong}{d.mh && mhTheoId.get(d.mh) ? ` (${mhTheoId.get(d.mh)!.dem_goi ? mhTheoId.get(d.mh)!.don_vi_goi || t.goi : 'kg'})` : ''}</span>
+              <input type="text" inputmode="decimal" name={`t${d.i}_so`} value={d.so} autocomplete="off" />
+            </label>
+          </div>
+        ))}
+        <button type="submit" name="viec" value="them_dong" class="nb-nut phu" formnovalidate>{t.themDong}</button>
+      </details>
 
       <label class="nb-o" style="margin-top:1rem">
         <span>{t.ghiChuThuKho}</span>
@@ -313,6 +367,8 @@ const nhan = (tt: string) => ((x: [string, string]) => [x[0], x[1] || 'nhap'])(t
   .yc-ds li { flex-wrap: nowrap; }
   .yc-ds li > span { flex: 1 1 auto; }
   .yc-het-kho { margin-top: .75rem; }
+  .yc-them-khac { margin-top: .75rem; }
+  .yc-them-khac > summary { cursor: pointer; font-weight: 600; min-height: 44px; display: list-item; padding: .6rem 0; }
   .yc-het-kho > summary { cursor: pointer; font-weight: 600; min-height: 44px; display: list-item; padding: .6rem 0; color: var(--do-dam); }
   .yc-them { display: grid; grid-template-columns: 1fr 7rem; gap: .5rem; align-items: end; }
   .an { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
