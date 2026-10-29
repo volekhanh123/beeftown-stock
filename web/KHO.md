@@ -202,7 +202,7 @@ Link dùng chung giữa các trang (trang nhận phải đọc được các tha
 
 | Trang | Ai | Việc |
 |---|---|---|
-| `/noi-bo/kho/quay/yeu-cau` | NV quầy (quản lý gửi thay được); thủ kho xem danh sách chờ | Gửi yêu cầu: danh sách món sắp hết từ `kho_goi_y_ra_quay` có sẵn số gói nên lấy, sửa được, ghi 0 là bỏ; thêm món khác. Nhiều quầy: `?vt=<quầy>` |
+| `/noi-bo/kho/quay/yeu-cau` | NV quầy (quản lý gửi thay được); thủ kho xem danh sách chờ | Gửi yêu cầu: danh sách món sắp hết từ `kho_goi_y_ra_quay` có sẵn số gói nên lấy, sửa được, ghi 0 là bỏ; "Kho đang có" (phần cắt / phụ phẩm kho lạnh còn hạn, ô số `k_<món>`, mục 3d "Chọn món kèm số tồn"); món khác ở mục gập. Nhiều quầy: `?vt=<quầy>` |
 | `/noi-bo/kho/quay/yeu-cau/<id>` | Thủ kho | "Mang ra quầy" = `kho_chuyen_theo_yeu_cau` (hạn gần lấy trước, sửa số được, chọn kho lấy); hủy yêu cầu khi chưa mang; hủy chuyến khi quầy chưa nhận |
 | `/noi-bo/kho/quay/nhan` | NV quầy | "Đã nhận đủ" một chạm, hoặc `?thieu=<phiếu>` ghi số thực nhận. Người mang ra không thấy nút nhận. Quá `gio_nhac_chuyen` giờ thì thẻ đỏ |
 | `/noi-bo/kho/quay/dem` | NV quầy (`van_hanh`) | Đếm quầy cuối ngày, quét cộng dồn (dưới đây). `?vi_tri=<quầy>` |
@@ -306,6 +306,28 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
   tích lô) còn một câu; bản đủ ở Hướng dẫn (`pha-loc`). Dòng phụ phẩm: máy tính một hàng Mặt hàng · Số kg · Xử lý,
   điện thoại mặt hàng một hàng, kg và xử lý cạnh nhau; "Thêm…" và "Bỏ dòng này" chung hàng chân.
 - `test-kho-giao-dien.mjs` nhóm 19 gác các điều trên.
+
+### Chọn món kèm số tồn (Khánh chốt 29/10/2026)
+
+Chọn một thứ thì bung đúng các lựa chọn liên quan, kèm số đang còn — khỏi lục cả danh mục rồi mới biết kho hết.
+Không migration: mọi số đã có (`kho_v_ton` NV quầy đọc được, `kho_goi_y_ra_quay` chạy theo quyền người gọi).
+
+- **Quầy → Yêu cầu hàng** (`quay/yeu-cau`): dưới "món quầy sắp hết" là **Kho đang có** — phần cắt / phụ phẩm kho lạnh
+  còn hạn (`monKhoChoQuay`, `lib/kho/quay.ts`: không tảng, không lô hết hạn, không món ngừng dùng, không món đã ở
+  danh sách sắp hết; xếp theo tên). Mỗi món một hàng: tên, dòng nhỏ "Kho còn 4 gói · 2 kg · HSD 30/10" (`chuConTon`,
+  `lib/kho/ton.ts`), ô số `k_<món>` (gói nếu món đếm gói, không thì kg). `docFormYeuCau` cộng ô `k_` với dòng thêm
+  cùng món; chỉ có ô `k_` / dòng thêm thì nguồn là `tay`. Dòng thêm (đủ món) vào mục gập "Món không có trong danh
+  sách" — mở sẵn khi đọc tồn lỗi (có câu báo, không im như thể kho trống), kho trống, đã bấm "+ Thêm dòng" hay dòng
+  đã có chữ.
+- **Xuất → Chuyển ra quầy** (`xuat/[id]`, phiếu mới, đích là quầy): nhóm **"<quầy> đang thiếu"** — món
+  `kho_goi_y_ra_quay` đề nghị (> 0) mà nơi lấy có hàng còn hạn. Bấm một món là thêm dòng **điền sẵn** số nên lấy
+  (`dongTuGoiYRaQuay`: gói, hoặc kg viết "1,5"); "+ Lấy cả N món đang thiếu" (`viec = them_thieu`) thêm mọi món chưa
+  có trên phiếu. Đọc gợi ý lỗi thì chỉ mất nhóm này.
+- **Xuất (mọi loại)**: mọi món đang có ở nơi lấy thành nút trong mục gập "Món đang có ở <nơi> (n)" (mở sẵn khi không
+  có nhóm nào khác và ≤ 8 món); dưới tên là "Còn 3 gói · 1,2 kg · HSD 30/10" — chỉ tính lô còn hạn khi phiếu chỉ nhận
+  hàng còn hạn (xuất bếp, xuất khác, chuyển ra quầy). Nút món hay đưa bếp cũng có dòng này. Phiếu chuyển không có nút
+  sốt / đồ uống (0105). Món đếm theo cái chỉ ghi số cái, không kg.
+- `test-kho-chon-mon-co-ton.mjs` gác các điều trên.
 
 ### Gọn phần tiền và báo cáo (Khánh duyệt 23/10/2026)
 

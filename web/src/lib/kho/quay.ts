@@ -24,6 +24,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { cauLoiKho, dinhDangKg, docKg, docSoNguyen, donViChung, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { gomTheoMatHang, type DongTon, type TonMatHang } from './ton.ts';
 
 /** Đơn vị gói mặc định của cột kho_mat_hang.don_vi_goi (0019) — khi món không mang đơn vị. */
 const GOI_MAC_DINH: HaiThuTieng = { vi: 'gói', en: 'packs' };
@@ -93,6 +94,28 @@ export function cauSoLuong(
   return `${dinhDangKg(soKg ?? 0, nn)} kg`;
 }
 
+/** Loại món mang ra quầy được chọn từ danh sách "Kho đang có": phần cắt, phụ phẩm (tảng phải pha lóc trước). */
+export const LOAI_RA_QUAY = ['phan_cat', 'phu_pham'] as const;
+
+/**
+ * "Kho đang có" của màn quầy yêu cầu hàng: phần cắt / phụ phẩm ở kho lạnh, chỉ lô chưa hết hạn, món đang dùng, trừ
+ * món đã ở danh sách sắp hết (`boQua`); gom theo món, xếp theo tên.
+ */
+export function monKhoChoQuay(
+  ton: DongTon[], dangDung: ReadonlySet<string>, boQua: ReadonlySet<string> = new Set(),
+): TonMatHang[] {
+  return gomTheoMatHang(ton.filter(t => t.loai_vi_tri === 'kho' && t.tinh_trang_han !== 'het_han'
+      && (t.so_kg > 0 || t.so_goi > 0) && (LOAI_RA_QUAY as readonly string[]).includes(t.loai_hang)
+      && dangDung.has(t.mat_hang_id) && !boQua.has(t.mat_hang_id)))
+    .sort((a, b) => a.ten_hang.localeCompare(b.ten_hang, 'vi'));
+}
+
+/** Dòng phiếu chuyển của một món quầy đang thiếu: số nên lấy điền sẵn — gói, hoặc kg viết kiểu Việt ("1,5"). */
+export function dongTuGoiYRaQuay(g: GoiYRaQuay): { mat_hang_id: string; so_goi: string; so_kg: string } {
+  const n = soDeNghi(g);
+  return { mat_hang_id: g.mat_hang_id, so_goi: g.dem_goi ? String(n) : '', so_kg: g.dem_goi ? '' : dinhDangKg(n, 'vi') };
+}
+
 /** Số gợi ý mang ra của một dòng gợi ý (0 khi kho đã hết). */
 export function soDeNghi(g: GoiYRaQuay): number {
   return g.dem_goi ? Math.max(0, g.so_goi_de_nghi ?? 0) : Math.max(0, g.so_kg_de_nghi ?? 0);
@@ -109,6 +132,9 @@ export interface DongGuiYeuCau { mat_hang_id: string; so_goi?: number; so_kg?: n
  * Form yêu cầu → p_dong của kho_tao_yeu_cau. Ô trống hoặc 0 thì bỏ qua; một
  * món ghi ở cả dòng gợi ý lẫn dòng thêm tay thì cộng lại (database không nhận
  * một món hai lần).
+ *
+ * Ba loại ô: `g_<món>` dòng gợi ý (món quầy dưới mức — nguồn "goi_y"), `k_<món>` danh sách "Kho đang có" (món kho
+ * còn, chọn tay — nguồn "tay"), `t<i>_mat_hang` + `t<i>_so` dòng thêm.
  */
 export function docFormYeuCau(form: FormData, matHang: MatHangQuay[], soDongThem: number): {
   dong: DongGuiYeuCau[]; loi: string[]; loiEn: string[]; nguon: 'tay' | 'goi_y';
@@ -133,9 +159,10 @@ export function docFormYeuCau(form: FormData, matHang: MatHangQuay[], soDongThem
     return true;
   };
   for (const [khoa, v] of form.entries()) {
-    const id = khoa.startsWith('g_') ? khoa.slice(2) : '';
+    const goiY = khoa.startsWith('g_');
+    const id = goiY || khoa.startsWith('k_') ? khoa.slice(2) : '';
     const m = laUuid(id) ? theoId.get(id) : undefined;
-    if (m && them(m, v, { vi: 'Món', en: 'Item' })) tuGoiY = true;
+    if (m && them(m, v, { vi: 'Món', en: 'Item' }) && goiY) tuGoiY = true;
   }
   for (let i = 0; i < soDongThem; i++) {
     const id = String(form.get(`t${i}_mat_hang`) ?? '');

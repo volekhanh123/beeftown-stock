@@ -7,7 +7,9 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { boDau, docTungTrang, laDemCai, type HaiThuTieng, type NgonNguNB } from './chung.ts';
+import {
+  boDau, dinhDangKg, dinhDangNgayNgan, docTungTrang, laDemCai, type HaiThuTieng, type NgonNguNB,
+} from './chung.ts';
 
 export interface DongTon {
   lo_id: string;
@@ -147,6 +149,22 @@ export function gomTheoMatHang(ds: DongTon[]): TonMatHang[] {
     MUC_HAN[a.tinh_trang_xau_nhat] - MUC_HAN[b.tinh_trang_xau_nhat]
     || a.loai_hang.localeCompare(b.loai_hang)
     || a.ten_hang.localeCompare(b.ten_hang, 'vi'));
+}
+
+/**
+ * Dòng phụ dưới nút / tên món khi chọn món (quầy yêu cầu hàng, xuất): "Còn 3 gói · 1,2 kg · HSD 30/10" — hàng đếm
+ * gói nói cả gói lẫn kg, hàng cân ký chỉ kg, món đếm theo cái (sốt, đồ uống) chỉ số cái. HSD là hạn gần nhất (lô ra
+ * trước). `con`: chữ đầu câu — "Còn" ở nơi lấy, "Kho còn" ở màn quầy.
+ */
+export function chuConTon(
+  t: Pick<TonMatHang, 'loai_hang' | 'dem_goi' | 'don_vi_goi' | 'so_goi' | 'so_kg' | 'han_som_nhat'>,
+  nn: NgonNguNB = 'vi', con: HaiThuTieng = { vi: 'Còn', en: 'In stock' },
+): string {
+  const dv = t.don_vi_goi || { vi: 'gói', en: 'packs' }[nn];
+  const so = laDemCai({ loai: t.loai_hang }) ? `${t.so_goi} ${dv}`
+    : t.dem_goi ? `${t.so_goi} ${dv} · ${dinhDangKg(t.so_kg, nn)} kg`
+    : `${dinhDangKg(t.so_kg, nn)} kg`;
+  return `${con[nn]} ${so} · ${{ vi: 'HSD', en: 'Use by' }[nn]} ${dinhDangNgayNgan(t.han_som_nhat)}`;
 }
 
 /**

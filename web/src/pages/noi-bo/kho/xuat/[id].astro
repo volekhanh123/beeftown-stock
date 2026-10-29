@@ -41,6 +41,11 @@
  * nút — bấm là thêm một dòng món đó. Lý do xuất bếp / xuất khác là nút chọn
  * (ô tròn to), xuất khác bắt buộc chọn.
  *
+ * CHỌN MÓN BẰNG NÚT (29/10/2026): mọi món đang có ở nơi lấy thành nút (mục gập "Món đang có ở …"), dưới tên là
+ * "Còn 3 gói · 1,2 kg · HSD 30/10" (chuConTon, lô còn hạn nếu phiếu chỉ nhận hàng còn hạn) — nút món hay đưa bếp
+ * cũng vậy. Chuyển ra QUẦY: nhóm "Quầy đang thiếu" (kho_goi_y_ra_quay — món quầy dưới mức mà nơi lấy có), bấm là
+ * thêm dòng ĐIỀN SẴN số nên lấy; "+ Lấy cả N món" (viec = them_thieu) thêm hết một lượt.
+ *
  * PHIẾU CHUYỂN ĐI ĐƯỜNG (0032): hiện ai nhận, nhận bao nhiêu. Quản lý xử lý
  * phần nhận thiếu (trả về kho / ghi mất, phải ghi lý do); người lập hủy được
  * chuyến khi quầy chưa bấm nhận.
@@ -60,7 +65,8 @@ import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/
 import {
   docCaiDat, docLyDo, docMatHang, docViTri, type CaiDat, type LyDo, type MatHang, type ViTri,
 } from '../../../../lib/kho/danh-muc.ts';
-import { docTon, type DongTon } from '../../../../lib/kho/ton.ts';
+import { docTon, gomTheoMatHang, chuConTon, type DongTon } from '../../../../lib/kho/ton.ts';
+import { cauSoLuong, docGoiYRaQuay, dongTuGoiYRaQuay, soDeNghi, type GoiYRaQuay } from '../../../../lib/kho/quay.ts';
 import { docThongTinLo } from '../../../../lib/kho/pha-loc.ts';
 import { docGiaoOMaCan, docMaTrenNhan, type GiaoOMa } from '../../../../lib/kho/o-ma.ts';
 import { chuTang, docLoTang } from '../../../../lib/kho/tang.ts';
@@ -180,6 +186,16 @@ const ch = dichNB(nn, {
   hangCanHuy: { vi: 'Hàng cần hủy', en: 'Goods to write off' },
   hangLayRa: { vi: 'Hàng lấy ra', en: 'Goods to take' },
   monHayDua: { vi: 'Món hay đưa bếp — bấm để thêm một dòng:', en: 'Items often sent to the kitchen — press one to add a line:' },
+  quayThieu: {
+    vi: (ten: string) => `${ten} đang thiếu — bấm để thêm dòng, số nên lấy đã điền sẵn:`,
+    en: (ten: string) => `${ten} is running low — press one to add a line with the suggested quantity filled in:`,
+  },
+  layCa: { vi: (n: number) => `+ Lấy cả ${n} món đang thiếu`, en: (n: number) => `+ Add all ${n} low ${n === 1 ? 'item' : 'items'}` },
+  nenLay: { vi: (sl: string) => `Nên lấy ${sl}`, en: (sl: string) => `Bring ${sl}` },
+  monDangCo: {
+    vi: (noi: string, n: number) => `Món đang có ở ${noi} (${n}) — bấm để thêm một dòng`,
+    en: (noi: string, n: number) => `Items at ${noi} (${n}) — press one to add a line`,
+  },
   khongQuetDuoc: {
     vi: 'Không quét được thì chọn món và ghi số gói — máy tự lấy hàng hạn gần trước. Hàng theo kg (không đếm gói) thì ghi số kg.',
     en: 'If you cannot scan, choose the item and enter the number of packs — the earliest use-by is taken first automatically. For goods by kg (not counted in packs), enter the kg.',
@@ -449,6 +465,18 @@ const donViPhieu = donViChung(dongDb.map(d => tenMh.get(d.mat_hang_id)));
 const monNhanh = moi && loai === 'xuat_bep'
   ? (await docMonHayDungBep(k.client, cn.id)).filter(id => hangTaiTu.has(id)).map(id => tenMh.get(id)!).filter(Boolean)
   : [];
+// Tồn theo món ở nơi lấy (chỉ lô còn hạn khi phiếu chỉ nhận hàng còn hạn) — dòng "Còn … · HSD …" dưới nút món.
+const tonMonTaiTu = new Map(gomTheoMatHang(loTaiTu.filter(t => !chiConHan || t.tinh_trang_han !== 'het_han'))
+  .map(m => [m.mat_hang_id, m]));
+// Chuyển ra quầy: món quầy đang thiếu mà nơi lấy có. Đọc lỗi thì chỉ mất nhóm này — vẫn chọn món như thường.
+const thieuQuay: GoiYRaQuay[] = moi && loai === 'chuyen' && den?.loai === 'quay'
+  ? (await docGoiYRaQuay(k.client, cn.id, den.id).catch(() => [] as GoiYRaQuay[]))
+    .filter(g => hangTaiTu.has(g.mat_hang_id) && soDeNghi(g) > 0)
+  : [];
+const thieuTheoId = new Map(thieuQuay.map(g => [g.mat_hang_id, g]));
+// Mọi món đang có ở nơi lấy thành nút, trừ món đã ở nhóm trên. Phiếu chuyển không mang sốt, đồ uống (0105).
+const idNhanh = new Set([...monNhanh.map(m => m.id), ...thieuQuay.map(g => g.mat_hang_id)]);
+const monTaiTu = moi ? mhChon.filter(m => !idNhanh.has(m.id) && tonMonTaiTu.has(m.id) && (loai !== 'chuyen' || !laDemCai(m))) : [];
 
 // ---------------------------------------------------------------------------
 // Lệnh gửi lên
@@ -477,7 +505,7 @@ if (form) {
   ghiChuForm = String(form.get('ghi_chu') ?? '');
   lyDoForm = String(form.get('ly_do_id') ?? '');
   const coLyDo = () => lyDoLoai.some(l => l.id === lyDoForm && l.dang_dung);
-  if (moi && ['quet', 'them_dong', 'them_mh', 'ghi', 'buoc_hang', 'buoc_ly_do', 'chon_ly_do'].includes(viec)) {
+  if (moi && ['quet', 'them_dong', 'them_mh', 'them_thieu', 'ghi', 'buoc_hang', 'buoc_ly_do', 'chon_ly_do'].includes(viec)) {
     if (!tu) {
       bao = kqHai(false, CAU.chuaCoNoi);
     } else if (viec === 'ghi') {
@@ -506,9 +534,16 @@ if (form) {
         }
       }
       if (viec === 'them_mh') {
-        // Món nhanh: thêm một dòng món đó (đã có thì thôi) — dòng đó là dòng để ghi số.
+        // Món nhanh: thêm một dòng món đó (đã có thì thôi) — dòng đó là dòng để ghi số. Món quầy đang thiếu: số nên
+        // lấy điền sẵn.
+        const g = thieuTheoId.get(themMh);
         dongA = doc.dong.some(d => d.mat_hang_id === themMh)
-          ? doc.dong : [...doc.dong, { mat_hang_id: themMh, so_goi: '', so_kg: '' }];
+          ? doc.dong : [...doc.dong, g ? dongTuGoiYRaQuay(g) : { mat_hang_id: themMh, so_goi: '', so_kg: '' }];
+        dienSanMh = true;
+      } else if (viec === 'them_thieu') {
+        // Lấy cả các món quầy đang thiếu: mỗi món chưa có trên phiếu một dòng, số nên lấy điền sẵn.
+        const daCo = new Set(doc.dong.map(d => d.mat_hang_id));
+        dongA = [...doc.dong, ...thieuQuay.filter(g => !daCo.has(g.mat_hang_id)).map(dongTuGoiYRaQuay)];
         dienSanMh = true;
       } else if (viec !== 'quet') {
         dongA = doc.dong;
@@ -772,15 +807,47 @@ const chuDaHuy = (() => {
 
               <h2>{moHuy ? ch.hangCanHuy : ch.hangLayRa}</h2>
               <QuetMa tuFocus />
+              {thieuQuay.length > 0 && (
+                <div class="xb-nhanh">
+                  <p class="kho-phu" style="margin:.5rem 0 .4rem">{ch.quayThieu(den?.ten ?? '')}</p>
+                  <div class="xb-nhanh-luoi">
+                    {thieuQuay.map(g => (
+                      <button type="submit" name="them_mh" value={g.mat_hang_id} class="nb-nut phu xb-mon" formnovalidate>
+                        <span>{g.ten}</span>
+                        <small>{ch.nenLay(cauSoLuong(g, g.so_goi_de_nghi, g.so_kg_de_nghi, nn))}{tonMonTaiTu.get(g.mat_hang_id) ? ` · ${chuConTon(tonMonTaiTu.get(g.mat_hang_id)!, nn)}` : ''}</small>
+                      </button>
+                    ))}
+                  </div>
+                  {thieuQuay.length > 1 && (
+                    <button type="submit" name="viec" value="them_thieu" class="nb-nut phu" formnovalidate>{ch.layCa(thieuQuay.length)}</button>
+                  )}
+                </div>
+              )}
               {monNhanh.length > 0 && (
                 <div class="xb-nhanh">
                   <p class="kho-phu" style="margin:.5rem 0 .4rem">{ch.monHayDua}</p>
                   <div class="xb-nhanh-luoi">
                     {monNhanh.map(m => (
-                      <button type="submit" name="them_mh" value={m.id} class="nb-nut phu" formnovalidate>{m.ten}</button>
+                      <button type="submit" name="them_mh" value={m.id} class="nb-nut phu xb-mon" formnovalidate>
+                        <span>{m.ten}</span>
+                        {tonMonTaiTu.get(m.id) && <small>{chuConTon(tonMonTaiTu.get(m.id)!, nn)}</small>}
+                      </button>
                     ))}
                   </div>
                 </div>
+              )}
+              {monTaiTu.length > 0 && (
+                <details class="xb-nhanh" open={(thieuQuay.length === 0 && monNhanh.length === 0 && monTaiTu.length <= 8) || undefined}>
+                  <summary class="kho-phu" style="cursor:pointer;margin:.5rem 0 .4rem">{ch.monDangCo(tu.ten, monTaiTu.length)}</summary>
+                  <div class="xb-nhanh-luoi">
+                    {monTaiTu.map(m => (
+                      <button type="submit" name="them_mh" value={m.id} class="nb-nut phu xb-mon" formnovalidate>
+                        <span>{m.ten}</span>
+                        <small>{chuConTon(tonMonTaiTu.get(m.id)!, nn)}</small>
+                      </button>
+                    ))}
+                  </div>
+                </details>
               )}
               <p class="kho-phu">{ch.khongQuetDuoc}</p>
               {dongHienA.map((d, i) => (
@@ -1156,4 +1223,8 @@ const chuDaHuy = (() => {
   .xk-chon label:has(input:checked) { border-color: var(--do); font-weight: 700; }
   /* Xuất bếp nhanh */
   .xb-nhanh-luoi { display: grid; gap: .5rem; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); margin-bottom: .5rem; }
+  /* Nút món: tên, dưới là "Còn … · HSD …" chữ nhỏ (29/10/2026). */
+  .xb-mon { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: .1rem;
+    text-align: left; height: auto; padding-top: .45rem; padding-bottom: .45rem; }
+  .xb-mon small { font-weight: 400; font-size: .78rem; line-height: 1.3; color: var(--muc-nhat); }
 </style>
