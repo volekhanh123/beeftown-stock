@@ -25,7 +25,7 @@
     "@types/react-dom": "18.3.7",
     "@vitejs/plugin-react": "4.7.0",
     "typescript": "5.9.3",
-    "vite": "8.3.4",
+    "vite": "5.4.21",
     "zmp-cli": "4.0.3",
     "zmp-vite-plugin": "1.1.6"
   },

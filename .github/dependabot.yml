@@ -74,6 +74,25 @@ updates:
     groups:
       mini-app-ban-nho:
         update-types: [minor, patch]
+    ignore:
+      # zmp-vite-plugin 1.1.6 (bản mới nhất của Zalo) chỉ nhận peer vite ^4.2.0 || ^5.0.0: vite 8 làm npm ci trong
+      # mini-app/ hỏng (ERESOLVE), CI "Mini App Zalo" đỏ và dua-len-zalo.cmd dừng ở bước cài thư viện (PR #102, gộp
+      # 26/10/2026). @vitejs/plugin-react 6 đòi vite ^8 nên chặn cùng. React 19 hỏng cùng kiểu: zmp-ui 1.11.14 dùng
+      # @react-spring/web 9.5.5, chỉ nhận react 16–18 (PR #100). Khi zmp-vite-plugin nhận vite mới hơn, hay zmp-ui nhận
+      # React 19, thì bỏ các dòng của gói đó; crm/test/test-mini-app-thu-vien.mjs đỏ nếu peer lệch. Các dòng này cũng chặn
+      # PR bảo mật của Dependabot lên các bản đó — vite chỉ chạy trên máy build và máy thử, không nằm trong bản khách tải.
+      - dependency-name: vite
+        versions: ['>=6.0.0']
+      - dependency-name: '@vitejs/plugin-react'
+        versions: ['>=6.0.0']
+      - dependency-name: react
+        versions: ['>=19.0.0']
+      - dependency-name: react-dom
+        versions: ['>=19.0.0']
+      - dependency-name: '@types/react'
+        versions: ['>=19.0.0']
+      - dependency-name: '@types/react-dom'
+        versions: ['>=19.0.0']
 
   # actions/checkout, setup-node, cache, upload-artifact… trong .github/workflows/
   - package-ecosystem: github-actions
