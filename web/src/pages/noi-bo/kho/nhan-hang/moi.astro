@@ -19,7 +19,9 @@
  *
  * "Không biết ai giao? Chọn món trước" (0110): form GET riêng (không lồng trong form ảnh — chọn món không làm mất
  * ảnh vì nó đứng trước) gửi ?mon=<món>; ô "Ai giao hàng?" chỉ còn nút các nhà cung cấp bán món đó (danh mục NCC –
- * món, NCC chính đầu tiên), một NCC thì chọn sẵn. Bấm "Tiếp" thì món đi theo sang bước 2 (?tiep=<món>).
+ * món, NCC chính đầu tiên), một NCC thì chọn sẵn. Bấm "Tiếp" thì món đi theo sang bước 2 (?tiep=<món>). Ảnh đã
+ * tải ở lần bấm "Tiếp" trước (gõ thiếu một ô) đi theo form GET (ma_gui + anh_da_tai, docAnhDaTai kiểm đúng thư mục
+ * của chi nhánh và mã gửi) — chọn món sau khi bị báo thiếu nhà cung cấp không phải chụp lại.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
@@ -29,6 +31,7 @@ import ChonMatHang from '../../../../components/kho/ChonMatHang.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { docCaiDat, docDinhNghia, docMatHang, docViTri, type CaiDat, type MatHang, type ViTri } from '../../../../lib/kho/danh-muc.ts';
 import { docNccNhap, taoPhieuNhan, type DauNhan, type NccNhap } from '../../../../lib/kho/nhan-hang.ts';
+import { docAnhDaTai } from '../../../../lib/kho/anh.ts';
 import { docDonChoNhan, taoPhieuTuDon, type DonDatTom } from '../../../../lib/kho/dat-hang.ts';
 import { docMonChon, docNccMon, nccCuaMon, chuNccCuaMon, type NccMon } from '../../../../lib/kho/ncc-mat-hang.ts';
 import {
@@ -132,17 +135,6 @@ try {
 
 // Chọn món trước (0110): ?mon=<món> — form POST không có action nên gửi về đúng đường dẫn này, ?mon= còn nguyên.
 const monChon = matHang.find(m => m.id === docMonChon(Astro.url.searchParams.get('mon')) && m.dang_dung) ?? null;
-let dsNccMon: NccMon[] = [];
-let loiNccMon = false;
-if (monChon) {
-  try { dsNccMon = await docNccMon(k.client, cn.id); } catch { loiNccMon = true; }
-}
-const nccBanMon = monChon
-  ? nccCuaMon(dsNccMon, monChon.id).flatMap(c => {
-    const n = ncc.find(x => x.id === c.nha_cung_cap_id);
-    return n ? [{ n, c }] : [];
-  })
-  : [];
 const sauTao = (id: string) => `/noi-bo/kho/nhan-hang/${id}${monChon ? `?tiep=${monChon.id}` : ''}`;
 
 // ---------------------------------------------------------------------------
@@ -171,9 +163,30 @@ if (form) {
   }
 }
 
+// Form GET "chọn món trước" mang theo ảnh đã tải ở lần "Tiếp" trước (chỉ đường dẫn đúng thư mục của mã gửi đó).
+if (!form && loai === 'mua') {
+  const maGuiUrl = Astro.url.searchParams.get('ma_gui') ?? '';
+  const fd = new FormData();
+  for (const a of Astro.url.searchParams.getAll('anh_da_tai')) fd.append('anh_da_tai', a);
+  const anhUrl = docAnhDaTai(fd, cn.id, 'nhap', maGuiUrl, 24);
+  if (anhUrl.length) { maGuiGiu = maGuiUrl; anhDaTai = anhUrl; }
+}
+
 // ---------------------------------------------------------------------------
 // Dữ liệu hiển thị
 // ---------------------------------------------------------------------------
+// Nhà cung cấp bán món đã chọn — đọc sau phần gửi form (bấm "Tiếp" thành công thì chuyển trang luôn, không cần).
+let dsNccMon: NccMon[] = [];
+let loiNccMon = false;
+if (monChon) {
+  try { dsNccMon = await docNccMon(k.client, cn.id, { mon: monChon.id }); } catch { loiNccMon = true; }
+}
+const nccBanMon = monChon
+  ? nccCuaMon(dsNccMon, monChon.id).flatMap(c => {
+    const n = ncc.find(x => x.id === c.nha_cung_cap_id);
+    return n ? [{ n, c }] : [];
+  })
+  : [];
 const noiNhan = viTri.filter(v => v.dang_dung && (v.loai === 'kho' || v.loai === 'quay'));
 const dau: DauNhan = dauForm ?? {
   // Chọn món trước mà chỉ một nhà cung cấp bán món đó: chọn sẵn.
@@ -236,6 +249,8 @@ const tieuDe = loai === 'ton_dau' ? t.tdTonDau : t.tdNhan;
 
   {loai === 'mua' && matHang.length > 0 && (
     <form method="get" id="tim-theo-mon">
+      {anhDaTai.length > 0 && <input type="hidden" name="ma_gui" value={maGuiForm} />}
+      {anhDaTai.map(a => <input type="hidden" name="anh_da_tai" value={a} />)}
       <details class="nb-the" open={!!monChon || undefined}>
         <summary style="cursor:pointer;font-weight:600">{t.theoMonHoi}</summary>
         <label class="nb-o" style="margin-top:.75rem">

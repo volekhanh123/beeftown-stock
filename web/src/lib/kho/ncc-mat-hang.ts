@@ -14,7 +14,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgayNgan, kqHai, laDemCai, laUuid, soCaiChu, type KetQua, type NgonNguNB,
+  cauLoiKho, dinhDangKg, dinhDangNgayNgan, kqHai, laDemCai, laUuid, soCaiChu, type HaiThuTieng, type KetQua, type NgonNguNB,
 } from './chung.ts';
 
 /** Một dòng của kho_ds_ncc_mat_hang. Số lần, lần cuối, kg / gói: ở chi nhánh đang xem. */
@@ -37,9 +37,18 @@ export interface NccMon {
 export const VIEC_NCC_MON = ['them', 'bo', 'chinh', 'bo_chinh'] as const;
 export type ViecNccMon = typeof VIEC_NCC_MON[number];
 
-/** Đọc cả danh mục của chi nhánh. Lỗi (mạng, quyền) ném ra — trang tự quyết bỏ qua hay báo. */
-export async function docNccMon(client: SupabaseClient, chiNhanhId: string): Promise<NccMon[]> {
-  const { data, error } = await client.rpc('kho_ds_ncc_mat_hang', { p_chi_nhanh_id: chiNhanhId });
+/**
+ * Đọc danh mục của chi nhánh — chỉ các cặp của một NCC hoặc một món nếu truyền (database lọc từ đầu, không cộng cả
+ * lịch sử phiếu). Lỗi (mạng, quyền) ném ra — trang tự quyết bỏ qua hay báo.
+ */
+export async function docNccMon(
+  client: SupabaseClient, chiNhanhId: string, loc: { ncc?: string | null; mon?: string | null } = {},
+): Promise<NccMon[]> {
+  const { data, error } = await client.rpc('kho_ds_ncc_mat_hang', {
+    p_chi_nhanh_id: chiNhanhId,
+    p_nha_cung_cap_id: loc.ncc || null,
+    p_mat_hang_id: loc.mon || null,
+  });
   if (error) throw error;
   return ((data ?? []) as NccMon[]).map(r => ({
     ...r,
@@ -74,25 +83,40 @@ export function nccCuaMon(ds: NccMon[], monId: string | null | undefined): NccMo
 interface MonVietSo { dem_theo_cai?: boolean | null; loai?: string | null; don_vi_goi?: string | null; so_trong_thung?: number | null }
 
 /**
- * "Lần trước 12,5 kg · 25/10" (hàng cân ký) hoặc "Lần trước 2 thùng · 25/10" (món đếm theo cái). Chưa giao ở chi
- * nhánh này → null (nút hiện dòng phụ khác). Không có tiền.
+ * "Lần trước 12,5 kg · 25/10" (hàng cân ký) hoặc "Lần trước 2 thùng (48 lon) · 25/10" (món đếm theo cái — số cái là
+ * so_goi, phiếu cũ không có thì so_kg, 0105 giữ hai số bằng nhau). Chưa giao ở chi nhánh này, hoặc không có số → null
+ * (nút hiện dòng phụ khác) — không bao giờ "Lần trước 0 lon". Không có tiền.
  */
 export function chuLanTruoc(c: NccMon | undefined, mon: MonVietSo | undefined, nn: NgonNguNB = 'vi'): string | null {
   if (!c?.lan_cuoi) return null;
   const ngay = dinhDangNgayNgan(c.lan_cuoi);
-  const so = laDemCai(mon)
-    ? soCaiChu(c.goi_lan_cuoi ?? 0, mon?.don_vi_goi ?? '', mon?.so_trong_thung, nn)
-    : `${dinhDangKg(c.kg_lan_cuoi, nn)} kg`;
+  let so: string;
+  if (laDemCai(mon)) {
+    const cai = c.goi_lan_cuoi || Math.round(c.kg_lan_cuoi ?? 0);
+    if (!cai) return null;
+    so = soCaiChu(cai, mon?.don_vi_goi ?? '', mon?.so_trong_thung, nn);
+  } else {
+    if (!c.kg_lan_cuoi) return null;
+    so = `${dinhDangKg(c.kg_lan_cuoi, nn)} kg`;
+  }
   return { vi: `Lần trước ${so} · ${ngay}`, en: `Last time ${so} · ${ngay}` }[nn];
 }
 
-/** Dòng phụ dưới nút NCC (lối chọn món trước): "NCC chính · giao 25/10" / "giao 25/10" / "thêm tay". */
-export function chuNccCuaMon(c: NccMon, nn: NgonNguNB = 'vi'): string | null {
+/** Cặp chưa giao ở chi nhánh đang xem: đã giao ở chi nhánh khác, hay chỉ mới thêm tay. Trang cài đặt dùng chung. */
+export function chuChuaGiao(c: NccMon, nn: NgonNguNB = 'vi'): string {
+  return (c.da_giao
+    ? { vi: 'chưa giao ở chi nhánh này', en: 'not delivered at this branch yet' }
+    : { vi: 'thêm tay, chưa giao', en: 'added by hand, not delivered yet' })[nn];
+}
+
+/** Dòng phụ dưới nút NCC (lối chọn món trước): "NCC chính · giao 25/10" / "giao 25/10" / "chưa giao ở chi nhánh này". */
+export function chuNccCuaMon(c: NccMon, nn: NgonNguNB = 'vi'): string {
   const phan: string[] = [];
   if (c.la_chinh) phan.push({ vi: 'NCC chính', en: 'Main supplier' }[nn]);
-  if (c.lan_cuoi) phan.push({ vi: `giao ${dinhDangNgayNgan(c.lan_cuoi)}`, en: `delivered ${dinhDangNgayNgan(c.lan_cuoi)}` }[nn]);
-  else if (!c.da_giao) phan.push({ vi: 'thêm tay, chưa giao', en: 'added by hand, not delivered yet' }[nn]);
-  return phan.length ? phan.join(' · ') : null;
+  phan.push(c.lan_cuoi
+    ? { vi: `giao ${dinhDangNgayNgan(c.lan_cuoi)}`, en: `delivered ${dinhDangNgayNgan(c.lan_cuoi)}` }[nn]
+    : chuChuaGiao(c, nn));
+  return phan.join(' · ');
 }
 
 /** Đọc ?mon= của bước 1: chỉ nhận id dạng uuid, còn lại coi như không chọn. */
@@ -101,15 +125,17 @@ export function docMonChon(gt: string | null | undefined): string {
   return laUuid(x) ? x : '';
 }
 
-const CAU_LUU: Record<ViecNccMon, (mon: string, ncc: string) => { vi: string; en: string }> = {
-  them: (mon, ncc) => ({ vi: `Đã thêm "${mon}" vào món của ${ncc}.`, en: `Added "${mon}" to ${ncc}'s items.` }),
+/** mon, ncc: tên đã đặt sẵn trong ngoặc kép; tên không đọc được thì "món" / "nhà cung cấp này" (tenCau). */
+const CAU_LUU: Record<ViecNccMon, (mon: HaiThuTieng, ncc: HaiThuTieng) => HaiThuTieng> = {
+  them: (mon, ncc) => ({ vi: `Đã thêm ${mon.vi} vào món của ${ncc.vi}.`, en: `Added ${mon.en} to the items of ${ncc.en}.` }),
   bo: (mon, ncc) => ({
-    vi: `Đã bỏ "${mon}" khỏi món của ${ncc} — phiếu sau có giao món này cũng không tự hiện lại.`,
-    en: `Removed "${mon}" from ${ncc}'s items — it will not come back on its own even if a later delivery has it.`,
+    vi: `Đã bỏ ${mon.vi} khỏi món của ${ncc.vi} — phiếu sau có giao món này cũng không tự hiện lại.`,
+    en: `Removed ${mon.en} from the items of ${ncc.en} — it will not come back on its own even if a later delivery has it.`,
   }),
-  chinh: (mon, ncc) => ({ vi: `${ncc} là nhà cung cấp chính của "${mon}".`, en: `${ncc} is now the main supplier of "${mon}".` }),
-  bo_chinh: (mon, ncc) => ({ vi: `${ncc} thôi là nhà cung cấp chính của "${mon}".`, en: `${ncc} is no longer the main supplier of "${mon}".` }),
+  chinh: (mon, ncc) => ({ vi: `Đã đặt ${ncc.vi} là nhà cung cấp chính của ${mon.vi}.`, en: `${ncc.en} is now the main supplier of ${mon.en}.` }),
+  bo_chinh: (mon, ncc) => ({ vi: `Đã bỏ ${ncc.vi} khỏi vai nhà cung cấp chính của ${mon.vi}.`, en: `${ncc.en} is no longer the main supplier of ${mon.en}.` }),
 };
+const tenCau = (ten: string, macDinh: HaiThuTieng): HaiThuTieng => (ten ? { vi: `"${ten}"`, en: `"${ten}"` } : macDinh);
 
 /**
  * Sửa tay một cặp. Câu "đã …" chỉ khi database nhận (cùng một await): mất mạng, hết giờ, lỗi quyền đều thành câu
@@ -121,9 +147,8 @@ export async function luuNccMon(
   if (!(VIEC_NCC_MON as readonly string[]).includes(viec)) {
     return kqHai(false, { vi: 'Việc không hợp lệ.', en: 'Invalid action.' });
   }
-  if (!laUuid(nccId) || !laUuid(monId)) {
-    return kqHai(false, { vi: 'Chưa chọn món.', en: 'No item selected.' });
-  }
+  if (!laUuid(nccId)) return kqHai(false, { vi: 'Chưa chọn nhà cung cấp.', en: 'No supplier selected.' });
+  if (!laUuid(monId)) return kqHai(false, { vi: 'Chưa chọn món.', en: 'No item selected.' });
   try {
     const { error } = await client.rpc('kho_luu_ncc_mat_hang', {
       p_nha_cung_cap_id: nccId, p_mat_hang_id: monId, p_viec: viec,
@@ -132,5 +157,6 @@ export async function luuNccMon(
   } catch (e) {
     return { ok: false, cau: cauLoiKho(e) };
   }
-  return kqHai(true, CAU_LUU[viec as ViecNccMon](ten.mon, ten.ncc));
+  return kqHai(true, CAU_LUU[viec as ViecNccMon](
+    tenCau(ten.mon, { vi: 'món', en: 'the item' }), tenCau(ten.ncc, { vi: 'nhà cung cấp này', en: 'this supplier' })));
 }

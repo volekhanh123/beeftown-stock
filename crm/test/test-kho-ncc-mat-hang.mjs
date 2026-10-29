@@ -14,7 +14,8 @@
  *   3. lần trước ở chi nhánh đang xem: số lần, ngày, kg (cộng các dòng cùng món trên phiếu gần nhất), số cái;
  *      chi nhánh khác thấy cặp nhưng không có số;
  *   4. sửa tay: thêm cặp chưa giao, bỏ (phiếu sau giao lại vẫn bỏ), thêm lại, NCC chính (mỗi món một — đặt NCC khác
- *      thì NCC cũ thôi), bấm hai lần cùng trạng thái, việc lạ / NCC ngừng dùng bị từ chối;
+ *      thì NCC cũ thôi), "thôi là chính" không thêm lại cặp đã bỏ (trang cũ), bấm hai lần cùng trạng thái, việc lạ /
+ *      NCC ngừng dùng bị từ chối; lọc theo NCC / món;
  *   5. web (ncc-mat-hang.ts): xếp món của NCC, NCC của món, chữ "Lần trước" vi / en kiểu số Việt, ?mon= lạ; luuNccMon
  *      chạy thật trên PGlite qua client giả — câu "đã" chỉ khi database nhận, mất mạng không bao giờ thành "đã";
  *   6. mã nguồn trang: nhận hàng hai lối, cài đặt NCC; kho_doi_soat_ton() rỗng.
@@ -22,7 +23,7 @@
 
 import { dungDatabase, taoBoDem, taoClientPg, UID, maGui } from './kho-chung.mjs';
 import {
-  docNccMon, monCuaNcc, nccCuaMon, chuLanTruoc, chuNccCuaMon, docMonChon, luuNccMon,
+  docNccMon, monCuaNcc, nccCuaMon, chuLanTruoc, chuNccCuaMon, chuChuaGiao, docMonChon, luuNccMon,
 } from '../../web/src/lib/kho/ncc-mat-hang.ts';
 import { dichCau } from '../../web/src/lib/cau-noi-bo.ts';
 import { readFileSync } from 'node:fs';
@@ -216,6 +217,12 @@ await nhom('3 · LẦN TRƯỚC Ở CHI NHÁNH ĐANG XEM', async () => {
   await gui(UID.thuKhoB, p7);
   const rbA = cap((await ds(UID.thuKhoA)).rows, 'NCC Bò Úc', 'C-RIBEYE');
   const rbB = cap((await ds(UID.thuKhoB, cnB)).rows, 'NCC Bò Úc', 'C-RIBEYE');
+  const theoNcc = (await duoi(UID.thuKhoA, `select * from kho_ds_ncc_mat_hang($1, $2)`, [cnA.id, NCC['NCC Bò Úc']])).rows;
+  ok('Lọc theo NCC: chỉ cặp của NCC Bò Úc', theoNcc.length >= 2 && theoNcc.every(x => x.nha_cung_cap_id === NCC['NCC Bò Úc']),
+    JSON.stringify(theoNcc.map(x => x.nha_cung_cap_id)));
+  const theoMon = (await duoi(UID.thuKhoA, `select * from kho_ds_ncc_mat_hang($1, p_mat_hang_id => $2)`, [cnA.id, MH['C-RIBEYE'].id])).rows;
+  ok('Lọc theo món: chỉ cặp của Ribeye, số lần trước giữ nguyên', theoMon.length >= 1 && theoMon.every(x => x.mat_hang_id === MH['C-RIBEYE'].id)
+    && Number(theoMon.find(x => x.nha_cung_cap_id === NCC['NCC Bò Úc'])?.kg_lan_cuoi) === 7.75, JSON.stringify(theoMon));
   ok('Phiếu ở Q7 chỉ đổi số của Q7 (Q1 vẫn 7,75 kg, Q7 10 kg)',
     Number(rbA?.kg_lan_cuoi) === 7.75 && rbA.so_lan === 2 && Number(rbB?.kg_lan_cuoi) === 10 && rbB.so_lan === 1,
     JSON.stringify({ rbA, rbB }));
@@ -268,6 +275,15 @@ await nhom('4 · SỬA TAY: THÊM, BỎ, NCC CHÍNH', async () => {
   k = await luu(UID.qlA, 'NCC Bò Mỹ', 'C-RIBEYE', 'bo');
   c = cap((await ds(UID.thuKhoA)).rows, 'NCC Bò Mỹ', 'C-RIBEYE');
   ok('Bỏ NCC chính → bỏ và thôi là chính', k.loi === null && c?.da_bo === true && c.la_chinh === false, k.loi ?? JSON.stringify(c));
+  // Trang cũ: A còn thấy nút "Thôi là NCC chính" sau khi B vừa bỏ cặp → món vẫn bỏ.
+  k = await luu(UID.keToanA, 'NCC Bò Mỹ', 'C-RIBEYE', 'bo_chinh');
+  c = cap((await ds(UID.thuKhoA)).rows, 'NCC Bò Mỹ', 'C-RIBEYE');
+  ok('"Thôi là chính" trên cặp vừa bị bỏ (trang cũ) → vẫn bỏ, không tự thêm lại', k.loi === null && c?.da_bo === true, k.loi ?? JSON.stringify(c));
+  k = await luu(UID.qlA, 'NCC Chợ', 'C-BACHI', 'bo_chinh');
+  const soDong = (await db.query(`select count(*)::int as n from kho_ncc_mat_hang where nha_cung_cap_id = $1 and mat_hang_id = $2`,
+    [NCC['NCC Chợ'], MH['C-BACHI'].id])).rows[0].n;
+  ok('"Thôi là chính" trên cặp chưa có → không thêm cặp nào', k.loi === null && soDong === 0
+    && !cap((await ds(UID.thuKhoA)).rows, 'NCC Chợ', 'C-BACHI'), k.loi ?? String(soDong));
 
   // Việc lạ, NCC / món ngừng dùng.
   k = await luu(UID.qlA, 'NCC Chợ', 'C-LUOI', 'xoa');
@@ -325,17 +341,30 @@ await nhom('5 · WEB: XẾP, CHỮ, LƯU QUA CLIENT GIẢ', async () => {
   ok('Coca (đếm theo cái, 24 lon/thùng): "Lần trước 2 thùng (48 lon)"', /^Lần trước 2 thùng \(48 lon\) · /.test(chuLanTruoc(coca, { ...MH['DU-COCA'], dem_theo_cai: true }, 'vi') ?? ''),
     chuLanTruoc(coca, { ...MH['DU-COCA'], dem_theo_cai: true }, 'vi'));
   ok('Chưa giao ở chi nhánh này → không có chữ "Lần trước"', chuLanTruoc({ ...rb, lan_cuoi: null }, MH['C-RIBEYE']) === null);
-  ok('Dòng phụ NCC: "NCC chính · giao 25/10" / "thêm tay, chưa giao"',
+  const cocaMon = { ...MH['DU-COCA'], dem_theo_cai: true };
+  ok('Món đếm theo cái, phiếu không có số gói → lấy số kg (0105: bằng số cái); không số nào → không chữ (không "0 lon")',
+    /^Lần trước 7 lon · /.test(chuLanTruoc({ ...coca, goi_lan_cuoi: null, kg_lan_cuoi: 7 }, cocaMon) ?? '')
+    && chuLanTruoc({ ...coca, goi_lan_cuoi: null, kg_lan_cuoi: null }, cocaMon) === null
+    && chuLanTruoc({ ...rb, kg_lan_cuoi: null }, MH['C-RIBEYE']) === null,
+    chuLanTruoc({ ...coca, goi_lan_cuoi: null, kg_lan_cuoi: 7 }, cocaMon));
+  ok('Dòng phụ NCC: "NCC chính · giao 25/10" / "thêm tay, chưa giao" / "chưa giao ở chi nhánh này" (giống trang cài đặt)',
     chuNccCuaMon({ ...rb, la_chinh: true, lan_cuoi: '2026-10-25' }) === 'NCC chính · giao 25/10'
     && chuNccCuaMon({ ...rb, la_chinh: false, lan_cuoi: null, da_giao: false }) === 'thêm tay, chưa giao'
-    && chuNccCuaMon({ ...rb, la_chinh: false, lan_cuoi: null, da_giao: true }) === null);
+    && chuNccCuaMon({ ...rb, la_chinh: false, lan_cuoi: null, da_giao: true }) === 'chưa giao ở chi nhánh này'
+    && chuChuaGiao({ ...rb, da_giao: true }, 'en') === 'not delivered at this branch yet');
   ok('?mon= lạ (không phải uuid) coi như không chọn', docMonChon('abc') === '' && docMonChon(null) === ''
     && docMonChon(` ${MH['C-RIBEYE'].id} `) === MH['C-RIBEYE'].id);
 
   // Lưu qua client giả: câu "đã" chỉ khi database nhận.
   const ql = clientCua(UID.qlA);
   let kq = await luuNccMon(ql, NCC['NCC Chợ'], MH['C-RIBEYE'].id, 'them', { ncc: 'NCC Chợ', mon: 'Ribeye Úc' });
-  ok('luuNccMon (quản lý): ok, câu "Đã thêm …"', kq.ok && /^Đã thêm "Ribeye Úc" vào món của NCC Chợ\./.test(kq.cau) && !!kq.cauEn, kq.cau);
+  ok('luuNccMon (quản lý): ok, câu "Đã thêm …"', kq.ok && kq.cau === 'Đã thêm "Ribeye Úc" vào món của "NCC Chợ".' && !!kq.cauEn, kq.cau);
+  kq = await luuNccMon(ql, NCC['NCC Chợ'], MH['C-RIBEYE'].id, 'chinh', { ncc: '', mon: '' });
+  ok('Không đọc được tên (trang lỗi đọc danh mục) → câu chung, không có ngoặc rỗng ""',
+    kq.ok && kq.cau === 'Đã đặt nhà cung cấp này là nhà cung cấp chính của món.' && !kq.cau.includes('""'), kq.cau);
+  await luu(UID.qlA, 'NCC Chợ', 'C-RIBEYE', 'bo_chinh');
+  kq = await luuNccMon(ql, '', MH['C-RIBEYE'].id, 'them', { ncc: '', mon: 'Ribeye Úc' });
+  ok('NCC trống / lạ → "Chưa chọn nhà cung cấp." (không đổ cho món)', !kq.ok && kq.cau === 'Chưa chọn nhà cung cấp.', kq.cau);
   kq = await luuNccMon(tk, NCC['NCC Chợ'], MH['C-RIBEYE'].id, 'bo', { ncc: 'NCC Chợ', mon: 'Ribeye Úc' });
   ok('luuNccMon (thủ kho): không ok, không có chữ "Đã"', !kq.ok && !/^Đã/.test(kq.cau), kq.cau);
   kq = await luuNccMon(ql, NCC['NCC Chợ'], MH['C-RIBEYE'].id, 'xoa', { ncc: 'NCC Chợ', mon: 'Ribeye Úc' });
@@ -358,11 +387,19 @@ await nhom('6 · MÃ NGUỒN TRANG', async () => {
   const getDong = b1.indexOf('</form>', getMo);
   ok('Bước 1: form "chọn món trước" là GET riêng, đóng TRƯỚC form ảnh (không lồng, chọn món không mất ảnh)',
     getMo > 0 && getDong > getMo && getDong < b1.indexOf('<form method="POST" enctype="multipart/form-data">'));
-  ok('Bước 1: ?mon= đọc bằng docMonChon, NCC bán món đó bằng nccCuaMon', /docMonChon\(/.test(b1) && /nccCuaMon\(/.test(b1));
+  ok('Bước 1: ?mon= đọc bằng docMonChon, NCC bán món đó bằng nccCuaMon, đọc lọc theo món', /docMonChon\(/.test(b1) && /nccCuaMon\(/.test(b1)
+    && /docNccMon\(k\.client, cn\.id, \{ mon: monChon\.id \}\)/.test(b1));
+  ok('Bước 1: đọc NCC của món SAU phần gửi form (bấm "Tiếp" thành công không đọc thừa)',
+    b1.indexOf('docNccMon(k.client') > b1.indexOf('const form = await docFormGui(Astro);'));
+  const getForm = b1.slice(getMo, getDong);
+  ok('Bước 1: form "chọn món trước" mang theo ảnh đã tải (ma_gui + anh_da_tai), trang đọc lại bằng docAnhDaTai',
+    /name="anh_da_tai"/.test(getForm) && /name="ma_gui"/.test(getForm)
+    && /docAnhDaTai\(fd, cn\.id, 'nhap', maGuiUrl, 24\)/.test(b1));
   ok('Bước 1: món đã chọn đi theo sang bước 2 (?tiep=), một NCC bán món thì chọn sẵn', /name="mon"/.test(b1) && /\?tiep=\$\{monChon\.id\}/.test(b1)
     && /nccBanMon\.length === 1 \? nccBanMon\[0\]\.n\.id/.test(b1));
   const b2 = doc('web/src/pages/noi-bo/kho/nhan-hang/[id].astro');
-  ok('Bước 2: nút món theo danh mục NCC (monCuaNcc), không đoán bằng tên NCC nữa', /monCuaNcc\(/.test(b2) && !/docMonGanDay/.test(b2));
+  ok('Bước 2: nút món theo danh mục NCC (monCuaNcc, đọc lọc theo NCC của phiếu), không đoán bằng tên NCC nữa',
+    /monCuaNcc\(/.test(b2) && /docNccMon\(k\.client, cn\.id, \{ ncc: phieu\.nha_cung_cap_id \}\)/.test(b2) && !/docMonGanDay/.test(b2));
   ok('Bước 2: dòng phụ của nút món là "Lần trước …" (chuLanTruoc)', /chuLanTruoc\(/.test(b2));
   ok('nhan-hang.ts: bỏ docMonGanDay (tìm phiếu theo chữ tên NCC)', !/docMonGanDay/.test(doc('web/src/lib/kho/nhan-hang.ts')));
   const ncc = doc('web/src/pages/noi-bo/kho/cai-dat/nha-cung-cap.astro');

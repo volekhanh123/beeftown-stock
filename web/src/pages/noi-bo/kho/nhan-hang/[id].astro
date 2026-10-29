@@ -358,7 +358,8 @@ let ncc: NccNhap[] = [];
 let monNcc: NccMon[] = [];
 if (phieu && man === 'them') {
   const [dsMon, dsNcc] = await Promise.all([
-    phieu.loai === 'mua' ? docNccMon(k.client, cn.id).catch(() => []) : Promise.resolve([]),
+    phieu.loai === 'mua' && phieu.nha_cung_cap_id
+      ? docNccMon(k.client, cn.id, { ncc: phieu.nha_cung_cap_id }).catch(() => []) : Promise.resolve([]),
     phieu.loai === 'mua' ? docNccNhap(k.client, cn.id).catch(() => []) : Promise.resolve([]),
   ]);
   ncc = dsNcc;

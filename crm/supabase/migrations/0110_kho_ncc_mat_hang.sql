@@ -20,12 +20,15 @@
 -- Đổi trong file này:
 --   1. kho_ncc_mat_hang (bảng mới): phần sửa tay. Đọc: vai ncc (quản lý, chủ, kế toán). Ghi: chỉ qua
 --      kho_luu_ncc_mat_hang.
---   2. kho_ds_ncc_mat_hang(chi nhánh) — hàm đọc mới, vai nhap hoặc ncc của chi nhánh: mọi cặp của NCC và món đang
---      dùng — NCC chính, đã bỏ, thêm tay, đã giao (mọi chi nhánh), và ở CHI NHÁNH NÀY: số lần giao, ngày giao gần nhất,
---      kg và số gói / cái của món đó trên phiếu gần nhất. Không có tiền: thủ kho đọc được.
+--   2. kho_ds_ncc_mat_hang(chi nhánh, NCC, món) — hàm đọc mới, vai nhap hoặc ncc của chi nhánh: các cặp của NCC và
+--      món đang dùng — NCC chính, đã bỏ, thêm tay, đã giao (mọi chi nhánh), và ở CHI NHÁNH NÀY: số lần giao, ngày giao
+--      gần nhất, kg và số gói / cái của món đó trên phiếu gần nhất. NCC / món truyền vào (không bắt buộc) lọc ngay từ
+--      đầu — bước 2 nhận hàng chỉ cần một NCC, bước 1 một món — để không cộng cả lịch sử phiếu mỗi lần mở trang.
+--      Không có tiền: thủ kho đọc được.
 --   3. kho_luu_ncc_mat_hang(NCC, món, việc) — hàm ghi mới, vai ncc: 'them' (thêm / thêm lại), 'bo' (bỏ khỏi danh
---      sách), 'chinh' (NCC chính của món — NCC chính cũ của món đó thôi là chính), 'bo_chinh'. Bấm hai lần ra cùng một
---      trạng thái.
+--      sách), 'chinh' (NCC chính của món — NCC chính cũ của món đó thôi là chính; cặp đã bỏ thì thêm lại: đặt làm chính
+--      là khẳng định NCC này bán món đó), 'bo_chinh' (chỉ thôi là chính — không thêm cặp, không đổi đã bỏ: trang cũ bấm
+--      sau khi người khác vừa bỏ thì món vẫn bỏ). Bấm hai lần ra cùng một trạng thái.
 -- Một bảng mới, hai hàm mới.
 --
 -- Triển khai: chạy migration trước, deploy web sau (web mới gọi hai hàm mới; web cũ không gọi). Không có câu xoá.
@@ -74,7 +77,11 @@ create policy kho_ncc_mat_hang_doc on kho_ncc_mat_hang
 -- =============================================================================
 -- 2 · kho_ds_ncc_mat_hang — ĐỌC DANH MỤC (TỰ HỌC + SỬA TAY), KHÔNG CÓ TIỀN
 -- =============================================================================
-create or replace function kho_ds_ncc_mat_hang(p_chi_nhanh_id uuid)
+create or replace function kho_ds_ncc_mat_hang(
+  p_chi_nhanh_id    uuid,
+  p_nha_cung_cap_id uuid default null,
+  p_mat_hang_id     uuid default null
+)
 returns table (
   nha_cung_cap_id uuid,
   mat_hang_id     uuid,
@@ -107,6 +114,8 @@ begin
       join kho_phieu_nhap_dong d on d.phieu_nhap_id = p.id
       where p.loai = 'mua' and p.nha_cung_cap_id is not null
         and p.trang_thai in ('cho_duyet', 'da_duyet')
+        and (p_nha_cung_cap_id is null or p.nha_cung_cap_id = p_nha_cung_cap_id)
+        and (p_mat_hang_id is null or d.mat_hang_id = p_mat_hang_id)
       group by p.nha_cung_cap_id, d.mat_hang_id, p.id, p.chi_nhanh_id, p.ngay_nhap, p.created_at
     ),
     o_day as (
@@ -125,6 +134,8 @@ begin
         select distinct t.ncc, t.mh, true as da_giao from theo_phieu t
         union all
         select s.nha_cung_cap_id, s.mat_hang_id, false from kho_ncc_mat_hang s
+        where (p_nha_cung_cap_id is null or s.nha_cung_cap_id = p_nha_cung_cap_id)
+          and (p_mat_hang_id is null or s.mat_hang_id = p_mat_hang_id)
       ) x
       group by x.ncc, x.mh
     )
@@ -146,8 +157,8 @@ begin
 end;
 $$;
 
-comment on function kho_ds_ncc_mat_hang(uuid) is
-  'Danh mục NCC – món (0110): cặp đã giao (phiếu mua đã gửi / đã duyệt, mọi chi nhánh) cộng cặp thêm tay, chỉ NCC và món đang dùng. da_bo = đã bỏ tay (web không hiện thành nút). Số lần, lần cuối, kg / gói của lần cuối tính ở chi nhánh truyền vào. Không có tiền — vai nhap (thủ kho) hoặc ncc.';
+comment on function kho_ds_ncc_mat_hang(uuid, uuid, uuid) is
+  'Danh mục NCC – món (0110): cặp đã giao (phiếu mua đã gửi / đã duyệt, mọi chi nhánh) cộng cặp thêm tay, chỉ NCC và món đang dùng; NCC / món truyền vào thì chỉ cặp của NCC / món đó. da_bo = đã bỏ tay (web không hiện thành nút). Số lần, lần cuối, kg / gói của lần cuối tính ở chi nhánh truyền vào. Không có tiền — vai nhap (thủ kho) hoặc ncc.';
 
 
 -- =============================================================================
@@ -172,13 +183,22 @@ begin
   if not exists (select 1 from kho_nha_cung_cap where id = p_nha_cung_cap_id and dang_dung) then
     raise exception 'Chọn nhà cung cấp đang dùng';
   end if;
-  -- Khóa dòng món: hai người cùng đặt NCC chính cho một món thì người sau chờ, không vấp chỉ mục duy nhất.
-  perform 1 from kho_mat_hang where id = p_mat_hang_id and dang_dung for update;
+  -- Khóa dòng món: hai người cùng đặt NCC chính cho một món thì người sau chờ, không vấp chỉ mục duy nhất. NO KEY:
+  -- không chặn các phiếu đang ghi dòng trỏ tới món này (khóa ngoại chỉ cần KEY SHARE).
+  perform 1 from kho_mat_hang where id = p_mat_hang_id and dang_dung for no key update;
   if not found then
     raise exception 'Chọn mặt hàng đang dùng';
   end if;
 
   v_nguoi := (nhan_su_hien_tai()).id;
+
+  if p_viec = 'bo_chinh' then
+    -- Chỉ thôi là chính: không thêm cặp, không đổi đã bỏ / đang dùng.
+    update kho_ncc_mat_hang
+       set la_chinh = false, nguoi_sua = v_nguoi
+     where nha_cung_cap_id = p_nha_cung_cap_id and mat_hang_id = p_mat_hang_id and la_chinh;
+    return;
+  end if;
 
   if p_viec = 'chinh' then
     update kho_ncc_mat_hang
@@ -190,7 +210,7 @@ begin
   values (p_nha_cung_cap_id, p_mat_hang_id, p_viec <> 'bo', p_viec = 'chinh', v_nguoi)
   on conflict (nha_cung_cap_id, mat_hang_id) do update
     set dang_dung = excluded.dang_dung,
-        -- 'them' giữ nguyên NCC chính nếu đã là chính; 'bo', 'bo_chinh' thôi là chính.
+        -- 'them' giữ nguyên NCC chính nếu đã là chính; 'bo' thôi là chính.
         la_chinh  = case p_viec when 'chinh' then true
                                 when 'them' then kho_ncc_mat_hang.la_chinh
                                 else false end,
@@ -199,7 +219,7 @@ end;
 $$;
 
 comment on function kho_luu_ncc_mat_hang(uuid, uuid, text) is
-  'Sửa tay một cặp NCC – món (0110), vai ncc: them (thêm / thêm lại), bo (bỏ khỏi danh sách, thôi là chính), chinh (NCC chính của món — NCC chính cũ thôi là chính), bo_chinh. Bấm hai lần ra cùng trạng thái.';
+  'Sửa tay một cặp NCC – món (0110), vai ncc: them (thêm / thêm lại), bo (bỏ khỏi danh sách, thôi là chính), chinh (NCC chính của món — NCC chính cũ thôi là chính; cặp đã bỏ thì thêm lại), bo_chinh (chỉ thôi là chính — không thêm cặp, không đổi đã bỏ). Bấm hai lần ra cùng trạng thái.';
 
 
 -- =============================================================================
@@ -208,14 +228,14 @@ comment on function kho_luu_ncc_mat_hang(uuid, uuid, text) is
 -- Hai hàm mới: authenticated gọi được (tự kiểm vai ở câu đầu), anon thì không. Danh sách anon không đổi.
 do $$
 begin
-  execute 'revoke execute on function kho_ds_ncc_mat_hang(uuid) from public';
+  execute 'revoke execute on function kho_ds_ncc_mat_hang(uuid, uuid, uuid) from public';
   execute 'revoke execute on function kho_luu_ncc_mat_hang(uuid, uuid, text) from public';
   if exists (select 1 from pg_roles where rolname = 'anon') then
-    execute 'revoke execute on function kho_ds_ncc_mat_hang(uuid) from anon';
+    execute 'revoke execute on function kho_ds_ncc_mat_hang(uuid, uuid, uuid) from anon';
     execute 'revoke execute on function kho_luu_ncc_mat_hang(uuid, uuid, text) from anon';
   end if;
   if exists (select 1 from pg_roles where rolname = 'authenticated') then
-    execute 'grant execute on function kho_ds_ncc_mat_hang(uuid) to authenticated';
+    execute 'grant execute on function kho_ds_ncc_mat_hang(uuid, uuid, uuid) to authenticated';
     execute 'grant execute on function kho_luu_ncc_mat_hang(uuid, uuid, text) to authenticated';
   end if;
 end

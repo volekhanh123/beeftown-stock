@@ -26,7 +26,7 @@ import TruongThem from '../../../../components/kho/TruongThem.astro';
 import ChonMatHang from '../../../../components/kho/ChonMatHang.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { docNhaCungCap, docDinhNghia, docMatHang, luuNhaCungCap, type MatHang, type NhaCungCap } from '../../../../lib/kho/danh-muc.ts';
-import { docNccMon, monCuaNcc, chuLanTruoc, luuNccMon, type NccMon } from '../../../../lib/kho/ncc-mat-hang.ts';
+import { docNccMon, monCuaNcc, chuLanTruoc, chuChuaGiao, luuNccMon, type NccMon } from '../../../../lib/kho/ncc-mat-hang.ts';
 import { cauLoiKho, dinhDangThoiDiem, type KetQua } from '../../../../lib/kho/chung.ts';
 import { docNhatKyTaiKhoan, type DoiTaiKhoan } from '../../../../lib/kho/cong-no.ts';
 import { tenNhanSu } from '../../../../lib/kho/trang.ts';
@@ -102,8 +102,6 @@ const t = dichNB(nn, {
   chuaCoMon: { vi: 'Chưa có món nào — thêm ở dưới, hoặc đợi phiếu nhận hàng đầu tiên.', en: 'No items yet — add one below, or wait for the first receiving note.' },
   laChinh: { vi: 'NCC chính', en: 'Main supplier' },
   chinhLa: { vi: (ten: string) => `NCC chính: ${ten}`, en: (ten: string) => `Main supplier: ${ten}` },
-  themTay: { vi: 'thêm tay, chưa giao', en: 'added by hand, not delivered yet' },
-  chuaGiaoO: { vi: 'chưa giao ở chi nhánh này', en: 'not delivered at this branch yet' },
   datChinh: { vi: 'Đặt làm NCC chính', en: 'Make main supplier' },
   thoiChinh: { vi: 'Thôi là NCC chính', en: 'No longer main' },
   boMon: { vi: 'Bỏ', en: 'Remove' },
@@ -127,6 +125,7 @@ if (form && String(form.get('viec') ?? '') === 'ncc_mon') {
   // 0110: một nút của mục "Món nhà cung cấp này bán".
   const nccId = String(form.get('ncc') ?? '');
   const monId = String(form.get('mon') ?? '');
+  // Tên món chỉ để viết câu báo — đọc không được thì câu nói "món" chung, việc lưu vẫn theo kết quả database.
   const tenMon = (await docMatHang(k.client).catch(() => [] as MatHang[])).find(m => m.id === monId)?.ten ?? '';
   const kq = await luuNccMon(k.client, nccId, monId, String(form.get('lam') ?? ''),
     { ncc: ds.find(n => n.id === nccId)?.ten ?? '', mon: tenMon });
@@ -285,7 +284,7 @@ const monChuaCo = matHang.filter(m => m.dang_dung && !monDangBan.some(c => c.mat
                   <span>
                     <strong>{m?.ten}{c.la_chinh ? ` · ${t.laChinh}` : ''}</strong>
                     <small>{[
-                      chuLanTruoc(c, m, nn) ?? (c.da_giao ? t.chuaGiaoO : t.themTay),
+                      chuLanTruoc(c, m, nn) ?? chuChuaGiao(c, nn),
                       khac ? t.chinhLa(tenNcc.get(khac.nha_cung_cap_id) ?? '') : '',
                     ].filter(Boolean).join(' · ')}</small>
                   </span>
