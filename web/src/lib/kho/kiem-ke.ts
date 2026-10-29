@@ -32,6 +32,7 @@ import { cauLoiKho, dinhDangKg, docKg, docSoNguyen, docTungTrang, kqHai, laUuid,
 import { gomTheoMaCan, tachDanhSachMa } from './ma-vach.ts';
 import { taoBangTraMaCan, traMaCan, type MaGiamDeTra, type OMaDeTra } from './tra-ma-can.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
+import type { DongTon } from './ton.ts';
 
 export interface KiemKeTom {
   id: string;
@@ -557,4 +558,30 @@ export function tuChoiKiemKe(client: SupabaseClient, id: string, lyDo: string) {
 export async function huyKiemKe(client: SupabaseClient, id: string, lyDo: string | null): Promise<KetQua> {
   if (!lyDo?.trim()) return kqHai(false, CAU_KK.chuaHuy);
   return cauTraVe(client.rpc('kho_huy_kiem_ke', { p_id: id, p_ly_do: lyDo }));
+}
+
+/**
+ * Nhóm "Gợi ý" của ô "Thấy mặt hàng không có trong danh sách" (29/10/2026): món sổ ghi đang ở CHỖ KHÁC của chi nhánh
+ * — hay gặp nhất là hàng đã mang sang mà chưa ghi phiếu. Chữ phụ "đang ở Kho lạnh, Quầy 2". Bỏ món đã có trên phiếu
+ * (`daCo`) và món sổ còn ghi ở chính chỗ đang kiểm; bỏ "Hàng chờ hủy"; kiểm quầy thì bỏ tảng (tảng không ra quầy,
+ * pha lóc trước). Xếp theo tên.
+ */
+export function goiYThayMon(
+  ton: DongTon[], viTri: { id: string; loai: string }, daCo: ReadonlySet<string>, nn: NgonNguNB = 'vi',
+): { id: string; chu: string }[] {
+  const viTriId = viTri.id;
+  const oDay = new Set(ton.filter(t => t.vi_tri_id === viTriId).map(t => t.mat_hang_id));
+  const noi = new Map<string, { ten: string; cho: string[] }>();
+  for (const t of ton) {
+    if (t.vi_tri_id === viTriId || t.loai_vi_tri === 'cho_huy' || !(t.so_kg > 0 || t.so_goi > 0)) continue;
+    if (viTri.loai === 'quay' && t.loai_hang === 'tang') continue;
+    if (daCo.has(t.mat_hang_id) || oDay.has(t.mat_hang_id)) continue;
+    const m = noi.get(t.mat_hang_id) ?? { ten: t.ten_hang, cho: [] };
+    if (!m.cho.includes(t.ten_vi_tri)) m.cho.push(t.ten_vi_tri);
+    noi.set(t.mat_hang_id, m);
+  }
+  return [...noi].sort((a, b) => a[1].ten.localeCompare(b[1].ten, 'vi')).map(([id, m]) => {
+    const cho = m.cho.slice(0, 2).join(', ') + (m.cho.length > 2 ? '…' : '');
+    return { id, chu: { vi: `đang ở ${cho}`, en: `at ${cho}` }[nn] };
+  });
 }

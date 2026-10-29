@@ -332,6 +332,26 @@ Không migration: mọi số đã có (`kho_v_ton` NV quầy đọc được, `k
   sốt / đồ uống (0105). Món đếm theo cái chỉ ghi số cái, không kg.
 - `test-kho-chon-mon-co-ton.mjs` gác các điều trên.
 
+### Nhóm "Gợi ý" trong ô chọn món (Khánh chốt 29/10/2026)
+
+Ô chọn món dùng chung (`components/kho/ChonMatHang.astro`) nhận `goiY` (id món + chữ phụ), `tenGoiY`, `bo`: nhóm gợi ý
+đứng đầu, theo thứ tự truyền vào; món vẫn còn ở nhóm loại của nó (chỉ một lựa chọn mang `selected`); `bo` là món không
+hiện. Món đang chọn luôn hiện, kể cả ngoài `loai` / `bo` — form cũ không tự mất món. Không migration.
+
+- **Pha lóc bước 2, dòng gõ tay** (`pha-loc/[id]`, chỉ bước cân & quét) và **lưới công thức** (`cai-dat/cong-thuc`):
+  nhóm "Phần tảng này hay ra" = `goiYPhanRa` (`lib/kho/cong-thuc.ts`) — phần loại tảng này thực tế ra trong 30 ngày
+  (`docGoiYThucTe`, tỷ lệ cao trước, "thực tế 70,0%") rồi phần có trong công thức mà chưa ra lần nào ("công thức 5,0%").
+  Pha lóc: công thức đang chọn trước, bỏ chính tảng đầu vào. Công thức: lấy từ công thức khác cùng đầu vào, bỏ món đã có
+  trên lưới (dòng không tích Bỏ); tỷ lệ thực tế đọc mỗi lần sửa, cột "Gợi ý" và câu lỗi vẫn chỉ khi `?goi_y=1`. Không bỏ
+  tảng khỏi danh sách: database không chặn tảng làm phần ra.
+- **Kiểm kê, "Thấy mặt hàng không có trong danh sách"** (`kiem-ke/[id]`, đang đếm, không theo lô): `bo` = món đã có trên
+  phiếu (ghi ở dòng của nó); nhóm "Sổ ghi đang ở chỗ khác" = `goiYThayMon` (`lib/kho/kiem-ke.ts`) — món sổ ghi ở chỗ
+  khác của chi nhánh mà không ở chỗ đang kiểm, chữ "đang ở Kho lạnh, Quầy 2…"; bỏ hàng chờ hủy; kiểm quầy thì bỏ tảng.
+- **Phiếu nhập soạn tay** (`nhap/[id]`, phiếu mua đang soạn đã có NCC): nhóm "<NCC> bán" = `goiYMonNcc`
+  (`lib/kho/ncc-mat-hang.ts`) — món của NCC đó (danh mục 3t), chữ "Lần trước 12,5 kg · 25/10", chưa giao thì "NCC
+  chính". Chưa lưu NCC thì chưa có nhóm (trang không JavaScript).
+- Đọc dữ liệu gợi ý lỗi thì chỉ mất nhóm gợi ý, ô chọn vẫn đủ món. `test-kho-goi-y-chon-mon.mjs` gác các điều trên.
+
 ### Gọn phần tiền và báo cáo (Khánh duyệt 23/10/2026)
 
 - **Công nợ một nhà cung cấp** (`cong-no/[id]`): mỗi phiếu một hàng gập — số phiếu · ngày · phải trả · còn nợ ·

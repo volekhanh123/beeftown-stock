@@ -26,7 +26,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  cauLoiKho, congNgay, docKg, docSoNguyen, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB,
+  cauLoiKho, congNgay, dinhDangPhanTram, docKg, docSoNguyen, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB,
 } from './chung.ts';
 import { dichCau } from '../cau-noi-bo.ts';
 import type { CongThuc } from './danh-muc.ts';
@@ -165,6 +165,36 @@ export function tinhGoiY(
   const tyLe = new Map<string, number>();
   if (kgVao > 0) for (const [mh, kg] of cong) tyLe.set(mh, Math.round(kg / kgVao * 1000) / 10);
   return { soPhien: dung.length, kgVao: Math.round(kgVao * 1000) / 1000, tyLe };
+}
+
+/**
+ * Nhóm "Gợi ý" của ô chọn phần ra (pha lóc bước 2 — dòng gõ tay, lưới công thức; 29/10/2026): phần loại tảng này
+ * thực tế hay ra (tỷ lệ 30 ngày của `docGoiYThucTe`, cao trước) rồi phần có trong công thức mà chưa ra lần nào (tỷ lệ
+ * dự kiến cao trước). Mỗi món một lần; `bo` (vd. chính loại tảng đem pha) không gợi ý.
+ */
+export function goiYPhanRa(
+  tyLeThucTe: ReadonlyMap<string, number>,
+  dongCongThuc: { mat_hang_ra_id: string; ty_le_du_kien: number | null }[],
+  nn: NgonNguNB = 'vi',
+  bo: ReadonlySet<string> = new Set(),
+): { id: string; chu: string | null }[] {
+  const kq: { id: string; chu: string | null }[] = [];
+  const da = new Set(bo);
+  for (const [id, tl] of [...tyLeThucTe].sort((a, b) => b[1] - a[1])) {
+    if (da.has(id)) continue;
+    da.add(id);
+    kq.push({ id, chu: { vi: `thực tế ${dinhDangPhanTram(tl, 1, 'vi')}`, en: `actual ${dinhDangPhanTram(tl, 1, 'en')}` }[nn] });
+  }
+  for (const d of [...dongCongThuc].sort((a, b) => (b.ty_le_du_kien ?? -1) - (a.ty_le_du_kien ?? -1))) {
+    if (da.has(d.mat_hang_ra_id)) continue;
+    da.add(d.mat_hang_ra_id);
+    kq.push({
+      id: d.mat_hang_ra_id,
+      chu: d.ty_le_du_kien === null ? null
+        : { vi: `công thức ${dinhDangPhanTram(d.ty_le_du_kien, 1, 'vi')}`, en: `recipe ${dinhDangPhanTram(d.ty_le_du_kien, 1, 'en')}` }[nn],
+    });
+  }
+  return kq;
 }
 
 // -----------------------------------------------------------------------------

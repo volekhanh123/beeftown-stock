@@ -66,6 +66,7 @@ import {
   cauConU, cauTangConU, chuTang, docLoTang, docNgayUTang, soTangChu, tinhTrangU, TINH_TRANG_U_NB, type TinhTrangU,
 } from '../../../../lib/kho/tang.ts';
 import { doiDonViCau } from '../../../../lib/kho/xuat.ts';
+import { docGoiYThucTe, goiYPhanRa } from '../../../../lib/kho/cong-thuc.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -169,6 +170,7 @@ const t = dichNB(nn, {
   ghiChu: { vi: 'Ghi chú', en: 'Note' },
   viDuGhiChu: { vi: 'ví dụ: thợ Tuấn, tảng mỡ nhiều', en: 'e.g. butcher Tuan, very fatty primal' },
   congThuc: { vi: 'Công thức (để so thu hồi dự kiến)', en: 'Recipe (to compare with the expected yield)' },
+  goiYPhanRa: { vi: 'Phần tảng này hay ra', en: 'Usual cuts from this primal' },
   khongChon: { vi: '— không chọn —', en: '— none —' },
   luu: { vi: 'Lưu', en: 'Save' },
   luuXem: { vi: 'Lưu, xem kết quả →', en: 'Save, see result →' },
@@ -465,6 +467,14 @@ const tenNoiDe = (id: string | null) => {
 const ctCuaTang = congThuc.filter(c => c.mat_hang_vao_id === phien?.mat_hang_vao_id && (c.dang_dung || c.id === phien?.cong_thuc_id));
 const ctChonId = docLoi?.dau.cong_thuc_id ?? phien?.cong_thuc_id ?? '';
 const ctChon = ctCuaTang.find(c => c.id === ctChonId) ?? null;
+// Nhóm "Gợi ý" của ô chọn món ở dòng gõ tay: phần loại tảng này thực tế hay ra (30 ngày) rồi phần của các công thức
+// (công thức đang chọn trước). Chỉ ở bước cân & quét; đọc lỗi thì chỉ mất nhóm gợi ý.
+const thucTe = buoc === 'can_quet' && phien
+  ? await docGoiYThucTe(k.client, cn.id, phien.mat_hang_vao_id, homNayVn(), nn) : null;
+const goiYRa = buoc === 'can_quet' && phien
+  ? goiYPhanRa(thucTe && !thucTe.loi ? thucTe.tyLe : new Map(),
+    [...(ctChon?.dong ?? []), ...ctCuaTang.filter(c => c !== ctChon).flatMap(c => c.dong)], nn, new Set([phien.mat_hang_vao_id]))
+  : [];
 
 // Đầu vào: mọi lô của loại tảng đang có (trừ chờ hủy, đang mang ra quầy) + lô đã ghi trong nháp.
 type DongVao = { key: string; lo_id: string; vi_tri_id: string; ton_kg: number; ton_goi: number; ma_lo: string; han_dung: string; tinh_trang: string };
@@ -753,7 +763,7 @@ const tenNguon = (ma: string) => nhanKho(TEN_NGUON_DU_KIEN_NB, ma, nn);
                 <div class="kho-dong-hang pl-ra">
                   <div class="pl-ra-luoi">
                     <label class="nb-o pl-ra-mh"><span>{t.matHang}</span>
-                      <ChonMatHang name={`r${i}_mat_hang`} matHang={matHang} chon={r.mat_hang_id} /></label>
+                      <ChonMatHang name={`r${i}_mat_hang`} matHang={matHang} chon={r.mat_hang_id} goiY={goiYRa} tenGoiY={t.goiYPhanRa} /></label>
                     <label class="nb-o"><span>{t.soKg}</span>
                       <input type="text" inputmode="decimal" name={`r${i}_so_kg`} value={r.so_kg} placeholder={i === 0 ? t.viDu125 : undefined} /></label>
                     <label class="nb-o"><span>{t.xuLy}</span>

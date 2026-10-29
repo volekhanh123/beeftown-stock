@@ -20,7 +20,7 @@ import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.t
 import { docCongThuc, docMatHang, luuCongThuc, type CongThuc, type MatHang } from '../../../../lib/kho/danh-muc.ts';
 import {
   SO_DONG_TOI_DA, NGAY_GOI_Y, cauTong, chuTuCongThuc, docGoiYThucTe, docLuoiCongThuc, luuLuoiCongThuc, mauTong,
-  nhanBanCongThuc, phienBanCongThuc, themDongTrong, tongChu, type ChuDongLuoi,
+  goiYPhanRa, nhanBanCongThuc, phienBanCongThuc, themDongTrong, tongChu, type ChuDongLuoi,
 } from '../../../../lib/kho/cong-thuc.ts';
 import {
   cauLoiKho, dinhDangKg, dinhDangPhanTram, homNayVn, kqHai, nhanKho, TEN_XU_LY_NB, type KetQua,
@@ -61,6 +61,7 @@ const t = dichNB(nn, {
   thuTu: { vi: 'Thứ tự', en: 'Order' },
   bo: { vi: 'Bỏ', en: 'Remove' },
   chonPhanRa: { vi: '— chọn phần ra —', en: '— choose an output cut —' },
+  goiYMon: { vi: 'Phần tảng này hay ra', en: 'Usual cuts from this primal' },
   tyLeVd: { vi: '72,5', en: '72.5' },
   ariaTyLe: { vi: (n: number) => `Tỷ lệ % dòng ${n}`, en: (n: number) => `Percentage, row ${n}` },
   ariaXuLy: { vi: (n: number) => `Xử lý dòng ${n}`, en: (n: number) => `Handling, row ${n}` },
@@ -145,10 +146,20 @@ const luoi: ChuDongLuoi[] = dangSua ? (chuLuoi ?? themDongTrong(chuTuCongThuc(da
 const luoiDung = luoi.slice(0, SO_DONG_TOI_DA);
 // Tổng chạy tính ở máy chủ từ chữ đang thấy trên lưới (dòng tích Bỏ / trống không tính).
 const tongLuoi = tongChu(luoiDung);
-const goiY = dangSua && muonGoiY && k.chiNhanh
+// Tỷ lệ thực tế 30 ngày: đọc mỗi lần sửa công thức — cho nhóm "Gợi ý" của ô chọn phần ra; cột Gợi ý và câu lỗi chỉ hiện
+// khi bấm "Gợi ý từ thực tế" (?goi_y=1).
+const thucTe = dangSua && k.chiNhanh
   ? await docGoiYThucTe(k.client, k.chiNhanh.id, dangSua.mat_hang_vao_id, homNayVn(), nn)
   : null;
+const goiY = muonGoiY ? thucTe : null;
 if (goiY?.loi) loiDoc = goiY.loi;
+// Nhóm "Gợi ý" (29/10/2026): phần loại tảng này thực tế hay ra, rồi phần của công thức khác cùng đầu vào; bỏ món đã
+// có trên lưới và chính tảng đầu vào.
+const goiYMon = dangSua
+  ? goiYPhanRa(thucTe && !thucTe.loi ? thucTe.tyLe : new Map(),
+    congThuc.filter(c => c.id !== dangSua.id && c.mat_hang_vao_id === dangSua.mat_hang_vao_id && c.dang_dung).flatMap(c => c.dong),
+    nn, new Set([dangSua.mat_hang_vao_id, ...luoiDung.filter(d => !d.bo && d.mh).map(d => d.mh)]))
+  : [];
 const tongTyLeCt = (c: CongThuc) => c.dong.reduce((s, d) => s + (d.ty_le_du_kien ?? 0), 0);
 // Món có trong gợi ý mà lưới chưa có: nhắc bên dưới để thêm.
 const goiYThieu = goiY ? [...goiY.tyLe].filter(([mh]) => !luoiDung.some(d => d.mh === mh)) : [];
@@ -192,7 +203,7 @@ const goiYThieu = goiY ? [...goiY.tyLe].filter(([mh]) => !luoiDung.some(d => d.m
             <tbody>
               {luoiDung.map((d, i) => (
                 <tr style={d.bo ? 'opacity:.5' : undefined}>
-                  <td><ChonMatHang name={`mh_${i}`} matHang={matHang} chon={d.mh} trong={t.chonPhanRa} /></td>
+                  <td><ChonMatHang name={`mh_${i}`} matHang={matHang} chon={d.mh} trong={t.chonPhanRa} goiY={goiYMon} tenGoiY={t.goiYMon} /></td>
                   <td class="so"><input type="text" inputmode="decimal" name={`tl_${i}`} value={d.tl} placeholder={t.tyLeVd} aria-label={t.ariaTyLe(i + 1)} /></td>
                   {goiY && <td class="so">{d.mh && goiY.tyLe.has(d.mh) ? <strong>{dinhDangPhanTram(goiY.tyLe.get(d.mh), 1, nn)}</strong> : <span class="kho-phu">—</span>}</td>}
                   <td>

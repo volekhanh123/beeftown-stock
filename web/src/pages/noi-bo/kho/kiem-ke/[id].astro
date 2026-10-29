@@ -45,9 +45,10 @@ import { docThongTinLo, docGiaVonLo } from '../../../../lib/kho/pha-loc.ts';
 import { docMaTrenNhan } from '../../../../lib/kho/o-ma.ts';
 import { chuTang, docLoTang } from '../../../../lib/kho/tang.ts';
 import { doiDonViCau } from '../../../../lib/kho/xuat.ts';
+import { docTon, type DongTon } from '../../../../lib/kho/ton.ts';
 import {
   docKiemKe, docFormKiemKe, payloadTuDong, apDungQuet, dongDemTuDb, luuKiemKe, guiKiemKe, duyetKiemKe,
-  tuChoiKiemKe, huyKiemKe, gopKhiTrung, laLoiMayKhac, daDemDong, cauQuetLoi, docSoNhanQuet,
+  tuChoiKiemKe, huyKiemKe, gopKhiTrung, laLoiMayKhac, daDemDong, cauQuetLoi, docSoNhanQuet, goiYThayMon,
   type KiemKe, type DongKiemKe, type LoKiemKe, type DongDemForm, type KetQuaQuetKiemKe,
 } from '../../../../lib/kho/kiem-ke.ts';
 import {
@@ -143,6 +144,7 @@ const t = dichNB(nn, {
     en: (dv: string | null) => `None left — ${dv !== null ? `no ${dv} left` : 'nothing left'}`,
   },
   thayMatHang: { vi: 'Thấy mặt hàng không có trong danh sách', en: 'Found an item that is not on the list' },
+  dangOChoKhac: { vi: 'Sổ ghi đang ở chỗ khác', en: 'Recorded at another place' },
   matHang: { vi: 'Mặt hàng', en: 'Item' },
   soGoi: { vi: 'Số gói', en: 'Packs' },
   ghiChu: { vi: 'Ghi chú', en: 'Note' },
@@ -379,6 +381,12 @@ if (!form && demDuoc) {
 // ---------------------------------------------------------------------------
 const theoLo = kk?.kieu === 'theo_lo';
 const dongHien: DongDemForm[] = dongLoi ?? dongDemTuDb(dongDb);
+// "Thấy mặt hàng không có trong danh sách" (29/10/2026): bỏ món đã có trên phiếu (ghi số ở dòng của nó); nhóm "Gợi ý"
+// là món sổ ghi đang ở chỗ khác. Đọc tồn lỗi thì chỉ mất nhóm gợi ý.
+const monTrenPhieu = new Set([...dongDb.map(d => d.mat_hang_id), ...dongHien.map(d => d.mat_hang_id)].filter(Boolean));
+const goiYThay = kk && demDuoc && !theoLo
+  ? goiYThayMon(await docTon(k.client, kk.chi_nhanh_id).catch(() => [] as DongTon[]), { id: kk.vi_tri_id, loai: kk.loai_vi_tri }, monTrenPhieu, nn)
+  : [];
 const phienBanHien = phienBanForm ?? kk?.phien_ban ?? 0;
 const ghiChuHien = ghiChuForm ?? kk?.ghi_chu ?? '';
 const ghiChuGocHien = ghiChuGocForm ?? kk?.ghi_chu ?? '';
@@ -544,7 +552,8 @@ const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
             <details class="nb-the">
               <summary style="cursor:pointer;font-weight:600;min-height:48px;display:flex;align-items:center">{t.thayMatHang}</summary>
               <div style="margin-top:.75rem">
-                <label class="nb-o"><span>{t.matHang}</span><ChonMatHang name="them_mat_hang" matHang={matHang} demCai /></label>
+                <label class="nb-o"><span>{t.matHang}</span><ChonMatHang name="them_mat_hang" matHang={matHang} demCai bo={monTrenPhieu}
+                  goiY={goiYThay} tenGoiY={t.dangOChoKhac} /></label>
                 <div class="kho-luoi">
                   <label class="nb-o"><span>{t.soGoi}</span><input type="text" inputmode="numeric" name="them_goi" /></label>
                   <label class="nb-o"><span>{t.soKg}</span><input type="text" inputmode="decimal" name="them_kg" /></label>
