@@ -60,7 +60,7 @@ const giaTri = ten => { const i = thamSo.indexOf(ten); return i >= 0 ? thamSo[i 
  */
 export const KHU = [
   ['Database (migration)', /^crm\/supabase\/migrations\//, 'sql'],
-  ['Kiểm thử', /^(crm\/test|can-app\/test|web\/kiem-tra)\//, 'test'],
+  ['Kiểm thử', /^(crm\/test|can-app\/test|may-chu-don\/test|web\/kiem-tra)\//, 'test'],
   ['Tài liệu, skill, mẫu', /(\.md$|^\.claude\/|^\.github\/(?!workflows\/))/, 'tai-lieu'],
   ['Kho (web)', /^web\/(src\/(pages\/noi-bo\/kho|lib\/kho|components\/kho)|public\/kho)\//, 'ma'],
   ['Webhook (iPOS, Zalo, Messenger)', /^web\/src\/pages\/hook\//, 'ma'],
@@ -71,6 +71,7 @@ export const KHU = [
   ['Web — ảnh, file tĩnh', /^web\/public\//, 'ma'],
   ['Web — cấu hình, công cụ', /^web\//, 'ma'],
   ['Beeftown Cân', /^can-app\/(src|scripts)\//, 'ma'],
+  ['Máy chủ đơn Mini App', /^may-chu-don\//, 'ma'],
   ['Mini App Zalo', /^mini-app\/(src|scripts|app-config\.json|index\.html|vite\.config|package(-lock)?\.json)/, 'ma'],
   ['Sao lưu', /^crm\/sao-luu\//, 'ma'],
   ['CI (GitHub Actions)', /^\.github\/workflows\//, 'ma'],

@@ -74,6 +74,8 @@ dua-len-zalo.cmd     cho Khánh bấm đúp trên Windows: cài thư viện, đ�
 ## Lỗi đã gặp
 
 - **"No asset defined. Please make sure that you have declared assets to load in `listSyncJS`, `listAsyncJS`, and `listCSS`."** Nguyên nhân: lệnh cũ dùng cờ `--existing` (dự án tự dựng). Ở chế độ đó zmp-cli-core đọc `app-config.json` ở thư mục gốc, nơi danh sách file để trống. Đã sửa: thêm `zmp-cli.json` (giống mẫu zaui-coffee, bỏ trường `cwd` vì trường này đè lên thư mục làm việc) và bỏ `--existing`. Không thêm lại `--existing`.
+- **`npm error ERESOLVE could not resolve` … `peer vite@"^4.2.0 || ^5.0.0" from zmp-vite-plugin`** (26–29/10/2026). Nguyên nhân: PR #102 của Dependabot nâng vite 5.4.21 → 8.3.4 và được gộp khi CI "Mini App Zalo" đỏ (CI "Kiểm thử" xanh vì không cài `mini-app/`). zmp-vite-plugin 1.1.6, bản mới nhất của Zalo, chỉ nhận vite 4–5; `dua-len-zalo.cmd` dừng ở bước [1/3]. Đã sửa: vite về 5.4.21; `.github/dependabot.yml` chặn vite và @vitejs/plugin-react từ bản 6, react, react-dom và kiểu của chúng từ bản 19 (zmp-ui 1.11.14 chỉ chạy với React 16–18; PR #100 nâng React 19 cũng đỏ); `crm/test/test-mini-app-thu-vien.mjs` (trong `npm test`, CI "Kiểm thử") đỏ khi peer của thư viện trực tiếp lệch. PR nâng thư viện của Mini App: CI "Mini App Zalo" xanh mới gộp.
+- **`npm ci` báo "Missing: type-fest@0.13.1 from lock file"** khi máy dùng npm 10 (đi kèm Node 22). CI dùng Node 24 (npm 11) thì cài được. Máy mới cài Node 24 LTS.
 - **"Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0'…"**: zmp-cli tự bật, bỏ qua.
 - Máy chủ của Claude trên claude.ai không vào được các tên miền của Zalo, nên phiên đó không đưa lên được. Claude Code trên máy Khánh dùng mạng thường, vào được.
 
@@ -130,6 +132,7 @@ Thỏa thuận nhà phát triển Zalo Mini App, cập nhật 25/09/2026: https:
   - Cần: 1 chỗ đọc công khai trên website chỉ trả "còn hàng / sắp hết / hết" của từng phần thịt Mini App (hàm SQL mới, kiểm thử quyền); gắn mỗi phần thịt Mini App với 1 `kho_mat_hang`; quầy quét khay ra vào kho đúng lúc; khai tên miền API ở Mini App Center → Cấu hình API Domains; Zalo duyệt lại.
 - **Mức 3:** giá cố định nên tổng tiền biết trước khi gửi; trả tiền trong app (Checkout SDK, mã MAC ký ở máy chủ), đơn tự vào FABi, tin báo qua ZNS.
   - Cần 1 máy chủ nhỏ ở Việt Nam chỉ cho đơn của Mini App (BizFly 1–2 GB RAM, 95.000–120.000 đ/tháng chưa VAT). Máy này chỉ báo sang kho mã khay và số lượng.
+  - **Đang làm từ 29/10/2026** (Khánh: "đừng theo kiểu nhắn tin nữa mà phải tự động hoàn toàn"): thư mục `may-chu-don/` của repo, chia 4 đợt (`may-chu-don/CLAUDE.md`, "Chia đợt"). Khánh chốt: trả trước trong app, màn hình đơn riêng cho quầy, laptop ở công ty để thử rồi máy chủ thuê ở Việt Nam khi mở bán, báo khách trong app và bằng ZNS. Mini App chỉ đổi sang gửi đơn lên máy chủ ở đợt 2, cùng lúc nối Checkout SDK.
   - Làm khi đơn online khoảng 20 đơn/ngày (giả định của Claude, đo lại sau 4 tuần mở bán).
 - **Hạ tầng** (Claude khuyên 22/10): giữ Supabase và Cloudflare; không chuyển cơ sở dữ liệu sang BizFly trước khai trương; không dùng laptop làm máy chủ chạy thật.
 

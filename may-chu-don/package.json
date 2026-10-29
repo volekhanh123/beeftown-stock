@@ -1,0 +1,21 @@
+{
+  "name": "beeftown-may-chu-don",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Máy chủ đơn của Mini App Zalo: nhận đơn mua thịt mang về, màn hình đơn cho quầy. Chạy ở Việt Nam (laptop thử, máy chủ thuê khi mở bán)",
+  "scripts": {
+    "thu": "bun test/thu.ts",
+    "kiem-kieu": "tsc --noEmit -p .",
+    "chay": "bun src/main.ts",
+    "don-mau": "bun scripts/don-mau.ts"
+  },
+  "dependencies": {
+    "@fontsource/montserrat": "5.2.8"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "bun": "^1.4.2",
+    "typescript": "^7.0.2"
+  }
+}
