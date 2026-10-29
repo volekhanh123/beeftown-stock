@@ -425,8 +425,8 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
     tomTat: { vi: 'Hàng hỏng, sai quy cách cần trả: thủ kho chỉ ghi số kg, hàng rời kho ngay. Kế toán lo phần còn lại với nhà cung cấp.',
               en: 'Damaged goods, or goods not as ordered, that must go back: the storekeeper records only the kg, and the goods leave stock at once. The accountant sorts out the rest with the supplier.' },
     buoc: [
-      { vi: 'Mở **Tồn kho**, ở lô cần trả bấm **Trả NCC**. Hoặc mở **Khác** → **Trả hàng NCC**, tìm lô rồi bấm **Trả lô này**.',
-        en: 'Open **Stock on hand** and press **Return** on the lot. Or open **More** → **Return to supplier**, find the lot and press **Return this lot**.' },
+      { vi: 'Mở **Tồn kho**, ở lô cần trả bấm **Trả NCC**. Hoặc mở **Khác** → **Trả hàng NCC**, bấm tên **nhà cung cấp** (chỉ còn lô của họ), tìm lô rồi bấm **Trả lô này**.',
+        en: 'Open **Stock on hand** and press **Return** on the lot. Or open **More** → **Return to supplier**, press the **supplier**\'s name (only their lots stay), find the lot and press **Return this lot**.' },
       { vi: 'Gõ **Số kg trả** (và số gói / tảng nếu có), ghi **Lý do trả**.',
         en: 'Type the **Kg returned** (and the packs / primals, if any), and fill in the **Reason for return**.' },
       { vi: 'Chụp ảnh hàng trả hoặc biên bản.',
