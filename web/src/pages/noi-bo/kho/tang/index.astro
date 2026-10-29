@@ -24,15 +24,23 @@
  * ủ → Cắt → khay. Bảng trên là NGUYÊN TẢNG (lô nhận hàng; nút "Trim"); bảng "Tảng ủ (đã trim)" là tảng sau trim
  * (loai_tang 'u' của kho_v_tang — số tảng của tảng gốc, ngày bắt đầu ủ, đã ủ bao nhiêu ngày; nút "Cắt"). Cả hai
  * nút cùng lóc một chạm (locMotTang gắn đúng công thức của món: Trim / Cắt). Trình tự do database giữ lúc chốt.
+ *
+ * 0109 (Khánh 29/10/2026 — chưa có công thức ủ, ghi tay, giữ lại để sau này phân tích): mỗi tảng ủ có ô "Ủ … ngày" +
+ * Lưu (vai pha_loc) — POST viec=ghi_u về chính trang này, kho_ghi_ngay_u ghi một dòng nhật ký (sửa số = dòng mới, dòng
+ * cũ giữ). Ghi rồi thì tảng ủ có ngày ủ xong: đang ủ thì nút Cắt ẩn (cùng luật tangLocDuoc với nguyên tảng có bảng ủ),
+ * cắt sớm thì bấm loại tảng ở Pha lóc mới (như câu của lóc một chạm) — không sửa số ngày chỉ để mở nút, số ghi là dữ
+ * liệu phân tích. Thứ tự theo sapTang (ủ xong trước, rồi sắp xong, rồi chưa ghi). Link tải "Nhật ký ủ" (Excel, 12 tháng).
  */
 import Kho from '../../../../layouts/Kho.astro';
 import TheTrangCon from '../../../../components/kho/TheTrangCon.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
-import { moTrangKho } from '../../../../lib/kho/trang.ts';
-import { cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangPhanTram, homNayVn, nhanKho, phoBienNhat } from '../../../../lib/kho/chung.ts';
+import { chuyenHuong, docFormGui, moTrangKho } from '../../../../lib/kho/trang.ts';
 import {
-  cauConU, cauKhongThayTang, docBaoCaoTang, docMonTrim, docTangTon, soTangChu, timTangTheoSo, TINH_TRANG_BAN_NB, TINH_TRANG_U_NB,
-  type DongTang, type TangTon, type TinhTrangU,
+  cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangPhanTram, homNayVn, kqHai, laUuid, nhanKho, phoBienNhat, type KetQua,
+} from '../../../../lib/kho/chung.ts';
+import {
+  cauConU, cauKhongThayTang, docBaoCaoTang, docMonTrim, docSoNgayU, docTangTon, ghiNgayU, soTangChu, timTangTheoSo,
+  TINH_TRANG_BAN_NB, TINH_TRANG_U_NB, type DongTang, type TangTon, type TinhTrangU,
 } from '../../../../lib/kho/tang.ts';
 import { docChoLocTang, docDanhSachPhienPha, docLoCuaPhien, tangLocDuoc } from '../../../../lib/kho/pha-loc.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
@@ -45,8 +53,8 @@ const t = dichNB(nn, {
   tieuDe: { vi: 'Tảng · ủ', en: 'Primals · aging' },
   khongDoc: { vi: 'Không đọc được danh sách tảng.', en: 'Could not read the primals.' },
   gioiThieu: {
-    vi: 'Món theo dõi theo tảng: mỗi tảng có số riêng (ghi trên túi tảng), ngày mổ và ngày ủ xong theo bảng ủ của món.',
-    en: 'Items tracked per primal: each primal has its own number (written on its bag), slaughter date and aging end date from the item\'s aging table.',
+    vi: 'Món theo dõi theo tảng: mỗi tảng có số riêng (ghi trên túi tảng), ngày mổ và ngày ủ xong — nguyên tảng theo bảng ủ của món, tảng ủ theo số ngày ghi tay.',
+    en: 'Items tracked per primal: each primal has its own number (written on its bag), slaughter date and aging end date — whole primals from the item\'s aging table, aging primals from the days recorded by hand.',
   },
   rong: {
     vi: 'Chưa có tảng nào. Bật "Theo dõi theo tảng" cho món ở Thiết lập → Mặt hàng, rồi nhận hàng từng tảng có ngày mổ.',
@@ -92,7 +100,44 @@ const t = dichNB(nn, {
   daU: { vi: 'Đã ủ', en: 'Aged' },
   cat: { vi: 'Cắt', en: 'Cut' },
   catTang: { vi: (so: string) => `Cắt tảng ủ ${so}`, en: (so: string) => `Cut aging primal ${so}` },
+  // 0109 — số ngày ủ ghi tay
+  ghiUGioiThieu: {
+    vi: 'Chưa có công thức ủ: ghi tay ủ bao nhiêu ngày cho từng tảng. Đổi ý thì ghi số mới — mọi lần ghi đều được giữ lại để sau này phân tích ra công thức. Đang ủ thì nút Cắt ẩn tới ngày ủ xong; cắt sớm thì bấm loại tảng ở Pha lóc mới.',
+    en: 'There is no aging formula yet: record by hand how many days each primal ages. Changed your mind? Record the new number — every entry is kept so a formula can be worked out later. While aging, the Cut button is hidden until the aging end date; to cut early, press the primal type in New butchery session.',
+  },
+  uGhi: {
+    vi: (n: number, ngay: string) => `Ủ ${n} ngày — xong ${ngay}`,
+    en: (n: number, ngay: string) => `Ages ${n} ${n === 1 ? 'day' : 'days'} — ends ${ngay}`,
+  },
+  chuaGhiU: { vi: 'Chưa ghi ủ bao nhiêu ngày', en: 'Aging days not recorded yet' },
+  oSoNgayU: { vi: (so: string) => `Ủ bao nhiêu ngày — tảng ủ ${so}`, en: (so: string) => `How many days to age — aging primal ${so}` },
+  ngayDonVi: { vi: 'ngày', en: 'days' },
+  luuU: { vi: 'Lưu', en: 'Save' },
+  taiNhatKyU: { vi: 'Tải nhật ký ủ (Excel, 12 tháng)', en: 'Download the aging log (Excel, 12 months)' },
+  soNgayUSai: {
+    vi: 'Số ngày ủ phải là số nguyên từ 0 đến 365.',
+    en: 'Aging days must be a whole number from 0 to 365.',
+  },
+  khongDuocGhiU: { vi: 'Tài khoản của bạn không được ghi ngày ủ.', en: 'Your account cannot record aging days.' },
 });
+
+const DS = '/noi-bo/kho/tang';
+let bao: KetQua | null = k.bao;
+const duocGhiU = k.duoc('pha_loc');
+const fd = await docFormGui(Astro);
+if (fd && fd.get('viec') === 'ghi_u') {
+  const loId = String(fd.get('lo_id') ?? '');
+  const maGui = String(fd.get('ma_gui') ?? '');
+  const soNgay = docSoNgayU(fd.get('so_ngay_u'));
+  if (!duocGhiU) bao = kqHai(false, { vi: t.khongDuocGhiU, en: t.khongDuocGhiU });
+  else if (!laUuid(loId) || !laUuid(maGui)) bao = kqHai(false, { vi: 'Thiếu mã gửi — tải lại trang rồi làm lại', en: 'Missing submission code — reload the page and try again' });
+  else if (soNgay === null) bao = kqHai(false, { vi: t.soNgayUSai, en: t.soNgayUSai });
+  else {
+    const kq = await ghiNgayU(k.client, { loId, soNgay, maGui });
+    if (kq.ok) return chuyenHuong(Astro, DS, kq);
+    bao = kq;
+  }
+}
 
 let ds: TangTon[] = [];
 let daLoc: DongTang[] = [];
@@ -125,7 +170,8 @@ if (cn && ds.length > 0 && k.duoc('pha_loc') && k.daKhoiTao) {
 // 0107: nguyên tảng (lô nhận hàng) và tảng ủ (sau trim) là hai mục. Tảng đang ủ chưa cắt không hiện lại ở "Đã lóc"
 // (báo cáo theo tảng coi lần trim là lần lóc đầu). Món có công thức Trim: nút "Trim", mục "Nguyên tảng — chờ trim".
 const nguyen = ds.filter(x => x.loai_tang !== 'u');
-const dangU = ds.filter(x => x.loai_tang === 'u').sort((a, b) => (b.so_ngay_u ?? 0) - (a.so_ngay_u ?? 0) || (a.so_tang ?? 0) - (b.so_tang ?? 0));
+// 0109: giữ thứ tự của docTangTon (sapTang) — tảng ủ có số ngày ghi tay thì ủ xong trước, rồi sắp xong, rồi chưa ghi.
+const dangU = ds.filter(x => x.loai_tang === 'u');
 const soDangU = new Set(dangU.map(x => x.so_tang).filter(x => x !== null));
 const daLocHien = daLoc.filter(d => d.ngay_loc !== null && !soDangU.has(d.so_tang));
 let monTrim = new Set<string>();
@@ -143,8 +189,11 @@ const noiChinh = phoBienNhat(ds.map(x => x.vi_tri));
   <TheTrangCon k={k} cha="ton" />
   <h1>{t.tieuDe}</h1>
   <p class="kho-phu">{t.gioiThieu}{noiChinh && <>{' '}{t.noiChinh(noiChinh)}</>}</p>
-  <p><a href="/noi-bo/kho/bao-cao/theo-tang">{t.baoCao}</a></p>
-  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+  <p>
+    <a href="/noi-bo/kho/bao-cao/theo-tang">{t.baoCao}</a> ·{' '}
+    <a href={`/noi-bo/kho/bao-cao/nhat-ky-u.csv?${new URLSearchParams({ tu: congNgay(homNay, -365), den: homNay }).toString()}`}>{t.taiNhatKyU}</a>
+  </p>
+  <BaoKho bao={bao} loiDoc={loiDoc} />
   {/* Ô tìm chỉ tìm trong lô (có sau khi duyệt); số tảng cấp lúc nhận hàng (0097) có trước đó — câu nói rõ điều này.
       Đọc danh sách hỏng (BaoKho đã báo) hay chưa có chi nhánh thì không nói "không thấy": đọc lỗi khác không có. */}
   {tim && cn && !loiDoc && (
@@ -200,7 +249,7 @@ const noiChinh = phoBienNhat(ds.map(x => x.vi_tri));
   {dangU.length > 0 && (
     <section class="nb-the">
       <h2 style="margin-top:0">{t.tangU} · {t.soTang(dangU.length)}</h2>
-      <p class="kho-phu">{t.tangUGioiThieu}</p>
+      <p class="kho-phu">{t.tangUGioiThieu} {t.ghiUGioiThieu}</p>
       <div class="kho-bang-khung">
         <table class="kho-bang">
           <thead><tr>
@@ -225,7 +274,22 @@ const noiChinh = phoBienNhat(ds.map(x => x.vi_tri));
                 </td>
                 <td>{x.ten_hang}{x.vi_tri && x.vi_tri !== noiChinh && <><br /><span class="kho-phu">{x.vi_tri}</span></>}</td>
                 <td>{x.ngay_bat_dau_u ? dinhDangNgay(x.ngay_bat_dau_u) : '—'}</td>
-                <td class="so">{x.so_ngay_u === null ? '—' : t.ngay(x.so_ngay_u)}</td>
+                <td class="so">
+                  {x.so_ngay_u === null ? '—' : t.ngay(x.so_ngay_u)}
+                  <br /><span class="kho-phu">{x.so_ngay_u_ghi !== null && x.ngay_u_xong
+                    ? <>{t.uGhi(x.so_ngay_u_ghi, dinhDangNgay(x.ngay_u_xong))}{cauConU(x, nn) && <> · {cauConU(x, nn)}</>}</>
+                    : t.chuaGhiU}</span>
+                  {duocGhiU && (
+                    <form method="POST" action={DS} class="kho-thanh-nut" style="margin:.35rem 0 0;justify-content:flex-end">
+                      <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
+                      <input type="hidden" name="lo_id" value={x.lo_id} />
+                      <input type="text" name="so_ngay_u" inputmode="numeric" maxlength="3" autocomplete="off" required
+                        value={x.so_ngay_u_ghi ?? ''} style="width:5em" aria-label={t.oSoNgayU(soTangChu(x.so_tang) || x.ma_lo)} />
+                      <span>{t.ngayDonVi}</span>
+                      <button type="submit" name="viec" value="ghi_u" class="nb-nut phu">{t.luuU}</button>
+                    </form>
+                  )}
+                </td>
                 <td class="so">{dinhDangKg(x.so_kg, nn)}</td>
               </tr>
             ))}

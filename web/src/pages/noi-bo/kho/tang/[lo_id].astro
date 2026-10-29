@@ -12,17 +12,22 @@
  * "Huỷ cả tảng" (quyền van_hanh): mỗi vị trí còn hàng một phiếu báo huỷ, vẫn
  * chờ quản lý duyệt như phiếu huỷ thường. Ảnh tải ngay và giữ qua lần gửi lại
  * (giuAnhHuy), cùng ma_gui — F5 không tạo thêm phiếu.
+ *
+ * 0109: dòng "Số ngày ủ ghi tay" — mọi lần ghi số ngày ủ của tảng ủ (kho_ghi_u, theo tảng gốc): số ngày, ủ xong, ai
+ * ghi, lúc nào. "Ủ xong": nguyên tảng có bảng ủ thì ngày của bảng ủ, không thì ngày của lần ghi tay gần nhất.
+ * Đọc nhật ký hỏng thì không có dòng đó, trang vẫn hiện.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
-import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/kho/trang.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangTien, kqHai, laUuid, nhanKho, trangThaiKho, type KetQua,
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangThoiDiem, dinhDangTien, kqHai, laUuid, nhanKho, trangThaiKho,
+  type KetQua,
 } from '../../../../lib/kho/chung.ts';
 import { docLyDo, type LyDo } from '../../../../lib/kho/danh-muc.ts';
 import { giuAnhHuy } from '../../../../lib/kho/xuat.ts';
 import {
-  docTruyVetTang, huyCaTang, soTangChu, TINH_TRANG_BAN_NB, type ChoCon, type TruyVetTang,
+  docLanGhiU, docTruyVetTang, huyCaTang, soTangChu, TINH_TRANG_BAN_NB, type ChoCon, type LanGhiU, type TruyVetTang,
 } from '../../../../lib/kho/tang.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
@@ -48,6 +53,11 @@ const t = dichNB(nn, {
   chuaRepack: { vi: 'chưa ghi kg sau repack', en: 'no weight after repack recorded' },
   ngayMo: { vi: 'Ngày mổ', en: 'Slaughtered' },
   uXong: { vi: 'Ủ xong', en: 'Aging ends' },
+  ghiTay: { vi: 'Số ngày ủ ghi tay', en: 'Aging days recorded by hand' },
+  lanGhi: {
+    vi: (n: number, ngay: string) => `ủ ${n} ngày — xong ${ngay}`,
+    en: (n: number, ngay: string) => `${n} ${n === 1 ? 'day' : 'days'} — ends ${ngay}`,
+  },
   han: { vi: 'Hạn dùng tảng', en: 'Primal use-by' },
   loc: { vi: 'Lóc', en: 'Cut' },
   chuaLoc: { vi: 'Chưa lóc.', en: 'Not cut yet.' },
@@ -153,6 +163,16 @@ try {
 } catch (e) { loiDoc = cauLoiKho(e, t.khongDoc); }
 
 const g = tv?.tang;
+// 0109: các lần ghi số ngày ủ của tảng ủ (theo tảng gốc). Đọc hỏng → không có dòng "Số ngày ủ ghi tay".
+let lanGhiU: LanGhiU[] = [];
+let tenGhiU = new Map<string, string>();
+if (g) {
+  try {
+    lanGhiU = await docLanGhiU(k.client, g.lo_id);
+    tenGhiU = await tenNhanSu(k.client, lanGhiU.map(x => x.nguoi));
+  } catch { lanGhiU = []; }
+}
+const lanCuoiU = lanGhiU.at(-1) ?? null;
 const so = g ? soTangChu(g.so_tang) : '';
 const kgs = (x: number | null | undefined) => dinhDangKg(x, nn);
 const tien = (x: number | null | undefined) => dinhDangTien(x, nn);
@@ -182,7 +202,13 @@ const nhanTT = g ? nhanKho(TINH_TRANG_BAN_NB, g.tinh_trang, nn) : '';
             ? <><b>{kgs(g.kg_repack)} kg</b> <span class="kho-phu">({t.hao(kgs(haoKg), pt(g.hao_repack_pt))})</span></>
             : <span class="kho-phu">{t.chuaRepack}</span>}</dd>
           <dt>{t.ngayMo}</dt><dd>{g.ngay_mo ? dinhDangNgay(g.ngay_mo) : '—'}</dd>
-          <dt>{t.uXong}</dt><dd>{g.ngay_u_xong ? dinhDangNgay(g.ngay_u_xong) : '—'}</dd>
+          <dt>{t.uXong}</dt><dd>{g.ngay_u_xong ? dinhDangNgay(g.ngay_u_xong) : lanCuoiU ? dinhDangNgay(lanCuoiU.ngay_u_xong) : '—'}</dd>
+          {lanGhiU.length > 0 && <>
+            <dt>{t.ghiTay}</dt>
+            <dd>{lanGhiU.map(x => (
+              <>{t.lanGhi(x.so_ngay_u, dinhDangNgay(x.ngay_u_xong))} <span class="kho-phu">· {tenGhiU.get(x.nguoi ?? '') ?? '—'} · {dinhDangThoiDiem(x.created_at)}</span><br /></>
+            ))}</dd>
+          </>}
           <dt>{t.han}</dt><dd>{dinhDangNgay(g.han_dung)}</dd>
           <dt>{t.loc}</dt>
           <dd>{tv.phien.length === 0 ? t.chuaLoc : tv.phien.map(p => (

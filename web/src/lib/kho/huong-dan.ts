@@ -474,8 +474,12 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
         en: 'Open **Stock on hand** → the **Primals · aging** tab to see which primals are **ready to cut** and how many days the others have left.' },
       { vi: 'Đem lóc: bấm **Lóc** dưới số tảng — phiên mở đúng tảng đó, ô mã giao luôn khi tảng có một công thức. Nút hiện khi phiếu nhận đã được duyệt và tảng không còn đang ủ.',
         en: 'To cut one, press **Cut** under its number — the session opens with that primal, and rotating codes are assigned right away when it has one recipe. The button appears once the receiving note is approved and the primal has finished aging.' },
+      { vi: 'Tảng ủ (đã trim): ở mục **Tảng ủ (đã trim)**, gõ **ủ bao nhiêu ngày** cho từng tảng rồi bấm **Lưu** — chưa có công thức ủ nên ghi tay. Đang ủ thì nút **Cắt** ẩn tới ngày ủ xong; cắt sớm thì bấm loại tảng ở **Pha lóc mới**.',
+        en: 'Aging primals (trimmed): under **Aging primals (trimmed)**, type **how many days** each primal ages and press **Save** — there is no aging formula yet, so it is recorded by hand. While aging, the **Cut** button stays hidden until the aging end date; to cut early, press the primal type in **New butchery session**.' },
     ],
     meo: [
+      { vi: 'Mỗi lần ghi số ngày ủ của tảng ủ đều được giữ lại — sửa số là thêm một lần ghi, lần cũ không mất. **Tải nhật ký ủ** (Excel) ở đầu màn Tảng · ủ: tuổi thịt lúc bắt đầu ủ, số ngày ghi lần đầu / lần cuối, số ngày ủ thật, hao — dữ liệu để sau này tìm công thức ủ. Trang của từng tảng hiện từng lần ghi.',
+        en: 'Every aging-days entry for an aging primal is kept — changing the number adds a new entry, the old one is not lost. **Download the aging log** (Excel) at the top of Primals · aging: meat age when aging started, days recorded first / last, real aging days, loss — data for finding an aging formula later. Each primal\'s page lists every entry.' },
       { vi: 'Ngày ủ xong = ngày nhận + số ngày ủ tra theo tuổi thịt lúc nhận (ngày nhận − ngày mổ).',
         en: 'Aging ends = receiving date + the aging days looked up by the meat\'s age when received (receiving date − slaughter date).' },
       { vi: 'Món chưa có bảng ủ vẫn theo dõi theo tảng được, chỉ không có ngày ủ xong.',

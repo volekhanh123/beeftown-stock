@@ -393,6 +393,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     // 0103: mã món iPOS đã bán — security invoker, RLS kho_ipos_dong (xem_gia) lọc; vai khác nhận rỗng
     // (test-kho-ipos-ma-can.mjs nhóm 6)
     'kho_ipos_ma_da_ban',
+    // 0109: ghi số ngày ủ của tảng ủ (pha_loc), nhật ký ủ để phân tích (xem — không có tiền)
+    'kho_ghi_ngay_u', 'kho_nhat_ky_u',
   ].sort();
   const NOI_BO = [
     'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',
@@ -431,6 +433,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_ipos_lo_theo_tem',
     // 0107: trigger chốt phiên lóc giữ trình tự tảng → trim → tảng ủ → cắt
     'kho_phien_pha_dung_trinh_tu',
+    // 0109: trigger nhật ký ủ chỉ thêm, không sửa, không xoá
+    'kho_ghi_u_chan_sua_xoa',
     // 0054: giá sau giảm, các trigger chống trùng mã cân giữa món / ô / mã giảm
     'kho_gia_giam', 'kho_ma_giam_kiem', 'kho_o_ma_khong_trung_giam', 'kho_mat_hang_ma_can_khong_trung_giam',
     // 0060: phần tính của kho_ipos_trang_thai, không kiểm quyền — máy báo động đọc qua suc_khoe_so_lieu

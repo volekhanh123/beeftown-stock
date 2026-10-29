@@ -13,6 +13,8 @@
  *   /noi-bo/kho/bao-cao/so-thanh-toan.csv?tu=&den=               (GĐ8c — ke_toan)
  *   /noi-bo/kho/bao-cao/theo-tang.csv?tu=&den=  (0050 — mọi vai xem kho; cột tiền chỉ
  *        khi người tải xem giá)
+ *   /noi-bo/kho/bao-cao/nhat-ky-u.csv?tu=&den=  (0109 — mọi vai xem kho; không có tiền:
+ *        mỗi tảng ủ trim trong kỳ một dòng, số ngày ủ ghi tay — dữ liệu tìm công thức ủ)
  *
  * Đi qua middleware như mọi đường /noi-bo — chưa đăng nhập thì bị chuyển về
  * trang đăng nhập. Dữ liệu lấy bằng client mang token của người đang dùng,
@@ -35,7 +37,9 @@ import {
 import { docCongNoPhieu, laNoDau } from '../../../../lib/kho/cong-no.ts';
 import { docBaoCaoDinhMuc, dinhNghiaDinhMuc, NGAY_TOI_DA_DINH_MUC } from '../../../../lib/kho/dinh-luong.ts';
 import { docDanhGiaNcc, dinhNghiaDanhGiaNcc } from '../../../../lib/kho/dat-hang.ts';
-import { docBaoCaoTang, dinhNghiaTheoTang, dongBangTheoTang } from '../../../../lib/kho/tang.ts';
+import {
+  docBaoCaoTang, docNhatKyU, dinhNghiaNhatKyU, dinhNghiaTheoTang, dongBangNhatKyU, dongBangTheoTang,
+} from '../../../../lib/kho/tang.ts';
 import { moKhoTai } from '../../../../lib/kho/trang.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../lib/cau-noi-bo.ts';
@@ -67,8 +71,8 @@ export const GET: APIRoute = async (ctx) => {
     if (!(duoc(nhanSu.vai_tro, 'nhap') || duoc(nhanSu.vai_tro, 'xem_gia'))) {
       return new Response(t.khongXemKho, { status: 403 });
     }
-  } else if (ten === 'theo-tang') {
-    // 0050: theo tảng mở cho mọi vai xem kho (thủ kho, NV quầy: chỉ kg).
+  } else if (ten === 'theo-tang' || ten === 'nhat-ky-u') {
+    // 0050: theo tảng mở cho mọi vai xem kho (thủ kho, NV quầy: chỉ kg). 0109: nhật ký ủ không có tiền — như vậy.
     if (!duoc(nhanSu.vai_tro, 'xem')) return new Response(t.khongXemKho, { status: 403 });
   } else if (ten === 'theo-thang') {
     // GĐ8c: theo tháng mở cho mọi vai xem kho (thủ kho, NV quầy: chỉ kg).
@@ -132,6 +136,17 @@ export const GET: APIRoute = async (ctx) => {
     }
     csv = taoCsv(dn.cot, dong, { tieuDe: tieuDeCsv(cn.ten, dn.ten, tu, den), tong: tinhTong(dn, dong, nn) });
     tenTep = `kho-theo-tang-${cn.ma}-${tu}-${den}.csv`;
+  } else if (ten === 'nhat-ky-u') {
+    if (congNgay(tu, 366) < den) return new Response(t.kyToiDa, { status: 400 });
+    const dn = dinhNghiaNhatKyU(nn);
+    let dong: Record<string, unknown>[];
+    try {
+      dong = dongBangNhatKyU(await docNhatKyU(client, cn.id, tu, den), nn);
+    } catch (e) {
+      return loi(cauLoiKho(e), 500);
+    }
+    csv = taoCsv(dn.cot, dong, { tieuDe: tieuDeCsv(cn.ten, dn.ten, tu, den), tong: tinhTong(dn, dong, nn) });
+    tenTep = `kho-nhat-ky-u-${cn.ma}-${tu}-${den}.csv`;
   } else if (ten === 'mua-hang') {
     if (congNgay(tu, NGAY_TOI_DA_KY) < den) return new Response(t.kyToiDa, { status: 400 });
     const nhom = url.searchParams.get('nhom') === 'mat_hang' ? 'mat_hang' : 'ncc';
