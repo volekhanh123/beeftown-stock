@@ -1,0 +1,81 @@
+---
+/**
+ * Một dòng của trang "Đặt theo món" (0111): tên món, tồn / lý do gợi ý, ô kg (+ ô gói nếu món đếm gói) và ô chọn nhà
+ * cung cấp — các NCC bán món đó (danh mục NCC – món, NCC chính ghi rõ) lên đầu, NCC khác ở dưới. Tên ô theo form đơn:
+ * ô ẩn `mh`, `kg_<id>`, `goi_<id>`, `ncc_<id>` (docFormTheoMon, lib/kho/dat-hang.ts). Không ô giá. Không gọi database.
+ */
+import { cauGoiYDat, type GoiYDat } from '../../lib/kho/dat-hang.ts';
+import { dinhDangKg } from '../../lib/kho/chung.ts';
+import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
+
+interface Props {
+  g: GoiYDat;
+  kg: string;
+  goi: string;
+  nccChon: string;
+  /** NCC bán món này (đã xếp: NCC chính đầu). */
+  ban: { id: string; ten: string; chinh: boolean }[];
+  khac: { id: string; ten: string }[];
+  /** Hiện dòng "Còn … · đã đặt chưa về … · dùng …" (món nên đặt). */
+  chiTiet?: boolean;
+}
+const { g, kg, goi, nccChon, ban, khac, chiTiet = false } = Astro.props;
+const nn = nnCua(Astro);
+const t = dichNB(nn, {
+  con: { vi: 'Còn', en: 'On hand' },
+  daDatChuaVe: { vi: (x: string) => ` · đã đặt chưa về ${x} kg`, en: (x: string) => ` · ordered, not arrived ${x} kg` },
+  dung: { vi: (x: string) => ` · dùng ${x} kg/ngày`, en: (x: string) => ` · uses ${x} kg/day` },
+  anKg: { vi: (ten: string) => `${ten} — số kg đặt`, en: (ten: string) => `${ten} — kg to order` },
+  anGoi: { vi: (ten: string, dv: string) => `${ten} — số ${dv || 'gói'}`, en: (ten: string, dv: string) => `${ten} — number of ${dv || 'packs'}` },
+  anNcc: { vi: (ten: string) => `${ten} — đặt của ai`, en: (ten: string) => `${ten} — order from` },
+  goi: { vi: 'gói', en: 'packs' },
+  banMonNay: { vi: 'Bán món này', en: 'Sells this item' },
+  nccKhac: { vi: 'Nhà cung cấp khác', en: 'Other suppliers' },
+  chinh: { vi: ' · NCC chính', en: ' · main supplier' },
+});
+---
+<li class={chiTiet && g.duoi_toi_thieu ? 'gap' : ''}>
+  <input type="hidden" name="mh" value={g.mat_hang_id} />
+  <span>
+    <strong>{g.ten}</strong>
+    {chiTiet && <small>{t.con} {dinhDangKg(g.ton_kg + g.dang_chuyen_kg, nn)} kg{g.dang_dat_kg > 0 && t.daDatChuaVe(dinhDangKg(g.dang_dat_kg, nn))}{g.dung_tb_ngay_kg > 0 && t.dung(dinhDangKg(g.dung_tb_ngay_kg, nn))}</small>}
+    <small class="dh-ly-do">{cauGoiYDat(g, nn)}</small>
+  </span>
+  <span class="dh-o-hang">
+    <label class="nb-o dh-o">
+      <span class="an">{t.anKg(g.ten)}</span>
+      <input type="text" inputmode="decimal" name={`kg_${g.mat_hang_id}`} value={kg} autocomplete="off" />
+      <small>kg</small>
+    </label>
+    {g.dem_goi && (
+      <label class="nb-o dh-o">
+        <span class="an">{t.anGoi(g.ten, g.don_vi_goi)}</span>
+        <input type="text" inputmode="numeric" name={`goi_${g.mat_hang_id}`} value={goi} autocomplete="off" />
+        <small>{g.don_vi_goi || t.goi}</small>
+      </label>
+    )}
+    <label class="nb-o dh-o dh-ncc">
+      <span class="an">{t.anNcc(g.ten)}</span>
+      <select name={`ncc_${g.mat_hang_id}`}>
+        {ban.length > 0 && (
+          <optgroup label={t.banMonNay}>
+            {ban.map(n => <option value={n.id} selected={n.id === nccChon}>{n.ten}{n.chinh ? t.chinh : ''}</option>)}
+          </optgroup>
+        )}
+        <optgroup label={t.nccKhac}>
+          {khac.map(n => <option value={n.id} selected={n.id === nccChon}>{n.ten}</option>)}
+        </optgroup>
+      </select>
+    </label>
+  </span>
+</li>
+
+<style>
+  li { align-items: center; }
+  .dh-ly-do { font-size: .78rem !important; line-height: 1.35; }
+  .dh-o-hang { display: flex; gap: .4rem; flex-wrap: wrap; flex: 0 0 auto; }
+  .dh-o { display: flex; align-items: center; gap: .3rem; margin: 0; }
+  .dh-o input { width: 5.5rem; text-align: right; font-size: 1.1rem !important; }
+  .dh-ncc select { max-width: 14rem; }
+  .an { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>

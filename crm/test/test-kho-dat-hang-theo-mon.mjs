@@ -9,19 +9,21 @@
  *
  *   1. gợi ý theo NCC dùng danh mục: món hai NCC cùng giao hiện ở CẢ HAI (trước 0111 chỉ ở NCC giao gần nhất); cặp đã
  *      bỏ không hiện; cặp thêm tay (chưa giao) có gợi ý;
- *   2. gợi ý không chọn NCC: mỗi món đúng một dòng, NCC đề xuất = NCC chính → giao gần nhất ở chi nhánh này → tên;
+ *   2. gợi ý không chọn NCC: mỗi món đúng một dòng, NCC đề xuất = NCC chính → giao gần nhất ở chi nhánh này (cùng ngày:
+ *      phiếu lập sau, như 0039) → tên;
  *   3. kho_cap_ncc_mon (nội bộ) cho đúng tập cặp của kho_ds_ncc_mat_hang; authenticated không gọi được; quyền gợi ý
  *      không đổi;
  *   4. web: docFormTheoMon gom theo NCC (ô chọn, trống = đề xuất), lỗi thiếu / NCC ngừng giao dịch, số kiểu Việt;
- *      maGuiCon cố định theo (form, NCC);
+ *      maGuiCon cố định theo (form, NCC, nội dung đơn) — sửa số là đơn khác; boDongDaLap bỏ dòng đã vào đơn;
  *   5. lapDonTheoNcc chạy thật trên PGlite qua client giả: mỗi NCC một đơn nháp không giá; bấm lại không lập đôi;
- *      mất mạng / lỗi 500 giữa chừng: câu "Đã lập" chỉ kể đơn đã nhận, bấm lại lập nốt phần thiếu;
+ *      mất mạng giữa chừng: "chưa chắc", không "chưa lập được"; lỗi 500 / database từ chối: "chưa lập được"; câu "Đã
+ *      lập" chỉ kể đơn đã nhận, bấm lại lập nốt phần thiếu;
  *   6. mã nguồn trang; kho_doi_soat_ton() rỗng.
  */
 
 import { dungDatabase, taoBoDem, taoClientPg, UID, maGui } from './kho-chung.mjs';
 import {
-  docFormTheoMon, chuFormTheoMon, maGuiCon, lapDonTheoNcc, docGoiYDatHang,
+  docFormTheoMon, chuFormTheoMon, maGuiCon, lapDonTheoNcc, boDongDaLap, docGoiYDatHang,
 } from '../../web/src/lib/kho/dat-hang.ts';
 import { laUuid } from '../../web/src/lib/kho/chung.ts';
 import { readFileSync } from 'node:fs';
@@ -140,6 +142,22 @@ await nhom('2 · GỢI Ý KHÔNG CHỌN NCC: MỖI MÓN MỘT NCC ĐỀ XUẤT',
     [[NCC['NCC Bò Úc'], NCC['NCC Bò Mỹ']]])).rows[0].id;
   ok('Q7, Ribeye không NCC chính, chưa giao ở Q7 → NCC theo thứ tự tên', r7b.rows.find(x => x.ma === 'C-RIBEYE')?.nha_cung_cap_id === tenDau);
   await luu('NCC Bò Úc', 'C-RIBEYE', 'chinh');
+
+  // Cùng một ngày hai NCC giao Thăn: phiếu lập SAU thắng (như 0039: ngay_nhap desc, created_at desc), không theo tên.
+  await taoMon('C-THAN', 'Thăn bò');
+  await nhanGui('NCC Bò Úc', [['C-THAN', 3]]);
+  await nhanGui('NCC Bò Mỹ', [['C-THAN', 3]]);
+  const datLuc = (ncc, luc) => db.query(`update kho_phieu_nhap p set created_at = $2::timestamptz where p.nha_cung_cap_id = $1
+    and exists (select 1 from kho_phieu_nhap_dong d where d.phieu_nhap_id = p.id and d.mat_hang_id = $3)`, [NCC[ncc], luc, MH['C-THAN'].id]);
+  await datLuc('NCC Bò Mỹ', '2026-10-29T08:00:00+07');
+  await datLuc('NCC Bò Úc', '2026-10-29T09:00:00+07');
+  r = await goiY(UID.qlA, null);
+  ok('Cùng ngày: NCC Bò Úc lập phiếu sau → đề xuất NCC Bò Úc (tên đứng sau Bò Mỹ)', theo()['C-THAN'] === NCC['NCC Bò Úc']);
+  await datLuc('NCC Bò Mỹ', '2026-10-29T10:00:00+07');
+  r = await goiY(UID.qlA, null);
+  ok('Đổi lại: NCC Bò Mỹ lập phiếu sau → đề xuất NCC Bò Mỹ', theo()['C-THAN'] === NCC['NCC Bò Mỹ']);
+  await duoi(UID.qlA, `update kho_mat_hang set dang_dung = false where id = $1`, [MH['C-THAN'].id]);
+  delete MH['C-THAN'];
 });
 
 // ===========================================================================
@@ -209,10 +227,26 @@ await nhom('4 · WEB: ĐỌC FORM ĐẶT THEO MÓN, MÃ GỬI TỪNG NCC', async
   ok('Chữ đã chọn được giữ để điền lại form', chu.nccCo.get(R) === NCC['NCC Chợ'] && chu.nccThem[0] === NCC['NCC Mới']);
 
   const g = '00000000-0000-4000-8000-0000000000a1';
-  const a1 = await maGuiCon(g, NCC['NCC Bò Úc']);
-  ok('maGuiCon: dạng UUID, cố định theo (mã gửi form, NCC), khác nhau giữa NCC và giữa form',
-    laUuid(a1) && a1 === await maGuiCon(g, NCC['NCC Bò Úc']) && a1 !== await maGuiCon(g, NCC['NCC Bò Mỹ'])
-      && a1 !== await maGuiCon('00000000-0000-4000-8000-0000000000a2', NCC['NCC Bò Úc']) && a1 !== g, a1);
+  const dg = [{ mat_hang_id: R, so_kg_dat: 5, so_goi_dat: 2 }, { mat_hang_id: B, so_kg_dat: 1.5, so_goi_dat: null }];
+  const a1 = await maGuiCon(g, NCC['NCC Bò Úc'], dg);
+  ok('maGuiCon: dạng UUID, cố định theo (mã gửi form, NCC, dòng) — thứ tự dòng không đổi mã',
+    laUuid(a1) && a1 === await maGuiCon(g, NCC['NCC Bò Úc'], [...dg].reverse()) && a1 !== g, a1);
+  ok('maGuiCon: khác NCC, khác form → mã khác',
+    a1 !== await maGuiCon(g, NCC['NCC Bò Mỹ'], dg) && a1 !== await maGuiCon('00000000-0000-4000-8000-0000000000a2', NCC['NCC Bò Úc'], dg));
+  ok('maGuiCon: sửa kg hay số gói rồi bấm lại → mã khác (không nhận đơn cũ thay số mới)',
+    a1 !== await maGuiCon(g, NCC['NCC Bò Úc'], [{ ...dg[0], so_kg_dat: 6 }, dg[1]])
+      && a1 !== await maGuiCon(g, NCC['NCC Bò Úc'], [{ ...dg[0], so_goi_dat: 3 }, dg[1]])
+      && a1 !== await maGuiCon(g, NCC['NCC Bò Úc'], [dg[0]]));
+
+  const truoc = chuFormTheoMon(formTu({
+    mh: [R, B], [`kg_${R}`]: '5', [`goi_${R}`]: '2', [`ncc_${R}`]: NCC['NCC Bò Úc'], [`kg_${B}`]: '1,5',
+    t0_mh: L, t0_kg: '2', t0_ncc: NCC['NCC Chợ'], t1_mh: R, t1_kg: '1', so_dong: '2',
+  }), 2);
+  const sau = boDongDaLap(truoc, new Set([R, L]));
+  ok('boDongDaLap: món đã vào đơn bị bỏ số (dòng có sẵn trống kg / gói, dòng thêm bỏ hẳn), món chưa lập giữ nguyên',
+    sau.co.get(R)?.kg === '' && sau.co.get(R)?.goi === '' && sau.co.get(B)?.kg === '1,5'
+      && sau.them.every(d => d.mh === '') && sau.them.length === 2 && sau.nccThem.length === 2 && sau.nccCo.get(R) === NCC['NCC Bò Úc'],
+    JSON.stringify({ co: [...sau.co], them: sau.them }));
 });
 
 // ===========================================================================
@@ -244,14 +278,20 @@ await nhom('5 · WEB: LẬP MỖI NCC MỘT ĐƠN NHÁP (CLIENT GIẢ)', async (
   let lan = 0;
   const dut = { rpc: (...a) => (++lan === 2 ? Promise.reject(new TypeError('fetch failed')) : tk.rpc(...a)) };
   kq = await lapDonTheoNcc(dut, cnA.id, theoNcc, G2, tenNcc);
-  ok('Mất mạng giữa chừng → ok = false; câu kể đúng 2 đơn đã lập và NCC chưa chắc',
-    !kq.ok && kq.don.length === 2 && /^Đã lập 2 đơn nháp: NCC Bò Mỹ \(1 món\), NCC Chợ \(1 món\)\. Chưa lập được đơn cho NCC Bò Úc: mất kết nối — không chắc đã lập hay chưa\./.test(kq.cau),
-    kq.cau);
-  ok('Câu không nói "Đã lập" cho NCC lỗi', !/Đã lập[^.]*NCC Bò Úc/.test(kq.cau));
+  ok('Mất mạng giữa chừng → ok = false; câu kể đúng 2 đơn đã lập, NCC kia "chưa chắc" (không nói "chưa lập được")',
+    !kq.ok && kq.don.length === 2 && /^Đã lập 2 đơn nháp: NCC Bò Mỹ \(1 món\), NCC Chợ \(1 món\)\. Mất kết nối khi lập đơn cho NCC Bò Úc — chưa chắc đã lập hay chưa\./.test(kq.cau)
+      && !/Chưa lập được/.test(kq.cau) && /The connection dropped/.test(kq.cauEn ?? ''), kq.cau);
+  ok('Câu không nói "Đã lập" cho NCC lỗi; trả đúng món của đơn đã lập (để bỏ khỏi form)',
+    !/Đã lập[^.]*NCC Bò Úc/.test(kq.cau) && kq.don.flatMap(x => x.mon).sort().join() === [MH['C-BACHI'].id, MH['C-LUOI'].id].sort().join());
   kq = await lapDonTheoNcc(tk, cnA.id, theoNcc, G2, tenNcc);
   ok('Bấm lại → lập nốt NCC còn thiếu, tổng 6 đơn (3 cũ + 3 lần hai), không đơn nào đôi', kq.ok && (await donNhap()).length === 6,
     String((await donNhap()).length));
 
+  // supabase-js không ném khi mất mạng — trả error "fetch failed": vẫn là "chưa chắc".
+  const matMang = { rpc: async () => ({ data: null, error: { message: 'TypeError: fetch failed', code: '' } }) };
+  kq = await lapDonTheoNcc(matMang, cnA.id, theoNcc, '00000000-0000-4000-8000-0000000000b5', tenNcc);
+  ok('supabase-js trả lỗi mất mạng (không ném) → "chưa chắc đã lập", không "Chưa lập được"', !kq.ok && kq.don.length === 0
+    && /^Mất kết nối khi lập đơn cho NCC Bò Mỹ, NCC Bò Úc, NCC Chợ — chưa chắc đã lập hay chưa\./.test(kq.cau) && !/Chưa lập được/.test(kq.cau), kq.cau);
   const loi500 = { rpc: async () => ({ data: null, error: { message: 'upstream 500', code: '500' } }) };
   kq = await lapDonTheoNcc(loi500, cnA.id, theoNcc, '00000000-0000-4000-8000-0000000000b3', tenNcc);
   ok('Dịch vụ trả 500 cho mọi NCC → ok = false, không chữ "Đã lập"', !kq.ok && kq.don.length === 0 && !/Đã lập/.test(kq.cau)
@@ -278,7 +318,14 @@ await nhom('6 · MÃ NGUỒN TRANG', async () => {
   ok('Trang "Đặt theo món": đọc gợi ý lỗi thì báo ngay, không im như thể không món nào cần đặt',
     /loiGoiY = true/.test(tm) && /t\.khongDocGoiY/.test(tm));
   const moi = doc('web/src/pages/noi-bo/kho/dat-hang/moi.astro');
-  ok('Lập đơn (theo NCC): có lối "Đặt theo món", nhắc NCC chính khác', /href=\{`\$\{DS\}\/theo-mon`\}/.test(moi) && /chinhKhac\(/.test(moi));
+  ok('Lập đơn (theo NCC): có lối "Đặt theo món", nhắc NCC chính khác', /href=\{`\$\{DS\}\/theo-mon`\}/.test(moi) && /chinhKhac\.get\(/.test(moi));
+  ok('Trang "Đặt theo món": lập được một phần thì bỏ dòng đã vào đơn khỏi form (boDongDaLap)', /chu = boDongDaLap\(r\.chu,/.test(tm));
+  ok('Trang "Đặt theo món": đọc danh mục lỗi không xoá gợi ý (đọc riêng từng thứ)',
+    /docGoiYDatHang\(k\.client, cn\.id, null\)\.then\(x => \{ goiY = x; \}, \(\) => \{ loiGoiY = true; \}\)/.test(tm)
+      && /docNccMon\(k\.client, cn\.id\)\.then\(x => \{ dsNccMon = x; \}, \(\) => \{\}\)/.test(tm));
+  ok('Trang "Đặt theo món": đọc danh sách NCC lỗi thì nói đúng lỗi, không đổ "NCC ngừng giao dịch"',
+    /viec === 'lap' && ncc\.length === 0/.test(tm));
+  ok('Trang "Đặt theo món": nhắc đơn nháp chưa gửi (chưa trừ vào gợi ý)', /docDsDonDat\(k\.client, cn\.id, 'nhap'/.test(tm) && /t\.dangCoNhap\(/.test(tm));
 });
 
 const dsTon = (await db.query(`select * from kho_doi_soat_ton()`)).rows;

@@ -169,17 +169,18 @@ if (form && nccChon) {
 let goiY: GoiYDat[] = [];
 let dsNccMon: NccMon[] = [];
 if (nccChon) {
-  try { goiY = await docGoiYDatHang(k.client, cn.id, nccChon.id); }
-  catch (e) { loiDoc = loiDoc ?? cauLoiKho(e, t.khongDocGoiY); }
-  // Chỉ để nhắc "NCC chính: …" — đọc lỗi thì không nhắc.
-  dsNccMon = await docNccMon(k.client, cn.id).catch(() => []);
+  // Danh mục chỉ để nhắc "NCC chính: …" — đọc lỗi thì không nhắc.
+  const [kq, dm] = await Promise.all([
+    docGoiYDatHang(k.client, cn.id, nccChon.id).then(x => ({ x }), (e: unknown) => ({ e })),
+    docNccMon(k.client, cn.id).catch(() => [] as NccMon[]),
+  ]);
+  if ('x' in kq) goiY = kq.x; else loiDoc = loiDoc ?? cauLoiKho(kq.e, t.khongDocGoiY);
+  dsNccMon = dm;
 }
 const tenNcc = new Map(ncc.map(n => [n.id, n.ten]));
-/** NCC chính của món, nếu là NCC KHÁC nhà cung cấp đang đặt. */
-const chinhKhac = (monId: string) => {
-  const c = dsNccMon.find(x => x.mat_hang_id === monId && x.la_chinh && x.nha_cung_cap_id !== nccChon?.id);
-  return c ? tenNcc.get(c.nha_cung_cap_id) ?? null : null;
-};
+/** Món → tên NCC chính của món, chỉ khi NCC chính là NCC KHÁC nhà cung cấp đang đặt. */
+const chinhKhac = new Map(dsNccMon.filter(x => x.la_chinh && x.nha_cung_cap_id !== nccChon?.id)
+  .map(x => [x.mat_hang_id, tenNcc.get(x.nha_cung_cap_id) ?? ''] as const));
 const idGoiY = new Set(goiY.map(g => g.mat_hang_id));
 const soNgayGiao = goiY[0]?.so_ngay_giao ?? null;
 const canDat = goiY.filter(g => g.de_nghi_kg > 0).length;
@@ -249,7 +250,7 @@ const nccKhac = ncc.slice(8);
                   <strong>{g.ten}</strong>
                   <small>{t.con} {dinhDangKg(g.ton_kg + g.dang_chuyen_kg, nn)} kg{g.dang_dat_kg > 0 && t.daDatChuaVe(dinhDangKg(g.dang_dat_kg, nn))}{g.dung_tb_ngay_kg > 0 && t.dung(dinhDangKg(g.dung_tb_ngay_kg, nn))}</small>
                   <small class="dh-ly-do">{cauGoiYDat(g, nn)}</small>
-                  {chinhKhac(g.mat_hang_id) && <small class="dh-ly-do"><strong>{t.chinhLa(chinhKhac(g.mat_hang_id) ?? '')}</strong></small>}
+                  {chinhKhac.get(g.mat_hang_id) && <small class="dh-ly-do"><strong>{t.chinhLa(chinhKhac.get(g.mat_hang_id) ?? '')}</strong></small>}
                 </span>
                 <span class="dh-o-hang">
                   <label class="nb-o dh-o">

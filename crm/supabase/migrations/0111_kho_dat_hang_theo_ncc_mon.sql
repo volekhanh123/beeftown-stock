@@ -95,7 +95,9 @@ begin
     select c.nha_cung_cap_id, c.mat_hang_id, c.la_chinh from kho_cap_ncc_mon(p_ncc) c
   ),
   lan_cuoi as (
-    select p.nha_cung_cap_id as ncc, pd.mat_hang_id as mh, max(p.ngay_nhap) as ngay
+    -- Lần giao gần nhất của từng cặp: ngày nhận, cùng ngày thì phiếu lập sau (như 0039: ngay_nhap desc, created_at desc).
+    select p.nha_cung_cap_id as ncc, pd.mat_hang_id as mh, max(p.ngay_nhap) as ngay,
+           (array_agg(p.created_at order by p.ngay_nhap desc, p.created_at desc))[1] as luc
     from kho_phieu_nhap p
     join kho_phieu_nhap_dong pd on pd.phieu_nhap_id = p.id
     where p.chi_nhanh_id = p_chi_nhanh_id and p.loai = 'mua'
@@ -108,7 +110,7 @@ begin
     from cap c
     join kho_nha_cung_cap n on n.id = c.nha_cung_cap_id
     left join lan_cuoi l on l.ncc = c.nha_cung_cap_id and l.mh = c.mat_hang_id
-    order by c.mat_hang_id, c.la_chinh desc, l.ngay desc nulls last, n.ten
+    order by c.mat_hang_id, c.la_chinh desc, l.ngay desc nulls last, l.luc desc nulls last, n.ten
   ),
   mon as (
     select m.*, g.nha_cung_cap_id as ncc_id, coalesce(n.so_ngay_giao, 1) as ngay_giao

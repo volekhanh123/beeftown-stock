@@ -8,23 +8,27 @@
  *     nhà cung cấp — chọn sẵn NCC đề xuất (NCC chính → giao gần nhất ở chi nhánh này), các NCC bán món đó lên đầu
  *     (danh mục NCC – món, lib/kho/ncc-mat-hang.ts), NCC khác ở dưới. Món chưa cần đặt nằm trong mục gập.
  *   · "Thêm món khác": dòng thêm như form đơn, ô NCC trống = NCC đề xuất của món.
- *   · "Lập đơn nháp" → lapDonTheoNcc: mỗi NCC một đơn nháp (mã gửi suy ra từ mã gửi của form — bấm lại không lập
- *     đôi). Một đơn → mở đơn đó; nhiều đơn → danh sách đơn nháp. NCC nào lỗi thì câu báo kể riêng, form hiện lại.
+ *   · "Lập đơn nháp" → lapDonTheoNcc: mỗi NCC một đơn nháp (mã gửi suy ra từ mã gửi của form và nội dung đơn — bấm
+ *     lại nguyên form không lập đôi). Một đơn → mở đơn đó; nhiều đơn → danh sách đơn nháp. Lập được một phần: câu báo
+ *     kể riêng NCC lỗi / chưa chắc, form hiện lại đã bỏ các dòng vào đơn (boDongDaLap).
+ *   · Đang có đơn nháp chưa gửi: báo trên đầu — số kg trong đơn nháp CHƯA trừ vào gợi ý (0039 chỉ trừ đơn đã gửi),
+ *     mở lại trang rồi bấm lần nữa là đặt đôi.
  *
  * Không ô giá, không ngày giao: giá dự kiến điền trong từng đơn nháp, ngày giao tự tính theo NCC. Không JavaScript.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import ChonMatHang from '../../../../components/kho/ChonMatHang.astro';
+import DongDatTheoMon from '../../../../components/kho/DongDatTheoMon.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { docMatHang, type MatHang } from '../../../../lib/kho/danh-muc.ts';
 import { docNccNhap, type NccNhap } from '../../../../lib/kho/nhan-hang.ts';
 import {
-  docGoiYDatHang, chuFormTheoMon, docFormTheoMon, lapDonTheoNcc, soDongThem, oKgGoiY, oGoiGoiY, cauGoiYDat,
-  TOI_DA_DONG_THEM, type GoiYDat, type MonDat, type FormTheoMon,
+  docGoiYDatHang, docDsDonDat, chuFormTheoMon, docFormTheoMon, lapDonTheoNcc, boDongDaLap, soDongThem, oKgGoiY, oGoiGoiY,
+  TOI_DA_DONG_THEM, type DonDatTom, type GoiYDat, type MonDat, type FormTheoMon,
 } from '../../../../lib/kho/dat-hang.ts';
 import { docNccMon, nccCuaMon, type NccMon } from '../../../../lib/kho/ncc-mat-hang.ts';
-import { cauLoiKho, dinhDangKg, kqHai, laUuid, type KetQua } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, kqHai, laUuid, type KetQua } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
@@ -50,16 +54,6 @@ const t = dichNB(nn, {
   nenDat: { vi: (n: number) => `Nên đặt (${n} món)`, en: (n: number) => `To order (${n} ${s(n, 'item', 'items')})` },
   khongCanDat: { vi: 'Chưa món nào cần đặt theo tồn kho và lượng dùng. Món muốn đặt thêm thì thêm ở dưới.', en: 'Nothing needs ordering based on stock and use. Add any items you want below.' },
   chuaCan: { vi: (n: number) => `Chưa cần đặt (${n} món)`, en: (n: number) => `Not needed yet (${n} ${s(n, 'item', 'items')})` },
-  con: { vi: 'Còn', en: 'On hand' },
-  daDatChuaVe: { vi: (kg: string) => ` · đã đặt chưa về ${kg} kg`, en: (kg: string) => ` · ordered, not arrived ${kg} kg` },
-  dung: { vi: (kg: string) => ` · dùng ${kg} kg/ngày`, en: (kg: string) => ` · uses ${kg} kg/day` },
-  anKg: { vi: (ten: string) => `${ten} — số kg đặt`, en: (ten: string) => `${ten} — kg to order` },
-  anGoi: { vi: (ten: string, dv: string) => `${ten} — số ${dv || 'gói'}`, en: (ten: string, dv: string) => `${ten} — number of ${dv || 'packs'}` },
-  anNcc: { vi: (ten: string) => `${ten} — đặt của ai`, en: (ten: string) => `${ten} — order from` },
-  goi: { vi: 'gói', en: 'packs' },
-  banMonNay: { vi: 'Bán món này', en: 'Sells this item' },
-  nccKhac: { vi: 'Nhà cung cấp khác', en: 'Other suppliers' },
-  chinh: { vi: ' · NCC chính', en: ' · main supplier' },
   deXuat: { vi: '— nhà cung cấp đề xuất của món —', en: '— the item\'s suggested supplier —' },
   themMonKhac: { vi: 'Thêm món khác', en: 'Add other items' },
   monSo: { vi: (n: number) => `Món ${n}`, en: (n: number) => `Item ${n}` },
@@ -74,6 +68,11 @@ const t = dichNB(nn, {
     en: 'Expected prices and delivery dates go in each draft order (a blank delivery date is worked out from the supplier).',
   },
   lap: { vi: 'Lập đơn nháp', en: 'Create draft orders' },
+  dangCoNhap: {
+    vi: (n: number, ds: string) => `Đang có ${n} đơn nháp chưa gửi (${ds}). Số kg trong đơn nháp chưa được trừ vào gợi ý dưới đây — mở các đơn đó để soát trước khi lập thêm, kẻo đặt đôi.`,
+    en: (n: number, ds: string) => `There ${n === 1 ? 'is' : 'are'} ${n} unsent draft ${s(n, 'order', 'orders')} (${ds}). The kg in drafts is not taken off the suggestions below — open them to check before creating more, or you may order twice.`,
+  },
+  moNhap: { vi: 'Mở các đơn nháp', en: 'Open the drafts' },
   veDs: { vi: '← Danh sách đơn đặt hàng', en: '← Purchase orders list' },
 });
 
@@ -83,13 +82,18 @@ let loiDoc = k.loiDoc;
 try {
   [ncc, matHang] = await Promise.all([docNccNhap(k.client, cn.id), docMatHang(k.client)]);
 } catch (e) { loiDoc = cauLoiKho(e, t.khongDocDanhMuc); }
-// Gợi ý và danh mục NCC – món: lỗi thì báo ngay, vẫn thêm món tay được.
+// Gợi ý: lỗi thì báo ngay, vẫn thêm món tay được. Danh mục NCC – món chỉ để xếp ô chọn NCC — lỗi thì ô chọn không
+// chia nhóm, gợi ý vẫn hiện. Đơn nháp đang có: chỉ để nhắc — lỗi thì không nhắc.
 let goiY: GoiYDat[] = [];
 let dsNccMon: NccMon[] = [];
+let donNhap: DonDatTom[] = [];
 let loiGoiY = false;
-try {
-  [goiY, dsNccMon] = await Promise.all([docGoiYDatHang(k.client, cn.id, null), docNccMon(k.client, cn.id)]);
-} catch { loiGoiY = true; }
+await Promise.all([
+  docGoiYDatHang(k.client, cn.id, null).then(x => { goiY = x; }, () => { loiGoiY = true; }),
+  docNccMon(k.client, cn.id).then(x => { dsNccMon = x; }, () => {}),
+  docDsDonDat(k.client, cn.id, 'nhap', { q: '', tu: null, den: null, cuaToi: false, trang: 1 }, { gioiHan: 30 })
+    .then(x => { donNhap = x; }, () => {}),
+]);
 
 const mon = new Map<string, MonDat>(matHang.filter(m => m.dang_dung)
   .map(m => [m.id, { ten: m.ten, dem_goi: m.dem_goi, don_vi_goi: m.don_vi_goi }]));
@@ -97,10 +101,10 @@ const tenNcc = new Map(ncc.map(n => [n.id, n.ten]));
 const nccDung = new Set(ncc.map(n => n.id));
 // NCC đề xuất của từng món: của gợi ý (NCC chính → giao gần nhất), món ngoài gợi ý thì NCC đầu của danh mục.
 const macDinh = new Map<string, string>();
-for (const m of matHang) {
-  const id = goiY.find(g => g.mat_hang_id === m.id)?.nha_cung_cap_id ?? nccCuaMon(dsNccMon, m.id)[0]?.nha_cung_cap_id;
-  if (id) macDinh.set(m.id, id);
+for (const c of dsNccMon) {
+  if (!c.da_bo && !macDinh.has(c.mat_hang_id)) macDinh.set(c.mat_hang_id, nccCuaMon(dsNccMon, c.mat_hang_id)[0]?.nha_cung_cap_id ?? '');
 }
+for (const g of goiY) if (g.nha_cung_cap_id) macDinh.set(g.mat_hang_id, g.nha_cung_cap_id);
 
 // ---------------------------------------------------------------------------
 // Gửi form
@@ -116,6 +120,13 @@ if (form) {
   if (viec === 'them_dong') {
     chu = chuFormTheoMon(form, soDong);
     soDong = Math.min(soDong + 3, TOI_DA_DONG_THEM);
+  } else if (viec === 'lap' && ncc.length === 0) {
+    // Đọc danh sách NCC lỗi: mọi NCC sẽ bị coi là "ngừng giao dịch" — nói đúng lỗi thay vì đổ cho NCC.
+    chu = chuFormTheoMon(form, soDong);
+    bao = kqHai(false, {
+      vi: 'Chưa đọc được danh sách nhà cung cấp — tải lại trang rồi bấm lại.',
+      en: 'Could not read the supplier list — reload the page and press again.',
+    });
   } else if (viec === 'lap') {
     const r = docFormTheoMon(form, mon, { soDong, nccDung, macDinh });
     chu = r.chu;
@@ -124,6 +135,7 @@ if (form) {
       const kq = await lapDonTheoNcc(k.client, cn.id, r.theoNcc, maGui, tenNcc);
       if (kq.ok) return chuyenHuong(Astro, kq.don.length === 1 ? `${DS}/${kq.don[0].id}` : `${DS}?loc=nhap`, kq);
       bao = kq;
+      chu = boDongDaLap(r.chu, new Set(kq.don.flatMap(x => x.mon)));
     }
   } else {
     bao = kqHai(false, { vi: 'Việc không hợp lệ.', en: 'Invalid action.' });
@@ -145,8 +157,9 @@ const oGoiY = (g: GoiYDat, o: 'kg' | 'goi') => {
 const nccDong = (g: GoiYDat) => chu?.nccCo.get(g.mat_hang_id) || g.nha_cung_cap_id || '';
 /** Ô chọn NCC của một món: NCC bán món đó (danh mục, NCC chính đầu) rồi NCC khác. */
 const nhomNcc = (monId: string) => {
-  const ban = nccCuaMon(dsNccMon, monId).filter(c => nccDung.has(c.nha_cung_cap_id));
-  return { ban, khac: ncc.filter(n => !ban.some(c => c.nha_cung_cap_id === n.id)) };
+  const ban = nccCuaMon(dsNccMon, monId).filter(c => nccDung.has(c.nha_cung_cap_id))
+    .map(c => ({ id: c.nha_cung_cap_id, ten: tenNcc.get(c.nha_cung_cap_id) ?? '', chinh: c.la_chinh }));
+  return { ban, khac: ncc.filter(n => !ban.some(c => c.id === n.id)).map(n => ({ id: n.id, ten: n.ten })) };
 };
 const dongThem = Array.from({ length: soDong }, (_, i) => ({
   ...(chu?.them[i] ?? { mh: '', kg: '', goi: '', gia: '' }), ncc: chu?.nccThem[i] ?? '',
@@ -165,6 +178,9 @@ if (!chu) {
   <BaoKho bao={bao} loiDoc={loiDoc} />
   <p class="kho-phu">{t.dan} <a href={`${DS}/moi`}>{t.theoNcc}</a></p>
   {loiGoiY && <div class="nb-bao luu-y" role="alert"><p>{t.khongDocGoiY}</p></div>}
+  {donNhap.length > 0 && (
+    <div class="nb-bao luu-y" role="status"><p>{t.dangCoNhap(donNhap.length, [...new Set(donNhap.map(d => d.ten_nha_cung_cap))].join(', '))}{' '}<a href={`${DS}?loc=nhap`}>{t.moNhap}</a></p></div>
+  )}
 
   <form method="POST">
     <input type="hidden" name="ma_gui" value={maGui} />
@@ -174,92 +190,19 @@ if (!chu) {
       <>
         <h2>{t.nenDat(canDat.length)}</h2>
         {canDat.length === 0 && <p class="kho-phu">{t.khongCanDat}</p>}
-        <ul class="kho-dong-ds dh-goi-y">
-          {canDat.map(g => {
-            const nh = nhomNcc(g.mat_hang_id);
-            return (
-              <li class={g.duoi_toi_thieu ? 'gap' : ''}>
-                <input type="hidden" name="mh" value={g.mat_hang_id} />
-                <span>
-                  <strong>{g.ten}</strong>
-                  <small>{t.con} {dinhDangKg(g.ton_kg + g.dang_chuyen_kg, nn)} kg{g.dang_dat_kg > 0 && t.daDatChuaVe(dinhDangKg(g.dang_dat_kg, nn))}{g.dung_tb_ngay_kg > 0 && t.dung(dinhDangKg(g.dung_tb_ngay_kg, nn))}</small>
-                  <small class="dh-ly-do">{cauGoiYDat(g, nn)}</small>
-                </span>
-                <span class="dh-o-hang">
-                  <label class="nb-o dh-o">
-                    <span class="an">{t.anKg(g.ten)}</span>
-                    <input type="text" inputmode="decimal" name={`kg_${g.mat_hang_id}`} value={oGoiY(g, 'kg')} autocomplete="off" />
-                    <small>kg</small>
-                  </label>
-                  {g.dem_goi && (
-                    <label class="nb-o dh-o">
-                      <span class="an">{t.anGoi(g.ten, g.don_vi_goi)}</span>
-                      <input type="text" inputmode="numeric" name={`goi_${g.mat_hang_id}`} value={oGoiY(g, 'goi')} autocomplete="off" />
-                      <small>{g.don_vi_goi || t.goi}</small>
-                    </label>
-                  )}
-                  <label class="nb-o dh-o dh-ncc">
-                    <span class="an">{t.anNcc(g.ten)}</span>
-                    <select name={`ncc_${g.mat_hang_id}`}>
-                      {nh.ban.length > 0 && (
-                        <optgroup label={t.banMonNay}>
-                          {nh.ban.map(c => <option value={c.nha_cung_cap_id} selected={c.nha_cung_cap_id === nccDong(g)}>{tenNcc.get(c.nha_cung_cap_id)}{c.la_chinh ? t.chinh : ''}</option>)}
-                        </optgroup>
-                      )}
-                      <optgroup label={t.nccKhac}>
-                        {nh.khac.map(n => <option value={n.id} selected={n.id === nccDong(g)}>{n.ten}</option>)}
-                      </optgroup>
-                    </select>
-                  </label>
-                </span>
-              </li>
-            );
-          })}
+        <ul class="kho-dong-ds">
+          {canDat.map(g => (
+            <DongDatTheoMon g={g} kg={oGoiY(g, 'kg')} goi={oGoiY(g, 'goi')} nccChon={nccDong(g)} {...nhomNcc(g.mat_hang_id)} chiTiet />
+          ))}
         </ul>
 
         {chuaCan.length > 0 && (
           <details class="nb-the" style="margin-top:1rem" open={chuaCan.some(g => !!chu?.co.get(g.mat_hang_id)?.kg) || undefined}>
             <summary style="cursor:pointer;font-weight:600">{t.chuaCan(chuaCan.length)}</summary>
-            <ul class="kho-dong-ds dh-goi-y">
-              {chuaCan.map(g => {
-                const nh = nhomNcc(g.mat_hang_id);
-                return (
-                  <li>
-                    <input type="hidden" name="mh" value={g.mat_hang_id} />
-                    <span>
-                      <strong>{g.ten}</strong>
-                      <small class="dh-ly-do">{cauGoiYDat(g, nn)}</small>
-                    </span>
-                    <span class="dh-o-hang">
-                      <label class="nb-o dh-o">
-                        <span class="an">{t.anKg(g.ten)}</span>
-                        <input type="text" inputmode="decimal" name={`kg_${g.mat_hang_id}`} value={oGoiY(g, 'kg')} autocomplete="off" />
-                        <small>kg</small>
-                      </label>
-                      {g.dem_goi && (
-                        <label class="nb-o dh-o">
-                          <span class="an">{t.anGoi(g.ten, g.don_vi_goi)}</span>
-                          <input type="text" inputmode="numeric" name={`goi_${g.mat_hang_id}`} value={oGoiY(g, 'goi')} autocomplete="off" />
-                          <small>{g.don_vi_goi || t.goi}</small>
-                        </label>
-                      )}
-                      <label class="nb-o dh-o dh-ncc">
-                        <span class="an">{t.anNcc(g.ten)}</span>
-                        <select name={`ncc_${g.mat_hang_id}`}>
-                          {nh.ban.length > 0 && (
-                            <optgroup label={t.banMonNay}>
-                              {nh.ban.map(c => <option value={c.nha_cung_cap_id} selected={c.nha_cung_cap_id === nccDong(g)}>{tenNcc.get(c.nha_cung_cap_id)}{c.la_chinh ? t.chinh : ''}</option>)}
-                            </optgroup>
-                          )}
-                          <optgroup label={t.nccKhac}>
-                            {nh.khac.map(n => <option value={n.id} selected={n.id === nccDong(g)}>{n.ten}</option>)}
-                          </optgroup>
-                        </select>
-                      </label>
-                    </span>
-                  </li>
-                );
-              })}
+            <ul class="kho-dong-ds">
+              {chuaCan.map(g => (
+                <DongDatTheoMon g={g} kg={oGoiY(g, 'kg')} goi={oGoiY(g, 'goi')} nccChon={nccDong(g)} {...nhomNcc(g.mat_hang_id)} />
+              ))}
             </ul>
           </details>
         )}
@@ -308,16 +251,9 @@ if (!chu) {
 
 <style>
   .dh-lon { min-height: 56px; font-size: 1.05rem; }
-  .dh-ly-do { font-size: .78rem !important; line-height: 1.35; }
-  .dh-goi-y li { align-items: center; }
-  .dh-o-hang { display: flex; gap: .4rem; flex-wrap: wrap; flex: 0 0 auto; }
-  .dh-o { display: flex; align-items: center; gap: .3rem; margin: 0; }
-  .dh-o input { width: 5.5rem; text-align: right; font-size: 1.1rem !important; }
-  .dh-ncc select { max-width: 14rem; font-size: 16px; }
   .dh-them { display: grid; grid-template-columns: 1fr 6rem 6rem 12rem; gap: .5rem; align-items: end; }
   @media (max-width: 560px) {
     .dh-them { grid-template-columns: 1fr 1fr; }
     .dh-them > label:first-child, .dh-them > label:last-child { grid-column: 1 / -1; }
   }
-  .an { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
