@@ -18,7 +18,7 @@
 import { dungDatabase, taoBoDem, taoClientPg, UID, maGui } from './kho-chung.mjs';
 import { docTon, chuConTon } from '../../web/src/lib/kho/ton.ts';
 import {
-  monKhoChoQuay, dongTuGoiYRaQuay, docFormYeuCau, docGoiYRaQuay, taoYeuCau, LOAI_RA_QUAY,
+  monKhoChoQuay, dongTuGoiYRaQuay, soNenLay, docFormYeuCau, docGoiYRaQuay, taoYeuCau, LOAI_RA_QUAY,
 } from '../../web/src/lib/kho/quay.ts';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -28,7 +28,7 @@ const GOC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const doc = p => readFileSync(join(GOC, p), 'utf8');
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — CHỌN MÓN KÈM SỐ TỒN (QUẦY, XUẤT)');
-const { db, cnA, duoi, duoiAnon } = await dungDatabase();
+const { db, cnA, cnB, duoi, duoiAnon } = await dungDatabase();
 const clientCua = await taoClientPg({ db, duoi, duoiAnon });
 
 const homNay = (await db.query(`select hom_nay_vn()::text as d`)).rows[0].d;
@@ -37,20 +37,20 @@ const MH = {};
 let viTri = {};
 let ncc;
 
-async function nhapHang(dong, vt) {
-  const luu = await duoi(UID.qlA, `
+async function nhapHang(dong, vt, cn = cnA, ql = UID.qlA) {
+  const luu = await duoi(ql, `
     select * from kho_luu_phieu_nhap(
       p_id => null, p_chi_nhanh_id => $1, p_ma_gui => $2, p_phien_ban => null,
       p_loai => 'mua', p_nha_cung_cap_id => $3, p_vi_tri_id => $4, p_ngay_nhap => $5::date,
       p_so_hoa_don => null, p_ngay_hoa_don => null, p_han_thanh_toan => null,
       p_tien_thue => 0, p_chi_phi_khac => 0, p_ghi_chu => null, p_anh => array[$1::uuid::text || '/nhap/' || gen_random_uuid() || '/1.jpg'],
       p_truong_them => '{}'::jsonb, p_dong => $6::jsonb)`,
-    [cnA.id, maGui(), ncc, vt, homNay, JSON.stringify(dong)]);
+    [cn.id, maGui(), ncc, vt, homNay, JSON.stringify(dong)]);
   if (luu.loi) throw new Error(luu.loi);
   const p = luu.rows[0];
-  const gui = await duoi(UID.qlA, `select kho_gui_duyet_phieu_nhap($1, $2)`, [p.phieu_id, p.phien_ban_moi]);
+  const gui = await duoi(ql, `select kho_gui_duyet_phieu_nhap($1, $2)`, [p.phieu_id, p.phien_ban_moi]);
   if (gui.loi) throw new Error(gui.loi);
-  const duyet = await duoi(UID.qlA, `select kho_duyet_phieu_nhap($1)`, [p.phieu_id]);
+  const duyet = await duoi(ql, `select kho_duyet_phieu_nhap($1)`, [p.phieu_id]);
   if (duyet.loi) throw new Error(duyet.loi);
 }
 
@@ -72,6 +72,11 @@ await nhom('0 · DỰNG DỮ LIỆU', async () => {
     { mat_hang_id: MH['T-THANNGOAI'].id, so_goi: 1, so_kg: 14, don_gia_kg: 500000, han_dung: await ngaySau(20) },
   ], viTri.kho);
   ok('Kho lạnh có thăn cắt lát (1 lô hết hạn), nạc vai, thịt vụn, một tảng', !!MH['C-THANNGOAI'] && !!viTri.kho && !!viTri.quay);
+  // Chi nhánh B cũng có hàng — để thử NV quầy A không thấy tồn của B.
+  await duoi(UID.qlB, `select kho_khoi_tao($1)`, [cnB.id]);
+  const khoB = (await db.query(`select id from kho_vi_tri where chi_nhanh_id = $1 and loai = 'kho'`, [cnB.id])).rows[0].id;
+  await nhapHang([{ mat_hang_id: MH['C-NACVAI'].id, so_goi: 3, so_kg: 1.5, don_gia_kg: 400000, han_dung: await ngaySau(2) }], khoB, cnB, UID.qlB);
+  ok('Chi nhánh B có tồn nạc vai', (await db.query(`select count(*)::int as n from kho_v_ton where chi_nhanh_id = $1`, [cnB.id])).rows[0].n > 0);
 });
 
 // ===========================================================================
@@ -107,6 +112,10 @@ await nhom('2 · QUẦY → YÊU CẦU HÀNG: "KHO ĐANG CÓ"', async () => {
   ok('Món đã ở danh sách sắp hết không lặp lại', !boQua.some(m => m.ma_hang === 'C-THANNGOAI'));
   const ngung = monKhoChoQuay(ton, new Set([...dangDung].filter(id => id !== MH['P-VUN'].id)));
   ok('Món ngừng dùng không hiện', !ngung.some(m => m.ma_hang === 'P-VUN'));
+  // Món đếm gói chỉ còn kg lẻ (0 gói): danh sách sắp hết coi là "kho đã hết" — "Kho đang có" cũng không hiện.
+  const le = ton.filter(t => t.mat_hang_id === MH['C-NACVAI'].id && t.loai_vi_tri === 'kho').map(t => ({ ...t, so_goi: 0, so_kg: 0.4 }));
+  const tonLe = [...ton.filter(t => t.mat_hang_id !== MH['C-NACVAI'].id), ...le];
+  ok('Món đếm gói chỉ còn kg lẻ (0 gói) không hiện ở "Kho đang có"', le.length > 0 && !monKhoChoQuay(tonLe, dangDung).some(m => m.ma_hang === 'C-NACVAI'));
 
   // Form: ô k_<món> là chọn tay (nguồn "tay"), cộng với dòng thêm cùng món; g_<món> vẫn là gợi ý.
   const matHang = Object.values(MH);
@@ -135,6 +144,19 @@ await nhom('2 · QUẦY → YÊU CẦU HÀNG: "KHO ĐANG CÓ"', async () => {
 });
 
 // ===========================================================================
+await nhom('2b · QUYỀN ĐỌC TỒN CHO "KHO ĐANG CÓ"', async () => {
+  /** Số dòng tồn một client đọc được ở một chi nhánh (đọc lỗi = 0 — trang báo "chưa đọc được tồn"). */
+  const soDong = async (c, cn) => { try { return (await docTon(c, cn.id)).length; } catch { return 0; } };
+  ok('NV quầy chi nhánh A KHÔNG đọc được tồn chi nhánh B', await soDong(clientCua(UID.nvQuayA), cnB) === 0);
+  ok('Quản lý B đọc được tồn B (kiểm thử trên có nghĩa)', await soDong(clientCua(UID.qlB), cnB) > 0);
+  ok('anon KHÔNG đọc được tồn', await soDong(clientCua('anon'), cnA) === 0);
+  ok('Nhân sự đã nghỉ KHÔNG đọc được tồn', await soDong(clientCua(UID.nghiViec), cnA) === 0);
+  ok('Đăng nhập nhưng không có dòng nhân sự KHÔNG đọc được tồn', await soDong(clientCua(null), cnA) === 0);
+  const cot = Object.keys((await docTon(clientCua(UID.nvQuayA), cnA.id))[0] ?? {});
+  ok('Tồn NV quầy đọc không có cột tiền', cot.length > 0 && !cot.some(c => /(^|_)(gia|tien)(_|$)/.test(c)), cot.join());
+});
+
+// ===========================================================================
 await nhom('3 · XUẤT → CHUYỂN RA QUẦY: "QUẦY ĐANG THIẾU"', async () => {
   const thuKho = clientCua(UID.thuKhoA);
   const g = await docGoiYRaQuay(thuKho, cnA.id, viTri.quay);
@@ -148,6 +170,15 @@ await nhom('3 · XUẤT → CHUYỂN RA QUẦY: "QUẦY ĐANG THIẾU"', async (
   ok('Món cân ký: số kg viết kiểu Việt "1,5" (ô gói trống)', kg.so_kg === '1,5' && kg.so_goi === '', JSON.stringify(kg));
   const het = dongTuGoiYRaQuay({ ...than, so_goi_de_nghi: -2 });
   ok('Số nên lấy âm (quầy đã thừa) → 0, không số âm', het.so_goi === '0');
+  // kho_goi_y_ra_quay tính trên MỌI kho của chi nhánh; phiếu lấy từ một nơi → không điền quá số nơi đó còn.
+  const sau = { ...than, so_goi_de_nghi: 6 };
+  ok('Số nên lấy không quá số nơi lấy còn: đề nghị 6 gói, nơi lấy còn 2 → điền 2',
+    soNenLay(sau, { so_goi: 2, so_kg: 1 }) === 2 && dongTuGoiYRaQuay(sau, { so_goi: 2, so_kg: 1 }).so_goi === '2');
+  ok('Nơi lấy còn nhiều hơn → vẫn số đề nghị; không truyền tồn → số đề nghị',
+    soNenLay(sau, { so_goi: 9, so_kg: 4 }) === 6 && soNenLay(sau) === 6);
+  const kgSau = { ...than, dem_goi: false, so_goi_de_nghi: null, so_kg_de_nghi: 3 };
+  ok('Món cân ký: giới hạn theo kg nơi lấy còn (3 kg đề nghị, còn 1,25 → "1,25")',
+    dongTuGoiYRaQuay(kgSau, { so_goi: 0, so_kg: 1.25 }).so_kg === '1,25');
 });
 
 // ===========================================================================
@@ -155,15 +186,22 @@ await nhom('4 · MÃ NGUỒN TRANG', async () => {
   const yc = doc('web/src/pages/noi-bo/kho/quay/yeu-cau/index.astro');
   ok('Quầy: "Kho đang có" từ monKhoChoQuay, ô k_<món>, dòng phụ chuConTon "Kho còn"',
     /monKhoChoQuay\(ton,/.test(yc) && /name=\{`k_\$\{m\.mat_hang_id\}`\}/.test(yc) && /chuConTon\(m, nn, \{ vi: 'Kho còn'/.test(yc));
-  ok('Quầy: đọc tồn lỗi thì báo, không im như thể kho trống', /catch \{ loiTon = true; \}/.test(yc) && /t\.khongDocTon/.test(yc));
+  ok('Quầy: đọc tồn (song song) lỗi thì báo, không im như thể kho trống',
+    /docTon\(k\.client, cn\.id\)\.catch\(\(\) => null\)/.test(yc) && /const loiTon = tonDoc === null;/.test(yc) && /t\.khongDocTon/.test(yc));
+  ok('Quầy: đọc danh mục lỗi thì không nói "kho lạnh chưa có phần cắt nào"', /!loiTon && !loiDoc && khoCo\.length === 0 && <p class="kho-phu">\{t\.khoTrong\}/.test(yc));
   ok('Quầy: ô chọn món ở dòng thêm không lặp món đã có ở hai danh sách trên', /!idGoiY\.has\(m\.id\) && !idKhoCo\.has\(m\.id\)/.test(yc));
   ok('Quầy: "Món không có trong danh sách" mở sẵn khi đọc tồn lỗi, kho trống, đã bấm "+ Thêm dòng" hay dòng có chữ',
     /<details class="yc-them-khac" open=\{loiTon \|\| khoCo\.length === 0 \|\| soDong > 3 \|\| dongThem\.some\(d => d\.mh \|\| d\.so\)/.test(yc));
   const xu = doc('web/src/pages/noi-bo/kho/xuat/[id].astro');
   ok('Xuất: chuyển ra QUẦY mới đọc gợi ý ra quầy; đọc lỗi chỉ mất nhóm đó',
     /loai === 'chuyen' && den\?\.loai === 'quay'/.test(xu) && /docGoiYRaQuay\(k\.client, cn\.id, den\.id\)\.catch\(/.test(xu));
-  ok('Xuất: bấm món đang thiếu → dòng điền sẵn (dongTuGoiYRaQuay); "+ Lấy cả" là viec them_thieu',
-    /g \? dongTuGoiYRaQuay\(g\)/.test(xu) && /value="them_thieu"/.test(xu) && /'them_thieu'/.test(xu));
+  ok('Xuất: bấm món đang thiếu → dòng điền sẵn số nên lấy, không quá tồn nơi lấy; "+ Lấy cả" là viec them_thieu',
+    /const dongThieu = \(g: GoiYRaQuay\) => dongTuGoiYRaQuay\(g, tonMonTaiTu\.get\(g\.mat_hang_id\)\)/.test(xu)
+      && /g \? dongThieu\(g\)/.test(xu) && /value="them_thieu"/.test(xu) && /'them_thieu'/.test(xu));
+  ok('Xuất: "đang thiếu" bỏ sốt / đồ uống (kho_goi_y_ra_quay không lọc loại) và món nơi lấy không đủ',
+    /!laDemCai\(tenMh\.get\(g\.mat_hang_id\)\) && nenLay\(g\) > 0/.test(xu));
+  ok('Xuất: bấm món đang thiếu đã có dòng trống → điền số vào dòng đó', /doc\.dong\.map\(d => \(d\.mat_hang_id === themMh \? dienThieu\(d\) : d\)\)/.test(xu));
+  ok('Xuất: "+ Lấy cả" không thêm được gì thì vẫn giữ dòng trống để chọn món', /dienSanMh = dongA\.length > doc\.dong\.length;/.test(xu));
   ok('Xuất: nút món kèm "Còn … · HSD …" (chuConTon), mọi món đang có ở nơi lấy trong mục gập',
     /chuConTon\(tonMonTaiTu\.get\(m\.id\)!, nn\)/.test(xu) && /ch\.monDangCo\(tu\.ten, monTaiTu\.length\)/.test(xu));
   ok('Xuất: phiếu chuyển không có nút sốt / đồ uống (0105)', /loai !== 'chuyen' \|\| !laDemCai\(m\)/.test(xu));

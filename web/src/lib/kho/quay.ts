@@ -99,7 +99,8 @@ export const LOAI_RA_QUAY = ['phan_cat', 'phu_pham'] as const;
 
 /**
  * "Kho đang có" của màn quầy yêu cầu hàng: phần cắt / phụ phẩm ở kho lạnh, chỉ lô chưa hết hạn, món đang dùng, trừ
- * món đã ở danh sách sắp hết (`boQua`); gom theo món, xếp theo tên.
+ * món đã ở danh sách sắp hết (`boQua`); gom theo món, xếp theo tên. Món đếm gói mà chỉ còn kg lẻ (0 gói) không tính —
+ * như "kho đã hết" của danh sách sắp hết: quầy xin theo gói.
  */
 export function monKhoChoQuay(
   ton: DongTon[], dangDung: ReadonlySet<string>, boQua: ReadonlySet<string> = new Set(),
@@ -107,12 +108,24 @@ export function monKhoChoQuay(
   return gomTheoMatHang(ton.filter(t => t.loai_vi_tri === 'kho' && t.tinh_trang_han !== 'het_han'
       && (t.so_kg > 0 || t.so_goi > 0) && (LOAI_RA_QUAY as readonly string[]).includes(t.loai_hang)
       && dangDung.has(t.mat_hang_id) && !boQua.has(t.mat_hang_id)))
+    .filter(m => (m.dem_goi ? m.so_goi : m.so_kg) > 0)
     .sort((a, b) => a.ten_hang.localeCompare(b.ten_hang, 'vi'));
 }
 
-/** Dòng phiếu chuyển của một món quầy đang thiếu: số nên lấy điền sẵn — gói, hoặc kg viết kiểu Việt ("1,5"). */
-export function dongTuGoiYRaQuay(g: GoiYRaQuay): { mat_hang_id: string; so_goi: string; so_kg: string } {
+/**
+ * Số nên lấy của một món quầy đang thiếu từ MỘT nơi: số đề nghị (kho_goi_y_ra_quay tính trên mọi kho của chi nhánh),
+ * không quá số nơi đó còn — gói với món đếm gói, kg với món cân ký. Không truyền `con` thì là số đề nghị.
+ */
+export function soNenLay(g: GoiYRaQuay, con?: { so_goi: number; so_kg: number }): number {
   const n = soDeNghi(g);
+  return con ? Math.max(0, Math.min(n, g.dem_goi ? con.so_goi : con.so_kg)) : n;
+}
+
+/** Dòng phiếu chuyển của một món quầy đang thiếu: số nên lấy điền sẵn — gói, hoặc kg viết kiểu Việt ("1,5"). */
+export function dongTuGoiYRaQuay(
+  g: GoiYRaQuay, con?: { so_goi: number; so_kg: number },
+): { mat_hang_id: string; so_goi: string; so_kg: string } {
+  const n = soNenLay(g, con);
   return { mat_hang_id: g.mat_hang_id, so_goi: g.dem_goi ? String(n) : '', so_kg: g.dem_goi ? '' : dinhDangKg(n, 'vi') };
 }
 

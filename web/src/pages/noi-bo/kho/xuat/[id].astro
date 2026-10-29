@@ -66,7 +66,7 @@ import {
   docCaiDat, docLyDo, docMatHang, docViTri, type CaiDat, type LyDo, type MatHang, type ViTri,
 } from '../../../../lib/kho/danh-muc.ts';
 import { docTon, gomTheoMatHang, chuConTon, type DongTon } from '../../../../lib/kho/ton.ts';
-import { cauSoLuong, docGoiYRaQuay, dongTuGoiYRaQuay, soDeNghi, type GoiYRaQuay } from '../../../../lib/kho/quay.ts';
+import { cauSoLuong, docGoiYRaQuay, dongTuGoiYRaQuay, soNenLay, type GoiYRaQuay } from '../../../../lib/kho/quay.ts';
 import { docThongTinLo } from '../../../../lib/kho/pha-loc.ts';
 import { docGiaoOMaCan, docMaTrenNhan, type GiaoOMa } from '../../../../lib/kho/o-ma.ts';
 import { chuTang, docLoTang } from '../../../../lib/kho/tang.ts';
@@ -461,19 +461,24 @@ const tenMh = new Map(matHang.map(m => [m.id, m]));
 // Đơn vị đếm chung của các món trên phiếu đã ghi ("khay") — cho câu "quầy nhận 8/10 khay", "đã trả 2 khay thiếu".
 // Món khác đơn vị thì null: câu dùng chữ chung "gói".
 const donViPhieu = donViChung(dongDb.map(d => tenMh.get(d.mat_hang_id)));
-// Xuất bếp nhanh: món hay đưa bếp mà nơi lấy đang có (còn hạn).
-const monNhanh = moi && loai === 'xuat_bep'
-  ? (await docMonHayDungBep(k.client, cn.id)).filter(id => hangTaiTu.has(id)).map(id => tenMh.get(id)!).filter(Boolean)
-  : [];
+// Xuất bếp nhanh: món hay đưa bếp mà nơi lấy đang có (còn hạn). Chuyển ra quầy: món quầy đang thiếu (đọc cùng lúc;
+// đọc lỗi thì chỉ mất nhóm này — vẫn chọn món như thường).
+const [idHayDuaBep, goiYQuay] = await Promise.all([
+  moi && loai === 'xuat_bep' ? docMonHayDungBep(k.client, cn.id) : Promise.resolve([] as string[]),
+  moi && loai === 'chuyen' && den?.loai === 'quay'
+    ? docGoiYRaQuay(k.client, cn.id, den.id).catch(() => [] as GoiYRaQuay[]) : Promise.resolve([] as GoiYRaQuay[]),
+]);
+const monNhanh = idHayDuaBep.filter(id => hangTaiTu.has(id)).map(id => tenMh.get(id)!).filter(Boolean);
 // Tồn theo món ở nơi lấy (chỉ lô còn hạn khi phiếu chỉ nhận hàng còn hạn) — dòng "Còn … · HSD …" dưới nút món.
 const tonMonTaiTu = new Map(gomTheoMatHang(loTaiTu.filter(t => !chiConHan || t.tinh_trang_han !== 'het_han'))
   .map(m => [m.mat_hang_id, m]));
-// Chuyển ra quầy: món quầy đang thiếu mà nơi lấy có. Đọc lỗi thì chỉ mất nhóm này — vẫn chọn món như thường.
-const thieuQuay: GoiYRaQuay[] = moi && loai === 'chuyen' && den?.loai === 'quay'
-  ? (await docGoiYRaQuay(k.client, cn.id, den.id).catch(() => [] as GoiYRaQuay[]))
-    .filter(g => hangTaiTu.has(g.mat_hang_id) && soDeNghi(g) > 0)
-  : [];
+// Món quầy đang thiếu mà nơi lấy có; số nên lấy không quá số nơi lấy còn. kho_goi_y_ra_quay không lọc loại: bỏ sốt,
+// đồ uống — phiếu chuyển không mang (0105).
+const nenLay = (g: GoiYRaQuay) => soNenLay(g, tonMonTaiTu.get(g.mat_hang_id));
+const thieuQuay = goiYQuay.filter(g => hangTaiTu.has(g.mat_hang_id) && !laDemCai(tenMh.get(g.mat_hang_id)) && nenLay(g) > 0);
 const thieuTheoId = new Map(thieuQuay.map(g => [g.mat_hang_id, g]));
+/** Dòng phiếu điền sẵn số nên lấy của một món đang thiếu. */
+const dongThieu = (g: GoiYRaQuay) => dongTuGoiYRaQuay(g, tonMonTaiTu.get(g.mat_hang_id));
 // Mọi món đang có ở nơi lấy thành nút, trừ món đã ở nhóm trên. Phiếu chuyển không mang sốt, đồ uống (0105).
 const idNhanh = new Set([...monNhanh.map(m => m.id), ...thieuQuay.map(g => g.mat_hang_id)]);
 const monTaiTu = moi ? mhChon.filter(m => !idNhanh.has(m.id) && tonMonTaiTu.has(m.id) && (loai !== 'chuyen' || !laDemCai(m))) : [];
@@ -533,18 +538,25 @@ if (form) {
           bao = kqHai(false, CAU.lyDoNgung);
         }
       }
+      // Dòng của món đang thiếu mà chưa có số: điền số nên lấy (dòng đã có số thì giữ số người ghi).
+      const dienThieu = (d: DongXuatForm) => {
+        const g = thieuTheoId.get(d.mat_hang_id);
+        return g && !d.so_goi.trim() && !d.so_kg.trim() ? dongThieu(g) : d;
+      };
       if (viec === 'them_mh') {
         // Món nhanh: thêm một dòng món đó (đã có thì thôi) — dòng đó là dòng để ghi số. Món quầy đang thiếu: số nên
         // lấy điền sẵn.
         const g = thieuTheoId.get(themMh);
         dongA = doc.dong.some(d => d.mat_hang_id === themMh)
-          ? doc.dong : [...doc.dong, g ? dongTuGoiYRaQuay(g) : { mat_hang_id: themMh, so_goi: '', so_kg: '' }];
+          ? doc.dong.map(d => (d.mat_hang_id === themMh ? dienThieu(d) : d))
+          : [...doc.dong, g ? dongThieu(g) : { mat_hang_id: themMh, so_goi: '', so_kg: '' }];
         dienSanMh = true;
       } else if (viec === 'them_thieu') {
-        // Lấy cả các món quầy đang thiếu: mỗi món chưa có trên phiếu một dòng, số nên lấy điền sẵn.
+        // Lấy cả các món quầy đang thiếu: mỗi món chưa có trên phiếu một dòng, số nên lấy điền sẵn. Không thêm được gì
+        // (đọc gợi ý lỗi, món đã đủ trên phiếu) thì vẫn giữ dòng trống để chọn món.
         const daCo = new Set(doc.dong.map(d => d.mat_hang_id));
-        dongA = [...doc.dong, ...thieuQuay.filter(g => !daCo.has(g.mat_hang_id)).map(dongTuGoiYRaQuay)];
-        dienSanMh = true;
+        dongA = [...doc.dong.map(dienThieu), ...thieuQuay.filter(g => !daCo.has(g.mat_hang_id)).map(dongThieu)];
+        dienSanMh = dongA.length > doc.dong.length;
       } else if (viec !== 'quet') {
         dongA = doc.dong;
       } else {
@@ -814,7 +826,7 @@ const chuDaHuy = (() => {
                     {thieuQuay.map(g => (
                       <button type="submit" name="them_mh" value={g.mat_hang_id} class="nb-nut phu xb-mon" formnovalidate>
                         <span>{g.ten}</span>
-                        <small>{ch.nenLay(cauSoLuong(g, g.so_goi_de_nghi, g.so_kg_de_nghi, nn))}{tonMonTaiTu.get(g.mat_hang_id) ? ` · ${chuConTon(tonMonTaiTu.get(g.mat_hang_id)!, nn)}` : ''}</small>
+                        <small>{ch.nenLay(cauSoLuong(g, nenLay(g), nenLay(g), nn))}{tonMonTaiTu.get(g.mat_hang_id) ? ` · ${chuConTon(tonMonTaiTu.get(g.mat_hang_id)!, nn)}` : ''}</small>
                       </button>
                     ))}
                   </div>

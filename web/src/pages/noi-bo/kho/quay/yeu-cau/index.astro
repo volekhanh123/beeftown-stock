@@ -154,12 +154,10 @@ if (form && choGui) {
 // ---------------------------------------------------------------------------
 let goiY: GoiYRaQuay[] = [];
 let yeuCau: YeuCauQuay[] = [];
-// Tồn kho lạnh cho "Kho đang có" — đọc riêng: lỗi thì chỉ mất danh sách, có câu báo, vẫn thêm món ở dòng thêm.
-let ton: DongTon[] = [];
-let loiTon = false;
-if (choGui && quay) {
-  try { ton = await docTon(k.client, cn.id); } catch { loiTon = true; }
-}
+// Tồn kho lạnh cho "Kho đang có" — đọc cùng lúc với phần dưới nhưng riêng: lỗi thì chỉ mất danh sách (null), có câu
+// báo, vẫn thêm món ở dòng thêm.
+const huaTon: Promise<DongTon[] | null> = choGui && quay
+  ? docTon(k.client, cn.id).catch(() => null) : Promise.resolve([]);
 let ten = new Map<string, string>();
 /** Đơn vị đếm chung của từng yêu cầu ("khay") — cho dòng "1 món · 10 khay". */
 let donVi = new Map<string, string>();
@@ -173,6 +171,9 @@ try {
     tenNhanSu(k.client, yeuCau.map(y => y.nguoi_tao)), docDonViYeuCau(k.client, yeuCau.map(y => y.id), matHang),
   ]);
 } catch (e) { loiDoc = loiDoc ?? cauLoiKho(e, t.khongDocYc); }
+const tonDoc = await huaTon;
+const loiTon = tonDoc === null;
+const ton = tonDoc ?? [];
 
 const dangCho = yeuCau.filter(y => y.trang_thai === 'cho').sort((a, b) => a.created_at.localeCompare(b.created_at));
 const khac = yeuCau.filter(y => y.trang_thai !== 'cho');
@@ -287,7 +288,7 @@ const nhan = (tt: string) => ((x: [string, string]) => [x[0], x[1] || 'nhap'])(t
 
       <h2>{t.themMon}</h2>
       {loiTon && <div class="nb-bao luu-y" role="alert"><p>{t.khongDocTon}</p></div>}
-      {!loiTon && khoCo.length === 0 && <p class="kho-phu">{t.khoTrong}</p>}
+      {!loiTon && !loiDoc && khoCo.length === 0 && <p class="kho-phu">{t.khoTrong}</p>}
       {khoCo.length > 0 && (
         <>
           <p class="kho-phu">{t.khoDangCo}</p>

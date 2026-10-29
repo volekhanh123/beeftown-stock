@@ -314,15 +314,18 @@ Không migration: mọi số đã có (`kho_v_ton` NV quầy đọc được, `k
 
 - **Quầy → Yêu cầu hàng** (`quay/yeu-cau`): dưới "món quầy sắp hết" là **Kho đang có** — phần cắt / phụ phẩm kho lạnh
   còn hạn (`monKhoChoQuay`, `lib/kho/quay.ts`: không tảng, không lô hết hạn, không món ngừng dùng, không món đã ở
-  danh sách sắp hết; xếp theo tên). Mỗi món một hàng: tên, dòng nhỏ "Kho còn 4 gói · 2 kg · HSD 30/10" (`chuConTon`,
+  danh sách sắp hết, không món đếm gói chỉ còn kg lẻ; xếp theo tên). Tồn đọc cùng lúc với gợi ý; đọc lỗi thì có câu
+  báo. Mỗi món một hàng: tên, dòng nhỏ "Kho còn 4 gói · 2 kg · HSD 30/10" (`chuConTon`,
   `lib/kho/ton.ts`), ô số `k_<món>` (gói nếu món đếm gói, không thì kg). `docFormYeuCau` cộng ô `k_` với dòng thêm
   cùng món; chỉ có ô `k_` / dòng thêm thì nguồn là `tay`. Dòng thêm (đủ món) vào mục gập "Món không có trong danh
   sách" — mở sẵn khi đọc tồn lỗi (có câu báo, không im như thể kho trống), kho trống, đã bấm "+ Thêm dòng" hay dòng
   đã có chữ.
 - **Xuất → Chuyển ra quầy** (`xuat/[id]`, phiếu mới, đích là quầy): nhóm **"<quầy> đang thiếu"** — món
-  `kho_goi_y_ra_quay` đề nghị (> 0) mà nơi lấy có hàng còn hạn. Bấm một món là thêm dòng **điền sẵn** số nên lấy
-  (`dongTuGoiYRaQuay`: gói, hoặc kg viết "1,5"); "+ Lấy cả N món đang thiếu" (`viec = them_thieu`) thêm mọi món chưa
-  có trên phiếu. Đọc gợi ý lỗi thì chỉ mất nhóm này.
+  `kho_goi_y_ra_quay` đề nghị mà nơi lấy có hàng còn hạn; trừ sốt / đồ uống (hàm không lọc loại, phiếu chuyển không
+  mang — 0105). Số nên lấy = số đề nghị nhưng không quá số **nơi lấy** còn (`soNenLay` — hàm tính trên mọi kho của
+  chi nhánh). Bấm một món là thêm dòng **điền sẵn** số đó (`dongTuGoiYRaQuay`: gói, hoặc kg viết "1,5"); món đã có
+  dòng chưa ghi số thì điền vào dòng đó. "+ Lấy cả N món đang thiếu" (`viec = them_thieu`) thêm mọi món chưa có trên
+  phiếu; không thêm được gì thì vẫn còn dòng trống để chọn món. Đọc gợi ý lỗi thì chỉ mất nhóm này.
 - **Xuất (mọi loại)**: mọi món đang có ở nơi lấy thành nút trong mục gập "Món đang có ở <nơi> (n)" (mở sẵn khi không
   có nhóm nào khác và ≤ 8 món); dưới tên là "Còn 3 gói · 1,2 kg · HSD 30/10" — chỉ tính lô còn hạn khi phiếu chỉ nhận
   hàng còn hạn (xuất bếp, xuất khác, chuyển ra quầy). Nút món hay đưa bếp cũng có dòng này. Phiếu chuyển không có nút
