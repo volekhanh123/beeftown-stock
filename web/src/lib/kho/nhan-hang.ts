@@ -214,37 +214,8 @@ export async function docPhieuNhan(client: SupabaseClient, id: string): Promise<
   };
 }
 
-/**
- * Món hay giao của nhà cung cấp này — để hiện thành nút lớn ở bước 2. Thủ kho
- * không đọc được bảng dòng phiếu (có đơn giá), nên lấy qua các hàm _kg: tìm
- * vài phiếu gần nhất có tên NCC này, đọc dòng của 3 phiếu đầu. Lỗi thì trả
- * mảng rỗng — trang vẫn còn ô chọn mặt hàng.
- */
-export async function docMonGanDay(
-  client: SupabaseClient, chiNhanhId: string, tenNcc: string | null, boQuaId: string,
-): Promise<string[][]> {
-  if (!tenNcc) return [];
-  try {
-    const { data, error } = await client.rpc('kho_ds_phieu_nhap_kg', {
-      p_chi_nhanh_id: chiNhanhId,
-      p_trang_thai: null,
-      p_q: tenNcc.slice(0, 60),
-      p_tu: null,
-      p_den: null,
-      p_cua_toi: false,
-      p_gioi_han: 8,
-      p_bo_qua: 0,
-    });
-    if (error) return [];
-    const ids = ((data ?? []) as PhieuNhanTom[])
-      .filter(p => p.ten_nha_cung_cap === tenNcc && p.id !== boQuaId && p.trang_thai !== 'da_huy' && Number(p.so_dong) > 0)
-      .slice(0, 3).map(p => p.id);
-    const ds = await Promise.all(ids.map(id => docPhieuNhan(client, id).catch(() => null)));
-    return ds.map(p => (p?.dong ?? []).map(d => d.mat_hang_id));
-  } catch {
-    return [];
-  }
-}
+// Món hay giao của nhà cung cấp (nút lớn ở bước 2): danh mục NCC – món, lib/kho/ncc-mat-hang.ts (0110). Trước 0110
+// đoán bằng cách tìm vài phiếu gần nhất có TÊN nhà cung cấp giống — NCC mới hay lâu không giao thì không có nút.
 
 /** Gộp nhiều danh sách mặt hàng thành một, giữ thứ tự xuất hiện đầu tiên, bỏ trùng, tối đa `toiDa`. */
 export function gopMonGanDay(ds: string[][], toiDa = 8): string[] {

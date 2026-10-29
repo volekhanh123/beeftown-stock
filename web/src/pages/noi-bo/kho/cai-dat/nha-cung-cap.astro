@@ -14,12 +14,19 @@
  * "Mã MISA". Đổi số tài khoản đã có: database ghi nhật ký (cũ → mới, ai, lúc)
  * và báo chủ quán (sự kiện ncc_doi_tai_khoan, link ?sua=<id> về đây) — màn sửa
  * hiện các lần đổi gần nhất để soát.
+ *
+ * Món nhà cung cấp này bán (0110): khi sửa một NCC, mục riêng dưới form liệt kê danh mục NCC – món — máy tự thêm món
+ * có trên phiếu mua đã gửi / đã duyệt; ở đây thêm món chưa từng giao, bỏ món sai (Thêm lại trong "Đã bỏ"), đánh dấu
+ * NCC chính của món (NCC chính cũ của món đó tự thôi). Mỗi nút là một form POST viec=ncc_mon, lam=them|bo|chinh|bo_chinh
+ * → luuNccMon → về lại ?sua=<id>#mon-ncc. Bấm hai lần ra cùng trạng thái.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import TruongThem from '../../../../components/kho/TruongThem.astro';
+import ChonMatHang from '../../../../components/kho/ChonMatHang.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
-import { docNhaCungCap, docDinhNghia, luuNhaCungCap, type NhaCungCap } from '../../../../lib/kho/danh-muc.ts';
+import { docNhaCungCap, docDinhNghia, docMatHang, luuNhaCungCap, type MatHang, type NhaCungCap } from '../../../../lib/kho/danh-muc.ts';
+import { docNccMon, monCuaNcc, chuLanTruoc, chuChuaGiao, luuNccMon, type NccMon } from '../../../../lib/kho/ncc-mat-hang.ts';
 import { cauLoiKho, dinhDangThoiDiem, type KetQua } from '../../../../lib/kho/chung.ts';
 import { docNhatKyTaiKhoan, type DoiTaiKhoan } from '../../../../lib/kho/cong-no.ts';
 import { tenNhanSu } from '../../../../lib/kho/trang.ts';
@@ -83,6 +90,25 @@ const t = dichNB(nn, {
   taiKhoan: { vi: 'Tài khoản', en: 'Account' },
   hoaDon: { vi: 'Hóa đơn', en: 'Invoices' },
   gopNhieu: { vi: 'Gộp nhiều lần giao', en: 'Combined for several deliveries' },
+  monNcc: { vi: (ten: string, n: number) => `Món ${ten} bán (${n})`, en: (ten: string, n: number) => `Items ${ten} sells (${n})` },
+  monNccDan: {
+    vi: 'Máy tự thêm món có trên phiếu nhận hàng đã gửi hoặc đã duyệt. Ở đây thêm món chưa từng giao, bỏ món sai, và chọn nhà cung cấp chính của món — khi thủ kho chọn món trước, nhà cung cấp chính hiện đầu tiên.',
+    en: 'The app adds items found on receiving notes that were sent or approved. Here you can add items not delivered yet, remove wrong ones, and pick the main supplier of an item — when the storekeeper chooses the item first, the main supplier comes first.',
+  },
+  khongDocMon: {
+    vi: 'Chưa đọc được món của nhà cung cấp này — mạng hoặc database đang trục trặc. Tải lại trang.',
+    en: 'Could not read this supplier\'s items — the connection or the database is having trouble. Reload the page.',
+  },
+  chuaCoMon: { vi: 'Chưa có món nào — thêm ở dưới, hoặc đợi phiếu nhận hàng đầu tiên.', en: 'No items yet — add one below, or wait for the first receiving note.' },
+  laChinh: { vi: 'NCC chính', en: 'Main supplier' },
+  chinhLa: { vi: (ten: string) => `NCC chính: ${ten}`, en: (ten: string) => `Main supplier: ${ten}` },
+  datChinh: { vi: 'Đặt làm NCC chính', en: 'Make main supplier' },
+  thoiChinh: { vi: 'Thôi là NCC chính', en: 'No longer main' },
+  boMon: { vi: 'Bỏ', en: 'Remove' },
+  daBo: { vi: (n: number) => `Đã bỏ (${n})`, en: (n: number) => `Removed (${n})` },
+  themLai: { vi: 'Thêm lại', en: 'Add back' },
+  themMon: { vi: 'Thêm món', en: 'Add item' },
+  chonMonThem: { vi: '— chọn món nhà cung cấp này bán —', en: '— choose an item this supplier sells —' },
 });
 
 let ds: NhaCungCap[] = [];
@@ -95,7 +121,16 @@ try {
 let bao: KetQua | null = k.bao;
 let nhapLai: FormData | null = null;
 const form = await docFormGui(Astro);
-if (form) {
+if (form && String(form.get('viec') ?? '') === 'ncc_mon') {
+  // 0110: một nút của mục "Món nhà cung cấp này bán".
+  const nccId = String(form.get('ncc') ?? '');
+  const monId = String(form.get('mon') ?? '');
+  // Tên món chỉ để viết câu báo — đọc không được thì câu nói "món" chung, việc lưu vẫn theo kết quả database.
+  const tenMon = (await docMatHang(k.client).catch(() => [] as MatHang[])).find(m => m.id === monId)?.ten ?? '';
+  const kq = await luuNccMon(k.client, nccId, monId, String(form.get('lam') ?? ''),
+    { ncc: ds.find(n => n.id === nccId)?.ten ?? '', mon: tenMon });
+  return chuyenHuong(Astro, `/noi-bo/kho/cai-dat/nha-cung-cap?sua=${encodeURIComponent(nccId)}#mon-ncc`, kq);
+} else if (form) {
   const id = String(form.get('id') ?? '');
   const kq = await luuNhaCungCap(k.client, form, dinhNghia, ds.find(n => n.id === id));
   if (kq.ok) return chuyenHuong(Astro, '/noi-bo/kho/cai-dat/nha-cung-cap', kq);
@@ -136,6 +171,22 @@ if (dangSua) {
     tenNguoi = await tenNhanSu(k.client, nhatKy.map(x => x.nguoi_doi));
   } catch { /* nhật ký chỉ để xem — lỗi đọc không chặn việc sửa */ }
 }
+// Món nhà cung cấp này bán (0110). Số "lần trước" tính ở chi nhánh đang chọn.
+let matHang: MatHang[] = [];
+let dsNccMon: NccMon[] = [];
+let loiMon = false;
+if (dangSua?.dang_dung && k.chiNhanh) {
+  try {
+    [matHang, dsNccMon] = await Promise.all([docMatHang(k.client), docNccMon(k.client, k.chiNhanh.id)]);
+  } catch { loiMon = true; }
+}
+const monTheoId = new Map(matHang.map(m => [m.id, m]));
+const monDangBan = dangSua ? monCuaNcc(dsNccMon, dangSua.id).filter(c => monTheoId.has(c.mat_hang_id)) : [];
+const monDaBo = dangSua ? dsNccMon.filter(c => c.nha_cung_cap_id === dangSua.id && c.da_bo && monTheoId.has(c.mat_hang_id)) : [];
+const tenNcc = new Map(ds.map(n => [n.id, n.ten]));
+/** NCC chính của món này nếu là NCC KHÁC (để nói rõ bấm "chính" ở đây sẽ thay ai). */
+const chinhKhac = (monId: string) => dsNccMon.find(c => c.mat_hang_id === monId && c.la_chinh && c.nha_cung_cap_id !== dangSua?.id);
+const monChuaCo = matHang.filter(m => m.dang_dung && !monDangBan.some(c => c.mat_hang_id === m.id));
 ---
 <Kho k={k} huongDan="nha-cung-cap" tieuDe={t.tieuDe}>
   <h1>{t.tieuDe}</h1>
@@ -215,6 +266,72 @@ if (dangSua) {
       )}
       {dangSua && <p style="margin:.75rem 0 0"><a href="/noi-bo/kho/cai-dat/nha-cung-cap">{t.dongKhongSua}</a></p>}
     </details>
+  )}
+
+  {dangSua?.dang_dung && k.chiNhanh && (
+    <section class="nb-the" id="mon-ncc">
+      <h2 style="margin-top:0">{t.monNcc(dangSua.ten, monDangBan.length)}</h2>
+      <p class="kho-phu">{t.monNccDan}</p>
+      {loiMon ? <div class="nb-bao luu-y" role="alert"><p>{t.khongDocMon}</p></div> : (
+        <>
+          {monDangBan.length === 0 && <p class="nb-rong">{t.chuaCoMon}</p>}
+          <ul class="kho-dong-ds">
+            {monDangBan.map(c => {
+              const m = monTheoId.get(c.mat_hang_id);
+              const khac = chinhKhac(c.mat_hang_id);
+              return (
+                <li>
+                  <span>
+                    <strong>{m?.ten}{c.la_chinh ? ` · ${t.laChinh}` : ''}</strong>
+                    <small>{[
+                      chuLanTruoc(c, m, nn) ?? chuChuaGiao(c, nn),
+                      khac ? t.chinhLa(tenNcc.get(khac.nha_cung_cap_id) ?? '') : '',
+                    ].filter(Boolean).join(' · ')}</small>
+                  </span>
+                  <form method="POST" class="kho-thanh-nut" style="margin:0">
+                    <input type="hidden" name="viec" value="ncc_mon" />
+                    <input type="hidden" name="ncc" value={dangSua.id} />
+                    <input type="hidden" name="mon" value={c.mat_hang_id} />
+                    {c.la_chinh
+                      ? <button type="submit" name="lam" value="bo_chinh" class="nb-nut phu">{t.thoiChinh}</button>
+                      : <button type="submit" name="lam" value="chinh" class="nb-nut phu">{t.datChinh}</button>}
+                    <button type="submit" name="lam" value="bo" class="nb-nut phu kho-nut-xoa">{t.boMon}</button>
+                  </form>
+                </li>
+              );
+            })}
+          </ul>
+          <form method="POST" class="kho-luoi" style="margin-top:1rem;align-items:end">
+            <input type="hidden" name="viec" value="ncc_mon" />
+            <input type="hidden" name="ncc" value={dangSua.id} />
+            <label class="nb-o" style="margin:0">
+              <span>{t.themMon}</span>
+              <ChonMatHang name="mon" matHang={monChuaCo} trong={t.chonMonThem} demCai batBuoc />
+            </label>
+            <button type="submit" name="lam" value="them" class="nb-nut">{t.themMon}</button>
+          </form>
+          {monDaBo.length > 0 && (
+            <details style="margin-top:1rem">
+              <summary style="cursor:pointer;font-weight:600">{t.daBo(monDaBo.length)}</summary>
+              <ul class="kho-dong-ds">
+                {monDaBo.map(c => (
+                  <li>
+                    <span><strong>{monTheoId.get(c.mat_hang_id)?.ten}</strong>
+                      {chuLanTruoc(c, monTheoId.get(c.mat_hang_id), nn) && <small>{chuLanTruoc(c, monTheoId.get(c.mat_hang_id), nn)}</small>}</span>
+                    <form method="POST" style="margin:0">
+                      <input type="hidden" name="viec" value="ncc_mon" />
+                      <input type="hidden" name="ncc" value={dangSua.id} />
+                      <input type="hidden" name="mon" value={c.mat_hang_id} />
+                      <button type="submit" name="lam" value="them" class="nb-nut phu">{t.themLai}</button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </>
+      )}
+    </section>
   )}
 
   <h2>{t.danhSach(ds.length)}</h2>

@@ -16,15 +16,24 @@
  * "Nhận theo đơn đặt" (GĐ8a, 0039): đơn đã gửi / nhận một phần hiện thành nút —
  * bấm là kho_tao_phieu_nhap_tu_don tạo phiếu nháp điền sẵn món và kg còn thiếu,
  * mở thẳng bước 2 (ảnh hóa đơn chụp ở đó bằng "Thêm ảnh").
+ *
+ * "Không biết ai giao? Chọn món trước" (0110): form GET riêng (không lồng trong form ảnh — chọn món không làm mất
+ * ảnh vì nó đứng trước) gửi ?mon=<món>; ô "Ai giao hàng?" chỉ còn nút các nhà cung cấp bán món đó (danh mục NCC –
+ * món, NCC chính đầu tiên), một NCC thì chọn sẵn. Bấm "Tiếp" thì món đi theo sang bước 2 (?tiep=<món>). Ảnh đã
+ * tải ở lần bấm "Tiếp" trước (gõ thiếu một ô) đi theo form GET (ma_gui + anh_da_tai, docAnhDaTai kiểm đúng thư mục
+ * của chi nhánh và mã gửi) — chọn món sau khi bị báo thiếu nhà cung cấp không phải chụp lại.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import TruongThem from '../../../../components/kho/TruongThem.astro';
 import NhanHangChon from '../../../../components/kho/NhanHangChon.astro';
+import ChonMatHang from '../../../../components/kho/ChonMatHang.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
-import { docCaiDat, docDinhNghia, docViTri, type CaiDat, type ViTri } from '../../../../lib/kho/danh-muc.ts';
+import { docCaiDat, docDinhNghia, docMatHang, docViTri, type CaiDat, type MatHang, type ViTri } from '../../../../lib/kho/danh-muc.ts';
 import { docNccNhap, taoPhieuNhan, type DauNhan, type NccNhap } from '../../../../lib/kho/nhan-hang.ts';
+import { docAnhDaTai } from '../../../../lib/kho/anh.ts';
 import { docDonChoNhan, taoPhieuTuDon, type DonDatTom } from '../../../../lib/kho/dat-hang.ts';
+import { docMonChon, docNccMon, nccCuaMon, chuNccCuaMon, type NccMon } from '../../../../lib/kho/ncc-mat-hang.ts';
 import {
   cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangNgayNgan, homNayVn, kqHai, type KetQua,
 } from '../../../../lib/kho/chung.ts';
@@ -83,6 +92,23 @@ const t = dichNB(nn, {
   nccGanDay: { vi: 'Nhà cung cấp giao gần đây', en: 'Suppliers who delivered recently' },
   giao: { vi: (ngay: string) => `giao ${ngay}`, en: (ngay: string) => `delivered ${ngay}` },
   nguoiKhac: { vi: 'Người khác', en: 'Someone else' },
+  theoMonHoi: { vi: 'Không biết ai giao? Chọn món trước', en: 'Not sure who delivered? Choose the item first' },
+  theoMonDan: {
+    vi: 'Chọn món đang nhận — máy chỉ ra các nhà cung cấp bán món đó.',
+    en: 'Choose the item you are receiving — the app shows the suppliers that sell it.',
+  },
+  chonMon: { vi: '— chọn món —', en: '— choose an item —' },
+  timNcc: { vi: 'Tìm nhà cung cấp', en: 'Find suppliers' },
+  boChonMon: { vi: 'Bỏ chọn món', en: 'Clear the item' },
+  nccBanMon: { vi: (mon: string) => `Nhà cung cấp bán ${mon}`, en: (mon: string) => `Suppliers that sell ${mon}` },
+  chuaAiBan: {
+    vi: (mon: string) => `Chưa nhà cung cấp nào giao ${mon} — chọn ở dưới. Phiếu được gửi thì máy tự nhớ cho lần sau.`,
+    en: (mon: string) => `No supplier has delivered ${mon} yet — choose below. Once the note is sent, the app remembers it for next time.`,
+  },
+  loiNccMon: {
+    vi: 'Chưa đọc được nhà cung cấp của món này — mạng hoặc database đang trục trặc. Chọn nhà cung cấp ở dưới, hoặc tải lại trang.',
+    en: 'Could not read the suppliers of this item — the connection or the database is having trouble. Choose the supplier below, or reload the page.',
+  },
   chonODay: { vi: '— không có ở trên thì chọn ở đây —', en: '— not listed above? Choose here —' },
   nhanVaoDau: { vi: 'Nhận vào đâu?', en: 'Where does it go?' },
   noiNhan: { vi: 'Nơi nhận hàng', en: 'Receiving location' },
@@ -92,18 +118,24 @@ const t = dichNB(nn, {
 });
 
 let ncc: NccNhap[] = [];
+let matHang: MatHang[] = [];
 let viTri: ViTri[] = [];
 let caiDat: CaiDat | null = null;
 let dnPhieu: DinhNghiaTruong[] = [];
 let loiDoc = k.loiDoc;
 try {
-  [ncc, viTri, caiDat, dnPhieu] = await Promise.all([
+  [ncc, viTri, caiDat, dnPhieu, matHang] = await Promise.all([
     loai === 'mua' ? docNccNhap(k.client, cn.id) : Promise.resolve([]),
     docViTri(k.client, cn.id), docCaiDat(k.client, cn.id), docDinhNghia(k.client, 'phieu_nhap'),
+    loai === 'mua' ? docMatHang(k.client) : Promise.resolve([]),
   ]);
 } catch (e) {
   loiDoc = cauLoiKho(e, t.khongDocDanhMuc);
 }
+
+// Chọn món trước (0110): ?mon=<món> — form POST không có action nên gửi về đúng đường dẫn này, ?mon= còn nguyên.
+const monChon = matHang.find(m => m.id === docMonChon(Astro.url.searchParams.get('mon')) && m.dang_dung) ?? null;
+const sauTao = (id: string) => `/noi-bo/kho/nhan-hang/${id}${monChon ? `?tiep=${monChon.id}` : ''}`;
 
 // ---------------------------------------------------------------------------
 // Gửi form
@@ -121,7 +153,7 @@ if (form) {
     bao = kq;
   } else if (String(form.get('viec') ?? '') === 'tao') {
     const kq = await taoPhieuNhan(k.client, cn.id, form, { loai, dinhNghiaPhieu: dnPhieu });
-    if (kq.ok && kq.id) return chuyenHuong(Astro, `/noi-bo/kho/nhan-hang/${kq.id}`, kq);
+    if (kq.ok && kq.id) return chuyenHuong(Astro, sauTao(kq.id), kq);
     bao = kq;
     dauForm = kq.dau ?? null;
     maGuiGiu = kq.maGui ?? null;
@@ -131,12 +163,34 @@ if (form) {
   }
 }
 
+// Form GET "chọn món trước" mang theo ảnh đã tải ở lần "Tiếp" trước (chỉ đường dẫn đúng thư mục của mã gửi đó).
+if (!form && loai === 'mua') {
+  const maGuiUrl = Astro.url.searchParams.get('ma_gui') ?? '';
+  const fd = new FormData();
+  for (const a of Astro.url.searchParams.getAll('anh_da_tai')) fd.append('anh_da_tai', a);
+  const anhUrl = docAnhDaTai(fd, cn.id, 'nhap', maGuiUrl, 24);
+  if (anhUrl.length) { maGuiGiu = maGuiUrl; anhDaTai = anhUrl; }
+}
+
 // ---------------------------------------------------------------------------
 // Dữ liệu hiển thị
 // ---------------------------------------------------------------------------
+// Nhà cung cấp bán món đã chọn — đọc sau phần gửi form (bấm "Tiếp" thành công thì chuyển trang luôn, không cần).
+let dsNccMon: NccMon[] = [];
+let loiNccMon = false;
+if (monChon) {
+  try { dsNccMon = await docNccMon(k.client, cn.id, { mon: monChon.id }); } catch { loiNccMon = true; }
+}
+const nccBanMon = monChon
+  ? nccCuaMon(dsNccMon, monChon.id).flatMap(c => {
+    const n = ncc.find(x => x.id === c.nha_cung_cap_id);
+    return n ? [{ n, c }] : [];
+  })
+  : [];
 const noiNhan = viTri.filter(v => v.dang_dung && (v.loai === 'kho' || v.loai === 'quay'));
 const dau: DauNhan = dauForm ?? {
-  nha_cung_cap_id: '',
+  // Chọn món trước mà chỉ một nhà cung cấp bán món đó: chọn sẵn.
+  nha_cung_cap_id: nccBanMon.length === 1 ? nccBanMon[0].n.id : '',
   vi_tri_id: noiNhan.find(v => v.id === caiDat?.vi_tri_nhan_hang_id)?.id ?? noiNhan.find(v => v.loai === 'kho')?.id ?? noiNhan[0]?.id ?? '',
   ngay_nhap: homNayVn(), so_hoa_don: '', truong_them: {},
 };
@@ -147,9 +201,13 @@ let loiDonCho = false;
 if (loai === 'mua') {
   try { donCho = await docDonChoNhan(k.client, cn.id); } catch { loiDonCho = true; }
 }
-// 6 người giao gần đây là nút lớn; còn lại trong ô chọn.
-const nccNut = ncc.slice(0, 6);
-const nccKhac = ncc.slice(6);
+// 6 người giao gần đây là nút lớn; còn lại trong ô chọn. Đã chọn món trước: nút là các NCC bán món đó.
+const nccNut = nccBanMon.length ? nccBanMon.map(x => x.n) : ncc.slice(0, 6);
+const nccKhac = ncc.filter(n => !nccNut.some(x => x.id === n.id));
+const phuNcc = (n: NccNhap) => {
+  const c = nccBanMon.find(x => x.n.id === n.id)?.c;
+  return c ? chuNccCuaMon(c, nn) : n.lan_cuoi ? t.giao(dinhDangNgayNgan(n.lan_cuoi)) : null;
+};
 const chonONut = nccNut.some(n => n.id === dau.nha_cung_cap_id);
 const maGuiForm = maGuiGiu ?? crypto.randomUUID();
 const tieuDe = loai === 'ton_dau' ? t.tdTonDau : t.tdNhan;
@@ -189,6 +247,24 @@ const tieuDe = loai === 'ton_dau' ? t.tdTonDau : t.tdNhan;
     </section>
   )}
 
+  {loai === 'mua' && matHang.length > 0 && (
+    <form method="get" id="tim-theo-mon">
+      {anhDaTai.length > 0 && <input type="hidden" name="ma_gui" value={maGuiForm} />}
+      {anhDaTai.map(a => <input type="hidden" name="anh_da_tai" value={a} />)}
+      <details class="nb-the" open={!!monChon || undefined}>
+        <summary style="cursor:pointer;font-weight:600">{t.theoMonHoi}</summary>
+        <label class="nb-o" style="margin-top:.75rem">
+          <span>{t.theoMonDan}</span>
+          <ChonMatHang name="mon" matHang={matHang} chon={monChon?.id ?? ''} trong={t.chonMon} demCai batBuoc />
+        </label>
+        <div class="kho-thanh-nut">
+          <button type="submit" class="nb-nut phu">{t.timNcc}</button>
+          {monChon && <a class="nb-nut phu" href="/noi-bo/kho/nhan-hang/moi">{t.boChonMon}</a>}
+        </div>
+      </details>
+    </form>
+  )}
+
   <form method="POST" enctype="multipart/form-data">
     <input type="hidden" name="ma_gui" value={maGuiForm} />
     {anhDaTai.map(a => <input type="hidden" name="anh_da_tai" value={a} />)}
@@ -213,8 +289,11 @@ const tieuDe = loai === 'ton_dau' ? t.tdTonDau : t.tdNhan;
           {ncc.length === 0 && (
             <small>{t.chuaCoNcc} {k.duoc('ncc') ? <a href="/noi-bo/kho/cai-dat/nha-cung-cap">{t.themNcc}</a> : t.nhoQuanLy}</small>
           )}
-          <NhanHangChon name="ncc" nhan={t.nccGanDay} chon={chonONut ? dau.nha_cung_cap_id : ''}
-            ds={nccNut.map(n => ({ value: n.id, nhan: n.ten, phu: n.lan_cuoi ? t.giao(dinhDangNgayNgan(n.lan_cuoi)) : null }))} />
+          {monChon && !loiNccMon && <small>{nccBanMon.length ? t.nccBanMon(monChon.ten) : t.chuaAiBan(monChon.ten)}</small>}
+          {loiNccMon && <div class="nb-bao luu-y" role="alert"><p>{t.loiNccMon}</p></div>}
+          <NhanHangChon name="ncc" nhan={nccBanMon.length && monChon ? t.nccBanMon(monChon.ten) : t.nccGanDay}
+            chon={chonONut ? dau.nha_cung_cap_id : ''}
+            ds={nccNut.map(n => ({ value: n.id, nhan: n.ten, phu: phuNcc(n) }))} />
         </div>
         {nccKhac.length > 0 && (
           <label class="nb-o">

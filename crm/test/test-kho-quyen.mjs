@@ -395,6 +395,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_ipos_ma_da_ban',
     // 0109: ghi số ngày ủ của tảng ủ (pha_loc), nhật ký ủ để phân tích (xem — không có tiền)
     'kho_ghi_ngay_u', 'kho_nhat_ky_u',
+    // 0110: danh mục hàng của từng NCC — đọc (nhap hoặc ncc, không tiền), sửa tay (ncc)
+    'kho_ds_ncc_mat_hang', 'kho_luu_ncc_mat_hang',
   ].sort();
   const NOI_BO = [
     'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',

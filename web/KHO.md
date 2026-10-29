@@ -970,7 +970,7 @@ Zalo; hàng về thì nhận theo đơn; cuối kỳ xem đánh giá NCC.
   lý / chủ, bước đầu quy trình Nhận hàng. Kế toán vào qua link (Báo cáo → Đánh giá NCC → Đơn đặt hàng).
 - Hướng dẫn: `dat-hang` (quản lý, chủ, kế toán — có nhắc giá), `danh-gia-ncc`, `nhan-theo-don` (thủ kho — không nhắc
   tiền), câu hỏi `hoi-goi-y-dat-hang`.
-- Chưa làm: cột "NCC chính" của mặt hàng (gợi ý theo NCC giao gần nhất); gửi PDF thật qua Zalo (Web Share chỉ gửi chữ —
+- Chưa làm: gợi ý theo NCC chính (0110 đã có NCC chính trong danh mục NCC – món, mục 3t — gợi ý vẫn theo NCC giao gần nhất); gửi PDF thật qua Zalo (Web Share chỉ gửi chữ —
   file PDF lưu bằng hộp in của trình duyệt).
 
 Test: `test-kho-dat-hang.mjs` (database), `test-kho-dat-hang-web.mjs` (hàm thuần, các hàm của `dat-hang.ts` chạy thật trên
@@ -1408,6 +1408,37 @@ hóa đơn từng đồng.
 - **Chưa làm (đợt 2):** đồ uống bán trên iPOS tự trừ kho theo mã món, gợi ý đặt hàng theo cái, mức tối thiểu / tối đa. Kim chi
   (bếp tự làm) để PR riêng.
 - Kiểm thử: `crm/test/test-kho-dem-cai.mjs` (database, web, mã nguồn; kết thúc bằng `kho_doi_soat_ton()` rỗng).
+
+## 3t. Danh mục hàng của từng nhà cung cấp · nhận hàng hai lối (migration 0110, đợt 1)
+
+Khánh chốt 29/10/2026: phần nhà cung cấp quan trọng — chọn nhà cung cấp rồi chọn món, **hoặc** chọn món rồi chọn nhà cung
+cấp, ở cả Nhận hàng và Đặt hàng; danh sách "NCC nào bán món nào" **máy tự học, sửa tay được**; đợt 1 làm Nhận hàng.
+
+- **Tự học tính lúc đọc** (`kho_ds_ncc_mat_hang`, vai `nhap` hoặc `ncc`, không tiền): cặp (NCC, món) có trên phiếu MUA đã gửi
+  (`cho_duyet`) hoặc đã duyệt, ở mọi chi nhánh (NCC và mặt hàng dùng chung). Nháp, bị trả về, đã hủy, tồn đầu kỳ không tính;
+  phiếu hủy sau tự rơi khỏi danh sách — không có bảng chép nào để lệch. Kèm số của **chi nhánh đang xem**: số lần giao, ngày
+  gần nhất, kg và số gói / cái của món đó trên phiếu gần nhất (các dòng cùng món cộng lại — mỗi tảng một dòng).
+- **Sửa tay** (`kho_ncc_mat_hang`, chỉ ghi qua `kho_luu_ncc_mat_hang`, vai `ncc`): `them` cặp chưa từng giao / thêm lại,
+  `bo` (cặp đã bỏ **giữ bỏ** dù phiếu sau có giao lại — `da_bo`, web không hiện thành nút), `chinh` (mỗi món tối đa một NCC
+  chính — chỉ mục duy nhất; đặt NCC khác thì NCC cũ tự thôi), `bo_chinh`. Bấm hai lần ra cùng trạng thái; khóa dòng món.
+- **Nhận hàng, bước 1** (`nhan-hang/moi`): "Không biết ai giao? Chọn món trước" là form GET riêng **đứng trước** form ảnh
+  (`?mon=<món>`, `docMonChon`) — chọn món không làm mất ảnh đã chọn. Có món: nút "Ai giao hàng?" chỉ còn NCC bán món đó
+  (`nccCuaMon`: NCC chính → giao gần nhất → giao nhiều lần), dòng phụ `chuNccCuaMon`; một NCC thì chọn sẵn; chưa NCC nào giao
+  → câu "chọn ở dưới, phiếu được gửi thì máy tự nhớ". Đọc danh mục lỗi → báo ngay chỗ đó, không im như thể không ai bán.
+  Bấm "Tiếp" → `nhan-hang/<id>?tiep=<món>`: bước 2 chọn sẵn món (trước 0110 `?tiep=` chỉ dùng cho tảng tiếp theo).
+- **Nhận hàng, bước 2**: nút món = món đã có trên phiếu, rồi món của NCC theo danh mục (`monCuaNcc`, tối đa 12 nút), dòng phụ
+  "Lần trước 12,5 kg · 25/10" / "Lần trước 2 thùng (48 lon) · 25/10" (`chuLanTruoc`, không tiền). Thay `docMonGanDay` (tìm ba
+  phiếu gần nhất theo **chữ** tên NCC — NCC mới hay lâu không giao thì không có nút). Đọc lỗi thì chỉ mất nút; ô "— món khác —"
+  vẫn đủ mọi món.
+- **Cài đặt → Nhà cung cấp → Sửa**: mục "Món … bán" (`#mon-ncc`, chỉ NCC đang giao dịch): mỗi món một dòng — lần trước ở chi
+  nhánh này, "NCC chính: …" nếu món có NCC chính khác; nút Đặt làm / Thôi là NCC chính, Bỏ; ô Thêm món; "Đã bỏ (n)" có Thêm
+  lại. Form `viec=ncc_mon`, `lam=them|bo|chinh|bo_chinh` → `luuNccMon` (câu "đã" chỉ khi database nhận).
+- **Đợt sau** (issue "Việc tiếp theo"): Đặt hàng hai lối — chọn món thấy NCC bán món đó, gợi ý đặt hàng theo NCC chính thay
+  "NCC giao gần nhất" (`kho_goi_y_dat_hang`); mặt hàng hiện "Ai bán món này"; kế toán: tên / mã hàng trên hóa đơn NCC, giá
+  thỏa thuận, báo lệch giá.
+
+Test: `test-kho-ncc-mat-hang.mjs` (quyền, tự học, lần trước theo chi nhánh, sửa tay, hàm web chạy thật trên PGlite qua client
+giả, mất mạng, mã nguồn trang).
 
 ## 4. Cài như app (PWA)
 
