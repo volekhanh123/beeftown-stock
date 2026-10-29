@@ -104,11 +104,13 @@ jobs:
             web/package-lock.json
             crm/package-lock.json
             can-app/package-lock.json
+            may-chu-don/package-lock.json
       - name: Cài thư viện (web trước — test database đọc cả mã web)
         run: |
           npm ci --prefix web --no-audit --no-fund
           npm ci --prefix crm --no-audit --no-fund
           npm ci --prefix can-app --no-audit --no-fund
+          npm ci --prefix may-chu-don --no-audit --no-fund
       - name: Gác số migration
         env:
           SO_VOI: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || (github.event_name == 'push' && github.event.before) || 'origin/main' }}
@@ -123,6 +125,16 @@ jobs:
       - name: Kiểm kiểu Beeftown Cân (tsc strict — can-app/tsconfig.json)
         if: ${{ !cancelled() }}
         working-directory: can-app
+        run: npm run kiem-kieu
+      # Máy chủ đơn của Mini App (may-chu-don/): sổ đơn SQLite trong bộ nhớ / thư mục tạm, không Zalo, không mạng ngoài.
+      # Dùng chung mã giá, giờ nhận của mini-app/src/ và web/src/lib/gio-vn.ts — đổi hai chỗ đó cũng chạy ở đây.
+      - name: Kiểm thử máy chủ đơn Mini App
+        if: ${{ !cancelled() }}
+        working-directory: may-chu-don
+        run: npx bun test/thu.ts
+      - name: Kiểm kiểu máy chủ đơn (tsc strict — may-chu-don/tsconfig.json)
+        if: ${{ !cancelled() }}
+        working-directory: may-chu-don
         run: npm run kiem-kieu
       # 2.11 — giao diện Beeftown Cân trong Chromium thật cho từng vai (can-app/test/thu-trinh-duyet.ts): đọc mã không bắt được
       # lỗi lúc chạy (một biến bị xoá là mọi vai chỉ thấy khung lỗi). Playwright của web/ (vừa npm ci ở trên); Chromium giữ

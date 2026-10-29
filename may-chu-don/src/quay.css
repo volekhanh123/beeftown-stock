@@ -1,0 +1,153 @@
+/*
+ * Màn hình đơn cho quầy — cùng bảng màu và bảy kiểu trạng thái của /noi-bo (skill thiet-ke-beeftown,
+ * tham-khao/noi-bo-va-kho.md). Token cùng tên, cùng giá trị với web/src/styles/chung.css; không màu trạng thái:
+ * K1 đỏ đặc "!" làm ngay, K3 đen đặc đang làm, K4 viền đen ✓ xong, K5 xám chờ, K6 nét đứt đã hủy, K7 thông tin.
+ * Máy tính bảng ở quầy: vùng chạm ≥ 48px, ô nhập 16px, chữ không dưới 13px.
+ */
+:root {
+  --kem: #FFFFFF;
+  --kem-sau: #F4F4F4;
+  --kem-dam: #E2E2E2;
+  --do: #BD0000;
+  --do-dam: #8F0000;
+  --than: #000000;
+  --muc-nhat: #555555;
+  --vach: #E2E2E2;
+  --da: #E2E2E2;
+  --vien-o: #767676;
+  --nb-nen: var(--kem-sau);
+  --nb-the: var(--kem);
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--nb-nen);
+  color: var(--than);
+  font: 400 16px/1.5 Montserrat, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+:focus-visible { outline: 3px solid var(--than); outline-offset: 3px; }
+.qd-dau :focus-visible { outline-color: var(--kem); }
+
+.qd-dau {
+  background: var(--than);
+  color: var(--kem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px max(16px, 4vw);
+  min-height: 64px;
+}
+.qd-dau h1 { font-size: 1.25rem; font-weight: 800; margin: 0; }
+.qd-dau .qd-phu { color: var(--da); font-size: 0.88rem; font-weight: 600; }
+.qd-dau form { margin: 0; }
+.qd-dau-nut { display: flex; gap: 8px; align-items: center; }
+
+.qd-khung { width: min(880px, 92%); margin: 0 auto; padding: 16px 0 64px; }
+.qd-khung h2 {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 24px 0 8px;
+}
+.qd-trong { color: var(--muc-nhat); margin: 8px 0 0; }
+
+.qd-the {
+  background: var(--nb-the);
+  border: 1px solid var(--vach);
+  border-radius: 10px;
+  padding: 16px;
+  margin: 0 0 12px;
+}
+.qd-the-dau { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px; margin: 0 0 8px; }
+.qd-so { font-size: 1.5rem; font-weight: 800; }
+.qd-gio { font-weight: 700; }
+.qd-the ul { margin: 8px 0; padding: 0 0 0 20px; }
+.qd-the li { margin: 2px 0; }
+.qd-the p { margin: 4px 0; }
+.qd-tong { font-weight: 700; }
+.qd-ghi-chu { border-left: 3px solid var(--vien-o); padding-left: 8px; }
+.qd-the a { color: var(--than); font-weight: 600; }
+
+.qd-hang-nut { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.qd-hang-nut form { margin: 0; }
+.qd-nut {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 20px;
+  border-radius: 8px;
+  border: 1.5px solid transparent;
+  font: 700 0.92rem/1.2 Montserrat, system-ui, sans-serif;
+  cursor: pointer;
+  text-decoration: none;
+}
+.qd-nut.chinh { background: var(--do); color: var(--kem); }
+.qd-nut.phu { background: var(--kem); color: var(--than); border-color: var(--vien-o); }
+.qd-nut.tren-den { background: transparent; color: var(--kem); border-color: var(--vien-o); }
+@media (hover: hover) {
+  .qd-nut.chinh:hover { background: var(--do-dam); }
+  .qd-nut.phu:hover { background: var(--kem-dam); }
+}
+.qd-nut.chinh:active { background: var(--do-dam); }
+
+/* Nhãn trạng thái — bảy kiểu của nội bộ, mỗi nhãn có chữ và một dấu không phải màu. */
+.qd-nhan {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1.5px solid transparent;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.qd-nhan.k1 { background: var(--do); color: var(--kem); }
+.qd-nhan.k1::before { content: '!'; content: '!' / ''; font-weight: 800; }
+.qd-nhan.k3 { background: var(--than); color: var(--kem); }
+.qd-nhan.k4 { border-color: var(--than); }
+.qd-nhan.k4::before { content: '✓'; content: '✓' / ''; }
+.qd-nhan.k5 { background: var(--kem-dam); }
+.qd-nhan.k6 { border: 1.5px dashed var(--vien-o); color: var(--muc-nhat); }
+.qd-nhan.k7 { border: 1px solid var(--vien-o); }
+
+.qd-bao {
+  background: var(--nb-the);
+  border: 1.5px solid var(--than);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin: 16px 0 0;
+  font-weight: 600;
+}
+.qd-bao.loi { border: 2px solid var(--do); }
+
+.qd-dang-nhap { max-width: 420px; margin: 48px auto; }
+.qd-dang-nhap label { display: block; font-size: 0.88rem; font-weight: 600; margin: 0 0 4px; }
+.qd-dang-nhap input {
+  width: 100%;
+  min-height: 48px;
+  font: 400 16px/1.5 Montserrat, system-ui, sans-serif;
+  border: 1px solid var(--vien-o);
+  border-radius: 8px;
+  background: var(--kem);
+  padding: 8px 12px;
+  margin: 0 0 16px;
+}
+.qd-dang-nhap input:focus-visible { outline: 3px solid var(--than); outline-offset: 1px; border-width: 2px; border-color: var(--than); }
+.qd-loi-o { color: var(--do-dam); font-weight: 600; margin: -8px 0 16px; }
+
+details.qd-xong summary { min-height: 48px; display: flex; align-items: center; font-weight: 700; cursor: pointer; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+@media print {
+  .qd-hang-nut, .qd-dau-nut { display: none; }
+  body { background: var(--kem); }
+}

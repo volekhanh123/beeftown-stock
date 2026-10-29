@@ -94,6 +94,19 @@ updates:
       - dependency-name: '@types/react-dom'
         versions: ['>=19.0.0']
 
+  # Máy chủ đơn của Mini App: bun, typescript, phông Montserrat. Kiểm thử chạy trong CI "Kiểm thử".
+  - package-ecosystem: npm
+    directory: /may-chu-don
+    schedule:
+      interval: monthly
+      timezone: Asia/Ho_Chi_Minh
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: 'Máy chủ đơn: nâng thư viện'
+    groups:
+      may-chu-don-ban-nho:
+        update-types: [minor, patch]
+
   # actions/checkout, setup-node, cache, upload-artifact… trong .github/workflows/
   - package-ecosystem: github-actions
     directory: /

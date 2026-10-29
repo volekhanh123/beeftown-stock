@@ -12,6 +12,7 @@ rà soát" *sau khi* tính năng đã gộp. Mục tiêu: chặn chúng *trướ
 | `crm/` | Database Supabase (`supabase/migrations/`) và **toàn bộ kiểm thử** (`test/`, chạy trên PGlite) | `crm/CLAUDE.md`, `crm/README.md` |
 | `can-app/` | Beeftown Cân (Windows `.exe`, Bun): gửi giá xuống cân TMA, máy quầy | `can-app/CLAUDE.md`, `can-app/README.md` |
 | `mini-app/` | Mini App Zalo (React, zmp-cli): khách chọn khay thịt mang về, đơn mở sẵn trong chat Zalo OA. Không máy chủ, không database, `package.json` và lệnh đưa lên riêng | `mini-app/CLAUDE.md`, `mini-app/README.md` |
+| `may-chu-don/` | Máy chủ đơn của Mini App (Bun, SQLite): nhận đơn trả trước, màn hình đơn cho quầy. Chạy ở Việt Nam (dữ liệu khách Mini App không lên Supabase, Cloudflare) — laptop thử, máy chủ thuê khi mở bán. Đợt 1: chưa nối thanh toán Zalo | `may-chu-don/CLAUDE.md`, `may-chu-don/README.md` |
 | `mo-rong-fabi/` | Mở rộng FABi (extension Chrome, Manifest V3): trên FABi CMS, đưa món mới của kho vào hộp thoại "Thêm món từ file" — người dùng tự bấm Lưu. Không `package.json`, cài bằng "Tải tiện ích đã giải nén" | `mo-rong-fabi/README.md` |
 
 Bảng màu thương hiệu đã chốt, giá trị đã áp dụng và thứ còn mang màu cũ (Beeftown Cân, ảnh hướng dẫn kho): `THUONG-HIEU.md`. Codex và các agent khác đọc `AGENTS.md` (cùng quy trình này).
@@ -54,6 +55,7 @@ npm run kiem-migration              # gác số migration (so với origin/main)
 npm run so-migration                # số migration kế tiếp — tính trên MỌI nhánh origin/*
 cd ../can-app && npx bun test/thu.ts                     # Beeftown Cân
 npx bun test/thu-trinh-duyet.ts                          # Beeftown Cân trong Chromium: thẻ theo từng vai (CI cũng chạy)
+cd ../may-chu-don && npm ci && npx bun test/thu.ts && npm run kiem-kieu   # Máy chủ đơn Mini App (CI cũng chạy)
 cd ../web && npx astro check && npm run quet && npm run thu-trinh-duyet -- --khong-build   # quet vừa build (không database)
 cd ../mini-app && npm ci && npm run kiem-tra && npx tsc --noEmit && npx vite build       # Mini App Zalo
 cd .. && node mo-rong-fabi/thu/thu-trinh-duyet.mjs                                       # Mở rộng FABi trong Chromium (CI cũng chạy)
@@ -157,7 +159,7 @@ Khánh là người duyệt duy nhất và không đọc code. PR nhỏ, một v
 |---|---|---|
 | Đẩy nhánh có đổi migration | `gac-nhanh.yml`: số migration, trùng với nhánh khác | ~30 giây |
 | Mở / sửa mô tả / đẩy thêm vào PR (cả nháp) | `mo-ta-pr.yml`: comment "Máy tóm tắt PR" (`tom-tat-pr.mjs` — việc sau khi gộp, cỡ, chỗ cần chú ý; sửa lại comment cũ), mô tả đủ mục (`kiem-mo-ta-pr.mjs`) | ~20 giây |
-| Mở / cập nhật PR không phải nháp; bấm "Ready for review" | `kiem-thu.yml`: database, kho, Zalo, Messenger, Beeftown Cân, Mở rộng FABi; web: astro check, build, đóng gói thử, chữ cấm, trình duyệt. PR nháp bỏ qua hai job này (đỡ phút CI) — chạy đủ kiểm thử trên máy trước khi đẩy | ~10 phút |
+| Mở / cập nhật PR không phải nháp; bấm "Ready for review" | `kiem-thu.yml`: database, kho, Zalo, Messenger, Beeftown Cân, máy chủ đơn Mini App, Mở rộng FABi; web: astro check, build, đóng gói thử, chữ cấm, trình duyệt. PR nháp bỏ qua hai job này (đỡ phút CI) — chạy đủ kiểm thử trên máy trước khi đẩy | ~10 phút |
 | Main nhận commit | như PR, rồi comment vào PR đang mở nào vừa bị trùng số migration | ~10 phút |
 | 00:30 giờ VN mỗi đêm | quét chữ cấm trên beeftown.vn thật; toàn bộ với `TZ=Asia/Ho_Chi_Minh` khi main có commit trong 48 giờ qua, đêm Chủ nhật, đêm đầu / cuối tháng, hoặc không hỏi được GitHub (job `co-doi`). Cổng deploy bỏ qua lượt đêm không kiểm mã (`web/kiem-tra/ket-qua-ci.mjs`) | ~1 phút / ~10 phút |
 | 02:00 giờ VN mỗi đêm; chạy tay | `sao-luu.yml`: sao lưu database (`crm/sao-luu/`) → mã hoá → artifact 30 ngày → khôi phục thử vào Supabase dựng tạm → ghi `he_thong_sao_luu` (đèn "Sao lưu dữ liệu"). Secret `SAO_LUU_DB_URL`, `SAO_LUU_MAT_KHAU` (README gốc, "Sao lưu và khôi phục") | ~5–10 phút |

@@ -97,6 +97,19 @@
 !/mini-app/src/**/*.css
 !/mini-app/scripts/*.ts
 
+# --- ĐƯỢC PHÉP: Máy chủ đơn của Mini App (Bun, chạy ở Việt Nam: laptop thử, máy chủ thuê khi mở bán) ---
+# Mở từng file và từng đuôi, như can-app. KHÔNG BAO GIỜ mở du-lieu/: sổ đơn don.sqlite có tên và số điện thoại
+# của khách, chỉ được nằm trên máy ở Việt Nam (mini-app/CLAUDE.md, "Quy tắc của Zalo phải giữ").
+!/may-chu-don/CLAUDE.md
+!/may-chu-don/README.md
+!/may-chu-don/package.json
+!/may-chu-don/package-lock.json
+!/may-chu-don/tsconfig.json
+!/may-chu-don/src/*.ts
+!/may-chu-don/src/*.css
+!/may-chu-don/test/*.ts
+!/may-chu-don/scripts/*.ts
+
 # --- ĐƯỢC PHÉP: Mở rộng FABi (extension Chrome: món mới của kho → "Thêm món từ file" của FABi CMS) ---
 # Mở từng file, không mở cả thư mục. Không ảnh, không file khóa: extension không cần bí mật nào.
 !/mo-rong-fabi/README.md

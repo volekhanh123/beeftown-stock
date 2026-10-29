@@ -94,12 +94,13 @@ await nhom('2 · KHÔNG FILE MÃ NGUỒN NÀO BỊ .gitignore CHẶN ÂM THẦM'
   // .claude/skills/: skill dùng chung — .gitignore mở từng skill, nên skill mới bị chặn tới khi có dòng mở.
   // mini-app/: cả thư mục là mã nguồn (www/ là thư mục bị chặn cả khối, không hiện từng file; .env không mang đuôi mã).
   // mo-rong-fabi/: extension Chrome — cả thư mục là mã nguồn, .gitignore mở từng file.
-  const CHO_MA = /^(web\/(src|kiem-tra|cong-cu)\/|crm\/(test|supabase|sao-luu)\/|can-app\/(src|test|scripts)\/|mini-app\/|mo-rong-fabi\/|\.github\/|\.claude\/skills\/|CLAUDE\.md$)/;
+  // may-chu-don/: máy chủ đơn của Mini App — src/, test/, scripts/ như can-app; du-lieu/ (sổ đơn có dữ liệu khách) cố ý chặn.
+  const CHO_MA = /^(web\/(src|kiem-tra|cong-cu)\/|crm\/(test|supabase|sao-luu)\/|can-app\/(src|test|scripts)\/|may-chu-don\/(src|test|scripts)\/|mini-app\/|mo-rong-fabi\/|\.github\/|\.claude\/skills\/|CLAUDE\.md$)/;
   const DUOI_MA = /\.(ts|tsx|mts|mjs|js|astro|sql|ya?ml|md|json|css|html|ps1|sh|py|cmd)$/;
   // --directory: thư mục bị chặn cả khối (node_modules, dist, ảnh lỗi) hiện một dòng "thư mục/" thay vì từng
   // file. Thư mục bị chặn chỉ đáng ngờ khi nằm trong chỗ CHỈ chứa mã nguồn — web/kiem-tra/anh-loi/ hay
   // crm/supabase/.temp/ là cố ý chặn.
-  const THU_MUC_MA = /^(web\/src|crm\/test|crm\/sao-luu|crm\/supabase\/(migrations|thu)|can-app\/(src|test|scripts)|mini-app\/(src|scripts)|mo-rong-fabi|\.github|\.claude\/skills)\//;
+  const THU_MUC_MA = /^(web\/src|crm\/test|crm\/sao-luu|crm\/supabase\/(migrations|thu)|can-app\/(src|test|scripts)|may-chu-don\/(src|test|scripts)|mini-app\/(src|scripts)|mo-rong-fabi|\.github|\.claude\/skills)\//;
   const biChan = git(['ls-files', '--others', '--ignored', '--exclude-standard', '--directory'])
     .split('\n').filter(f => (f.endsWith('/') ? THU_MUC_MA.test(f) : CHO_MA.test(f) && DUOI_MA.test(f)) && !/node_modules\//.test(f));
   const coSkill = biChan.some(f => f.startsWith('.claude/'));
@@ -129,6 +130,7 @@ await nhom('3 · FILE CỦA QUY TRÌNH CÓ MẶT VÀ ĐƯỢC GIT THEO DÕI', as
     'crm/CLAUDE.md',
     'web/CLAUDE.md',
     'can-app/CLAUDE.md',
+    'may-chu-don/CLAUDE.md',
   ];
   for (const f of CAN) {
     let biChan = false;
@@ -142,7 +144,9 @@ await nhom('3 · FILE CỦA QUY TRÌNH CÓ MẶT VÀ ĐƯỢC GIT THEO DÕI', as
   const BUOC = [
     ['gác số migration', /kiem-migration\.mjs/],
     ['toàn bộ kiểm thử database', /chay-tat-ca\.mjs --tat-ca/],
-    ['kiểm thử Beeftown Cân', /bun test\/thu\.ts/],
+    ['kiểm thử Beeftown Cân', /working-directory: can-app\n\s*run: npx bun test\/thu\.ts/],
+    ['kiểm thử máy chủ đơn', /working-directory: may-chu-don\n\s*run: npx bun test\/thu\.ts/],
+    ['kiểm kiểu máy chủ đơn', /working-directory: may-chu-don\n\s*run: npm run kiem-kieu/],
     ['astro check', /astro check/],
     ['build', /astro build/],
     ['quét chữ cấm', /npm run quet/],
@@ -173,6 +177,13 @@ await nhom('3 · FILE CỦA QUY TRÌNH CÓ MẶT VÀ ĐƯỢC GIT THEO DÕI', as
   ok('mini-app/.env (ZMP_TOKEN) bị .gitignore chặn và không file .env nào của Mini App vào git',
      envBiChan && !daTheoDoi.some(f => /(^|\/)\.env(\.|$)/.test(f)), daTheoDoi.filter(f => /\.env/.test(f)).join(', '));
   ok('Bản build mini-app/www/ và node_modules không vào git', !daTheoDoi.some(f => /^mini-app\/(www|node_modules)\//.test(f)));
+
+  // Máy chủ đơn (29/10/2026): sổ đơn SQLite có tên và số điện thoại của khách, chỉ được nằm trên máy ở Việt Nam.
+  const tepMayChu = git(['ls-files', 'may-chu-don']).split('\n').filter(Boolean);
+  let duLieuBiChan = false;
+  try { git(['check-ignore', '-q', '--no-index', 'may-chu-don/du-lieu/don.sqlite']); duLieuBiChan = true; } catch { /* mã 1 = không bị chặn */ }
+  ok('Sổ đơn của máy chủ đơn (du-lieu/, *.sqlite) bị .gitignore chặn, không file nào vào git',
+     duLieuBiChan && !tepMayChu.some(f => /\/du-lieu\/|\.sqlite|\.db$/.test(f)), tepMayChu.filter(f => /du-lieu|sqlite/.test(f)).join(', '));
 
   // Tiết kiệm phút CI (19/10/2026): PR nháp không chạy hai job kiểm mã — bấm "Ready for review" mới chạy, và
   // vẫn phải xanh mới gộp. Lượt đêm bỏ hai job đó khi main không đổi — job co-doi (tên ở web/kiem-tra/ket-qua-ci.mjs).

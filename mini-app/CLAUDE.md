@@ -132,6 +132,7 @@ Thỏa thuận nhà phát triển Zalo Mini App, cập nhật 25/09/2026: https:
   - Cần: 1 chỗ đọc công khai trên website chỉ trả "còn hàng / sắp hết / hết" của từng phần thịt Mini App (hàm SQL mới, kiểm thử quyền); gắn mỗi phần thịt Mini App với 1 `kho_mat_hang`; quầy quét khay ra vào kho đúng lúc; khai tên miền API ở Mini App Center → Cấu hình API Domains; Zalo duyệt lại.
 - **Mức 3:** giá cố định nên tổng tiền biết trước khi gửi; trả tiền trong app (Checkout SDK, mã MAC ký ở máy chủ), đơn tự vào FABi, tin báo qua ZNS.
   - Cần 1 máy chủ nhỏ ở Việt Nam chỉ cho đơn của Mini App (BizFly 1–2 GB RAM, 95.000–120.000 đ/tháng chưa VAT). Máy này chỉ báo sang kho mã khay và số lượng.
+  - **Đang làm từ 29/10/2026** (Khánh: "đừng theo kiểu nhắn tin nữa mà phải tự động hoàn toàn"): thư mục `may-chu-don/` của repo, chia 4 đợt (`may-chu-don/CLAUDE.md`, "Chia đợt"). Khánh chốt: trả trước trong app, màn hình đơn riêng cho quầy, laptop ở công ty để thử rồi máy chủ thuê ở Việt Nam khi mở bán, báo khách trong app và bằng ZNS. Mini App chỉ đổi sang gửi đơn lên máy chủ ở đợt 2, cùng lúc nối Checkout SDK.
   - Làm khi đơn online khoảng 20 đơn/ngày (giả định của Claude, đo lại sau 4 tuần mở bán).
 - **Hạ tầng** (Claude khuyên 22/10): giữ Supabase và Cloudflare; không chuyển cơ sở dữ liệu sang BizFly trước khai trương; không dùng laptop làm máy chủ chạy thật.
 
