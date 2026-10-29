@@ -47,8 +47,8 @@ import { chuTang, docLoTang } from '../../../../lib/kho/tang.ts';
 import { doiDonViCau } from '../../../../lib/kho/xuat.ts';
 import {
   docKiemKe, docFormKiemKe, payloadTuDong, apDungQuet, dongDemTuDb, luuKiemKe, guiKiemKe, duyetKiemKe,
-  tuChoiKiemKe, huyKiemKe, gopKhiTrung, laLoiMayKhac, daDemDong, cauQuetLoi, docSoNhanQuet,
-  type KiemKe, type DongKiemKe, type LoKiemKe, type DongDemForm, type KetQuaQuetKiemKe,
+  tuChoiKiemKe, huyKiemKe, gopKhiTrung, laLoiMayKhac, daDemDong, cauQuetLoi, docSoNhanQuet, goiYThayMon,
+  docTonChoKhac, type TonChoKhac, type KiemKe, type DongKiemKe, type LoKiemKe, type DongDemForm, type KetQuaQuetKiemKe,
 } from '../../../../lib/kho/kiem-ke.ts';
 import {
   cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, dinhDangTien, donViChung, homNayVn, kqHai, trangThaiKho,
@@ -143,6 +143,7 @@ const t = dichNB(nn, {
     en: (dv: string | null) => `None left — ${dv !== null ? `no ${dv} left` : 'nothing left'}`,
   },
   thayMatHang: { vi: 'Thấy mặt hàng không có trong danh sách', en: 'Found an item that is not on the list' },
+  dangOChoKhac: { vi: 'Sổ ghi đang ở chỗ khác', en: 'Recorded at another place' },
   matHang: { vi: 'Mặt hàng', en: 'Item' },
   soGoi: { vi: 'Số gói', en: 'Packs' },
   ghiChu: { vi: 'Ghi chú', en: 'Note' },
@@ -379,15 +380,21 @@ if (!form && demDuoc) {
 // ---------------------------------------------------------------------------
 const theoLo = kk?.kieu === 'theo_lo';
 const dongHien: DongDemForm[] = dongLoi ?? dongDemTuDb(dongDb);
+// "Thấy mặt hàng không có trong danh sách" (29/10/2026): bỏ món đã có trên phiếu (ghi số ở dòng của nó); nhóm "Gợi ý"
+// là món sổ ghi đang ở chỗ khác. Đọc tồn (cùng lượt với mã lô bên dưới) lỗi thì chỉ mất nhóm gợi ý.
+const monTrenPhieu = new Set([...dongDb.map(d => d.mat_hang_id), ...dongHien.map(d => d.mat_hang_id)].filter(Boolean));
 const phienBanHien = phienBanForm ?? kk?.phien_ban ?? 0;
 const ghiChuHien = ghiChuForm ?? kk?.ghi_chu ?? '';
 const ghiChuGocHien = ghiChuGocForm ?? kk?.ghi_chu ?? '';
 const loIds = [...dongHien.map(d => d.lo_id), ...dongDb.map(d => d.lo_id ?? ''), ...loDb.map(l => l.lo_id)];
 // Mã lô và số tảng của các lô đang hiện — hai lượt đọc song song. Số tảng đọc hỏng thì vẫn hiện mã lô như cũ.
-const [thongTinLo, soTangLo] = await Promise.all([
+const [thongTinLo, soTangLo, tonChoKhac] = await Promise.all([
   docThongTinLo(k.client, loIds),
   docLoTang(k.client, loIds).catch(() => new Map<string, { tang_id: string; so_tang: number | null }>()),
+  kk && demDuoc && !theoLo
+    ? docTonChoKhac(k.client, kk.chi_nhanh_id, kk.vi_tri_id).catch(() => [] as TonChoKhac[]) : Promise.resolve([] as TonChoKhac[]),
 ]);
+const goiYThay = kk ? goiYThayMon(tonChoKhac, { id: kk.vi_tri_id, loai: kk.loai_vi_tri }, monTrenPhieu, nn) : [];
 /** " · tảng #0001" để nối ngay sau mã lô; lô không thuộc tảng nào thì rỗng. */
 const tangCua = (loId: string) => { const c = chuTang(soTangLo.get(loId)?.so_tang, nn); return c ? ` · ${c}` : ''; };
 const giaLo = kk && kk.trang_thai !== 'dang_dem' ? await docGiaVonLo(k.client, loDb.map(l => l.lo_id)) : new Map();
@@ -544,7 +551,8 @@ const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
             <details class="nb-the">
               <summary style="cursor:pointer;font-weight:600;min-height:48px;display:flex;align-items:center">{t.thayMatHang}</summary>
               <div style="margin-top:.75rem">
-                <label class="nb-o"><span>{t.matHang}</span><ChonMatHang name="them_mat_hang" matHang={matHang} demCai /></label>
+                <label class="nb-o"><span>{t.matHang}</span><ChonMatHang name="them_mat_hang" matHang={matHang} demCai bo={monTrenPhieu}
+                  goiY={goiYThay} tenGoiY={t.dangOChoKhac} /></label>
                 <div class="kho-luoi">
                   <label class="nb-o"><span>{t.soGoi}</span><input type="text" inputmode="numeric" name="them_goi" /></label>
                   <label class="nb-o"><span>{t.soKg}</span><input type="text" inputmode="decimal" name="them_kg" /></label>
