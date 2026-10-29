@@ -941,6 +941,7 @@ Zalo; hàng về thì nhận theo đơn; cuối kỳ xem đánh giá NCC.
 |---|---|---|
 | `/noi-bo/kho/dat-hang` | `nhap` hoặc `xem_gia` | Danh sách đơn: chip `?loc=nhap\|dang_cho\|da_nhan\|huy` (`dang_cho` = đã gửi + nhận một phần), tìm / ngày / của tôi / trang như GĐ4b. Vai xem giá thấy thêm tiền dự kiến (`kho_v_don_dat`) |
 | `/noi-bo/kho/dat-hang/moi?ncc=<id>` | `nhap` | Chọn NCC (nút lớn như màn nhận hàng) → bảng gợi ý `kho_goi_y_dat_hang` điền sẵn số kg (+ số gói nếu món đếm gói), lý do một dòng nhỏ; sửa được, trống / 0 = không đặt; "+ Thêm dòng" món khác. **Lưu nháp**, hoặc **Lưu và gửi →** (nhap + duyet_nhap) → mở trang in |
+| `/noi-bo/kho/dat-hang/theo-mon` | `nhap` | Đặt theo món (0111, mục 3t): mọi món nên đặt, mỗi món một NCC đề xuất (đổi được) → **Lập đơn nháp**: mỗi NCC một đơn nháp |
 | `/noi-bo/kho/dat-hang/<id>` | `nhap` hoặc `xem_gia` | Nháp: sửa món / kg / ngày giao / ghi chú (`phien_ban`), **Lưu và gửi cho nhà cung cấp**, bỏ đơn. Đã gửi: **Nhận hàng theo đơn này** (`kho_tao_phieu_nhap_tu_don`, `ma_gui`) → `/noi-bo/kho/nhan-hang/<phiếu>`; hủy đơn (quản lý / chủ, bắt buộc lý do). Bảng đặt / đã nhận / còn thiếu; phiếu nhận hàng đã gắn |
 | `/noi-bo/kho/dat-hang/<id>/in` | `nhap` hoặc `xem_gia` | Tờ A4: logo, quán, số đơn, ngày đặt / giao, NCC (liên hệ chỉ vai xem giá — bảng NCC có RLS xem_gia), món, kg, gói, ghi chú, chỗ ký. Giá chỉ khi xem giá **và** tích "In kèm giá dự kiến" (`?gia=1`). Nút **In / Lưu PDF**, **Chia sẻ (Zalo…)** (Web Share, `in-an.js`), ô chép tin nhắn (`tinNhanDon`) |
 | `/noi-bo/kho/bao-cao/ncc?tu=&den=` | `nhap` hoặc `xem_gia` | Đánh giá NCC (`kho_bao_cao_ncc`): lần giao, kg, đơn thiếu / trễ, thu hồi pha TB, kg trả, điểm sao; vai xem giá thêm giá TB/kg, lệch hóa đơn, ngày trả tiền TB. CSV `bao-cao/ncc.csv` (cùng quyền) |
@@ -958,7 +959,7 @@ Zalo; hàng về thì nhận theo đơn; cuối kỳ xem đánh giá NCC.
   (`chuFormDonDat`), giữ `ma_gui`.
 - **Gợi ý** (công thức ở comment `kho_goi_y_dat_hang`): nên đặt = mức cần − (tồn kho + quầy còn hạn + đang mang ra quầy +
   đã đặt chưa về); mức cần = `kho_toi_da_kg` của món, chưa cài thì dùng TB/ngày 28 ngày × (số ngày giao + 3). Món của NCC
-  = món NCC đó giao gần nhất. Trang chỉ hiện số và `ly_do` database trả — không tính lại ở web.
+  = danh mục NCC – món (0111, mục 3t). Trang chỉ hiện số và `ly_do` database trả — không tính lại ở web.
 - **Nhận theo đơn**: `nhan-hang/moi` có phần "Nhận theo đơn đặt" (đơn `dang_cho`, `docDonChoNhan`) — bấm là tạo phiếu
   nháp điền sẵn món / kg còn thiếu (món đã đủ — ≥ 95% kg hoặc đủ gói — không điền lại) rồi mở bước 2 (ảnh hóa đơn chụp bằng "Thêm ảnh"). `nhan-hang/<id>` đọc khóa
   `don_dat` của `kho_doc_phieu_nhap_kg`: mỗi dòng nhãn "Đặt N kg" (món không có trong đơn: "Ngoài đơn"), form thêm món
@@ -970,7 +971,7 @@ Zalo; hàng về thì nhận theo đơn; cuối kỳ xem đánh giá NCC.
   lý / chủ, bước đầu quy trình Nhận hàng. Kế toán vào qua link (Báo cáo → Đánh giá NCC → Đơn đặt hàng).
 - Hướng dẫn: `dat-hang` (quản lý, chủ, kế toán — có nhắc giá), `danh-gia-ncc`, `nhan-theo-don` (thủ kho — không nhắc
   tiền), câu hỏi `hoi-goi-y-dat-hang`.
-- Chưa làm: gợi ý theo NCC chính (0110 đã có NCC chính trong danh mục NCC – món, mục 3t — gợi ý vẫn theo NCC giao gần nhất); gửi PDF thật qua Zalo (Web Share chỉ gửi chữ —
+- Món của NCC (0111): theo danh mục NCC – món (mục 3t), không còn "NCC giao gần nhất". Chưa làm: gửi PDF thật qua Zalo (Web Share chỉ gửi chữ —
   file PDF lưu bằng hộp in của trình duyệt).
 
 Test: `test-kho-dat-hang.mjs` (database), `test-kho-dat-hang-web.mjs` (hàm thuần, các hàm của `dat-hang.ts` chạy thật trên
@@ -1433,12 +1434,19 @@ cấp, ở cả Nhận hàng và Đặt hàng; danh sách "NCC nào bán món n�
 - **Cài đặt → Nhà cung cấp → Sửa**: mục "Món … bán" (`#mon-ncc`, chỉ NCC đang giao dịch): mỗi món một dòng — lần trước ở chi
   nhánh này, "NCC chính: …" nếu món có NCC chính khác; nút Đặt làm / Thôi là NCC chính, Bỏ; ô Thêm món; "Đã bỏ (n)" có Thêm
   lại. Form `viec=ncc_mon`, `lam=them|bo|chinh|bo_chinh` → `luuNccMon` (câu "đã" chỉ khi database nhận).
-- **Đợt sau** (issue "Việc tiếp theo"): Đặt hàng hai lối — chọn món thấy NCC bán món đó, gợi ý đặt hàng theo NCC chính thay
-  "NCC giao gần nhất" (`kho_goi_y_dat_hang`); mặt hàng hiện "Ai bán món này"; kế toán: tên / mã hàng trên hóa đơn NCC, giá
-  thỏa thuận, báo lệch giá.
+- **Đợt 2 — Đặt hàng (0111):** `kho_goi_y_dat_hang` lấy món của NCC từ danh mục (`kho_cap_ncc_mon`, hàm nội bộ cùng luật
+  với `kho_ds_ncc_mat_hang` — test so hai hàm) thay "NCC giao gần nhất ở chi nhánh": chọn NCC thì đủ món NCC đó bán; không chọn
+  NCC thì mỗi món một NCC đề xuất (NCC chính → giao gần nhất ở chi nhánh này → tên). `dat-hang/moi`: lối "Đặt theo món →",
+  dòng gợi ý nhắc "NCC chính của món này: …" khi món có NCC chính khác. `dat-hang/theo-mon` (mới): mọi món, món nên đặt điền
+  sẵn kg, mỗi món một ô NCC (NCC bán món đó lên đầu, NCC khác dưới; dòng thêm để trống = NCC đề xuất) → "Lập đơn nháp"
+  (`docFormTheoMon`, `lapDonTheoNcc`): mỗi NCC một đơn nháp, lần lượt; mã gửi của từng đơn suy ra từ mã gửi của form
+  (`maGuiCon`, SHA-256) nên bấm lại chỉ lập phần còn thiếu; NCC nào lỗi thì câu báo kể riêng. Không ô giá, không ngày giao
+  (điền trong từng đơn nháp).
+- **Đợt sau** (issue "Việc tiếp theo"): mặt hàng hiện "Ai bán món này"; kế toán: tên / mã hàng trên hóa đơn NCC, giá thỏa
+  thuận, báo lệch giá.
 
 Test: `test-kho-ncc-mat-hang.mjs` (quyền, tự học, lần trước theo chi nhánh, sửa tay, hàm web chạy thật trên PGlite qua client
-giả, mất mạng, mã nguồn trang).
+giả, mất mạng, mã nguồn trang); `test-kho-dat-hang-theo-mon.mjs` (đợt 2).
 
 ## 4. Cài như app (PWA)
 

@@ -12,6 +12,9 @@
  *
  * Ô giá dự kiến chỉ hiện với vai xem giá; thủ kho gửi đơn không có khóa giá
  * (database từ chối nếu có). Không JavaScript.
+ *
+ * 0111: món của NCC theo danh mục NCC – món (lib/kho/ncc-mat-hang.ts) — món có NCC chính KHÁC thì dòng gợi ý nhắc
+ * "NCC chính: …". Bước 1 có lối "Đặt theo món" (/noi-bo/kho/dat-hang/theo-mon): chọn món trước, máy gom theo NCC.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
@@ -29,6 +32,7 @@ import {
 } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../lib/cau-noi-bo.ts';
+import { docNccMon, type NccMon } from '../../../../lib/kho/ncc-mat-hang.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -61,11 +65,17 @@ const t = dichNB(nn, {
     en: (n: number) => ` · delivers ${n} ${s(n, 'day', 'days')} after ordering`,
   },
   doiNcc: { vi: 'Đổi nhà cung cấp', en: 'Change supplier' },
-  monHayGiao: { vi: 'Món nhà cung cấp này hay giao', en: 'Items this supplier usually delivers' },
+  monHayGiao: { vi: 'Món của nhà cung cấp này', en: 'This supplier\'s items' },
+  theoMon: { vi: 'Đặt theo món →', en: 'Order by item →' },
+  theoMonDan: {
+    vi: 'Chưa biết đặt ai? Chọn món cần đặt trước — máy gom theo nhà cung cấp, mỗi nhà cung cấp một đơn nháp.',
+    en: 'Not sure who to order from? Choose the items first — the app groups them by supplier, one draft order each.',
+  },
+  chinhLa: { vi: (ten: string) => `NCC chính của món này: ${ten}`, en: (ten: string) => `Main supplier of this item: ${ten}` },
   nenDat: { vi: (n: number) => ` · ${n} món nên đặt`, en: (n: number) => ` · ${n} ${s(n, 'item', 'items')} to order` },
   chuaCoGoiY: {
-    vi: 'Chưa nhận hàng của nhà cung cấp này lần nào, nên chưa có gợi ý. Thêm món ở phần dưới.',
-    en: 'No goods received from this supplier yet, so there are no suggestions. Add items below.',
+    vi: 'Nhà cung cấp này chưa có món nào (chưa giao lần nào, chưa ai thêm món trong Thiết lập → Nhà cung cấp), nên chưa có gợi ý. Thêm món ở phần dưới.',
+    en: 'This supplier has no items yet (nothing delivered, none added under Setup → Suppliers), so there are no suggestions. Add items below.',
   },
   giaiThich: {
     vi: 'Số kg điền sẵn là số nên đặt (tồn kho, hàng đã đặt chưa về, lượng dùng 28 ngày qua). Sửa được; để trống hoặc 0 là không đặt món đó.',
@@ -157,10 +167,19 @@ if (form && nccChon) {
 // Gợi ý
 // ---------------------------------------------------------------------------
 let goiY: GoiYDat[] = [];
+let dsNccMon: NccMon[] = [];
 if (nccChon) {
   try { goiY = await docGoiYDatHang(k.client, cn.id, nccChon.id); }
   catch (e) { loiDoc = loiDoc ?? cauLoiKho(e, t.khongDocGoiY); }
+  // Chỉ để nhắc "NCC chính: …" — đọc lỗi thì không nhắc.
+  dsNccMon = await docNccMon(k.client, cn.id).catch(() => []);
 }
+const tenNcc = new Map(ncc.map(n => [n.id, n.ten]));
+/** NCC chính của món, nếu là NCC KHÁC nhà cung cấp đang đặt. */
+const chinhKhac = (monId: string) => {
+  const c = dsNccMon.find(x => x.mat_hang_id === monId && x.la_chinh && x.nha_cung_cap_id !== nccChon?.id);
+  return c ? tenNcc.get(c.nha_cung_cap_id) ?? null : null;
+};
 const idGoiY = new Set(goiY.map(g => g.mat_hang_id));
 const soNgayGiao = goiY[0]?.so_ngay_giao ?? null;
 const canDat = goiY.filter(g => g.de_nghi_kg > 0).length;
@@ -179,6 +198,9 @@ const nccKhac = ncc.slice(8);
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {/* ======================= 1 · Chọn nhà cung cấp ======================= */}
+  {!nccChon && (
+    <p class="nb-the dh-theo-mon"><span class="kho-phu">{t.theoMonDan}</span> <a class="nb-nut phu" href={`${DS}/theo-mon`}>{t.theoMon}</a></p>
+  )}
   {!nccChon ? (
     <form method="GET" class="nb-the">
       <div class="nb-o">
@@ -227,6 +249,7 @@ const nccKhac = ncc.slice(8);
                   <strong>{g.ten}</strong>
                   <small>{t.con} {dinhDangKg(g.ton_kg + g.dang_chuyen_kg, nn)} kg{g.dang_dat_kg > 0 && t.daDatChuaVe(dinhDangKg(g.dang_dat_kg, nn))}{g.dung_tb_ngay_kg > 0 && t.dung(dinhDangKg(g.dung_tb_ngay_kg, nn))}</small>
                   <small class="dh-ly-do">{cauGoiYDat(g, nn)}</small>
+                  {chinhKhac(g.mat_hang_id) && <small class="dh-ly-do"><strong>{t.chinhLa(chinhKhac(g.mat_hang_id) ?? '')}</strong></small>}
                 </span>
                 <span class="dh-o-hang">
                   <label class="nb-o dh-o">
@@ -297,6 +320,7 @@ const nccKhac = ncc.slice(8);
 
 <style>
   .dh-lon { min-height: 56px; font-size: 1.05rem; }
+  .dh-theo-mon { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; justify-content: space-between; }
   .dh-ly-do { font-size: .78rem !important; line-height: 1.35; }
   .dh-goi-y li { align-items: center; }
   .dh-o-hang { display: flex; gap: .4rem; flex-wrap: wrap; flex: 0 0 auto; }

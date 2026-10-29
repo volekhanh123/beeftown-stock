@@ -3,6 +3,8 @@
  *
  *   /noi-bo/kho/dat-hang            danh sách đơn (tìm / ngày / của tôi / trang như GĐ4b)
  *   /noi-bo/kho/dat-hang/moi        chọn NCC → bảng gợi ý có sẵn số kg, sửa được, thêm món
+ *   /noi-bo/kho/dat-hang/theo-mon   chọn món trước (0111): mọi món nên đặt, mỗi món một NCC đề xuất (đổi được) →
+ *                                   máy lập mỗi NCC một đơn nháp
  *   /noi-bo/kho/dat-hang/<id>       xem / sửa nháp, Gửi, Hủy, "Nhận hàng theo đơn này"
  *   /noi-bo/kho/dat-hang/<id>/in    bản in A4 · Lưu PDF · Chia sẻ (public/kho/js/in-an.js)
  *   /noi-bo/kho/bao-cao/ncc         đánh giá nhà cung cấp (+ CSV bao-cao/ncc.csv)
@@ -34,6 +36,7 @@ import {
 } from './chung.ts';
 import type { CotBaoCao, DinhNghiaBaoCao } from './bao-cao.ts';
 import { CO_TRANG, type TimDs } from './tim-ds.ts';
+import { dichCau } from '../cau-noi-bo.ts';
 
 // -----------------------------------------------------------------------------
 // KIỂU — đúng các khóa hàm 0039 trả về
@@ -411,6 +414,124 @@ export function docFormDonDat(
   return { chu, dong, ngayGiao: ngay ?? null, loi, loiEn };
 }
 
+// -----------------------------------------------------------------------------
+// ĐẶT THEO MÓN (0111) — chọn món trước, máy gom mỗi NCC một đơn nháp
+// -----------------------------------------------------------------------------
+// Form /noi-bo/kho/dat-hang/theo-mon: như form đơn (ô ẩn `mh` + `kg_<id>`, `goi_<id>`; dòng thêm `t<i>_mh`, `t<i>_kg`,
+// `t<i>_goi`), thêm ô chọn NCC của từng dòng `ncc_<id>` / `t<i>_ncc` (trống = NCC đề xuất của món). Không ô giá (giá
+// dự kiến điền trong từng đơn nháp) và không ngày giao (mỗi NCC tự tính theo số ngày giao của mình).
+
+export interface FormTheoMon extends FormDonDat {
+  /** NCC đã chọn của dòng có sẵn, theo mặt hàng. */
+  nccCo: Map<string, string>;
+  /** NCC đã chọn của dòng thêm, đúng thứ tự. */
+  nccThem: string[];
+}
+
+/** Chữ đã gõ trên form đặt theo món (để điền lại), không kiểm gì. */
+export function chuFormTheoMon(form: Form, soDong: number): FormTheoMon {
+  const chu = chuFormDonDat(form, soDong);
+  const s = (t: string) => String(form.get(t) ?? '').trim();
+  return {
+    ...chu,
+    nccCo: new Map([...chu.co.keys()].map(mh => [mh, s(`ncc_${mh}`)])),
+    nccThem: chu.them.map((_, i) => s(`t${i}_ncc`)),
+  };
+}
+
+/**
+ * Đọc form đặt theo món thành các dòng đơn gom theo NCC. Số kg / gói đọc y như form đơn (docFormDonDat, không giá);
+ * NCC của món: ô đã chọn, trống thì NCC đề xuất (`macDinh`, từ gợi ý / danh mục). NCC phải đang giao dịch (`nccDung`).
+ */
+export function docFormTheoMon(
+  form: Form, mon: Map<string, MonDat>,
+  o: { soDong: number; nccDung: ReadonlySet<string>; macDinh: ReadonlyMap<string, string> },
+): { chu: FormTheoMon; theoNcc: Map<string, DongGuiDat[]>; loi: string[]; loiEn: string[] } {
+  const r = docFormDonDat(form, mon, { coGia: false, soDong: o.soDong });
+  const chu = chuFormTheoMon(form, o.soDong);
+  const loi = [...r.loi];
+  const loiEn = [...r.loiEn];
+  const bao = (c: HaiThuTieng) => { loi.push(c.vi); loiEn.push(c.en); };
+  const chon = new Map(chu.nccCo);
+  chu.them.forEach((d, i) => { if (laUuid(d.mh) && !chon.has(d.mh)) chon.set(d.mh, chu.nccThem[i]); });
+  const theoNcc = new Map<string, DongGuiDat[]>();
+  for (const d of r.dong) {
+    const ten = mon.get(d.mat_hang_id)?.ten ?? '';
+    const ncc = chon.get(d.mat_hang_id) || o.macDinh.get(d.mat_hang_id) || '';
+    if (!ncc) {
+      bao({ vi: `${ten}: chọn nhà cung cấp`, en: `${ten}: choose a supplier` });
+    } else if (!o.nccDung.has(ncc)) {
+      bao({ vi: `${ten}: nhà cung cấp này đã ngừng giao dịch — chọn nhà cung cấp khác`,
+            en: `${ten}: this supplier is no longer active — choose another supplier` });
+    } else {
+      const ds = theoNcc.get(ncc) ?? [];
+      ds.push(d);
+      theoNcc.set(ncc, ds);
+    }
+  }
+  return { chu, theoNcc, loi, loiEn };
+}
+
+/**
+ * Mã gửi của đơn từng NCC, suy ra từ mã gửi của form (SHA-256, dạng UUID): bấm lại cùng form — bấm đúp, mất mạng giữa
+ * chừng rồi bấm lại — thì đơn đã lập trả về đơn cũ (kho_luu_don_dat, da_co), không lập lần hai.
+ */
+export async function maGuiCon(maGui: string, nccId: string): Promise<string> {
+  const b = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${maGui}:${nccId}`)));
+  b[6] = (b[6] & 0x0f) | 0x50;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = [...b.slice(0, 16)].map(x => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
+export interface KetQuaLapDon extends KetQua { don: { nccId: string; id: string }[] }
+
+/**
+ * Lập mỗi NCC một đơn nháp (lần lượt, mỗi đơn một lệnh lưu). Câu "Đã lập" chỉ kể đơn database đã nhận; NCC lỗi kể
+ * riêng kèm câu lỗi. Một NCC lỗi thì ok = false — trang hiện lại form, bấm lại chỉ lập phần còn thiếu (maGuiCon).
+ */
+export async function lapDonTheoNcc(
+  client: SupabaseClient, chiNhanhId: string, theoNcc: ReadonlyMap<string, DongGuiDat[]>, maGui: string,
+  tenNcc: ReadonlyMap<string, string>,
+): Promise<KetQuaLapDon> {
+  const don: { nccId: string; id: string }[] = [];
+  const xong: HaiThuTieng[] = [];
+  const hong: HaiThuTieng[] = [];
+  const ds = [...theoNcc].sort(([a], [b]) => (tenNcc.get(a) ?? '').localeCompare(tenNcc.get(b) ?? '', 'vi'));
+  for (const [nccId, dong] of ds) {
+    const ten = tenNcc.get(nccId) ?? '?';
+    let kq: KetQuaLuuDon;
+    try {
+      kq = await luuDonDat(client, chiNhanhId, {
+        id: null, maGui: await maGuiCon(maGui, nccId), phienBan: null, nccId, ngayGiao: null, ghiChu: '', dong,
+      });
+    } catch {
+      kq = kqHai(false, { vi: 'mất kết nối — không chắc đã lập hay chưa', en: 'connection lost — not sure whether it was created' });
+    }
+    if (kq.ok && kq.id) {
+      don.push({ nccId, id: kq.id });
+      xong.push({ vi: `${ten} (${dong.length} món)`, en: `${ten} (${dong.length} ${dong.length === 1 ? 'item' : 'items'})` });
+    } else {
+      hong.push({ vi: `${ten}: ${kq.cau}`, en: `${ten}: ${kq.cauEn ?? dichCau('en', kq.cau)}` });
+    }
+  }
+  const noi = (ds: HaiThuTieng[], k: 'vi' | 'en', ngan: string) => ds.map(x => x[k]).join(ngan);
+  const daLap: HaiThuTieng = don.length === 0 ? { vi: '', en: '' } : {
+    vi: `Đã lập ${don.length} đơn nháp: ${noi(xong, 'vi', ', ')}. `,
+    en: `Created ${don.length} draft ${don.length === 1 ? 'order' : 'orders'}: ${noi(xong, 'en', ', ')}. `,
+  };
+  if (hong.length === 0) {
+    return { ...kqHai(true, {
+      vi: `${daLap.vi}Các đơn nằm ở mục Nháp của Đặt hàng — mở từng đơn để soát rồi gửi.`,
+      en: `${daLap.en}They are under Drafts in Purchase orders — open each one to check it, then send it.`,
+    }), don };
+  }
+  return { ...kqHai(false, {
+    vi: `${daLap.vi}Chưa lập được đơn cho ${noi(hong, 'vi', '; ')}. Bấm "Lập đơn nháp" lần nữa — đơn đã lập không bị lập hai lần.`,
+    en: `${daLap.en}Could not create the order for ${noi(hong, 'en', '; ')}. Press "Create draft orders" again — orders already created will not be created twice.`,
+  }), don };
+}
+
 /** Dòng đơn đang có → chữ điền vào form sửa (giá lấy từ bảng giá riêng, chỉ vai xem giá). */
 export function formTuDon(
   d: Pick<DongDonDat, 'mat_hang_id' | 'so_kg_dat' | 'so_goi_dat'>, gia?: number | null,
@@ -563,8 +684,8 @@ export async function docTienDuKien(client: SupabaseClient, ids: string[]): Prom
   return new Map((data ?? []).map(r => [String(r.id), soHoacNull(r.tong_tien_du_kien)]));
 }
 
-/** Gợi ý đặt hàng của một NCC (không tiền). */
-export async function docGoiYDatHang(client: SupabaseClient, chiNhanhId: string, nccId: string): Promise<GoiYDat[]> {
+/** Gợi ý đặt hàng của một NCC (không tiền). nccId null: mọi món, mỗi món một NCC đề xuất (0111, đặt theo món). */
+export async function docGoiYDatHang(client: SupabaseClient, chiNhanhId: string, nccId: string | null): Promise<GoiYDat[]> {
   const { data, error } = await client.rpc('kho_goi_y_dat_hang', { p_chi_nhanh_id: chiNhanhId, p_ncc: nccId });
   if (error) throw error;
   return ((data ?? []) as GoiYDat[]).map(g => ({
