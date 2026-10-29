@@ -19,14 +19,14 @@
     "thu-day-du": "node kiem-tra/thu-day-du.mjs"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "^14.4.0",
+    "@astrojs/cloudflare": "^14.4.2",
     "@supabase/supabase-js": "^2.118.0",
-    "astro": "^7.3.8"
+    "astro": "^7.4.2"
   },
   "devDependencies": {
-    "@astrojs/check": "^0.9.10",
+    "@astrojs/check": "^0.9.12",
     "playwright": "1.64.1",
     "typescript": "^6.0.3",
-    "wrangler": "^4.151.2"
+    "wrangler": "^4.153.0"
   }
 }
