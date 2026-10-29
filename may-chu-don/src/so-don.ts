@@ -52,8 +52,9 @@ export type KetQuaDoi = 'da_doi' | 'da_o_buoc_moi' | 'lech' | 'khong_co' | 'khon
 
 /**
  * Một lần tiền về đối với đơn: du (đủ, đơn sang "đã trả tiền") · thieu (chưa đủ, đơn vẫn chờ) · thua (đủ mà dư, hay đơn đã
- * trả từ trước — phải hoàn phần dư) · khong_khop (có mã "BT…" mà không có đơn) · khong_ma (nội dung không có mã — tiền
- * khác của công ty, không đụng) · sai_tai_khoan (vào tài khoản khác của công ty) · tien_ra (tiền đi, không đụng).
+ * trả từ trước — phải hoàn phần dư) · khong_khop (có dạng mã "BT…" mà không ra đơn nào — gõ sai một ký tự cũng vào đây)
+ * · khong_ma (nội dung không có dạng mã — tiền khác của công ty, không đụng) · sai_tai_khoan (vào tài khoản khác; mang mã
+ * của quán thì phải xem) · tien_ra (tiền đi, không đụng).
  */
 export type KetQuaTienVe = 'du' | 'thieu' | 'thua' | 'khong_khop' | 'khong_ma' | 'sai_tai_khoan' | 'tien_ra';
 
@@ -269,20 +270,22 @@ export class SoDon {
       const don = tin.maDon ? this.db.query('select ma, trang_thai, tong_tien from don where ma = ?').get(tin.maDon) as
         { ma: string; trang_thai: TrangThai; tong_tien: number } | null : null;
       let ketQua: KetQuaTienVe;
+      // Tài khoản của quán: số tài khoản chính, hoặc tài khoản ảo (VA) SePay ghi ở subAccount.
+      const dungTaiKhoan = !!soTaiKhoanQuan && (tin.soTaiKhoan === soTaiKhoanQuan || tin.taiKhoanPhu === soTaiKhoanQuan);
       if (!tin.vao) ketQua = 'tien_ra';
-      else if (tin.soTaiKhoan !== soTaiKhoanQuan) ketQua = 'sai_tai_khoan';
-      else if (!tin.maDon) ketQua = 'khong_ma';
+      else if (!dungTaiKhoan) ketQua = 'sai_tai_khoan';
+      else if (!tin.maDon) ketQua = tin.coMaQuan ? 'khong_khop' : 'khong_ma';
       else if (!don) ketQua = 'khong_khop';
       else if (DA_CO_TIEN.includes(don.trang_thai)) ketQua = 'thua';
       else {
-        const truoc = (this.db.query(`select coalesce(sum(so_tien), 0) as n from giao_dich where ma_don = ?
-          and ket_qua in ('du', 'thieu', 'thua')`).get(don.ma) as { n: number }).n;
-        const tong = truoc + tin.soTien;
+        const tong = this.tienDaNhan(don.ma) + tin.soTien;
         ketQua = tong < don.tong_tien ? 'thieu' : tong === don.tong_tien ? 'du' : 'thua';
       }
       const maDon = don && ['du', 'thieu', 'thua'].includes(ketQua) ? don.ma : null;
-      // Phải có người xem: thiếu, dư, có mã "BT…" mà không có đơn. Tiền khác của công ty, tiền ra: không.
-      const canXem = ketQua === 'thieu' || ketQua === 'thua' || ketQua === 'khong_khop' ? 1 : 0;
+      // Phải có người xem: thiếu, dư, có mã của quán mà không có đơn, hay tiền mang mã của quán vào tài khoản khác.
+      // Tiền khác của công ty (không mã), tiền ra: không.
+      const canXem = ketQua === 'thieu' || ketQua === 'thua' || ketQua === 'khong_khop'
+        || (ketQua === 'sai_tai_khoan' && (!!tin.maDon || tin.coMaQuan)) ? 1 : 0;
       this.db.query(`insert into giao_dich (id_sepay, ma_don, so_tien, ngay_giao_dich, ma_tham_chieu, ket_qua, can_xem, nhan_luc)
         values (?, ?, ?, ?, ?, ?, ?, ?)`).run(tin.idSepay, maDon, tin.soTien, tin.ngayGiaoDich, tin.maThamChieu, ketQua, canXem, ms);
       if (maDon && (ketQua === 'du' || ketQua === 'thua') && !DA_CO_TIEN.includes(don!.trang_thai)) {
@@ -292,6 +295,12 @@ export class SoDon {
       }
       return { moi: true, ketQua, maDon };
     }).immediate();
+  }
+
+  /** Tiền đã về của mọi đơn có tiền — một câu cho cả màn quầy (tự tải lại 20 giây một lần). */
+  tienDaNhanTheoDon(): Map<string, number> {
+    return new Map((this.db.query(`select ma_don as m, sum(so_tien) as n from giao_dich where ma_don is not null
+      and ket_qua in ('du', 'thieu', 'thua') group by ma_don`).all() as { m: string; n: number }[]).map(r => [r.m, r.n]));
   }
 
   /** Tổng tiền đã về cho một đơn (mọi lần khớp đơn). */
@@ -304,11 +313,12 @@ export class SoDon {
   tienVeCanXem(): TienVeCanXem[] {
     const hang = this.db.query(`select g.*, d.so_trong_ngay, d.tong_tien from giao_dich g left join don d on d.ma = g.ma_don
       where g.can_xem = 1 and g.xem_xong_luc is null order by g.nhan_luc`).all() as DongDb[];
+    const daNhan = this.tienDaNhanTheoDon();
     return hang.map(h => ({
       idSepay: Number(h.id_sepay), maDon: h.ma_don === null ? null : String(h.ma_don),
       soTrongNgay: h.so_trong_ngay === null ? null : Number(h.so_trong_ngay), soTien: Number(h.so_tien),
       tongTienDon: h.tong_tien === null ? null : Number(h.tong_tien),
-      tongDaNhan: h.ma_don === null ? null : this.tienDaNhan(String(h.ma_don)),
+      tongDaNhan: h.ma_don === null ? null : daNhan.get(String(h.ma_don)) ?? 0,
       ngayGiaoDich: String(h.ngay_giao_dich), maThamChieu: String(h.ma_tham_chieu), ketQua: String(h.ket_qua) as KetQuaTienVe,
     }));
   }

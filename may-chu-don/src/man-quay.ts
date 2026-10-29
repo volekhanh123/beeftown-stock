@@ -57,6 +57,10 @@ export const CHU = {
     vi: 'Chuyển dư cho đơn #{so}: đơn {tong}, đã nhận {nhan}. Hoàn phần dư cho khách.',
     en: 'Overpaid for order #{so}: order {tong}, received {nhan}. Refund the extra to the customer.',
   },
+  tienVeSaiTaiKhoan: {
+    vi: 'Tiền mang mã đơn của quán nhưng vào tài khoản khác với tài khoản máy chủ đang nhận. Kiểm cấu hình tài khoản và đơn liên quan.',
+    en: 'This transfer carries a shop order code but went to a different account than the one the server expects. Check the account settings and the related order.',
+  },
   tienVeKhongKhop: {
     vi: 'Có mã đơn trong nội dung nhưng không có đơn nào khớp. Xem lần chuyển này trong app ngân hàng theo mã giao dịch.',
     en: 'The transfer note has an order code but no order matches. Look up this transfer in the banking app by its reference.',
@@ -75,6 +79,7 @@ export const CAU_BAO = {
   khong_duoc: { vi: 'Bước này không làm được từ trạng thái hiện tại.', en: 'That step is not allowed from the current status.', loi: true },
   tien_ve_da_xem: { vi: 'Đã ghi: lần chuyển này đã xử lý xong.', en: 'Saved: this transfer is marked as handled.', loi: false },
   tien_ve_xem_roi: { vi: 'Lần chuyển này đã được đánh dấu xử lý xong từ trước.', en: 'This transfer was already marked as handled.', loi: false },
+  tien_ve_khong_co: { vi: 'Không thấy lần chuyển này trong mục cần xem.', en: 'This transfer is not in the list to check.', loi: true },
 } as const satisfies Record<string, { vi: string; en: string; loi: boolean }>;
 export type MaCauBao = keyof typeof CAU_BAO;
 /** Mã trong ?bao= là một câu có thật — không lấy "constructor", "__proto__" của Object. */
@@ -164,7 +169,8 @@ export function gioNgayVn(chu: string): string {
 /** Một lần tiền về cần người xem: số tiền, giờ, mã giao dịch ngân hàng, việc phải làm, nút "Đã xử lý xong". */
 function theTienVe(t: TienVeCanXem, nn: NgonNgu): string {
   const c = (k: keyof typeof CHU) => thoat(CHU[k][nn]);
-  const mau = t.ketQua === 'thieu' ? CHU.tienVeThieu[nn] : t.ketQua === 'thua' ? CHU.tienVeThua[nn] : CHU.tienVeKhongKhop[nn];
+  const mau = t.ketQua === 'thieu' ? CHU.tienVeThieu[nn] : t.ketQua === 'thua' ? CHU.tienVeThua[nn]
+    : t.ketQua === 'sai_tai_khoan' ? CHU.tienVeSaiTaiKhoan[nn] : CHU.tienVeKhongKhop[nn];
   const cau = mau.replace('{so}', String(t.soTrongNgay ?? '')).replace('{tong}', dinhDangTien(t.tongTienDon ?? 0))
     .replace('{nhan}', dinhDangTien(t.tongDaNhan ?? 0));
   return `<article class="qd-the">

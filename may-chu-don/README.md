@@ -15,9 +15,9 @@ laptop ở công ty, khi mở bán chuyển lên máy chủ thuê ở Việt Nam
   "Đã hoàn tiền cho khách".
 - Đơn chưa trả tiền quá 30 phút tự hết hạn; quầy không thấy đơn chưa trả tiền.
 - Thu tiền qua SePay: mỗi đơn có mã VietQR đúng số tiền, nội dung "BT" + mã đơn. Khách chuyển khoản → SePay báo máy
-  chủ → đơn tự sang "Đã trả tiền, chờ soạn". Chuyển thiếu, chuyển dư, chuyển mà không khớp đơn nào: hiện ở mục
-  "Tiền về cần xem" trên màn quầy, người xử lý xong bấm "Đã xử lý xong". Máy chủ không giữ tên hay số tài khoản của
-  người chuyển.
+  chủ → đơn tự sang "Đã trả tiền, chờ soạn". Chuyển thiếu, chuyển dư, gõ sai mã, mang mã đơn mà vào tài khoản khác:
+  hiện ở mục "Tiền về cần xem" trên màn quầy, người xử lý xong bấm "Đã xử lý xong". Máy chủ không giữ tên hay số tài
+  khoản của người chuyển.
 
 Chưa có: màn trả tiền trong Mini App (đợt 2b), tin ZNS (đợt 3), máy chủ thuê, sao lưu, đèn trong `/noi-bo` (đợt 4).
 Mini App trên Zalo **chưa** gửi đơn lên máy chủ này — vẫn gửi tin vào chat OA cho tới đợt 2b.
@@ -77,7 +77,7 @@ GitHub. Xóa thư mục `du-lieu` là xóa sạch đơn thử.
 | `CHO_TRA_GIA_THU` | không | `1` cho hiện mã trả tiền khi bảng giá còn là giá thử — chỉ để thử chuyển khoản thật số nhỏ |
 
 Bốn biến tài khoản phải đặt đủ cả bốn, hoặc không đặt cái nào (máy chủ vẫn nhận đơn nhưng không có mã trả tiền). Thiếu
-một biến, hay khóa SePay dưới 16 ký tự, máy chủ không chạy và báo rõ biến nào sai.
+một biến, khóa SePay dưới 16 ký tự, hay có khóa SePay mà chưa có tài khoản: máy chủ không chạy và báo rõ biến nào sai.
 
 ## Đường dẫn
 

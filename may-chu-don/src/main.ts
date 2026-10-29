@@ -44,6 +44,11 @@ if (khoaSepay && khoaSepay.length < 16) {
   console.error('SEPAY_KHOA_KY phải có ít nhất 16 ký tự — tạo khóa ở SePay → Webhooks → Bảo mật → HMAC-SHA256.');
   process.exit(1);
 }
+// Có khóa SePay mà chưa có tài khoản: máy chủ không biết tiền nào là của quán — mọi lần tiền về sẽ bị từ chối (503).
+if (khoaSepay && !coTaiKhoan) {
+  console.error('Đã đặt SEPAY_KHOA_KY mà chưa đặt tài khoản nhận (NGAN_HANG_BIN, TEN_NGAN_HANG, SO_TAI_KHOAN, TEN_TAI_KHOAN).');
+  process.exit(1);
+}
 
 const so = new SoDon(join(thuMuc, 'don.sqlite'));
 const xuLy = taoXuLy({

@@ -10,7 +10,7 @@
  *     tiền tố đã khai, hoặc null), content, transferType ("in" / "out"), description, transferAmount (đồng, luôn
  *     dương), accumulated, referenceCode.
  *   · Ký HMAC-SHA256: header X-SePay-Signature "sha256=<hex>", X-SePay-Timestamp (giây). Chuỗi ký là
- *     "<timestamp>.<thân gốc>" — phải dùng đúng byte thân nhận được, không JSON.stringify lại. Lệch quá 5 phút: từ chối.
+ *     "<timestamp>.<thân gốc>" — phải dùng đúng byte thân nhận được, không JSON.stringify lại. Giờ ký: xem GIAY_CU_TOI_DA.
  *   · Chỉ tính là đã nhận khi trả 200 / 201 với thân {"success": true} trong 30 giây; khác đi SePay gửi lại.
  *
  * Không giữ content / description: hai trường này có thể chứa tên và số tài khoản của người chuyển — thỏa thuận
@@ -19,7 +19,13 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { TIEN_TO_MA_THANH_TOAN } from './viet-qr.ts';
 
-export const GIAY_LECH_TOI_DA = 300;
+/**
+ * Giờ ký được lệch bao nhiêu. Tương lai: 5 phút (đồng hồ lệch). Quá khứ: 6 giờ — SePay gửi lại 8 lần trong 33 phút và
+ * quét gửi lại tới 5 giờ; nếu lần gửi lại mang giờ ký cũ thì cửa 5 phút sẽ từ chối mãi một khoản tiền thật. Gửi lại
+ * tin cũ cũng vô hại: chữ ký vẫn phải đúng, và mỗi id SePay chỉ được ghi một lần (SoDon.ghiTienVe).
+ */
+export const GIAY_SOM_TOI_DA = 300;
+export const GIAY_CU_TOI_DA = 6 * 60 * 60;
 /** Thân trả về đúng y dạng SePay đòi. */
 export const DA_NHAN = '{"success": true}';
 
@@ -27,7 +33,8 @@ export const DA_NHAN = '{"success": true}';
 export function kiemChuKy(thanGoc: string, chuKy: string | null, giayKy: string | null, khoa: string, giayBayGio: number):
   'dung' | 'sai_chu_ky' | 'qua_han' {
   if (!chuKy || !giayKy || !/^\d{1,12}$/.test(giayKy) || !khoa) return 'sai_chu_ky';
-  if (Math.abs(giayBayGio - Number(giayKy)) > GIAY_LECH_TOI_DA) return 'qua_han';
+  const lech = giayBayGio - Number(giayKy);
+  if (lech > GIAY_CU_TOI_DA || -lech > GIAY_SOM_TOI_DA) return 'qua_han';
   const dung = Buffer.from('sha256=' + createHmac('sha256', khoa).update(`${giayKy}.${thanGoc}`).digest('hex'));
   const gui = Buffer.from(chuKy);
   return dung.length === gui.length && timingSafeEqual(dung, gui) ? 'dung' : 'sai_chu_ky';
@@ -38,6 +45,10 @@ export interface TinTienVe {
   vao: boolean;
   soTien: number;
   soTaiKhoan: string;
+  /** Tài khoản ảo (VA) khớp giao dịch, "" nếu không có. */
+  taiKhoanPhu: string;
+  /** Nội dung có dạng mã của quán ("BT" + chữ số / chữ) dù không đọc ra mã đơn hợp lệ — phải có người xem. */
+  coMaQuan: boolean;
   /** "YYYY-MM-DD HH:mm:ss" giờ VN, như SePay gửi. */
   ngayGiaoDich: string;
   maThamChieu: string;
@@ -46,7 +57,9 @@ export interface TinTienVe {
 }
 
 const CHU_MA = '[ACDEFGHJKMNPQRTUVWXY34679]';
-const MAU_MA_TRONG_NOI_DUNG = new RegExp(`${TIEN_TO_MA_THANH_TOAN}\\s?(${CHU_MA}{8})(?![A-Z0-9])`);
+// Trước "BT" không được dính chữ / số ("...DEBTACDEFGHJ" không phải mã), sau mã cũng vậy.
+const MAU_MA_TRONG_NOI_DUNG = new RegExp(`(?<![A-Z0-9])${TIEN_TO_MA_THANH_TOAN}\\s?(${CHU_MA}{8})(?![A-Z0-9])`);
+const MAU_GIONG_MA = new RegExp(`(?<![A-Z0-9])${TIEN_TO_MA_THANH_TOAN}\\s?[A-Z0-9]{6,}`);
 
 /**
  * Mã đơn trong một lần chuyển: ưu tiên `code` SePay đã bóc; không có thì tìm "BT" + 8 ký tự trong nội dung
@@ -72,8 +85,10 @@ export function docTinTienVe(than: unknown): TinTienVe | null {
   if (typeof b.accountNumber !== 'string') return null;
   const ngay = typeof b.transactionDate === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(b.transactionDate)
     ? b.transactionDate : '';
+  const giongMa = [b.code, b.content].some(v => typeof v === 'string' && MAU_GIONG_MA.test(v.toUpperCase()));
   return {
-    idSepay: id, vao: b.transferType === 'in', soTien: tien, soTaiKhoan: b.accountNumber.trim(), ngayGiaoDich: ngay,
+    idSepay: id, vao: b.transferType === 'in', soTien: tien, soTaiKhoan: b.accountNumber.trim(),
+    taiKhoanPhu: typeof b.subAccount === 'string' ? b.subAccount.trim() : '', coMaQuan: giongMa, ngayGiaoDich: ngay,
     maThamChieu: typeof b.referenceCode === 'string' ? b.referenceCode.slice(0, 64) : '',
     maDon: timMaDon(b.code, b.content),
   };

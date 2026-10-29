@@ -52,8 +52,12 @@ giờ nhận và số điện thoại `mini-app/src/don.ts`, giờ Việt Nam `w
 - Mọi lần ghi là một giao dịch `BEGIN IMMEDIATE`; đổi trạng thái chỉ khi đơn đang ở `tu` (bấm đúp, hai máy tính bảng
   cùng bấm: một bước). Tạo đơn theo `maGui`: gửi lại trả đơn cũ, khác nội dung thì 409.
 - Câu trả lời của `/api` chỉ nói đã ghi khi giao dịch đã xong; lỗi thì "đơn CHƯA được ghi". Không chữ "thành công".
-- Không đường dẫn nào đánh dấu "đã trả tiền" từ ngoài cho tới đợt 2 — và đợt 2 chỉ sau khi kiểm chữ ký của Zalo
-  và số tiền. Đơn mẫu chỉ ghi qua `scripts/don-mau.ts` (từ chối khi sổ có đơn của khách thật).
+- Chỉ một đường đánh dấu "đã trả tiền": `POST /sepay/tien-ve`, sau khi chữ ký HMAC-SHA256 của SePay đúng, tiền vào
+  đúng tài khoản của quán (chính hoặc VA) và tổng tiền đã về đủ tổng đơn (`SoDon.ghiTienVe`). Đơn mẫu chỉ ghi qua
+  `scripts/don-mau.ts` (từ chối khi sổ có đơn của khách thật).
+- Mỗi id SePay ghi đúng một lần, cùng giao dịch với việc đổi đơn. Khoản tiền nào mang mã của quán mà không tự khớp được
+  (thiếu, dư, gõ sai mã, sai tài khoản) phải hiện ở "Tiền về cần xem" — không bao giờ lặng lẽ bỏ qua.
+- Không giữ `content` / `description` của SePay (có thể có tên, số tài khoản người chuyển).
 - Màn hình quầy: không màu trạng thái (bảy kiểu K1–K7 của nội bộ, skill `thiet-ke-beeftown`); chữ đủ vi / en.
 - Thư mục du-lieu (sổ đơn `don.sqlite`) không bao giờ vào git — `.gitignore` chặn, `crm/test/test-quy-trinh.mjs` kiểm.
 

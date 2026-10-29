@@ -20,7 +20,7 @@ import { CAU_BAO, CHU, ngayTheoTieng, thoat } from '../src/man-quay.ts';
 import { GioiHan, cungNguon, ipKhach, taoXuLy } from '../src/may-chu.ts';
 import { createHmac } from 'node:crypto';
 import { chuoiVietQr, crc16, docTruong, laTaiKhoanNhan, noiDungChuyenKhoan } from '../src/viet-qr.ts';
-import { DA_NHAN, docTinTienVe, kiemChuKy, timMaDon } from '../src/sepay.ts';
+import { DA_NHAN, docTinTienVe, kiemChuKy, timMaDon, type TinTienVe } from '../src/sepay.ts';
 
 let dat = 0, hong = 0;
 const ok = (ten: string, dieuKien: boolean, chiTiet = '') => {
@@ -483,8 +483,10 @@ const kyThu = (than: string, giay: number, khoa = KHOA_SEPAY) =>
   ok('Chữ ký đúng → dung', kiemChuKy(than, kyThu(than, g), String(g), KHOA_SEPAY, g + 10) === 'dung');
   ok('Thân bị sửa một ký tự → sai_chu_ky', kiemChuKy(than.replace('1', '2'), kyThu(than, g), String(g), KHOA_SEPAY, g) === 'sai_chu_ky');
   ok('Ký bằng khóa khác → sai_chu_ky', kiemChuKy(than, kyThu(than, g, 'khoa-khac-0123456789'), String(g), KHOA_SEPAY, g) === 'sai_chu_ky');
-  ok('Lệch giờ quá 5 phút (gửi lại tin cũ) → qua_han', kiemChuKy(than, kyThu(than, g), String(g), KHOA_SEPAY, g + 301) === 'qua_han'
-    && kiemChuKy(than, kyThu(than, g), String(g), KHOA_SEPAY, g - 301) === 'qua_han');
+  ok('Ký ở tương lai quá 5 phút, hay cũ quá 6 giờ → qua_han', kiemChuKy(than, kyThu(than, g), String(g), KHOA_SEPAY, g - 301) === 'qua_han'
+    && kiemChuKy(than, kyThu(than, g), String(g), KHOA_SEPAY, g + 6 * 3600 + 1) === 'qua_han');
+  ok('SePay gửi lại mang giờ ký cũ 33 phút, 5 giờ → vẫn dung (khoản tiền thật không bị từ chối mãi)',
+    kiemChuKy(than, kyThu(than, g), String(g), KHOA_SEPAY, g + 33 * 60) === 'dung' && kiemChuKy(than, kyThu(than, g), String(g), KHOA_SEPAY, g + 5 * 3600) === 'dung');
   ok('Thiếu header, giờ không phải số, chữ ký sai độ dài, khóa rỗng → sai_chu_ky',
     kiemChuKy(than, null, String(g), KHOA_SEPAY, g) === 'sai_chu_ky' && kiemChuKy(than, kyThu(than, g), 'abc', KHOA_SEPAY, g) === 'sai_chu_ky'
     && kiemChuKy(than, 'sha256=00', String(g), KHOA_SEPAY, g) === 'sai_chu_ky' && kiemChuKy(than, kyThu(than, g, ''), String(g), '', g) === 'sai_chu_ky');
@@ -497,7 +499,12 @@ const kyThu = (than: string, giay: number, khoa = KHOA_SEPAY) =>
   const tin = docTinTienVe(mau);
   ok('Đọc mẫu tin SePay: id, tiền vào, số tiền, tài khoản, giờ, mã tham chiếu, mã đơn từ nội dung',
     tin?.idSepay === 92704 && tin.vao && tin.soTien === 750000 && tin.soTaiKhoan === '113366668888' && tin.ngayGiaoDich === '2026-11-13 09:12:33'
-    && tin.maThamChieu === 'FT24012345678' && tin.maDon === 'K7QX4M9A', JSON.stringify(tin));
+    && tin.maThamChieu === 'FT24012345678' && tin.maDon === 'K7QX4M9A' && tin.taiKhoanPhu === '' && tin.coMaQuan, JSON.stringify(tin));
+  ok('Đọc tài khoản ảo (VA) ở subAccount', docTinTienVe({ ...mau, subAccount: ' VQRK7QX ' })?.taiKhoanPhu === 'VQRK7QX'
+    && docTinTienVe({ ...mau, subAccount: null })?.taiKhoanPhu === '');
+  ok('"BT" + 8 ký tự gõ sai (có 2, O) → không ra mã đơn nhưng vẫn là mã của quán (phải có người xem)',
+    [docTinTienVe({ ...mau, content: 'BTK7QX4M2A' }), docTinTienVe({ ...mau, content: 'bt K7QXOM9A' }), docTinTienVe({ ...mau, code: 'BTK7QX4M2A', content: '' })]
+      .every(t => t?.maDon === null && t.coMaQuan) && docTinTienVe({ ...mau, content: 'Tien hang thang 11' })?.coMaQuan === false);
   ok('Tin đọc ra không mang nội dung, mô tả (có thể có tên người chuyển)', !JSON.stringify(tin).includes('NGUYEN') && !JSON.stringify(tin).includes('chuyen tien'));
   ok('Thiếu id, id âm, số tiền 0 hay lẻ, transferType lạ, không phải đối tượng → null',
     [{ ...mau, id: undefined }, { ...mau, id: -1 }, { ...mau, transferAmount: 0 }, { ...mau, transferAmount: 1.5 }, { ...mau, transferType: 'x' },
@@ -507,14 +514,17 @@ const kyThu = (than: string, giay: number, khoa = KHOA_SEPAY) =>
     && timMaDon(null, 'NGUYEN VAN A CHUYEN TIEN BTK7QX4M9A FT123') === 'K7QX4M9A' && timMaDon('BTAAAAAAAA', 'BTK7QX4M9A') === 'AAAAAAAA');
   ok('Không nhận mã sai: 9 ký tự liền, chữ dễ nhầm (O, 0), thiếu tiền tố',
     timMaDon(null, 'BTK7QX4M9AB') === null && timMaDon(null, 'BTK7QX4MO0') === null && timMaDon(null, 'K7QX4M9A') === null && timMaDon(5, null) === null);
+  ok('Không nhận "BT" dính sau chữ khác ("DEBTK7QX4M9A", "2BTK7QX4M9A")', timMaDon(null, 'DEBTK7QX4M9A') === null && timMaDon(null, '2BTK7QX4M9A') === null
+    && timMaDon(null, 'CK.BTK7QX4M9A') === 'K7QX4M9A');
 }
 
 nhom('15 · Sổ đơn ghi tiền về: đúng một lần, đủ / thiếu / dư / không khớp');
 {
   const so = new SoDon(':memory:');
   const d = donMoi(so, { maGui: 'tien-ve-du-0001' });
-  const tinVe = (them: Partial<ReturnType<typeof docTinTienVe> & object> = {}) => ({
-    idSepay: 1, vao: true, soTien: d.tongTien, soTaiKhoan: TK.soTaiKhoan, ngayGiaoDich: '2026-11-13 09:00:00', maThamChieu: 'FT1', maDon: d.ma, ...them,
+  const tinVe = (them: Partial<TinTienVe> = {}): TinTienVe => ({
+    idSepay: 1, vao: true, soTien: d.tongTien, soTaiKhoan: TK.soTaiKhoan, taiKhoanPhu: '', coMaQuan: true, ngayGiaoDich: '2026-11-13 09:00:00',
+    maThamChieu: 'FT1', maDon: d.ma, ...them,
   });
   const r1 = so.ghiTienVe(tinVe(), TK.soTaiKhoan, LUC_DAT);
   ok('Đủ tiền → "du", đơn sang "đã trả tiền", nhật ký ghi "sepay"', r1.moi && r1.ketQua === 'du' && so.layDon(d.ma)!.trangThai === 'da_thanh_toan'
@@ -546,11 +556,25 @@ nhom('15 · Sổ đơn ghi tiền về: đúng một lần, đủ / thiếu / d�
 
   ok('Có mã BT… mà không có đơn → "khong_khop", phải xem', so.ghiTienVe(tinVe({ idSepay: 7, maDon: 'KHONGCO1' }), TK.soTaiKhoan, LUC_DAT).ketQua === 'khong_khop'
     && so.tienVeCanXem().some(t => t.idSepay === 7 && t.maDon === null));
-  ok('Nội dung không có mã → "khong_ma", không phải xem (tiền khác của công ty)', so.ghiTienVe(tinVe({ idSepay: 8, maDon: null }), TK.soTaiKhoan, LUC_DAT).ketQua === 'khong_ma'
+  ok('Nội dung không có mã → "khong_ma", không phải xem (tiền khác của công ty)', so.ghiTienVe(tinVe({ idSepay: 8, maDon: null, coMaQuan: false }), TK.soTaiKhoan, LUC_DAT).ketQua === 'khong_ma'
     && !so.tienVeCanXem().some(t => t.idSepay === 8));
+  ok('"BT" + mã gõ sai (không đọc ra đơn) → "khong_khop", phải xem — không lặng lẽ thành tiền khác của công ty',
+    so.ghiTienVe(tinVe({ idSepay: 11, maDon: null, coMaQuan: true }), TK.soTaiKhoan, LUC_DAT).ketQua === 'khong_khop'
+    && so.tienVeCanXem().some(t => t.idSepay === 11 && t.ketQua === 'khong_khop'));
   const nam = donMoi(so, { maGui: 'tien-ve-tk-khac-1' });
-  ok('Tiền vào tài khoản khác → "sai_tai_khoan", đơn không đổi', so.ghiTienVe(tinVe({ idSepay: 9, soTaiKhoan: '999999999', maDon: nam.ma }), TK.soTaiKhoan, LUC_DAT).ketQua === 'sai_tai_khoan'
-    && so.layDon(nam.ma)!.trangThai === 'cho_thanh_toan');
+  ok('Tiền mang mã đơn vào tài khoản khác → "sai_tai_khoan", đơn không đổi, nhưng phải xem',
+    so.ghiTienVe(tinVe({ idSepay: 9, soTaiKhoan: '999999999', maDon: nam.ma }), TK.soTaiKhoan, LUC_DAT).ketQua === 'sai_tai_khoan'
+    && so.layDon(nam.ma)!.trangThai === 'cho_thanh_toan' && so.tienVeCanXem().some(t => t.idSepay === 9 && t.ketQua === 'sai_tai_khoan'));
+  ok('Tiền không mã vào tài khoản khác → "sai_tai_khoan", không phải xem', so.ghiTienVe(tinVe({ idSepay: 12, soTaiKhoan: '999999999', maDon: null, coMaQuan: false }),
+    TK.soTaiKhoan, LUC_DAT).ketQua === 'sai_tai_khoan' && !so.tienVeCanXem().some(t => t.idSepay === 12));
+  ok('Chưa biết tài khoản của quán (rỗng) → không khớp tài khoản nào, kể cả tin có số tài khoản rỗng',
+    so.ghiTienVe(tinVe({ idSepay: 13, soTaiKhoan: '', maDon: nam.ma }), '', LUC_DAT).ketQua === 'sai_tai_khoan' && so.layDon(nam.ma)!.trangThai === 'cho_thanh_toan');
+  const va = donMoi(so, { maGui: 'tien-ve-tk-ao-001' });
+  ok('Tiền vào tài khoản ảo (VA) của quán — số chính khác, subAccount đúng → "du", đơn đã trả',
+    so.ghiTienVe(tinVe({ idSepay: 14, soTaiKhoan: '000111222333', taiKhoanPhu: TK.soTaiKhoan, soTien: va.tongTien, maDon: va.ma }), TK.soTaiKhoan, LUC_DAT).ketQua === 'du'
+    && so.layDon(va.ma)!.trangThai === 'da_thanh_toan');
+  ok('Tiền đã nhận theo đơn (một câu cho màn quầy) khớp từng đơn', [d, hai, ba, bon, nam, va].every(x => (so.tienDaNhanTheoDon().get(x.ma) ?? 0) === so.tienDaNhan(x.ma))
+    && so.tienDaNhan(va.ma) === va.tongTien && so.tienDaNhan(nam.ma) === 0 && !so.tienDaNhanTheoDon().has('KHONGCO1'));
   ok('Tiền ra → "tien_ra", đơn không đổi', so.ghiTienVe(tinVe({ idSepay: 10, vao: false, maDon: nam.ma }), TK.soTaiKhoan, LUC_DAT).ketQua === 'tien_ra'
     && so.layDon(nam.ma)!.trangThai === 'cho_thanh_toan');
   ok('Đánh dấu đã xử lý: lần đầu da_doi, bấm đúp da_o_buoc_moi, id lạ khong_co', so.danhDauDaXem(7, LUC_DAT) === 'da_doi'
@@ -565,7 +589,7 @@ nhom('15 · Sổ đơn ghi tiền về: đúng một lần, đủ / thiếu / d�
   const tam = fs.mkdtempSync(path.join(os.tmpdir(), 'may-chu-don-sepay-'));
   const x = new SoDon(path.join(tam, 'don.sqlite')), y = new SoDon(path.join(tam, 'don.sqlite'));
   const sau = donMoi(x, { maGui: 'tien-ve-hai-may-1' });
-  const tin = { idSepay: 77, vao: true, soTien: sau.tongTien, soTaiKhoan: TK.soTaiKhoan, ngayGiaoDich: '', maThamChieu: '', maDon: sau.ma };
+  const tin: TinTienVe = { idSepay: 77, vao: true, soTien: sau.tongTien, soTaiKhoan: TK.soTaiKhoan, taiKhoanPhu: '', coMaQuan: true, ngayGiaoDich: '', maThamChieu: '', maDon: sau.ma };
   const kq = [x.ghiTienVe(tin, TK.soTaiKhoan, LUC_DAT), y.ghiTienVe(tin, TK.soTaiKhoan, LUC_DAT)];
   ok('Hai webhook cùng id tới hai kết nối cùng lúc → đúng một lần ghi, đơn đổi một lần',
     kq.filter(k => k.moi).length === 1 && (x.db.query("select count(*) as n from nhat_ky where ma_don = ? and den = 'da_thanh_toan'").get(sau.ma) as { n: number }).n === 1);
@@ -599,16 +623,16 @@ nhom('16 · Đường /sepay/tien-ve và thông tin trả tiền trong /api/don'
 
   const saiKy = await gui(tinSepay(), { 'x-sepay-signature': 'sha256=' + '0'.repeat(64) });
   ok('Chữ ký sai → 401, không ghi gì', saiKy.status === 401 && (so.db.query('select count(*) as n from giao_dich').get() as { n: number }).n === 0);
-  const cu = await gui(tinSepay(), {}, Math.floor(LUC_DAT / 1000) - 600);
-  ok('Tin ký 10 phút trước (gửi lại tin cũ) → 401', cu.status === 401);
+  const cu = await gui(tinSepay(), {}, Math.floor(LUC_DAT / 1000) - 7 * 3600);
+  ok('Tin ký 7 giờ trước → 401, không ghi gì', cu.status === 401 && (so.db.query('select count(*) as n from giao_dich').get() as { n: number }).n === 0);
   const r1 = await gui(tinSepay());
   ok('Tin đúng, chuyển thiếu → 200 {"success": true}, đơn vẫn chờ, còn thiếu đúng phần chưa chuyển',
     r1.status === 200 && (await r1.text()) === DA_NHAN && so.layDon(j.ma)!.trangThai === 'cho_thanh_toan');
   const xem = await (await goi(xuLy, `/api/don/${j.ma}?khoa=${j.khoa}`)).json() as { daNhan: number; thanhToan: { traDuoc: boolean; soTien: number } };
   ok('Khách xem đơn: đã nhận 200.000 đ, mã trả tiền mới cho đúng phần còn thiếu', xem.daNhan === 200_000 && xem.thanhToan.traDuoc
     && xem.thanhToan.soTien === j.tongTien - 200_000);
-  const lai = await gui(tinSepay());
-  ok('SePay gửi lại cùng id → 200, không ghi lần hai', lai.status === 200 && so.tienDaNhan(j.ma) === 200_000);
+  const lai = await gui(tinSepay(), {}, Math.floor(LUC_DAT / 1000) - 33 * 60);
+  ok('SePay gửi lại cùng id, giờ ký cũ 33 phút → 200, không ghi lần hai', lai.status === 200 && (await lai.text()) === DA_NHAN && so.tienDaNhan(j.ma) === 200_000);
   const r2 = await gui(tinSepay({ id: 5002, transferAmount: j.tongTien - 200_000, code: `BT${j.ma}` }));
   ok('Chuyển nốt → đơn "đã trả tiền"', r2.status === 200 && so.layDon(j.ma)!.trangThai === 'da_thanh_toan');
   const sau = await (await goi(xuLy, `/api/don/${j.ma}?khoa=${j.khoa}`)).json() as { thanhToan: { traDuoc: boolean }; trangThai: string };
@@ -633,6 +657,26 @@ nhom('16 · Đường /sepay/tien-ve và thông tin trả tiền trong /api/don'
   ok('Chưa đặt khóa SePay → 503 (SePay gửi lại), chưa có tài khoản → đơn ghi nhưng không có mã trả tiền',
     (await goi(chuaKhoa, '/sepay/tien-ve', { method: 'POST', body: '{}' })).status === 503
     && ((await (await guiDon(chuaKhoa, donHopLe())).json()) as { thanhToan: { traDuoc: boolean; lyDo: string } }).thanhToan.lyDo === 'chua_co_tai_khoan');
+  const soKhongTk = new SoDon(':memory:');
+  const { xuLy: khongTk } = taoMay(soKhongTk, { khoaSepay: KHOA_SEPAY });
+  const chuKtk = JSON.stringify(tinSepay({ id: 5010 }));
+  const rKtk = await goi(khongTk, '/sepay/tien-ve', { method: 'POST', body: chuKtk, headers: { 'content-type': 'application/json',
+    'x-sepay-signature': kyThu(chuKtk, g), 'x-sepay-timestamp': String(g) } });
+  ok('Có khóa SePay mà chưa có tài khoản nhận → 503, không ghi vĩnh viễn là "sai tài khoản" (SePay gửi lại sau)',
+    rKtk.status === 503 && (soKhongTk.db.query('select count(*) as n from giao_dich').get() as { n: number }).n === 0);
+  soKhongTk.dong();
+
+  // Đơn đã ghi rồi mà dựng phần trả tiền hỏng (sổ đơn bận): vẫn trả đơn, không nói "CHƯA được ghi".
+  const soBan = new SoDon(':memory:');
+  const ban = Object.create(soBan) as SoDon;
+  ban.tienDaNhan = () => { throw new Error('database is locked'); };
+  const { xuLy: xuLyBan } = taoMay(ban, { taiKhoan: TK, khoaSepay: KHOA_SEPAY, choTraGiaThu: true });
+  const rBan = await guiDon(xuLyBan, donHopLe({ maGui: 'api-tra-tien-ban-1' }));
+  const jBan = await rBan.text();
+  ok('Phần trả tiền hỏng sau khi đơn đã ghi → vẫn trả mã đơn (lyDo "tam_loi"), không câu "CHƯA được ghi"',
+    rBan.ok && JSON.parse(jBan).thanhToan.lyDo === 'tam_loi' && !jBan.includes('CHƯA') && soBan.layDon(JSON.parse(jBan).ma) !== null, jBan);
+  soBan.dong();
+
   const { xuLy: giaThu } = taoMay(new SoDon(':memory:'), { taiKhoan: TK, khoaSepay: KHOA_SEPAY });
   const jg = await (await guiDon(giaThu, donHopLe())).json() as { thanhToan: { traDuoc: boolean; lyDo: string } };
   ok(`Bảng giá còn là giá thử (giaThu = ${CAU_HINH.giaThu}) và không bật CHO_TRA_GIA_THU → không có mã trả tiền`,
@@ -652,6 +696,11 @@ nhom('16 · Đường /sepay/tien-ve và thông tin trả tiền trong /api/don'
     headers: { cookie: phien, 'content-type': 'application/x-www-form-urlencoded', 'sec-fetch-site': 'same-origin' } });
   ok('Bấm "Đã xử lý xong" → mục đó biến mất, có câu báo', daXem.status === 303 && (daXem.headers.get('location') ?? '').includes('tien_ve_da_xem')
     && !(await (await goi(xuLy, '/quay', { headers: { cookie: phien } })).text()).includes('Tiền về cần xem ('));
+  const idLa = await goi(xuLy, '/quay/tien-ve/da-xem', { method: 'POST', body: 'id=424242',
+    headers: { cookie: phien, 'content-type': 'application/x-www-form-urlencoded', 'sec-fetch-site': 'same-origin' } });
+  const trangIdLa = await (await goi(xuLy, idLa.headers.get('location') ?? '/quay', { headers: { cookie: phien } })).text();
+  ok('"Đã xử lý xong" cho lần chuyển không có → câu riêng của tiền về, không "Không thấy đơn này"',
+    (idLa.headers.get('location') ?? '').includes('tien_ve_khong_co') && trangIdLa.includes('Không thấy lần chuyển này') && !trangIdLa.includes('Không thấy đơn này'));
   const khongPhien = await goi(xuLy, '/quay/tien-ve/da-xem', { method: 'POST', body: 'id=5004', headers: { 'content-type': 'application/x-www-form-urlencoded', 'sec-fetch-site': 'same-origin' } });
   ok('Chưa đăng nhập không bấm được "Đã xử lý xong"', khongPhien.status === 303 && (khongPhien.headers.get('location') ?? '') === '/quay');
   so.dong();
@@ -669,6 +718,9 @@ nhom('17 · Chạy src/main.ts thật');
     nuaVoi.exitCode === 1 && nuaVoi.stderr.toString().includes('NGAN_HANG_BIN'));
   const khoaNgan = chayThu({ SEPAY_KHOA_KY: 'ngan' });
   ok('Khóa SePay dưới 16 ký tự → không mở máy chủ', khoaNgan.exitCode === 1 && khoaNgan.stderr.toString().includes('SEPAY_KHOA_KY'));
+  const khoaKhongTk = chayThu({ SEPAY_KHOA_KY: KHOA_SEPAY });
+  ok('Có khóa SePay mà chưa có tài khoản nhận → không mở máy chủ, báo rõ', khoaKhongTk.exitCode === 1
+    && khoaKhongTk.stderr.toString().includes('SO_TAI_KHOAN'));
   const tam = fs.mkdtempSync(path.join(os.tmpdir(), 'may-chu-don-main-'));
   const cong = 20000 + Math.floor(Math.random() * 20000);
   const p = Bun.spawn(['bun', 'src/main.ts'], {

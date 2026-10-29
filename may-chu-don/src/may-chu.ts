@@ -50,7 +50,7 @@ export interface TuyChonMayChu {
 /** Thông tin trả tiền gửi cho Mini App, hoặc lý do chưa trả được. */
 export type ThanhToan =
   | { traDuoc: true; nganHang: string; soTaiKhoan: string; tenTaiKhoan: string; soTien: number; noiDung: string; chuoiQr: string; hetHanLuc: number }
-  | { traDuoc: false; lyDo: 'chua_co_tai_khoan' | 'gia_thu' | 'khong_cho_tra' };
+  | { traDuoc: false; lyDo: 'chua_co_tai_khoan' | 'gia_thu' | 'khong_cho_tra' | 'tam_loi' };
 
 /**
  * IP để đếm lượt. Sau proxy HTTPS của mình (TIN_PROXY=1): mục CUỐI của X-Forwarded-For — Caddy, nginx thêm IP thật
@@ -179,7 +179,7 @@ export function taoXuLy(tc: TuyChonMayChu) {
     `${ten}=${gt}; Path=/quay; HttpOnly; SameSite=Strict; Max-Age=${giay}${tc.cookieAnToan ? '; Secure' : ''}${them}`;
 
   /** Đơn còn chờ trả tiền thì có mã VietQR cho đúng số tiền còn thiếu; đơn đã có tiền, hết hạn: không. */
-  const thanhToan = (d: DonDayDu): ThanhToan => {
+  const thanhToanCoTheNem = (d: DonDayDu): ThanhToan => {
     if (d.trangThai !== 'cho_thanh_toan') return { traDuoc: false, lyDo: 'khong_cho_tra' };
     if (!tc.taiKhoan) return { traDuoc: false, lyDo: 'chua_co_tai_khoan' };
     if (d.giaThu && !tc.choTraGiaThu) return { traDuoc: false, lyDo: 'gia_thu' };
@@ -190,6 +190,12 @@ export function taoXuLy(tc: TuyChonMayChu) {
       traDuoc: true, nganHang: tc.taiKhoan.tenNganHang, soTaiKhoan: tc.taiKhoan.soTaiKhoan, tenTaiKhoan: tc.taiKhoan.tenTaiKhoan,
       soTien: conThieu, noiDung, chuoiQr: chuoiVietQr(tc.taiKhoan, conThieu, noiDung), hetHanLuc: d.taoLuc + PHUT_CHO_THANH_TOAN * 60_000,
     };
+  };
+  // Đơn đã ghi xong rồi mới dựng phần trả tiền: phần này hỏng (sổ đơn bận) thì vẫn trả đơn — câu "đơn CHƯA được ghi"
+  // chỉ dành cho lúc ghi đơn hỏng. Mini App hỏi lại GET /api/don/<mã> để lấy mã trả tiền.
+  const thanhToan = (d: DonDayDu): ThanhToan => {
+    try { return thanhToanCoTheNem(d); }
+    catch (e) { console.error('Dựng thông tin trả tiền hỏng:', e); return { traDuoc: false, lyDo: 'tam_loi' }; }
   };
 
   return async function xuLy(req: Request, ip: string): Promise<Response> {
@@ -254,7 +260,9 @@ export function taoXuLy(tc: TuyChonMayChu) {
     if (duong === '/sepay/tien-ve' && req.method === 'POST') {
       const tuChoi = (status: number, ly: string) => new Response(JSON.stringify({ success: false, message: ly }),
         { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } });
-      if (!tc.khoaSepay) return tuChoi(503, 'Chưa cấu hình khóa SePay');
+      // Chưa đủ cấu hình: trả lỗi để SePay gửi lại sau — không ghi tiền về khi chưa biết tài khoản của quán, kẻo khoản
+      // tiền thật bị ghi vĩnh viễn là "sai tài khoản" (mỗi id chỉ ghi một lần).
+      if (!tc.khoaSepay || !tc.taiKhoan) return tuChoi(503, 'Chưa cấu hình khóa SePay hoặc tài khoản nhận');
       const thanGoc = await docThan(req, 16 * 1024);
       if (thanGoc === null) return tuChoi(413, 'Quá dài');
       const ky = kiemChuKy(thanGoc, req.headers.get('x-sepay-signature'), req.headers.get('x-sepay-timestamp'), tc.khoaSepay, Math.floor(ms / 1000));
@@ -331,7 +339,8 @@ export function taoXuLy(tc: TuyChonMayChu) {
         const ma = url.searchParams.get('ma') ?? '', den = url.searchParams.get('den'), baoMa = url.searchParams.get('bao') ?? '';
         const don = ma ? tc.so.layDon(ma) : null;
         const bao = laCauBao(baoMa) ? { ma: baoMa, maDon: don?.ma ?? '', so: don?.soTrongNgay ?? null, den: laTrangThai(den) ? den : null } : null;
-        return html(trangDanhSach(nn, tc.so.danhSachQuay(ms), bao, tc.so.tienVeCanXem(), ma => tc.so.tienDaNhan(ma)));
+        const daNhan = tc.so.tienDaNhanTheoDon();
+        return html(trangDanhSach(nn, tc.so.danhSachQuay(ms), bao, tc.so.tienVeCanXem(), ma => daNhan.get(ma) ?? 0));
       }
 
       if (duong === '/quay/huy' && req.method === 'GET') {
@@ -349,7 +358,7 @@ export function taoXuLy(tc: TuyChonMayChu) {
       if (duong === '/quay/tien-ve/da-xem' && req.method === 'POST') {
         const id = Number(new URLSearchParams((await docThan(req, 1024)) ?? '').get('id'));
         const kq = Number.isSafeInteger(id) && id > 0 ? tc.so.danhDauDaXem(id, ms) : 'khong_co';
-        return chuyen(`/quay?bao=${kq === 'da_doi' ? 'tien_ve_da_xem' : kq === 'da_o_buoc_moi' ? 'tien_ve_xem_roi' : 'khong_co'}#tien-ve`);
+        return chuyen(`/quay?bao=${kq === 'da_doi' ? 'tien_ve_da_xem' : kq === 'da_o_buoc_moi' ? 'tien_ve_xem_roi' : 'tien_ve_khong_co'}#tien-ve`);
       }
       return html('Not found', 404);
     }
