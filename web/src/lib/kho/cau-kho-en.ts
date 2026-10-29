@@ -681,6 +681,13 @@ const CAU_DB: ReadonlyArray<HaiThuTieng> = [
     en: 'Aging days must be a whole number from 0 to 365' },
   { vi: 'Nhật ký ủ chỉ thêm, không sửa, không xoá — muốn đổi số ngày ủ thì ghi lần nữa',
     en: 'The aging log can only be added to, not changed or deleted — to change the aging days, record them again' },
+
+  // 0110_kho_ncc_mat_hang — danh mục hàng của từng nhà cung cấp
+  { vi: 'Tài khoản của bạn không được xem nhà cung cấp ở chi nhánh này',
+    en: 'Your account cannot view suppliers at this branch' },
+  { vi: 'Tài khoản của bạn không được sửa nhà cung cấp', en: 'Your account cannot edit suppliers' },
+  { vi: 'Việc với món của nhà cung cấp không hợp lệ', en: 'Invalid action on a supplier\'s item' },
+  { vi: 'Chọn mặt hàng đang dùng', en: 'Choose an active item' },
 ];
 
 /** Câu cố định: đúng từng chữ. */

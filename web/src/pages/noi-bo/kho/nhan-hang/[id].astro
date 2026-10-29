@@ -11,6 +11,10 @@
  *   · XEM                 : đã gửi / đã duyệt / đã hủy — chỉ xem; người lập
  *                           được "Rút về để sửa" khi phiếu còn chờ duyệt
  *
+ * Nút món (0110): món đã có trên phiếu trước, rồi món của nhà cung cấp theo danh mục NCC – món (tự học từ phiếu
+ * đã gửi / đã duyệt + quản lý sửa tay, lib/kho/ncc-mat-hang.ts) — NCC chính, giao gần nhất trước; dòng phụ
+ * "Lần trước 12,5 kg · 25/10" ở chi nhánh này. ?tiep=<món> chọn sẵn món (bước 1 "chọn món trước", hoặc tảng tiếp theo).
+ *
  * Phiếu theo đơn đặt (0039, khóa don_dat của kho_doc_phieu_nhap_kg): mỗi dòng có
  * nhãn "Đặt N kg" cạnh kg nhận; món trong đơn chưa cân được nhắc ở form thêm món.
  *
@@ -39,7 +43,7 @@ import NhanHangChon from '../../../../components/kho/NhanHangChon.astro';
 import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/kho/trang.ts';
 import { docDinhNghia, docMatHang, docViTri, type MatHang, type ViTri } from '../../../../lib/kho/danh-muc.ts';
 import {
-  docPhieuNhan, docNccNhap, docMonGanDay, gopMonGanDay, docFormDongNhan, docFormDauNhan, dongNhanTrong,
+  docPhieuNhan, docNccNhap, gopMonGanDay, docFormDongNhan, docFormDauNhan, dongNhanTrong,
   dongNhanVaoForm, dongLuuTuPhieu, ghepDongNhan, luuPhieuNhan, themDongNhan, docSoDongForm, themAnhNhan, kiemTruocKhiGui,
   guiPhieuNhan, rutPhieuNhan, huyPhieuNhan, haoRepack, soTangVuaThem, cauSoTangBo, ketQuaSauSuaDong, ketQuaDongSuaKhongCon,
   noiCauTangMoi,
@@ -50,6 +54,7 @@ import {
 } from '../../../../lib/kho/chung.ts';
 import { hienThiGiaTri, type DinhNghiaTruong, type GiaTriTruong } from '../../../../lib/kho/truong-them.ts';
 import { soTangChu } from '../../../../lib/kho/tang.ts';
+import { docNccMon, monCuaNcc, chuLanTruoc, type NccMon } from '../../../../lib/kho/ncc-mat-hang.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
@@ -338,23 +343,31 @@ const soTangVua = phieu && soanDuoc && !form
 const soTangCuaPhieu = (phieu?.dong ?? []).filter(d => d.so_tang != null).map(d => soTangChu(d.so_tang));
 const tiep = Astro.url.searchParams.get('tiep') ?? '';
 const tiepMo = Astro.url.searchParams.get('mo') ?? '';
+// ?tiep=<món>: chọn sẵn món — tảng tiếp theo (kèm ngày mổ ?mo=), hoặc món đã chọn trước ở bước 1 (0110).
 const dongHien: DongNhanForm = dongForm ?? (dongSua ? dongNhanVaoForm(dongSua, mon.get(dongSua.mat_hang_id))
-  : mon.get(tiep)?.theo_tang ? { ...dongNhanTrong(), mat_hang_id: tiep, ngay_mo: /^\d{4}-\d{2}-\d{2}$/.test(tiepMo) ? tiepMo : '' }
+  : matHang.some(m => m.id === tiep && m.dang_dung) ? {
+    ...dongNhanTrong(), mat_hang_id: tiep,
+    ngay_mo: mon.get(tiep)?.theo_tang && /^\d{4}-\d{2}-\d{2}$/.test(tiepMo) ? tiepMo : '',
+  }
   : dongNhanTrong());
 
-// Món hay giao: món đã có trên phiếu này trước, rồi món của vài phiếu gần nhất cùng nhà cung cấp.
+// Nút món: món đã có trên phiếu này trước, rồi món của nhà cung cấp theo danh mục NCC – món (0110). Đọc danh mục
+// lỗi thì chỉ mất nút gợi ý — ô "Món khác" bên dưới vẫn có đủ mọi món.
 let monNut: MatHang[] = [];
 let ncc: NccNhap[] = [];
+let monNcc: NccMon[] = [];
 if (phieu && man === 'them') {
-  const [cuNcc, dsNcc] = await Promise.all([
-    docMonGanDay(k.client, cn.id, phieu.ten_nha_cung_cap, phieu.id),
+  const [dsMon, dsNcc] = await Promise.all([
+    phieu.loai === 'mua' ? docNccMon(k.client, cn.id).catch(() => []) : Promise.resolve([]),
     phieu.loai === 'mua' ? docNccNhap(k.client, cn.id).catch(() => []) : Promise.resolve([]),
   ]);
   ncc = dsNcc;
+  monNcc = monCuaNcc(dsMon, phieu.nha_cung_cap_id);
   const theoId = new Map(matHang.map(m => [m.id, m]));
-  monNut = gopMonGanDay([phieu.dong.map(d => d.mat_hang_id), ...cuNcc], 12)
-    .map(id => theoId.get(id)).filter((m): m is MatHang => !!m && m.dang_dung).slice(0, 8);
+  monNut = gopMonGanDay([phieu.dong.map(d => d.mat_hang_id), monNcc.map(c => c.mat_hang_id)], 16)
+    .map(id => theoId.get(id)).filter((m): m is MatHang => !!m && m.dang_dung).slice(0, 12);
 }
+const lanTruocMon = new Map(monNcc.map(c => [c.mat_hang_id, c]));
 const chonONut = monNut.some(m => m.id === dongHien.mat_hang_id);
 const monDangChon = mon.get(dongHien.mat_hang_id);
 
@@ -573,7 +586,10 @@ const tieuDe = phieu ? t.tdPhieu(phieu.so_phieu) : t.tdChung;
         <div class="nb-o">
           <span>{t.monGi}</span>
           <NhanHangChon name="mh" nhan={t.monHayGiao} chon={chonONut ? dongHien.mat_hang_id : ''}
-            ds={monNut.map(m => ({ value: m.id, nhan: m.ten, phu: m.nhom, cai: m.dem_theo_cai, thung: m.so_trong_thung }))} />
+            ds={monNut.map(m => ({
+              value: m.id, nhan: m.ten, phu: chuLanTruoc(lanTruocMon.get(m.id), m, nn) ?? m.nhom,
+              cai: m.dem_theo_cai, thung: m.so_trong_thung,
+            }))} />
           <ChonMatHang name="mh_khac" matHang={matHang} chon={chonONut ? '' : dongHien.mat_hang_id}
             trong={monNut.length ? t.monKhac : t.chonMon} demCai />
         </div>

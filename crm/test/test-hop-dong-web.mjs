@@ -166,6 +166,9 @@ const CHAY_DA_DANG_NHAP = [
   // /noi-bo/kho/dat-hang/*, nhan-hang/moi, bao-cao/ncc và file CSV của nó, bằng client
   // của nhân sự. Giá dự kiến chỉ đọc khi xem_gia (bảng / view có RLS xem_gia).
   'web/src/lib/kho/dat-hang.ts',
+  // Danh mục hàng của từng NCC (0110): kho_ds_ncc_mat_hang (nhap hoặc ncc, không tiền), kho_luu_ncc_mat_hang (ncc) —
+  // chỉ gọi từ /noi-bo/kho/nhan-hang/* và cai-dat/nha-cung-cap, bằng client của nhân sự đã đăng nhập.
+  'web/src/lib/kho/ncc-mat-hang.ts',
   // Sửa hàng loạt mặt hàng (kho_sua_nhanh_mat_hang), vị trí + lý do một form (GĐ8c, 0041) —
   // chỉ gọi từ /noi-bo/kho/cai-dat/mat-hang/sua-nhanh và cai-dat/vi-tri-ly-do, bằng client
   // của chủ / quản lý. Bảng sửa nhanh không đọc cột giá vốn nào.

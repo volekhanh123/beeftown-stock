@@ -40,6 +40,7 @@ Mỗi màn: thư mục trang dưới `src/pages/noi-bo/kho/`, file logic chính 
 | Pha lóc | `pha-loc/` | `pha-loc.ts` | 3e |
 | Theo tảng, ủ, repack, truy vết | `tang/` | `tang.ts` | 3o |
 | Đặt hàng nhà cung cấp | `dat-hang/` | `dat-hang.ts` | 3l |
+| NCC nào bán món nào (tự học + sửa tay), nhận hàng chọn món trước | `nhan-hang/`, `cai-dat/nha-cung-cap.astro` | `ncc-mat-hang.ts` | 3t |
 | Công nợ, trả hàng, MISA | `cong-no/` | `cong-no.ts`, `misa.ts` | 3h, 3m |
 | Báo cáo | `bao-cao/` | `bao-cao.ts` | 3n |
 | Bán qua iPOS, ghép món FABi | `ban-ipos/`, `cai-dat/ipos.astro` | `ban-ipos.ts`, `thu-ngan.ts` | 3j |
