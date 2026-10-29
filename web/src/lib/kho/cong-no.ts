@@ -1078,6 +1078,57 @@ export function catTrangBoNho<T>(ds: T[], tim: Pick<TimDs, 'trang'>): { ds: T[];
   return catTrang(ds.slice(dau, cuoi + 1));
 }
 
+// --- Trả hàng: chọn nhà cung cấp trước (0112) ------------------------------------
+/** Một lô nhập mua (phiếu đã duyệt) còn ở kho / quầy và NCC của phiếu (kho_ncc_cua_lo). Không tiền. */
+export interface NccCuaLo { nha_cung_cap_id: string | null; ten_nha_cung_cap: string | null }
+
+/** Khóa nút "Không rõ nhà cung cấp" của màn trả hàng: lô của phiếu mua không ghi NCC. */
+export const NCC_KHONG_RO = 'khong_ro';
+/** Chữ của nút đó — và của dòng "Trả cho: …" ở bước ghi kg. */
+export const TEN_NCC_KHONG_RO: HaiThuTieng = { vi: 'Không rõ nhà cung cấp', en: 'Supplier not recorded' };
+
+/**
+ * Lô → NCC của phiếu mua (kho_ncc_cua_lo, 0112; vai nhap hoặc ke_toan). Lô tồn đầu / pha lóc ra không có (không trả
+ * được). Lỗi ném ra — trang không lọc theo NCC, vẫn hiện mọi lô như trước 0112.
+ */
+export async function docNccCuaLo(client: SupabaseClient, chiNhanhId: string): Promise<Map<string, NccCuaLo>> {
+  // Từng trang 1.000 dòng (hàm xếp theo lô): chi nhánh nhiều lô thì lô thứ 1.001 trở đi không lặng lẽ mất NCC.
+  const data = await docTungTrang((tu, den) => client
+    .rpc('kho_ncc_cua_lo', { p_chi_nhanh_id: chiNhanhId }, { count: 'exact' })
+    .range(tu, den));
+  return new Map((data as ({ lo_id: string } & NccCuaLo)[])
+    .map(r => [r.lo_id, { nha_cung_cap_id: r.nha_cung_cap_id, ten_nha_cung_cap: r.ten_nha_cung_cap }]));
+}
+
+/** Khóa lọc của một lô: id NCC, NCC_KHONG_RO (phiếu không ghi NCC), hoặc null — lô không phải hàng nhập mua. */
+export function khoaNccLo(loId: string, nccCuaLo: ReadonlyMap<string, NccCuaLo>): string | null {
+  const x = nccCuaLo.get(loId);
+  return x ? x.nha_cung_cap_id ?? NCC_KHONG_RO : null;
+}
+
+/**
+ * Nút "Nhà cung cấp" của màn trả hàng: mỗi NCC có hàng trả được một nút "tên" + số lô (lô khác nhau — một lô ở cả kho
+ * lẫn quầy tính một), xếp theo tên (tiếng Việt); lô phiếu không ghi NCC gom nút "Không rõ nhà cung cấp" ở cuối. Lô không
+ * có trong `nccCuaLo` (không phải hàng nhập mua) không tính.
+ */
+export function nutNccTraHang(
+  loIds: string[], nccCuaLo: ReadonlyMap<string, NccCuaLo>, nn: NgonNguNB = 'vi',
+): { id: string; ten: string; so: number }[] {
+  const nut = new Map<string, { ten: string; lo: Set<string> }>();
+  for (const id of loIds) {
+    const khoa = khoaNccLo(id, nccCuaLo);
+    if (!khoa) continue;
+    const x = nut.get(khoa) ?? {
+      ten: khoa === NCC_KHONG_RO ? TEN_NCC_KHONG_RO[nn] : nccCuaLo.get(id)?.ten_nha_cung_cap ?? '—',
+      lo: new Set<string>(),
+    };
+    x.lo.add(id);
+    nut.set(khoa, x);
+  }
+  return [...nut].map(([id, x]) => ({ id, ten: x.ten, so: x.lo.size }))
+    .sort((a, b) => Number(a.id === NCC_KHONG_RO) - Number(b.id === NCC_KHONG_RO) || a.ten.localeCompare(b.ten, 'vi'));
+}
+
 // --- Thẻ "Theo phiếu" ----------------------------------------------------------
 /** Một trang phiếu công nợ: chip + tìm (số phiếu, NCC, số hóa đơn) + ngày nhập. */
 export async function docCongNoPhieuTrang(

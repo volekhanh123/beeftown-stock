@@ -314,6 +314,8 @@ export function maGui() {
  * (PGlite đọc thẳng thì ngày thành Date, numeric thành chuỗi — khác với thứ web nhận trên Supabase).
  * rpc(): tham số ép kiểu theo chữ ký hàm trong pg_proc (jsonb, uuid, text[]…); hàm trả bảng → data là các
  * dòng, hàm trả một giá trị → data là giá trị đó. Lỗi → { data: null, error: { message, code } }.
+ * rpc(tên, tham số, { count: 'exact' }).range(từ, đến): như PostgREST — cắt các dòng (thứ tự trong thân hàm), count là
+ * tổng số dòng (docTungTrang đọc từng trang). Chỉ chạy khi await / .range() — giống builder của supabase-js.
  * Chỉ hiểu danh sách cột thường trong select() — không hiểu đổi tên cột hay join lồng của PostgREST.
  */
 export async function taoClientPg({ db, duoi, duoiAnon }) {
@@ -328,20 +330,32 @@ export async function taoClientPg({ db, duoi, duoiAnon }) {
       return kq.loi ? { data: null, error: { message: kq.loi, code: kq.ma } } : { data: kq.rows[0]?.r ?? null, error: null };
     };
     return {
-      rpc(ten, thamSo = {}) {
-        const h = ham.get(ten);
-        if (!h) return Promise.resolve({ data: null, error: { message: `Could not find the function public.${ten}`, code: 'PGRST202' } });
-        const ds = Object.entries(thamSo);
-        const kieuCua = k => h.kieu?.[(h.proargnames ?? []).indexOf(k)] ?? 'text';
-        const gt = ds.map(([k, v]) => {
-          if (v === null || v === undefined) return null;
-          const kieu = kieuCua(k);
-          if (kieu.endsWith('[]')) return `{${v.map(x => JSON.stringify(String(x))).join(',')}}`;
-          return /^jsonb?$/.test(kieu) ? JSON.stringify(v) : v;
-        });
-        const goi = `${ten}(${ds.map(([k], i) => `${k} => $${i + 1}::${kieuCua(k)}`).join(', ')})`;
-        if (h.proretset) return chay(`select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) as r from ${goi} x`, gt);
-        return chay(h.tra === 'void' ? `select null::jsonb as r from (select ${goi}) x` : `select to_jsonb(${goi}) as r`, gt);
+      rpc(ten, thamSo = {}, tuyChon = {}) {
+        const goiHam = async () => {
+          const h = ham.get(ten);
+          if (!h) return { data: null, error: { message: `Could not find the function public.${ten}`, code: 'PGRST202' } };
+          const ds = Object.entries(thamSo);
+          const kieuCua = k => h.kieu?.[(h.proargnames ?? []).indexOf(k)] ?? 'text';
+          const gt = ds.map(([k, v]) => {
+            if (v === null || v === undefined) return null;
+            const kieu = kieuCua(k);
+            if (kieu.endsWith('[]')) return `{${v.map(x => JSON.stringify(String(x))).join(',')}}`;
+            return /^jsonb?$/.test(kieu) ? JSON.stringify(v) : v;
+          });
+          const goi = `${ten}(${ds.map(([k], i) => `${k} => $${i + 1}::${kieuCua(k)}`).join(', ')})`;
+          if (h.proretset) return chay(`select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) as r from ${goi} x`, gt);
+          return chay(h.tra === 'void' ? `select null::jsonb as r from (select ${goi}) x` : `select to_jsonb(${goi}) as r`, gt);
+        };
+        const lam = async khoang => {
+          const kq = await goiHam();
+          if (kq.error || !Array.isArray(kq.data)) return kq;
+          const tong = tuyChon?.count ? { count: kq.data.length } : {};
+          return khoang ? { data: kq.data.slice(khoang[0], khoang[1] + 1), error: null, ...tong } : { ...kq, ...tong };
+        };
+        return {
+          then(xong, hong) { return lam(null).then(xong, hong); },
+          range(tu, den) { return lam([tu, den]); },
+        };
       },
       from(bang) {
         const q = { cot: '*', dk: [], gt: [], sap: [], gioiHan: null, boQua: 0, demTong: false, sua: null, xoa: false };

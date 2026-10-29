@@ -682,6 +682,10 @@ const CAU_DB: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Nhật ký ủ chỉ thêm, không sửa, không xoá — muốn đổi số ngày ủ thì ghi lần nữa',
     en: 'The aging log can only be added to, not changed or deleted — to change the aging days, record them again' },
 
+  // 0112_kho_tra_hang_theo_ncc — trả hàng chọn nhà cung cấp trước
+  { vi: 'Tài khoản của bạn không được xem hàng trả nhà cung cấp ở chi nhánh này',
+    en: 'Your account cannot view supplier returns at this branch' },
+
   // 0110_kho_ncc_mat_hang — danh mục hàng của từng nhà cung cấp
   { vi: 'Tài khoản của bạn không được xem nhà cung cấp ở chi nhánh này',
     en: 'Your account cannot view suppliers at this branch' },

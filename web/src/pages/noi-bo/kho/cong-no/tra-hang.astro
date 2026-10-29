@@ -6,6 +6,11 @@
  *
  *   · Không tham số: thủ kho thấy các lô hàng NHẬP MUA đang có ở kho / quầy
  *     (tìm, chia trang) → "Trả lô này". Kế toán thấy thêm hàng chờ #cho-tien.
+ *     Chọn nhà cung cấp trước (0112, 29/10/2026): hàng nút "Nhà cung cấp" —
+ *     ?ncc=<id> chỉ hiện lô của NCC đó (kho_ncc_cua_lo: lô → NCC, không tiền);
+ *     mỗi lô ghi tên NCC. Hàng nút hiện khi có từ hai NCC (hay đang lọc);
+ *     ?ncc= cũ (NCC đã hết hàng trả được) thì báo và hiện mọi lô. Đọc NCC của
+ *     lô lỗi thì không lọc — mọi lô như trước.
  *
  *   · ?lo=<lô>&vi_tri=<nơi>: TRẢ HÀNG HAI BƯỚC, bước 1 (GĐ8b, 0040) — chỉ ghi
  *     KG (kho_tra_hang_ghi_kg). Hàng rời kho ngay, phiếu XT- "Chờ kế toán xác
@@ -30,9 +35,10 @@ import { docPhieuNhap, type PhieuNhap, type DongPhieuNhap } from '../../../../li
 import { docMatHang, docNhaCungCap, type MatHang } from '../../../../lib/kho/danh-muc.ts';
 import { docTon, type DongTon } from '../../../../lib/kho/ton.ts';
 import {
-  traHangNcc, traHangGhiKg, docTraHangChoTien, xacNhanTienTraHang, huyTraHangChoTien, catTrangBoNho, chuanTenNcc, type TraHangChoTien,
+  traHangNcc, traHangGhiKg, docTraHangChoTien, xacNhanTienTraHang, huyTraHangChoTien, catTrangBoNho, chuanTenNcc,
+  docNccCuaLo, khoaNccLo, nutNccTraHang, TEN_NCC_KHONG_RO, type NccCuaLo, type TraHangChoTien,
 } from '../../../../lib/kho/cong-no.ts';
-import { docTimDs } from '../../../../lib/kho/tim-ds.ts';
+import { docTimDs, linkDs } from '../../../../lib/kho/tim-ds.ts';
 import { chuTang, docLoTang } from '../../../../lib/kho/tang.ts';
 import {
   cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, dinhDangTien, laDemCai, laUuid, kqHai, soCaiChu, trangThaiKho,
@@ -156,6 +162,17 @@ const t = dichNB(nn, {
   oDau: { vi: 'Ở đâu', en: 'Where' },
   conKg: { vi: 'Còn', en: 'Left' },
   nhapHan: { vi: (a: string, b: string) => `nhập ${a} · hạn ${b}`, en: (a: string, b: string) => `received ${a} · use by ${b}` },
+  nhaCungCap: { vi: 'Nhà cung cấp', en: 'Supplier' },
+  tatCa: { vi: 'Tất cả', en: 'All' },
+  chonNccTruoc: {
+    vi: 'Chọn nhà cung cấp trước để chỉ thấy hàng của họ.',
+    en: 'Choose the supplier first to see only their goods.',
+  },
+  traCho: { vi: (ten: string) => `Trả cho: ${ten}`, en: (ten: string) => `Return to: ${ten}` },
+  nccHetHang: {
+    vi: 'Nhà cung cấp đã chọn không còn hàng trả được — đang hiện hàng của mọi nhà cung cấp.',
+    en: 'The chosen supplier has no returnable goods left — showing goods from every supplier.',
+  },
 });
 const cn = k.chiNhanh;
 const q = Astro.url.searchParams;
@@ -172,6 +189,8 @@ let matHang: MatHang[] = [];
 let ton: DongTon[] = [];
 let tenNcc = '';
 let choTien: TraHangChoTien[] = [];
+/** Lô → NCC (0112); null = đọc lỗi, không lọc theo NCC. */
+let nccLo: Map<string, NccCuaLo> | null = null;
 let loiDoc = k.loiDoc;
 try {
   if (cheDo === 'phieu') {
@@ -182,14 +201,16 @@ try {
     tenNcc = ds.find(n => n.id === phieu?.nha_cung_cap_id)?.ten ?? '';
   } else {
     // Danh mục để lấy số chai / lon một thùng của món đếm theo cái (0105).
-    const [tn, ct, mh] = await Promise.all([
+    const [tn, ct, mh, nl] = await Promise.all([
       docTon(k.client, cn.id),
       keToan && cheDo === 'ds' ? docTraHangChoTien(k.client, cn.id) : Promise.resolve([] as TraHangChoTien[]),
       docMatHang(k.client),
+      docNccCuaLo(k.client, cn.id).catch(() => null),
     ]);
     ton = tn;
     choTien = ct;
     matHang = mh;
+    nccLo = nl;
   }
 } catch (e) {
   loiDoc = cauLoiKho(e, t.khongDoc);
@@ -219,7 +240,16 @@ const loChon = cheDo === 'lo' ? ton.find(x => x.lo_id === q.get('lo') && x.vi_tr
 
 // --- Danh sách lô để chọn ---
 const tim = docTimDs(q);
-const dsLo = ton.filter(traDuoc)
+// Chọn nhà cung cấp trước (0112): ?ncc= chỉ lô của NCC đó; không lọc thì mọi lô như trước. Đọc NCC của lô lỗi (nccLo
+// null) thì không lọc. ?ncc= không còn trong hàng nút (NCC đã hết hàng trả được) thì báo, hiện mọi lô.
+const loMua = ton.filter(traDuoc);
+const nutNcc = nccLo ? nutNccTraHang(loMua.map(x => x.lo_id), nccLo, nn) : [];
+const nccChon = nutNcc.find(n => n.id === q.get('ncc')) ?? null;
+const nccCu = !!q.get('ncc') && !nccChon && !!nccLo;
+/** Tên NCC của một lô (trống khi chưa đọc được). */
+const tenNccLo = (loId: string) => nccLo?.get(loId)?.ten_nha_cung_cap ?? '';
+const dsLo = loMua
+  .filter(x => !nccChon || (nccLo && khoaNccLo(x.lo_id, nccLo) === nccChon.id))
   .filter(x => !tim.q || chuanTenNcc(`${x.ten_hang} ${x.ma_hang} ${x.ma_lo}`).includes(chuanTenNcc(tim.q)));
 const loTrang = catTrangBoNho(dsLo, tim);
 // Số tảng của các lô đang hiện (tảng nhập mua trả lại nhà cung cấp là chuyện thường gặp nhất ở màn này) — một
@@ -351,6 +381,7 @@ const [choKeToan] = trangThaiKho('cho_xac_nhan_tien', nn);
         <input type="hidden" name="t0_lo" value={loChon.lo_id} />
         <div class="nb-the">
           <p style="margin:0 0 .25rem"><b>{loChon.ten_hang}</b></p>
+          {nccLo?.has(loChon.lo_id) && <p class="kho-phu" style="margin:0 0 .25rem">{t.traCho(tenNccLo(loChon.lo_id) || TEN_NCC_KHONG_RO[nn])}</p>}
           {laCaiLo(loChon) ? (
             <>
               <input type="hidden" name="t0_cai" value="1" />
@@ -375,7 +406,7 @@ const [choKeToan] = trangThaiKho('cho_xac_nhan_tien', nn);
         <div class="kho-thanh-nut dinh">
           <button type="submit" class="nb-nut">{t.ghiTraHang}</button>
         </div>
-        <p style="margin-top:1rem"><a href={DUONG}>{t.chonLoKhacVe}</a></p>
+        <p style="margin-top:1rem"><a href={nccLo && nutNcc.length > 1 && khoaNccLo(loChon.lo_id, nccLo) ? `${DUONG}?ncc=${khoaNccLo(loChon.lo_id, nccLo)}` : DUONG}>{t.chonLoKhacVe}</a></p>
       </form>
     ) : (
       <p class="nb-rong">{t.loKhongConHang}<a href={DUONG}>{t.chonLoKhac}</a></p>
@@ -431,8 +462,18 @@ const [choKeToan] = trangThaiKho('cho_xac_nhan_tien', nn);
       {(thuKho || keToan) && (
         <section>
           <h2>{keToan ? t.ghiHangTraKg : t.chonLoCanTra}</h2>
-          <p class="nb-dan">{t.huongDanLo1}<strong>{t.traLoNay}</strong>{t.huongDanLo2}</p>
+          <p class="nb-dan">{t.huongDanLo1}<strong>{t.traLoNay}</strong>{t.huongDanLo2}{nutNcc.length > 1 && <>{' '}{t.chonNccTruoc}</>}</p>
+          {nccCu && <div class="nb-bao luu-y" role="status"><p>{t.nccHetHang}</p></div>}
+          {(nutNcc.length > 1 || nccChon) && (
+            <nav class="kho-dh" aria-label={t.nhaCungCap}>
+              <a href={linkDs(DUONG, q, { ncc: null })} aria-current={!nccChon ? 'page' : undefined}>{t.tatCa}</a>
+              {nutNcc.map(n => (
+                <a href={linkDs(DUONG, q, { ncc: n.id })} aria-current={n.id === nccChon?.id ? 'page' : undefined}>{n.ten} · {t.soLo(n.so)}</a>
+              ))}
+            </nav>
+          )}
           <form method="GET" action={DUONG} class="kho-tim" role="search">
+            {nccChon && <input type="hidden" name="ncc" value={nccChon.id} />}
             <div class="kho-tim-hang">
               <label class="nb-o"><input type="search" name="q" value={tim.q} placeholder={t.timGoiY} aria-label={t.timLo} autocomplete="off" /></label>
               <button type="submit" class="nb-nut phu">{t.tim}</button>
@@ -447,7 +488,7 @@ const [choKeToan] = trangThaiKho('cho_xac_nhan_tien', nn);
                 <tbody>
                   {loTrang.ds.map(x => (
                     <tr>
-                      <td><strong>{x.ten_hang}</strong><br /><span class="kho-phu">{x.ma_hang}</span></td>
+                      <td><strong>{x.ten_hang}</strong><br /><span class="kho-phu">{x.ma_hang}{!nccChon && tenNccLo(x.lo_id) ? ` · ${tenNccLo(x.lo_id)}` : ''}</span></td>
                       <td>{x.ma_lo}{tangCua(x.lo_id)}<br /><span class="kho-phu">{t.nhapHan(dinhDangNgay(x.ngay_dong_goi), dinhDangNgay(x.han_dung))}</span></td>
                       <td>{x.ten_vi_tri}</td>
                       <td class="so">{laCaiLo(x)
