@@ -54,6 +54,7 @@ import {
 import { CO_KHONG, type DinhNghiaTruong } from '../../../../lib/kho/truong-them.ts';
 import { haoRepack } from '../../../../lib/kho/nhan-hang.ts';
 import { chuTang, soTangChu } from '../../../../lib/kho/tang.ts';
+import { docNccMon, goiYMonNcc, type NccMon } from '../../../../lib/kho/ncc-mat-hang.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
@@ -174,6 +175,7 @@ const t = dichNB(nn, {
   anhHoaDonSo: { vi: (n: number) => `Ảnh hóa đơn ${n}`, en: (n: number) => `Invoice photo ${n}` },
   bamAnh: { vi: 'Bấm vào ảnh để mở cỡ thật, phóng to xem số.', en: 'Tap a photo to open it full size and zoom in on the numbers.' },
   ncc: { vi: 'Nhà cung cấp', en: 'Supplier' },
+  monCuaNcc: { vi: (ten: string) => `${ten} bán`, en: (ten: string) => `Sold by ${ten}` },
   suaDongKg: { vi: 'Sửa dòng hàng, số kg →', en: 'Edit lines and kg →' },
   giaVonTungMon: { vi: 'Giá vốn ước tính từng món', en: 'Estimated cost per item' },
   donGiaTungMon: { vi: 'Đơn giá từng món', en: 'Unit price per item' },
@@ -466,6 +468,12 @@ const maGuiForm = maGuiGiu ?? crypto.randomUUID();
 const tenMh = new Map(matHang.map(m => [m.id, m]));
 const viTriNhan = viTri.filter(v => v.loai !== 'cho_huy' && v.loai !== 'dang_chuyen' && (v.dang_dung || v.id === dau.vi_tri_id));
 const nccChon = ncc.filter(n => n.dang_dung || n.id === dau.nha_cung_cap_id);
+// Nhóm "Gợi ý" của ô chọn món (29/10/2026): phiếu mua đang soạn đã có NCC → món NCC đó bán lên đầu, kèm "Lần trước …"
+// (danh mục NCC – món, 0110). Đọc lỗi thì chỉ mất nhóm gợi ý.
+const nccDangChon = loai === 'mua' && soanDuoc ? ncc.find(n => n.id === dau.nha_cung_cap_id) ?? null : null;
+const goiYMon = nccDangChon
+  ? goiYMonNcc(await docNccMon(k.client, cn.id, { ncc: nccDangChon.id }).catch(() => [] as NccMon[]), nccDangChon.id, tenMh, nn)
+  : [];
 const ten = phieu ? await tenNhanSu(k.client, [phieu.nguoi_tao, phieu.nguoi_gui, phieu.nguoi_duyet, phieu.nguoi_huy]) : new Map();
 // Ảnh trên form soạn: ảnh cũ của phiếu + ảnh vừa tải lên nhưng phiếu chưa lưu được.
 const anhForm: string[] = [...(phieu?.anh ?? []), ...anhDaTai.filter(a => !phieu?.anh.includes(a))];
@@ -650,7 +658,8 @@ const huongDan = 'duyet-nhap';
             {d.so_tang && <input type="hidden" name={`d${i}_so_tang`} value={d.so_tang} />}
             <label class="nb-o" style="margin-top:.4rem">
               <span>{t.matHang}</span>
-              <ChonMatHang name={`d${i}_mat_hang`} matHang={matHang} chon={d.mat_hang_id} />
+              <ChonMatHang name={`d${i}_mat_hang`} matHang={matHang} chon={d.mat_hang_id} goiY={goiYMon}
+                tenGoiY={nccDangChon ? t.monCuaNcc(nccDangChon.ten) : undefined} />
             </label>
             <div class="kho-luoi">
               <label class="nb-o"><span>{t.soKg}</span>

@@ -66,6 +66,7 @@ import {
   cauConU, cauTangConU, chuTang, docLoTang, docNgayUTang, soTangChu, tinhTrangU, TINH_TRANG_U_NB, type TinhTrangU,
 } from '../../../../lib/kho/tang.ts';
 import { doiDonViCau } from '../../../../lib/kho/xuat.ts';
+import { docGoiYThucTe, goiYPhanRa } from '../../../../lib/kho/cong-thuc.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -169,6 +170,7 @@ const t = dichNB(nn, {
   ghiChu: { vi: 'Ghi chú', en: 'Note' },
   viDuGhiChu: { vi: 'ví dụ: thợ Tuấn, tảng mỡ nhiều', en: 'e.g. butcher Tuan, very fatty primal' },
   congThuc: { vi: 'Công thức (để so thu hồi dự kiến)', en: 'Recipe (to compare with the expected yield)' },
+  goiYPhanRa: { vi: 'Phần tảng này hay ra', en: 'Usual cuts from this primal' },
   khongChon: { vi: '— không chọn —', en: '— none —' },
   luu: { vi: 'Lưu', en: 'Save' },
   luuXem: { vi: 'Lưu, xem kết quả →', en: 'Save, see result →' },
@@ -323,6 +325,10 @@ const q = Astro.url.searchParams;
 const form = await docFormGui(Astro);
 const mhVao = matHang.find(m => m.id === phien?.mat_hang_vao_id) ?? null;
 const soanDuoc = k.duoc('pha_loc') && phien?.trang_thai === 'nhap';
+// Tỷ lệ thực tế 30 ngày cho nhóm "Gợi ý" của dòng gõ tay (bước cân & quét) — đọc ngay khi biết phiên, chạy song song
+// với phần còn lại của trang. Lỗi thì null: chỉ mất nhóm gợi ý.
+const huaThucTe = phien && soanDuoc && q.get('buoc') !== 'ket-qua'
+  ? docGoiYThucTe(k.client, cn.id, phien.mat_hang_vao_id, homNayVn(), nn).catch(() => null) : Promise.resolve(null);
 const tenVt = new Map(viTri.map(v => [v.id, v]));
 /** Dòng gõ tay để trống "Để ở": theo nơi để sau pha của món (kho lạnh / quầy). */
 const viTriTheoMon = (id: string) => viTriSauPha(noiDe.get(id), viTri);
@@ -523,6 +529,16 @@ const giaTriVao = (d: DongVao) => {
 
 // Món đã quét nhãn (dòng ra tu_quet) và dòng gõ tay.
 const mon = monDaQuet(raDb, nhan, tenMh);
+// Nhóm "Gợi ý" của ô chọn món ở dòng gõ tay (phụ phẩm, mỡ bỏ — không nhãn): phần loại tảng này thực tế hay ra (30
+// ngày) rồi phần của các công thức (công thức đang chọn trước); phụ phẩm và món mặc định bỏ lên đầu. Bỏ tảng đầu vào và
+// món đã quét nhãn (gõ thêm là cộng hai lần).
+const thucTe = await huaThucTe;
+const goiYRa = buoc === 'can_quet' && phien
+  ? goiYPhanRa(thucTe && !thucTe.loi ? thucTe.tyLe : new Map(),
+    [...(ctChon?.dong ?? []), ...ctCuaTang.filter(c => c !== ctChon).flatMap(c => c.dong)], nn,
+    new Set([phien.mat_hang_vao_id, ...mon.map(m => m.mat_hang_id)]),
+    id => { const m = tenMh.get(id); return !!m && (m.loai === 'phu_pham' || m.xu_ly_mac_dinh === 'bo'); })
+  : [];
 const tongNhan = mon.reduce((s, m) => s + m.so_nhan, 0);
 const raTay = raDb.filter(r => !r.tu_quet);
 const daCoMon = new Set(raDb.map(r => r.mat_hang_id));
@@ -753,7 +769,7 @@ const tenNguon = (ma: string) => nhanKho(TEN_NGUON_DU_KIEN_NB, ma, nn);
                 <div class="kho-dong-hang pl-ra">
                   <div class="pl-ra-luoi">
                     <label class="nb-o pl-ra-mh"><span>{t.matHang}</span>
-                      <ChonMatHang name={`r${i}_mat_hang`} matHang={matHang} chon={r.mat_hang_id} /></label>
+                      <ChonMatHang name={`r${i}_mat_hang`} matHang={matHang} chon={r.mat_hang_id} goiY={goiYRa} tenGoiY={t.goiYPhanRa} /></label>
                     <label class="nb-o"><span>{t.soKg}</span>
                       <input type="text" inputmode="decimal" name={`r${i}_so_kg`} value={r.so_kg} placeholder={i === 0 ? t.viDu125 : undefined} /></label>
                     <label class="nb-o"><span>{t.xuLy}</span>

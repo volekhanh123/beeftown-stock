@@ -102,6 +102,19 @@ export function chuLanTruoc(c: NccMon | undefined, mon: MonVietSo | undefined, n
   return { vi: `Lần trước ${so} · ${ngay}`, en: `Last time ${so} · ${ngay}` }[nn];
 }
 
+/**
+ * Nhóm "Gợi ý" của ô chọn món trên phiếu nhập soạn tay (29/10/2026): món của NCC đang chọn, xếp như `monCuaNcc`, chữ
+ * phụ "Lần trước 12,5 kg · 25/10" — chưa giao ở chi nhánh này thì "NCC chính" hoặc không chữ. Không có tiền.
+ */
+export function goiYMonNcc(
+  ds: NccMon[], nccId: string | null | undefined, mon: ReadonlyMap<string, MonVietSo>, nn: NgonNguNB = 'vi',
+): { id: string; chu: string | null }[] {
+  return monCuaNcc(ds, nccId).map(c => ({
+    id: c.mat_hang_id,
+    chu: chuLanTruoc(c, mon.get(c.mat_hang_id), nn) ?? (c.la_chinh ? { vi: 'NCC chính', en: 'Main supplier' }[nn] : null),
+  }));
+}
+
 /** Cặp chưa giao ở chi nhánh đang xem: đã giao ở chi nhánh khác, hay chỉ mới thêm tay. Trang cài đặt dùng chung. */
 export function chuChuaGiao(c: NccMon, nn: NgonNguNB = 'vi'): string {
   return (c.da_giao
