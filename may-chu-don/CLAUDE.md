@@ -3,8 +3,9 @@
 Phiên Claude tự nạp file này khi đọc file trong `may-chu-don/`. Quy trình chung (9 mục "xong", kiểm thử trước khi mở
 PR) ở `CLAUDE.md` gốc. Hướng dẫn cho người (chạy trên laptop, biến môi trường): `README.md`.
 
-Khánh quyết 29/10/2026: bỏ gửi đơn qua tin nhắn chat OA, đặt hàng tự động hoàn toàn — khách **trả trước trong app**
-(Checkout SDK của Zalo), quầy xem đơn trên **màn hình đơn riêng**, máy chủ **chạy thử trên laptop ở công ty rồi
+Khánh quyết 29/10/2026: bỏ gửi đơn qua tin nhắn chat OA, đặt hàng tự động hoàn toàn — khách **trả trước**, thu tiền
+online qua **SePay** (chuyển khoản VietQR vào tài khoản VietinBank của SLK Group — Khánh mở tài khoản sau; Khánh đổi
+từ Checkout SDK của Zalo sang SePay cùng ngày), quầy xem đơn trên **màn hình đơn riêng**, máy chủ **chạy thử trên laptop ở công ty rồi
 chuyển lên máy chủ thuê ở Việt Nam** khi mở bán, khách được báo **trong app và bằng ZNS**. Claude đề xuất, Khánh
 chưa chốt: đơn trả trước đợt đầu chỉ nhận tại quán (phí giao chưa chốt), hoàn tiền do người làm tay.
 
@@ -20,8 +21,9 @@ mạng: dữ liệu đi qua máy chủ Cloudflare.
 
 | Đợt | Việc | Trạng thái |
 |---|---|---|
-| 1 | Nhận đơn (`POST /api/don`), xem đơn, màn hình quầy, hết hạn 30 phút, số liệu sức khỏe | PR này |
-| 2 | Checkout SDK: máy chủ ký `mac` cho `createOrder`, nhận báo thanh toán → `SoDon.ghiDaThanhToan`, kiểm lại bằng `checkTransaction`; Mini App gửi đơn lên máy chủ thay vì mở chat (chỉ bản thử) | chờ Khánh đăng ký Checkout, khóa bí mật; đọc tài liệu ở `docs.zaloplatforms.com` |
+| 1 | Nhận đơn (`POST /api/don`), xem đơn, màn hình quầy, hết hạn 30 phút, số liệu sức khỏe | đã gộp (PR #137) |
+| 2a | SePay: mã VietQR cho từng đơn (`viet-qr.ts`), nhận tin tiền về có ký HMAC (`sepay.ts`, `POST /sepay/tien-ve`), sổ `giao_dich` đúng một lần mỗi id, đủ / thiếu / dư / không khớp, mục "Tiền về cần xem" ở màn quầy | PR này |
+| 2b | Mini App gửi đơn lên máy chủ thay vì mở chat, màn trả tiền (mã QR, chép số tài khoản / số tiền / nội dung), hỏi lại trạng thái đến khi đã nhận tiền (chỉ bản thử) | sau 2a |
 | 3 | ZNS: "đã nhận đơn", "khay đã sẵn sàng" | chờ mẫu tin được duyệt |
 | 4 | Máy chủ thuê ở Việt Nam, HTTPS, sao lưu sổ đơn ở Việt Nam, xóa dữ liệu khách quá hạn, đèn sức khỏe trong `/noi-bo`, báo số khay sang kho | chờ thuê máy |
 
@@ -32,7 +34,9 @@ mạng: dữ liệu đi qua máy chủ Cloudflare.
 | `src/main.ts` | Khởi động: biến môi trường, sổ đơn, `Bun.serve`, hết hạn mỗi phút |
 | `src/may-chu.ts` | Mọi đường dẫn (`taoXuLy` — kiểm thử gọi thẳng bằng `Request`), giới hạn lượt, phiên quầy, phông |
 | `src/tao-don.ts` | `kiemDon`: kiểm đơn khách gửi, tự tính tiền; `dongHoVn` (giờ VN cho hàm giờ của Mini App) |
-| `src/so-don.ts` | `SoDon`: bảng SQLite, tạo đơn theo `maGui`, đổi trạng thái có kiểm trạng thái cũ, nhật ký |
+| `src/so-don.ts` | `SoDon`: bảng SQLite, tạo đơn theo `maGui`, đổi trạng thái có kiểm trạng thái cũ, nhật ký; `ghiTienVe` (bảng `giao_dich`) |
+| `src/viet-qr.ts` | Chuỗi VietQR chuẩn NAPAS (CRC16), ảnh SVG, nội dung chuyển khoản "BT" + mã đơn |
+| `src/sepay.ts` | Kiểm chữ ký HMAC-SHA256 của SePay, đọc tin tiền về, tìm mã đơn trong nội dung |
 | `src/trang-thai.ts` | Trạng thái, bước quầy được bấm, nhãn vi / en và kiểu vẽ K1–K7 |
 | `src/man-quay.ts`, `src/quay.css` | Màn hình quầy dựng ở máy chủ, không JavaScript; chữ vi / en |
 | `scripts/don-mau.ts` | Đơn mẫu cho laptop thử (`npm run don-mau`) |

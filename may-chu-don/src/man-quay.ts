@@ -10,7 +10,7 @@
  * Chữ đủ vi / en như nội bộ (CLAUDE.md gốc, mục cau-chu). Tên phần thịt là tên tiếng Anh của quầy, giữ nguyên.
  */
 import { chuoiSangNgay, dinhDangTien, hienSoDienThoai, ngayDayDu } from '../../mini-app/src/don.ts';
-import type { DonDayDu } from './so-don.ts';
+import type { DonDayDu, TienVeCanXem } from './so-don.ts';
 import { BUOC_QUAY, NHAN, type TrangThai } from './trang-thai.ts';
 
 export type NgonNgu = 'vi' | 'en';
@@ -38,13 +38,29 @@ export const CHU = {
   ghiChu: { vi: 'Ghi chú', en: 'Note' },
   xacNhanHuy: { vi: 'Hủy đơn này?', en: 'Cancel this order?' },
   giaiThichHuy: {
-    vi: 'Khách đã trả tiền trong app. Hủy thì đơn vào mục “Đã hủy, cần hoàn tiền”: người chuyển khoản trả lại cho khách bấm “Đã hoàn tiền cho khách” khi xong.',
-    en: 'The customer paid in the app. Cancelling moves the order to “Cancelled, refund due”: whoever sends the refund taps “Refund sent” when done.',
+    vi: 'Khách đã chuyển khoản cho đơn này. Hủy thì đơn vào mục “Đã hủy, cần hoàn tiền”: người chuyển khoản trả lại cho khách bấm “Đã hoàn tiền cho khách” khi xong.',
+    en: 'The customer has paid for this order by bank transfer. Cancelling moves the order to “Cancelled, refund due”: whoever sends the refund taps “Refund sent” when done.',
   },
   coHuy: { vi: 'Hủy đơn, cần hoàn tiền', en: 'Cancel, refund due' },
   khongHuy: { vi: 'Không hủy, quay lại', en: 'Keep the order' },
   khongThay: { vi: 'Không thấy đơn này.', en: 'Order not found.' },
   khongHuyDuoc: { vi: 'Đơn này không hủy được ở bước hiện tại.', en: 'This order cannot be cancelled at its current status.' },
+  daNhanChuyenKhoan: { vi: 'Đã nhận chuyển khoản', en: 'Bank transfer received' },
+  tienVeCanXem: { vi: 'Tiền về cần xem', en: 'Transfers to check' },
+  daXuLy: { vi: 'Đã xử lý xong', en: 'Handled' },
+  maThamChieu: { vi: 'Mã giao dịch ngân hàng', en: 'Bank reference' },
+  tienVeThieu: {
+    vi: 'Chuyển thiếu: đơn #{so} cần {tong}, mới nhận {nhan}. Đơn chưa soạn được — gọi khách chuyển nốt, hoặc hoàn lại.',
+    en: 'Underpaid: order #{so} needs {tong}, received {nhan}. The order cannot be prepared yet — ask the customer to pay the rest, or refund.',
+  },
+  tienVeThua: {
+    vi: 'Chuyển dư cho đơn #{so}: đơn {tong}, đã nhận {nhan}. Hoàn phần dư cho khách.',
+    en: 'Overpaid for order #{so}: order {tong}, received {nhan}. Refund the extra to the customer.',
+  },
+  tienVeKhongKhop: {
+    vi: 'Có mã đơn trong nội dung nhưng không có đơn nào khớp. Xem lần chuyển này trong app ngân hàng theo mã giao dịch.',
+    en: 'The transfer note has an order code but no order matches. Look up this transfer in the banking app by its reference.',
+  },
 } as const satisfies Record<string, { vi: string; en: string }>;
 
 /** Câu báo sau khi bấm một bước (mã trong ?bao= của trang danh sách). */
@@ -57,6 +73,8 @@ export const CAU_BAO = {
   },
   khong_co: { vi: 'Không thấy đơn này.', en: 'Order not found.', loi: true },
   khong_duoc: { vi: 'Bước này không làm được từ trạng thái hiện tại.', en: 'That step is not allowed from the current status.', loi: true },
+  tien_ve_da_xem: { vi: 'Đã ghi: lần chuyển này đã xử lý xong.', en: 'Saved: this transfer is marked as handled.', loi: false },
+  tien_ve_xem_roi: { vi: 'Lần chuyển này đã được đánh dấu xử lý xong từ trước.', en: 'This transfer was already marked as handled.', loi: false },
 } as const satisfies Record<string, { vi: string; en: string; loi: boolean }>;
 export type MaCauBao = keyof typeof CAU_BAO;
 /** Mã trong ?bao= là một câu có thật — không lấy "constructor", "__proto__" của Object. */
@@ -115,7 +133,7 @@ export function ngayTheoTieng(ngay: string, nn: NgonNgu): string {
 
 const nhanTrangThai = (tt: TrangThai, nn: NgonNgu) => `<span class="qd-nhan ${NHAN[tt].kieu}">${thoat(NHAN[tt][nn])}</span>`;
 
-function theDon(don: DonDayDu, nn: NgonNgu, coNut: boolean, baoHtml = ''): string {
+function theDon(don: DonDayDu, nn: NgonNgu, coNut: boolean, baoHtml = '', daNhan = 0): string {
   const c = (k: keyof typeof CHU) => thoat(CHU[k][nn]);
   const dong = don.dong.map(d => `<li>${thoat(d.ten)} · ${d.baoQuan === 'dong-lanh' ? c('dongLanh') : c('mat')}, ~${d.soGamKhay} g · <b>${d.soKhay} ${c('khay')}</b></li>`).join('');
   const nut = !coNut ? '' : BUOC_QUAY.filter(b => b.tu === don.trangThai).map(b => b.den === 'can_hoan_tien'
@@ -130,9 +148,32 @@ function theDon(don: DonDayDu, nn: NgonNgu, coNut: boolean, baoHtml = ''): strin
   <p>${thoat(don.ten)} · <a href="tel:${thoat(don.dienThoai)}">${thoat(hienSoDienThoai(don.dienThoai))}</a></p>
   <ul>${dong}</ul>
   <p class="qd-tong">${tong}: ${thoat(dinhDangTien(don.tongTien))}${don.giaThu ? ` <span class="qd-nhan k3">${c('giaThu')}</span>` : ''}</p>
+  ${daNhan > 0 ? `<p>${c('daNhanChuyenKhoan')}: ${thoat(dinhDangTien(daNhan))}</p>` : ''}
   ${don.ghiChu ? `<p class="qd-ghi-chu">${c('ghiChu')}: ${thoat(don.ghiChu)}</p>` : ''}
   ${baoHtml}
   ${nut ? `<div class="qd-hang-nut">${nut}</div>` : ''}
+</article>`;
+}
+
+/** "2026-11-13 09:05:00" (giờ VN, như SePay gửi) → "09:05, 13/11/2026"; dạng lạ thì để nguyên. */
+export function gioNgayVn(chu: string): string {
+  const m = chu.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/);
+  return m ? `${m[4]}:${m[5]}, ${m[3]}/${m[2]}/${m[1]}` : chu;
+}
+
+/** Một lần tiền về cần người xem: số tiền, giờ, mã giao dịch ngân hàng, việc phải làm, nút "Đã xử lý xong". */
+function theTienVe(t: TienVeCanXem, nn: NgonNgu): string {
+  const c = (k: keyof typeof CHU) => thoat(CHU[k][nn]);
+  const mau = t.ketQua === 'thieu' ? CHU.tienVeThieu[nn] : t.ketQua === 'thua' ? CHU.tienVeThua[nn] : CHU.tienVeKhongKhop[nn];
+  const cau = mau.replace('{so}', String(t.soTrongNgay ?? '')).replace('{tong}', dinhDangTien(t.tongTienDon ?? 0))
+    .replace('{nhan}', dinhDangTien(t.tongDaNhan ?? 0));
+  return `<article class="qd-the">
+  <div class="qd-the-dau"><span class="qd-so">${thoat(dinhDangTien(t.soTien))}</span>
+    <span class="qd-gio">${thoat(gioNgayVn(t.ngayGiaoDich))}</span><span class="qd-nhan k1">${c('tienVeCanXem')}</span></div>
+  <p>${thoat(cau)}</p>
+  ${t.maThamChieu ? `<p>${c('maThamChieu')}: ${thoat(t.maThamChieu)}</p>` : ''}
+  <div class="qd-hang-nut"><form method="post" action="/quay/tien-ve/da-xem"><input type="hidden" name="id" value="${t.idSepay}">
+    <button class="qd-nut phu" type="submit">${c('daXuLy')}</button></form></div>
 </article>`;
 }
 
@@ -140,6 +181,8 @@ export function trangDanhSach(
   nn: NgonNgu,
   ds: { conViec: DonDayDu[]; xongHomNay: DonDayDu[] },
   bao: { ma: MaCauBao; maDon: string; so: number | null; den: TrangThai | null } | null,
+  tienVe: TienVeCanXem[] = [],
+  tienDaNhan: (maDon: string) => number = () => 0,
 ): string {
   const c = (k: keyof typeof CHU) => thoat(CHU[k][nn]);
   const cau = bao ? CAU_BAO[bao.ma] : undefined;
@@ -150,8 +193,9 @@ export function trangDanhSach(
   // Thẻ vừa bấm còn trong "Còn phải làm" thì câu báo nằm trong thẻ; đơn đã khép (vào mục đã gập) thì nằm đầu trang.
   const trongThe = !!bao && ds.conViec.some(d => d.ma === bao.maDon);
   return khung(nn, `${trongThe ? '' : baoHtml}
+${tienVe.length ? `<h2 id="tien-ve">${c('tienVeCanXem')} (${tienVe.length})</h2>\n${tienVe.map(t => theTienVe(t, nn)).join('\n')}` : ''}
 <h2>${c('conViec')} (${ds.conViec.length})</h2>
-${ds.conViec.length ? ds.conViec.map(d => theDon(d, nn, true, trongThe && d.ma === bao!.maDon ? baoHtml : '')).join('\n') : `<p class="qd-trong">${c('khongCoViec')}</p>`}
+${ds.conViec.length ? ds.conViec.map(d => theDon(d, nn, true, trongThe && d.ma === bao!.maDon ? baoHtml : '', tienDaNhan(d.ma))).join('\n') : `<p class="qd-trong">${c('khongCoViec')}</p>`}
 ${ds.xongHomNay.length ? `<details class="qd-xong"><summary>${c('xongHomNay')} (${ds.xongHomNay.length})</summary>
 ${ds.xongHomNay.map(d => theDon(d, nn, false)).join('\n')}</details>` : ''}`, { taiLai: true, coDangXuat: true });
 }

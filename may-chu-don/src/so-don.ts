@@ -16,6 +16,7 @@
 import { Database } from 'bun:sqlite';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { congNgay, homNayVn } from '../../web/src/lib/gio-vn.ts';
+import type { TinTienVe } from './sepay.ts';
 import type { DonMoi, DongMoi } from './tao-don.ts';
 import { CON_VIEC, duocBam, laTrangThai, type TrangThai } from './trang-thai.ts';
 
@@ -48,6 +49,29 @@ export type KetQuaTao =
 
 /** da_doi: vừa đổi · da_o_buoc_moi: đơn đã ở `den` (bấm đúp) · lech: đơn đang ở bước khác · khong_co · khong_duoc */
 export type KetQuaDoi = 'da_doi' | 'da_o_buoc_moi' | 'lech' | 'khong_co' | 'khong_duoc';
+
+/**
+ * Một lần tiền về đối với đơn: du (đủ, đơn sang "đã trả tiền") · thieu (chưa đủ, đơn vẫn chờ) · thua (đủ mà dư, hay đơn đã
+ * trả từ trước — phải hoàn phần dư) · khong_khop (có mã "BT…" mà không có đơn) · khong_ma (nội dung không có mã — tiền
+ * khác của công ty, không đụng) · sai_tai_khoan (vào tài khoản khác của công ty) · tien_ra (tiền đi, không đụng).
+ */
+export type KetQuaTienVe = 'du' | 'thieu' | 'thua' | 'khong_khop' | 'khong_ma' | 'sai_tai_khoan' | 'tien_ra';
+
+export interface TienVeCanXem {
+  idSepay: number;
+  maDon: string | null;
+  soTrongNgay: number | null;
+  soTien: number;
+  /** Tổng tiền đơn (khi khớp đơn) — để quầy thấy thiếu / dư bao nhiêu. */
+  tongTienDon: number | null;
+  tongDaNhan: number | null;
+  ngayGiaoDich: string;
+  maThamChieu: string;
+  ketQua: KetQuaTienVe;
+}
+
+/** Trạng thái đơn đã có tiền (tiền về thêm thì là tiền dư). */
+const DA_CO_TIEN: readonly TrangThai[] = ['da_thanh_toan', 'dang_soan', 'cho_lay', 'da_giao', 'can_hoan_tien', 'da_hoan_tien'];
 
 // Mã đơn: 8 ký tự, bỏ chữ dễ nhầm khi đọc qua điện thoại (0/O, 1/I/L, 2/Z, 5/S, 8/B).
 const CHU_MA = 'ACDEFGHJKMNPQRTUVWXY34679';
@@ -100,6 +124,19 @@ create table if not exists nhat_ky (
   luc integer not null
 );
 create index if not exists nhat_ky_don on nhat_ky (ma_don, id);
+create table if not exists giao_dich (
+  id_sepay integer primary key,
+  ma_don text references don (ma),
+  so_tien integer not null check (so_tien > 0),
+  ngay_giao_dich text not null,
+  ma_tham_chieu text not null,
+  ket_qua text not null,
+  can_xem integer not null,
+  nhan_luc integer not null,
+  xem_xong_luc integer
+);
+create index if not exists giao_dich_don on giao_dich (ma_don);
+create index if not exists giao_dich_can_xem on giao_dich (can_xem, xem_xong_luc);
 `;
 
 type DongDb = Record<string, string | number>;
@@ -182,16 +219,26 @@ export class SoDon {
     this.db.query('insert into nhat_ky (ma_don, tu, den, ai, luc) values (?, ?, ?, ?, ?)').run(ma, tu, den, ai, ms);
   }
 
-  /** Đổi một bước, chỉ khi đơn đang ở `tu`. `ai`: "quay", "may" (bước của máy), "zalo" (báo thanh toán). */
+  /** Đổi một bước, chỉ khi đơn đang ở `tu` — gọi bên trong một giao dịch đã mở. */
+  private doiTrongGiaoDich(ma: string, tu: TrangThai, den: TrangThai, ai: string, ms: number): KetQuaDoi {
+    const r = this.db.query('update don set trang_thai = ?, cap_nhat_luc = ? where ma = ? and trang_thai = ?')
+      .run(den, ms, ma, tu);
+    if (r.changes === 1) { this.ghiNhatKy(ma, tu, den, ai, ms); return 'da_doi'; }
+    const hienTai = this.db.query('select trang_thai from don where ma = ?').get(ma) as { trang_thai: string } | null;
+    if (!hienTai) return 'khong_co';
+    return hienTai.trang_thai === den ? 'da_o_buoc_moi' : 'lech';
+  }
+
+  /** Đổi một bước, chỉ khi đơn đang ở `tu`. `ai`: "quay", "may" (bước của máy), "sepay" (tiền về). */
   private doi(ma: string, tu: TrangThai, den: TrangThai, ai: string, ms: number): KetQuaDoi {
-    return this.db.transaction((): KetQuaDoi => {
-      const r = this.db.query('update don set trang_thai = ?, cap_nhat_luc = ? where ma = ? and trang_thai = ?')
-        .run(den, ms, ma, tu);
-      if (r.changes === 1) { this.ghiNhatKy(ma, tu, den, ai, ms); return 'da_doi'; }
-      const hienTai = this.db.query('select trang_thai from don where ma = ?').get(ma) as { trang_thai: string } | null;
-      if (!hienTai) return 'khong_co';
-      return hienTai.trang_thai === den ? 'da_o_buoc_moi' : 'lech';
-    }).immediate();
+    return this.db.transaction((): KetQuaDoi => this.doiTrongGiaoDich(ma, tu, den, ai, ms)).immediate();
+  }
+
+  /** Chờ trả tiền hay hết hạn → đã trả tiền, trong giao dịch đã mở. Đơn đã có tiền từ trước → da_o_buoc_moi. */
+  private daThanhToanTrongGiaoDich(ma: string, ai: string, ms: number): KetQuaDoi {
+    let ra = this.doiTrongGiaoDich(ma, 'cho_thanh_toan', 'da_thanh_toan', ai, ms);
+    if (ra === 'lech') ra = this.doiTrongGiaoDich(ma, 'het_han', 'da_thanh_toan', ai, ms);
+    return ra === 'lech' ? 'da_o_buoc_moi' : ra;
   }
 
   /** Bước quầy bấm trên màn hình — chỉ các bước trong BUOC_QUAY. */
@@ -201,14 +248,79 @@ export class SoDon {
   }
 
   /**
-   * Zalo báo khách đã trả đủ tiền (đợt 2 gọi từ đường nhận báo thanh toán, sau khi đã kiểm chữ ký và số tiền).
-   * Đơn đã hết hạn mà tiền vẫn về: giữ "đã trả tiền" để quầy soạn hay hoàn tiền — tiền khách không bị bỏ quên.
+   * Đánh dấu đơn đã trả đủ tiền. Đường thật là ghiTienVe (SePay, sau khi đã kiểm chữ ký và số tiền); hàm này cho đơn
+   * mẫu và kiểm thử. Đơn đã hết hạn mà tiền vẫn về: giữ "đã trả tiền" để quầy soạn hay hoàn tiền — tiền khách không bị
+   * bỏ quên. Báo lại khi quầy đã soạn, đã giao hay đã hủy: tiền đã ghi nhận từ lần trước → da_o_buoc_moi.
    */
-  ghiDaThanhToan(ma: string, ms: number): KetQuaDoi {
-    let ra = this.doi(ma, 'cho_thanh_toan', 'da_thanh_toan', 'zalo', ms);
-    if (ra === 'lech') ra = this.doi(ma, 'het_han', 'da_thanh_toan', 'zalo', ms);
-    // Zalo gửi lại báo thanh toán khi quầy đã soạn, đã giao hay đã hủy: tiền đã ghi nhận từ lần trước.
-    return ra === 'lech' ? 'da_o_buoc_moi' : ra;
+  ghiDaThanhToan(ma: string, ms: number, ai = 'sepay'): KetQuaDoi {
+    return this.db.transaction((): KetQuaDoi => this.daThanhToanTrongGiaoDich(ma, ai, ms)).immediate();
+  }
+
+  /**
+   * Ghi một lần tiền về của SePay — đúng một lần cho mỗi id (SePay gửi lại tới 8 lần, admin bấm gửi lại được).
+   * Cùng một giao dịch BEGIN IMMEDIATE: ghi tiền và đổi đơn sang "đã trả tiền" hoặc cùng xong, hoặc cùng không có.
+   * `soTaiKhoanQuan`: tài khoản nhận của quán — tiền vào tài khoản khác không được tính cho đơn.
+   */
+  ghiTienVe(tin: TinTienVe, soTaiKhoanQuan: string, ms: number): { moi: boolean; ketQua: KetQuaTienVe; maDon: string | null } {
+    return this.db.transaction(() => {
+      const cu = this.db.query('select ket_qua, ma_don from giao_dich where id_sepay = ?').get(tin.idSepay) as
+        { ket_qua: KetQuaTienVe; ma_don: string | null } | null;
+      if (cu) return { moi: false, ketQua: cu.ket_qua, maDon: cu.ma_don };
+      const don = tin.maDon ? this.db.query('select ma, trang_thai, tong_tien from don where ma = ?').get(tin.maDon) as
+        { ma: string; trang_thai: TrangThai; tong_tien: number } | null : null;
+      let ketQua: KetQuaTienVe;
+      if (!tin.vao) ketQua = 'tien_ra';
+      else if (tin.soTaiKhoan !== soTaiKhoanQuan) ketQua = 'sai_tai_khoan';
+      else if (!tin.maDon) ketQua = 'khong_ma';
+      else if (!don) ketQua = 'khong_khop';
+      else if (DA_CO_TIEN.includes(don.trang_thai)) ketQua = 'thua';
+      else {
+        const truoc = (this.db.query(`select coalesce(sum(so_tien), 0) as n from giao_dich where ma_don = ?
+          and ket_qua in ('du', 'thieu', 'thua')`).get(don.ma) as { n: number }).n;
+        const tong = truoc + tin.soTien;
+        ketQua = tong < don.tong_tien ? 'thieu' : tong === don.tong_tien ? 'du' : 'thua';
+      }
+      const maDon = don && ['du', 'thieu', 'thua'].includes(ketQua) ? don.ma : null;
+      // Phải có người xem: thiếu, dư, có mã "BT…" mà không có đơn. Tiền khác của công ty, tiền ra: không.
+      const canXem = ketQua === 'thieu' || ketQua === 'thua' || ketQua === 'khong_khop' ? 1 : 0;
+      this.db.query(`insert into giao_dich (id_sepay, ma_don, so_tien, ngay_giao_dich, ma_tham_chieu, ket_qua, can_xem, nhan_luc)
+        values (?, ?, ?, ?, ?, ?, ?, ?)`).run(tin.idSepay, maDon, tin.soTien, tin.ngayGiaoDich, tin.maThamChieu, ketQua, canXem, ms);
+      if (maDon && (ketQua === 'du' || ketQua === 'thua') && !DA_CO_TIEN.includes(don!.trang_thai)) {
+        this.daThanhToanTrongGiaoDich(maDon, 'sepay', ms);
+        // Đơn vừa đủ tiền: các lần "thiếu" trước của đơn này không còn phải xem.
+        this.db.query("update giao_dich set can_xem = 0 where ma_don = ? and ket_qua = 'thieu'").run(maDon);
+      }
+      return { moi: true, ketQua, maDon };
+    }).immediate();
+  }
+
+  /** Tổng tiền đã về cho một đơn (mọi lần khớp đơn). */
+  tienDaNhan(ma: string): number {
+    return (this.db.query(`select coalesce(sum(so_tien), 0) as n from giao_dich where ma_don = ?
+      and ket_qua in ('du', 'thieu', 'thua')`).get(ma) as { n: number }).n;
+  }
+
+  /** Tiền về quầy / kế toán phải xem (thiếu, dư, không khớp đơn) mà chưa ai bấm "Đã xử lý". */
+  tienVeCanXem(): TienVeCanXem[] {
+    const hang = this.db.query(`select g.*, d.so_trong_ngay, d.tong_tien from giao_dich g left join don d on d.ma = g.ma_don
+      where g.can_xem = 1 and g.xem_xong_luc is null order by g.nhan_luc`).all() as DongDb[];
+    return hang.map(h => ({
+      idSepay: Number(h.id_sepay), maDon: h.ma_don === null ? null : String(h.ma_don),
+      soTrongNgay: h.so_trong_ngay === null ? null : Number(h.so_trong_ngay), soTien: Number(h.so_tien),
+      tongTienDon: h.tong_tien === null ? null : Number(h.tong_tien),
+      tongDaNhan: h.ma_don === null ? null : this.tienDaNhan(String(h.ma_don)),
+      ngayGiaoDich: String(h.ngay_giao_dich), maThamChieu: String(h.ma_tham_chieu), ketQua: String(h.ket_qua) as KetQuaTienVe,
+    }));
+  }
+
+  /** Quầy bấm "Đã xử lý" cho một lần tiền về cần xem. Bấm đúp → da_o_buoc_moi. */
+  danhDauDaXem(idSepay: number, ms: number): 'da_doi' | 'da_o_buoc_moi' | 'khong_co' {
+    return this.db.transaction(() => {
+      const r = this.db.query('update giao_dich set xem_xong_luc = ? where id_sepay = ? and can_xem = 1 and xem_xong_luc is null')
+        .run(ms, idSepay);
+      if (r.changes === 1) return 'da_doi' as const;
+      return this.db.query('select 1 from giao_dich where id_sepay = ? and can_xem = 1').get(idSepay) ? 'da_o_buoc_moi' as const : 'khong_co' as const;
+    }).immediate();
   }
 
   /** Đơn chờ trả tiền quá PHUT_CHO_THANH_TOAN phút → hết hạn. Trả về số đơn vừa đổi. */
@@ -252,6 +364,8 @@ export class SoDon {
     const cuNhat = this.db.query(`select min(cap_nhat_luc) as luc from don where trang_thai = 'da_thanh_toan'`)
       .get() as { luc: number | null };
     const cuoi = this.db.query('select max(luc) as luc from nhat_ky').get() as { luc: number | null };
+    const tienVe = this.db.query(`select max(nhan_luc) as luc, sum(case when can_xem = 1 and xem_xong_luc is null then 1 else 0 end) as can
+      from giao_dich`).get() as { luc: number | null; can: number | null };
     return {
       soChoSoan: dem('da_thanh_toan'),
       soDangSoan: dem('dang_soan'),
@@ -260,6 +374,8 @@ export class SoDon {
       phutChoSoanLauNhat: cuNhat.luc === null ? null : Math.floor((ms - cuNhat.luc) / 60_000),
       soDonHomNay: (this.db.query('select count(*) as n from don where ngay_tao = ?').get(homNayVn(ms)) as { n: number }).n,
       lanGhiCuoi: cuoi.luc,
+      lanTienVeCuoi: tienVe.luc,
+      soTienVeCanXem: tienVe.can ?? 0,
     };
   }
 }

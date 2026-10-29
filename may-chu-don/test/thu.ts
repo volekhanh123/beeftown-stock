@@ -18,6 +18,9 @@ import { SoDon, PHUT_CHO_THANH_TOAN, type DonDayDu } from '../src/so-don.ts';
 import { BUOC_QUAY, NHAN, TRANG_THAI, duocBam } from '../src/trang-thai.ts';
 import { CAU_BAO, CHU, ngayTheoTieng, thoat } from '../src/man-quay.ts';
 import { GioiHan, cungNguon, ipKhach, taoXuLy } from '../src/may-chu.ts';
+import { createHmac } from 'node:crypto';
+import { chuoiVietQr, crc16, docTruong, laTaiKhoanNhan, noiDungChuyenKhoan } from '../src/viet-qr.ts';
+import { DA_NHAN, docTinTienVe, kiemChuKy, timMaDon } from '../src/sepay.ts';
 
 let dat = 0, hong = 0;
 const ok = (ten: string, dieuKien: boolean, chiTiet = '') => {
@@ -153,8 +156,8 @@ nhom('5 · Trạng thái: chỉ đi đúng một bước, kể cả bấm đúp 
     so.doiTrangThai(d.ma, 'da_thanh_toan', 'can_hoan_tien', LUC_DAT + 5) === 'lech' && so.layDon(d.ma)!.trangThai === 'dang_soan');
   ok('Đơn không có → khong_co', so.doiTrangThai('KHONGCO1', 'da_thanh_toan', 'dang_soan', LUC_DAT) === 'khong_co');
   const nk = so.db.query('select tu, den, ai from nhat_ky where ma_don = ? order by id').all(d.ma) as { tu: string | null; den: string; ai: string }[];
-  ok('Nhật ký ghi đúng 3 lần đổi thật (tạo, Zalo, quầy) — lần bấm đúp, lần lệch không ghi',
-    nk.map(x => `${x.tu}>${x.den}@${x.ai}`).join() === 'null>cho_thanh_toan@khach,cho_thanh_toan>da_thanh_toan@zalo,da_thanh_toan>dang_soan@quay',
+  ok('Nhật ký ghi đúng 3 lần đổi thật (tạo, tiền về qua SePay, quầy) — lần bấm đúp, lần lệch không ghi',
+    nk.map(x => `${x.tu}>${x.den}@${x.ai}`).join() === 'null>cho_thanh_toan@khach,cho_thanh_toan>da_thanh_toan@sepay,da_thanh_toan>dang_soan@quay',
     JSON.stringify(nk));
   so.dong();
 
@@ -440,7 +443,7 @@ nhom('12 · Rà soát 29/10: gửi lại sau khi giờ nhận qua, IP sau proxy,
   const chuaTra = donMoi(so, { maGui: 'ra-soat-chua-tra' });
   const huyChuaTra = await xem(`/quay/huy?ma=${chuaTra.ma}`);
   ok('HỒI QUY rà soát: trang hủy của đơn chưa trả tiền → "không hủy được", không nói khách đã trả tiền',
-    huyChuaTra.chu.includes('không hủy được') && !huyChuaTra.chu.includes('đã trả tiền trong app') && !huyChuaTra.chu.includes('name="den" value="can_hoan_tien"'));
+    huyChuaTra.chu.includes('không hủy được') && !huyChuaTra.chu.includes('đã chuyển khoản') && !huyChuaTra.chu.includes('name="den" value="can_hoan_tien"'));
   so.doiTrangThai(d.ma, 'dang_soan', 'cho_lay', LUC_DAT);
   so.doiTrangThai(d.ma, 'cho_lay', 'da_giao', LUC_DAT);
   ok('Trang hủy của đơn đã giao → "không hủy được"', (await xem(`/quay/huy?ma=${d.ma}`)).chu.includes('không hủy được'));
@@ -449,10 +452,223 @@ nhom('12 · Rà soát 29/10: gửi lại sau khi giờ nhận qua, IP sau proxy,
 }
 
 // =====================================================================================================
-nhom('13 · Chạy src/main.ts thật');
+nhom('13 · VietQR: chuỗi chuẩn NAPAS, CRC16, tài khoản nhận');
+const TK = { bin: '970415', soTaiKhoan: '113366668888', tenTaiKhoan: 'CONG TY TNHH SLK GROUP', tenNganHang: 'VietinBank' };
+{
+  ok('CRC16-CCITT của "123456789" là 29B1 (giá trị kiểm chuẩn)', crc16('123456789') === '29B1');
+  const q = chuoiVietQr(TK, 750000, 'BTK7QX4M2A');
+  // Cùng đầu vào, thư viện độc lập vietnam-qr-pay 1.5.1 dựng ra đúng chuỗi này (so tay 29/10/2026).
+  ok('Chuỗi VietQR trùng từng ký tự với thư viện độc lập (vietnam-qr-pay)',
+    q === '00020101021238560010A0000007270126000697041501121133666688880208QRIBFTTA530370454067500005802VN62140810BTK7QX4M2A63044BA7', q);
+  const t = docTruong(q), nguoi = docTruong(t['38']), tk = docTruong(nguoi['01']);
+  ok('Đọc lại: mã động, VND, VN, số tiền, nội dung, BIN, số tài khoản, CRC tính trên cả chuỗi',
+    t['01'] === '12' && t['53'] === '704' && t['58'] === 'VN' && t['54'] === '750000' && docTruong(t['62'])['08'] === 'BTK7QX4M2A'
+    && nguoi['00'] === 'A000000727' && nguoi['02'] === 'QRIBFTTA' && tk['00'] === '970415' && tk['01'] === '113366668888'
+    && crc16(q.slice(0, -4)) === t['63']);
+  const nem = (f: () => unknown) => { try { f(); return false; } catch { return true; } };
+  ok('Số tiền 0, âm, lẻ; nội dung có dấu hay dài quá 25 ký tự → không dựng mã',
+    nem(() => chuoiVietQr(TK, 0, 'BT1')) && nem(() => chuoiVietQr(TK, -5, 'BT1')) && nem(() => chuoiVietQr(TK, 1.5, 'BT1'))
+    && nem(() => chuoiVietQr(TK, 1000, 'Thanh toán')) && nem(() => chuoiVietQr(TK, 1000, 'B'.repeat(26))));
+  ok('Nội dung chuyển khoản là "BT" + mã đơn', noiDungChuyenKhoan('K7QX4M2A') === 'BTK7QX4M2A');
+  ok('Tài khoản nhận: đủ 4 trường đúng dạng mới hợp lệ', laTaiKhoanNhan(TK) && !laTaiKhoanNhan({ ...TK, bin: '97041' })
+    && !laTaiKhoanNhan({ ...TK, soTaiKhoan: '12ab' }) && !laTaiKhoanNhan({ ...TK, tenTaiKhoan: ' ' }) && !laTaiKhoanNhan({}));
+}
+
+nhom('14 · SePay: chữ ký HMAC, đọc tin tiền về, tìm mã đơn');
+const KHOA_SEPAY = 'khoa-ky-sepay-thu-0123456789';
+const kyThu = (than: string, giay: number, khoa = KHOA_SEPAY) =>
+  'sha256=' + createHmac('sha256', khoa).update(`${giay}.${than}`).digest('hex');
+{
+  const than = '{"id":1,"transferType":"in"}', g = 1_800_000_000;
+  ok('Chữ ký đúng → dung', kiemChuKy(than, kyThu(than, g), String(g), KHOA_SEPAY, g + 10) === 'dung');
+  ok('Thân bị sửa một ký tự → sai_chu_ky', kiemChuKy(than.replace('1', '2'), kyThu(than, g), String(g), KHOA_SEPAY, g) === 'sai_chu_ky');
+  ok('Ký bằng khóa khác → sai_chu_ky', kiemChuKy(than, kyThu(than, g, 'khoa-khac-0123456789'), String(g), KHOA_SEPAY, g) === 'sai_chu_ky');
+  ok('Lệch giờ quá 5 phút (gửi lại tin cũ) → qua_han', kiemChuKy(than, kyThu(than, g), String(g), KHOA_SEPAY, g + 301) === 'qua_han'
+    && kiemChuKy(than, kyThu(than, g), String(g), KHOA_SEPAY, g - 301) === 'qua_han');
+  ok('Thiếu header, giờ không phải số, chữ ký sai độ dài, khóa rỗng → sai_chu_ky',
+    kiemChuKy(than, null, String(g), KHOA_SEPAY, g) === 'sai_chu_ky' && kiemChuKy(than, kyThu(than, g), 'abc', KHOA_SEPAY, g) === 'sai_chu_ky'
+    && kiemChuKy(than, 'sha256=00', String(g), KHOA_SEPAY, g) === 'sai_chu_ky' && kiemChuKy(than, kyThu(than, g, ''), String(g), '', g) === 'sai_chu_ky');
+  ok('Thân trả về đúng y {"success": true} như SePay đòi', DA_NHAN === '{"success": true}' && JSON.parse(DA_NHAN).success === true);
+
+  // Mẫu tin trong tài liệu SePay (developer.sepay.vn, Tích hợp webhook), đổi nội dung sang mã đơn của Beeftown.
+  const mau = { id: 92704, gateway: 'VietinBank', transactionDate: '2026-11-13 09:12:33', accountNumber: '113366668888', subAccount: '',
+    code: null, content: 'BTK7QX4M9A chuyen tien', transferType: 'in', description: 'NGUYEN VAN A chuyen tien',
+    transferAmount: 750000, accumulated: 105000000, referenceCode: 'FT24012345678' };
+  const tin = docTinTienVe(mau);
+  ok('Đọc mẫu tin SePay: id, tiền vào, số tiền, tài khoản, giờ, mã tham chiếu, mã đơn từ nội dung',
+    tin?.idSepay === 92704 && tin.vao && tin.soTien === 750000 && tin.soTaiKhoan === '113366668888' && tin.ngayGiaoDich === '2026-11-13 09:12:33'
+    && tin.maThamChieu === 'FT24012345678' && tin.maDon === 'K7QX4M9A', JSON.stringify(tin));
+  ok('Tin đọc ra không mang nội dung, mô tả (có thể có tên người chuyển)', !JSON.stringify(tin).includes('NGUYEN') && !JSON.stringify(tin).includes('chuyen tien'));
+  ok('Thiếu id, id âm, số tiền 0 hay lẻ, transferType lạ, không phải đối tượng → null',
+    [{ ...mau, id: undefined }, { ...mau, id: -1 }, { ...mau, transferAmount: 0 }, { ...mau, transferAmount: 1.5 }, { ...mau, transferType: 'x' },
+      { ...mau, accountNumber: 5 }, null, [], 'x'].every(b => docTinTienVe(b) === null));
+  ok('Tìm mã: chữ thường, có dấu cách sau BT, giữa câu, mã SePay đã bóc (ưu tiên)',
+    timMaDon(null, 'btk7qx4m9a ck') === 'K7QX4M9A' && timMaDon(null, 'BT K7QX4M9A') === 'K7QX4M9A'
+    && timMaDon(null, 'NGUYEN VAN A CHUYEN TIEN BTK7QX4M9A FT123') === 'K7QX4M9A' && timMaDon('BTAAAAAAAA', 'BTK7QX4M9A') === 'AAAAAAAA');
+  ok('Không nhận mã sai: 9 ký tự liền, chữ dễ nhầm (O, 0), thiếu tiền tố',
+    timMaDon(null, 'BTK7QX4M9AB') === null && timMaDon(null, 'BTK7QX4MO0') === null && timMaDon(null, 'K7QX4M9A') === null && timMaDon(5, null) === null);
+}
+
+nhom('15 · Sổ đơn ghi tiền về: đúng một lần, đủ / thiếu / dư / không khớp');
+{
+  const so = new SoDon(':memory:');
+  const d = donMoi(so, { maGui: 'tien-ve-du-0001' });
+  const tinVe = (them: Partial<ReturnType<typeof docTinTienVe> & object> = {}) => ({
+    idSepay: 1, vao: true, soTien: d.tongTien, soTaiKhoan: TK.soTaiKhoan, ngayGiaoDich: '2026-11-13 09:00:00', maThamChieu: 'FT1', maDon: d.ma, ...them,
+  });
+  const r1 = so.ghiTienVe(tinVe(), TK.soTaiKhoan, LUC_DAT);
+  ok('Đủ tiền → "du", đơn sang "đã trả tiền", nhật ký ghi "sepay"', r1.moi && r1.ketQua === 'du' && so.layDon(d.ma)!.trangThai === 'da_thanh_toan'
+    && (so.db.query("select ai from nhat_ky where ma_don = ? and den = 'da_thanh_toan'").get(d.ma) as { ai: string }).ai === 'sepay');
+  const r2 = so.ghiTienVe(tinVe(), TK.soTaiKhoan, LUC_DAT + 60_000);
+  ok('SePay gửi lại cùng id → không ghi lần hai, trả kết quả cũ', !r2.moi && r2.ketQua === 'du'
+    && (so.db.query('select count(*) as n from giao_dich').get() as { n: number }).n === 1 && so.tienDaNhan(d.ma) === d.tongTien);
+  const r3 = so.ghiTienVe(tinVe({ idSepay: 2, soTien: 50_000 }), TK.soTaiKhoan, LUC_DAT);
+  ok('Tiền về thêm cho đơn đã trả → "thua", phải xem, đơn không đổi', r3.ketQua === 'thua' && so.layDon(d.ma)!.trangThai === 'da_thanh_toan'
+    && so.tienVeCanXem().some(t => t.idSepay === 2 && t.ketQua === 'thua'));
+
+  const hai = donMoi(so, { maGui: 'tien-ve-thieu-01' });
+  const a = so.ghiTienVe(tinVe({ idSepay: 3, soTien: 100_000, maDon: hai.ma }), TK.soTaiKhoan, LUC_DAT);
+  ok('Chuyển thiếu → "thieu", đơn vẫn chờ trả tiền, hiện trong "Tiền về cần xem"', a.ketQua === 'thieu' && so.layDon(hai.ma)!.trangThai === 'cho_thanh_toan'
+    && so.tienVeCanXem().some(t => t.idSepay === 3 && t.tongDaNhan === 100_000 && t.tongTienDon === hai.tongTien));
+  const b = so.ghiTienVe(tinVe({ idSepay: 4, soTien: hai.tongTien - 100_000, maDon: hai.ma }), TK.soTaiKhoan, LUC_DAT);
+  ok('Chuyển nốt phần còn lại → "du", đơn đã trả, lần "thiếu" trước không còn phải xem', b.ketQua === 'du'
+    && so.layDon(hai.ma)!.trangThai === 'da_thanh_toan' && !so.tienVeCanXem().some(t => t.idSepay === 3));
+
+  const ba = donMoi(so, { maGui: 'tien-ve-du-tien-01' });
+  const c = so.ghiTienVe(tinVe({ idSepay: 5, soTien: ba.tongTien + 20_000, maDon: ba.ma }), TK.soTaiKhoan, LUC_DAT);
+  ok('Chuyển dư → "thua": đơn vẫn sang đã trả (soạn được), lần chuyển phải xem để hoàn phần dư',
+    c.ketQua === 'thua' && so.layDon(ba.ma)!.trangThai === 'da_thanh_toan' && so.tienVeCanXem().some(t => t.idSepay === 5));
+
+  const bon = donMoi(so, { maGui: 'tien-ve-het-han-1' });
+  so.datHetHan(LUC_DAT + (PHUT_CHO_THANH_TOAN + 1) * 60_000);
+  const e = so.ghiTienVe(tinVe({ idSepay: 6, soTien: bon.tongTien, maDon: bon.ma }), TK.soTaiKhoan, LUC_DAT + 40 * 60_000);
+  ok('Đơn đã hết hạn mà tiền vẫn về đủ → đơn thành "đã trả tiền" (tiền khách không bị bỏ quên)', e.ketQua === 'du' && so.layDon(bon.ma)!.trangThai === 'da_thanh_toan');
+
+  ok('Có mã BT… mà không có đơn → "khong_khop", phải xem', so.ghiTienVe(tinVe({ idSepay: 7, maDon: 'KHONGCO1' }), TK.soTaiKhoan, LUC_DAT).ketQua === 'khong_khop'
+    && so.tienVeCanXem().some(t => t.idSepay === 7 && t.maDon === null));
+  ok('Nội dung không có mã → "khong_ma", không phải xem (tiền khác của công ty)', so.ghiTienVe(tinVe({ idSepay: 8, maDon: null }), TK.soTaiKhoan, LUC_DAT).ketQua === 'khong_ma'
+    && !so.tienVeCanXem().some(t => t.idSepay === 8));
+  const nam = donMoi(so, { maGui: 'tien-ve-tk-khac-1' });
+  ok('Tiền vào tài khoản khác → "sai_tai_khoan", đơn không đổi', so.ghiTienVe(tinVe({ idSepay: 9, soTaiKhoan: '999999999', maDon: nam.ma }), TK.soTaiKhoan, LUC_DAT).ketQua === 'sai_tai_khoan'
+    && so.layDon(nam.ma)!.trangThai === 'cho_thanh_toan');
+  ok('Tiền ra → "tien_ra", đơn không đổi', so.ghiTienVe(tinVe({ idSepay: 10, vao: false, maDon: nam.ma }), TK.soTaiKhoan, LUC_DAT).ketQua === 'tien_ra'
+    && so.layDon(nam.ma)!.trangThai === 'cho_thanh_toan');
+  ok('Đánh dấu đã xử lý: lần đầu da_doi, bấm đúp da_o_buoc_moi, id lạ khong_co', so.danhDauDaXem(7, LUC_DAT) === 'da_doi'
+    && so.danhDauDaXem(7, LUC_DAT) === 'da_o_buoc_moi' && so.danhDauDaXem(999, LUC_DAT) === 'khong_co' && so.danhDauDaXem(8, LUC_DAT) === 'khong_co'
+    && !so.tienVeCanXem().some(t => t.idSepay === 7));
+  const cot = (so.db.query('pragma table_info(giao_dich)').all() as { name: string }[]).map(x => x.name);
+  ok('Bảng giao_dich không có cột nội dung, mô tả, tên người chuyển', !cot.some(c => /noi_dung|mo_ta|ten|content|description/.test(c)), cot.join(','));
+  const sl = so.soLieu(LUC_DAT);
+  ok('Số liệu sức khỏe có giờ tiền về cuối và số lần cần xem', sl.lanTienVeCuoi !== null && sl.soTienVeCanXem === so.tienVeCanXem().length);
+  so.dong();
+
+  const tam = fs.mkdtempSync(path.join(os.tmpdir(), 'may-chu-don-sepay-'));
+  const x = new SoDon(path.join(tam, 'don.sqlite')), y = new SoDon(path.join(tam, 'don.sqlite'));
+  const sau = donMoi(x, { maGui: 'tien-ve-hai-may-1' });
+  const tin = { idSepay: 77, vao: true, soTien: sau.tongTien, soTaiKhoan: TK.soTaiKhoan, ngayGiaoDich: '', maThamChieu: '', maDon: sau.ma };
+  const kq = [x.ghiTienVe(tin, TK.soTaiKhoan, LUC_DAT), y.ghiTienVe(tin, TK.soTaiKhoan, LUC_DAT)];
+  ok('Hai webhook cùng id tới hai kết nối cùng lúc → đúng một lần ghi, đơn đổi một lần',
+    kq.filter(k => k.moi).length === 1 && (x.db.query("select count(*) as n from nhat_ky where ma_don = ? and den = 'da_thanh_toan'").get(sau.ma) as { n: number }).n === 1);
+  x.dong(); y.dong();
+  fs.rmSync(tam, { recursive: true, force: true });
+}
+
+nhom('16 · Đường /sepay/tien-ve và thông tin trả tiền trong /api/don');
+{
+  const so = new SoDon(':memory:');
+  const { xuLy, datGio } = taoMay(so, { taiKhoan: TK, khoaSepay: KHOA_SEPAY, choTraGiaThu: true });
+  const r = await guiDon(xuLy, donHopLe({ maGui: 'api-tra-tien-0001' }));
+  const j = await r.json() as { ma: string; khoa: string; tongTien: number; thanhToan: { traDuoc: boolean; soTien: number; noiDung: string; chuoiQr: string; tenTaiKhoan: string; hetHanLuc: number } };
+  ok('Đơn mới có thông tin trả tiền: đúng số tiền, nội dung BT+mã, tên chủ tài khoản, mã VietQR đúng CRC, hạn 30 phút',
+    j.thanhToan.traDuoc && j.thanhToan.soTien === j.tongTien && j.thanhToan.noiDung === `BT${j.ma}` && j.thanhToan.tenTaiKhoan === TK.tenTaiKhoan
+    && crc16(j.thanhToan.chuoiQr.slice(0, -4)) === j.thanhToan.chuoiQr.slice(-4) && docTruong(j.thanhToan.chuoiQr)['54'] === String(j.tongTien)
+    && j.thanhToan.hetHanLuc === LUC_DAT + PHUT_CHO_THANH_TOAN * 60_000, JSON.stringify(j.thanhToan));
+  const qr = await goi(xuLy, `/api/don/${j.ma}/qr.svg?khoa=${j.khoa}`);
+  ok('Ảnh mã QR: SVG, không cache, có CORS cho Mini App', qr.status === 200 && qr.headers.get('content-type') === 'image/svg+xml'
+    && (await qr.text()).startsWith('<svg') && qr.headers.get('cache-control') === 'no-store' && qr.headers.get('access-control-allow-origin') === '*');
+  ok('Ảnh mã QR sai khóa → 404', (await goi(xuLy, `/api/don/${j.ma}/qr.svg?khoa=${'0'.repeat(32)}`)).status === 404);
+
+  const gui = (than: unknown, them: Record<string, string> = {}, giay = Math.floor(LUC_DAT / 1000)) => {
+    const chu = typeof than === 'string' ? than : JSON.stringify(than);
+    return goi(xuLy, '/sepay/tien-ve', { method: 'POST', body: chu, headers: { 'content-type': 'application/json',
+      'x-sepay-signature': kyThu(chu, giay), 'x-sepay-timestamp': String(giay), ...them } }, '171.244.35.2');
+  };
+  const tinSepay = (them: Record<string, unknown> = {}) => ({ id: 5001, gateway: 'VietinBank', transactionDate: '2026-11-13 09:05:00',
+    accountNumber: TK.soTaiKhoan, subAccount: '', code: null, content: `${j.ma.toLowerCase()} bt${j.ma.toLowerCase()} NGUYEN VAN A`, transferType: 'in',
+    description: 'NGUYEN VAN A 0123456789 chuyen tien', transferAmount: 200_000, accumulated: 0, referenceCode: 'FT26001', ...them });
+
+  const saiKy = await gui(tinSepay(), { 'x-sepay-signature': 'sha256=' + '0'.repeat(64) });
+  ok('Chữ ký sai → 401, không ghi gì', saiKy.status === 401 && (so.db.query('select count(*) as n from giao_dich').get() as { n: number }).n === 0);
+  const cu = await gui(tinSepay(), {}, Math.floor(LUC_DAT / 1000) - 600);
+  ok('Tin ký 10 phút trước (gửi lại tin cũ) → 401', cu.status === 401);
+  const r1 = await gui(tinSepay());
+  ok('Tin đúng, chuyển thiếu → 200 {"success": true}, đơn vẫn chờ, còn thiếu đúng phần chưa chuyển',
+    r1.status === 200 && (await r1.text()) === DA_NHAN && so.layDon(j.ma)!.trangThai === 'cho_thanh_toan');
+  const xem = await (await goi(xuLy, `/api/don/${j.ma}?khoa=${j.khoa}`)).json() as { daNhan: number; thanhToan: { traDuoc: boolean; soTien: number } };
+  ok('Khách xem đơn: đã nhận 200.000 đ, mã trả tiền mới cho đúng phần còn thiếu', xem.daNhan === 200_000 && xem.thanhToan.traDuoc
+    && xem.thanhToan.soTien === j.tongTien - 200_000);
+  const lai = await gui(tinSepay());
+  ok('SePay gửi lại cùng id → 200, không ghi lần hai', lai.status === 200 && so.tienDaNhan(j.ma) === 200_000);
+  const r2 = await gui(tinSepay({ id: 5002, transferAmount: j.tongTien - 200_000, code: `BT${j.ma}` }));
+  ok('Chuyển nốt → đơn "đã trả tiền"', r2.status === 200 && so.layDon(j.ma)!.trangThai === 'da_thanh_toan');
+  const sau = await (await goi(xuLy, `/api/don/${j.ma}?khoa=${j.khoa}`)).json() as { thanhToan: { traDuoc: boolean }; trangThai: string };
+  ok('Đơn đã trả: không còn mã trả tiền, ảnh QR 404', !sau.thanhToan.traDuoc && sau.trangThai === 'da_thanh_toan'
+    && (await goi(xuLy, `/api/don/${j.ma}/qr.svg?khoa=${j.khoa}`)).status === 404);
+  ok('Sổ đơn không giữ tên, số tài khoản người chuyển trong nội dung / mô tả',
+    !JSON.stringify(so.db.query('select * from giao_dich').all()).includes('NGUYEN') && !JSON.stringify(so.db.query('select * from giao_dich').all()).includes('0123456789'));
+
+  const khongJson = await gui('khong phai json');
+  ok('Thân đã ký mà không phải JSON → 400, không phải "success"', khongJson.status === 400 && !(await khongJson.text()).includes('"success": true'));
+  ok('Thân đã ký mà thiếu trường → 400', (await gui({ id: 'x' })).status === 400);
+
+  const hong = Object.create(so) as SoDon;
+  hong.ghiTienVe = () => { throw new Error('database is locked'); };
+  const { xuLy: xuLyHong } = taoMay(hong, { taiKhoan: TK, khoaSepay: KHOA_SEPAY });
+  const chu = JSON.stringify(tinSepay({ id: 5003 })), g = Math.floor(LUC_DAT / 1000);
+  const rHong = await goi(xuLyHong, '/sepay/tien-ve', { method: 'POST', body: chu, headers: { 'content-type': 'application/json',
+    'x-sepay-signature': kyThu(chu, g), 'x-sepay-timestamp': String(g) } });
+  ok('Sổ đơn hỏng lúc ghi tiền về → 500, KHÔNG trả {"success": true} (SePay gửi lại)', rHong.status === 500 && !(await rHong.text()).includes('"success": true'));
+
+  const { xuLy: chuaKhoa } = taoMay(new SoDon(':memory:'));
+  ok('Chưa đặt khóa SePay → 503 (SePay gửi lại), chưa có tài khoản → đơn ghi nhưng không có mã trả tiền',
+    (await goi(chuaKhoa, '/sepay/tien-ve', { method: 'POST', body: '{}' })).status === 503
+    && ((await (await guiDon(chuaKhoa, donHopLe())).json()) as { thanhToan: { traDuoc: boolean; lyDo: string } }).thanhToan.lyDo === 'chua_co_tai_khoan');
+  const { xuLy: giaThu } = taoMay(new SoDon(':memory:'), { taiKhoan: TK, khoaSepay: KHOA_SEPAY });
+  const jg = await (await guiDon(giaThu, donHopLe())).json() as { thanhToan: { traDuoc: boolean; lyDo: string } };
+  ok(`Bảng giá còn là giá thử (giaThu = ${CAU_HINH.giaThu}) và không bật CHO_TRA_GIA_THU → không có mã trả tiền`,
+    !CAU_HINH.giaThu || (!jg.thanhToan.traDuoc && jg.thanhToan.lyDo === 'gia_thu'));
+  datGio(LUC_DAT);
+
+  // Màn hình quầy: mục "Tiền về cần xem" và nút "Đã xử lý xong".
+  await gui(tinSepay({ id: 5004, transferAmount: 30_000, code: `BT${j.ma}` }));
+  const dn = await goi(xuLy, '/quay/dang-nhap', { method: 'POST', body: `mat_khau=${MK}`, headers: { 'content-type': 'application/x-www-form-urlencoded', 'sec-fetch-site': 'same-origin' } });
+  const phien = (dn.headers.get('set-cookie') ?? '').split(';')[0];
+  const trang = await (await goi(xuLy, '/quay', { headers: { cookie: phien } })).text();
+  ok('Màn quầy: mục "Tiền về cần xem" có lần chuyển dư 30.000 đ, giờ kiểu "09:05, 13/11/2026", mã giao dịch, câu "Hoàn phần dư"',
+    trang.includes('Tiền về cần xem (1)') && trang.includes('30.000 đ') && trang.includes('09:05, 13/11/2026') && trang.includes('FT26001')
+    && trang.includes('Hoàn phần dư'));
+  ok('Thẻ đơn ghi số tiền đã nhận chuyển khoản', trang.includes(`Đã nhận chuyển khoản: ${(j.tongTien + 30_000).toLocaleString('vi-VN')} đ`));
+  const daXem = await goi(xuLy, '/quay/tien-ve/da-xem', { method: 'POST', body: 'id=5004',
+    headers: { cookie: phien, 'content-type': 'application/x-www-form-urlencoded', 'sec-fetch-site': 'same-origin' } });
+  ok('Bấm "Đã xử lý xong" → mục đó biến mất, có câu báo', daXem.status === 303 && (daXem.headers.get('location') ?? '').includes('tien_ve_da_xem')
+    && !(await (await goi(xuLy, '/quay', { headers: { cookie: phien } })).text()).includes('Tiền về cần xem ('));
+  const khongPhien = await goi(xuLy, '/quay/tien-ve/da-xem', { method: 'POST', body: 'id=5004', headers: { 'content-type': 'application/x-www-form-urlencoded', 'sec-fetch-site': 'same-origin' } });
+  ok('Chưa đăng nhập không bấm được "Đã xử lý xong"', khongPhien.status === 303 && (khongPhien.headers.get('location') ?? '') === '/quay');
+  so.dong();
+}
+
+// =====================================================================================================
+nhom('17 · Chạy src/main.ts thật');
 {
   const thieu = Bun.spawnSync(['bun', 'src/main.ts'], { cwd: path.join(import.meta.dir, '..'), env: { ...process.env, MAT_KHAU_QUAY: 'ngan' } });
   ok('Mật khẩu quầy dưới 8 ký tự → không mở máy chủ, báo rõ', thieu.exitCode === 1 && thieu.stderr.toString().includes('MAT_KHAU_QUAY'));
+  const chayThu = (them: Record<string, string>) => Bun.spawnSync(['bun', 'src/main.ts'], { cwd: path.join(import.meta.dir, '..'),
+    env: { ...process.env, MAT_KHAU_QUAY: MK, CONG: '1', THU_MUC_DU_LIEU: path.join(os.tmpdir(), 'may-chu-don-khong-mo'), ...them } });
+  const nuaVoi = chayThu({ SO_TAI_KHOAN: TK.soTaiKhoan });
+  ok('Tài khoản nhận khai thiếu (chỉ có số tài khoản) → không mở máy chủ, kẻo khách chuyển vào đâu không rõ',
+    nuaVoi.exitCode === 1 && nuaVoi.stderr.toString().includes('NGAN_HANG_BIN'));
+  const khoaNgan = chayThu({ SEPAY_KHOA_KY: 'ngan' });
+  ok('Khóa SePay dưới 16 ký tự → không mở máy chủ', khoaNgan.exitCode === 1 && khoaNgan.stderr.toString().includes('SEPAY_KHOA_KY'));
   const tam = fs.mkdtempSync(path.join(os.tmpdir(), 'may-chu-don-main-'));
   const cong = 20000 + Math.floor(Math.random() * 20000);
   const p = Bun.spawn(['bun', 'src/main.ts'], {
