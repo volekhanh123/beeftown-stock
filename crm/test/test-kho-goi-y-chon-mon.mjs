@@ -19,7 +19,7 @@
 import { dungDatabase, taoBoDem, taoClientPg, UID, maGui } from './kho-chung.mjs';
 import { docGoiYThucTe, goiYPhanRa } from '../../web/src/lib/kho/cong-thuc.ts';
 import { docNccMon, goiYMonNcc } from '../../web/src/lib/kho/ncc-mat-hang.ts';
-import { goiYThayMon } from '../../web/src/lib/kho/kiem-ke.ts';
+import { docTonChoKhac, goiYThayMon } from '../../web/src/lib/kho/kiem-ke.ts';
 import { docTon } from '../../web/src/lib/kho/ton.ts';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -113,13 +113,21 @@ await nhom('1 · PHA LÓC, CÔNG THỨC: "PHẦN TẢNG NÀY HAY RA"', async () 
   const dong = [{ mat_hang_ra_id: 'd', ty_le_du_kien: 5 }, { mat_hang_ra_id: 'b', ty_le_du_kien: 70 },
     { mat_hang_ra_id: 'e', ty_le_du_kien: null }, { mat_hang_ra_id: 'f', ty_le_du_kien: 12 }, { mat_hang_ra_id: 'd', ty_le_du_kien: 5 }];
   const g = goiYPhanRa(tyLe, dong);
-  ok('Thực tế trước (cao trước), rồi phần chỉ ở công thức (tỷ lệ dự kiến cao trước), mỗi món một lần',
-    g.map(x => x.id).join() === 'b,a,c,f,d,e', g.map(x => x.id).join());
-  ok('Chữ phụ kiểu Việt: "thực tế 72,5%", "công thức 12,0%"; không tỷ lệ thì không chữ',
-    g[0].chu === 'thực tế 72,5%' && g[3].chu === 'công thức 12,0%' && g[5].chu === null, JSON.stringify(g));
+  ok('Thực tế trước (cao trước), rồi phần chỉ ở công thức THEO THỨ TỰ TRUYỀN VÀO, mỗi món một lần',
+    g.map(x => x.id).join() === 'b,a,c,d,e,f', g.map(x => x.id).join());
+  ok('Chữ phụ kiểu Việt: "thực tế 72,5%", "công thức 5,0%"; không tỷ lệ thì không chữ',
+    g[0].chu === 'thực tế 72,5%' && g[3].chu === 'công thức 5,0%' && g[4].chu === null && g[5].chu === 'công thức 12,0%', JSON.stringify(g));
   const en = goiYPhanRa(tyLe, dong, 'en');
-  ok('Tiếng Anh: "actual 72.5%", "recipe 12.0%"', en[0].chu === 'actual 72.5%' && en[3].chu === 'recipe 12.0%', JSON.stringify(en));
+  ok('Tiếng Anh: "actual 72.5%", "recipe 12.0%"', en[0].chu === 'actual 72.5%' && en[5].chu === 'recipe 12.0%', JSON.stringify(en));
   ok('`bo` (tảng đầu vào, món đã có trên lưới) không gợi ý', !goiYPhanRa(tyLe, dong, 'vi', new Set(['b', 'd'])).some(x => x.id === 'b' || x.id === 'd'));
+  // Pha lóc: công thức đang chọn (A) truyền trước công thức khác (B) — món có ở cả hai lấy tỷ lệ của A, đứng theo A.
+  const ab = goiYPhanRa(new Map(), [{ mat_hang_ra_id: 'vai', ty_le_du_kien: 5 }, { mat_hang_ra_id: 'gau', ty_le_du_kien: 20 },
+    { mat_hang_ra_id: 'vai', ty_le_du_kien: 12 }]);
+  ok('Công thức đang chọn trước: món có ở hai công thức lấy tỷ lệ của công thức đang chọn (5%, không 12%)',
+    ab.map(x => x.id).join() === 'vai,gau' && ab[0].chu === 'công thức 5,0%', JSON.stringify(ab));
+  const uu = goiYPhanRa(tyLe, dong, 'vi', new Set(), id => id === 'c' || id === 'e');
+  ok('`truoc` (pha lóc: phụ phẩm, món mặc định bỏ) lên đầu, giữ thứ tự trong từng phần',
+    uu.map(x => x.id).join() === 'c,e,b,a,d,f', uu.map(x => x.id).join());
 
   // Dữ liệu thật: thủ kho (vai pha lóc) đọc được tỷ lệ thực tế của loại tảng.
   const thuc = await docGoiYThucTe(clientCua(UID.thuKhoA), cnA.id, MH['T-THANNGOAI'].id, homNay);
@@ -127,11 +135,18 @@ await nhom('1 · PHA LÓC, CÔNG THỨC: "PHẦN TẢNG NÀY HAY RA"', async () 
     !thuc.loi && thuc.soPhien === 1 && thuc.tyLe.get(MH['C-THANNGOAI'].id) === 70 && thuc.tyLe.get(MH['P-MO'].id) === 15
       && thuc.tyLe.get(MH['P-VUN'].id) === 10, JSON.stringify({ ...thuc, tyLe: [...thuc.tyLe] }));
   const ct = (await db.query(`select d.mat_hang_ra_id, d.ty_le_du_kien::float8 as ty_le_du_kien from kho_cong_thuc_pha_dong d
-    join kho_cong_thuc_pha c on c.id = d.cong_thuc_id where c.mat_hang_vao_id = $1`, [MH['T-THANNGOAI'].id])).rows;
+    join kho_cong_thuc_pha c on c.id = d.cong_thuc_id where c.mat_hang_vao_id = $1 order by d.thu_tu`, [MH['T-THANNGOAI'].id])).rows;
   const goi = goiYPhanRa(thuc.tyLe, ct, 'vi', new Set([MH['T-THANNGOAI'].id]));
   const ma = goi.map(x => Object.values(MH).find(m => m.id === x.id)?.ma);
-  ok('Gợi ý pha lóc thăn ngoại: cắt lát, mỡ, vụn (thực tế), rồi nạc vai (chỉ ở công thức)',
+  ok('Gợi ý công thức thăn ngoại: cắt lát, mỡ, vụn (thực tế), rồi nạc vai (chỉ ở công thức)',
     ma.join() === 'C-THANNGOAI,P-MO,P-VUN,C-NACVAI', ma.join());
+  // Dòng gõ tay pha lóc là cho phụ phẩm, mỡ bỏ (không nhãn): chúng lên đầu; món đã quét nhãn (cắt lát) không gợi ý.
+  const tenMh = new Map(Object.values(MH).map(m => [m.id, m]));
+  const pl = goiYPhanRa(thuc.tyLe, ct, 'vi', new Set([MH['T-THANNGOAI'].id, MH['C-THANNGOAI'].id]),
+    id => { const m = tenMh.get(id); return !!m && (m.loai === 'phu_pham' || m.xu_ly_mac_dinh === 'bo'); });
+  const maPl = pl.map(x => tenMh.get(x.id)?.ma);
+  ok('Pha lóc dòng gõ tay: mỡ, vụn (phụ phẩm) trước, nạc vai sau; cắt lát đã quét không gợi ý',
+    maPl.join() === 'P-MO,P-VUN,C-NACVAI', maPl.join());
   ok('Nạc vai: "công thức 5,0%"; cắt lát: "thực tế 70,0%"', goi[3].chu === 'công thức 5,0%' && goi[0].chu === 'thực tế 70,0%', JSON.stringify(goi));
   const khac = await docGoiYThucTe(clientCua(UID.thuKhoB), cnA.id, MH['T-THANNGOAI'].id, homNay);
   ok('Thủ kho chi nhánh B KHÔNG đọc được phiên pha của A (0 phiên)', khac.soPhien === 0 || !!khac.loi, JSON.stringify(khac.soPhien));
@@ -175,6 +190,13 @@ await nhom('3 · KIỂM KÊ: "SỔ GHI ĐANG Ở CHỖ KHÁC"', async () => {
     Object.values(MH).find(m => m.id === a.id).ten.localeCompare(Object.values(MH).find(m => m.id === b.id).ten, 'vi')).map(x => x.id).join());
   const kho = goiYThayMon(ton, { id: vt.kho, loai: 'kho' }, new Set());
   ok('Kiểm kho lạnh: món sổ ghi còn ở kho lạnh không gợi ý (đã có trên phiếu)', kho.length === 0, JSON.stringify(kho));
+  // Đọc gọn cho trang: database bỏ chỗ đang kiểm và hàng chờ hủy, chỉ các cột cần.
+  const khac = await docTonChoKhac(clientCua(UID.nvQuayA), cnA.id, vt.quay);
+  ok('docTonChoKhac (NV quầy): chỉ dòng ở chỗ khác, không hàng chờ hủy, không cột tiền',
+    khac.length > 0 && khac.every(r => r.vi_tri_id !== vt.quay && r.loai_vi_tri !== 'cho_huy')
+      && !Object.keys(khac[0]).some(c => /(^|_)(gia|tien)(_|$)/.test(c)), JSON.stringify(khac[0]));
+  ok('Gợi ý từ docTonChoKhac giống từ docTon', JSON.stringify(goiYThayMon(khac, { id: vt.quay, loai: 'quay' }, new Set([MH['C-NACVAI'].id])))
+    === JSON.stringify(quay));
 
   const gia = (id, vi, loai = 'kho', loaiHang = 'phan_cat', so_kg = 1) => ({
     mat_hang_id: id, ten_hang: id.toUpperCase(), loai_hang: loaiHang, vi_tri_id: vi, ten_vi_tri: `Chỗ ${vi}`, loai_vi_tri: loai,
@@ -196,11 +218,17 @@ await nhom('4 · MÃ NGUỒN: Ô CHỌN MÓN VÀ BỐN TRANG', async () => {
     /selected=\{m\.id === chon && !chonOGoiY\}/.test(c));
   ok('ChonMatHang: món đang chọn luôn hiện (kể cả ngoài `loai` / `bo`) — form cũ không tự mất món',
     /m\.id === chon\s*\|\| \(m\.dang_dung && \(!loai \|\| loai\.includes\(m\.loai\)\) && !bo\?\.has\(m\.id\)\)/.test(c));
-  ok('ChonMatHang: lựa chọn gợi ý giữ data-cai / data-thung (CSS :has() của form)', (c.match(/data-cai=/g) ?? []).length === 2);
+  ok('ChonMatHang: lựa chọn gợi ý giữ data-cai / data-thung như nhóm loại (CSS :has() của form)',
+    (c.match(/data-cai=\{m\.dem_theo_cai \? '' : undefined\}/g) ?? []).length === 2
+      && (c.match(/data-thung=\{m\.dem_theo_cai && m\.so_trong_thung \? String\(m\.so_trong_thung\) : undefined\}/g) ?? []).length === 2);
   const pl = doc('web/src/pages/noi-bo/kho/pha-loc/[id].astro');
-  ok('Pha lóc: gợi ý chỉ ở bước cân & quét; công thức đang chọn trước; bỏ tảng đầu vào',
-    /const thucTe = buoc === 'can_quet' && phien/.test(pl) && /\[\.\.\.\(ctChon\?\.dong \?\? \[\]\), \.\.\.ctCuaTang\.filter\(c => c !== ctChon\)/.test(pl)
-      && /new Set\(\[phien\.mat_hang_vao_id\]\)/.test(pl) && /goiY=\{goiYRa\} tenGoiY=\{t\.goiYPhanRa\}/.test(pl));
+  ok('Pha lóc: tỷ lệ thực tế đọc sớm (song song), lỗi chỉ mất gợi ý; chỉ bước cân & quét; công thức đang chọn trước',
+    /const huaThucTe = phien && soanDuoc && q\.get\('buoc'\) !== 'ket-qua'/.test(pl) && /\.catch\(\(\) => null\) : Promise\.resolve\(null\)/.test(pl)
+      && /const goiYRa = buoc === 'can_quet' && phien/.test(pl)
+      && /\[\.\.\.\(ctChon\?\.dong \?\? \[\]\), \.\.\.ctCuaTang\.filter\(c => c !== ctChon\)/.test(pl) && /goiY=\{goiYRa\} tenGoiY=\{t\.goiYPhanRa\}/.test(pl));
+  ok('Pha lóc: bỏ tảng đầu vào và món đã quét nhãn; phụ phẩm, món mặc định bỏ lên đầu',
+    /new Set\(\[phien\.mat_hang_vao_id, \.\.\.mon\.map\(m => m\.mat_hang_id\)\]\)/.test(pl)
+      && /m\.loai === 'phu_pham' \|\| m\.xu_ly_mac_dinh === 'bo'/.test(pl));
   const ct = doc('web/src/pages/noi-bo/kho/cai-dat/cong-thuc.astro');
   ok('Công thức: gợi ý bỏ món đã có trên lưới (dòng không tích Bỏ); cột Gợi ý vẫn chỉ khi ?goi_y=1',
     /luoiDung\.filter\(d => !d\.bo && d\.mh\)/.test(ct) && /const goiY = muonGoiY \? thucTe : null;/.test(ct) && /goiY=\{goiYMon\}/.test(ct));
@@ -209,7 +237,7 @@ await nhom('4 · MÃ NGUỒN: Ô CHỌN MÓN VÀ BỐN TRANG', async () => {
     /loai === 'mua' && soanDuoc \? ncc\.find/.test(nh) && /docNccMon\(k\.client, cn\.id, \{ ncc: nccDangChon\.id \}\)\.catch\(/.test(nh) && /goiY=\{goiYMon\}/.test(nh));
   const kk = doc('web/src/pages/noi-bo/kho/kiem-ke/[id].astro');
   ok('Kiểm kê: ô thêm bỏ món đã có trên phiếu, gợi ý món ở chỗ khác; đọc tồn lỗi chỉ mất gợi ý',
-    /bo=\{monTrenPhieu\}/.test(kk) && /goiY=\{goiYThay\}/.test(kk) && /docTon\(k\.client, kk\.chi_nhanh_id\)\.catch\(/.test(kk)
+    /bo=\{monTrenPhieu\}/.test(kk) && /goiY=\{goiYThay\}/.test(kk) && /docTonChoKhac\(k\.client, kk\.chi_nhanh_id, kk\.vi_tri_id\)\.catch\(/.test(kk)
       && /kk && demDuoc && !theoLo/.test(kk));
 });
 

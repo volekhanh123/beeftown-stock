@@ -340,16 +340,19 @@ hiện. Món đang chọn luôn hiện, kể cả ngoài `loai` / `bo` — form 
 
 - **Pha lóc bước 2, dòng gõ tay** (`pha-loc/[id]`, chỉ bước cân & quét) và **lưới công thức** (`cai-dat/cong-thuc`):
   nhóm "Phần tảng này hay ra" = `goiYPhanRa` (`lib/kho/cong-thuc.ts`) — phần loại tảng này thực tế ra trong 30 ngày
-  (`docGoiYThucTe`, tỷ lệ cao trước, "thực tế 70,0%") rồi phần có trong công thức mà chưa ra lần nào ("công thức 5,0%").
-  Pha lóc: công thức đang chọn trước, bỏ chính tảng đầu vào. Công thức: lấy từ công thức khác cùng đầu vào, bỏ món đã có
-  trên lưới (dòng không tích Bỏ); tỷ lệ thực tế đọc mỗi lần sửa, cột "Gợi ý" và câu lỗi vẫn chỉ khi `?goi_y=1`. Không bỏ
-  tảng khỏi danh sách: database không chặn tảng làm phần ra.
+  (`docGoiYThucTe`, tỷ lệ cao trước, "thực tế 70,0%") rồi phần có trong công thức mà chưa ra lần nào, theo thứ tự truyền
+  vào ("công thức 5,0%" — tỷ lệ của lần gặp đầu). Pha lóc: công thức đang chọn trước; phụ phẩm và món mặc định bỏ lên
+  đầu (dòng gõ tay là cho hàng không nhãn); bỏ tảng đầu vào và món đã quét nhãn (gõ thêm là cộng hai lần); tỷ lệ thực tế
+  đọc ngay khi biết phiên, song song với phần còn lại. Công thức: lấy từ công thức khác cùng đầu vào, bỏ món đã có trên
+  lưới (dòng không tích Bỏ); tỷ lệ thực tế đọc mỗi lần sửa, cột "Gợi ý" và câu lỗi vẫn chỉ khi `?goi_y=1`. Không bỏ tảng
+  khỏi danh sách: database không chặn tảng làm phần ra.
 - **Kiểm kê, "Thấy mặt hàng không có trong danh sách"** (`kiem-ke/[id]`, đang đếm, không theo lô): `bo` = món đã có trên
   phiếu (ghi ở dòng của nó); nhóm "Sổ ghi đang ở chỗ khác" = `goiYThayMon` (`lib/kho/kiem-ke.ts`) — món sổ ghi ở chỗ
   khác của chi nhánh mà không ở chỗ đang kiểm, chữ "đang ở Kho lạnh, Quầy 2…"; bỏ hàng chờ hủy; kiểm quầy thì bỏ tảng.
+  Tồn đọc bằng `docTonChoKhac` (database bỏ chỗ đang kiểm và hàng chờ hủy, chỉ cột cần), cùng lượt với mã lô.
 - **Phiếu nhập soạn tay** (`nhap/[id]`, phiếu mua đang soạn đã có NCC): nhóm "<NCC> bán" = `goiYMonNcc`
   (`lib/kho/ncc-mat-hang.ts`) — món của NCC đó (danh mục 3t), chữ "Lần trước 12,5 kg · 25/10", chưa giao thì "NCC
-  chính". Chưa lưu NCC thì chưa có nhóm (trang không JavaScript).
+  chính". Theo NCC đã lưu / đã gửi: đổi ô NCC mà chưa lưu thì nhóm vẫn mang tên NCC cũ (trang không JavaScript).
 - Đọc dữ liệu gợi ý lỗi thì chỉ mất nhóm gợi ý, ô chọn vẫn đủ món. `test-kho-goi-y-chon-mon.mjs` gác các điều trên.
 
 ### Gọn phần tiền và báo cáo (Khánh duyệt 23/10/2026)

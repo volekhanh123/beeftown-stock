@@ -301,7 +301,7 @@ export function maGui() {
 
 /**
  * Client Supabase giả chạy trên chính database PGlite, dưới danh nghĩa một vai — để gọi THẲNG các hàm
- * đọc / ghi của web/src/lib/kho (from().select().eq().in().is().gte().lte().order().limit().range(), maybeSingle(), rpc(),
+ * đọc / ghi của web/src/lib/kho (from().select().eq().neq().in().is().gte().lte().order().limit().range(), maybeSingle(), rpc(),
  * from().update().eq(), from().insert()[.select(cột).single()], from().upsert(dòng, { onConflict }), from().delete().eq())
  * và thấy đúng RLS, đúng quyền hàm như trên Supabase thật. select(cột, { count: 'exact' }) trả thêm
  * `count` (tổng số dòng khớp điều kiện, như PostgREST) — docTungTrang (chung.ts) dựa vào nó để biết đã
@@ -405,6 +405,7 @@ export async function taoClientPg({ db, duoi, duoiAnon }) {
           },
           delete() { q.xoa = true; return b; },
           eq(k, v) { q.gt.push(v); q.dk.push(`${k} = $${q.gt.length}`); return b; },
+          neq(k, v) { q.gt.push(v); q.dk.push(`${k} <> $${q.gt.length}`); return b; },
           in(k, ds) { q.gt.push(`{${ds.join(',')}}`); q.dk.push(`${k}::text = any($${q.gt.length}::text[])`); return b; },
           // is(cột, null | true | false), gte / lte(cột, giá trị) — như PostgREST "is.null" / "gte." / "lte.".
           is(k, v) { q.dk.push(`${k} is ${v === null ? 'null' : v ? 'true' : 'false'}`); return b; },

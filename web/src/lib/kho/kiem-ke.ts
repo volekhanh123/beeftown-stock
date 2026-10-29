@@ -34,6 +34,9 @@ import { taoBangTraMaCan, traMaCan, type MaGiamDeTra, type OMaDeTra } from './tr
 import { apDungTim, type TimDs } from './tim-ds.ts';
 import type { DongTon } from './ton.ts';
 
+/** Dòng tồn đủ cho `goiYThayMon` (kho_v_ton, không tiền). */
+export type TonChoKhac = Pick<DongTon, 'mat_hang_id' | 'ten_hang' | 'loai_hang' | 'vi_tri_id' | 'ten_vi_tri' | 'loai_vi_tri' | 'so_kg' | 'so_goi'>;
+
 export interface KiemKeTom {
   id: string;
   so_phieu: string;
@@ -567,7 +570,7 @@ export async function huyKiemKe(client: SupabaseClient, id: string, lyDo: string
  * pha lóc trước). Xếp theo tên.
  */
 export function goiYThayMon(
-  ton: DongTon[], viTri: { id: string; loai: string }, daCo: ReadonlySet<string>, nn: NgonNguNB = 'vi',
+  ton: TonChoKhac[], viTri: { id: string; loai: string }, daCo: ReadonlySet<string>, nn: NgonNguNB = 'vi',
 ): { id: string; chu: string }[] {
   const viTriId = viTri.id;
   const oDay = new Set(ton.filter(t => t.vi_tri_id === viTriId).map(t => t.mat_hang_id));
@@ -584,4 +587,21 @@ export function goiYThayMon(
     const cho = m.cho.slice(0, 2).join(', ') + (m.cho.length > 2 ? '…' : '');
     return { id, chu: { vi: `đang ở ${cho}`, en: `at ${cho}` }[nn] };
   });
+}
+
+/**
+ * Tồn ở các chỗ KHÁC chỗ đang kiểm (trừ hàng chờ hủy), chỉ các cột `goiYThayMon` cần — database lọc, không đọc cả sổ.
+ * Lỗi ném ra: trang bỏ qua, chỉ mất nhóm gợi ý.
+ */
+export async function docTonChoKhac(client: SupabaseClient, chiNhanhId: string, viTriId: string): Promise<TonChoKhac[]> {
+  const data = await docTungTrang((tu, den) => client
+    .from('kho_v_ton')
+    .select('mat_hang_id, ten_hang, loai_hang, vi_tri_id, ten_vi_tri, loai_vi_tri, so_kg, so_goi', { count: 'exact' })
+    .eq('chi_nhanh_id', chiNhanhId)
+    .neq('vi_tri_id', viTriId)
+    .neq('loai_vi_tri', 'cho_huy')
+    .order('lo_id')
+    .order('vi_tri_id')
+    .range(tu, den));
+  return (data as TonChoKhac[]).map(r => ({ ...r, so_kg: Number(r.so_kg), so_goi: Number(r.so_goi) }));
 }

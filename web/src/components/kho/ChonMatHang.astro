@@ -7,8 +7,8 @@
  * Chữ hiện chỉ "tên · nhóm" — thêm "(MÃ)" thì trên điện thoại tên bị cắt giữa
  * chừng. Mã vẫn nằm trong title (rê chuột trên máy tính thấy).
  * Mặt hàng đã ngừng dùng chỉ hiện khi đang là giá trị được chọn sẵn (dữ liệu
- * cũ), để form cũ không tự đổi mặt hàng. Món đang chọn luôn hiện, kể cả khi `loai` / `bo` không gồm nó. Không gọi
- * database.
+ * cũ), để form cũ không tự đổi mặt hàng. Món đang chọn luôn hiện, kể cả khi `loai` / `bo` không gồm nó (món đếm theo
+ * cái thì vẫn chỉ khi bật `demCai`, như trước). Không gọi database.
  *
  * Nhóm "Gợi ý" (29/10/2026, như màn Ghép món iPOS): `goiY` là các món đúng ngữ cảnh của màn (món của nhà cung cấp
  * đang chọn, phần hay ra của loại tảng…), theo thứ tự truyền vào, kèm chữ phụ ("thực tế 75%", "Lần trước 12 kg ·
@@ -64,7 +64,7 @@ const goiYHien = goiY.flatMap(g => {
   return [{ m, chu: g.chu ?? null }];
 });
 const chonOGoiY = goiYHien.some(g => g.m.id === chon);
-/** Chữ của một lựa chọn: "tên · nhóm", thêm chữ phụ của gợi ý. */
+/** Chữ của một lựa chọn: "tên · nhóm", thêm chữ phụ của gợi ý. Hai nhóm viết thuộc tính giống hệt nhau (kiểm thử đếm). */
 const chuMon = (m: MatHangChon, phu: string | null = null) =>
   `${m.ten}${m.nhom ? ` · ${m.nhom}` : ''}${!m.dang_dung ? t.ngungDung : ''}${phu ? ` — ${phu}` : ''}`;
 ---

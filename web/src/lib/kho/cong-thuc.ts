@@ -169,14 +169,16 @@ export function tinhGoiY(
 
 /**
  * Nhóm "Gợi ý" của ô chọn phần ra (pha lóc bước 2 — dòng gõ tay, lưới công thức; 29/10/2026): phần loại tảng này
- * thực tế hay ra (tỷ lệ 30 ngày của `docGoiYThucTe`, cao trước) rồi phần có trong công thức mà chưa ra lần nào (tỷ lệ
- * dự kiến cao trước). Mỗi món một lần; `bo` (vd. chính loại tảng đem pha) không gợi ý.
+ * thực tế hay ra (tỷ lệ 30 ngày của `docGoiYThucTe`, cao trước) rồi phần có trong công thức mà chưa ra lần nào — theo
+ * THỨ TỰ TRUYỀN VÀO (công thức đang chọn trước, trong công thức theo thứ tự dòng), tỷ lệ của lần gặp đầu. Mỗi món một
+ * lần; `bo` (vd. chính loại tảng đem pha) không gợi ý; món thỏa `truoc` lên đầu, giữ thứ tự trong từng phần.
  */
 export function goiYPhanRa(
   tyLeThucTe: ReadonlyMap<string, number>,
   dongCongThuc: { mat_hang_ra_id: string; ty_le_du_kien: number | null }[],
   nn: NgonNguNB = 'vi',
   bo: ReadonlySet<string> = new Set(),
+  truoc?: (id: string) => boolean,
 ): { id: string; chu: string | null }[] {
   const kq: { id: string; chu: string | null }[] = [];
   const da = new Set(bo);
@@ -185,7 +187,7 @@ export function goiYPhanRa(
     da.add(id);
     kq.push({ id, chu: { vi: `thực tế ${dinhDangPhanTram(tl, 1, 'vi')}`, en: `actual ${dinhDangPhanTram(tl, 1, 'en')}` }[nn] });
   }
-  for (const d of [...dongCongThuc].sort((a, b) => (b.ty_le_du_kien ?? -1) - (a.ty_le_du_kien ?? -1))) {
+  for (const d of dongCongThuc) {
     if (da.has(d.mat_hang_ra_id)) continue;
     da.add(d.mat_hang_ra_id);
     kq.push({
@@ -194,7 +196,7 @@ export function goiYPhanRa(
         : { vi: `công thức ${dinhDangPhanTram(d.ty_le_du_kien, 1, 'vi')}`, en: `recipe ${dinhDangPhanTram(d.ty_le_du_kien, 1, 'en')}` }[nn],
     });
   }
-  return kq;
+  return truoc ? [...kq.filter(g => truoc(g.id)), ...kq.filter(g => !truoc(g.id))] : kq;
 }
 
 // -----------------------------------------------------------------------------

@@ -325,6 +325,10 @@ const q = Astro.url.searchParams;
 const form = await docFormGui(Astro);
 const mhVao = matHang.find(m => m.id === phien?.mat_hang_vao_id) ?? null;
 const soanDuoc = k.duoc('pha_loc') && phien?.trang_thai === 'nhap';
+// Tỷ lệ thực tế 30 ngày cho nhóm "Gợi ý" của dòng gõ tay (bước cân & quét) — đọc ngay khi biết phiên, chạy song song
+// với phần còn lại của trang. Lỗi thì null: chỉ mất nhóm gợi ý.
+const huaThucTe = phien && soanDuoc && q.get('buoc') !== 'ket-qua'
+  ? docGoiYThucTe(k.client, cn.id, phien.mat_hang_vao_id, homNayVn(), nn).catch(() => null) : Promise.resolve(null);
 const tenVt = new Map(viTri.map(v => [v.id, v]));
 /** Dòng gõ tay để trống "Để ở": theo nơi để sau pha của món (kho lạnh / quầy). */
 const viTriTheoMon = (id: string) => viTriSauPha(noiDe.get(id), viTri);
@@ -467,14 +471,6 @@ const tenNoiDe = (id: string | null) => {
 const ctCuaTang = congThuc.filter(c => c.mat_hang_vao_id === phien?.mat_hang_vao_id && (c.dang_dung || c.id === phien?.cong_thuc_id));
 const ctChonId = docLoi?.dau.cong_thuc_id ?? phien?.cong_thuc_id ?? '';
 const ctChon = ctCuaTang.find(c => c.id === ctChonId) ?? null;
-// Nhóm "Gợi ý" của ô chọn món ở dòng gõ tay: phần loại tảng này thực tế hay ra (30 ngày) rồi phần của các công thức
-// (công thức đang chọn trước). Chỉ ở bước cân & quét; đọc lỗi thì chỉ mất nhóm gợi ý.
-const thucTe = buoc === 'can_quet' && phien
-  ? await docGoiYThucTe(k.client, cn.id, phien.mat_hang_vao_id, homNayVn(), nn) : null;
-const goiYRa = buoc === 'can_quet' && phien
-  ? goiYPhanRa(thucTe && !thucTe.loi ? thucTe.tyLe : new Map(),
-    [...(ctChon?.dong ?? []), ...ctCuaTang.filter(c => c !== ctChon).flatMap(c => c.dong)], nn, new Set([phien.mat_hang_vao_id]))
-  : [];
 
 // Đầu vào: mọi lô của loại tảng đang có (trừ chờ hủy, đang mang ra quầy) + lô đã ghi trong nháp.
 type DongVao = { key: string; lo_id: string; vi_tri_id: string; ton_kg: number; ton_goi: number; ma_lo: string; han_dung: string; tinh_trang: string };
@@ -533,6 +529,16 @@ const giaTriVao = (d: DongVao) => {
 
 // Món đã quét nhãn (dòng ra tu_quet) và dòng gõ tay.
 const mon = monDaQuet(raDb, nhan, tenMh);
+// Nhóm "Gợi ý" của ô chọn món ở dòng gõ tay (phụ phẩm, mỡ bỏ — không nhãn): phần loại tảng này thực tế hay ra (30
+// ngày) rồi phần của các công thức (công thức đang chọn trước); phụ phẩm và món mặc định bỏ lên đầu. Bỏ tảng đầu vào và
+// món đã quét nhãn (gõ thêm là cộng hai lần).
+const thucTe = await huaThucTe;
+const goiYRa = buoc === 'can_quet' && phien
+  ? goiYPhanRa(thucTe && !thucTe.loi ? thucTe.tyLe : new Map(),
+    [...(ctChon?.dong ?? []), ...ctCuaTang.filter(c => c !== ctChon).flatMap(c => c.dong)], nn,
+    new Set([phien.mat_hang_vao_id, ...mon.map(m => m.mat_hang_id)]),
+    id => { const m = tenMh.get(id); return !!m && (m.loai === 'phu_pham' || m.xu_ly_mac_dinh === 'bo'); })
+  : [];
 const tongNhan = mon.reduce((s, m) => s + m.so_nhan, 0);
 const raTay = raDb.filter(r => !r.tu_quet);
 const daCoMon = new Set(raDb.map(r => r.mat_hang_id));
