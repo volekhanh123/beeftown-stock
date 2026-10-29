@@ -166,6 +166,8 @@ export interface TangTon {
   /** 0107: tảng ủ — ngày trim (bắt đầu ủ) và số ngày đã ủ (giờ VN); nguyên tảng → null. */
   ngay_bat_dau_u: string | null;
   so_ngay_u: number | null;
+  /** 0109: tảng ủ — số ngày ủ ghi tay lần gần nhất (ngay_u_xong tính từ đó); chưa ghi / nguyên tảng → null. */
+  so_ngay_u_ghi: number | null;
 }
 
 /**
@@ -199,7 +201,7 @@ export async function docMonTrim(client: SupabaseClient): Promise<Set<string>> {
  */
 export async function docTangTon(client: SupabaseClient, chiNhanhId: string): Promise<TangTon[]> {
   const { data, error } = await client.from('kho_v_tang')
-    .select('lo_id, ma_lo, so_tang, mat_hang_id, ma_hang, ten_hang, ngay_mo, ngay_nhan, ngay_u_xong, han_dung, tuoi_ngay, con_ngay_u, tinh_trang_u, so_kg, so_goi, vi_tri, loai_tang, ngay_bat_dau_u, so_ngay_u')
+    .select('lo_id, ma_lo, so_tang, mat_hang_id, ma_hang, ten_hang, ngay_mo, ngay_nhan, ngay_u_xong, han_dung, tuoi_ngay, con_ngay_u, tinh_trang_u, so_kg, so_goi, vi_tri, loai_tang, ngay_bat_dau_u, so_ngay_u, so_ngay_u_ghi')
     .eq('chi_nhanh_id', chiNhanhId);
   if (error) throw error;
   return sapTang((data ?? []).map(r => ({
@@ -211,6 +213,7 @@ export async function docTangTon(client: SupabaseClient, chiNhanhId: string): Pr
     loai_tang: r.loai_tang === 'u' ? 'u' : 'nguyen',
     ngay_bat_dau_u: r.ngay_bat_dau_u ?? null,
     so_ngay_u: r.so_ngay_u === null || r.so_ngay_u === undefined ? null : Number(r.so_ngay_u),
+    so_ngay_u_ghi: r.so_ngay_u_ghi === null || r.so_ngay_u_ghi === undefined ? null : Number(r.so_ngay_u_ghi),
   })) as TangTon[]);
 }
 
@@ -279,6 +282,179 @@ export function cauTangConU(
     vi: `Tảng${so ? ` ${so}` : ''} còn đang ủ — ủ xong ngày ${ngay} (${con}).`,
     en: `Primal${so ? ` ${so}` : ''} is still aging — aging ends on ${ngay} (${con}).`,
   }[nn];
+}
+
+// -----------------------------------------------------------------------------
+// NGÀY Ủ GHI TAY CỦA TẢNG Ủ, NHẬT KÝ Ủ (0109)
+// -----------------------------------------------------------------------------
+// Khánh 29/10/2026: chưa có công thức ủ cho tảng ủ — người lóc ghi tay "ủ N ngày" cho từng tảng; mọi lần ghi giữ lại
+// (kho_ghi_u, chỉ thêm, gắn với tảng gốc) để sau này phân tích ra công thức. File Excel "Nhật ký ủ" là dữ liệu cho
+// việc phân tích đó; trang truy vết tảng hiện từng lần ghi.
+
+/** Ô "Ủ bao nhiêu ngày": số nguyên 0–365 (khoảng trắng hai đầu bỏ qua). Chữ, số lẻ "1,5", số âm, quá 365 → null. */
+export function docSoNgayU(chu: unknown): number | null {
+  return soNguyenTrong(String(chu ?? '').trim(), 0, 365);
+}
+
+/**
+ * Kết quả kho_ghi_ngay_u. so_ngay_cu: số của lần ghi trước (null = lần đầu); da_co: cùng số với lần ghi gần nhất,
+ * không thêm dòng. Bấm đúp (cùng mã gửi) trả đúng kết quả của lần bấm đầu.
+ */
+export interface KqGhiU { da_co: boolean; so_tang: string; so_ngay_u: number; ngay_u_xong: string; so_ngay_cu?: number | null }
+
+/** Câu sau khi database đã ghi: lần đầu / đổi số / không đổi gì (bấm lại, cùng số). */
+export function cauDaGhiU(kq: KqGhiU): HaiThuTieng {
+  const [so, n, ngay] = [kq.so_tang, Number(kq.so_ngay_u), dinhDangNgay(kq.ngay_u_xong)];
+  const ngayEn = n === 1 ? 'day' : 'days';
+  if (kq.da_co) {
+    return { vi: `Tảng ủ ${so} đang ghi ủ ${n} ngày — ủ xong ngày ${ngay}. Không có gì đổi.`,
+             en: `Aging primal ${so} is already recorded as aging ${n} ${ngayEn} — aging ends on ${ngay}. Nothing changed.` };
+  }
+  if (kq.so_ngay_cu !== null && kq.so_ngay_cu !== undefined) {
+    return { vi: `Đã đổi: tảng ủ ${so} ủ ${n} ngày (lần trước ghi ${kq.so_ngay_cu}) — ủ xong ngày ${ngay}. Lần ghi trước vẫn được giữ.`,
+             en: `Changed: aging primal ${so} ages ${n} ${ngayEn} (previously ${kq.so_ngay_cu}) — aging ends on ${ngay}. The previous entry is kept.` };
+  }
+  return { vi: `Đã lưu: tảng ủ ${so} ủ ${n} ngày — ủ xong ngày ${ngay}.`,
+           en: `Saved: aging primal ${so} ages ${n} ${ngayEn} — aging ends on ${ngay}.` };
+}
+
+/**
+ * Ghi số ngày ủ của một tảng ủ (quyền pha_loc). ma_gui: cùng lần bấm (bấm đúp, F5 không thêm dòng). Câu báo đi
+ * cùng một await với lần ghi: lỗi hay mất mạng không bao giờ thành "Đã lưu".
+ */
+export async function ghiNgayU(client: SupabaseClient, a: { loId: string; soNgay: number; maGui: string }): Promise<KetQua> {
+  try {
+    const { data, error } = await client.rpc('kho_ghi_ngay_u', { p_lo_id: a.loId, p_so_ngay: a.soNgay, p_ma_gui: a.maGui });
+    if (error) return { ok: false, cau: cauLoiKho(error) };
+    return kqHai(true, cauDaGhiU(data as KqGhiU));
+  } catch (e) {
+    return { ok: false, cau: cauLoiKho(e) };
+  }
+}
+
+/** Một lần ghi số ngày ủ (kho_ghi_u) — trang truy vết tảng. */
+export interface LanGhiU { so_ngay_u: number; ngay_bat_dau_u: string; ngay_u_xong: string; nguoi: string | null; created_at: string }
+
+/** Các lần ghi số ngày ủ của một tảng (tảng gốc), cũ trước. Đọc hỏng thì ném. */
+export async function docLanGhiU(client: SupabaseClient, tangId: string): Promise<LanGhiU[]> {
+  const { data, error } = await client.from('kho_ghi_u').select('so_ngay_u, ngay_bat_dau_u, ngay_u_xong, nguoi, created_at')
+    .eq('tang_id', tangId).order('created_at', { ascending: true }).order('id', { ascending: true });
+  if (error) throw error;
+  return ((data ?? []) as LanGhiU[]).map(r => ({ ...r, so_ngay_u: Number(r.so_ngay_u) }));
+}
+
+export type TinhTrangNhatKyU = 'dang_u' | 'da_cat' | 'khac';
+
+export const TINH_TRANG_NHAT_KY_U_NB: Record<TinhTrangNhatKyU, HaiThuTieng> = {
+  dang_u: { vi: 'Đang ủ', en: 'Aging' },
+  da_cat: { vi: 'Đã cắt', en: 'Cut' },
+  khac: { vi: 'Không còn trong kho, chưa cắt', en: 'No longer in stock, not cut' },
+};
+
+/** Một dòng kho_nhat_ky_u — không có tiền. */
+export interface DongNhatKyU {
+  lo_id: string;
+  so_tang: number | null;
+  ma_lo: string;
+  ten_hang: string;
+  ten_hang_goc: string | null;
+  ngay_mo: string | null;
+  ngay_nhan: string | null;
+  ngay_bat_dau_u: string;
+  tuoi_luc_u: number | null;
+  kg_vao_u: number;
+  so_ngay_u_dau: number | null;
+  so_ngay_u_ghi: number | null;
+  ngay_u_xong: string | null;
+  so_lan_ghi: number;
+  nguoi_ghi: string | null;
+  ngay_ghi_cuoi: string | null;
+  ngay_cat: string | null;
+  so_ngay_u_that: number | null;
+  kg_luc_cat: number | null;
+  /** Kg ra không bỏ đi của phiên cắt, chia theo tỉ lệ kg của tảng trong phiên. */
+  kg_cat_ra: number | null;
+  /** (kg vào ủ − kg cắt ra) ÷ kg vào ủ; null khi tảng còn hàng hay có kg rời lô theo đường khác (bán, bếp, huỷ…). */
+  hao_pt: number | null;
+  tinh_trang: TinhTrangNhatKyU;
+}
+
+const COT_SO_NHAT_KY_U = [
+  'so_tang', 'tuoi_luc_u', 'kg_vao_u', 'so_ngay_u_dau', 'so_ngay_u_ghi', 'so_lan_ghi', 'so_ngay_u_that', 'kg_luc_cat',
+  'kg_cat_ra', 'hao_pt',
+] as const;
+
+/** Số từ database (numeric về dạng chuỗi) → number; null giữ null (hàm thuần). */
+export function chuanNhatKyU(r: Record<string, unknown>): DongNhatKyU {
+  const ra = { ...r } as Record<string, unknown>;
+  for (const c of COT_SO_NHAT_KY_U) ra[c] = r[c] === null || r[c] === undefined ? null : Number(r[c]);
+  ra.so_lan_ghi = Number(r.so_lan_ghi ?? 0);
+  ra.kg_vao_u = Number(r.kg_vao_u ?? 0);
+  return ra as unknown as DongNhatKyU;
+}
+
+/** Nhật ký ủ — tảng ủ trim trong kỳ (kho_nhat_ky_u, quyền xem). Đọc hỏng thì ném. */
+export async function docNhatKyU(client: SupabaseClient, chiNhanhId: string, tu: string, den: string): Promise<DongNhatKyU[]> {
+  const { data, error } = await client.rpc('kho_nhat_ky_u', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
+  if (error) throw error;
+  return ((data ?? []) as Record<string, unknown>[]).map(chuanNhatKyU);
+}
+
+export function dinhNghiaNhatKyU(nn: NgonNguNB = 'vi'): DinhNghiaBaoCao {
+  const c = (x: HaiThuTieng) => x[nn];
+  return {
+    ten: c({ vi: 'Nhật ký ủ', en: 'Aging log' }),
+    moTa: c({
+      vi: 'Mỗi tảng ủ trim trong kỳ: tuổi thịt lúc bắt đầu ủ, kg vào ủ, số ngày ủ ghi tay (lần đầu, lần cuối), ngày cắt và số ngày ủ thật, kg cắt ra — dữ liệu để tìm công thức ủ.',
+      en: 'Each primal trimmed for aging in the period: meat age when aging started, kg into aging, aging days recorded by hand (first, last), cut date and real aging days, kg cut out — data for finding an aging formula.',
+    }),
+    cot: [
+      { khoa: 'so_tang_chu', ten: c({ vi: 'Số tảng', en: 'Primal no.' }), kieu: 'chu' },
+      { khoa: 'ten_hang', ten: c({ vi: 'Món', en: 'Item' }), kieu: 'chu' },
+      { khoa: 'ten_hang_goc', ten: c({ vi: 'Từ nguyên tảng', en: 'From whole primal' }), kieu: 'chu' },
+      { khoa: 'ngay_mo_chu', ten: c({ vi: 'Ngày mổ', en: 'Slaughtered' }), kieu: 'chu' },
+      { khoa: 'ngay_nhan_chu', ten: c({ vi: 'Ngày nhận', en: 'Received' }), kieu: 'chu' },
+      { khoa: 'ngay_bat_dau_u_chu', ten: c({ vi: 'Bắt đầu ủ (trim)', en: 'Aging started (trim)' }), kieu: 'chu' },
+      { khoa: 'tuoi_luc_u', ten: c({ vi: 'Tuổi thịt lúc bắt đầu ủ (ngày)', en: 'Meat age when aging started (days)' }), kieu: 'so' },
+      { khoa: 'kg_vao_u', ten: c({ vi: 'Kg vào ủ', en: 'Kg into aging' }), kieu: 'kg' },
+      { khoa: 'so_ngay_u_dau', ten: c({ vi: 'Số ngày ủ ghi lần đầu', en: 'Aging days, first entry' }), kieu: 'so' },
+      { khoa: 'so_ngay_u_ghi', ten: c({ vi: 'Số ngày ủ ghi lần cuối', en: 'Aging days, last entry' }), kieu: 'so' },
+      { khoa: 'ngay_u_xong_chu', ten: c({ vi: 'Ủ xong (theo số ghi)', en: 'Aging ends (as recorded)' }), kieu: 'chu' },
+      { khoa: 'so_lan_ghi', ten: c({ vi: 'Số lần ghi', en: 'Entries' }), kieu: 'so' },
+      { khoa: 'nguoi_ghi', ten: c({ vi: 'Người ghi lần cuối', en: 'Last recorded by' }), kieu: 'chu' },
+      { khoa: 'ngay_ghi_cuoi_chu', ten: c({ vi: 'Ngày ghi lần cuối', en: 'Last recorded on' }), kieu: 'chu' },
+      { khoa: 'ngay_cat_chu', ten: c({ vi: 'Ngày cắt', en: 'Cut on' }), kieu: 'chu' },
+      { khoa: 'so_ngay_u_that', ten: c({ vi: 'Số ngày ủ thật', en: 'Real aging days' }), kieu: 'so' },
+      { khoa: 'kg_luc_cat', ten: c({ vi: 'Kg lúc cắt', en: 'Kg at cutting' }), kieu: 'kg' },
+      { khoa: 'kg_cat_ra', ten: c({ vi: 'Kg cắt ra (không tính phần bỏ đi)', en: 'Kg cut out (discarded not included)' }), kieu: 'kg' },
+      { khoa: 'hao_pt', ten: c({ vi: 'Hao từ trim tới cắt xong %', en: 'Loss from trim to end of cutting %' }), kieu: 'pt' },
+      { khoa: 'tinh_trang_chu', ten: c({ vi: 'Tình trạng', en: 'Status' }), kieu: 'chu' },
+    ],
+    cong: ['kg_vao_u', 'kg_luc_cat', 'kg_cat_ra'],
+    khiTrong: {
+      cau: c({
+        vi: 'Kỳ này chưa trim tảng ủ nào',
+        en: 'No primals were trimmed for aging in this period',
+      }),
+      link: [{ ten: c({ vi: 'Tảng · ủ', en: 'Primals · aging' }), href: '/noi-bo/kho/tang' }],
+    },
+  };
+}
+
+/** Dòng nhật ký → dòng CSV: số tảng, ngày, tình trạng thành chữ. */
+export function dongBangNhatKyU(ds: DongNhatKyU[], nn: NgonNguNB = 'vi'): Record<string, unknown>[] {
+  const ngay = (x: string | null) => (x ? dinhDangNgay(x) : '');
+  return ds.map(d => ({
+    ...d,
+    so_tang_chu: soTangChu(d.so_tang) || d.ma_lo,
+    ngay_mo_chu: ngay(d.ngay_mo),
+    ngay_nhan_chu: ngay(d.ngay_nhan),
+    ngay_bat_dau_u_chu: ngay(d.ngay_bat_dau_u),
+    ngay_u_xong_chu: ngay(d.ngay_u_xong),
+    ngay_ghi_cuoi_chu: ngay(d.ngay_ghi_cuoi),
+    ngay_cat_chu: ngay(d.ngay_cat),
+    tinh_trang_chu: TINH_TRANG_NHAT_KY_U_NB[d.tinh_trang]?.[nn] ?? d.tinh_trang,
+  }));
 }
 
 // -----------------------------------------------------------------------------
@@ -467,13 +643,21 @@ export async function docLoTang(
   return ra;
 }
 
-/** Ngày mổ, ngày ủ xong, số tảng của các lô tảng (kho_lo) — cho mục "Tảng đem pha" và câu nhắc tảng còn ủ. */
+/**
+ * Ngày mổ, ngày ủ xong, số tảng của các lô tảng (kho_lo) — cho mục "Tảng đem pha" và câu nhắc tảng còn ủ.
+ * 0109: tảng ủ không có ngày ủ xong trên lô (lô bất biến) — lấy từ kho_v_tang (số ngày ghi tay gần nhất, cùng luật
+ * với màn Tảng · ủ). Đọc phần đó hỏng thì vẫn trả phần của kho_lo (chỉ thiếu câu nhắc của tảng ủ), như trước 0109.
+ */
 export async function docNgayUTang(
   client: SupabaseClient, loIds: readonly unknown[],
 ): Promise<Map<string, { so_tang: number | null; ngay_mo: string | null; ngay_u_xong: string | null }>> {
   const ra = new Map<string, { so_tang: number | null; ngay_mo: string | null; ngay_u_xong: string | null }>();
-  const kq = await Promise.all(chiaLuot(loIds).map(ds =>
-    client.from('kho_lo').select('id, so_tang, ngay_mo, ngay_u_xong').in('id', ds)));
+  const luot = chiaLuot(loIds);
+  const [kq, tangU] = await Promise.all([
+    Promise.all(luot.map(ds => client.from('kho_lo').select('id, so_tang, ngay_mo, ngay_u_xong').in('id', ds))),
+    Promise.all(luot.map(ds => client.from('kho_v_tang').select('lo_id, ngay_u_xong').eq('loai_tang', 'u').in('lo_id', ds)))
+      .catch(() => []),
+  ]);
   for (const { data, error } of kq) {
     if (error) throw error;
     for (const r of data ?? []) {
@@ -482,6 +666,13 @@ export async function docNgayUTang(
         ngay_mo: (r.ngay_mo as string | null) ?? null,
         ngay_u_xong: (r.ngay_u_xong as string | null) ?? null,
       });
+    }
+  }
+  for (const { data, error } of tangU) {
+    if (error) continue;
+    for (const r of data ?? []) {
+      const x = ra.get(r.lo_id as string);
+      if (x && !x.ngay_u_xong) x.ngay_u_xong = (r.ngay_u_xong as string | null) ?? null;
     }
   }
   return ra;

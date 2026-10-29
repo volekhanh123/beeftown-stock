@@ -765,6 +765,28 @@ nhận hàng, nút "Trim"); bảng **Tảng ủ (đã trim)** là lô món loạ
 tảng gốc (`tang_goc_id`), ngày bắt đầu ủ (ngày trim), đã ủ bao nhiêu ngày, nút "Cắt". Hai nút cùng lóc một chạm
 (`locMotTang` gắn đúng công thức của món). Kiểm thử: `crm/test/test-kho-trinh-tu-tang.mjs`.
 
+**Ngày ủ của từng tảng ủ: ghi tay, giữ mãi để sau này ra công thức (0109).** Khánh 29/10/2026: "hiện tại giờ bạn ghi
+nhận thủ công nhé, tức là giờ hiện không có công thức ủ, nhưng vẫn nhớ lưu giữ lại về sau tôi sẽ làm phân tích để có
+công thức." Bảng ủ (`kho_bang_u`, 0048) chỉ dùng cho nguyên tảng; tảng ủ ghi tay ở màn **Tảng · ủ**, mục **Tảng ủ (đã
+trim)**: ô "Ủ … ngày" + Lưu (vai `pha_loc`, POST `viec=ghi_u` về chính trang) → `kho_ghi_ngay_u` (`ghiNgayU`). Lô bất
+biến nên số ngày nằm ở bảng **`kho_ghi_u`** — CHỈ THÊM (trigger `kho_ghi_u_chan_sua_xoa` chặn sửa / xoá kể cả chủ
+database): mỗi lần đổi số một dòng (số ngày, ngày bắt đầu ủ, ngày ủ xong, ai ghi, lúc nào), gắn với **tảng gốc**
+(`tang_id` = `tang_goc_id` của lô tảng ủ) chứ không chỉ với lô — mở lại phiên trim rồi chốt lại sinh lô tảng ủ mới mà
+số ngày vẫn theo tảng. Cùng mã gửi (bấm đúp, F5) không thêm dòng và trả đúng kết quả lần bấm đầu; cùng số với lần gần
+nhất thì không thêm dòng ("Không có gì đổi"). Chỉ tảng ủ còn trong kho, chưa vào phiên cắt nào đã chốt; 0–365 ngày.
+Luật "lần ghi gần nhất" chỉ ở một chỗ: view `kho_v_ghi_u_cuoi`. `kho_v_tang`: ngày ủ xong của tảng ủ = ngày trim của lô
++ số ngày ghi gần nhất (cột mới `so_ngay_u_ghi`) → đang ủ / sẵn sàng như nguyên tảng có bảng ủ: nút **Cắt** một chạm ẩn
+khi đang ủ (`tangLocDuoc`); cắt sớm thì bấm loại tảng ở Pha lóc mới (câu nhắc "còn đang ủ" — `docNgayUTang` đọc thêm
+`kho_v_tang`), không sửa số ngày chỉ để mở nút (số ghi là dữ liệu phân tích). Trang truy vết tảng có dòng **Số ngày ủ
+ghi tay**: từng lần ghi, ai ghi, lúc nào (`docLanGhiU`). **Nhật ký ủ** (dữ liệu để phân tích): link "Tải nhật ký ủ
+(Excel, 12 tháng)" ở đầu màn → `bao-cao/nhat-ky-u.csv?tu=&den=` (mọi vai `xem`, không có tiền) → `kho_nhat_ky_u`: mỗi
+tảng ủ trim trong kỳ một dòng — số tảng, món, nguyên tảng gốc, ngày mổ, ngày nhận, ngày bắt đầu ủ, tuổi thịt lúc bắt
+đầu ủ, kg vào ủ, số ngày ghi lần đầu / lần cuối, ủ xong theo số ghi, số lần ghi, người và ngày ghi lần cuối, ngày cắt,
+số ngày ủ thật, kg lúc cắt, kg cắt ra (kg ra không bỏ đi của phiên cắt, chia theo tỉ lệ kg của tảng trong phiên), hao
+từ trim tới cắt xong % (gồm phần nhẹ đi lúc ủ, phần bỏ, hao lúc cắt; chỉ khi tảng ủ đã hết và không kg nào rời lô theo
+đường khác — bán, xuất bếp, huỷ, trả NCC, xuất khác), tình trạng (đang ủ / đã cắt / không còn trong kho, chưa cắt).
+Kiểm thử: `crm/test/test-kho-ghi-ngay-u.mjs`.
+
 **Khay của tảng nào trừ đúng lô tảng đó — theo tem đã quét lúc cắt (0106).** Khánh chốt 28/10/2026: nhiều tảng
 cắt ra quầy cùng lúc, FABi chỉ gửi "mã món + kg", không nói khay của tảng nào; trước 0106 kho trừ lô hạn gần nhất
 (khay các tảng cắt cùng ngày cùng hạn → luôn trừ tảng cắt trước, truy vết / báo cáo theo tảng lệch). Món đếm gói

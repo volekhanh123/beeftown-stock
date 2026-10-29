@@ -673,6 +673,14 @@ const CAU_DB: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Tối đa 4000 dòng hàng trên cân một lần báo', en: 'At most 4000 scale items per status report' },
   { vi: 'Nhật ký cân phải là một danh sách', en: 'The scale log must be a list' },
   { vi: 'Tối đa 2000 dòng nhật ký cân một lần gửi', en: 'At most 2000 scale log lines per send' },
+
+  // 0109_kho_ghi_ngay_u — số ngày ủ ghi tay của tảng ủ
+  { vi: 'Không tìm thấy tảng ủ, hoặc tài khoản không được ghi ngày ủ',
+    en: 'Aging primal not found, or this account cannot record aging days' },
+  { vi: 'Số ngày ủ phải là số nguyên từ 0 đến 365',
+    en: 'Aging days must be a whole number from 0 to 365' },
+  { vi: 'Nhật ký ủ chỉ thêm, không sửa, không xoá — muốn đổi số ngày ủ thì ghi lần nữa',
+    en: 'The aging log can only be added to, not changed or deleted — to change the aging days, record them again' },
 ];
 
 /** Câu cố định: đúng từng chữ. */
@@ -1339,6 +1347,14 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
     en: '"{1}" is not in the cutting recipe of "{2}" — an aging primal is only cut into trays; remove this line, then close' },
   { vi: 'Trim "%" phải ra một tảng ủ — nhập kg tảng ủ (1 tảng) rồi chốt',
     en: 'Trimming "{1}" must give one aging primal — enter the aging primal\'s kg (1 primal), then close' },
+
+  // 0109_kho_ghi_ngay_u — số ngày ủ ghi tay của tảng ủ
+  { vi: 'Chỉ ghi ngày ủ cho tảng ủ (tảng đã trim) — "%" không phải tảng ủ',
+    en: 'Aging days are only recorded for aging primals (trimmed primals) — "{1}" is not an aging primal' },
+  { vi: 'Tảng ủ % đã cắt — số ngày ủ giữ nguyên như lúc cắt để sau này phân tích',
+    en: 'Aging primal {1} has already been cut — its aging days stay as they were at cutting, for later analysis' },
+  { vi: 'Tảng ủ % không còn trong kho — không ghi ngày ủ được',
+    en: 'Aging primal {1} is no longer in stock — aging days cannot be recorded' },
 ];
 
 type Mau = readonly [RegExp, (m: RegExpMatchArray) => string];
