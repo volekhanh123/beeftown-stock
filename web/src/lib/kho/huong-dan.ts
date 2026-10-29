@@ -926,8 +926,8 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
     buoc: [
       { vi: 'Mở **Đặt hàng** → **+ Lập đơn đặt hàng**. Chọn nhà cung cấp, bấm **Tiếp: xem gợi ý →**.',
         en: 'Open **Purchase orders** → **+ New purchase order**. Choose the supplier, press **Next: see suggestions →**.' },
-      { vi: 'Mỗi món nhà cung cấp đó hay giao đã có sẵn số kg nên đặt; dòng chữ nhỏ bên dưới nói vì sao. Sửa số nếu cần, để trống là không đặt. Món khác thì thêm ở **Thêm món khác**.',
-        en: 'Each item this supplier usually delivers already has a suggested kg; the small text underneath says why. Change the numbers if needed; leave one empty to not order it. Add other items under **Add other items**.' },
+      { vi: 'Mỗi món của nhà cung cấp đó (món họ đã giao, cộng món thêm tay ở **Thiết lập** → **Nhà cung cấp**) đã có sẵn số kg nên đặt; dòng chữ nhỏ bên dưới nói vì sao. Sửa số nếu cần, để trống là không đặt. Món khác thì thêm ở **Thêm món khác**.',
+        en: 'Each of this supplier\'s items (items they have delivered, plus items added under **Setup** → **Suppliers**) already has a suggested kg; the small text underneath says why. Change the numbers if needed; leave one empty to not order it. Add other items under **Add other items**.' },
       { vi: 'Chọn **Ngày giao** (bỏ trống = tự tính theo số ngày giao của nhà cung cấp), ghi chú nếu cần. Có thể gõ giá dự kiến/kg để biết trước số tiền.',
         en: 'Choose the **Delivery date** (empty = worked out from the supplier\'s lead time) and add a note if needed. You can type an expected price/kg to see the total in advance.' },
       { vi: 'Bấm **Lưu và gửi →**. Trang in mở ra: bấm **In / Lưu PDF** (chọn "Lưu thành PDF") rồi gửi file vào Zalo nhà cung cấp, hoặc bấm **Chia sẻ (Zalo…)** trên điện thoại để gửi thành tin nhắn.',
@@ -936,6 +936,10 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
         en: 'When the goods arrive, the storekeeper presses **Receive against this order**. The order switches to **Partly received** / **Fully received** automatically when the receiving note is submitted.' },
     ],
     meo: [
+      { vi: 'Chưa biết đặt ai? Bấm **Đặt theo món →**: mọi món nên đặt hiện một lượt, mỗi món chọn sẵn nhà cung cấp chính (không có thì nơi giao gần nhất) — đổi được. Bấm **Lập đơn nháp**: máy lập mỗi nhà cung cấp một đơn nháp; mở từng đơn để điền giá và gửi.',
+        en: 'Not sure who to order from? Press **Order by item →**: every item to order shows at once, each with its main supplier picked (or whoever delivered it last) — you can change it. Press **Create draft orders**: the app creates one draft per supplier; open each to add prices and send.' },
+      { vi: 'Món ghi chữ đậm **NCC chính của món này: …** là món thường đặt ở nhà cung cấp khác — kiểm lại trước khi đặt ở đây.',
+        en: 'An item marked in bold **Main supplier of this item: …** is usually ordered from another supplier — double-check before ordering it here.' },
       { vi: 'Thủ kho lập được đơn **nháp** (không có giá); quản lý mở đơn, điền giá nếu muốn, bấm **Lưu và gửi cho nhà cung cấp**.',
         en: 'Storekeepers can create a **draft** order (without prices); a manager opens it, adds prices if wanted, and presses **Save and send to the supplier**.' },
       { vi: 'Giá chỉ in khi tích **In kèm giá dự kiến** — mặc định không in giá.',

@@ -8,7 +8,8 @@
  *   · Gợi ý đặt hàng đúng công thức: cần (mức tối đa kho lạnh, hoặc dùng TB 28
  *     ngày × (số ngày giao + 3)) − (tồn kho + quầy + đang mang ra quầy + đã đặt
  *     chưa về). Dùng = bán + xuất bếp + hủy + xuất khác + pha lóc; chuyển quầy,
- *     trả NCC không tính. Món của NCC = NCC mua gần nhất.
+ *     trả NCC không tính. Món của NCC theo danh mục NCC – món (0111; trước đó: NCC mua gần nhất —
+ *     các kiểm tra dưới vẫn đúng vì mỗi món ở đây chỉ một NCC giao). Đặt theo món: test-kho-dat-hang-theo-mon.mjs.
  *   · Thủ kho lập đơn NHÁP chỉ kg (gửi giá là bị từ chối; sửa lại đơn thì giá
  *     quản lý đã điền không mất); quản lý / chủ gửi; hủy nháp / hủy đơn đã gửi
  *     (bắt buộc lý do); ma_gui chống trùng; phien_ban chống ghi đè.
