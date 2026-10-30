@@ -228,12 +228,17 @@ Thao tác xóa / hủy: đặt trong `<details class="nb-the">` đóng sẵn, c�
 
 Chương trình Windows mở giao diện trong cửa sổ ứng dụng của Edge (1180 × 860), máy chủ Bun ở `127.0.0.1`. Giao diện
 `can-app/src/giao-dien.html`, hướng dẫn in được `can-app/src/huong-dan.html` (tự chứa, không tải gì từ
-mạng). **Chưa đổi** sang bộ 21/10/2026: vẫn dùng bảng màu cũ (đỏ, kem, than, mù tạt — token khai ngay
-trong file HTML) và màu trạng thái xanh / vàng. Đổi Beeftown Cân là một PR riêng (`THUONG-HIEU.md` mục 0,
-việc 7), kèm phiên bản mới của chương trình — đổi
-giao diện thì tăng `PHIEN_BAN` trong `can-app/src/main.ts`. **Phông hệ thống (Segoe UI)** vì chạy không
-mạng. Khi sửa: giữ bảng màu app đang dùng, đừng thêm phông tải từ mạng, việc chính dùng nút to sẵn có
-(`button.to`). Hai chỗ app khác web — đừng chép sang web: nút lọc bo tròn kiểu viên thuốc, nút khóa mờ
+mạng). **Theo bộ 21/10/2026 từ bản 2.12** (`THUONG-HIEU.md` mục 0, việc 7): khối `:root` của hai file khai lại
+các biến của `chung.css` mà app dùng, cùng giá trị; nền trang `--kem-sau`, thẻ và ô nhập trắng, đầu trang đen như
+kho. Trạng thái theo bảy kiểu ở trên: nhãn `.nhan-l.cho` (K1), `.nhap` (K3), `.song` (K4), `.luu-y` (K5), `.tat`
+(K6), `.thong-tin` (K7) — trang hướng dẫn dùng cùng kiểu cho `.nhan`; khung báo `.bao.xong` (✓), `.bao.luu-y`
+(vòng "!"), `.bao.loi` (viền đỏ, tam giác "!"); ô số `.so-o .o.gap` (K2), `.so-o .o.luu-y` (K5); đèn ô Cân `.den`
+(vòng rỗng: chưa kiểm tra), `.den.noi` (chấm đen), `.den.loi` (tam giác đỏ); dòng đã sửa chưa gửi có vạch đen ở đầu
+dòng. Không lớp nào mang tên màu. Logo phụ trắng ở đầu trang: chỗ đánh dấu `<!--logo-phu-trang-->`,
+`can-app/src/nhan-dien.ts` thay bằng `web/public/thuong-hieu/chu-beeftown-trang.svg` khi máy chủ phục vụ trang —
+không gõ chữ BEEFTOWN. Đổi giao diện thì tăng `PHIEN_BAN` trong `can-app/src/main.ts`; `crm/test/test-can-nhan-dien.mjs`
+gác bảng màu, kiểu nhãn, logo. **Phông hệ thống (Segoe UI)** vì chạy không mạng. Khi sửa: chỉ dùng biến, đừng thêm
+phông tải từ mạng, việc chính dùng nút to sẵn có (`button.to`). Hai chỗ app khác web — đừng chép sang web: nút lọc bo tròn kiểu viên thuốc, nút khóa mờ
 đi (`opacity: .5`) thay vì tối đi.
 
 **Từ 2.11 có năm thẻ** (Quầy · Cân · Giảm giá · Báo cáo · Thiết lập cân), chủ duyệt 25/10/2026. Mỗi thẻ gồm vài mục

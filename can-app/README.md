@@ -200,6 +200,53 @@ Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn 
 
 Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
 
+## Bản 2.12 — bộ nhận diện 21/10/2026: đỏ, đen, trắng; trạng thái bằng chữ và dấu; logo mới
+
+Việc 7 của `THUONG-HIEU.md`: Beeftown Cân đổi sang bộ nhận diện mà website dùng từ PR "Đổi nhận diện website". Chỉ đổi giao
+diện: quyền, cách nói với cân, dữ liệu, câu báo của chương trình không đổi; không có migration.
+
+- **Màu:** bảng 22/10/2026 — đỏ `#BD0000`, đen, trắng và năm màu pha cho màn hình (`#8F0000`, `#767676`, `#555555`, `#F4F4F4`,
+  `#E2E2E2`). Khối `:root` của `src/giao-dien.html` và `src/huong-dan.html` khai đúng tên, đúng giá trị như
+  `web/src/styles/chung.css`; ngoài khối đó chỉ dùng biến. Như kho: nền trang xám nhạt, thẻ và ô nhập trắng, đầu trang đen.
+- **Trạng thái không có màu riêng** (Khánh bỏ xanh, vàng, đỏ nhạt ngày 25/10/2026, câu 2): nhãn theo sáu kiểu của `/noi-bo`
+  (`THUONG-HIEU.md` mục 4), mỗi nhãn có chữ:
+
+  | Kiểu | Vẽ | Ở Beeftown Cân |
+  |---|---|---|
+  | K1 `.cho` | nền đỏ, chữ trắng, dấu "!" | Phải huỷ, Hết ở quầy, Có gói hết hạn, Bỏ khỏi cân, Kho không có, Còn nằm lại, Chưa rõ trên cân, Hỏng, giảm giá sớm |
+  | K3 `.nhap` | nền đen, chữ trắng | Thêm, Sửa (sẽ ghi xuống cân), Đang lóc, Đang soạn, Ô mới (mẫu tem) |
+  | K4 `.song` | viền đen, dấu ✓ | Khớp kho, Giữ nguyên, Đủ, Đang bán, Đúng, Đã lên cân, Đạt |
+  | K5 `.luu-y` | nền xám, chữ đen | Khác kho, Cận date, Dưới mức, Xếp ra trước, Chờ thủ kho, Bán hết — chờ trả ô, Cân chưa đổi, Chưa gửi, Giữ nguyên (chưa xác nhận) |
+  | K6 `.tat` | nét đứt, chữ xám | Không đưa lên, Chưa lên cân, Không lên được, PLU trống, Trống, Đã tắt, Bỏ qua |
+  | K7 `.thong-tin` | viền mảnh | Số tảng, Giữ ngoài kho, Trên cân (chưa đăng nhập kho), Chỉ xem |
+
+  Khung báo: "xong" có dấu ✓ trong vòng đen; "lưu ý" có vòng tròn "!"; "lỗi" viền đỏ 2px và tam giác "!". Ô số của thẻ Quầy,
+  Báo cáo và mục Nhật ký cân: "làm ngay" viền đỏ, số đỏ, tam giác "!"; "lưu ý" viền xám đậm, vòng "!". Đèn ô Cân: chấm tròn
+  đen = nối được, tam giác đỏ = không nối được, vòng rỗng = chưa kiểm tra. Dòng thông số, chữ cài đặt, phím, ô tem đã sửa mà
+  chưa gửi: vạch đen 4px ở đầu dòng. Hướng dẫn gọi khung theo dấu (khung có dấu ✓ "Cân đã nhận."), không theo tên màu.
+- **Danh sách thử của các bản trước** (2.7–2.11, mục "Chưa làm") viết theo màu của 2.11 — đọc thay: màu xanh lá → dấu ✓
+  (khung có dấu ✓; ô Cân chấm tròn đen), màu vàng → vòng tròn "!" (khung lưu ý), màu đỏ → tam giác "!" (khung viền đỏ; ô Cân
+  tam giác đỏ).
+- **Logo, biểu tượng:** đầu trang (cả trang hướng dẫn) là logo phụ trắng của Brand Guidelines 21/10/2026 thay chữ BEEFTOWN gõ
+  bằng phông. `src/may-chu.ts` nhập thẳng `web/public/thuong-hieu/chu-beeftown-trang.svg` và `web/public/bieu-tuong.svg`
+  (biểu tượng cửa sổ) khi đóng gói — máy quầy không mạng; `src/nhan-dien.ts` đặt hai file đó vào trang. Bản in của hướng dẫn:
+  logo đen trên giấy trắng. Biểu tượng của file .exe lấy `web/public/kho/bieu-tuong-192.png` (đã là bộ mới), nhưng Bun chỉ gắn
+  biểu tượng khi đóng gói trên Windows — CI đóng gói trên Linux nên `BeeftownCan.exe` vẫn mang biểu tượng mặc định.
+- Nút "Có bản mới … — Cập nhật" ở đầu trang là nút đỏ chữ trắng; ô đánh dấu đỏ khi chọn; vòng focus đen, trên đầu trang trắng.
+- Kiểm thử: `crm/test/test-can-nhan-dien.mjs` (bảng màu so với `chung.css`, không mã cũ, sáu kiểu nhãn, khung báo, ô số, đèn,
+  dòng đã sửa, tương phản, logo, câu chữ, phiên bản); `test/thu.ts` đọc trang máy chủ trả thật để kiểm logo và biểu tượng cửa sổ.
+
+**Thử ở quán (2.12)** — sau khi bấm **Cập nhật**; không ghi gì xuống cân:
+1. Đầu trang đen có logo BEEFTOWN trắng (đầu bò thay chữ O). Góc trái thanh tiêu đề của cửa sổ có ô đỏ đầu bò (máy không có
+   Edge thì chương trình mở bằng trình duyệt thường: ô đỏ ở tab).
+2. Ô **Cân** ở hàng trên cùng: chấm tròn đen, dòng "Đang nối cân …" (cân không trả lời thì tam giác đỏ, dòng "Chưa nối được
+   cân" — như 2.11, chỉ đổi hình).
+3. Thẻ **Quầy**: ô "Hết hạn — phải huỷ" có lô thì viền đỏ, tam giác "!"; nhãn trong bảng có chữ (Phải huỷ, Cận date, ✓ Đủ…).
+4. Đăng nhập quản lý → thẻ **Cân**: hàng nhãn trên bảng — thêm, sửa nền đen; bỏ khỏi cân đỏ "!"; ✓ giữ nguyên; không đưa lên
+   nét đứt. Không bấm Gửi.
+5. Bấm **Hướng dẫn**: đầu trang có logo. Bấm **In hướng dẫn** → xem trước bản in: logo đen trên giấy trắng.
+6. Chỗ nào còn màu cũ (vàng, xanh lá, nền kem): chụp màn hình gửi Claude.
+
 ## Bản 2.11 — gọn còn 5 thẻ
 
 Khánh duyệt 25/10/2026 ("Có thể tinh giản"): mười thẻ của 2.10 gom còn năm — **Quầy · Cân · Giảm giá · Báo cáo · Thiết lập
@@ -843,11 +890,12 @@ npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói
 - Thử bản 2.7 trên cân thật (mục "Thử ở quán (2.7)") và sửa `CAN-TMA.md` theo file kết quả Chẩn đoán WiFi.
 - Thử bản 2.8 trên cân thật (mục "Thử ở quán (2.8)").
 - Thử bản 2.9 trên cân thật (mục "Thử ở quán (2.9)"), rồi 2.9.1 (mục "Thử ở quán (2.9.1)"), rồi 2.9.2 (mục "Thử ở quán (2.9.2)"), rồi 2.9.3 (mục "Thử ở quán (2.9.3)").
-- Gửi thông số / chữ chung / phím / mẫu tem mà không đọc lại được vẫn ghi nhận vào file gốc (2.7, khung vàng) — chưa tách "đang chờ"
+- Gửi thông số / chữ chung / phím / mẫu tem mà không đọc lại được vẫn ghi nhận vào file gốc (2.7, khung lưu ý) — chưa tách "đang chờ"
   như gửi giá (2.9.3).
 - Tự gửi dừng hẳn sau một lần đọc lại thấy cân CHƯA nhận (cân đang ở menu Prog lúc gửi…) tới khi người bấm Gửi — tên ô mã theo
   tảng không lên cân trong lúc đó. Có thể tự gửi lại cả danh sách sau 10 phút (bấm Gửi cũng chỉ làm vậy): chủ quyết.
 - Thử bản 2.11 trên cân thật (mục "Thử ở quán (2.11)").
+- Xem bản 2.12 ở quán (mục "Thử ở quán (2.12)") — chỉ nhìn, không ghi gì xuống cân.
 - Phím tắt cố định cho từng ô: trang pha lóc mới HIỆN phím; gán phím vẫn bằng tay ở mục Phím tắt (thẻ Thiết lập cân).
 - Tự gửi chưa tự gỡ hàng còn nằm lại (cần người xem trước rồi bấm).
 - Mã `99999` / `99998` mới chỉ được chặn ở bộ lập danh sách (món mang mã đó không lên cân); database chưa chặn.

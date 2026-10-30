@@ -15,11 +15,12 @@ rà soát" *sau khi* tính năng đã gộp. Mục tiêu: chặn chúng *trướ
 | `may-chu-don/` | Máy chủ đơn của Mini App (Bun, SQLite): nhận đơn trả trước, màn hình đơn cho quầy. Chạy ở Việt Nam (dữ liệu khách Mini App không lên Supabase, Cloudflare) — laptop thử, máy chủ thuê khi mở bán. Thu tiền chuyển khoản VietQR qua SePay; Mini App chưa gửi đơn lên (đợt 2b) | `may-chu-don/CLAUDE.md`, `may-chu-don/README.md` |
 | `mo-rong-fabi/` | Mở rộng FABi (extension Chrome, Manifest V3): trên FABi CMS, đưa món mới của kho vào hộp thoại "Thêm món từ file" — người dùng tự bấm Lưu. Không `package.json`, cài bằng "Tải tiện ích đã giải nén" | `mo-rong-fabi/README.md` |
 
-Bảng màu thương hiệu đã chốt, giá trị đã áp dụng và thứ còn mang màu cũ (Beeftown Cân, ảnh hướng dẫn kho): `THUONG-HIEU.md`. Codex và các agent khác đọc `AGENTS.md` (cùng quy trình này).
+Bảng màu thương hiệu đã chốt, giá trị đã áp dụng và thứ còn mang màu cũ (ảnh hướng dẫn kho, Mini App): `THUONG-HIEU.md`. Codex và các agent khác đọc `AGENTS.md` (cùng quy trình này).
 Bộ nhận diện 21/10/2026 (Brand Guidelines của designer) và bảng đỏ `#BD0000`, đen, trắng Khánh chốt 22/10/2026
 (`THUONG-HIEU.md` mục 0) đã áp cho cả `web/` — trang công khai nền trắng, `/noi-bo` và kho không màu trạng thái — cùng
-logo SVG tách từ PDF guideline (`web/public/thuong-hieu/`). Kiểm thử canh bảng mới. Còn nhận diện cũ: Beeftown Cân
-(PR riêng, việc 7) và ảnh hướng dẫn kho `hd-*.png` (việc 8). Đừng đổi màu lẻ tẻ ngoài các PR của danh sách ở mục 0.
+logo SVG tách từ PDF guideline (`web/public/thuong-hieu/`); Beeftown Cân theo cùng bảng từ bản 2.12 (việc 7). Kiểm thử
+canh bảng mới. Còn nhận diện cũ: ảnh hướng dẫn kho `hd-*.png` (việc 8), Mini App (việc 10). Đừng đổi màu lẻ tẻ ngoài
+các PR của danh sách ở mục 0.
 
 Quy ước chung:
 - Tên hàm, biến, chú thích, tài liệu viết **tiếng Việt không tắt**, giống mã đang có.
@@ -163,7 +164,7 @@ Khánh là người duyệt duy nhất và không đọc code. PR nhỏ, một v
 | Main nhận commit | như PR, rồi comment vào PR đang mở nào vừa bị trùng số migration | ~10 phút |
 | 00:30 giờ VN mỗi đêm | quét chữ cấm trên beeftown.vn thật; toàn bộ với `TZ=Asia/Ho_Chi_Minh` khi main có commit trong 48 giờ qua, đêm Chủ nhật, đêm đầu / cuối tháng, hoặc không hỏi được GitHub (job `co-doi`). Cổng deploy bỏ qua lượt đêm không kiểm mã (`web/kiem-tra/ket-qua-ci.mjs`) | ~1 phút / ~10 phút |
 | 02:00 giờ VN mỗi đêm; chạy tay | `sao-luu.yml`: sao lưu database (`crm/sao-luu/`) → mã hoá → artifact 30 ngày → khôi phục thử vào Supabase dựng tạm → ghi `he_thong_sao_luu` (đèn "Sao lưu dữ liệu"). Secret `SAO_LUU_DB_URL`, `SAO_LUU_MAT_KHAU` (README gốc, "Sao lưu và khôi phục") | ~5–10 phút |
-| Main hoặc PR đổi `can-app/`, `web/src/lib/`; chạy tay (gõ số PR) | `dong-goi-can.yml`: kiểm thử Beeftown Cân rồi đóng gói `BeeftownCan.exe` → artifact, Release khi `PHIEN_BAN` mới, bản cài lên kho công khai `beeftown-can-ban-cai` cho nút Cập nhật (secret `TOKEN_BAN_CAI_CAN`) (PR: chỉ đóng gói thử, không tải lên) | ~1 phút |
+| Main hoặc PR đổi `can-app/`, `web/src/lib/`, logo và biểu tượng nhúng trong `.exe`; chạy tay (gõ số PR) | `dong-goi-can.yml`: kiểm thử Beeftown Cân rồi đóng gói `BeeftownCan.exe` → artifact, Release khi `PHIEN_BAN` mới, bản cài lên kho công khai `beeftown-can-ban-cai` cho nút Cập nhật (secret `TOKEN_BAN_CAI_CAN`) (PR: chỉ đóng gói thử, không tải lên) | ~1 phút |
 | Main hoặc PR đổi `mini-app/`; chạy tay | `mini-app.yml`: Mini App Zalo — kiểm tra đơn, tsc, build (không có `.env`, không đưa lên Zalo). Chữ cấm trên chữ của Mini App quét trong `kiem-thu.yml` (`crm/test/test-mini-app-chu.mjs`) | ~1 phút |
 | Đầu mỗi tháng | `dependabot.yml`: PR nâng thư viện `web/`, `crm/`, `can-app/`, `mini-app/` và action — bản nhỏ gom một PR mỗi thư mục, bản lớn PR riêng. CI xanh mới gộp | — |
 

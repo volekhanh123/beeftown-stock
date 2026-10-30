@@ -25,7 +25,7 @@ Bò được cắt và **đóng sẵn trong khay skin-pack theo từng phần c�
 | `crm/` | Database CRM và kho trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung, kho, bản dịch tự động — và **toàn bộ kiểm thử** (`crm/test/`). |
 | `CLAUDE.md` | **Quy trình kiểm thử bắt buộc** cho mọi tính năng mới: 9 mục "định nghĩa xong", cách chạy test, việc trước khi mở PR. |
 | `AGENTS.md` | Cùng quy trình đó cho Codex và các agent không phải Claude, kèm quy tắc rà soát PR (mục "Code Review Rules"). |
-| `THUONG-HIEU.md` | **Bộ nhận diện 21/10/2026** (logo chính, logo phụ, brandmark; đỏ `#BD0000`, đen, trắng — CMYK, Pantone, phông của logo); quyết định của Khánh 22, 25, 26/10/2026; token website (đã đổi ở PR 1 "Đổi nhận diện website"); chỗ website khác guideline; thứ còn mang nhận diện cũ (Beeftown Cân, ảnh hướng dẫn kho, logo PNG của Mini App); lịch sử bảng 09/10/2026. |
+| `THUONG-HIEU.md` | **Bộ nhận diện 21/10/2026** (logo chính, logo phụ, brandmark; đỏ `#BD0000`, đen, trắng — CMYK, Pantone, phông của logo); quyết định của Khánh 22, 25, 26/10/2026; token website (đã đổi ở PR 1 "Đổi nhận diện website"); chỗ website khác guideline; thứ còn mang nhận diện cũ (ảnh hướng dẫn kho, logo PNG của Mini App); lịch sử bảng 09/10/2026. |
 | `mini-app/` | **Mini App Zalo** bán thịt mang về: khách chọn số khay của 6 phần thịt, app mở chat Zalo OA với tin đơn điền sẵn, khách tự bấm Gửi. Không máy chủ, không lưu dữ liệu khách. Xem `mini-app/README.md`. |
 | `.github/` | Kiểm thử tự động (GitHub Actions) mỗi PR, mỗi lần gộp và mỗi đêm 00:30 giờ VN; đóng gói `BeeftownCan.exe` (tải về không cần gõ lệnh: `can-app/README.md`, mục "Tải BeeftownCan.exe về"); mẫu PR; mẫu báo lỗi. |
 | `Beeftown_CRM_Design.html` | Thiết kế hệ thống CRM và thẻ thành viên — đặc tả nghiệp vụ của `crm/` (tỷ lệ tích điểm, ngưỡng, nhóm khách). |
@@ -67,7 +67,7 @@ Lưu ý khi sửa code phần mềm cân:
 
 ### Bảng màu
 
-> **Website dùng bảng 22/10/2026 từ PR 1 "Đổi nhận diện website"** (`THUONG-HIEU.md` mục 1 và 4): đỏ `#BD0000`, đen `#000000`, trắng `#FFFFFF` — ba màu của Brand Guidelines 21/10/2026 — cùng năm màu pha chỉ cho màn hình Khánh duyệt ngày 25/10/2026. Bỏ kem, vàng và xám ấm của bảng 09/10/2026. Còn màu cũ: Beeftown Cân (PR riêng, kèm phiên bản mới của chương trình — `THUONG-HIEU.md` mục 0, việc 7) và 15 ảnh chụp trong trang hướng dẫn của kho (`web/public/kho/hd-*.png`, việc 8), chờ chụp lại.
+> **Website dùng bảng 22/10/2026 từ PR 1 "Đổi nhận diện website"** (`THUONG-HIEU.md` mục 1 và 4): đỏ `#BD0000`, đen `#000000`, trắng `#FFFFFF` — ba màu của Brand Guidelines 21/10/2026 — cùng năm màu pha chỉ cho màn hình Khánh duyệt ngày 25/10/2026. Bỏ kem, vàng và xám ấm của bảng 09/10/2026. Beeftown Cân theo cùng bảng từ bản 2.12 (`THUONG-HIEU.md` mục 0, việc 7). Còn màu cũ: 15 ảnh chụp trong trang hướng dẫn của kho (`web/public/kho/hd-*.png`, việc 8), chờ chụp lại.
 
 | Tên | Mã | Token web | Dùng cho |
 |---|---|---|---|
@@ -82,7 +82,7 @@ Lưu ý khi sửa code phần mềm cân:
 
 Ba dòng đầu là ba màu của guideline; năm dòng sau là màu pha chỉ cho màn hình (ấn phẩm chỉ ba màu). Tên biến cũ (`--kem` mang trắng, `--than` mang đen) giữ tới PR đổi tên (`THUONG-HIEU.md` mục 0, việc 4). Token khai ở **hai nơi cùng giá trị, chưa gộp** — khối `.ck` đầu tiên của `web/src/styles/cong-khai.css` (trang công khai) và hai khối `:root` của `web/src/styles/chung.css` (`/noi-bo`, kho). Đổi một mã là đổi mọi nơi đó trong cùng PR: `crm/test/test-cong-khai-giao-dien.mjs` (nhóm 2, 6) và `crm/test/test-noi-bo-bang-mau.mjs` gác từng mã.
 
-`/noi-bo` và kho **không có màu trạng thái** (Khánh bỏ xanh, vàng, đỏ nhạt ngày 25/10/2026): đỏ = làm ngay, đen = xong / nháp, xám = lưu ý / tắt; hai trạng thái cạnh nhau luôn khác nhau ở chữ, dấu hay nét — bảy kiểu K1–K7 ở `THUONG-HIEU.md` mục 4 (`crm/test/test-noi-bo-bang-mau.mjs` nhóm 7). Beeftown Cân còn màu trạng thái riêng theo bảng cũ.
+`/noi-bo` và kho **không có màu trạng thái** (Khánh bỏ xanh, vàng, đỏ nhạt ngày 25/10/2026): đỏ = làm ngay, đen = xong / nháp, xám = lưu ý / tắt; hai trạng thái cạnh nhau luôn khác nhau ở chữ, dấu hay nét — bảy kiểu K1–K7 ở `THUONG-HIEU.md` mục 4 (`crm/test/test-noi-bo-bang-mau.mjs` nhóm 7). Beeftown Cân dùng cùng cách vẽ (K1, K3–K7) từ bản 2.12 (`crm/test/test-can-nhan-dien.mjs`).
 
 **Trang công khai nền trắng**, đen làm điểm nhấn (đầu trang, vài dải, chân trang), đỏ cho nút, nhãn, giá (Khánh quyết 25/10/2026). Thẻ xám nhạt trên nền trắng; ô nhập trắng viền `#767676` (`test-cong-khai-giao-dien.mjs` nhóm 7 và `web/kiem-tra/do-giao-dien.mjs`). `/noi-bo` và kho: nền trang xám nhạt, thẻ và ô nhập trắng, ô đánh dấu tự vẽ (`test-noi-bo-bang-mau.mjs` nhóm 3–4).
 

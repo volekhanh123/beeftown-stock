@@ -21,25 +21,33 @@
   "Tảng & ô mã" ở cuối thẻ Quầy; "Gửi giá từ kho" và mục gập "Tất cả hàng" ở thẻ Cân; "Mẫu tem", "Cân & thông số",
   "Phím tắt", "Nhật ký cân" là mục gập của thẻ Thiết lập cân. Nút "Hướng dẫn" ở đầu trang, nút "Chỉ in HSD khi hàng
   có hạn dùng" ở mục Mẫu tem; nút "Đọc dữ liệu từ cân qua WiFi" ở khung Bắt đầu và mục Cân & thông số (phần 3); "Xoá
-  hẳn qua WiFi (thử)" trong khung đỏ của Gửi giá từ kho và phần 4 của mục Cân & thông số; ô "Cổng hai chiều" ở Cài
+  hẳn qua WiFi (thử)" trong khung viền đỏ của Gửi giá từ kho và phần 4 của mục Cân & thông số; ô "Cổng hai chiều" ở Cài
   đặt. Nút của 2.1 trích nguyên văn. Số mục 13–22 và neo #the-… giữ như 2.10 để liên kết cũ vẫn đúng.
 -->
 <style>
+  /* Bộ nhận diện 21/10/2026: cùng bảng với giao-dien.html và :root của web/src/styles/chung.css (--kem là trắng, --than
+     là đen) — đổi một mã thì đổi cả ba nơi (crm/test/test-can-nhan-dien.mjs). Không màu trạng thái: nhãn và hộp khác nhau
+     bằng chữ, dấu, nét. Ngoài khối này chỉ dùng var(--…); bản in (@media print) về giấy trắng, mực đen. */
   :root {
-    --do: #B23A2C; --do-dam: #8E2B20; --kem: #FBF4E1; --kem-sau: #F3E8CC; --mu-tat: #F2A900;
-    --than: #1E160E; --da: #B8A98C; --vach: #E4D8BC; --trang: #FFFFFF;
-    --xanh: #1F7A4C; --xanh-nen: #E9F5EE; --do-nen: #FDECEA; --vang-nen: #FFF5DC; --chu-phu: #6A5D45;
+    --do: #BD0000; --do-dam: #8F0000; --kem: #FFFFFF; --kem-sau: #F4F4F4; --kem-dam: #E2E2E2;
+    --than: #000000; --da: #E2E2E2; --muc-nhat: #555555; --vach: #E2E2E2; --vien-o: #767676;
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-  body { margin: 0; background: var(--kem); color: var(--than); font: 16px/1.6 "Segoe UI", system-ui, -apple-system, sans-serif; }
+  body { margin: 0; background: var(--kem-sau); color: var(--than); font: 16px/1.6 "Segoe UI", system-ui, -apple-system, sans-serif; }
+  /* Vòng focus theo nền: đen trên nền sáng, trắng trên đầu trang đen. */
+  :focus-visible { outline: 3px solid var(--than); outline-offset: 3px; }
   header.dau { background: var(--than); color: var(--kem); padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
-  header.dau b { font-size: 18px; letter-spacing: .08em; color: var(--mu-tat); }
+  header.dau :focus-visible { outline-color: var(--kem); }
+  /* Logo phụ trắng (web/public/thuong-hieu/chu-beeftown-trang.svg) — may-chu.ts đặt vào chỗ đánh dấu (src/nhan-dien.ts).
+     Rộng 148px: cỡ tối thiểu của logo phụ trên đầu trang. */
+  header.dau .logo { display: block; flex: none; line-height: 0; }
+  header.dau .logo svg { display: block; width: 148px; height: auto; }
   header.dau span { color: var(--da); }
   header.dau .nut-dau { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
-  button { font: inherit; font-weight: 600; font-size: 14px; border-radius: 8px; padding: 6px 14px; cursor: pointer; border: 1px solid var(--da); background: var(--trang); color: var(--than); }
-  button:hover { background: var(--kem-sau); }
-  button.chinh { background: var(--do); border-color: var(--do); color: #fff; }
+  button { font: inherit; font-weight: 600; font-size: 14px; border-radius: 8px; padding: 6px 14px; cursor: pointer; border: 1px solid var(--vien-o); background: var(--kem); color: var(--than); }
+  button:hover { background: var(--kem-dam); }
+  button.chinh { background: var(--do); border-color: var(--do); color: var(--kem); }
   button.chinh:hover { background: var(--do-dam); }
   main { max-width: 900px; margin: 0 auto; padding: 20px 24px 64px; }
   h1 { font-size: 27px; line-height: 1.25; margin: 10px 0 6px; }
@@ -50,45 +58,55 @@
   ul, ol { padding-left: 24px; margin: 8px 0; }
   li { margin: 4px 0; }
   a { color: var(--do-dam); }
-  .phu { font-size: 14px; color: var(--chu-phu); }
+  .phu { font-size: 14px; color: var(--muc-nhat); }
   .phan { background: var(--than); color: var(--kem); border-radius: 12px; padding: 18px 22px; margin: 54px 0 8px; }
-  .phan h2 { border: 0; margin: 0; padding: 0; color: var(--mu-tat); font-size: 23px; }
+  .phan h2 { border: 0; margin: 0; padding: 0; color: var(--kem); font-size: 23px; }
   .phan p { margin: 6px 0 0; color: var(--da); }
 
   /* Phím trên cân, nút trong chương trình, chữ trên màn hình cân */
-  kbd.p { display: inline-block; min-width: 26px; padding: 0 7px; border: 1px solid var(--da); border-bottom-width: 3px; border-radius: 5px;
-          background: #fff; color: var(--than); font: 700 13px/22px "Segoe UI", system-ui, sans-serif; text-align: center; white-space: nowrap; vertical-align: 1px; }
-  .n { display: inline-block; padding: 0 8px; border: 1px solid var(--da); border-radius: 6px; background: #fff; font-weight: 600; font-size: 14px; line-height: 22px; }
-  .mh { display: inline-block; background: #1f261e; color: #a8ef9b; font: 600 14px/1.5 Consolas, "Courier New", monospace; padding: 0 7px; border-radius: 4px; white-space: nowrap; letter-spacing: .03em; }
+  kbd.p { display: inline-block; min-width: 26px; padding: 0 7px; border: 1px solid var(--vien-o); border-bottom-width: 3px; border-radius: 5px;
+          background: var(--kem); color: var(--than); font: 700 13px/22px "Segoe UI", system-ui, sans-serif; text-align: center; white-space: nowrap; vertical-align: 1px; }
+  .n { display: inline-block; padding: 0 8px; border: 1px solid var(--vien-o); border-radius: 6px; background: var(--kem); font-weight: 600; font-size: 14px; line-height: 22px; }
+  /* Chữ trên màn hình cân: ô đen, chữ đơn cách trắng — nhận ra là màn hình máy, trong bảng màu. */
+  .mh { display: inline-block; background: var(--than); color: var(--kem); font: 600 14px/1.5 Consolas, "Courier New", monospace; padding: 0 7px; border-radius: 4px; white-space: nowrap; letter-spacing: .03em; }
   .man-can { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; max-width: 520px; margin: 10px 0 4px; }
-  .man-can div { background: #1f261e; color: #a8ef9b; font: 700 17px/1.2 Consolas, "Courier New", monospace; border-radius: 6px; padding: 10px 6px 6px; text-align: center; }
-  .man-can small { display: block; margin-top: 6px; font: 400 11px/1.2 "Segoe UI", system-ui, sans-serif; color: #c9d7c5; }
+  .man-can div { background: var(--than); color: var(--kem); font: 700 17px/1.2 Consolas, "Courier New", monospace; border-radius: 6px; padding: 10px 6px 6px; text-align: center; }
+  .man-can small { display: block; margin-top: 6px; font: 400 11px/1.2 "Segoe UI", system-ui, sans-serif; color: var(--da); }
 
-  /* Hộp */
-  .hop { border-radius: 10px; padding: 12px 16px; margin: 14px 0; border-left: 5px solid var(--da); background: var(--trang); }
-  .hop.cam { background: var(--do-nen); border: 2px solid var(--do); border-left-width: 8px; }
-  .hop.luu-y { background: var(--vang-nen); border-color: var(--mu-tat); }
-  .hop.meo { background: var(--xanh-nen); border-color: var(--xanh); }
-  .hop.chua-thu { background: #fff; border: 2px dashed var(--mu-tat); border-left: 5px solid var(--mu-tat); }
+  /* Hộp: nền thẻ trắng, vạch trái. Không nền màu — ba loại khác nhau ở dấu và nét:
+       .cam        "Không bao giờ bấm": viền đỏ 2px, vạch đỏ 8px, mỗi dòng dấu ✕ trong vòng đỏ
+       .luu-y      vạch #555, vòng tròn "!" viền #555 ở đầu hộp
+       .chua-thu   "chưa thử trên cân thật": nét đứt #767676 (như nhãn "Chưa thử") */
+  .hop { position: relative; border-radius: 10px; padding: 12px 16px; margin: 14px 0; border: 1px solid var(--vach); border-left: 5px solid var(--vien-o); background: var(--kem); }
+  .hop.cam { border: 2px solid var(--do); border-left-width: 8px; }
+  .hop.luu-y { border-left-color: var(--muc-nhat); padding-left: 46px; }
+  .hop.luu-y::before {
+    content: '!'; content: '!' / ''; position: absolute; left: 14px; top: 14px; display: grid; place-items: center; box-sizing: border-box;
+    width: 21px; height: 21px; background: var(--kem); color: var(--muc-nhat); border: 2px solid var(--muc-nhat); border-radius: 50%; font-size: 12px; font-weight: 800; line-height: 1;
+  }
+  .hop.chua-thu { border: 2px dashed var(--vien-o); border-left-width: 5px; }
   .hop .tieu-de { font-weight: 700; margin: 0 0 6px; font-size: 16px; }
   .hop.cam .tieu-de { font-size: 20px; color: var(--do-dam); letter-spacing: .01em; }
   .hop.cam ul { padding-left: 0; list-style: none; }
-  .hop.cam li { padding: 7px 0 7px 34px; position: relative; border-top: 1px solid #f3c8c2; margin: 0; }
+  .hop.cam li { padding: 7px 0 7px 34px; position: relative; border-top: 1px solid var(--vach); margin: 0; }
   .hop.cam li:first-child { border-top: 0; }
-  .hop.cam li::before { content: "✕"; position: absolute; left: 4px; top: 6px; width: 22px; height: 22px; border-radius: 50%; background: var(--do); color: #fff; font-size: 13px; font-weight: 700; display: grid; place-items: center; }
+  .hop.cam li::before { content: "✕"; position: absolute; left: 4px; top: 6px; width: 22px; height: 22px; border-radius: 50%; background: var(--do); color: var(--kem); font-size: 13px; font-weight: 700; display: grid; place-items: center; }
 
-  /* Nhãn nhỏ */
-  .nhan { display: inline-block; font-size: 12px; font-weight: 700; padding: 1px 9px; border-radius: 999px; vertical-align: 2px; white-space: nowrap; line-height: 18px; }
-  .nhan.moi { background: var(--do); color: #fff; }
-  .nhan.ql { background: var(--than); color: var(--kem); }
-  .nhan.nv { background: var(--xanh-nen); color: var(--xanh); border: 1px solid var(--xanh); }
-  .nhan.da { background: var(--xanh-nen); color: var(--xanh); border: 1px solid var(--xanh); }
-  .nhan.sach { background: var(--kem-sau); color: var(--chu-phu); border: 1px solid var(--da); }
-  .nhan.chua { background: var(--vang-nen); color: #6b4a00; border: 1px solid var(--mu-tat); }
+  /* Nhãn nhỏ — kiểu nhãn của /noi-bo và Beeftown Cân (THUONG-HIEU.md mục 4); viền trong suốt 1,5px ở lớp gốc:
+       .moi        K3 nền đen, chữ trắng     "Mới 2.x" — việc mới của bản đó
+       .da         K4 viền đen, dấu ✓        "Đã làm ở quán"
+       .chua       K6 nét đứt, chữ #555      "Chưa thử trên cân thật"
+       .sach .ql .nv  K7 viền mảnh, chữ đen  "Theo sách của hãng", vai Quản lý, NV quầy — thuộc tính */
+  .nhan { display: inline-block; font-size: 12px; font-weight: 700; padding: 0 8px; border-radius: 999px; vertical-align: 2px; white-space: nowrap; line-height: 18px; border: 1.5px solid transparent; }
+  .nhan.moi { background: var(--than); color: var(--kem); }
+  .nhan.da { background: transparent; color: var(--than); border-color: var(--than); }
+  .nhan.da::before { content: '✓ '; content: '✓ ' / ''; }
+  .nhan.chua { background: transparent; color: var(--muc-nhat); border: 1.5px dashed var(--vien-o); }
+  .nhan.sach, .nhan.ql, .nhan.nv { background: transparent; color: var(--than); border: 1px solid var(--vien-o); }
   h2 .nhan, h3 .nhan { margin-left: 6px; }
 
   /* Bảng */
-  .khung-bang { overflow-x: auto; border: 1px solid var(--vach); border-radius: 8px; background: #fff; margin: 10px 0 14px; }
+  .khung-bang { overflow-x: auto; border: 1px solid var(--vach); border-radius: 8px; background: var(--kem); margin: 10px 0 14px; }
   table { border-collapse: collapse; width: 100%; font-size: 15px; }
   th, td { padding: 8px 10px; border-bottom: 1px solid var(--vach); text-align: left; vertical-align: top; }
   th { background: var(--kem-sau); font-size: 13px; letter-spacing: .02em; }
@@ -99,16 +117,16 @@
   /* Danh sách bước, danh sách kiểm */
   ol.buoc { counter-reset: b; list-style: none; padding-left: 0; }
   ol.buoc > li { counter-increment: b; position: relative; padding-left: 40px; margin: 10px 0; }
-  ol.buoc > li::before { content: counter(b); position: absolute; left: 0; top: 1px; width: 27px; height: 27px; border-radius: 50%; background: var(--do); color: #fff;
+  ol.buoc > li::before { content: counter(b); position: absolute; left: 0; top: 1px; width: 27px; height: 27px; border-radius: 50%; background: var(--do); color: var(--kem);
                          font-weight: 700; font-size: 14px; display: grid; place-items: center; }
   ul.kiem { list-style: none; padding-left: 0; }
   ul.kiem li { padding-left: 32px; position: relative; margin: 8px 0; }
-  ul.kiem li::before { content: ""; position: absolute; left: 2px; top: 4px; width: 18px; height: 18px; border: 2px solid var(--chu-phu); border-radius: 3px; background: #fff; }
+  ul.kiem li::before { content: ""; position: absolute; left: 2px; top: 4px; width: 18px; height: 18px; border: 2px solid var(--muc-nhat); border-radius: 3px; background: var(--kem); }
   .hai-cot { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .o-trang { background: #fff; border: 1px solid var(--vach); border-radius: 12px; padding: 12px 18px; }
+  .o-trang { background: var(--kem); border: 1px solid var(--vach); border-radius: 12px; padding: 12px 18px; }
   .o-trang h3 { margin-top: 4px; }
 
-  nav.muc-luc { background: #fff; border: 1px solid var(--vach); border-radius: 12px; padding: 14px 22px 16px; margin: 18px 0; }
+  nav.muc-luc { background: var(--kem); border: 1px solid var(--vach); border-radius: 12px; padding: 14px 22px 16px; margin: 18px 0; }
   nav.muc-luc h2 { border: 0; margin: 0 0 4px; padding: 0; font-size: 19px; }
   nav.muc-luc .phan-ml { font-weight: 700; margin: 12px 0 2px; color: var(--do-dam); }
   nav.muc-luc ol { columns: 2; column-gap: 32px; margin: 4px 0; padding-left: 26px; }
@@ -133,15 +151,24 @@
     td.ma { white-space: normal; }
     .man-can div { font-size: 14px; padding: 8px 2px 5px; }
     .hop { padding: 10px 12px; }
+    .hop.luu-y { padding-left: 44px; }
+  }
+
+  /* Tương phản cao (Windows): dấu vẽ bằng nền (✕ của hộp "Không bao giờ bấm", số bước) giữ hình bằng màu hệ thống. */
+  @media (forced-colors: active) {
+    .hop.cam li::before, ol.buoc > li::before { forced-color-adjust: none; background: CanvasText; color: Canvas; }
+    /* Logo trắng (fill="#FFFFFF" của file SVG) mà nền đầu trang bị ép thành màu trang sáng thì mất: tô theo màu chữ. */
+    header.dau .logo svg path { fill: CanvasText; }
   }
 
   @page { size: A4; margin: 14mm 13mm 15mm; }
   @media print {
     * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    body { background: #fff; font-size: 10.5pt; line-height: 1.45; }
+    body { background: var(--kem); font-size: 10.5pt; line-height: 1.45; }
     header.dau { background: none; color: var(--than); padding: 0 0 6px; border-bottom: 2px solid var(--than); }
-    header.dau b { color: var(--do); }
-    header.dau span { color: var(--chu-phu); }
+    /* Giấy trắng: logo trắng thành đen — cùng hình, đầu bò khoét lộ giấy trắng, đúng logo đen của guideline. */
+    header.dau .logo svg { filter: brightness(0); }
+    header.dau span { color: var(--muc-nhat); }
     .khong-in { display: none !important; }
     main, footer { max-width: none; padding: 0; }
     h1 { font-size: 20pt; }
@@ -149,7 +176,7 @@
     h3 { font-size: 11.5pt; break-after: avoid; }
     .phan { break-before: page; background: none; color: var(--than); border: 2px solid var(--than); margin-top: 0; }
     .phan h2 { color: var(--than); }
-    .phan p { color: var(--chu-phu); }
+    .phan p { color: var(--muc-nhat); }
     .trang-moi { break-before: page; }
     nav.muc-luc { break-after: page; }
     .hop, tr, .man-can, ol.buoc > li, ul.kiem li, .o-trang { break-inside: avoid; }
@@ -162,7 +189,7 @@
 </head>
 <body>
 <header class="dau">
-  <b>BEEFTOWN</b><span>Hướng dẫn cân in tem · Beeftown Cân 2.2</span>
+  <span class="logo" role="img" aria-label="Beeftown"><!--logo-phu-trang--></span><span>Hướng dẫn cân in tem · Beeftown Cân</span>
   <span class="nut-dau khong-in">
     <button type="button" id="nut-quay-lai" hidden>← Quay lại chương trình</button>
     <button type="button" class="chinh" id="nut-in">In hướng dẫn</button>
@@ -323,9 +350,9 @@
       <li>Đèn <b>Gap Paper</b> sáng. Cuộn tem còn đủ cho cả ngày.</li>
       <li>Bấm <kbd class="p">Feed</kbd> một lần: giấy chạy ra rồi dừng đúng ở khe giữa hai tem. Chạy liền không dừng, hay dừng lệch → <a href="#can-cam-bien">căn cảm biến khe tem</a>.</li>
       <li>Đặt một gói hàng lên rồi nhấc ra: số về lại <span class="mh">0.000</span>.</li>
-      <li>Mở chương trình Beeftown Cân trên máy tính. Ô <b>Cân</b> có chấm xanh. Chấm đỏ → <a href="#doi-dia-chi">mục 24</a>.</li>
+      <li>Mở chương trình Beeftown Cân trên máy tính. Ô <b>Cân</b> có chấm tròn đen, dòng dưới ghi "Đang nối cân …". Tam giác đỏ, dòng "Chưa nối được cân" → <a href="#doi-dia-chi">mục 24</a>.</li>
       <li>Mở thẻ <b>Quầy</b>: bỏ riêng gói hết hạn và tạo phiếu huỷ; xếp gói cận date ra trước; gửi yêu cầu lấy hàng cho món dưới mức (<a href="#the-quay">mục 13</a>).</li>
-      <li><b>Trước khi đóng gói, in tem:</b> quản lý gửi xuống cân — thẻ <b>Cân</b> → <span class="n">Gửi xuống cân</span>, hoặc bật tự gửi và để chương trình mở. HSD trên tem là số ngày còn lại của lô <b>tính cho ngày gửi</b>: chưa gửi hôm nay thì HSD in ra muộn hơn hạn thật. Dưới ba ô trên cùng có khung đỏ <b>"HSD trên cân tính cho ngày …"</b> là hôm nay chưa gửi (<a href="#hsd-kho">mục 23</a>). Kho vừa đổi giá, thêm món, lóc tảng mới: cũng gửi như vậy.</li>
+      <li><b>Trước khi đóng gói, in tem:</b> quản lý gửi xuống cân — thẻ <b>Cân</b> → <span class="n">Gửi xuống cân</span>, hoặc bật tự gửi và để chương trình mở. HSD trên tem là số ngày còn lại của lô <b>tính cho ngày gửi</b>: chưa gửi hôm nay thì HSD in ra muộn hơn hạn thật. Dưới ba ô trên cùng có khung viền đỏ <b>"HSD trên cân tính cho ngày …"</b> là hôm nay chưa gửi (<a href="#hsd-kho">mục 23</a>). Kho vừa đổi giá, thêm món, lóc tảng mới: cũng gửi như vậy.</li>
     </ul>
   </div>
   <div class="o-trang">
@@ -430,7 +457,7 @@
 <div class="hop luu-y">
   <p class="tieu-de">Quy tắc HSD ở quầy</p>
   <ul>
-    <li><b>Chỉ đóng gói, in tem khi hôm nay đã gửi xuống cân</b> (ô Cân của Beeftown Cân không có khung đỏ "HSD trên cân tính cho ngày …"). Số ngày HSD trên cân tính cho ngày gửi; in vào hôm sau mà chưa gửi lại là HSD muộn hơn hạn thật.</li>
+    <li><b>Chỉ đóng gói, in tem khi hôm nay đã gửi xuống cân</b> (ô Cân của Beeftown Cân không có khung viền đỏ "HSD trên cân tính cho ngày …"). Số ngày HSD trên cân tính cho ngày gửi; in vào hôm sau mà chưa gửi lại là HSD muộn hơn hạn thật.</li>
     <li><b>Không in tem mới cho gói đã đóng từ hôm trước.</b> Tem mới sẽ ghi ngày đóng gói là hôm nay, và HSD theo lô sớm nhất còn trong kho — có thể không phải lô của gói đó. Gói mất tem hay tem hỏng từ hôm trước: báo quản lý.</li>
     <li><b>Gói cận date cân lại bằng mã giảm giá:</b> tem mới <b>không in HSD</b> (chương trình cố ý không in, vì hạn thật của gói ngắn hơn số ngày của món), và ô ngày đóng gói trên tem mới là ngày in lại. Dán tem mới lệch lên trên, <b>chừa phần dưới của tem cũ</b> (dòng ngày đóng gói và HSD) để khách vẫn đọc được. Hoặc ghi tay HSD cũ lên tem mới. Quản lý chốt một cách làm cho cả quán.</li>
     <li><b>Tem có chữ "HSD" mà không có ngày:</b> món đó không in HSD — món không có hạn dùng trong kho, lô sớm nhất đã hết hạn (bỏ riêng gói hết hạn, xem thẻ Quầy), hay mã giảm giá. Báo quản lý (<a href="#hsd-kho">mục 23</a>).</li>
@@ -646,13 +673,13 @@
 <h3>Ba ô trên cùng</h3>
 <ul>
   <li><b>Kho</b>: ai đang đăng nhập, chi nhánh nào.</li>
-  <li><b>Cân</b>: địa chỉ và cổng của cân. Chấm <b style="color:var(--xanh)">xanh</b> = nối được cân, <b style="color:var(--do)">đỏ</b> = không. Nút <span class="n">Kiểm tra kết nối</span> thử lại. Bên dưới có dòng báo cân vừa đổi địa chỉ, và dòng "Tự gửi" khi đã bật tự gửi.
-    <span class="nhan moi">Mới 2.8</span> <b>Giữ kết nối với cân</b> (bật sẵn): chương trình giữ một đường nối với cân như phần mềm của hãng, hỏi giờ cân mỗi 30 giây — chấm xanh / đỏ tự đổi, không cần bấm. Các dòng bên dưới cho biết: cân trả lời lúc nào, giờ cân đúng hay lệch, lần tự đọc nhật ký gần nhất, lần tự chỉnh giờ cân. <span class="nhan chua">Chưa thử trên cân thật</span></li>
+  <li><b>Cân</b>: địa chỉ và cổng của cân. Đèn cạnh chữ: <b>chấm tròn đen</b> = nối được cân, <b>tam giác đỏ</b> = không nối được, <b>vòng rỗng</b> = chưa kiểm tra. Nút <span class="n">Kiểm tra kết nối</span> thử lại. Bên dưới có dòng báo cân vừa đổi địa chỉ, và dòng "Tự gửi" khi đã bật tự gửi.
+    <span class="nhan moi">Mới 2.8</span> <b>Giữ kết nối với cân</b> (bật sẵn): chương trình giữ một đường nối với cân như phần mềm của hãng, hỏi giờ cân mỗi 30 giây — đèn tự đổi, không cần bấm. Các dòng bên dưới cho biết: cân trả lời lúc nào, giờ cân đúng hay lệch, lần tự đọc nhật ký gần nhất, lần tự chỉnh giờ cân. <span class="nhan chua">Chưa thử trên cân thật</span></li>
   <li><b>Trên cân</b>: cân đang có bao nhiêu hàng, "file gốc" lấy lúc nào. File gốc là bản dữ liệu cân mới nhất mà chương trình biết.</li>
 </ul>
-<p>Khung đỏ <b>"HSD trên cân tính cho ngày dd/mm — mỗi ngày chưa gửi lại là HSD in ra muộn thêm 1 ngày. Gửi xuống cân trước khi đóng gói."</b> dưới ba ô: cân in HSD mà hôm nay chưa gửi. Quản lý gửi (<a href="#the-gui-gia">mục 17</a>), hoặc bật tự gửi. "Hôm nay" là ngày giờ Việt Nam của chương trình, không theo đồng hồ trình duyệt.</p>
+<p>Khung viền đỏ <b>"HSD trên cân tính cho ngày dd/mm — mỗi ngày chưa gửi lại là HSD in ra muộn thêm 1 ngày. Gửi xuống cân trước khi đóng gói."</b> dưới ba ô: cân in HSD mà hôm nay chưa gửi. Quản lý gửi (<a href="#the-gui-gia">mục 17</a>), hoặc bật tự gửi. "Hôm nay" là ngày giờ Việt Nam của chương trình, không theo đồng hồ trình duyệt.</p>
 <p><span class="nhan moi">Mới 2.2</span> Nút <span class="n">Hướng dẫn</span> mở trang này.</p>
-<p><span class="nhan moi">Mới 2.5</span> Có bản mới thì cạnh chữ "phiên bản" ở trên cùng hiện nút vàng <span class="n">Có bản mới … — Cập nhật</span>: bấm là chương trình tự tải và tự mở lại (<a href="#cap-nhat">mục 26</a>).</p>
+<p><span class="nhan moi">Mới 2.5</span> Có bản mới thì cạnh chữ "phiên bản" ở trên cùng hiện nút đỏ <span class="n">Có bản mới … — Cập nhật</span>: bấm là chương trình tự tải và tự mở lại (<a href="#cap-nhat">mục 26</a>).</p>
 
 <h3>Ai thấy thẻ nào</h3>
 <p><span class="nhan moi">Mới 2.11</span> Chương trình còn <b>năm thẻ</b>. Phần ít dùng là <b>mục gập</b>: bấm vào tiêu đề có dấu ▸ để mở, bấm lần nữa để gập; mở ra chương trình mới đọc dữ liệu của mục đó.</p>
@@ -756,7 +783,7 @@
   <li>Số liệu lấy từ dòng bán iPOS đã trừ kho. Hoá đơn huỷ không tính.</li>
   <li>Bốn ô: <b>Doanh thu</b>, <b>Đã bán</b> (kg), <b>Bán giảm giá</b> (tiền đã giảm là số ước theo giá hiện tại), <b>Lệch ô</b>.</li>
   <li>Biểu đồ theo giờ trong ngày; bảng theo ngày; <b>Món bán chạy</b> và <b>Theo tảng</b> (thu hồi, % bán) — mỗi bảng có nút <span class="n">Excel</span>.</li>
-  <li>Khung đỏ "bán bằng mã giảm giá cho gói còn hạn xa": kiểm tra lại với nhân viên quầy.</li>
+  <li>Khung viền đỏ "bán bằng mã giảm giá cho gói còn hạn xa": kiểm tra lại với nhân viên quầy.</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -769,21 +796,21 @@
       <li><b>Thêm</b>: hàng mới lên cân. <b>Sửa</b>: đổi tên / giá (dòng nhỏ ghi giá trị cũ). <b>Giữ nguyên</b>: không đổi.</li>
       <li><b>Bỏ khỏi cân</b>: hàng không còn trong kho. <b>Giữ, ngoài kho</b>: hàng chỉ có trên cân, được giữ lại.</li>
       <li><b>Không đưa lên</b>: hàng kho không đưa lên cân được — lý do ghi ngay dưới tên.</li>
-      <li><span class="nhan moi">Mới 2.2</span> Cột HSD: số ngày HSD sẽ ghi trên cân; dòng nhỏ là số cũ và HSD lấy từ đâu — "lô L0012 hết hạn 03/10", "tảng #0142 · hết hạn 03/10", "theo hạn dùng của món (chưa có lô)". Khung vàng "Bật / tắt in hạn dùng" (tự gửi không làm — phải bấm Gửi ở đây) và "HSD đếm ngược theo lô" (tự gửi làm được).</li>
+      <li><span class="nhan moi">Mới 2.2</span> Cột HSD: số ngày HSD sẽ ghi trên cân; dòng nhỏ là số cũ và HSD lấy từ đâu — "lô L0012 hết hạn 03/10", "tảng #0142 · hết hạn 03/10", "theo hạn dùng của món (chưa có lô)". Khung lưu ý (vòng tròn "!") "Bật / tắt in hạn dùng" (tự gửi không làm — phải bấm Gửi ở đây) và "HSD đếm ngược theo lô" (tự gửi làm được).</li>
     </ul></li>
   <li>Ô <b>"Giữ lại hàng đang có trên cân nhưng không có trong kho"</b>: đánh dấu khi muốn giữ các hàng chỉ có trên cân.</li>
   <li>Cân đang ở màn hình bán hàng (không ở trong menu <kbd class="p">Prog</kbd> hay <kbd class="p">Account</kbd>).</li>
   <li>Bấm <span class="n">Gửi xuống cân</span>. <span class="nhan moi">Mới 2.6.1</span> Chương trình gửi các hàng thêm / sửa qua <b>cổng hai chiều</b> (như phần mềm của hãng — ở quán, cân bỏ qua cách gửi cũ qua cổng 33571); cổng đó hỏng thì gửi cách cũ. <span class="nhan chua">Chưa thử trên cân thật</span>. <span class="nhan moi">Mới 2.6</span> Gửi xong, chương trình <b>đọc lại cân</b> qua WiFi (cổng hai chiều) và so từng hàng vừa gửi — số PLU, mã cân, tên, giá, HSD:
     <ul>
-      <li>Khung xanh <b>"Cân đã nhận."</b> (kèm số hàng vừa gửi, gửi qua cổng nào): đọc lại thấy cân có đủ hàng của kho, đúng giá.</li>
-      <li>Khung đỏ <b>"… cân CHƯA nhận"</b>: đọc lại thấy cân vẫn là hàng cũ — câu báo nêu PLU nào. Chương trình <b>không ghi nhận</b> lần gửi đó (bảng vẫn "Thêm" / "Sửa"), và tự gửi tạm dừng. Để cân ở màn hình bán hàng rồi gửi lại một lần; vẫn vậy thì nạp USB (<a href="#usb-du-phong">mục 25</a>).</li>
-      <li>Khung vàng <b>"chưa kiểm được cân đã nhận chưa"</b>: không đọc lại được cân (cổng hai chiều bận hay không trả lời — phần mềm của hãng TM-xA đang mở, cân đang lưu…). <span class="nhan moi">Mới 2.9.3</span> Chương trình <b>chưa ghi nhận</b> lần gửi đó: bảng vẫn "Thêm" / "Sửa", kho chưa thấy tên mới (trang pha lóc chưa báo "Cân sẵn sàng"), khung đỏ HSD cũ vẫn hiện. Tự gửi <b>thử lại</b> cả danh sách sau 1 phút, rồi 2, 5, 10 phút; đọc lại khớp mới ghi nhận. Đóng TM-xA nếu đang mở; muốn nhanh thì bấm Gửi lại khi cân rảnh. (Trước 2.9.3 lần gửi này được ghi nhận như cân đã nhận.)</li>
+      <li>Khung có dấu ✓ <b>"Cân đã nhận."</b> (kèm số hàng vừa gửi, gửi qua cổng nào): đọc lại thấy cân có đủ hàng của kho, đúng giá.</li>
+      <li>Khung viền đỏ <b>"… cân CHƯA nhận"</b>: đọc lại thấy cân vẫn là hàng cũ — câu báo nêu PLU nào. Chương trình <b>không ghi nhận</b> lần gửi đó (bảng vẫn "Thêm" / "Sửa"), và tự gửi tạm dừng. Để cân ở màn hình bán hàng rồi gửi lại một lần; vẫn vậy thì nạp USB (<a href="#usb-du-phong">mục 25</a>).</li>
+      <li>Khung lưu ý (vòng tròn "!") <b>"chưa kiểm được cân đã nhận chưa"</b>: không đọc lại được cân (cổng hai chiều bận hay không trả lời — phần mềm của hãng TM-xA đang mở, cân đang lưu…). <span class="nhan moi">Mới 2.9.3</span> Chương trình <b>chưa ghi nhận</b> lần gửi đó: bảng vẫn "Thêm" / "Sửa", kho chưa thấy tên mới (trang pha lóc chưa báo "Cân sẵn sàng"), khung viền đỏ HSD cũ vẫn hiện. Tự gửi <b>thử lại</b> cả danh sách sau 1 phút, rồi 2, 5, 10 phút; đọc lại khớp mới ghi nhận. Đóng TM-xA nếu đang mở; muốn nhanh thì bấm Gửi lại khi cân rảnh. (Trước 2.9.3 lần gửi này được ghi nhận như cân đã nhận.)</li>
     </ul></li>
   <li><b>Kiểm tra trên cân:</b> gõ số PLU của một hàng vừa đổi rồi bấm <kbd class="p">PLU</kbd> — giá mới hiện ra là cân đã nhận.</li>
 </ol>
 <div class="hop luu-y"><p><b>Vì sao có bước đọc lại (2.6):</b> gửi qua WiFi thì cân không trả lời gì. Bản cũ gửi hết dữ liệu là coi như cân đã nhận. Ở quán (02–03/10/2026), chương trình ghi "Giữ nguyên" 69 hàng kho trong khi cân thật chỉ có 7 hàng cũ — gọi PLU 12 thì cân kêu tít tít về 0 vì cân không có hàng đó.</p></div>
 <div class="hop luu-y">
-  <p><b>Khung đỏ "… hàng sẽ còn nằm trên cân":</b> gửi qua WiFi cân chỉ <b>thêm và sửa</b>, không xoá (<span class="nhan da">Đã làm ở quán</span>). Cân không có lệnh xoá một hàng. Ba cách:</p>
+  <p><b>Khung viền đỏ "… hàng sẽ còn nằm trên cân":</b> gửi qua WiFi cân chỉ <b>thêm và sửa</b>, không xoá (<span class="nhan da">Đã làm ở quán</span>). Cân không có lệnh xoá một hàng. Ba cách:</p>
   <ul>
     <li><span class="nhan moi">Mới 2.7</span> <span class="n">Gỡ khỏi cân qua WiFi (ghi đè)</span> — <b>nên dùng</b>: mỗi số PLU còn nằm lại thành một dòng trống <b>"KHÔNG DÙNG (PLU trống)"</b> (mã 99999, giá 0, không in HSD); phím tắt gọi số đó được bỏ. Hàng mới sau này dùng lại số PLU đó. Chỉ là lệnh ghi như gửi giá: <b>không lúc nào cân thiếu hàng</b>. Trước khi gửi, chương trình đọc cân: số PLU nào giờ là <b>hàng khác</b> (thêm trên bàn phím, phần mềm hãng) thì <b>không gỡ gì</b> và báo; số cân đã không còn (đã nạp USB) thì chỉ bỏ khỏi danh sách. Cần cân đã biết mã máy (bấm "Đọc thông tin cân" một lần). Gửi xong chương trình đọc lại cân để kiểm. <span class="nhan chua">Chưa thử trên cân thật</span>.</li>
     <li><span class="n">Lưu file để nạp USB</span> rồi làm theo <a href="#usb-du-phong">mục 25</a> — cân thay cả danh sách, hàng vắng mặt mất hẳn. Chắc chắn nhất.</li>
@@ -798,7 +825,7 @@
 <!-- ================================================================== -->
 <h2 id="the-hang"><span class="so">18.</span>Thẻ Cân — Tất cả hàng (SKU) <span class="nhan ql">Quản lý, chủ</span></h2>
 <p><span class="nhan moi">Mới 2.11</span> Mục gập dưới phần Gửi giá của thẻ Cân: bấm tiêu đề để mở (chưa đăng nhập kho thì mở sẵn).</p>
-<p>Mọi hàng đang có trên cân: <b>PLU</b>, <b>Phím</b> (phím tắt trên bàn phím cân), <b>Mã cân</b>, <b>Mã FABi</b>, <b>Tên trên cân</b>, <b>Giá/kg</b>, <b>Bán</b> (Cân ký / Theo gói), <b>Tình trạng</b>. <span class="nhan moi">Mới 2.2</span> thêm cột HSD (trên cân, kho muốn, và HSD lấy từ lô nào); khung đỏ khi HSD trên cân tính cho ngày trước hôm nay.</p>
+<p>Mọi hàng đang có trên cân: <b>PLU</b>, <b>Phím</b> (phím tắt trên bàn phím cân), <b>Mã cân</b>, <b>Mã FABi</b>, <b>Tên trên cân</b>, <b>Giá/kg</b>, <b>Bán</b> (Cân ký / Theo gói), <b>Tình trạng</b>. <span class="nhan moi">Mới 2.2</span> thêm cột HSD (trên cân, kho muốn, và HSD lấy từ lô nào); khung viền đỏ khi HSD trên cân tính cho ngày trước hôm nay.</p>
 <ul>
   <li>Ô tìm: theo tên, mã cân, số PLU. Nút lọc theo tình trạng:
     <b>Khớp kho</b> · <b>Khác kho</b> (tên hoặc giá khác kho) · <b>Kho không có</b> · <b>Còn nằm lại</b> (đã bỏ khỏi kho, cân chưa xoá) · <b>Chưa lên cân</b> · <b>Không lên được</b>
@@ -833,7 +860,7 @@
 <!-- ================================================================== -->
 <h2 id="the-thong-so"><span class="so">20.</span>Thẻ Thiết lập cân — Cân &amp; thông số <span class="nhan moi">Mới 2.2</span> <span class="nhan ql">Quản lý, chủ</span></h2>
 <p>Thông số là các cài đặt bên trong cân. Mục này chỉ cho sửa vài thông số an toàn, có tả bằng tiếng Việt. Thông số khác chỉ xem.</p>
-<div class="hop chua-thu"><p><span class="nhan chua">Chưa thử trên cân thật</span> Đọc qua cổng hai chiều đã chạy ở quán (03/10/2026); <b>ghi</b> (giờ, thông số, chữ, phím, tem, gỡ hàng) thì chưa thử. <span class="nhan moi">Mới 2.7</span> Mọi việc ghi đi qua cổng hai chiều rồi chương trình <b>đọc lại cân để kiểm</b>: khung xanh <b>"Cân đã nhận …"</b> chỉ khi đọc lại khớp; khung đỏ <b>"… cân CHƯA nhận"</b> thì chương trình không ghi nhận gì (gửi lại được); khung vàng <b>"chưa kiểm được"</b> khi không đọc lại được. Sau mỗi việc vẫn nên xem trên cân (bấm <kbd class="p">Time</kbd>, in thử một tem). Không được thì dùng USB hoặc làm trên cân.</p></div>
+<div class="hop chua-thu"><p><span class="nhan chua">Chưa thử trên cân thật</span> Đọc qua cổng hai chiều đã chạy ở quán (03/10/2026); <b>ghi</b> (giờ, thông số, chữ, phím, tem, gỡ hàng) thì chưa thử. <span class="nhan moi">Mới 2.7</span> Mọi việc ghi đi qua cổng hai chiều rồi chương trình <b>đọc lại cân để kiểm</b>: khung có dấu ✓ <b>"Cân đã nhận …"</b> chỉ khi đọc lại khớp; khung viền đỏ <b>"… cân CHƯA nhận"</b> thì chương trình không ghi nhận gì (gửi lại được); khung lưu ý (vòng tròn "!") <b>"chưa kiểm được"</b> khi không đọc lại được. Sau mỗi việc vẫn nên xem trên cân (bấm <kbd class="p">Time</kbd>, in thử một tem). Không được thì dùng USB hoặc làm trên cân.</p></div>
 
 <h3 id="chan-doan">Chẩn đoán WiFi <span class="nhan moi">Mới 2.7</span></h3>
 <p>Nút đầu mục. Làm <b>đầu tiên</b> khi gửi qua WiFi không được, hay khi người sửa chương trình nhờ. Chương trình chạy lần lượt các phép thử an toàn, hiện từng bước Đạt / Hỏng / Bỏ qua kèm kết luận, và lưu kết quả ra file trong <code>Tài liệu\Beeftown Can\chan-doan</code> — gửi file đó cho người sửa chương trình. File không có tên hay mật khẩu WiFi.</p>
@@ -890,7 +917,7 @@
 <p>Xem và đổi phím chữ nào gọi hàng nào.</p>
 <ul>
   <li><b>Tầng 1</b> (bấm thẳng phím) và <b>tầng 2</b> (bấm <kbd class="p">Shift</kbd> trước). Cân còn một tầng thứ ba, chưa rõ cách gọi trên bàn phím — không dùng.</li>
-  <li>Gán hàng cho phím: bấm <b>Tầng 1</b> hoặc <b>Tầng 2</b>, tìm phím (ô tìm theo phím, số PLU, tên hàng), rồi ở cột <b>Đổi thành</b> chọn hàng trong danh sách (<b>PLU · tên · mã</b>). Chọn <b>— trống —</b> để bỏ trống phím. Phím đã đổi được tô màu; bấm <span class="n">Gửi phím xuống cân</span>, hoặc <span class="n">Bỏ thay đổi</span>.</li>
+  <li>Gán hàng cho phím: bấm <b>Tầng 1</b> hoặc <b>Tầng 2</b>, tìm phím (ô tìm theo phím, số PLU, tên hàng), rồi ở cột <b>Đổi thành</b> chọn hàng trong danh sách (<b>PLU · tên · mã</b>). Chọn <b>— trống —</b> để bỏ trống phím. Dòng phím đã đổi (chưa gửi) có vạch đen ở đầu dòng; bấm <span class="n">Gửi phím xuống cân</span>, hoặc <span class="n">Bỏ thay đổi</span>.</li>
   <li>Gửi WiFi không được: <span class="n">Lưu file nạp USB</span> — file có cả phím đang sửa trên màn hình — rồi nạp USB (<a href="#usb-du-phong">mục 25</a>).</li>
   <li>Phím chức năng (<kbd class="p">Shift</kbd>, <kbd class="p">Re-Print</kbd>, <kbd class="p">Tare</kbd>…) không đổi được ở đây.</li>
   <li>Gửi xuống cân xong: bấm thử từng phím vừa đổi trên cân — <span class="nhan chua">Chưa thử trên cân thật</span>. Không được thì dùng USB.</li>
@@ -936,9 +963,9 @@
   <ol>
     <li>Bấm <kbd class="p">Time</kbd> trên cân: ngày đúng không (<a href="#ngay-gio">mục 6</a>). Đồng hồ cân sai một ngày là HSD sai một ngày.</li>
     <li>Mở Beeftown Cân. Đã bật tự gửi (Cài đặt) thì trong một phút chương trình tự gửi HSD mới. Chưa bật: thẻ <b>Cân</b> → <span class="n">Gửi xuống cân</span> (quản lý, chủ).</li>
-    <li>Dưới ba ô trên cùng không còn khung đỏ "HSD trên cân tính cho ngày …" thì mới đóng gói, in tem.</li>
+    <li>Dưới ba ô trên cùng không còn khung viền đỏ "HSD trên cân tính cho ngày …" thì mới đóng gói, in tem.</li>
   </ol>
-  <p>Khung đỏ còn đó dù đã bật tự gửi: đọc dòng "Tự gửi" ở ô Cân — kho bật / tắt in HSD của một hàng (lô hết hạn, món mới có hạn) thì tự gửi dừng, chờ quản lý xem trước rồi bấm Gửi.</p>
+  <p>Khung viền đỏ còn đó dù đã bật tự gửi: đọc dòng "Tự gửi" ở ô Cân — kho bật / tắt in HSD của một hàng (lô hết hạn, món mới có hạn) thì tự gửi dừng, chờ quản lý xem trước rồi bấm Gửi.</p>
 </div>
 <ul>
   <li>Chương trình ghi HSD trên cân tính cho ngày nào (Tài liệu › Beeftown Can › hsd-tinh-ngay.txt): khi gửi đủ danh sách thành công, xoá qua WiFi đọc lại khớp, nạp USB file lưu ở thẻ Cân (ngày lúc <b>lưu file</b>, không phải lúc nạp), hay khi xem trước thấy HSD trên cân đã đúng số hôm nay. Gửi hỏng thì không ghi.</li>
@@ -984,7 +1011,7 @@
 </ul>
 <h3>Trên máy tính</h3>
 <ol class="buoc">
-  <li>Bấm <span class="n">Lưu file để nạp USB</span> (thẻ Cân, trong khung đỏ) hoặc <span class="n">Lưu file nạp USB</span> (thẻ Thiết lập cân: mục Mẫu tem, Cân &amp; thông số, Phím tắt). Tem vừa gửi mà chưa đổi: bấm ở mục Mẫu tem, không cần sửa lại — file đã có tem vừa gửi. Ở mục Cân &amp; thông số và Phím tắt, file có cả thay đổi đang sửa trên màn hình. Chương trình lưu file và hiện đường dẫn (thư mục <b>cho-usb</b>).</li>
+  <li>Bấm <span class="n">Lưu file để nạp USB</span> (thẻ Cân, trong khung viền đỏ) hoặc <span class="n">Lưu file nạp USB</span> (thẻ Thiết lập cân: mục Mẫu tem, Cân &amp; thông số, Phím tắt). Tem vừa gửi mà chưa đổi: bấm ở mục Mẫu tem, không cần sửa lại — file đã có tem vừa gửi. Ở mục Cân &amp; thông số và Phím tắt, file có cả thay đổi đang sửa trên màn hình. Chương trình lưu file và hiện đường dẫn (thư mục <b>cho-usb</b>).</li>
   <li>Bấm <span class="n">Mở thư mục chứa file</span> (hoặc <span class="n">Tải file về</span>).</li>
   <li>Cắm USB (FAT32). Trên USB, mở thư mục <b>JHSCALE</b> (chưa có thì tạo thư mục tên JHSCALE).</li>
   <li>Muốn giữ bản cũ trên USB: chép <b>A_000.TMS</b> cũ ra máy tính trước.</li>
@@ -1027,15 +1054,15 @@
 </table></div>
 
 <h3 id="cap-nhat">Cập nhật chương trình <span class="nhan moi">Mới 2.5</span></h3>
-<p>Khỏi lên GitHub tải file. Mỗi lần mở, chương trình tự hỏi có bản mới không; có thì trên cùng hiện nút vàng <span class="n">Có bản mới … — Cập nhật</span>.</p>
+<p>Khỏi lên GitHub tải file. Mỗi lần mở, chương trình tự hỏi có bản mới không; có thì trên cùng hiện nút đỏ <span class="n">Có bản mới … — Cập nhật</span>.</p>
 <ol class="buoc">
-  <li>Chọn lúc quầy vắng. Bấm nút vàng (hoặc Cài đặt → <span class="n">Cập nhật lên …</span>) → <span class="n">OK</span>.</li>
+  <li>Chọn lúc quầy vắng. Bấm nút đỏ đó (hoặc Cài đặt → <span class="n">Cập nhật lên …</span>) → <span class="n">OK</span>.</li>
   <li>Chương trình tải file (khoảng 85 MB, thường 1–3 phút), kiểm đúng cỡ và mã kiểm tra, chờ việc đang gửi xuống cân xong, rồi tự đóng và mở lại.</li>
-  <li>Cửa sổ mới hiện dòng xanh <b>"Đã cập nhật Beeftown Cân lên bản …"</b>. Xong. Cài đặt, đăng nhập, file gốc của cân vẫn giữ nguyên.</li>
+  <li>Cửa sổ mới hiện khung có dấu ✓ <b>"Đã cập nhật Beeftown Cân lên bản …"</b>. Xong. Cài đặt, đăng nhập, file gốc của cân vẫn giữ nguyên.</li>
 </ol>
 <ul>
   <li>Mất mạng giữa chừng: chương trình báo <b>"Chưa đổi gì"</b> và vẫn chạy bản cũ. Bấm lại lúc có mạng.</li>
-  <li>Bản mới không mở được (phần mềm diệt virus chặn…): <span class="nhan moi">Mới 2.6.1</span> chương trình chạy thử bản mới trước khi đổi file — bị chặn thì báo ngay, chưa đổi gì. Qua được bước đó mà vẫn không mở được thì sau khoảng 3 phút chương trình tự quay về bản cũ và hiện dòng đỏ; lý do ghi ở <code>%APPDATA%\BeeftownCan\loi.txt</code>. Báo người lo phần mềm.</li>
+  <li>Bản mới không mở được (phần mềm diệt virus chặn…): <span class="nhan moi">Mới 2.6.1</span> chương trình chạy thử bản mới trước khi đổi file — bị chặn thì báo ngay, chưa đổi gì. Qua được bước đó mà vẫn không mở được thì sau khoảng 3 phút chương trình tự quay về bản cũ và hiện khung viền đỏ; lý do ghi ở <code>%APPDATA%\BeeftownCan\loi.txt</code>. Báo người lo phần mềm.</li>
   <li>Để file BeeftownCan.exe ở Desktop hoặc một thư mục bình thường. Nằm trong <i>Program Files</i> hay USB chỉ đọc thì không tự cập nhật được — chương trình báo cách chép ra.</li>
   <li>Bản trước được giữ lại cạnh chương trình, tên <b>BeeftownCan.cu</b> (Windows có thể ẩn đuôi .exe). <b>Quay về bản trước bằng tay</b>: đóng chương trình → đổi tên <b>BeeftownCan</b> thành <b>BeeftownCan.moi</b> → đổi tên <b>BeeftownCan.cu</b> thành <b>BeeftownCan</b> → mở lại.</li>
   <li>Bản 2.4 trở về trước chưa có nút này: cài bản 2.5 bằng tay một lần (trang Releases), từ đó về sau bấm nút.</li>
@@ -1052,7 +1079,7 @@
 <div class="khung-bang"><table>
   <thead><tr><th>Chương trình báo</th><th>Làm gì</th></tr></thead>
   <tbody>
-    <tr><td>Chấm đỏ ở ô Cân, "Không kết nối được cân …"</td><td><a href="#doi-dia-chi">Mục 24</a>.</td></tr>
+    <tr><td>Tam giác đỏ ở ô Cân, "Không kết nối được cân …"</td><td><a href="#doi-dia-chi">Mục 24</a>.</td></tr>
     <tr><td>"Cân nhận dữ liệu quá chậm", "Mất kết nối với cân khi đang gửi", "Cân đóng kết nối trước khi nhận hết"</td><td>Gửi lại. Cân phải ở màn hình bán hàng. Hỏng mãi: USB (<a href="#usb-du-phong">mục 25</a>).</td></tr>
     <tr><td>Đã gửi mà cân vẫn giá cũ</td><td>Gọi lại hàng trên cân (gõ số PLU rồi <kbd class="p">PLU</kbd>). Vẫn cũ: gửi lại; không được thì USB.</td></tr>
     <tr><td><span class="nhan moi">Mới 2.6</span> "Đã gửi … hàng qua WiFi nhưng đọc lại thấy cân CHƯA nhận …"</td><td>Cân ở màn hình bán hàng (đèn Sale sáng, không ở menu Prog), không ai đang bấm cân → bấm Gửi xuống cân thêm một lần. Vẫn vậy: Lưu file để nạp USB rồi nạp (<a href="#usb-du-phong">mục 25</a>), sau đó Cài đặt → Cập nhật file gốc từ cân. Tự gửi chờ tới lúc gửi được.</td></tr>
@@ -1067,11 +1094,11 @@
     <tr><td>Gửi tem xong, tem in ra chưa đổi</td><td>Thẻ Thiết lập cân → Mẫu tem → <span class="n">Lưu file nạp USB</span> (không cần sửa lại — file đã có tem vừa gửi) → nạp USB.</td></tr>
     <tr><td>"Tem trên máy đã đổi. Mở lại thẻ Tem rồi sửa lại."</td><td>Tem đã đổi từ lúc mở mục Mẫu tem (vừa gửi, mục khác gửi, vừa cập nhật file gốc). Câu báo dùng tên cũ của mục Mẫu tem: gập mục Mẫu tem (thẻ Thiết lập cân), mở lại, sửa lại.</td></tr>
     <tr><td>"Cân ở … có mã máy …, không phải cân chương trình vẫn dùng"</td><td>Cân ở địa chỉ đó là cân khác. Không làm gì thêm; xem <a href="#doi-dia-chi">mục 24</a>. Vừa thay cân: Cài đặt → gõ lại địa chỉ cân → <span class="n">Lưu cài đặt</span>.</td></tr>
-    <tr><td>Khung đỏ "Hàng trên cân chưa rõ"</td><td>Lần xoá qua WiFi trước hỏng sau khi đã gửi lệnh xoá — cân có thể thiếu hàng. Nạp USB ngay (<a href="#usb-du-phong">mục 25</a>), hoặc bấm <span class="n">Gửi xuống cân</span> để gửi lại cả danh sách.</td></tr>
+    <tr><td>Khung viền đỏ "Hàng trên cân chưa rõ"</td><td>Lần xoá qua WiFi trước hỏng sau khi đã gửi lệnh xoá — cân có thể thiếu hàng. Nạp USB ngay (<a href="#usb-du-phong">mục 25</a>), hoặc bấm <span class="n">Gửi xuống cân</span> để gửi lại cả danh sách.</td></tr>
     <tr><td>Việc qua WiFi của bản 2.2 báo không được</td><td>Đọc câu báo, làm theo đường USB chương trình chỉ. Không bấm đi bấm lại.</td></tr>
     <tr><td>Cập nhật: "… Chưa đổi gì — chương trình vẫn chạy bản cũ."</td><td>Mạng yếu hoặc file tải về hỏng. Thử lại lúc mạng ổn (<a href="#cap-nhat">mục 26</a>).</td></tr>
     <tr><td>Cập nhật: "Không ghi được vào thư mục …"</td><td>Chép BeeftownCan.exe ra Desktop, mở từ đó rồi cập nhật.</td></tr>
-    <tr><td>Dòng đỏ "Bản … không mở được trên máy này … đã quay về bản …"</td><td>Chương trình vẫn chạy bản cũ. Báo người lo phần mềm; file bản mới để ở BeeftownCan.loi.</td></tr>
+    <tr><td>Khung viền đỏ "Bản … không mở được trên máy này … đã quay về bản …"</td><td>Chương trình vẫn chạy bản cũ. Báo người lo phần mềm; file bản mới để ở BeeftownCan.loi.</td></tr>
     <tr><td>"Chương trình đang khởi động lại để cập nhật"</td><td>Chờ cửa sổ mới mở, làm lại việc vừa bấm ở cửa sổ mới.</td></tr>
   </tbody>
 </table></div>
@@ -1095,13 +1122,13 @@
   <thead><tr><th>Việc</th><th>Cách biết đã được</th><th>Không được thì</th></tr></thead>
   <tbody>
     <tr><td><b>Đọc dữ liệu từ cân qua WiFi</b> (thay bước lưu USB lúc "Bắt đầu" / cập nhật file gốc)</td><td>Số hàng ở ô "Trên cân" khớp với cân; gọi thử vài số PLU trên cân thấy đúng tên, giá.</td><td>Lưu cân ra USB, chọn file (<a href="#bat-dau">mục 12</a>).</td></tr>
-    <tr><td><span class="nhan moi">Mới 2.7</span> <b>Gửi thông số, chữ cài đặt, phím, tem qua cổng hai chiều</b>, rồi đọc lại phần đó để kiểm</td><td>Khung xanh "Cân đã nhận …"; in thử tem / bấm thử phím thấy đổi.</td><td>Khung đỏ "cân CHƯA nhận": chương trình chưa ghi nhận — gửi lại, hay <span class="n">Lưu file nạp USB</span>.</td></tr>
+    <tr><td><span class="nhan moi">Mới 2.7</span> <b>Gửi thông số, chữ cài đặt, phím, tem qua cổng hai chiều</b>, rồi đọc lại phần đó để kiểm</td><td>Khung có dấu ✓ "Cân đã nhận …"; in thử tem / bấm thử phím thấy đổi.</td><td>Khung viền đỏ "cân CHƯA nhận": chương trình chưa ghi nhận — gửi lại, hay <span class="n">Lưu file nạp USB</span>.</td></tr>
     <tr><td><span class="nhan moi">Mới 2.7</span> <b>Gỡ khỏi cân (ghi đè)</b>: số PLU còn nằm lại thành dòng trống "KHÔNG DÙNG (PLU trống)", phím gọi số đó được bỏ</td><td>Chương trình báo đã đọc lại và khớp. Trên cân: gọi số PLU đó ra "KHÔNG DÙNG", giá 0.</td><td>Bấm lại (ghi đè lần nữa không hại gì), hay nạp USB.</td></tr>
     <tr><td><b>Xoá hẳn qua WiFi</b> (chỉ khi có hàng "Còn nằm lại"; bấm <span class="n">Đọc thông tin cân</span> một lần trước để chương trình nhớ mã máy của cân): chương trình đọc danh sách trên cân — cân có hàng chương trình không biết thì dừng, chưa xoá — lưu một bản sao vào <b>da-gui</b>, xoá cả danh sách, gửi lại đúng danh sách đã xem trước, rồi đọc lại để so. <span class="nhan moi">Mới 2.7</span> Hỏng giữa chừng: tự gửi lại cả danh sách (tới 3 lần) rồi đọc lại.</td><td>Chương trình báo đã đọc lại và khớp. Trên cân: số PLU của hàng đã bỏ không còn; các hàng đang bán vẫn gọi được.</td><td>Báo "nạp USB ngay" (tự gửi lại vẫn chưa đủ hàng): nạp USB <b>ngay</b> (<a href="#usb-du-phong">mục 25</a>).</td></tr>
     <tr><td><b>Đọc giờ cân và chỉnh giờ cân</b> theo giờ Việt Nam</td><td>Bấm <kbd class="p">Time</kbd> trên cân thấy đúng giờ.</td><td>Chỉnh trên cân (<a href="#ngay-gio">mục 6</a>).</td></tr>
     <tr><td><b>Đọc nhật ký bán qua WiFi</b></td><td>Mục Nhật ký cân (thẻ Thiết lập cân) có dòng mới của hôm nay, khớp với số tem đã in.</td><td>Lưu cân ra USB, chọn file — chương trình đọc nhật ký trong file đó.</td></tr>
     <tr><td><b>Thông tin cân</b> (tên máy, mã máy, phiên bản)</td><td>Hiện ra đúng phiên bản V3.14E8.</td><td>Không ảnh hưởng việc bán.</td></tr>
-    <tr><td><span class="nhan moi">Mới 2.8</span> <b>Giữ kết nối với cân</b>: một đường nối giữ mở, hỏi giờ cân mỗi 30 giây; mọi việc đi trên đường đó</td><td>Ô Cân xanh, dòng "Đang nối cân … cân trả lời lúc …" đổi giờ mỗi lần làm mới; gửi giá vẫn báo "cân đã nhận".</td><td>Ô Cân đỏ mãi dù cân bật, hay gửi giá báo lỗi mà trước đây không: bỏ đánh dấu "Giữ kết nối với cân" ở Cài đặt (về cách của 2.7), báo người lo chương trình.</td></tr>
+    <tr><td><span class="nhan moi">Mới 2.8</span> <b>Giữ kết nối với cân</b>: một đường nối giữ mở, hỏi giờ cân mỗi 30 giây; mọi việc đi trên đường đó</td><td>Ô Cân có chấm tròn đen, dòng "Đang nối cân … cân trả lời lúc …" đổi giờ mỗi lần làm mới; gửi giá vẫn báo "cân đã nhận".</td><td>Ô Cân có tam giác đỏ mãi dù cân bật, hay gửi giá báo lỗi mà trước đây không: bỏ đánh dấu "Giữ kết nối với cân" ở Cài đặt (về cách của 2.7), báo người lo chương trình.</td></tr>
     <tr><td><span class="nhan moi">Mới 2.8</span> <b>Tự đọc nhật ký khi cân báo in tem</b> (thông số 58)</td><td>In một tem; trong chừng 10 giây ô Cân ghi "tự đọc lúc … (cân báo vừa in tem), 1 dòng mới"; mục Nhật ký cân có dòng đó.</td><td>Không thấy: cân không tự báo — bấm <span class="n">Đọc qua WiFi</span> ở mục Nhật ký cân (thẻ Thiết lập cân) như trước.</td></tr>
     <tr><td><span class="nhan moi">Mới 2.8</span> <b>Tự chỉnh giờ cân</b> mỗi ngày</td><td>Ô Cân ghi "Đã tự chỉnh giờ cân theo giờ Việt Nam …"; bấm <kbd class="p">Time</kbd> trên cân thấy đúng giờ.</td><td>Chỉnh tay ở thẻ Thiết lập cân → Cân &amp; thông số hay trên cân (<a href="#ngay-gio">mục 6</a>); bỏ đánh dấu "Tự chỉnh giờ cân".</td></tr>
     <tr><td><span class="nhan moi">Mới 2.8</span> <b>Nghe tín hiệu cân phát</b> (UDP 33584)</td><td>Ô Cân ghi "Nghe tín hiệu cân: 192.168.1.… lúc …".</td><td>"Chưa nghe thấy cân phát": tường lửa đang chặn, hay cân không phát — chương trình dò WiFi như trước.</td></tr>
@@ -1119,8 +1146,8 @@
 
 <h3>Việc khác chưa thử trên cân thật</h3>
 <ul>
-  <li><b>Gửi tem qua WiFi</b> (mục Mẫu tem, cả phần sửa tem mới của 2.2; 2.7: qua cổng hai chiều, đọc lại để kiểm): cân có nhận phần tem không. Biết bằng khung xanh và in thử một tem. Không được: USB.</li>
-  <li><b>Gửi thông số, chữ cài đặt chung và phím tắt qua WiFi</b> (mục Cân &amp; thông số, Phím tắt; 2.7: qua cổng hai chiều, đọc lại để kiểm): biết bằng khung xanh, in thử tem (kiểu ngày, ô Ghi chú cân), bấm thử phím. Không được: USB.</li>
+  <li><b>Gửi tem qua WiFi</b> (mục Mẫu tem, cả phần sửa tem mới của 2.2; 2.7: qua cổng hai chiều, đọc lại để kiểm): cân có nhận phần tem không. Biết bằng khung có dấu ✓ "Cân đã nhận" và in thử một tem. Không được: USB.</li>
+  <li><b>Gửi thông số, chữ cài đặt chung và phím tắt qua WiFi</b> (mục Cân &amp; thông số, Phím tắt; 2.7: qua cổng hai chiều, đọc lại để kiểm): biết bằng khung có dấu ✓ "Cân đã nhận", in thử tem (kiểu ngày, ô Ghi chú cân), bấm thử phím. Không được: USB.</li>
   <li><b>HSD in trên tem</b>: in đúng ngày không, ô HSD của món không có hạn trông thế nào. <b>HSD đếm ngược theo lô</b>: gửi mỗi ngày, HSD in ra có đúng hạn của lô trong kho không.</li>
   <li><b>Kiểu ngày ngày/tháng/năm</b>: in ra đúng như bảng ở <a href="#the-thong-so">mục 20</a> không.</li>
   <li><b>Nạp USB cần bấm <kbd class="p">Accu/Confirm</kbd> lần thứ ba</b> hay không (<a href="#nap-usb">mục 8</a>). Ai nạp lần tới, ghi lại đúng số lần bấm.</li>

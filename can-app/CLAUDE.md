@@ -23,9 +23,12 @@ cả `README.md` (860 dòng, phần lớn là ghi chép từng bản):
 | `src/quay.ts` | Máy quầy: phần tính của thẻ Quầy, Giảm giá, Báo cáo (hàm thuần) |
 | `src/bao-kho.ts`, `src/bao-cao-can.ts` | Báo về kho (migration 0061); nhật ký bán của cân |
 | `src/cap-nhat.ts` | Nút Cập nhật (tải bản cài từ kho công khai `beeftown-can-ban-cai`) |
+| `src/nhan-dien.ts` | Đặt logo phụ trắng và biểu tượng cửa sổ vào hai trang (2.12) |
 
 Mã dùng chung với web nằm ở `web/src/lib/` (`gio-vn.ts`, `kho/can-tma.ts`, `kho/chung.ts`, `kho/danh-muc.ts`,
-`kho/danh-muc-can.ts`, `kho/ma-giam.ts`, `kho/tang.ts`, `kho/anh.ts`) — sửa ở đó là sửa cả `.exe`.
+`kho/danh-muc-can.ts`, `kho/ma-giam.ts`, `kho/tang.ts`, `kho/anh.ts`) — sửa ở đó là sửa cả `.exe`. Từ 2.12 `.exe` nhúng thêm
+`web/public/thuong-hieu/chu-beeftown-trang.svg` (logo đầu trang) và `web/public/bieu-tuong.svg` (biểu tượng cửa sổ): đổi hai
+file đó là ra bản mới, tăng `PHIEN_BAN` (`dong-goi-can.yml` đóng gói thử khi PR đụng chúng).
 
 ## Quy tắc
 
@@ -33,7 +36,11 @@ Mã dùng chung với web nằm ở `web/src/lib/` (`gio-vn.ts`, `kho/can-tma.ts
   tăng bản thì ghi lý do trong mô tả PR (`npm run tom-tat-pr` trong `crm/` nhắc chỗ này).
 - Mỗi bản mới có mục "Bản X.Y" trong `README.md`: đổi gì, cách thử ở quán theo thứ tự.
 - File `.TMS` có tên và mật khẩu WiFi của quán — không bao giờ commit, không gửi lên kho.
-- Màu của Beeftown Cân còn nhận diện cũ: chỉ đổi trong PR đổi màu riêng (`THUONG-HIEU.md` mục 0, việc 7).
+- Màu theo bộ nhận diện 21/10/2026 từ bản 2.12: khối `:root` của `src/giao-dien.html` và `src/huong-dan.html` cùng tên, cùng
+  giá trị với `web/src/styles/chung.css` — đổi một mã là đổi cả ba nơi và tăng `PHIEN_BAN`. Ngoài `:root` chỉ dùng biến.
+  Trạng thái bằng chữ, dấu, nét: nhãn `.nhan-l.cho`, `.nhap`, `.song`, `.luu-y`, `.tat`, `.thong-tin` (K1, K3–K7 của
+  `THUONG-HIEU.md` mục 4) — không lớp nào mang tên màu. Logo đầu trang là `<!--logo-phu-trang-->`, `src/nhan-dien.ts`
+  thay bằng `web/public/thuong-hieu/chu-beeftown-trang.svg` — không gõ chữ BEEFTOWN. `crm/test/test-can-nhan-dien.mjs` gác.
 
 ## Lệnh
 

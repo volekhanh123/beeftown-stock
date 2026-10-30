@@ -12,7 +12,7 @@
  * lệnh grep chạy tay của kế hoạch đổi màu (mục 5 bước 8). Bất biến:
  *
  *   1. Không file nào (web/src, web/public, web/kiem-tra, web/cong-cu, .claude/skills, .github, tài liệu .md ở gốc và
- *      web/, mini-app/CLAUDE.md) còn THAM CHIẾU tới hình bộ cũ: giá trị của src= / href= / url( / class= / --hinh:,
+ *      web/, mini-app/CLAUDE.md, can-app/src) còn THAM CHIẾU tới hình bộ cũ: giá trị của src= / href= / url( / class= / --hinh:,
  *      và đường dẫn thuong-hieu/<tên file cũ>. Chữ trong câu ("không hoa-van-chu", "thay cho nhánh rosemary") không
  *      bị bắt — câu hồi quy và câu luật được phép nhắc tên cũ. Có mẫu tự kiểm. Riêng THUONG-HIEU.md (lịch sử bộ nhận
  *      diện) không quét.
@@ -43,10 +43,11 @@ const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — BỘ NHẬN DIỆN 21/10/20
 const TEP_GIT = execFileSync('git', ['ls-files', '-co', '--exclude-standard'], { cwd: GOC, encoding: 'utf8' }).split('\n').filter(Boolean)
   .filter(f => existsSync(join(GOC, f)));
 const DUOI_CHU = /\.(?:astro|ts|tsx|js|mjs|cjs|css|html|svg|json|webmanifest|xml|txt|md|py|sh|ya?ml)$/i;
-// Vùng quét. crm/test (và các file kiểm thử khác) cố ý chứa tên cũ trong mẫu tự kiểm — không quét; can-app (Beeftown
-// Cân, PR riêng) và mini-app/src (PR Mini App sau) ngoài phạm vi; THUONG-HIEU.md là lịch sử bộ nhận diện.
+// Vùng quét. crm/test (và các file kiểm thử khác) cố ý chứa tên cũ trong mẫu tự kiểm — không quét; mini-app/src (PR
+// Mini App sau) ngoài phạm vi; THUONG-HIEU.md là lịch sử bộ nhận diện. can-app/src (Beeftown Cân) vào vùng quét từ bản
+// 2.12 — kiểm thử riêng của nó: test-can-nhan-dien.mjs.
 const VUNG = [/^web\/src\//, /^web\/public\//, /^web\/kiem-tra\//, /^web\/cong-cu\//, /^\.claude\/skills\//, /^\.github\//,
-  /^[^/]+\.md$/, /^web\/[^/]+\.md$/, /^mini-app\/CLAUDE\.md$/];
+  /^[^/]+\.md$/, /^web\/[^/]+\.md$/, /^mini-app\/CLAUDE\.md$/, /^can-app\/src\//];
 const KHONG_QUET = new Set(['THUONG-HIEU.md']);
 const tepQuet = TEP_GIT.filter(f => DUOI_CHU.test(f) && VUNG.some(v => v.test(f)) && !KHONG_QUET.has(f));
 
@@ -84,8 +85,9 @@ function thamChieuCu(van) {
 }
 
 await nhom('1 · KHÔNG CÒN THAM CHIẾU TỚI HÌNH BỘ CŨ (src, href, url(), class, --hinh, đường dẫn thuong-hieu/…)', async () => {
-  ok(`Danh sách quét (${tepQuet.length} file) có trang, CSS, kiểm thử trình duyệt, công cụ, skill, tài liệu — không có THUONG-HIEU.md, crm/test`,
+  ok(`Danh sách quét (${tepQuet.length} file) có trang, CSS, kiểm thử trình duyệt, công cụ, skill, tài liệu, Beeftown Cân — không có THUONG-HIEU.md, crm/test`,
      tepQuet.length > 250 && tepQuet.includes('web/src/styles/cong-khai.css') && tepQuet.includes('web/kiem-tra/do-giao-dien.mjs')
+       && tepQuet.includes('can-app/src/giao-dien.html') && tepQuet.includes('can-app/src/huong-dan.html')
        && tepQuet.includes('README.md') && tepQuet.some(f => f.startsWith('.claude/skills/')) && !tepQuet.includes('THUONG-HIEU.md')
        && !tepQuet.some(f => f.startsWith('crm/test/')));
   const conCu = tepQuet.flatMap(f => thamChieuCu(doc(f)).map(t => `${f}: ${t}`));
