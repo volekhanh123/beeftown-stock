@@ -180,7 +180,7 @@ File này là tài liệu của trang công khai; phần dưới chỉ ghi đi�
 - **Không có hệ bề mặt.** Nội bộ và kho chỉ có nền sáng và đầu trang đen: hai bề mặt khai trên `.nb-than` — nền trang `--nb-nen` (xám nhạt `#F4F4F4`) và thẻ, thanh, menu, ô nhập `--nb-the` (trắng). Cách xếp ngược trang công khai (thẻ xám nhạt trên nền trắng) mà giống khối thẻ đặt trên dải xám nhạt: màn nội bộ dày thẻ, thẻ sáng hơn nền thì đọc dễ hơn. Trên thẻ trắng: chữ đen 21,00 : 1, chữ phụ `--muc-nhat` 7,46, chữ đỏ 6,64, viền ô nhập 4,54.
 - **Trạng thái không có màu riêng** (Khánh bỏ xanh, vàng, đỏ nhạt ngày 25/10/2026): trạng thái vẽ bằng chữ, dấu, nét — bảy kiểu K1–K7 khai trong `src/styles/noi-bo.css`, ghi ở `../THUONG-HIEU.md` mục 4. Trang công khai không dùng các kiểu đó.
 - **Token của kho** (`--kho-nen`, `--kho-the`, `--kho-vach`, `--kho-vach-dam` trên `.kho-than`) không phải sắc riêng: chúng trỏ về `--nb-nen`, `--nb-the`, `--vach`, `--vien-o`.
-- **Còn màu cũ:** 15 ảnh chụp trong trang hướng dẫn của kho (`public/kho/hd-*.png`), chờ chụp lại (việc 8). Beeftown Cân (`can-app/src/giao-dien.html`, `huong-dan.html`) đổi ở bản 2.12.
+- **Đã theo bảng mới cả:** 15 ảnh chụp trong trang hướng dẫn của kho (`public/kho/hd-*.png`) chụp lại ngày 30/10/2026 (việc 8); Beeftown Cân (`can-app/src/giao-dien.html`, `huong-dan.html`) đổi ở bản 2.12. Thứ còn mang nhận diện cũ (Mini App, bộ nhớ đệm ngoài): `../THUONG-HIEU.md` mục 5.
 
 ---
 

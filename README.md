@@ -25,7 +25,7 @@ Bò được cắt và **đóng sẵn trong khay skin-pack theo từng phần c�
 | `crm/` | Database CRM và kho trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung, kho, bản dịch tự động — và **toàn bộ kiểm thử** (`crm/test/`). |
 | `CLAUDE.md` | **Quy trình kiểm thử bắt buộc** cho mọi tính năng mới: 9 mục "định nghĩa xong", cách chạy test, việc trước khi mở PR. |
 | `AGENTS.md` | Cùng quy trình đó cho Codex và các agent không phải Claude, kèm quy tắc rà soát PR (mục "Code Review Rules"). |
-| `THUONG-HIEU.md` | **Bộ nhận diện 21/10/2026** (logo chính, logo phụ, brandmark; đỏ `#BD0000`, đen, trắng — CMYK, Pantone, phông của logo); quyết định của Khánh 22, 25, 26/10/2026; token website (đã đổi ở PR 1 "Đổi nhận diện website"); chỗ website khác guideline; thứ còn mang nhận diện cũ (ảnh hướng dẫn kho, logo PNG của Mini App); lịch sử bảng 09/10/2026. |
+| `THUONG-HIEU.md` | **Bộ nhận diện 21/10/2026** (logo chính, logo phụ, brandmark; đỏ `#BD0000`, đen, trắng — CMYK, Pantone, phông của logo); quyết định của Khánh 22, 25, 26/10/2026; token website (đã đổi ở PR 1 "Đổi nhận diện website"); chỗ website khác guideline; thứ còn mang nhận diện cũ (logo PNG của Mini App); lịch sử bảng 09/10/2026. |
 | `mini-app/` | **Mini App Zalo** bán thịt mang về: khách chọn số khay của 6 phần thịt, app mở chat Zalo OA với tin đơn điền sẵn, khách tự bấm Gửi. Không máy chủ, không lưu dữ liệu khách. Xem `mini-app/README.md`. |
 | `.github/` | Kiểm thử tự động (GitHub Actions) mỗi PR, mỗi lần gộp và mỗi đêm 00:30 giờ VN; đóng gói `BeeftownCan.exe` (tải về không cần gõ lệnh: `can-app/README.md`, mục "Tải BeeftownCan.exe về"); mẫu PR; mẫu báo lỗi. |
 | `Beeftown_CRM_Design.html` | Thiết kế hệ thống CRM và thẻ thành viên — đặc tả nghiệp vụ của `crm/` (tỷ lệ tích điểm, ngưỡng, nhóm khách). |
@@ -67,7 +67,7 @@ Lưu ý khi sửa code phần mềm cân:
 
 ### Bảng màu
 
-> **Website dùng bảng 22/10/2026 từ PR 1 "Đổi nhận diện website"** (`THUONG-HIEU.md` mục 1 và 4): đỏ `#BD0000`, đen `#000000`, trắng `#FFFFFF` — ba màu của Brand Guidelines 21/10/2026 — cùng năm màu pha chỉ cho màn hình Khánh duyệt ngày 25/10/2026. Bỏ kem, vàng và xám ấm của bảng 09/10/2026. Beeftown Cân theo cùng bảng từ bản 2.12 (`THUONG-HIEU.md` mục 0, việc 7). Còn màu cũ: 15 ảnh chụp trong trang hướng dẫn của kho (`web/public/kho/hd-*.png`, việc 8), chờ chụp lại.
+> **Website dùng bảng 22/10/2026 từ PR 1 "Đổi nhận diện website"** (`THUONG-HIEU.md` mục 1 và 4): đỏ `#BD0000`, đen `#000000`, trắng `#FFFFFF` — ba màu của Brand Guidelines 21/10/2026 — cùng năm màu pha chỉ cho màn hình Khánh duyệt ngày 25/10/2026. Bỏ kem, vàng và xám ấm của bảng 09/10/2026. Beeftown Cân theo cùng bảng từ bản 2.12 (`THUONG-HIEU.md` mục 0, việc 7); 15 ảnh trong trang hướng dẫn của kho (`web/public/kho/hd-*.png`) chụp lại ngày 30/10/2026 (việc 8).
 
 | Tên | Mã | Token web | Dùng cho |
 |---|---|---|---|

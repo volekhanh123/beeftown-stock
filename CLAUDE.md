@@ -15,12 +15,12 @@ rà soát" *sau khi* tính năng đã gộp. Mục tiêu: chặn chúng *trướ
 | `may-chu-don/` | Máy chủ đơn của Mini App (Bun, SQLite): nhận đơn trả trước, màn hình đơn cho quầy. Chạy ở Việt Nam (dữ liệu khách Mini App không lên Supabase, Cloudflare) — laptop thử, máy chủ thuê khi mở bán. Thu tiền chuyển khoản VietQR qua SePay; Mini App chưa gửi đơn lên (đợt 2b) | `may-chu-don/CLAUDE.md`, `may-chu-don/README.md` |
 | `mo-rong-fabi/` | Mở rộng FABi (extension Chrome, Manifest V3): trên FABi CMS, đưa món mới của kho vào hộp thoại "Thêm món từ file" — người dùng tự bấm Lưu. Không `package.json`, cài bằng "Tải tiện ích đã giải nén" | `mo-rong-fabi/README.md` |
 
-Bảng màu thương hiệu đã chốt, giá trị đã áp dụng và thứ còn mang màu cũ (ảnh hướng dẫn kho, Mini App): `THUONG-HIEU.md`. Codex và các agent khác đọc `AGENTS.md` (cùng quy trình này).
+Bảng màu thương hiệu đã chốt, giá trị đã áp dụng và thứ còn mang màu cũ (Mini App): `THUONG-HIEU.md`. Codex và các agent khác đọc `AGENTS.md` (cùng quy trình này).
 Bộ nhận diện 21/10/2026 (Brand Guidelines của designer) và bảng đỏ `#BD0000`, đen, trắng Khánh chốt 22/10/2026
 (`THUONG-HIEU.md` mục 0) đã áp cho cả `web/` — trang công khai nền trắng, `/noi-bo` và kho không màu trạng thái — cùng
-logo SVG tách từ PDF guideline (`web/public/thuong-hieu/`); Beeftown Cân theo cùng bảng từ bản 2.12 (việc 7). Kiểm thử
-canh bảng mới. Còn nhận diện cũ: ảnh hướng dẫn kho `hd-*.png` (việc 8), Mini App (việc 10). Đừng đổi màu lẻ tẻ ngoài
-các PR của danh sách ở mục 0.
+logo SVG tách từ PDF guideline (`web/public/thuong-hieu/`); Beeftown Cân theo cùng bảng từ bản 2.12 (việc 7), ảnh
+hướng dẫn kho `hd-*.png` chụp lại ngày 30/10/2026 (việc 8). Kiểm thử canh bảng mới. Còn nhận diện cũ: Mini App (việc 10).
+Đừng đổi màu lẻ tẻ ngoài các PR của danh sách ở mục 0.
 
 Quy ước chung:
 - Tên hàm, biến, chú thích, tài liệu viết **tiếng Việt không tắt**, giống mã đang có.

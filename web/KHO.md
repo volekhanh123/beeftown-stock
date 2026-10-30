@@ -638,19 +638,24 @@ dùng** — link đã lưu, nút "?" và trang chia sẻ trỏ vào đó. Các i
 trang). Chụp từ **Supabase giả** (không bao giờ dữ liệu thật) bằng Playwright: `astro dev` trỏ vào một
 Supabase giả chạy cục bộ (máy chủ HTTP giả, để ngoài repo), đăng nhập `chu@test`, `ql@test`, `tk@test`, `nv@test`, `kt@test` / `matkhau`, viewport
 390×844, `deviceScaleFactor: 1`, chụp khung nhìn (không `fullPage`) hoặc crop phần chính; mỗi ảnh
-≤ 120KB. Script chụp để ngoài repo (scratchpad `chup-huong-dan.mjs` của phiên GĐ6); chụp lại khi giao
-diện màn đó đổi nhiều. Danh sách tên: `hd-trang-chu-thu-kho`, `hd-nhan-hang`, `hd-nhan-hang-dong`,
-`hd-pha-loc`, `hd-quet`, `hd-quay-hom-nay`, `hd-yeu-cau`, `hd-dem-quay`, `hd-bao-huy`, `hd-hom-nay`,
-`hd-duyet`, `hd-dien-gia`, `hd-cong-no`, `hd-thiet-lap`, `hd-menu` (thanh đáy, 390×69).
+≤ 120KB. Script chụp để ngoài repo; chụp lại khi giao diện màn đó đổi nhiều. Danh sách tên:
+`hd-trang-chu-thu-kho`, `hd-nhan-hang`, `hd-nhan-hang-dong`, `hd-pha-loc`, `hd-quet`, `hd-quay-hom-nay`,
+`hd-yeu-cau`, `hd-dem-quay`, `hd-bao-huy`, `hd-hom-nay`, `hd-duyet`, `hd-dien-gia`, `hd-cong-no`, `hd-thiet-lap`,
+`hd-menu` (thanh đáy, 390×69).
 
-> **Cả 15 ảnh còn giao diện bảng màu cũ, thẻ trắng.** Kho đổi bảng màu hai lần — ngày 12/10/2026 và ở PR
-> "Đổi nhận diện website" (bộ 21/10/2026); ảnh chụp trước cả hai lần và chưa chụp lại. Trang hướng dẫn vì vậy đang hiện ảnh màu cũ cạnh giao diện màu
-> mới — chụp lại cả bộ (cùng cỡ file, cùng tên) rồi xóa ghi chú này và dòng tương ứng ở
-> `THUONG-HIEU.md` mục 5.
+Lần chụp gần nhất: **30/10/2026**, cả 15 ảnh, giao diện bộ nhận diện 21/10/2026 (`THUONG-HIEU.md` mục 0, việc 8).
+Database cục bộ dựng từ dữ liệu mô phỏng 5 tuần (73 mặt hàng, 517 lô), chạy đủ migration của main, ngày dời cho dữ
+liệu kết thúc ngày hôm trước; ảnh hóa đơn là ảnh mẫu ghi "BẢN MẪU". Mỗi lần chạy script bắt đầu từ cùng một bản
+database: ảnh chỉ đọc chụp trước, ảnh phải ghi chụp sau — nhận hàng (chụp hóa đơn → thêm hai tảng), pha lóc (mở
+phiên, máy quầy báo cân đã nhận tên ô qua `kho_may_can_bao` như Beeftown Cân, quét hai nhãn), đếm quầy (quét hai nhãn).
+Một số màn chụp phần chính thay vì đầu trang: `hd-dien-gia` (ảnh hóa đơn và ô đơn giá đầu tiên), `hd-nhan-hang-dong`
+(danh sách "Hàng đã cân" và số tảng vừa thêm), `hd-pha-loc` (ô quét, bốn số của phiên). Ô chọn tệp, ô ngày hiện chữ
+tiếng Anh của Chromium chạy thử — máy thật đặt tiếng Việt thì hiện tiếng Việt.
 
 **Test**: `crm/test/test-kho-giao-dien.mjs` nhóm 5 — mọi trang kho (trừ Hướng dẫn) có `huongDan` trỏ
 mục có thật; id không trùng, đúng dạng, giữ id cũ; ≥ 15 câu hỏi; ảnh có file, là PNG đúng cỡ, ≤ 120KB;
-link có thật; phần thủ kho / NV quầy không nhắc tiền; `dinhDang` escape đúng.
+ảnh chụp giao diện bộ 21/10/2026 (đầu trang đen `#000000`, không mảng màu nào của bảng cũ); link có thật; phần
+thủ kho / NV quầy không nhắc tiền; `dinhDang` escape đúng.
 
 ## 3j. Đồng bộ bán hàng iPOS (GĐ7a 0037 · GĐ7c 0042 · iPOS DW cho FABi 27/10/2026)
 

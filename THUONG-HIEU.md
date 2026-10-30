@@ -105,7 +105,7 @@ Việc 3, 5, 6 làm chung trong PR 1 "Đổi nhận diện website". Trang "Mua 
 | 5 | Logo, biểu tượng, ảnh chia sẻ theo bộ mới | Claude Code | PR 1: `tach-logo.mjs` (10 SVG) rồi `web/cong-cu/thuong-hieu/tao-bieu-tuong.py` (`bieu-tuong.svg`, `favicon.ico`, 2 PNG thương hiệu, 4 biểu tượng kho); xóa 14 SVG của bộ cũ |
 | 6 | `theme-color` | Claude Code | PR 1: `#000000` ở 3 layout; `web/public/kho/manifest.json`: `theme_color` `#000000`, `background_color` `#F4F4F4` |
 | 7 | Beeftown Cân đổi thẳng sang bộ 21/10/2026: khối `:root` của 2 file HTML, nền theo câu 4, bỏ màu trạng thái (câu 2), logo và biểu tượng theo bộ mới, tăng `PHIEN_BAN` | Claude Code | Xong ở bản 2.12 (PR riêng, 30/10/2026): nền trang `#F4F4F4`, thẻ trắng, đầu trang đen như kho; nhãn K1–K7; logo phụ trắng và biểu tượng cửa sổ lấy thẳng file của `web/public` (`can-app/src/nhan-dien.ts`); kiểm thử `crm/test/test-can-nhan-dien.mjs`. Biểu tượng của file `.exe` vẫn mặc định (mục 5) |
-| 8 | Chụp lại 15 ảnh `web/public/kho/hd-*.png` | Claude Code | Sau khi PR 1 gộp |
+| 8 | Chụp lại 15 ảnh `web/public/kho/hd-*.png` | Claude Code | Xong (PR riêng, 30/10/2026): cả 15 ảnh chụp lại trên giao diện bộ 21/10/2026, cùng tên, cùng cỡ, dữ liệu mô phỏng (`web/KHO.md` mục 3i); `crm/test/test-kho-giao-dien.mjs` nhóm 5 kiểm đầu trang đen, không mảng màu cũ |
 | 9 | Deploy website sau khi PR 1 gộp và CI xanh; xem lại trang chủ, Thực đơn, `/noi-bo`, kho trên điện thoại; Facebook Sharing Debugger → "Scrape Again" cho `/`, `/en`, `/ko`; ai đã thêm app kho vào màn hình chính thì xóa và thêm lại | Khánh | Sau PR 1 |
 | 10 | Mini App: thay 4 logo PNG trong `mini-app/src/assets/` bằng SVG của bộ mới; chốt hoặc bỏ 3 màu chưa duyệt | Claude Code | PR Mini App |
 | 11 | Trang "Mua thịt về" | Claude Code | PR 2, sau PR 1 |
@@ -316,6 +316,14 @@ Các điểm phải giữ:
 
 ## 5. Nơi đã đổi và thứ còn mang nhận diện cũ
 
+Đã đổi lần năm — 15 ảnh trong trang hướng dẫn của kho (việc 8, PR riêng, 30/10/2026):
+
+| Nơi | Đổi gì |
+|---|---|
+| `web/public/kho/hd-*.png` (15 ảnh) | Chụp lại cả bộ trên giao diện bộ 21/10/2026 — đầu trang đen, nền xám nhạt, thẻ trắng, trạng thái K1–K7 — cùng tên, cùng cỡ (390 × 844; `hd-menu` 390 × 69); dữ liệu mô phỏng, không dữ liệu thật (`web/KHO.md` mục 3i) |
+| Kiểm thử | `crm/test/test-kho-giao-dien.mjs` nhóm 5: đầu trang đen `#000000`, không mảng màu nào của bảng cũ (ảnh cũ: 8–57 % số điểm mang mã cũ) |
+| Tài liệu | File này, `web/KHO.md`, `web/THIET-KE.md`, `README.md`, `AGENTS.md`, `CLAUDE.md` |
+
 Đã đổi lần bốn — Beeftown Cân 2.12 (việc 7, PR riêng, bộ nhận diện 21/10/2026):
 
 | Nơi | Đổi gì |
@@ -384,7 +392,6 @@ Còn mang nhận diện cũ:
 
 | Nơi | Ghi gì | Việc |
 |---|---|---|
-| 15 ảnh `web/public/kho/hd-*.png` | Ảnh chụp màn hình trong trang hướng dẫn của kho (`/noi-bo/kho/huong-dan`), chụp trước ngày 11/10/2026: giao diện bảng trước 09/10/2026, thẻ trắng. **Chụp lại sau PR 1** (`web/KHO.md`, mục 3i) | 8 |
 | Mini App Zalo (`mini-app/`) | 4 logo PNG trong `mini-app/src/assets/`; 3 màu chưa duyệt (câu còn mở 1) | 10 |
 | Bộ nhớ đệm ngoài | Ảnh xem trước cũ trên Facebook / Zalo; biểu tượng cũ của app kho đã cài trên điện thoại | 9 |
 | Hai tài liệu cũ ở gốc repo (`Beeftown_Bo_Nhan_Dien_So.html`, `Beeftown_CRM_Design.html`) | Làm trước guideline; không phát hành, không sửa, không chép | — |
