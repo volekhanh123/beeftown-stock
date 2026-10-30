@@ -132,6 +132,27 @@ export function chuNccCuaMon(c: NccMon, nn: NgonNguNB = 'vi'): string {
   return phan.join(' · ');
 }
 
+/**
+ * Dòng phụ của một NCC ở mục "Ai bán món này" (trang mặt hàng, 30/10/2026): "NCC chính · Lần trước 12,5 kg · 25/10 ·
+ * giao 3 lần". Đã giao mà phiếu gần nhất không có số → "giao 25/10"; chưa giao ở chi nhánh này → "chưa giao ở chi nhánh
+ * này" / "thêm tay, chưa giao". Không có tiền.
+ */
+export function chuAiBan(c: NccMon, mon: MonVietSo | undefined, nn: NgonNguNB = 'vi'): string {
+  const phan: string[] = [];
+  if (c.la_chinh) phan.push({ vi: 'NCC chính', en: 'Main supplier' }[nn]);
+  phan.push(chuLanTruoc(c, mon, nn) ?? (c.lan_cuoi
+    ? { vi: `giao ${dinhDangNgayNgan(c.lan_cuoi)}`, en: `delivered ${dinhDangNgayNgan(c.lan_cuoi)}` }[nn]
+    : chuChuaGiao(c, nn)));
+  if (c.so_lan > 1) phan.push({ vi: `giao ${c.so_lan} lần`, en: `${c.so_lan} deliveries` }[nn]);
+  return phan.join(' · ');
+}
+
+/** Các NCC đã bị bỏ tay khỏi danh sách của một món (mục "Ai bán món này" ghi tên để biết vì sao không có). */
+export function nccDaBoCuaMon(ds: NccMon[], monId: string | null | undefined): NccMon[] {
+  if (!monId) return [];
+  return ds.filter(c => c.mat_hang_id === monId && c.da_bo);
+}
+
 /** Đọc ?mon= của bước 1: chỉ nhận id dạng uuid, còn lại coi như không chọn. */
 export function docMonChon(gt: string | null | undefined): string {
   const x = String(gt ?? '').trim();

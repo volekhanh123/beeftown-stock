@@ -18,6 +18,12 @@
  *
  * "Sau pha để ở" (GĐ5c, 0033): gói quét nhãn lúc pha lóc tự vào kho lạnh hay
  * quầy theo món. Để trống = kho lạnh. Dán Excel có cột "Sau pha để ở".
+ *
+ * "Ai bán món này" (30/10/2026, issue #133): dưới form sửa, CHỈ ĐỌC — các NCC
+ * bán món (danh mục NCC – món 0110, kho_ds_ncc_mat_hang lọc theo món), NCC
+ * chính đầu, dòng phụ "Lần trước … · giao n lần" (chuAiBan, không tiền); tên
+ * NCC dẫn tới trang sửa NCC #mon-ncc — thêm / bỏ / đổi NCC chính ở đó. Đọc
+ * cùng lượt với danh mục khi ?sua= là một món; lỗi thì chỉ mất mục này.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import TheTrangCon from '../../../../components/kho/TheTrangCon.astro';
@@ -25,18 +31,19 @@ import BaoKho from '../../../../components/kho/BaoKho.astro';
 import FormMatHang from '../../../../components/kho/FormMatHang.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import {
-  docMatHang, docGiaTriThuHoi, docDinhNghia, luuMatHang, nhapCsvMatHang, taoDanhMucMau,
+  docMatHang, docGiaTriThuHoi, docDinhNghia, docNhaCungCap, luuMatHang, nhapCsvMatHang, taoDanhMucMau,
   xemTruocDanMatHang, chuKyDan, TEN_COT_DAN_NB,
   demMacDinh, laLoaiMatHang, type MatHang, type GiaTriFormMatHang, type XemTruocDan, type DongGhiMatHang, type CotDan,
 } from '../../../../lib/kho/danh-muc.ts';
 import {
-  boDau, cauLoiKho, dinhDangKg, dinhDangTien, kqHai, nhanKho, TEN_LOAI_MAT_HANG_NB, TEN_NOI_DE_SAU_PHA_NB,
+  boDau, cauLoiKho, dinhDangKg, dinhDangTien, kqHai, laUuid, nhanKho, TEN_LOAI_MAT_HANG_NB, TEN_NOI_DE_SAU_PHA_NB,
   type KetQua,
 } from '../../../../lib/kho/chung.ts';
 import { docTruongThem, type DinhNghiaTruong } from '../../../../lib/kho/truong-them.ts';
 import { chuBangU, docBangU, moTaBangU, type DongBangU } from '../../../../lib/kho/tang.ts';
 import { chuOMa, docOMa, type DongOMa } from '../../../../lib/kho/o-ma.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+import { chuAiBan, docNccMon, nccCuaMon, nccDaBoCuaMon, type NccMon } from '../../../../lib/kho/ncc-mat-hang.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -74,6 +81,21 @@ const t = dichNB(nn, {
   sua: { vi: 'Sửa: ', en: 'Edit: ' },
   luuThayDoi: { vi: 'Lưu thay đổi', en: 'Save changes' },
   dongKhongSua: { vi: 'Đóng, không sửa nữa', en: 'Close without editing' },
+  aiBan: { vi: 'Ai bán món này', en: 'Who sells this item' },
+  khongDocAiBan: {
+    vi: 'Chưa đọc được nhà cung cấp của món này — mạng hoặc database đang trục trặc. Tải lại trang.',
+    en: 'Could not read the suppliers of this item — the connection or the database is having trouble. Reload the page.',
+  },
+  chuaAiBan: {
+    vi: 'Chưa nhà cung cấp nào bán món này. Máy tự thêm khi có phiếu nhận hàng món này; thêm tay ở ',
+    en: 'No supplier sells this item yet. The app adds one when a receiving note has this item; to add one by hand, go to ',
+  },
+  moNcc: { vi: 'Thiết lập → Nhà cung cấp', en: 'Setup → Suppliers' },
+  daBoAiBan: { vi: (ds: string) => `Đã bỏ khỏi danh sách: ${ds}.`, en: (ds: string) => `Removed from the list: ${ds}.` },
+  chiXemAiBan: {
+    vi: 'Chỉ xem. Thêm, bỏ hay đổi nhà cung cấp chính: bấm tên nhà cung cấp → mục "Món … bán".',
+    en: 'View only. To add, remove or change the main supplier: press the supplier\'s name → "Items … sells".',
+  },
   dmTrong: { vi: 'Danh mục đang trống.', en: 'The catalog is empty.' },
   dmMau: { vi: ' Tạo nhanh 19 mặt hàng mẫu cho quán bò nướng (8 tảng nhập khẩu phổ biến, 8 phần cắt, 3 phụ phẩm) rồi sửa lại cho đúng quán mình. Danh mục mẫu KHÔNG có giá bán — giá do anh/chị nhập.',
            en: ' Quickly create 19 sample items for a beef grill restaurant (8 common imported primals, 8 cuts, 3 by-products), then adjust them to your restaurant. The sample catalog has NO sale prices — you enter the prices.' },
@@ -141,6 +163,13 @@ let bangU = new Map<string, DongBangU[]>();
 let oMa = new Map<string, DongOMa[]>();
 let dinhNghia: DinhNghiaTruong[] = [];
 let loiDoc = k.loiDoc;
+/** "Ai bán món này" của món ?sua= — đọc cùng lượt với danh mục; null = đọc lỗi (chỉ mất mục này). */
+const docAiBan = (monId: string) => (k.chiNhanh
+  ? Promise.all([docNccMon(k.client, k.chiNhanh.id, { mon: monId }), docNhaCungCap(k.client)])
+    .then(([ds, ncc]) => ({ ds, ten: new Map(ncc.map(n => [n.id, n.ten])) }))
+    .catch(() => null)
+  : Promise.resolve(undefined));
+const huaAiBan = laUuid(suaId) ? docAiBan(suaId) : Promise.resolve(undefined);
 try {
   [matHang, thuHoi, dinhNghia, bangU, oMa] = await Promise.all([
     docMatHang(k.client), docGiaTriThuHoi(k.client), docDinhNghia(k.client, 'mat_hang'), docBangU(k.client), docOMa(k.client),
@@ -255,6 +284,12 @@ const ds = matHang.filter(m =>
   (!locLoai || m.loai === locLoai)
   && (!timBoDau || boDau(`${m.ten} ${m.ma} ${m.ten_phu ?? ''} ${m.nhom ?? ''}`).toLowerCase().includes(timBoDau)));
 const coXemGia = k.duoc('xem_gia');
+// Món đang sửa khác ?sua= (dựng lại form sau lỗi của món khác) thì đọc lại cho đúng món. undefined = không có chi nhánh.
+const aiBan: { ds: NccMon[]; ten: Map<string, string> } | null | undefined = dangSua
+  ? (dangSua.id === suaId ? await huaAiBan : await docAiBan(dangSua.id))
+  : undefined;
+const nccBan = aiBan ? nccCuaMon(aiBan.ds, dangSua?.id) : [];
+const nccDaBo = aiBan ? nccDaBoCuaMon(aiBan.ds, dangSua?.id) : [];
 ---
 <Kho k={k} huongDan="mat-hang" tieuDe={t.tieuDe} rong>
   <TheTrangCon k={k} cha="cai_dat" />
@@ -346,6 +381,29 @@ const coXemGia = k.duoc('xem_gia');
     <>
       <h2>{t.sua}{dangSua!.ten}</h2>
       <FormMatHang gt={gtSua} dinhNghia={dinhNghia} coXemGia={coXemGia} nutLuu={t.luuThayDoi} moThem={!!(nhapLai && idLoi)} />
+      {aiBan !== undefined && (
+        <section class="nb-the" id="ai-ban">
+          <h3 style="margin-top:0">{t.aiBan}</h3>
+          {aiBan === null ? (
+            <div class="nb-bao luu-y" role="alert"><p>{t.khongDocAiBan}</p></div>
+          ) : nccBan.length === 0 ? (
+            <p class="kho-phu">{t.chuaAiBan}<a href="/noi-bo/kho/cai-dat/nha-cung-cap">{t.moNcc}</a>.</p>
+          ) : (
+            <ul class="kho-dong-ds">
+              {nccBan.map(c => (
+                <li>
+                  <span>
+                    <a href={`/noi-bo/kho/cai-dat/nha-cung-cap?sua=${c.nha_cung_cap_id}#mon-ncc`}><strong>{aiBan.ten.get(c.nha_cung_cap_id) ?? '—'}</strong></a>
+                    <small>{chuAiBan(c, dangSua!, nn)}</small>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {aiBan && nccDaBo.length > 0 && <p class="kho-phu">{t.daBoAiBan(nccDaBo.map(c => aiBan.ten.get(c.nha_cung_cap_id) ?? '—').join(', '))}</p>}
+          {aiBan && nccBan.length > 0 && <p class="kho-phu" style="margin-bottom:0">{t.chiXemAiBan}</p>}
+        </section>
+      )}
       <p><a href="/noi-bo/kho/cai-dat/mat-hang">{t.dongKhongSua}</a></p>
     </>
   )}

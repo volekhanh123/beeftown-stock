@@ -1490,11 +1490,15 @@ cấp, ở cả Nhận hàng và Đặt hàng; danh sách "NCC nào bán món n�
   (`docFormTheoMon`, `lapDonTheoNcc`): mỗi NCC một đơn nháp, lần lượt; mã gửi của từng đơn suy ra từ mã gửi của form
   (`maGuiCon`, SHA-256) nên bấm lại chỉ lập phần còn thiếu; NCC nào lỗi thì câu báo kể riêng. Không ô giá, không ngày giao
   (điền trong từng đơn nháp).
-- **Đợt sau** (issue "Việc tiếp theo"): mặt hàng hiện "Ai bán món này"; kế toán: tên / mã hàng trên hóa đơn NCC, giá thỏa
-  thuận, báo lệch giá.
+- **Ai bán món này** (30/10/2026, issue #133): `cai-dat/mat-hang?sua=<món>` — dưới form sửa, CHỈ ĐỌC. Các NCC bán món
+  (`kho_ds_ncc_mat_hang` lọc theo món → `nccCuaMon`: NCC chính đầu, rồi giao gần nhất), dòng phụ `chuAiBan` ("NCC chính ·
+  Lần trước 3 kg · 30/10 · giao 2 lần", "thêm tay, chưa giao"; không tiền); NCC đã bỏ tay ghi riêng ("Đã bỏ khỏi danh
+  sách: …"). Tên NCC dẫn tới `nha-cung-cap?sua=<ncc>#mon-ncc` — thêm / bỏ / đổi NCC chính ở đó. Đọc cùng lượt với danh mục
+  khi `?sua=` là một món; lỗi thì chỉ mất mục này. Không migration.
+- **Đợt sau** (issue "Việc tiếp theo"): kế toán: tên / mã hàng trên hóa đơn NCC, giá thỏa thuận, báo lệch giá.
 
 Test: `test-kho-ncc-mat-hang.mjs` (quyền, tự học, lần trước theo chi nhánh, sửa tay, hàm web chạy thật trên PGlite qua client
-giả, mất mạng, mã nguồn trang); `test-kho-dat-hang-theo-mon.mjs` (đợt 2).
+giả, mất mạng, mã nguồn trang); `test-kho-dat-hang-theo-mon.mjs` (đợt 2); `test-kho-ai-ban-mon.mjs` (Ai bán món này).
 
 ## 4. Cài như app (PWA)
 
