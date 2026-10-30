@@ -122,10 +122,13 @@ export function chuChuaGiao(c: NccMon, nn: NgonNguNB = 'vi'): string {
     : { vi: 'thêm tay, chưa giao', en: 'added by hand, not delivered yet' })[nn];
 }
 
+/** Nhãn "NCC chính" — chung cho dòng phụ ở nhận hàng và ở trang mặt hàng. */
+const CHU_NCC_CHINH: HaiThuTieng = { vi: 'NCC chính', en: 'Main supplier' };
+
 /** Dòng phụ dưới nút NCC (lối chọn món trước): "NCC chính · giao 25/10" / "giao 25/10" / "chưa giao ở chi nhánh này". */
 export function chuNccCuaMon(c: NccMon, nn: NgonNguNB = 'vi'): string {
   const phan: string[] = [];
-  if (c.la_chinh) phan.push({ vi: 'NCC chính', en: 'Main supplier' }[nn]);
+  if (c.la_chinh) phan.push(CHU_NCC_CHINH[nn]);
   phan.push(c.lan_cuoi
     ? { vi: `giao ${dinhDangNgayNgan(c.lan_cuoi)}`, en: `delivered ${dinhDangNgayNgan(c.lan_cuoi)}` }[nn]
     : chuChuaGiao(c, nn));
@@ -138,19 +141,42 @@ export function chuNccCuaMon(c: NccMon, nn: NgonNguNB = 'vi'): string {
  * này" / "thêm tay, chưa giao". Không có tiền.
  */
 export function chuAiBan(c: NccMon, mon: MonVietSo | undefined, nn: NgonNguNB = 'vi'): string {
-  const phan: string[] = [];
-  if (c.la_chinh) phan.push({ vi: 'NCC chính', en: 'Main supplier' }[nn]);
-  phan.push(chuLanTruoc(c, mon, nn) ?? (c.lan_cuoi
-    ? { vi: `giao ${dinhDangNgayNgan(c.lan_cuoi)}`, en: `delivered ${dinhDangNgayNgan(c.lan_cuoi)}` }[nn]
-    : chuChuaGiao(c, nn)));
-  if (c.so_lan > 1) phan.push({ vi: `giao ${c.so_lan} lần`, en: `${c.so_lan} deliveries` }[nn]);
-  return phan.join(' · ');
+  const lanTruoc = chuLanTruoc(c, mon, nn);
+  // Không có số lần trước thì dùng nguyên dòng phụ của nhận hàng ("NCC chính · giao 25/10" / "chưa giao …").
+  const dau = lanTruoc ? [...(c.la_chinh ? [CHU_NCC_CHINH[nn]] : []), lanTruoc].join(' · ') : chuNccCuaMon(c, nn);
+  return c.so_lan > 1 ? `${dau} · ${{ vi: `giao ${c.so_lan} lần`, en: `${c.so_lan} deliveries` }[nn]}` : dau;
 }
 
-/** Các NCC đã bị bỏ tay khỏi danh sách của một món (mục "Ai bán món này" ghi tên để biết vì sao không có). */
-export function nccDaBoCuaMon(ds: NccMon[], monId: string | null | undefined): NccMon[] {
+/**
+ * Các NCC đã bị bỏ tay khỏi danh sách của một món, xếp theo tên (mục "Ai bán món này" ghi riêng để biết vì sao không
+ * có — bỏ rồi thì không tự hiện lại).
+ */
+export function nccDaBoCuaMon(ds: NccMon[], monId: string | null | undefined, ten: ReadonlyMap<string, string> = new Map()): NccMon[] {
   if (!monId) return [];
-  return ds.filter(c => c.mat_hang_id === monId && c.da_bo);
+  return ds.filter(c => c.mat_hang_id === monId && c.da_bo)
+    .sort((a, b) => (ten.get(a.nha_cung_cap_id) ?? '').localeCompare(ten.get(b.nha_cung_cap_id) ?? '', 'vi'));
+}
+
+/** Tên NCC theo id — chỉ hai cột (không ngân hàng, mã số thuế…). Vai xem_gia đọc được bảng này. Lỗi ném ra. */
+export async function docTenNcc(client: SupabaseClient): Promise<Map<string, string>> {
+  const { data, error } = await client.from('kho_nha_cung_cap').select('id, ten');
+  if (error) throw error;
+  return new Map(((data ?? []) as { id: string; ten: string }[]).map(n => [n.id, n.ten]));
+}
+
+/**
+ * Mục "Ai bán món này" của trang mặt hàng: danh mục NCC – món của một món ở chi nhánh (database lọc theo món) và tên
+ * NCC, đọc song song. Lượt nào lỗi (mạng, quyền, 500) → null: trang chỉ mất mục này, có câu báo — không ném.
+ */
+export async function docAiBanMon(
+  client: SupabaseClient, chiNhanhId: string, monId: string,
+): Promise<{ ds: NccMon[]; ten: Map<string, string> } | null> {
+  try {
+    const [ds, ten] = await Promise.all([docNccMon(client, chiNhanhId, { mon: monId }), docTenNcc(client)]);
+    return { ds, ten };
+  } catch {
+    return null;
+  }
 }
 
 /** Đọc ?mon= của bước 1: chỉ nhận id dạng uuid, còn lại coi như không chọn. */
