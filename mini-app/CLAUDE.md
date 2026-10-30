@@ -1,6 +1,6 @@
 # Beeftown Mini App: đọc trước khi làm
 
-Zalo Mini App bán 6 phần thịt mang về của nhà hàng Beeftown (63 Hồ Tùng Mậu, phường Sài Gòn, TP.HCM). Khách chọn số khay (bán theo khay, giá cố định), app mở chat với Zalo OA của quán và điền sẵn tin đơn có tổng tiền; khách tự bấm Gửi. Không máy chủ, không lưu dữ liệu khách, không thu tiền trong app.
+Zalo Mini App bán 6 phần thịt mang về của nhà hàng Beeftown (63 Hồ Tùng Mậu, phường Sài Gòn, TP.HCM). Khách chọn số khay (bán theo khay, giá cố định), app mở chat với Zalo OA của quán và điền sẵn tin đơn có tổng tiền; khách tự bấm Gửi. Không máy chủ, không lưu dữ liệu khách, không thu tiền trong app — cho tới khi khai máy chủ đơn (`diaChiMayChuDon` trong `src/cau-hinh.ts`, đợt 2b): khi đó khách gửi đơn lên máy chủ đơn của repo (`may-chu-don/`, đặt ở Việt Nam) và chuyển khoản VietQR ngay trong app, chỉ nhận tại quán.
 
 - Người giao việc: Khánh (Võ Lê Khánh), CMO và partner của Beeftown. Pháp nhân bán hàng: Công ty TNHH SLK Group, mã số doanh nghiệp 0319712805.
 - Bản 1.0 do Claude dựng ngày 22/10/2026 trong dự án "FnB Investment" trên claude.ai, rồi chuyển sang Claude Code cùng ngày lúc 13:00. Ghi chú đầy đủ của dự án: tài liệu `claude/zalo-oa-beeftown.md` trong project "FnB Investment".
@@ -24,8 +24,8 @@ Zalo Mini App bán 6 phần thịt mang về của nhà hàng Beeftown (63 Hồ 
 | Lệnh | Việc |
 |---|---|
 | `npm install` | Cài thư viện |
-| `npm run dev` | Chạy thử ở http://localhost:3000. Ngoài Zalo, nút "Gửi đơn qua Zalo" hiện tin nhắn thay vì mở chat |
-| `npm run kiem-tra` | Kiểm tra giờ nhận, số điện thoại, nội dung tin, tổng tiền, dòng giá thử, đọc còn hàng (cần Node 22.6 trở lên) |
+| `npm run dev` | Chạy thử ở http://localhost:3000. Ngoài Zalo, nút "Gửi đơn qua Zalo" hiện tin nhắn thay vì mở chat. Thử trả trước với máy chủ đơn trên máy: đặt `VITE_DIA_CHI_MAY_CHU_DON=http://127.0.0.1:8787` (README, "Thử đặt và trả tiền với máy chủ đơn") |
+| `npm run kiem-tra` | Kiểm tra giờ nhận, số điện thoại, nội dung tin, tổng tiền, dòng giá thử, đọc còn hàng, trả trước (gửi đơn, mất mạng, màn theo trạng thái, giữ đơn trên máy) (cần Node 22.6 trở lên) |
 | `npm run build` | `tsc --noEmit && vite build`. Bản build trong `www/` chỉ chạy dưới `/zapps/<APP_ID>/` |
 | `npm run deploy:thu` | `zmp deploy --testing --passive --desc "..."`. zmp-cli tự build, rồi tải `www/` lên. In "Deploy Done!", số phiên bản và mã QR mở bản thử |
 | `npx zmp login` | Đăng nhập lại khi khóa hết hạn. Phải chọn cách đăng nhập và quét mã QR bằng app Zalo, nên để Khánh tự chạy trong cửa sổ dòng lệnh (hoặc bấm đúp `dua-len-zalo.cmd`) |
@@ -37,6 +37,7 @@ Kiểm thử trong repo:
 - `.github/workflows/mini-app.yml`: mỗi PR hay commit lên main đổi `mini-app/` → `npm ci`, `npm run kiem-tra`, `tsc`, `vite build` (không có `.env`, không đưa lên Zalo). Workflow riêng: Mini App đỏ không khóa deploy website.
 - `crm/test/test-mini-app-chu.mjs` (chạy trong `npm test` của `crm/`, mỗi PR): chữ khách thấy (mã nguồn bỏ chú thích, 6 phần thịt, cấu hình, tin đơn) không dính chữ cấm của `web/src/lib/chuoi-cam.js` và chữ Khánh dặn tránh; giá dạng "000.000 đ"; mỗi dòng "số khay × giá = tiền" đúng phép nhân và dòng tổng bằng tổng các dòng; tin có giá phải kèm dòng giá thử khi `giaThu: true`.
 - `crm/test/test-quy-trinh.mjs`: file mới trong `mini-app/` phải có dòng mở trong `.gitignore` gốc; `.env`, `www/`, `node_modules/` không vào git; workflow đủ bước.
+- `may-chu-don/test/thu.ts` nhóm 18 (CI "Kiểm thử"): `src/tra-truoc.ts` gọi thẳng máy chủ đơn thật — thân đơn app soạn được máy chủ nhận, gửi lại cùng mã gửi ra cùng đơn, chuyển thiếu rồi chuyển nốt, câu lỗi của máy chủ tới tay khách. Sửa `tra-truoc.ts` hay đường `/api/don` của máy chủ thì chạy cả hai bộ kiểm tra.
 
 ## Cấu trúc
 
@@ -46,12 +47,15 @@ src/san-pham.ts      6 phần thịt: tên, thịt mát / đông lạnh, mô t�
 src/don.ts           logic thuần (không React, không Zalo): ngày giờ nhận, kiểm tra, soạn tin đơn
 src/con-hang.ts      logic thuần: đọc còn hàng từ website (hỏng thì {}), trạng thái hiện cho từng phần thịt
 src/con-hang-kho.tsx giữ trạng thái còn hàng trong lúc app mở, đọc lại sau 60 giây
-src/zalo.ts          openChat, followOA
-src/gio-hang.tsx     giỏ hàng trong bộ nhớ
+src/zalo.ts          openChat, followOA, saveImageToGallery (lưu ảnh mã QR)
+src/tra-truoc.ts     logic thuần của trả trước (không React, không Zalo): thân đơn, mã gửi, gửi / đọc đơn qua fetch có hết giờ, màn theo trạng thái, giờ VN, giữ đơn vừa đặt trên máy
+src/may-chu-don.ts   địa chỉ máy chủ đơn (VITE_DIA_CHI_MAY_CHU_DON thắng cau-hinh.ts), TRA_TRUOC, fetch thật, localStorage
+src/anh-qr.ts        vẽ mã QR từ chuỗi VietQR máy chủ gửi (qrcode 1.5.4)
+src/gio-hang.tsx     giỏ hàng trong bộ nhớ; đơn trả trước vừa đặt (mã đơn, khóa xem — giữ 2 ngày trên máy)
 src/thong-bao.tsx    thông báo ngắn tự làm
 src/thanh-phan.tsx   đầu trang, nút số khay, thẻ phần thịt, giá, dòng báo giá thử
 src/bieu-tuong.tsx   biểu tượng SVG
-src/trang/           4 màn hình: trang-chu, don-hang, da-gui, thong-tin
+src/trang/           5 màn hình: trang-chu, don-hang, da-gui, thong-tin, tra-tien (chỉ khi có máy chủ đơn)
 scripts/kiem-tra-don.ts
 tai-lieu/            biểu tượng 512 × 512, banner 1920 × 1080, 10 ảnh chụp màn hình
 app-config.json      cấu hình Mini App (danh sách file để trống theo mẫu của Zalo, đừng điền tay)
@@ -64,6 +68,7 @@ dua-len-zalo.cmd     cho Khánh bấm đúp trên Windows: cài thư viện, đ�
 ## Cách app chạy
 
 - Gửi đơn: `openChat({ type: "oa", id, message })` của zmp-sdk 2.53.1 (điền sẵn tin từ SDK 2.20.0); khách vẫn tự bấm Gửi. Quan tâm OA: `followOA({ id })`. Quyền 44 (mở chat) và 56 (yêu cầu theo dõi OA) đã cấp mặc định.
+- Trả trước (khi có máy chủ đơn, `TRA_TRUOC` của `src/may-chu-don.ts`): `POST /api/don` rồi màn `/tra-tien` hỏi `GET /api/don/<mã>?khoa=` (4 giây khi chờ tiền, 15 giây sau đó, ngay khi khách quay lại app). Mã QR vẽ trong app từ `thanhToan.chuoiQr` (không tải ảnh `qr.svg` của máy chủ: khỏi khai thêm tên miền ảnh, và có PNG để `saveImageToGallery`). Chép bằng `navigator.clipboard` (zmp-sdk 2.53.1 không có lệnh chép). Mất mạng, hết giờ, trả lời lạ: "không rõ" — không bao giờ báo đã ghi hay đã trả; gửi lại cùng mã gửi. `saveImageToGallery` có cần khai quyền ở Mini App Center không: chưa thử trên Zalo thật.
 - Nhận biết đang ở trong Zalo: `/zalo/i.test(navigator.userAgent)`.
 - Router: `ZMPRouter` của zmp-ui đặt basename `/zapps/${window.APP_ID}` ở bản production.
 - Không dùng `Icon` và `Snackbar` của zmp-ui vì chúng tải phông từ h5.zadn.vn. Biểu tượng vẽ SVG, thông báo tự làm.
@@ -132,7 +137,7 @@ Thỏa thuận nhà phát triển Zalo Mini App, cập nhật 25/09/2026: https:
   - Cần: 1 chỗ đọc công khai trên website chỉ trả "còn hàng / sắp hết / hết" của từng phần thịt Mini App (hàm SQL mới, kiểm thử quyền); gắn mỗi phần thịt Mini App với 1 `kho_mat_hang`; quầy quét khay ra vào kho đúng lúc; khai tên miền API ở Mini App Center → Cấu hình API Domains; Zalo duyệt lại.
 - **Mức 3:** giá cố định nên tổng tiền biết trước khi gửi; trả tiền trong app (Checkout SDK, mã MAC ký ở máy chủ), đơn tự vào FABi, tin báo qua ZNS.
   - Cần 1 máy chủ nhỏ ở Việt Nam chỉ cho đơn của Mini App (BizFly 1–2 GB RAM, 95.000–120.000 đ/tháng chưa VAT). Máy này chỉ báo sang kho mã khay và số lượng.
-  - **Đang làm từ 29/10/2026** (Khánh: "đừng theo kiểu nhắn tin nữa mà phải tự động hoàn toàn"): thư mục `may-chu-don/` của repo, chia 4 đợt (`may-chu-don/CLAUDE.md`, "Chia đợt"). Khánh chốt: trả trước, thu tiền online qua SePay (chuyển khoản VietQR vào VietinBank của SLK Group — thay cho Checkout SDK của Zalo, 29/10/2026), màn hình đơn riêng cho quầy, laptop ở công ty để thử rồi máy chủ thuê ở Việt Nam khi mở bán, báo khách trong app và bằng ZNS. Mini App chỉ đổi sang gửi đơn lên máy chủ ở đợt 2b (màn trả tiền: mã QR từ `GET /api/don/<mã>/qr.svg`, chép số tài khoản / số tiền / nội dung).
+  - **Đang làm từ 29/10/2026** (Khánh: "đừng theo kiểu nhắn tin nữa mà phải tự động hoàn toàn"): thư mục `may-chu-don/` của repo, chia 4 đợt (`may-chu-don/CLAUDE.md`, "Chia đợt"). Khánh chốt: trả trước, thu tiền online qua SePay (chuyển khoản VietQR vào VietinBank của SLK Group — thay cho Checkout SDK của Zalo, 29/10/2026), màn hình đơn riêng cho quầy, laptop ở công ty để thử rồi máy chủ thuê ở Việt Nam khi mở bán, báo khách trong app và bằng ZNS. Đợt 2b (30/10/2026): Mini App gửi đơn lên máy chủ khi `diaChiMayChuDon` có địa chỉ, màn trả tiền vẽ mã QR từ chuỗi VietQR máy chủ gửi, chép số tài khoản / số tiền / nội dung, tự cập nhật khi quán nhận đủ tiền (mục "Cách app chạy"). Khánh chốt 30/10/2026: chuyển dư thì đơn vẫn soạn, hoàn phần dư; tiền về đủ sau 30 phút vẫn tính là đã trả. Địa chỉ để trống cho tới khi có máy chủ thuê HTTPS (đợt 4).
   - Làm khi đơn online khoảng 20 đơn/ngày (giả định của Claude, đo lại sau 4 tuần mở bán).
 - **Hạ tầng** (Claude khuyên 22/10): giữ Supabase và Cloudflare; không chuyển cơ sở dữ liệu sang BizFly trước khai trương; không dùng laptop làm máy chủ chạy thật.
 

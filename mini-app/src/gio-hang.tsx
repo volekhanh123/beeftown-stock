@@ -1,8 +1,12 @@
 // Giỏ hàng và thông tin nhận hàng. Chỉ giữ trong bộ nhớ khi app đang mở, không lưu xuống máy hay máy chủ.
+// Riêng đơn trả trước vừa đặt: giữ mã đơn và khóa xem trên máy (không tên, không số điện thoại) để khách quay lại
+// từ app ngân hàng vẫn mở đúng đơn (tra-truoc.ts, "Đơn vừa đặt, giữ trên máy").
 
 import React, { createContext, ReactNode, useCallback, useContext, useMemo, useState } from "react";
 import type { ThongTinNhan } from "./don";
 import { CAU_HINH } from "./cau-hinh";
+import { khoLuuCuaMay } from "./may-chu-don";
+import { docDonDaDat, luuDonDaDat, xoaDonDaDat, type DonDaDat } from "./tra-truoc";
 
 const NHAN_BAN_DAU: ThongTinNhan = {
   cachNhan: "tai-quan",
@@ -25,6 +29,9 @@ interface GioHang {
   noiDungDaGui: string;
   datNoiDungDaGui: (s: string) => void;
   lamMoi: () => void;
+  /** Đơn trả trước vừa đặt (giữ 2 ngày trên máy), hoặc null. */
+  donDaDat: DonDaDat | null;
+  datDonDaDat: (don: DonDaDat | null) => void;
 }
 
 const NguCanh = createContext<GioHang | null>(null);
@@ -33,6 +40,13 @@ export function GioHangProvider({ children }: { children: ReactNode }) {
   const [soKhay, setSoKhay] = useState<Record<string, number>>({});
   const [nhan, setNhan] = useState<ThongTinNhan>(NHAN_BAN_DAU);
   const [noiDungDaGui, datNoiDungDaGui] = useState("");
+  const [donDaDat, setDonDaDat] = useState<DonDaDat | null>(() => docDonDaDat(khoLuuCuaMay(), Date.now()));
+
+  const datDonDaDat = useCallback((don: DonDaDat | null) => {
+    if (don) luuDonDaDat(khoLuuCuaMay(), don);
+    else xoaDonDaDat(khoLuuCuaMay());
+    setDonDaDat(don);
+  }, []);
 
   const datSoKhay = useCallback((ma: string, so: number) => {
     const gioiHan = Math.max(0, Math.min(CAU_HINH.soKhayToiDa, so));
@@ -66,8 +80,10 @@ export function GioHangProvider({ children }: { children: ReactNode }) {
       noiDungDaGui,
       datNoiDungDaGui,
       lamMoi,
+      donDaDat,
+      datDonDaDat,
     };
-  }, [soKhay, datSoKhay, nhan, suaNhan, noiDungDaGui, lamMoi]);
+  }, [soKhay, datSoKhay, nhan, suaNhan, noiDungDaGui, lamMoi, donDaDat, datDonDaDat]);
 
   return <NguCanh.Provider value={giaTri}>{children}</NguCanh.Provider>;
 }

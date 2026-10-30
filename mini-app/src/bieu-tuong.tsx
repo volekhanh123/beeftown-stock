@@ -36,3 +36,11 @@ export function KhungChat({ size = 36 }: { size?: number }) {
     </svg>
   );
 }
+
+export function DauTich({ size = 36 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" {...net} strokeWidth={2.4}>
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </svg>
+  );
+}

@@ -52,6 +52,15 @@ export const CAU_HINH = {
    */
   diaChiConHang: "https://beeftown.vn/mini-app/con-hang.json",
 
+  /**
+   * Máy chủ đơn của Beeftown (thư mục may-chu-don/ của repo, đặt ở Việt Nam), dạng "https://ten-mien" không có "/" cuối.
+   * Có địa chỉ: khách gửi đơn lên máy chủ và chuyển khoản ngay trong app (VietQR qua SePay), chỉ nhận tại quán.
+   * Để trống: app gửi đơn vào chat OA như trước. Chỉ điền khi máy chủ đã chạy HTTPS và tên miền đã khai ở Mini App
+   * Center → Cấu hình API Domains. Thử trên máy (không cần sửa ở đây): VITE_DIA_CHI_MAY_CHU_DON (README, "Thử đặt
+   * và trả tiền với máy chủ đơn").
+   */
+  diaChiMayChuDon: "",
+
   /** Thông tin người bán, ghi đúng giấy chứng nhận đăng ký địa điểm kinh doanh (thay đổi lần 2, 20/10/2026). */
   phapNhan: {
     ten: "Công ty TNHH SLK Group",

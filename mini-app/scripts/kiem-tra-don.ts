@@ -2,6 +2,24 @@
 import assert from "node:assert/strict";
 import { docConHang, trangThaiPhan, type HamFetch } from "../src/con-hang.ts";
 import {
+  GIU_DON_MS,
+  KHOA_LUU,
+  buocTraTien,
+  dauNoiDung,
+  docDonDaDat,
+  docDonTuJson,
+  docDonTuMayChu,
+  gioPhutVn,
+  guiDonLenMayChu,
+  hoiLaiSauMs,
+  kiemTraTraTruoc,
+  luuDonDaDat,
+  taoMaGui,
+  taoThanDon,
+  type HamFetchApi,
+  type KhoLuu,
+} from "../src/tra-truoc.ts";
+import {
   cacGioChon,
   cacNgayChon,
   chuanHoaSoDienThoai,
@@ -198,6 +216,240 @@ await kiemAsync("còn hàng: tạm ngưng trong cau-hinh thắng kho; kho không
   assert.equal(trangThaiPhan(true, undefined), "con");
   assert.equal(trangThaiPhan(true, "het"), "het");
   assert.equal(trangThaiPhan(true, "sap_het"), "sap_het");
+});
+
+// ---------- Trả trước qua máy chủ đơn (src/tra-truoc.ts) ----------
+// Hợp đồng với máy chủ thật (đúng dạng máy chủ nhận, đúng thứ máy chủ trả) kiểm ở may-chu-don/test/thu.ts.
+
+const MAY_CHU = "https://don.beeftown.vn";
+const KHOA = "0123456789abcdef0123456789abcdef";
+const nhanTra: ThongTinNhan = {
+  cachNhan: "tai-quan",
+  ngay: "2026-11-13",
+  gio: "10:30",
+  ten: " Khánh ",
+  dienThoai: "0912 345 678",
+  diaChi: "",
+  cachTra: "chuyen-khoan",
+  ghiChu: " gọi trước ",
+};
+const thanhToanMau = {
+  traDuoc: true,
+  nganHang: "VietinBank",
+  soTaiKhoan: "113366668888",
+  tenTaiKhoan: "CONG TY TNHH SLK GROUP",
+  soTien: 750000,
+  noiDung: "BTK7QX4M9A",
+  chuoiQr: "00020101021238560010A0000007270126000697041501121133666688880208QRIBFTTA530370454067500005802VN62140810BTK7QX4M9A63044BA7",
+  hetHanLuc: Date.UTC(2026, 10, 13, 2, 5),
+};
+const donMau = {
+  ok: true,
+  ma: "K7QX4M9A",
+  soTrongNgay: 12,
+  trangThai: "cho_thanh_toan",
+  tongTien: 750000,
+  daNhan: 0,
+  ngayNhan: "2026-11-13",
+  gioNhan: "10:30",
+  thanhToan: thanhToanMau,
+};
+type CuocGoi = { url: string; method: string; body?: string };
+const mayChuGia = (status: number, json: unknown, ghi: CuocGoi[] = []): HamFetchApi => async (url, init) => {
+  ghi.push({ url, method: init.method, body: init.body });
+  return { status, json: async () => json };
+};
+
+kiem("trả trước: thân đơn chỉ có mã phần thịt và số khay, không giá; chữ đã cắt khoảng trắng", () => {
+  const than = taoThanDon("ma-gui-0123456789", { "la-galbi": 2, chadolbagi: 0 }, nhanTra);
+  assert.deepEqual(than, {
+    maGui: "ma-gui-0123456789",
+    khay: { "la-galbi": 2 },
+    cachNhan: "tai-quan",
+    ngay: "2026-11-13",
+    gio: "10:30",
+    ten: "Khánh",
+    dienThoai: "0912 345 678",
+    ghiChu: "gọi trước",
+  });
+  assert.ok(!JSON.stringify(than).includes("gia"));
+});
+
+kiem("trả trước: mã gửi 24 ký tự chữ số, đúng dạng máy chủ nhận; nội dung đổi thì dấu đổi", () => {
+  const ma = taoMaGui();
+  assert.match(ma, /^[A-Za-z0-9]{24}$/);
+  assert.notEqual(taoMaGui(), ma);
+  assert.equal(taoMaGui(() => new Uint8Array(24)), "A".repeat(24));
+  assert.equal(dauNoiDung({ "la-galbi": 2 }, nhanTra), dauNoiDung({ "la-galbi": 2 }, { ...nhanTra }));
+  assert.notEqual(dauNoiDung({ "la-galbi": 2 }, nhanTra), dauNoiDung({ "la-galbi": 3 }, nhanTra));
+  assert.notEqual(dauNoiDung({ "la-galbi": 2 }, nhanTra), dauNoiDung({ "la-galbi": 2 }, { ...nhanTra, gio: "11:00" }));
+});
+
+kiem("trả trước: bắt tên, số điện thoại; phần vừa hết, phần chưa giá không đặt được", () => {
+  assert.deepEqual(kiemTraTraTruoc(nhanTra, [], []), []);
+  const loi = kiemTraTraTruoc({ ...nhanTra, ten: " K ", dienThoai: " " }, ["LA Galbi"], ["Chadolbagi"]);
+  assert.deepEqual(loi, [
+    "LA Galbi vừa hết ở quầy. Bớt phần này rồi gửi lại.",
+    "Chadolbagi chưa có giá, chưa đặt trả trước được.",
+    "Nhập tên người nhận để quầy gọi khi bạn tới lấy.",
+    "Nhập số điện thoại để quán liên hệ khi cần.",
+  ]);
+});
+
+kiem("trả trước: đọc đơn của máy chủ; thiếu trường, sai kiểu thì null; thanh toán lạ thì tạm lỗi (không hiện mã)", () => {
+  assert.equal(docDonTuJson(donMau)?.thanhToan.traDuoc, true);
+  assert.equal(docDonTuJson({ ...donMau, daNhan: undefined })?.daNhan, 0);
+  for (const hong of [
+    null,
+    [],
+    "x",
+    { ...donMau, ma: "k7qx4m9a" },
+    { ...donMau, soTrongNgay: 0 },
+    { ...donMau, tongTien: 1.5 },
+    { ...donMau, trangThai: "da_tra" },
+    { ...donMau, daNhan: -1 },
+  ]) {
+    assert.equal(docDonTuJson(hong), null, JSON.stringify(hong));
+  }
+  for (const tt of [
+    { ...thanhToanMau, soTaiKhoan: "12ab" },
+    { ...thanhToanMau, soTien: 0 },
+    { ...thanhToanMau, noiDung: "bt k7" },
+    { ...thanhToanMau, chuoiQr: "<script>" },
+    { traDuoc: false, lyDo: "la" },
+    null,
+  ]) {
+    assert.deepEqual(docDonTuJson({ ...donMau, thanhToan: tt })?.thanhToan, { traDuoc: false, lyDo: "tam_loi" });
+  }
+  assert.deepEqual(docDonTuJson({ ...donMau, thanhToan: { traDuoc: false, lyDo: "gia_thu" } })?.thanhToan, {
+    traDuoc: false,
+    lyDo: "gia_thu",
+  });
+});
+
+await kiemAsync("trả trước: gửi đơn — 201 ghi xong, gửi đúng chỗ, đúng thân", async () => {
+  const ghi: CuocGoi[] = [];
+  const than = taoThanDon("ma-gui-0123456789", { "la-galbi": 2 }, nhanTra);
+  const kq = await guiDonLenMayChu(MAY_CHU, than, mayChuGia(201, { ...donMau, khoa: KHOA }, ghi));
+  assert.equal(kq.loai, "da-ghi");
+  assert.equal(kq.loai === "da-ghi" && kq.khoa, KHOA);
+  assert.deepEqual(ghi, [{ url: `${MAY_CHU}/api/don`, method: "POST", body: JSON.stringify(than) }]);
+});
+
+await kiemAsync("trả trước: máy chủ từ chối kèm lý do → chưa ghi, hiện đúng câu; 409 báo trùng mã gửi", async () => {
+  const than = taoThanDon("ma-gui-0123456789", { "la-galbi": 2 }, nhanTra);
+  for (const status of [400, 413, 429, 500]) {
+    const loi = ["Giờ nhận này không còn chọn được. Chọn lại giờ nhận."];
+    assert.deepEqual(await guiDonLenMayChu(MAY_CHU, than, mayChuGia(status, { ok: false, loi })), {
+      loai: "chua-ghi",
+      loi,
+      trungMaGui: false,
+    });
+  }
+  const kq = await guiDonLenMayChu(MAY_CHU, than, mayChuGia(409, { ok: false, loi: ["Đơn này đã gửi với nội dung khác."] }));
+  assert.equal(kq.loai === "chua-ghi" && kq.trungMaGui, true);
+});
+
+await kiemAsync("trả trước: mất mạng, hết giờ, 502 của proxy, 201 mà thân lạ → không rõ (KHÔNG báo đã ghi hay chưa ghi)", async () => {
+  const than = taoThanDon("ma-gui-0123456789", { "la-galbi": 2 }, nhanTra);
+  const khongRo = { loai: "khong-ro" };
+  assert.deepEqual(await guiDonLenMayChu(MAY_CHU, than, async () => { throw new TypeError("Failed to fetch"); }), khongRo);
+  assert.deepEqual(await guiDonLenMayChu(MAY_CHU, than, () => new Promise(() => {}), 50), khongRo);
+  assert.deepEqual(await guiDonLenMayChu(MAY_CHU, than, async () => ({ status: 201, json: () => new Promise(() => {}) }), 50), khongRo);
+  assert.deepEqual(await guiDonLenMayChu(MAY_CHU, than, mayChuGia(502, null)), khongRo);
+  assert.deepEqual(await guiDonLenMayChu(MAY_CHU, than, mayChuGia(500, { ok: false })), khongRo);
+  assert.deepEqual(await guiDonLenMayChu(MAY_CHU, than, mayChuGia(201, { ...donMau })), khongRo); // thiếu khóa xem
+  assert.deepEqual(await guiDonLenMayChu(MAY_CHU, than, mayChuGia(201, { ok: true })), khongRo);
+  assert.deepEqual(
+    await guiDonLenMayChu(MAY_CHU, than, async () => ({ status: 201, json: async () => { throw new SyntaxError("JSON"); } })),
+    khongRo,
+  );
+});
+
+await kiemAsync("trả trước: đọc đơn — đúng địa chỉ có khóa; 404 có lý do là không thấy; hỏng thì không rõ", async () => {
+  const ghi: CuocGoi[] = [];
+  const kq = await docDonTuMayChu(MAY_CHU, "K7QX4M9A", KHOA, mayChuGia(200, donMau, ghi));
+  assert.equal(kq.loai === "co" && kq.don.ma, "K7QX4M9A");
+  assert.deepEqual(ghi, [{ url: `${MAY_CHU}/api/don/K7QX4M9A?khoa=${KHOA}`, method: "GET", body: undefined }]);
+  assert.deepEqual(await docDonTuMayChu(MAY_CHU, "K7QX4M9A", KHOA, mayChuGia(404, { ok: false, loi: ["Không thấy đơn này."] })), {
+    loai: "khong-thay",
+  });
+  assert.deepEqual(await docDonTuMayChu(MAY_CHU, "K7QX4M9A", KHOA, mayChuGia(404, null)), { loai: "khong-ro" });
+  assert.deepEqual(await docDonTuMayChu(MAY_CHU, "K7QX4M9A", KHOA, mayChuGia(429, { ok: false, loi: ["Hỏi nhiều"] })), {
+    loai: "khong-ro",
+  });
+  assert.deepEqual(await docDonTuMayChu(MAY_CHU, "K7QX4M9A", KHOA, () => new Promise(() => {}), 50), { loai: "khong-ro" });
+});
+
+kiem("trả trước: màn theo trạng thái — chỉ 'đã nhận đủ' khi máy chủ nói đã trả; thiếu, dư, hết hạn, hủy", () => {
+  const don = (them: object) => docDonTuJson({ ...donMau, ...them })!;
+  assert.equal(buocTraTien(don({})).buoc, "cho-tra");
+  const thieu = buocTraTien(don({ daNhan: 200000, thanhToan: { ...thanhToanMau, soTien: 550000 } }));
+  assert.ok(thieu.buoc === "cho-tra" && thieu.daNhan === 200000 && thieu.thanhToan.soTien === 550000);
+  assert.deepEqual(buocTraTien(don({ thanhToan: { traDuoc: false, lyDo: "gia_thu" } })), { buoc: "chua-mo-tra", lyDo: "gia_thu" });
+  assert.deepEqual(buocTraTien(don({ thanhToan: { traDuoc: false, lyDo: "chua_co_tai_khoan" } })), {
+    buoc: "chua-mo-tra",
+    lyDo: "chua_co_tai_khoan",
+  });
+  // Còn chờ mà máy chủ không đưa được mã: không bao giờ hiện "đã nhận".
+  assert.deepEqual(buocTraTien(don({ thanhToan: { traDuoc: false, lyDo: "tam_loi" } })), { buoc: "dang-lay-ma" });
+  assert.deepEqual(buocTraTien(don({ thanhToan: { traDuoc: false, lyDo: "khong_cho_tra" } })), { buoc: "dang-lay-ma" });
+  assert.deepEqual(buocTraTien(don({ trangThai: "da_thanh_toan", daNhan: 750000, thanhToan: { traDuoc: false, lyDo: "khong_cho_tra" } })), {
+    buoc: "da-nhan-du",
+    trangThai: "da_thanh_toan",
+    thua: 0,
+  });
+  assert.deepEqual(buocTraTien(don({ trangThai: "cho_lay", daNhan: 770000 })), { buoc: "da-nhan-du", trangThai: "cho_lay", thua: 20000 });
+  assert.deepEqual(buocTraTien(don({ trangThai: "het_han", daNhan: 200000 })), { buoc: "het-han", daNhan: 200000 });
+  assert.deepEqual(buocTraTien(don({ trangThai: "can_hoan_tien" })), { buoc: "da-huy", daHoan: false });
+  assert.deepEqual(buocTraTien(don({ trangThai: "da_hoan_tien" })), { buoc: "da-huy", daHoan: true });
+});
+
+kiem("trả trước: hỏi lại 4 giây khi chờ tiền, 15 giây sau đó (kể cả hết hạn: tiền về muộn vẫn tính), thôi khi đã khép", () => {
+  assert.equal(hoiLaiSauMs("cho_thanh_toan"), 4000);
+  assert.equal(hoiLaiSauMs("het_han"), 15000);
+  assert.equal(hoiLaiSauMs("cho_lay"), 15000);
+  assert.equal(hoiLaiSauMs("da_giao"), null);
+  assert.equal(hoiLaiSauMs("da_hoan_tien"), null);
+});
+
+kiem("trả trước: giờ hết hạn theo giờ Việt Nam, kể cả 23:50 và 00:10 (qua ngày)", () => {
+  assert.equal(gioPhutVn(Date.UTC(2026, 10, 13, 2, 5)), "09:05");
+  assert.equal(gioPhutVn(Date.UTC(2026, 10, 13, 16, 50)), "23:50");
+  assert.equal(gioPhutVn(Date.UTC(2026, 10, 13, 17, 10)), "00:10");
+});
+
+kiem("trả trước: đơn vừa đặt giữ trên máy 2 ngày, không tên, không số; hỏng bộ nhớ không làm hỏng app", () => {
+  const bo = new Map<string, string>();
+  const kho: KhoLuu = {
+    getItem: (k) => bo.get(k) ?? null,
+    setItem: (k, v) => void bo.set(k, v),
+    removeItem: (k) => void bo.delete(k),
+  };
+  const luc = Date.UTC(2026, 10, 13, 2, 0);
+  const don = { ma: "K7QX4M9A", khoa: KHOA, soTrongNgay: 12, luc };
+  luuDonDaDat(kho, don);
+  assert.deepEqual(docDonDaDat(kho, luc + 1000), don);
+  assert.deepEqual(Object.keys(JSON.parse(bo.get(KHOA_LUU)!)).sort(), ["khoa", "luc", "ma", "soTrongNgay"]);
+  assert.equal(docDonDaDat(kho, luc + GIU_DON_MS + 1), null);
+  bo.set(KHOA_LUU, "{hỏng");
+  assert.equal(docDonDaDat(kho, luc), null);
+  bo.set(KHOA_LUU, JSON.stringify({ ...don, khoa: "x" }));
+  assert.equal(docDonDaDat(kho, luc), null);
+  const hong: KhoLuu = {
+    getItem: () => {
+      throw new Error("SecurityError");
+    },
+    setItem: () => {
+      throw new Error("QuotaExceededError");
+    },
+    removeItem: () => {
+      throw new Error("SecurityError");
+    },
+  };
+  luuDonDaDat(hong, don);
+  assert.equal(docDonDaDat(hong, luc), null);
+  assert.equal(docDonDaDat(null, luc), null);
 });
 
 console.log(`Đạt ${dat}/${dat} kiểm tra.`);
