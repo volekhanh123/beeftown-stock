@@ -4,12 +4,12 @@
  *
  * Đơn trả trước trong app (Khánh chốt 29/10/2026): khách trả tiền trong Mini App rồi quầy mới soạn.
  *
- *   cho_thanh_toan ──(Zalo báo đã trả, đợt 2)──▶ da_thanh_toan ──▶ dang_soan ──▶ cho_lay ──▶ da_giao
+ *   cho_thanh_toan ──(SePay báo đủ tiền)──▶ da_thanh_toan ──▶ dang_soan ──▶ cho_lay ──▶ da_giao
  *        │                                            │               │            │
  *        └──(quá 30 phút chưa trả)──▶ het_han         └───────────────┴────────────┴──▶ can_hoan_tien ──▶ da_hoan_tien
  *
- * Quầy chỉ đi theo BUOC_QUAY. Hai bước của máy (đã trả tiền, hết hạn) không có nút: đợt 2 nối báo thanh toán
- * của Zalo vào ghiDaThanhToan (so-don.ts), không qua màn hình quầy. Hoàn tiền làm tay (Claude đề xuất 29/10/2026,
+ * Quầy chỉ đi theo BUOC_QUAY. Hai bước của máy (đã trả tiền, hết hạn) không có nút: tiền về qua SePay đi
+ * SoDon.ghiTienVe (so-don.ts), không qua màn hình quầy. Hoàn tiền làm tay (Claude đề xuất 29/10/2026,
  * Khánh chưa chốt):
  * quầy bấm hủy → đơn vào "Cần hoàn tiền" → người chuyển khoản trả bấm "Đã hoàn tiền".
  *

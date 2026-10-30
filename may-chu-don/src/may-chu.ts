@@ -4,9 +4,12 @@
  *
  *   POST /api/don              Mini App gửi đơn (kiemDon → SoDon.taoDon). 201 đơn mới, 200 đơn cũ cùng maGui.
  *   GET  /api/don/:ma?khoa=    Khách xem trạng thái đơn của mình (sai khóa = 404, như không có đơn).
+ *   GET  /api/don/:ma/qr.svg?khoa=  Ảnh mã VietQR để khách chuyển khoản (chỉ khi đơn đang chờ trả tiền).
+ *   POST /sepay/tien-ve        SePay báo có tiền về (kiểm HMAC → SoDon.ghiTienVe). Trả {"success": true} khi đã ghi.
  *   GET  /suc-khoe             Số đếm cho đèn sức khỏe — không dữ liệu cá nhân.
  *   GET  /quay                 Màn hình đơn cho quầy (mật khẩu quầy → phiên 12 giờ).
- *   POST /quay/dang-nhap · /quay/dang-xuat · /quay/doi · /quay/ngon-ngu; GET /quay/huy?ma= (hỏi lại trước khi hủy)
+ *   POST /quay/dang-nhap · /quay/dang-xuat · /quay/doi · /quay/ngon-ngu · /quay/tien-ve/da-xem;
+ *        GET /quay/huy?ma= (hỏi lại trước khi hủy)
  *
  * taoXuLy nhận mọi thứ từ ngoài vào (sổ đơn, mật khẩu, đồng hồ) để kiểm thử gọi thẳng bằng Request, không cần
  * mở cổng. Câu trả lời của /api chỉ nói "đã ghi" khi giao dịch SQLite đã xong; lỗi thì nói rõ đơn CHƯA được ghi
@@ -16,7 +19,9 @@ import { randomBytes, timingSafeEqual, createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import CSS_QUAY_FILE from './quay.css' with { type: 'text' };
 import { MAU_MA_GUI, dauNoiDungGui, kiemDon } from './tao-don.ts';
-import { SoDon, type DonDayDu } from './so-don.ts';
+import { SoDon, PHUT_CHO_THANH_TOAN, type DonDayDu } from './so-don.ts';
+import { DA_NHAN, docTinTienVe, kiemChuKy } from './sepay.ts';
+import { chuoiVietQr, noiDungChuyenKhoan, svgVietQr, type TaiKhoanNhan } from './viet-qr.ts';
 import { NHAN, duocBam, laTrangThai } from './trang-thai.ts';
 import { laCauBao, trangDangNhap, trangDanhSach, trangXacNhanHuy, type NgonNgu } from './man-quay.ts';
 
@@ -34,7 +39,18 @@ export interface TuyChonMayChu {
   khoaSucKhoe?: string;
   /** Cookie phiên mang Secure — tắt chỉ khi thử trên mạng LAN bằng http (README, "Chạy thử trên laptop"). */
   cookieAnToan: boolean;
+  /** Tài khoản nhận chuyển khoản (VietinBank của SLK Group). Chưa có: đơn vẫn ghi nhưng không có mã trả tiền. */
+  taiKhoan?: TaiKhoanNhan;
+  /** Khóa HMAC của webhook SePay. Chưa có: /sepay/tien-ve trả 503 (SePay gửi lại sau). */
+  khoaSepay?: string;
+  /** Cho hiện mã trả tiền khi bảng giá còn là giá thử — chỉ để Khánh thử chuyển khoản thật số nhỏ. */
+  choTraGiaThu?: boolean;
 }
+
+/** Thông tin trả tiền gửi cho Mini App, hoặc lý do chưa trả được. */
+export type ThanhToan =
+  | { traDuoc: true; nganHang: string; soTaiKhoan: string; tenTaiKhoan: string; soTien: number; noiDung: string; chuoiQr: string; hetHanLuc: number }
+  | { traDuoc: false; lyDo: 'chua_co_tai_khoan' | 'gia_thu' | 'khong_cho_tra' | 'tam_loi' };
 
 /**
  * IP để đếm lượt. Sau proxy HTTPS của mình (TIN_PROXY=1): mục CUỐI của X-Forwarded-For — Caddy, nginx thêm IP thật
@@ -162,6 +178,26 @@ export function taoXuLy(tc: TuyChonMayChu) {
   const cookie = (ten: string, gt: string, giay: number, them = '') =>
     `${ten}=${gt}; Path=/quay; HttpOnly; SameSite=Strict; Max-Age=${giay}${tc.cookieAnToan ? '; Secure' : ''}${them}`;
 
+  /** Đơn còn chờ trả tiền thì có mã VietQR cho đúng số tiền còn thiếu; đơn đã có tiền, hết hạn: không. */
+  const thanhToanCoTheNem = (d: DonDayDu): ThanhToan => {
+    if (d.trangThai !== 'cho_thanh_toan') return { traDuoc: false, lyDo: 'khong_cho_tra' };
+    if (!tc.taiKhoan) return { traDuoc: false, lyDo: 'chua_co_tai_khoan' };
+    if (d.giaThu && !tc.choTraGiaThu) return { traDuoc: false, lyDo: 'gia_thu' };
+    const conThieu = d.tongTien - tc.so.tienDaNhan(d.ma);
+    if (conThieu <= 0) return { traDuoc: false, lyDo: 'khong_cho_tra' };
+    const noiDung = noiDungChuyenKhoan(d.ma);
+    return {
+      traDuoc: true, nganHang: tc.taiKhoan.tenNganHang, soTaiKhoan: tc.taiKhoan.soTaiKhoan, tenTaiKhoan: tc.taiKhoan.tenTaiKhoan,
+      soTien: conThieu, noiDung, chuoiQr: chuoiVietQr(tc.taiKhoan, conThieu, noiDung), hetHanLuc: d.taoLuc + PHUT_CHO_THANH_TOAN * 60_000,
+    };
+  };
+  // Đơn đã ghi xong rồi mới dựng phần trả tiền: phần này hỏng (sổ đơn bận) thì vẫn trả đơn — câu "đơn CHƯA được ghi"
+  // chỉ dành cho lúc ghi đơn hỏng. Mini App hỏi lại GET /api/don/<mã> để lấy mã trả tiền.
+  const thanhToan = (d: DonDayDu): ThanhToan => {
+    try { return thanhToanCoTheNem(d); }
+    catch (e) { console.error('Dựng thông tin trả tiền hỏng:', e); return { traDuoc: false, lyDo: 'tam_loi' }; }
+  };
+
   return async function xuLy(req: Request, ip: string): Promise<Response> {
     const url = new URL(req.url);
     const duong = url.pathname;
@@ -179,7 +215,7 @@ export function taoXuLy(tc: TuyChonMayChu) {
         try { than = JSON.parse(chu); } catch { return loiApi(400, 'Đơn gửi lên không đọc được. Mở lại Mini App rồi gửi lại.'); }
         const traDon = (d: DonDayDu, moi: boolean) => json({
           ok: true, moi, ma: d.ma, khoa: d.khoaXem, soTrongNgay: d.soTrongNgay, tongTien: d.tongTien,
-          trangThai: d.trangThai, nhan: NHAN[d.trangThai].vi,
+          trangThai: d.trangThai, nhan: NHAN[d.trangThai].vi, thanhToan: thanhToan(d),
         }, moi ? 201 : 200);
         const trungMaGui = () => loiApi(409, 'Đơn này đã gửi với nội dung khác. Mở lại Mini App rồi đặt lại.');
         try {
@@ -198,18 +234,52 @@ export function taoXuLy(tc: TuyChonMayChu) {
         }
       }
 
-      const m = duong.match(/^\/api\/don\/([A-Z0-9]{8})$/);
+      const m = duong.match(/^\/api\/don\/([A-Z0-9]{8})(\/qr\.svg)?$/);
       if (m && req.method === 'GET') {
         if (!gioiHanXem.thu(ip, ms)) return loiApi(429, 'Hỏi nhiều lần quá. Chờ một phút rồi thử lại.');
         const d = tc.so.layTheoKhoa(m[1], url.searchParams.get('khoa') ?? '');
         if (!d) return loiApi(404, 'Không thấy đơn này.');
+        const tt = thanhToan(d);
+        if (m[2]) {
+          if (!tt.traDuoc) return loiApi(404, 'Đơn này không còn chờ trả tiền.');
+          return new Response(await svgVietQr(tt.chuoiQr), { headers: {
+            'Content-Type': 'image/svg+xml', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
+            'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'", ...CORS,
+          } });
+        }
         return json({
           ok: true, ma: d.ma, soTrongNgay: d.soTrongNgay, trangThai: d.trangThai, nhan: NHAN[d.trangThai].vi,
-          ngayNhan: d.ngayNhan, gioNhan: d.gioNhan, tongTien: d.tongTien, giaThu: d.giaThu,
-          dong: d.dong.map(x => ({ ten: x.ten, soKhay: x.soKhay, giaMoiKhay: x.giaMoiKhay })),
+          ngayNhan: d.ngayNhan, gioNhan: d.gioNhan, tongTien: d.tongTien, daNhan: tc.so.tienDaNhan(d.ma), giaThu: d.giaThu,
+          dong: d.dong.map(x => ({ ten: x.ten, soKhay: x.soKhay, giaMoiKhay: x.giaMoiKhay })), thanhToan: tt,
         });
       }
       return loiApi(404, 'Không có đường này.');
+    }
+
+    // ---------- SePay báo tiền về ----------
+    if (duong === '/sepay/tien-ve' && req.method === 'POST') {
+      const tuChoi = (status: number, ly: string) => new Response(JSON.stringify({ success: false, message: ly }),
+        { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } });
+      // Chưa đủ cấu hình: trả lỗi để SePay gửi lại sau — không ghi tiền về khi chưa biết tài khoản của quán, kẻo khoản
+      // tiền thật bị ghi vĩnh viễn là "sai tài khoản" (mỗi id chỉ ghi một lần).
+      if (!tc.khoaSepay || !tc.taiKhoan) return tuChoi(503, 'Chưa cấu hình khóa SePay hoặc tài khoản nhận');
+      const thanGoc = await docThan(req, 16 * 1024);
+      if (thanGoc === null) return tuChoi(413, 'Quá dài');
+      const ky = kiemChuKy(thanGoc, req.headers.get('x-sepay-signature'), req.headers.get('x-sepay-timestamp'), tc.khoaSepay, Math.floor(ms / 1000));
+      if (ky !== 'dung') return tuChoi(401, ky === 'qua_han' ? 'Request expired' : 'Invalid signature');
+      let than: unknown;
+      try { than = JSON.parse(thanGoc); } catch { return tuChoi(400, 'Không phải JSON'); }
+      const tin = docTinTienVe(than);
+      if (!tin) return tuChoi(400, 'Thiếu trường');
+      try {
+        const kq = tc.so.ghiTienVe(tin, tc.taiKhoan?.soTaiKhoan ?? '', ms);
+        if (kq.moi) console.log(`SePay ${tin.idSepay}: ${kq.ketQua}${kq.maDon ? ` đơn ${kq.maDon}` : ''}`);
+        return new Response(DA_NHAN, { status: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' } });
+      } catch (e) {
+        // Chưa ghi được: trả lỗi để SePay gửi lại (8 lần trong 33 phút) — không bao giờ báo đã nhận khi chưa ghi.
+        console.error('Ghi tiền về hỏng:', e);
+        return tuChoi(500, 'Chưa ghi được');
+      }
     }
 
     if (duong === '/suc-khoe' && req.method === 'GET') {
@@ -269,7 +339,8 @@ export function taoXuLy(tc: TuyChonMayChu) {
         const ma = url.searchParams.get('ma') ?? '', den = url.searchParams.get('den'), baoMa = url.searchParams.get('bao') ?? '';
         const don = ma ? tc.so.layDon(ma) : null;
         const bao = laCauBao(baoMa) ? { ma: baoMa, maDon: don?.ma ?? '', so: don?.soTrongNgay ?? null, den: laTrangThai(den) ? den : null } : null;
-        return html(trangDanhSach(nn, tc.so.danhSachQuay(ms), bao));
+        const daNhan = tc.so.tienDaNhanTheoDon();
+        return html(trangDanhSach(nn, tc.so.danhSachQuay(ms), bao, tc.so.tienVeCanXem(), ma => daNhan.get(ma) ?? 0));
       }
 
       if (duong === '/quay/huy' && req.method === 'GET') {
@@ -283,6 +354,11 @@ export function taoXuLy(tc: TuyChonMayChu) {
         if (!laTrangThai(tu) || !laTrangThai(den)) return chuyen('/quay?bao=khong_duoc');
         const kq = tc.so.doiTrangThai(ma, tu, den, ms);
         return chuyen(`/quay?bao=${kq}&ma=${encodeURIComponent(ma)}&den=${den}#don-${encodeURIComponent(ma)}`);
+      }
+      if (duong === '/quay/tien-ve/da-xem' && req.method === 'POST') {
+        const id = Number(new URLSearchParams((await docThan(req, 1024)) ?? '').get('id'));
+        const kq = Number.isSafeInteger(id) && id > 0 ? tc.so.danhDauDaXem(id, ms) : 'khong_co';
+        return chuyen(`/quay?bao=${kq === 'da_doi' ? 'tien_ve_da_xem' : kq === 'da_o_buoc_moi' ? 'tien_ve_xem_roi' : 'tien_ve_khong_co'}#tien-ve`);
       }
       return html('Not found', 404);
     }
