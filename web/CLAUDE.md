@@ -68,6 +68,8 @@ Thêm một trang kho: làm đủ 8 bước của `KHO.md` mục 7. Câu databas
 - `/noi-bo` và kho: trạng thái phân biệt bằng chữ, dấu, nét — không màu xanh hay vàng (skill thiết kế).
 - Beeftown Cân đóng gói cả `src/lib/gio-vn.ts` và một số file `src/lib/kho/` (`can-tma.ts`, `chung.ts`, `danh-muc.ts`,
   `danh-muc-can.ts`, `ma-giam.ts`, `tang.ts`, `anh.ts`): sửa chúng thì chạy cả kiểm thử của `can-app/` (`can-app/CLAUDE.md`).
+  Từ bản 2.12 nó nhúng cả `public/thuong-hieu/chu-beeftown-trang.svg` và `public/bieu-tuong.svg` — đổi hai file đó là đổi
+  logo, biểu tượng của `.exe` (tăng `PHIEN_BAN` trong `can-app/src/main.ts`).
 
 ## Lệnh
 

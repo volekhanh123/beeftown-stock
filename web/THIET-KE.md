@@ -107,7 +107,7 @@ Mockup của PDF nhận diện cũ (mặt tiền, biển hiệu, đồng phục,
 
 ## 2. Màu theo vai
 
-> **Website dùng bảng 22/10/2026** (`../THUONG-HIEU.md` mục 1): đỏ, đen, trắng của Brand Guidelines 21/10/2026, cùng năm màu pha màn hình Khánh duyệt ngày 25/10/2026 — từ PR "Đổi nhận diện website". Trang công khai (`<body class="ck">`) khai token ở khối `.ck`; **`/noi-bo` và kho** đọc hai khối `:root` của `src/styles/chung.css`, cùng giá trị — phần riêng của hai nơi đó ghi ở cuối mục này. Beeftown Cân chưa đổi.
+> **Website dùng bảng 22/10/2026** (`../THUONG-HIEU.md` mục 1): đỏ, đen, trắng của Brand Guidelines 21/10/2026, cùng năm màu pha màn hình Khánh duyệt ngày 25/10/2026 — từ PR "Đổi nhận diện website". Trang công khai (`<body class="ck">`) khai token ở khối `.ck`; **`/noi-bo` và kho** đọc hai khối `:root` của `src/styles/chung.css`, cùng giá trị — phần riêng của hai nơi đó ghi ở cuối mục này. Beeftown Cân theo cùng bảng từ bản 2.12 (khai lại các biến nó dùng, cùng tên, cùng giá trị, trong hai trang của nó).
 
 Màu chữ theo **bề mặt**, không theo từng chỗ: mỗi khối khai một lớp bề mặt, mọi thứ bên trong đọc biến của bề mặt đó. Thêm khối mới chỉ cần chọn bề mặt, không phải tự chọn màu chữ — và không ai lỡ tay đặt chữ đỏ thường lên nền đen.
 
@@ -180,7 +180,7 @@ File này là tài liệu của trang công khai; phần dưới chỉ ghi đi�
 - **Không có hệ bề mặt.** Nội bộ và kho chỉ có nền sáng và đầu trang đen: hai bề mặt khai trên `.nb-than` — nền trang `--nb-nen` (xám nhạt `#F4F4F4`) và thẻ, thanh, menu, ô nhập `--nb-the` (trắng). Cách xếp ngược trang công khai (thẻ xám nhạt trên nền trắng) mà giống khối thẻ đặt trên dải xám nhạt: màn nội bộ dày thẻ, thẻ sáng hơn nền thì đọc dễ hơn. Trên thẻ trắng: chữ đen 21,00 : 1, chữ phụ `--muc-nhat` 7,46, chữ đỏ 6,64, viền ô nhập 4,54.
 - **Trạng thái không có màu riêng** (Khánh bỏ xanh, vàng, đỏ nhạt ngày 25/10/2026): trạng thái vẽ bằng chữ, dấu, nét — bảy kiểu K1–K7 khai trong `src/styles/noi-bo.css`, ghi ở `../THUONG-HIEU.md` mục 4. Trang công khai không dùng các kiểu đó.
 - **Token của kho** (`--kho-nen`, `--kho-the`, `--kho-vach`, `--kho-vach-dam` trên `.kho-than`) không phải sắc riêng: chúng trỏ về `--nb-nen`, `--nb-the`, `--vach`, `--vien-o`.
-- **Còn màu cũ:** Beeftown Cân (`can-app/src/giao-dien.html`, `huong-dan.html` — PR riêng, kèm phiên bản mới) và 15 ảnh chụp trong trang hướng dẫn của kho (`public/kho/hd-*.png`), chờ chụp lại.
+- **Đã theo bảng mới cả:** 15 ảnh chụp trong trang hướng dẫn của kho (`public/kho/hd-*.png`) chụp lại ngày 30/10/2026 (việc 8); Beeftown Cân (`can-app/src/giao-dien.html`, `huong-dan.html`) đổi ở bản 2.12. Thứ còn mang nhận diện cũ (Mini App, bộ nhớ đệm ngoài): `../THUONG-HIEU.md` mục 5.
 
 ---
 

@@ -177,6 +177,30 @@ async function thuMotVai(ok: Ok, trinhDuyet: TrinhDuyetPw, kb: KichBan): Promise
     }
     ok(`${kb.ten}: bấm từng thẻ đúng các mục; mở từng mục gập — nội dung tải xong`, hong.length === 0, hong.join(' | '));
 
+    // 2.12 — lớp trạng thái gán lúc chạy, cả lớp ghép từ dữ liệu (kiểm thử tĩnh crm/test/test-can-nhan-dien.mjs chỉ đọc chữ
+    // viết thẳng trong mã): mỗi nhãn đúng một trong sáu kiểu K1, K3–K7; đèn ô Cân, ô số, khối báo chỉ lớp của bộ 2.12.
+    const lop = await trang.evaluate(() => {
+      const la: string[] = [];
+      const dem = (chon: string, goc: string, duoc: string[], dungMot: boolean) => {
+        let n = 0;
+        for (const el of document.querySelectorAll(chon)) {
+          n++;
+          const k = [...el.classList].filter(c => c !== goc && c !== 'an');
+          if (dungMot ? k.length !== 1 || !duoc.includes(k[0]) : k.length > 1 || k.some(c => !duoc.includes(c))) {
+            la.push(`${goc} ${k.join(' ') || '(không kiểu)'} «${(el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 24)}»`);
+          }
+        }
+        return n;
+      };
+      const nhan = dem('.nhan-l', 'nhan-l', ['cho', 'nhap', 'song', 'luu-y', 'tat', 'thong-tin'], true);
+      const den = dem('.den', 'den', ['noi', 'loi'], false);
+      const o = dem('.so-o .o', 'o', ['gap', 'luu-y'], false);
+      const bao = dem('.bao', 'bao', ['xong', 'luu-y', 'loi'], false);
+      return { nhan, den, o, bao, la };
+    }, null);
+    ok(`${kb.ten}: ${lop.nhan} nhãn mang đúng một kiểu K1, K3–K7; ${lop.den} đèn, ${lop.o} ô số, ${lop.bao} khối báo chỉ lớp của bản 2.12`,
+      lop.la.length === 0 && lop.den >= 1 && lop.bao >= 1 && (kb.vai === null || lop.nhan >= 1), lop.la.slice(0, 6).join(' | '));
+
     if (kb.vai !== null && !kb.chuaCoGoc) await thuTangO(ok, trang, kb);
     if (kb.vai === 'quan_ly' && !kb.chuaCoGoc) await thuPhimTem(ok, trang);
     await trang.waitForTimeout(300);

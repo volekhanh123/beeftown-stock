@@ -1,7 +1,8 @@
 # Đóng gói Beeftown Cân — ra file BeeftownCan.exe để tải về từ GitHub, không cần gõ lệnh.
 #
 #   · Main nhận commit đụng thứ đi vào file .exe — can-app/, mã dùng chung trong web/src/lib/ (can-tma.ts,
-#     danh-muc-can.ts, gio-vn.ts, câu tiếng Anh…), ảnh biểu tượng dong-goi.ts đọc: kiểm thử (2.11: cả giao diện trong
+#     danh-muc-can.ts, gio-vn.ts, câu tiếng Anh…), ảnh biểu tượng dong-goi.ts đọc, logo và biểu tượng giao diện
+#     may-chu.ts nhúng (2.12: chu-beeftown-trang.svg, bieu-tuong.svg): kiểm thử (2.11: cả giao diện trong
 #     Chromium, test/thu-trinh-duyet.ts) → đóng gói → artifact
 #     "BeeftownCan-<phiên bản>" (PHIEN_BAN trong can-app/src/main.ts). Phiên bản chưa có Release thì tạo Release
 #     "Beeftown Cân <phiên bản>" kèm file zip — Release giữ mãi.
@@ -32,12 +33,16 @@ on:
       - 'can-app/**'
       - 'web/src/lib/**'
       - 'web/public/kho/bieu-tuong-192.png'
+      - 'web/public/thuong-hieu/chu-beeftown-trang.svg'
+      - 'web/public/bieu-tuong.svg'
       - '.github/workflows/dong-goi-can.yml'
   pull_request:
     paths:   # giống hệt push ở trên
       - 'can-app/**'
       - 'web/src/lib/**'
       - 'web/public/kho/bieu-tuong-192.png'
+      - 'web/public/thuong-hieu/chu-beeftown-trang.svg'
+      - 'web/public/bieu-tuong.svg'
       - '.github/workflows/dong-goi-can.yml'
   workflow_dispatch:
     inputs:

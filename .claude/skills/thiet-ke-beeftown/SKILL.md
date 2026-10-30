@@ -37,7 +37,7 @@ Mỗi khu có CSS, layout và số thứ tiếng riêng. Xác định trước k
 | Ấn phẩm ngoài web | Khách trên mạng xã hội, tại quán | — | vi (en / ko khi cần) | [tham-khao/an-pham.md](tham-khao/an-pham.md) |
 
 **Mọi khu web chung một bảng màu** — bảng 22/10/2026 (mục "Màu"), từ PR "Đổi nhận diện website";
-Beeftown Cân chưa đổi (còn bảng cũ hơn, PR riêng). Mọi khu web dùng Montserrat (Beeftown Cân
+Beeftown Cân theo cùng bảng từ bản 2.12. Mọi khu web dùng Montserrat (Beeftown Cân
 chạy không mạng nên dùng phông hệ thống). **Đừng mang lớp của khu này sang khu kia**: lớp `.nut`,
 `.be-kem`… của trang công khai chỉ sống dưới `.ck`; `cong-khai.css` chỉ `Trang.astro` được nạp
 (có kiểm thử).
@@ -69,8 +69,7 @@ bạn bè, nhóm văn phòng.
 
 Bảng thương hiệu là bảng 22/10/2026 (`THUONG-HIEU.md` mục 1): ba màu dưới đây, cùng năm màu pha **chỉ
 cho màn hình** (Khánh duyệt 25/10/2026). Website (trang công khai, `/noi-bo`, kho) dùng bảng này từ PR
-"Đổi nhận diện website". Beeftown Cân còn bảng cũ hơn — đổi ở một PR riêng, kèm phiên bản mới của chương
-trình.
+"Đổi nhận diện website"; Beeftown Cân từ bản 2.12 của chương trình.
 
 ### Bảng màu thương hiệu — Khánh chốt 22/10/2026
 
@@ -89,9 +88,8 @@ thử). Màu pha của màn hình: một đỏ đậm và bốn xám (bảng tok
   21/10/2026 — xem [tham-khao/an-pham.md](tham-khao/an-pham.md).
 - **Website** (trang công khai, `/noi-bo`, kho): ba màu cộng năm màu pha, chỉ qua token — bảng "Token màu
   của website" dưới đây.
-- **`/noi-bo` và kho không có màu trạng thái**: trạng thái phân biệt bằng chữ, dấu, nét — bảy kiểu
-  K1–K7, xem [tham-khao/noi-bo-va-kho.md](tham-khao/noi-bo-va-kho.md). Beeftown Cân còn màu trạng thái
-  cũ (xanh, vàng) tới PR riêng của nó.
+- **`/noi-bo`, kho và Beeftown Cân không có màu trạng thái**: trạng thái phân biệt bằng chữ, dấu, nét — bảy
+  kiểu K1–K7, xem [tham-khao/noi-bo-va-kho.md](tham-khao/noi-bo-va-kho.md).
 - Phần của mỗi màu trên trang công khai: nền trắng; đen ở đầu trang, chân trang, vài dải; đỏ cho nút,
   nhãn, giá (Khánh quyết 25/10/2026).
 
@@ -108,8 +106,9 @@ biến giữ từ bảng trước (`--kem` mang trắng, `--than` mang đen) —
 từng mã — `crm/test/test-noi-bo-bang-mau.mjs` (nhóm 1 còn so hai khối với nhau),
 `crm/test/test-cong-khai-giao-dien.mjs` và `crm/test/test-ky-nang-thiet-ke.mjs` (so bảng này với cả hai
 nơi). Thêm token mới ở `chung.css` thì khai một khối `:root` riêng, như `--do-sau`, `--kem-dam`.
-Beeftown Cân chạy không mạng nên khai màu ngay trong `can-app/src/giao-dien.html` và
-`can-app/src/huong-dan.html` — chưa đổi sang bảng này (PR riêng, kèm phiên bản mới của chương trình).
+Beeftown Cân chạy không mạng nên khai lại các biến nó dùng — cùng tên, cùng giá trị — trong khối `:root` của
+`can-app/src/giao-dien.html` và `can-app/src/huong-dan.html` (từ bản 2.12; `crm/test/test-can-nhan-dien.mjs` so với
+`chung.css`). Đổi một mã ở `chung.css` là đổi cả hai file đó và tăng `PHIEN_BAN` trong `can-app/src/main.ts`.
 
 | Token | Mã | Tên | Vai ở trang công khai | Vai ở `/noi-bo` và kho |
 |---|---|---|---|---|

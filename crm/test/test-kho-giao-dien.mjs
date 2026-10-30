@@ -501,6 +501,41 @@ await nhom('5 · HƯỚNG DẪN: NÚT "?" TRỎ ĐÚNG MỤC, NỘI DUNG HỢP L
   ok('Ảnh đặt ở /kho/hd-*.png, có chữ mô tả (hai thứ tiếng)',
     coAnh.every(m => /^\/kho\/hd-[a-z0-9-]+\.png$/.test(m.anh.file) && coChu(m.anh.chu)));
 
+  // Ảnh chụp giao diện của bộ nhận diện 21/10/2026 (THUONG-HIEU.md mục 0, việc 8 — chụp lại 30/10/2026): đầu trang đen
+  // #000000 như thanh trên của kho; không mảng màu nào của các bảng cũ (kem, nâu, đỏ gạch, vàng Marigold, màu trạng thái
+  // tới 25/10/2026 — mã chép tay như test-noi-bo-bang-mau.mjs, test-can-nhan-dien.mjs). Mép chữ khử răng cưa có thể trùng
+  // một mã cũ vài điểm: ngưỡng 0,5 % số điểm (ảnh chụp trước 21/10/2026: 8–57 %; ảnh 30/10/2026: dưới 0,02 %).
+  const MAU_CU = [
+    'B23A2C', '8E2B20', 'FBF4E1', 'F3E8CC', 'F2A900', '1E160E', 'B8A98C', 'E4D8BC', '1F7A4C', 'E9F5EE', 'FDECEA', 'FFF5DC',
+    '6A5D45', '7A6C52', '8A7C62', '3A2D20', '7A5200', 'F3C8C2', '6B4A00', '1F261E', 'A8EF9B', 'C9D7C5', 'B9B9B9',
+    'A70C0C', '890607', 'F0E3D0', 'EBDCC6', 'E7D5BC', '151008', 'F5AA14', '7A7366', '211A10', 'FFFDF6',
+    '1A683F', 'D3E3C6', 'A3C597', 'F6DC9E', 'DDB65C', 'F2D6CE', 'DDA79C',
+    '8F2C21', '960F13', 'F5ECD7', 'F1E4C2', 'F5C211', '8C8577', 'A21E22', '2A2016', 'FFFCF6', 'EFE4D2', 'E0D2BB',
+    'CDE7D8', 'F3DDA5', 'FFFCF2', 'FFFBF1', 'F2C9C3', 'FFF8F7', '8A5A00', 'B07A00', '8A6D00', '9A6B00', '7A5A00',
+  ];
+  const boMauCu = new Set(MAU_CU.map(h => parseInt(h, 16)));
+  const CAO_DAU = 56;   // thanh trên của kho trên điện thoại (Kho.astro, kho-khung.css)
+  const anhMauCu = [], dauKhongDen = [];
+  for (const m of coAnh.filter(x => existsSync(join(PUB, x.anh.file)))) {
+    const a = docPng(join(PUB, m.anh.file));
+    if (!a) { anhMauCu.push(`${m.anh.file}: không đọc được PNG`); continue; }
+    let cu = 0, den = 0;
+    for (let y = 0; y < a.cao; y++) {
+      for (let x = 0; x < a.rong; x++) {
+        const [r, g, b] = a.diem(x, y);
+        if (boMauCu.has((r << 16) | (g << 8) | b)) cu++;
+        if (y < CAO_DAU && r === 0 && g === 0 && b === 0) den++;
+      }
+    }
+    if (cu > a.rong * a.cao * 0.005) anhMauCu.push(`${m.anh.file}: ${cu} điểm mang mã cũ (${(cu * 100 / (a.rong * a.cao)).toFixed(1)} %)`);
+    // hd-menu là thanh đáy (cao 69px, nền trắng) — không có đầu trang.
+    if (a.cao > 200 && den < a.rong * CAO_DAU * 0.6) dauKhongDen.push(`${m.anh.file}: ${Math.round(den * 100 / (a.rong * CAO_DAU))} % đen`);
+  }
+  ok(`Ảnh hướng dẫn chụp giao diện bộ 21/10/2026: không ảnh nào có mảng màu của bảng cũ (kem, nâu, đỏ gạch, vàng, màu trạng thái) — ${coAnh.length} ảnh`,
+    coAnh.length >= 15 && anhMauCu.length === 0, anhMauCu.join(' | '));
+  ok(`Ảnh hướng dẫn: đầu trang đen #000000 (≥ 60 % điểm của ${CAO_DAU} dòng trên cùng) — ảnh chụp trước 21/10/2026 có đầu trang nâu`,
+    dauKhongDen.length === 0, dauKhongDen.join(' | '));
+
   // Thủ kho, NV quầy không thấy tiền (0031) — phần của họ không nhắc tiền, ở cả hai thứ tiếng.
   const TIEN = {
     vi: /giá nhập|giá vốn|đơn giá|thành tiền|lãi|công nợ/i,
