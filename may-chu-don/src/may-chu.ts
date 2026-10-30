@@ -164,7 +164,9 @@ export function taoXuLy(tc: TuyChonMayChu) {
   const bayGio = tc.bayGio ?? (() => Date.now());
   const phien = new Map<string, number>();
   const gioiHanDon = new GioiHan(20, 60_000);
-  const gioiHanXem = new GioiHan(120, 60_000);
+  // Mini App hỏi trạng thái 4 giây một lần khi chờ tiền; khách sau cùng một IP nhà mạng (NAT) dùng chung lượt. Tra một
+  // dòng theo khóa chính, khóa xem 128 bit — giới hạn chỉ để chặn gửi dồn, không phải để chống đoán khóa.
+  const gioiHanXem = new GioiHan(600, 60_000);
   const saiMatKhau = new GioiHan(5, 10 * 60_000);
 
   const coPhien = (req: Request, ms: number) => {
@@ -238,7 +240,8 @@ export function taoXuLy(tc: TuyChonMayChu) {
       if (m && req.method === 'GET') {
         if (!gioiHanXem.thu(ip, ms)) return loiApi(429, 'Hỏi nhiều lần quá. Chờ một phút rồi thử lại.');
         const d = tc.so.layTheoKhoa(m[1], url.searchParams.get('khoa') ?? '');
-        if (!d) return loiApi(404, 'Không thấy đơn này.');
+        // lyDo cho máy đọc: Mini App chỉ thôi giữ đơn trên máy khi đúng là không có đơn, không phải khi sai đường.
+        if (!d) return json({ ok: false, lyDo: 'khong_thay_don', loi: ['Không thấy đơn này.'] }, 404);
         const tt = thanhToan(d);
         if (m[2]) {
           if (!tt.traDuoc) return loiApi(404, 'Đơn này không còn chờ trả tiền.');

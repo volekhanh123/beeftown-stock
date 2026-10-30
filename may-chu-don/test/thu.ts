@@ -614,6 +614,10 @@ nhom('16 · Đường /sepay/tien-ve và thông tin trả tiền trong /api/don'
   ok('Ảnh mã QR: SVG, không cache, có CORS cho Mini App', qr.status === 200 && qr.headers.get('content-type') === 'image/svg+xml'
     && (await qr.text()).startsWith('<svg') && qr.headers.get('cache-control') === 'no-store' && qr.headers.get('access-control-allow-origin') === '*');
   ok('Ảnh mã QR sai khóa → 404', (await goi(xuLy, `/api/don/${j.ma}/qr.svg?khoa=${'0'.repeat(32)}`)).status === 404);
+  const khongCo = await goi(xuLy, `/api/don/${j.ma}?khoa=${'0'.repeat(32)}`), duongLa = await goi(xuLy, '/api/khong-co-duong');
+  ok('Không có đơn → 404 kèm lyDo "khong_thay_don"; sai đường → 404 không có lyDo đó (Mini App không xóa đơn đã giữ)',
+    khongCo.status === 404 && (await khongCo.json() as { lyDo?: string }).lyDo === 'khong_thay_don'
+    && duongLa.status === 404 && (await duongLa.json() as { lyDo?: string }).lyDo === undefined);
 
   const gui = (than: unknown, them: Record<string, string> = {}, giay = Math.floor(LUC_DAT / 1000)) => {
     const chu = typeof than === 'string' ? than : JSON.stringify(than);
@@ -788,6 +792,11 @@ nhom('18 · Mini App gọi máy chủ thật (mini-app/src/tra-truoc.ts): đặt
       b2?.buoc === 'da-nhan-du' && b2.thua === 0 && so.layDon(ma)!.trangThai === 'da_thanh_toan', JSON.stringify(b2));
     ok('Sai khóa xem → Mini App báo không thấy đơn',
       (await docDonTuMayChu(GOC_MAY, ma, '0'.repeat(32), quaMayChu)).loai === 'khong-thay');
+    ok('Mini App sai đường (sai địa chỉ máy chủ) → "không rõ", không phải "không thấy đơn"',
+      (await docDonTuMayChu(`${GOC_MAY}/sai`, ma, khoa, quaMayChu)).loai === 'khong-ro');
+    let bi429 = 0;
+    for (let i = 0; i < 160; i++) if ((await goi(xuLy, `/api/don/${ma}?khoa=${khoa}`, {}, '10.0.0.77')).status === 429) bi429++;
+    ok('10 khách sau một IP nhà mạng hỏi 4 giây một lần (150 lượt / phút) → không ai bị 429', bi429 === 0, String(bi429));
   }
   const loiGio = await guiDonLenMayChu(GOC_MAY, taoThanDon(taoMaGui(), { 'la-galbi': 1 }, { ...nhan, gio: '03:00' }), quaMayChu);
   ok('Máy chủ từ chối (giờ nhận không chọn được) → Mini App hiện đúng câu của máy chủ, đơn chưa ghi',

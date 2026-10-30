@@ -9,11 +9,13 @@ import {
   docDonDaDat,
   docDonTuJson,
   docDonTuMayChu,
+  donCuConDung,
   gioPhutVn,
   guiDonLenMayChu,
   hoiLaiSauMs,
   kiemTraTraTruoc,
   luuDonDaDat,
+  ngayVn,
   taoMaGui,
   taoThanDon,
   type HamFetchApi,
@@ -371,8 +373,13 @@ await kiemAsync("trả trước: đọc đơn — đúng địa chỉ có khóa;
   const kq = await docDonTuMayChu(MAY_CHU, "K7QX4M9A", KHOA, mayChuGia(200, donMau, ghi));
   assert.equal(kq.loai === "co" && kq.don.ma, "K7QX4M9A");
   assert.deepEqual(ghi, [{ url: `${MAY_CHU}/api/don/K7QX4M9A?khoa=${KHOA}`, method: "GET", body: undefined }]);
-  assert.deepEqual(await docDonTuMayChu(MAY_CHU, "K7QX4M9A", KHOA, mayChuGia(404, { ok: false, loi: ["Không thấy đơn này."] })), {
-    loai: "khong-thay",
+  assert.deepEqual(
+    await docDonTuMayChu(MAY_CHU, "K7QX4M9A", KHOA, mayChuGia(404, { ok: false, lyDo: "khong_thay_don", loi: ["Không thấy đơn này."] })),
+    { loai: "khong-thay" },
+  );
+  // HỒI QUY rà soát: 404 vì sai đường ("Không có đường này.") không phải "không có đơn" — không được xóa đơn đã giữ.
+  assert.deepEqual(await docDonTuMayChu(MAY_CHU, "K7QX4M9A", KHOA, mayChuGia(404, { ok: false, loi: ["Không có đường này."] })), {
+    loai: "khong-ro",
   });
   assert.deepEqual(await docDonTuMayChu(MAY_CHU, "K7QX4M9A", KHOA, mayChuGia(404, null)), { loai: "khong-ro" });
   assert.deepEqual(await docDonTuMayChu(MAY_CHU, "K7QX4M9A", KHOA, mayChuGia(429, { ok: false, loi: ["Hỏi nhiều"] })), {
@@ -406,17 +413,33 @@ kiem("trả trước: màn theo trạng thái — chỉ 'đã nhận đủ' khi 
 });
 
 kiem("trả trước: hỏi lại 4 giây khi chờ tiền, 15 giây sau đó (kể cả hết hạn: tiền về muộn vẫn tính), thôi khi đã khép", () => {
-  assert.equal(hoiLaiSauMs("cho_thanh_toan"), 4000);
-  assert.equal(hoiLaiSauMs("het_han"), 15000);
-  assert.equal(hoiLaiSauMs("cho_lay"), 15000);
-  assert.equal(hoiLaiSauMs("da_giao"), null);
-  assert.equal(hoiLaiSauMs("da_hoan_tien"), null);
+  const don = (them: object) => docDonTuJson({ ...donMau, ...them })!;
+  assert.equal(hoiLaiSauMs(don({})), 4000);
+  assert.equal(hoiLaiSauMs(don({ thanhToan: { traDuoc: false, lyDo: "tam_loi" } })), 4000);
+  assert.equal(hoiLaiSauMs(don({ trangThai: "het_han" })), 15000);
+  assert.equal(hoiLaiSauMs(don({ trangThai: "cho_lay" })), 15000);
+  assert.equal(hoiLaiSauMs(don({ trangThai: "da_giao" })), null);
+  assert.equal(hoiLaiSauMs(don({ trangThai: "da_hoan_tien" })), null);
+});
+
+kiem("HỒI QUY rà soát: quán chưa mở trả tiền (giá thử, chưa có tài khoản) → hỏi 30 giây một lần, không 4 giây", () => {
+  const don = (lyDo: string) => docDonTuJson({ ...donMau, thanhToan: { traDuoc: false, lyDo } })!;
+  assert.equal(hoiLaiSauMs(don("gia_thu")), 30000);
+  assert.equal(hoiLaiSauMs(don("chua_co_tai_khoan")), 30000);
+});
+
+kiem("HỒI QUY rà soát: gửi lại cùng mã gửi ra đơn đã hết hạn, đã lấy, đã hủy → đặt đơn mới; còn chờ, đang soạn → đúng đơn", () => {
+  for (const t of ["cho_thanh_toan", "da_thanh_toan", "dang_soan", "cho_lay"] as const) assert.equal(donCuConDung(t), true, t);
+  for (const t of ["het_han", "da_giao", "can_hoan_tien", "da_hoan_tien"] as const) assert.equal(donCuConDung(t), false, t);
 });
 
 kiem("trả trước: giờ hết hạn theo giờ Việt Nam, kể cả 23:50 và 00:10 (qua ngày)", () => {
   assert.equal(gioPhutVn(Date.UTC(2026, 10, 13, 2, 5)), "09:05");
   assert.equal(gioPhutVn(Date.UTC(2026, 10, 13, 16, 50)), "23:50");
   assert.equal(gioPhutVn(Date.UTC(2026, 10, 13, 17, 10)), "00:10");
+  assert.equal(ngayVn(Date.UTC(2026, 10, 13, 16, 50)), "2026-11-13");
+  assert.equal(ngayVn(Date.UTC(2026, 10, 13, 17, 10)), "2026-11-14");
+  assert.equal(ngayVn(Date.UTC(2026, 11, 31, 17, 0)), "2027-01-01");
 });
 
 kiem("trả trước: đơn vừa đặt giữ trên máy 2 ngày, không tên, không số; hỏng bộ nhớ không làm hỏng app", () => {
@@ -427,11 +450,20 @@ kiem("trả trước: đơn vừa đặt giữ trên máy 2 ngày, không tên, 
     removeItem: (k) => void bo.delete(k),
   };
   const luc = Date.UTC(2026, 10, 13, 2, 0);
-  const don = { ma: "K7QX4M9A", khoa: KHOA, soTrongNgay: 12, luc };
+  const don = { ma: "K7QX4M9A", khoa: KHOA, soTrongNgay: 12, ngayNhan: "2026-11-13", luc };
   luuDonDaDat(kho, don);
   assert.deepEqual(docDonDaDat(kho, luc + 1000), don);
-  assert.deepEqual(Object.keys(JSON.parse(bo.get(KHOA_LUU)!)).sort(), ["khoa", "luc", "ma", "soTrongNgay"]);
+  assert.deepEqual(Object.keys(JSON.parse(bo.get(KHOA_LUU)!)).sort(), ["khoa", "luc", "ma", "ngayNhan", "soTrongNgay"]);
   assert.equal(docDonDaDat(kho, luc + GIU_DON_MS + 1), null);
+  // HỒI QUY rà soát: đặt 30/10 nhận 13/11 (trước ngày mở bán) — vẫn giữ tới 23:50 ngày 13/11, 00:10 ngày 14/11 thì thôi.
+  const datSom = { ...don, luc: Date.UTC(2026, 9, 30, 3, 0) };
+  luuDonDaDat(kho, datSom);
+  assert.deepEqual(docDonDaDat(kho, Date.UTC(2026, 10, 13, 16, 50)), datSom);
+  assert.equal(docDonDaDat(kho, Date.UTC(2026, 10, 13, 17, 10)), null);
+  bo.set(KHOA_LUU, JSON.stringify({ ...datSom, ngayNhan: "2027-06-01" })); // ngày nhận xa vô lý: dữ liệu hỏng
+  assert.equal(docDonDaDat(kho, datSom.luc), null);
+  bo.set(KHOA_LUU, JSON.stringify({ ...don, ngayNhan: undefined })); // bản giữ trước khi có ngày nhận
+  assert.equal(docDonDaDat(kho, luc), null);
   bo.set(KHOA_LUU, "{hỏng");
   assert.equal(docDonDaDat(kho, luc), null);
   bo.set(KHOA_LUU, JSON.stringify({ ...don, khoa: "x" }));

@@ -42,7 +42,7 @@ export default function TraTien() {
       if (kq.loai === "co") {
         datDon(kq.don);
         datMatKetNoi(false);
-        cho = hoiLaiSauMs(kq.don.trangThai);
+        cho = hoiLaiSauMs(kq.don);
       } else if (kq.loai === "khong-thay") {
         datKhongThay(true);
         return null;
@@ -80,8 +80,10 @@ export default function TraTien() {
     if (ketQua !== "da-mo") thongBao("Chưa mở được khung chat Zalo.");
   }
 
-  function veTrangChu(donMoi: boolean) {
-    if (donMoi) lamMoi();
+  /** lamMoiGio: bỏ giỏ hàng; xoaDon: thôi giữ đơn này trên máy (đơn đã khép — trang chủ không còn dẫn về nó). */
+  function veTrangChu({ lamMoiGio = false, xoaDon = false } = {}) {
+    if (lamMoiGio) lamMoi();
+    if (xoaDon) datDonDaDat(null);
     navigate("/", { replace: true });
   }
 
@@ -95,8 +97,7 @@ export default function TraTien() {
             type="button"
             className="nut-chinh"
             onClick={() => {
-              if (khongThay) datDonDaDat(null);
-              veTrangChu(false);
+              veTrangChu({ xoaDon: khongThay });
             }}
           >
             Về trang chủ
@@ -159,7 +160,7 @@ export default function TraTien() {
             <button type="button" className="nut-chinh rong" onClick={chat}>
               Chat với Beeftown
             </button>
-            <button type="button" className="nut-chu" onClick={() => veTrangChu(false)}>
+            <button type="button" className="nut-chu" onClick={() => veTrangChu({ xoaDon: true })}>
               Về trang chủ
             </button>
           </div>
@@ -197,7 +198,7 @@ export default function TraTien() {
             >
               Quan tâm Beeftown trên Zalo
             </button>
-            <button type="button" className="nut-chu" onClick={() => veTrangChu(true)}>
+            <button type="button" className="nut-chu" onClick={() => veTrangChu({ lamMoiGio: true })}>
               Làm đơn mới
             </button>
           </div>
@@ -214,7 +215,7 @@ export default function TraTien() {
               : "Nếu bạn vừa chuyển khoản, đợi trong giây lát: app vẫn kiểm tra và tự cập nhật khi quán nhận được tiền."}
           </p>
           <div className="cot-nut">
-            <button type="button" className="nut-chinh rong" onClick={() => veTrangChu(false)}>
+            <button type="button" className="nut-chinh rong" onClick={() => veTrangChu({ xoaDon: true })}>
               Đặt lại
             </button>
             <button type="button" className="nut-chu" onClick={chat}>
@@ -236,7 +237,7 @@ export default function TraTien() {
             <button type="button" className="nut-chinh rong" onClick={chat}>
               Chat với Beeftown
             </button>
-            <button type="button" className="nut-chu" onClick={() => veTrangChu(true)}>
+            <button type="button" className="nut-chu" onClick={() => veTrangChu({ lamMoiGio: true, xoaDon: true })}>
               Về trang chủ
             </button>
           </div>

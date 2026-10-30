@@ -29,9 +29,15 @@ interface GioHang {
   noiDungDaGui: string;
   datNoiDungDaGui: (s: string) => void;
   lamMoi: () => void;
-  /** Đơn trả trước vừa đặt (giữ 2 ngày trên máy), hoặc null. */
+  /** Đơn trả trước vừa đặt (giữ trên máy tới hết ngày nhận), hoặc null. */
   donDaDat: DonDaDat | null;
   datDonDaDat: (don: DonDaDat | null) => void;
+  /**
+   * Mã gửi của lần gửi đơn trả trước gần nhất và dấu nội dung đơn lúc đó. Nằm ở đây chứ không ở màn đơn hàng: khách
+   * rời màn (sang màn trả tiền, quay lại) rồi gửi lại cùng nội dung thì vẫn cùng mã gửi — máy chủ trả đúng đơn cũ.
+   */
+  lanGui: { maGui: string; dau: string } | null;
+  datLanGui: (lan: { maGui: string; dau: string } | null) => void;
 }
 
 const NguCanh = createContext<GioHang | null>(null);
@@ -40,6 +46,7 @@ export function GioHangProvider({ children }: { children: ReactNode }) {
   const [soKhay, setSoKhay] = useState<Record<string, number>>({});
   const [nhan, setNhan] = useState<ThongTinNhan>(NHAN_BAN_DAU);
   const [noiDungDaGui, datNoiDungDaGui] = useState("");
+  const [lanGui, datLanGui] = useState<{ maGui: string; dau: string } | null>(null);
   const [donDaDat, setDonDaDat] = useState<DonDaDat | null>(() => docDonDaDat(khoLuuCuaMay(), Date.now()));
 
   const datDonDaDat = useCallback((don: DonDaDat | null) => {
@@ -66,6 +73,7 @@ export function GioHangProvider({ children }: { children: ReactNode }) {
     setSoKhay({});
     setNhan(NHAN_BAN_DAU);
     datNoiDungDaGui("");
+    datLanGui(null);
   }, []);
 
   const giaTri = useMemo<GioHang>(() => {
@@ -82,8 +90,10 @@ export function GioHangProvider({ children }: { children: ReactNode }) {
       lamMoi,
       donDaDat,
       datDonDaDat,
+      lanGui,
+      datLanGui,
     };
-  }, [soKhay, datSoKhay, nhan, suaNhan, noiDungDaGui, lamMoi, donDaDat, datDonDaDat]);
+  }, [soKhay, datSoKhay, nhan, suaNhan, noiDungDaGui, lamMoi, donDaDat, datDonDaDat, lanGui]);
 
   return <NguCanh.Provider value={giaTri}>{children}</NguCanh.Provider>;
 }

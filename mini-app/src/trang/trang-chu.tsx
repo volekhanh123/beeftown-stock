@@ -39,7 +39,7 @@ export default function TrangChu() {
         <div className="don-vua-dat">
           <span>
             <b>Đơn #{donDaDat.soTrongNgay} của bạn</b>
-            Xem trạng thái, trả tiền
+            Xem trạng thái đơn
           </span>
           <button type="button" className="nut-phu" onClick={() => navigate("/tra-tien")}>
             Xem đơn

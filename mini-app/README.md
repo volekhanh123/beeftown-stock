@@ -90,7 +90,7 @@ thư mục `may-chu-don/` của repo (chạy ở Việt Nam). Khi `diaChiMayChuD
   lần và mỗi khi khách quay lại app; chỉ hiện "Quán đã nhận đủ tiền" khi máy chủ đã ghi đơn sang đã trả tiền.
 - Chuyển thiếu: app hiện số đã nhận và mã mới cho phần còn thiếu. Chuyển dư: đơn vẫn soạn, quán hoàn phần dư. Quá 30
   phút chưa đủ tiền: đơn tự hủy; tiền về đủ sau đó vẫn tính là đã trả (Khánh chốt hai điều này 30/10/2026).
-- App giữ mã đơn và khóa xem đơn trên máy 2 ngày (không tên, không số điện thoại) để mở lại đúng đơn khi máy đóng Mini
+- App giữ mã đơn và khóa xem đơn trên máy tới hết ngày nhận (không tên, không số điện thoại) để mở lại đúng đơn khi máy đóng Mini
   App lúc khách ở app ngân hàng. Trang chủ hiện "Đơn #… của bạn".
 
 ### Thử đặt và trả tiền với máy chủ đơn

@@ -277,7 +277,8 @@ export async function docDonTuMayChu(
   try {
     const url = `${diaChi}/api/don/${encodeURIComponent(ma)}?khoa=${encodeURIComponent(khoa)}`;
     const { status, than } = await goi(hamFetch, url, { method: "GET" }, msHetGio);
-    if (status === 404 && docLoi(than).length > 0) return { loai: "khong-thay" };
+    // Chỉ tin "không có đơn" khi máy chủ đơn nói đúng lý do đó — 404 vì sai địa chỉ, sai đường thì không xóa gì.
+    if (status === 404 && (than as { lyDo?: unknown } | null)?.lyDo === "khong_thay_don") return { loai: "khong-thay" };
     const don = status === 200 ? docDonTuJson(than) : null;
     return don ? { loai: "co", don } : { loai: "khong-ro" };
   } catch {
@@ -320,10 +321,36 @@ export function buocTraTien(don: DonTraTruoc): BuocTraTien {
 }
 
 /** Bao lâu hỏi lại máy chủ; null là đơn đã khép, thôi hỏi. */
-export function hoiLaiSauMs(trangThai: TrangThaiDon): number | null {
-  if (trangThai === "cho_thanh_toan") return 4_000;
-  if (trangThai === "da_giao" || trangThai === "da_hoan_tien") return null;
-  return 15_000;
+export function hoiLaiSauMs(don: DonTraTruoc): number | null {
+  if (don.trangThai === "da_giao" || don.trangThai === "da_hoan_tien") return null;
+  if (don.trangThai !== "cho_thanh_toan") return 15_000;
+  // Quán chưa mở trả tiền (giá thử, chưa có tài khoản): đơn chỉ còn chờ tự hủy — hỏi thưa, đỡ mạng của khách.
+  const t = don.thanhToan;
+  if (!t.traDuoc && (t.lyDo === "gia_thu" || t.lyDo === "chua_co_tai_khoan")) return 30_000;
+  return 4_000;
+}
+
+/**
+ * Gửi lại cùng mã gửi thì máy chủ trả đơn cũ. Đơn cũ còn chờ tiền hay đang soạn: đúng là đơn khách đang theo. Đã hết
+ * hạn, đã lấy, đã hủy: khách đang đặt đơn mới y như cũ — phải gửi với mã gửi mới.
+ */
+export function donCuConDung(trangThai: TrangThaiDon): boolean {
+  return ["cho_thanh_toan", "da_thanh_toan", "dang_soan", "cho_lay"].includes(trangThai);
+}
+
+/** Ngày yyyy-mm-dd theo giờ Việt Nam của một mốc ms. */
+export function ngayVn(ms: number): string {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      timeZone: "Asia/Ho_Chi_Minh",
+    })
+      .formatToParts(ms)
+      .map((x) => [x.type, x.value]),
+  );
+  return `${p.year}-${p.month}-${p.day}`;
 }
 
 /** Giờ:phút theo giờ Việt Nam của một mốc ms — đúng cả khi máy của khách đặt múi giờ khác. */
@@ -344,6 +371,8 @@ export interface DonDaDat {
   ma: string;
   khoa: string;
   soTrongNgay: number;
+  /** Ngày nhận (yyyy-mm-dd): giữ đơn trên máy ít nhất tới hết ngày này. */
+  ngayNhan: string;
   luc: number;
 }
 
@@ -354,8 +383,12 @@ export interface KhoLuu {
 }
 
 export const KHOA_LUU = "beeftown-don-tra-truoc";
-/** Giữ đơn vừa đặt 2 ngày — đủ cho đơn nhận ngày mai. */
+/**
+ * Giữ đơn vừa đặt tới hết ngày nhận (khách chọn được tới 7 ngày sau, trước ngày mở bán còn xa hơn), và ít nhất 2 ngày
+ * kể từ lúc đặt. Ngày nhận quá 60 ngày sau lúc đặt là dữ liệu hỏng.
+ */
 export const GIU_DON_MS = 2 * 24 * 60 * 60 * 1000;
+const NGAY_NHAN_XA_NHAT_MS = 60 * 24 * 60 * 60 * 1000;
 
 export function luuDonDaDat(kho: KhoLuu | null, don: DonDaDat): void {
   try {
@@ -384,12 +417,15 @@ export function docDonDaDat(kho: KhoLuu | null, bayGio: number): DonDaDat | null
       !/^[0-9a-f]{32}$/.test(v.khoa) ||
       !laSoNguyen(v.soTrongNgay, 1) ||
       !laSoNguyen(v.luc, 1) ||
-      bayGio - v.luc > GIU_DON_MS ||
-      v.luc > bayGio + 60_000
+      typeof v.ngayNhan !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(v.ngayNhan) ||
+      v.ngayNhan > ngayVn(v.luc + NGAY_NHAN_XA_NHAT_MS) ||
+      v.luc > bayGio + 60_000 ||
+      (bayGio - v.luc > GIU_DON_MS && ngayVn(bayGio) > v.ngayNhan)
     ) {
       return null;
     }
-    return { ma: v.ma, khoa: v.khoa, soTrongNgay: v.soTrongNgay, luc: v.luc };
+    return { ma: v.ma, khoa: v.khoa, soTrongNgay: v.soTrongNgay, ngayNhan: v.ngayNhan, luc: v.luc };
   } catch {
     return null;
   }

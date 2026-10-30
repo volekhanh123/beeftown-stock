@@ -51,7 +51,7 @@ src/zalo.ts          openChat, followOA, saveImageToGallery (lưu ảnh mã QR)
 src/tra-truoc.ts     logic thuần của trả trước (không React, không Zalo): thân đơn, mã gửi, gửi / đọc đơn qua fetch có hết giờ, màn theo trạng thái, giờ VN, giữ đơn vừa đặt trên máy
 src/may-chu-don.ts   địa chỉ máy chủ đơn (VITE_DIA_CHI_MAY_CHU_DON thắng cau-hinh.ts), TRA_TRUOC, fetch thật, localStorage
 src/anh-qr.ts        vẽ mã QR từ chuỗi VietQR máy chủ gửi (qrcode 1.5.4)
-src/gio-hang.tsx     giỏ hàng trong bộ nhớ; đơn trả trước vừa đặt (mã đơn, khóa xem — giữ 2 ngày trên máy)
+src/gio-hang.tsx     giỏ hàng trong bộ nhớ; đơn trả trước vừa đặt (mã đơn, khóa xem — giữ trên máy tới hết ngày nhận), mã gửi của lần gửi gần nhất
 src/thong-bao.tsx    thông báo ngắn tự làm
 src/thanh-phan.tsx   đầu trang, nút số khay, thẻ phần thịt, giá, dòng báo giá thử
 src/bieu-tuong.tsx   biểu tượng SVG

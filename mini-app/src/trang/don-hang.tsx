@@ -10,18 +10,17 @@ import { useConHang } from "../con-hang-kho";
 import { useThongBao } from "../thong-bao";
 import { moChatVoiQuan } from "../zalo";
 import { TRA_TRUOC, guiDonDenMayChu } from "../may-chu-don";
-import { dauNoiDung, kiemTraTraTruoc, taoMaGui, taoThanDon } from "../tra-truoc";
+import { dauNoiDung, donCuConDung, kiemTraTraTruoc, taoMaGui, taoThanDon } from "../tra-truoc";
 
 export default function DonHang() {
   const navigate = useNavigate();
   const thongBao = useThongBao();
-  const { soKhay, datSoKhay, tongKhay, nhan, suaNhan, datNoiDungDaGui, datDonDaDat } = useGioHang();
+  const { soKhay, datSoKhay, tongKhay, nhan, suaNhan, datNoiDungDaGui, datDonDaDat, lanGui, datLanGui } = useGioHang();
   const conHang = useConHang();
   const [daBamGui, datDaBamGui] = useState(false);
   const [tinNgoaiZalo, datTinNgoaiZalo] = useState<string | null>(null);
   const [dangGui, datDangGui] = useState(false);
-  // Trả trước: mã gửi đi cùng một nội dung đơn (gửi lại sau khi mất mạng không ra hai đơn); câu lỗi máy chủ trả về.
-  const [lanGui, datLanGui] = useState<{ maGui: string; dau: string } | null>(null);
+  // Trả trước: câu lỗi máy chủ trả về. Mã gửi giữ ở giỏ hàng (lanGui): gửi lại cùng nội dung thì không ra hai đơn.
   const [loiGui, datLoiGui] = useState<string[]>([]);
 
   const now = useMemo(() => new Date(), []);
@@ -66,12 +65,18 @@ export default function DonHang() {
         datLanGui({ maGui, dau: dauHienTai });
         const kq = await guiDonDenMayChu(taoThanDon(maGui, soKhay, nhan));
         if (kq.loai === "da-ghi") {
-          // Cùng mã gửi mà đơn cũ đã hết hạn (khách đặt lại y như cũ): đơn đó không trả tiền được nữa, đặt đơn mới.
-          if (kq.don.trangThai === "het_han" && lan === 0) {
+          // Cùng mã gửi mà đơn cũ đã hết hạn, đã lấy hay đã hủy (khách đặt lại y như cũ): đặt đơn mới.
+          if (!donCuConDung(kq.don.trangThai) && lan === 0) {
             maGui = taoMaGui();
             continue;
           }
-          datDonDaDat({ ma: kq.don.ma, khoa: kq.khoa, soTrongNgay: kq.don.soTrongNgay, luc: Date.now() });
+          datDonDaDat({
+            ma: kq.don.ma,
+            khoa: kq.khoa,
+            soTrongNgay: kq.don.soTrongNgay,
+            ngayNhan: kq.don.ngayNhan ?? nhan.ngay,
+            luc: Date.now(),
+          });
           navigate("/tra-tien");
           return;
         }
