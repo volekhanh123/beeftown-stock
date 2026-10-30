@@ -605,19 +605,21 @@ await nhom('7 · PHIÊN BẢN MỚI: PHIEN_BAN 2.12.0, README CÓ MỤC "Bản 2
 
 // ===========================================================================
 await nhom('8 · TÀI LIỆU KHÔNG CÒN NÓI BEEFTOWN CÂN "CHƯA ĐỔI" / "CÒN BẢNG CŨ"', async () => {
-  const CU = /Beeftown Cân[^.\n|]{0,40}(?:chưa đổi|còn (?:bảng|màu|nhận diện|thẻ)[^.\n|]{0,40}cũ)|Màu của Beeftown Cân còn nhận diện cũ/;
-  const TAI_LIEU = ['AGENTS.md', 'CLAUDE.md', 'can-app/CLAUDE.md', '.claude/skills/thiet-ke-beeftown/SKILL.md',
+  // Hai cách viết: "Beeftown Cân … chưa đổi / còn bảng … cũ" và danh sách "Còn màu cũ: Beeftown Cân …".
+  const CU = /Beeftown Cân[^.\n|]{0,40}(?:chưa đổi|còn (?:bảng|màu|nhận diện|thẻ)[^.\n|]{0,40}cũ)|Màu của Beeftown Cân còn nhận diện cũ|còn (?:mang )?(?:màu|nhận diện) cũ[:*\s]{0,6}\(?Beeftown Cân/i;
+  const TAI_LIEU = ['AGENTS.md', 'CLAUDE.md', 'README.md', 'can-app/CLAUDE.md', 'web/THIET-KE.md', '.claude/skills/thiet-ke-beeftown/SKILL.md',
     '.claude/skills/thiet-ke-beeftown/tham-khao/noi-bo-va-kho.md', 'crm/test/test-noi-bo-bang-mau.mjs', 'crm/test/test-cong-khai-nhan-dien.mjs'];
   const sai = TAI_LIEU.filter(f => existsSync(join(GOC, f)) && CU.test(doc(join(GOC, f)))).map(f => `${f}: «${doanQuanh(doc(join(GOC, f)), CU)}»`);
-  ok(`${TAI_LIEU.length} tài liệu (AGENTS.md, CLAUDE.md, can-app/CLAUDE.md, skill thiết kế, chú thích kiểm thử) không còn nói Beeftown Cân chưa đổi / còn bảng cũ`,
+  ok(`${TAI_LIEU.length} tài liệu (AGENTS.md, CLAUDE.md, README.md, can-app/CLAUDE.md, web/THIET-KE.md, skill thiết kế, chú thích kiểm thử) không còn nói Beeftown Cân chưa đổi / còn bảng cũ`,
      sai.length === 0, sai.join(' | '));
   const th = doc(join(GOC, 'THUONG-HIEU.md'));
   const viec7 = th.split('\n').find(d => /^\| 7 \| Beeftown Cân/.test(d)) ?? '';
   ok('THUONG-HIEU.md: việc 7 (Beeftown Cân) ghi đã làm ở bản 2.12; đầu file không còn "Beeftown Cân chưa đổi"',
      /2\.12/.test(viec7) && !/\*\*Beeftown Cân chưa đổi\*\*/.test(th.slice(0, 1500)), viec7.slice(0, 200));
-  ok('…mẫu tự kiểm: bắt "Beeftown Cân chưa đổi", "Beeftown Cân còn bảng cũ", "Beeftown Cân còn thẻ và ô nhập nền trắng … cũ"; không bắt "Beeftown Cân đổi ở bản 2.12"',
+  ok('…mẫu tự kiểm: bắt "Beeftown Cân chưa đổi", "Beeftown Cân còn bảng cũ", "Còn màu cũ: Beeftown Cân", "còn mang nhận diện cũ (Beeftown Cân"; không bắt "Beeftown Cân đổi ở bản 2.12", "Còn màu cũ: 15 ảnh"',
      CU.test('**Beeftown Cân chưa đổi** (việc 7)') && CU.test('Beeftown Cân còn bảng cũ (mục 5).') && CU.test('Màu của Beeftown Cân còn nhận diện cũ: chỉ đổi')
-       && !CU.test('Beeftown Cân đổi ở bản 2.12 (PR riêng).'));
+       && CU.test('- **Còn màu cũ:** Beeftown Cân (`can-app/src/giao-dien.html`') && CU.test('thứ còn mang nhận diện cũ (Beeftown Cân, ảnh hướng dẫn kho')
+       && CU.test('Còn màu cũ: Beeftown Cân (PR riêng') && !CU.test('Beeftown Cân đổi ở bản 2.12 (PR riêng).') && !CU.test('Còn màu cũ: 15 ảnh chụp trong trang hướng dẫn'));
 });
 
 process.exit(ketThuc('BEEFTOWN CÂN — BỘ NHẬN DIỆN'));
