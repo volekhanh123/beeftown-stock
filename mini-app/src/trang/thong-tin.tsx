@@ -6,6 +6,7 @@ import { SAN_PHAM } from "../san-pham";
 import { DauTrang, Muc } from "../thanh-phan";
 import { useThongBao } from "../thong-bao";
 import { moChatVoiQuan } from "../zalo";
+import { TRA_TRUOC } from "../may-chu-don";
 
 export default function ThongTin() {
   const thongBao = useThongBao();
@@ -23,26 +24,46 @@ export default function ThongTin() {
       <DauTrang tieuDe="Thông tin" />
 
       <Muc tieuDe="Cách mua">
-        <ol className="ds-buoc">
-          <li>
-            <b>Chọn số khay</b> của từng phần thịt. Khay đã chia sẵn ở quầy; số gam khoảng và giá của một khay ghi ở từng phần thịt.
-          </li>
-          <li>
-            <b>Gửi đơn qua Zalo.</b> App mở chat với Beeftown, đơn điền sẵn; bạn bấm Gửi.
-          </li>
-          <li>
-            <b>Quán soạn khay</b> và xác nhận đơn cùng tổng tiền. Bạn đồng ý thì quán giữ hàng.
-          </li>
-          <li>
-            <b>Trả tiền và nhận hàng:</b> chuyển khoản theo mã QR quán gửi, hoặc trả khi nhận.
-          </li>
-        </ol>
+        {TRA_TRUOC ? (
+          <ol className="ds-buoc">
+            <li>
+              <b>Chọn số khay</b> của từng phần thịt. Khay đã chia sẵn ở quầy; số gam khoảng và giá của một khay ghi ở
+              từng phần thịt.
+            </li>
+            <li>
+              <b>Gửi đơn và chuyển khoản trong app.</b> App hiện mã QR đúng số tiền; quán nhận đủ tiền thì quầy soạn
+              khay.
+            </li>
+            <li>
+              <b>Ghé quán lấy khay</b> theo giờ bạn chọn. Quầy gọi tên người nhận.
+            </li>
+          </ol>
+        ) : (
+          <ol className="ds-buoc">
+            <li>
+              <b>Chọn số khay</b> của từng phần thịt. Khay đã chia sẵn ở quầy; số gam khoảng và giá của một khay ghi ở
+              từng phần thịt.
+            </li>
+            <li>
+              <b>Gửi đơn qua Zalo.</b> App mở chat với Beeftown, đơn điền sẵn; bạn bấm Gửi.
+            </li>
+            <li>
+              <b>Quán soạn khay</b> và xác nhận đơn cùng tổng tiền. Bạn đồng ý thì quán giữ hàng.
+            </li>
+            <li>
+              <b>Trả tiền và nhận hàng:</b> chuyển khoản theo mã QR quán gửi, hoặc trả khi nhận.
+            </li>
+          </ol>
+        )}
       </Muc>
 
       <Muc tieuDe="Cách tính tiền">
         <p>
-          Giá tính theo khay, không đổi theo số gam thật của từng khay. Tiền thịt = số khay × giá một khay; app tính
-          sẵn tổng trong đơn. Đơn giao tận nơi cộng phí giao, quán báo khi xác nhận.
+          Giá tính theo khay, không đổi theo số gam thật của từng khay. Tiền thịt = số khay × giá một khay; app tính sẵn
+          tổng trong đơn.
+          {TRA_TRUOC
+            ? " Đơn trả trước trong app hiện chỉ nhận tại quán."
+            : " Đơn giao tận nơi cộng phí giao, quán báo khi xác nhận."}
           {CAU_HINH.giaThu && " Giá và số gam trong app hiện là số thử, chưa phải giá bán của quán."}
         </p>
       </Muc>
@@ -78,11 +99,19 @@ export default function ThongTin() {
       </Muc>
 
       <Muc tieuDe="Thông tin của bạn">
-        <p>
-          Mini App không lưu tên, số điện thoại, địa chỉ của bạn và không gửi chúng về máy chủ nào. Những gì bạn nhập chỉ
-          được điền sẵn vào tin nhắn gửi Beeftown trong Zalo; bạn xem lại và tự bấm Gửi. Tin nhắn đã gửi nằm trong cuộc
-          chat của bạn với Beeftown trên Zalo.
-        </p>
+        {TRA_TRUOC ? (
+          <p>
+            Khi đặt trong app, tên, số điện thoại và đơn của bạn được gửi tới máy chủ đơn của Beeftown đặt tại Việt Nam,
+            để quầy soạn và giao đúng đơn. Tiền chuyển khoản vào thẳng tài khoản của {p.ten}; máy chủ chỉ ghi số tiền và
+            mã giao dịch, không lưu tên hay số tài khoản ngân hàng của bạn.
+          </p>
+        ) : (
+          <p>
+            Mini App không lưu tên, số điện thoại, địa chỉ của bạn và không gửi chúng về máy chủ nào. Những gì bạn nhập
+            chỉ được điền sẵn vào tin nhắn gửi Beeftown trong Zalo; bạn xem lại và tự bấm Gửi. Tin nhắn đã gửi nằm trong
+            cuộc chat của bạn với Beeftown trên Zalo.
+          </p>
+        )}
       </Muc>
 
       <Muc tieuDe="Đơn vị bán hàng">

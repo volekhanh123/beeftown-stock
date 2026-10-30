@@ -6,10 +6,11 @@ import { useGioHang } from "../gio-hang";
 import { SAN_PHAM, dongTuGio } from "../san-pham";
 import { dinhDangTien, tongTienThit } from "../don";
 import { BaoGiaThu, TheThit } from "../thanh-phan";
+import { TRA_TRUOC } from "../may-chu-don";
 
 export default function TrangChu() {
   const navigate = useNavigate();
-  const { soKhay, tongKhay, soPhan } = useGioHang();
+  const { soKhay, tongKhay, soPhan, donDaDat } = useGioHang();
   const tongTien = tongTienThit(dongTuGio(soKhay));
 
   return (
@@ -27,18 +28,36 @@ export default function TrangChu() {
           </button>
         </div>
         <p className="tieu-de">Thịt bò mang về</p>
-        <p className="dong-phu">Chọn số khay, gửi đơn qua Zalo. Giá tính theo khay, thấy tổng tiền trước khi gửi đơn.</p>
+        <p className="dong-phu">
+          {TRA_TRUOC
+            ? "Chọn số khay, chuyển khoản ngay trong app, ghé quán lấy. Giá tính theo khay, thấy tổng tiền trước khi trả."
+            : "Chọn số khay, gửi đơn qua Zalo. Giá tính theo khay, thấy tổng tiền trước khi gửi đơn."}
+        </p>
       </header>
+
+      {TRA_TRUOC && donDaDat && (
+        <div className="don-vua-dat">
+          <span>
+            <b>Đơn #{donDaDat.soTrongNgay} của bạn</b>
+            Xem trạng thái đơn
+          </span>
+          <button type="button" className="nut-phu" onClick={() => navigate("/tra-tien")}>
+            Xem đơn
+          </button>
+        </div>
+      )}
 
       <ol className="ba-buoc" aria-label="Cách mua">
         <li>
           <b>1</b>Chọn khay
         </li>
         <li>
-          <b>2</b>Gửi đơn qua Zalo
+          <b>2</b>
+          {TRA_TRUOC ? "Chuyển khoản trong app" : "Gửi đơn qua Zalo"}
         </li>
         <li>
-          <b>3</b>Quán xác nhận đơn
+          <b>3</b>
+          {TRA_TRUOC ? "Ghé quán lấy" : "Quán xác nhận đơn"}
         </li>
       </ol>
 
@@ -50,18 +69,14 @@ export default function TrangChu() {
         ))}
       </section>
 
-      <p className="ghi-chu-cuoi">
-        Giá tính theo khay, không đổi theo số gam thật của từng khay.
-      </p>
+      <p className="ghi-chu-cuoi">Giá tính theo khay, không đổi theo số gam thật của từng khay.</p>
       <div className={tongKhay > 0 ? "khoang-duoi co-thanh" : "khoang-duoi"} />
 
       {tongKhay > 0 && (
         <div className="thanh-duoi">
           <div className="tom-tat">
             <b>{tongTien === null ? `${tongKhay} khay` : dinhDangTien(tongTien)}</b>
-            <span>
-              {tongTien === null ? `${soPhan} phần thịt` : `${tongKhay} khay · ${soPhan} phần thịt`}
-            </span>
+            <span>{tongTien === null ? `${soPhan} phần thịt` : `${tongKhay} khay · ${soPhan} phần thịt`}</span>
           </div>
           <button type="button" className="nut-chinh" onClick={() => navigate("/don-hang")}>
             Xem đơn

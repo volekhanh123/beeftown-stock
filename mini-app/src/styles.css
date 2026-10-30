@@ -733,3 +733,127 @@ body {
 .thong-bao.success {
   border-left-color: var(--trang);
 }
+
+/* ---------- Trả tiền trước (máy chủ đơn) ---------- */
+.don-vua-dat {
+  margin: 12px 16px 0;
+  padding: 12px 14px;
+  background: var(--trang);
+  border: 1px solid var(--vien);
+  border-left: 4px solid var(--do);
+  border-radius: var(--bo-goc);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.don-vua-dat span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  color: var(--chu-phu);
+}
+.don-vua-dat b {
+  font-size: 15px;
+  color: var(--chu);
+}
+.tom-tat-don {
+  margin: 12px 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--chu-phu);
+}
+.tom-tat-don b {
+  font-size: 16px;
+  color: var(--chu);
+}
+.tieu-de-tra {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+}
+.khung-qr {
+  margin: 12px auto 0;
+  width: 240px;
+  height: 240px;
+  background: var(--trang);
+  border: 1px solid var(--vien);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.khung-qr img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.cho-qr {
+  font-size: 13px;
+  color: var(--chu-phu);
+}
+.nut-luu-anh {
+  margin-top: 12px;
+}
+.ds-chuyen-khoan {
+  margin: 14px 0 0;
+  border-top: 1px solid var(--vien);
+}
+.ds-chuyen-khoan > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--vien);
+}
+.ds-chuyen-khoan dt {
+  font-size: 13px;
+  color: var(--chu-phu);
+  flex: none;
+}
+.ds-chuyen-khoan dd {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  text-align: right;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ds-chuyen-khoan dd b {
+  font-size: 15px;
+}
+.ds-chuyen-khoan .nut-them {
+  min-height: 44px;
+}
+.bao-trang-thai {
+  margin: 12px 16px 0;
+  padding: 12px 14px;
+  background: var(--trang);
+  border: 1px solid var(--vien);
+  border-left: 4px solid var(--do);
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.cho-tien-ve .bao-trang-thai {
+  margin: 10px 0 0;
+}
+.cho-tien-ve {
+  margin: 14px 16px 0;
+}
+.cho-tien-ve .cot-nut {
+  margin-top: 14px;
+}
+.noi-dung-giua .bao-them {
+  margin-top: 12px;
+  font-weight: 600;
+}

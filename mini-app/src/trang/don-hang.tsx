@@ -9,15 +9,19 @@ import { trangThaiPhan } from "../con-hang";
 import { useConHang } from "../con-hang-kho";
 import { useThongBao } from "../thong-bao";
 import { moChatVoiQuan } from "../zalo";
+import { TRA_TRUOC, guiDonDenMayChu } from "../may-chu-don";
+import { dauNoiDung, donCuConDung, kiemTraTraTruoc, taoMaGui, taoThanDon } from "../tra-truoc";
 
 export default function DonHang() {
   const navigate = useNavigate();
   const thongBao = useThongBao();
-  const { soKhay, datSoKhay, tongKhay, nhan, suaNhan, datNoiDungDaGui } = useGioHang();
+  const { soKhay, datSoKhay, tongKhay, nhan, suaNhan, datNoiDungDaGui, datDonDaDat, lanGui, datLanGui } = useGioHang();
   const conHang = useConHang();
   const [daBamGui, datDaBamGui] = useState(false);
   const [tinNgoaiZalo, datTinNgoaiZalo] = useState<string | null>(null);
   const [dangGui, datDangGui] = useState(false);
+  // Trả trước: câu lỗi máy chủ trả về. Mã gửi giữ ở giỏ hàng (lanGui): gửi lại cùng nội dung thì không ra hai đơn.
+  const [loiGui, datLoiGui] = useState<string[]>([]);
 
   const now = useMemo(() => new Date(), []);
   const cacNgay = useMemo(() => cacNgayChon(now, CAU_HINH_GIO), [now]);
@@ -31,17 +35,71 @@ export default function DonHang() {
     if (nhan.gio && !cacGio.includes(nhan.gio)) suaNhan({ gio: "" });
   }, [cacGio, nhan.gio, suaNhan]);
 
+  // Đơn trả trước đợt đầu chỉ nhận tại quán (phí giao chưa chốt nên chưa tính đủ tiền trước được).
+  useEffect(() => {
+    if (TRA_TRUOC && nhan.cachNhan !== "tai-quan") suaNhan({ cachNhan: "tai-quan" });
+  }, [nhan.cachNhan, suaNhan]);
+
+  // Khách sửa đơn thì câu lỗi của lần gửi trước không còn đúng.
+  const dauHienTai = dauNoiDung(soKhay, nhan);
+  useEffect(() => datLoiGui([]), [dauHienTai]);
+
   const daChon = SAN_PHAM.filter((sp) => (soKhay[sp.ma] ?? 0) > 0);
   const dong = dongTuGio(soKhay, (sp) => trangThaiPhan(sp.conHang, conHang[sp.ma]) === "het");
   const tongTien = tongTienThit(dong);
 
+  const phanVuaHet = daChon.filter((sp) => trangThaiPhan(sp.conHang, conHang[sp.ma]) === "het").map((sp) => sp.ten);
+  const phanChuaGia = daChon.filter((sp) => sp.giaMoiKhay === null).map((sp) => sp.ten);
+  const kiem = () => [...kiemTraDon(dong, nhan), ...(TRA_TRUOC ? kiemTraTraTruoc(nhan, phanVuaHet, phanChuaGia) : [])];
+
   // Sau lần bấm gửi đầu tiên, danh sách lỗi tự cập nhật theo từng ô khách sửa.
-  const loi = daBamGui ? kiemTraDon(dong, nhan) : [];
+  const loi = [...(daBamGui ? kiem() : []), ...loiGui];
+
+  /** Gửi đơn lên máy chủ đơn; máy chủ ghi xong mới sang màn trả tiền. */
+  async function guiDonTraTruoc() {
+    let maGui = lanGui?.dau === dauHienTai ? lanGui.maGui : taoMaGui();
+    datDangGui(true);
+    datLoiGui([]);
+    try {
+      for (let lan = 0; lan < 2; lan++) {
+        datLanGui({ maGui, dau: dauHienTai });
+        const kq = await guiDonDenMayChu(taoThanDon(maGui, soKhay, nhan));
+        if (kq.loai === "da-ghi") {
+          // Cùng mã gửi mà đơn cũ đã hết hạn, đã lấy hay đã hủy (khách đặt lại y như cũ): đặt đơn mới.
+          if (!donCuConDung(kq.don.trangThai) && lan === 0) {
+            maGui = taoMaGui();
+            continue;
+          }
+          datDonDaDat({
+            ma: kq.don.ma,
+            khoa: kq.khoa,
+            soTrongNgay: kq.don.soTrongNgay,
+            ngayNhan: kq.don.ngayNhan ?? nhan.ngay,
+            luc: Date.now(),
+          });
+          navigate("/tra-tien");
+          return;
+        }
+        if (kq.loai === "chua-ghi") {
+          if (kq.trungMaGui) datLanGui(null);
+          datLoiGui(kq.loi);
+          return;
+        }
+        datLoiGui([
+          "Chưa chắc đơn đã tới quán vì mạng chập chờn. Bấm gửi lại: nếu đơn đã tới, app mở đúng đơn đó, không ra hai đơn.",
+        ]);
+        return;
+      }
+    } finally {
+      datDangGui(false);
+    }
+  }
 
   async function guiDon() {
     datDaBamGui(true);
-    const dsLoi = kiemTraDon(dong, nhan);
+    const dsLoi = kiem();
     if (dsLoi.length > 0) return; // lỗi hiện ngay trên nút Gửi
+    if (TRA_TRUOC) return guiDonTraTruoc();
     const noiDung = taoNoiDungDon(dong, nhan, { giaThu: CAU_HINH.giaThu });
     datDangGui(true);
     const ketQua = await moChatVoiQuan(noiDung);
@@ -120,43 +178,56 @@ export default function DonHang() {
       </Muc>
 
       <Muc tieuDe="Cách nhận">
-        <div className="chon-hai" role="radiogroup" aria-label="Cách nhận">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={nhan.cachNhan === "tai-quan"}
-            className={nhan.cachNhan === "tai-quan" ? "dang-chon" : ""}
-            onClick={() => suaNhan({ cachNhan: "tai-quan" })}
-          >
-            Nhận tại quán
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={nhan.cachNhan === "giao-hang"}
-            className={nhan.cachNhan === "giao-hang" ? "dang-chon" : ""}
-            onClick={() => suaNhan({ cachNhan: "giao-hang" })}
-          >
-            Giao tận nơi
-          </button>
-        </div>
-        {nhan.cachNhan === "tai-quan" ? (
-          <p className="ghi-chu">
-            {CAU_HINH.diaChi}. {CAU_HINH.chiDuong}
-          </p>
+        {TRA_TRUOC ? (
+          <>
+            <p>
+              <b>Nhận tại quán</b>
+            </p>
+            <p className="ghi-chu">
+              {CAU_HINH.diaChi}. {CAU_HINH.chiDuong} Đơn trả trước trong app hiện chỉ nhận tại quán.
+            </p>
+          </>
         ) : (
           <>
-            <label className="o-nhap">
-              <span>Địa chỉ giao hàng</span>
-              <textarea
-                rows={2}
-                maxLength={200}
-                placeholder="Số nhà, đường, phường"
-                value={nhan.diaChi}
-                onChange={(e) => suaNhan({ diaChi: e.target.value })}
-              />
-            </label>
-            <p className="ghi-chu">Quán gọi xe giao. Phí giao quán báo khi xác nhận đơn.</p>
+            <div className="chon-hai" role="radiogroup" aria-label="Cách nhận">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={nhan.cachNhan === "tai-quan"}
+                className={nhan.cachNhan === "tai-quan" ? "dang-chon" : ""}
+                onClick={() => suaNhan({ cachNhan: "tai-quan" })}
+              >
+                Nhận tại quán
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={nhan.cachNhan === "giao-hang"}
+                className={nhan.cachNhan === "giao-hang" ? "dang-chon" : ""}
+                onClick={() => suaNhan({ cachNhan: "giao-hang" })}
+              >
+                Giao tận nơi
+              </button>
+            </div>
+            {nhan.cachNhan === "tai-quan" ? (
+              <p className="ghi-chu">
+                {CAU_HINH.diaChi}. {CAU_HINH.chiDuong}
+              </p>
+            ) : (
+              <>
+                <label className="o-nhap">
+                  <span>Địa chỉ giao hàng</span>
+                  <textarea
+                    rows={2}
+                    maxLength={200}
+                    placeholder="Số nhà, đường, phường"
+                    value={nhan.diaChi}
+                    onChange={(e) => suaNhan({ diaChi: e.target.value })}
+                  />
+                </label>
+                <p className="ghi-chu">Quán gọi xe giao. Phí giao quán báo khi xác nhận đơn.</p>
+              </>
+            )}
           </>
         )}
       </Muc>
@@ -189,7 +260,7 @@ export default function DonHang() {
 
       <Muc tieuDe="Người nhận">
         <label className="o-nhap">
-          <span>Tên (không bắt buộc)</span>
+          <span>{TRA_TRUOC ? "Tên người nhận" : "Tên (không bắt buộc)"}</span>
           <input
             type="text"
             maxLength={60}
@@ -199,7 +270,7 @@ export default function DonHang() {
           />
         </label>
         <label className="o-nhap">
-          <span>{nhan.cachNhan === "giao-hang" ? "Số điện thoại" : "Số điện thoại (không bắt buộc)"}</span>
+          <span>{TRA_TRUOC || nhan.cachNhan === "giao-hang" ? "Số điện thoại" : "Số điện thoại (không bắt buộc)"}</span>
           <input
             type="tel"
             inputMode="tel"
@@ -210,35 +281,44 @@ export default function DonHang() {
             onChange={(e) => suaNhan({ dienThoai: e.target.value })}
           />
         </label>
+        {TRA_TRUOC && <p className="ghi-chu">Quầy gọi tên người nhận khi bạn tới lấy khay.</p>}
       </Muc>
 
       <Muc tieuDe="Thanh toán">
-        <div className="ds-chon" role="radiogroup" aria-label="Thanh toán">
-          <label className={nhan.cachTra === "chuyen-khoan" ? "dang-chon" : ""}>
-            <input
-              type="radio"
-              name="cach-tra"
-              checked={nhan.cachTra === "chuyen-khoan"}
-              onChange={() => suaNhan({ cachTra: "chuyen-khoan" })}
-            />
-            <span>
-              <b>Chuyển khoản</b>
-              <small>Quán gửi mã QR khi xác nhận đơn</small>
-            </span>
-          </label>
-          <label className={nhan.cachTra === "tra-khi-nhan" ? "dang-chon" : ""}>
-            <input
-              type="radio"
-              name="cach-tra"
-              checked={nhan.cachTra === "tra-khi-nhan"}
-              onChange={() => suaNhan({ cachTra: "tra-khi-nhan" })}
-            />
-            <span>
-              <b>Trả khi nhận hàng</b>
-              <small>Tiền mặt hoặc chuyển khoản lúc nhận</small>
-            </span>
-          </label>
-        </div>
+        {TRA_TRUOC ? (
+          <p>
+            <b>Chuyển khoản trước</b>
+            <br />
+            Gửi đơn xong, app hiện mã QR đúng số tiền. Quán nhận đủ tiền thì quầy mới soạn khay.
+          </p>
+        ) : (
+          <div className="ds-chon" role="radiogroup" aria-label="Thanh toán">
+            <label className={nhan.cachTra === "chuyen-khoan" ? "dang-chon" : ""}>
+              <input
+                type="radio"
+                name="cach-tra"
+                checked={nhan.cachTra === "chuyen-khoan"}
+                onChange={() => suaNhan({ cachTra: "chuyen-khoan" })}
+              />
+              <span>
+                <b>Chuyển khoản</b>
+                <small>Quán gửi mã QR khi xác nhận đơn</small>
+              </span>
+            </label>
+            <label className={nhan.cachTra === "tra-khi-nhan" ? "dang-chon" : ""}>
+              <input
+                type="radio"
+                name="cach-tra"
+                checked={nhan.cachTra === "tra-khi-nhan"}
+                onChange={() => suaNhan({ cachTra: "tra-khi-nhan" })}
+              />
+              <span>
+                <b>Trả khi nhận hàng</b>
+                <small>Tiền mặt hoặc chuyển khoản lúc nhận</small>
+              </span>
+            </label>
+          </div>
+        )}
       </Muc>
 
       <Muc tieuDe="Ghi chú">
@@ -254,10 +334,17 @@ export default function DonHang() {
         </label>
       </Muc>
 
-      <p className="ghi-chu ghi-chu-trang">
-        Bấm “Gửi đơn qua Zalo” sẽ mở khung chat với Beeftown, đơn đã điền sẵn. Bạn bấm Gửi thì quán mới nhận được.
-        Mini App không lưu tên, số điện thoại, địa chỉ của bạn.
-      </p>
+      {TRA_TRUOC ? (
+        <p className="ghi-chu ghi-chu-trang">
+          Bấm “Gửi đơn và trả tiền” để gửi đơn tới Beeftown. Tên, số điện thoại và đơn của bạn được lưu trên máy chủ đơn
+          của Beeftown đặt tại Việt Nam, để quầy soạn và giao đúng đơn.
+        </p>
+      ) : (
+        <p className="ghi-chu ghi-chu-trang">
+          Bấm “Gửi đơn qua Zalo” sẽ mở khung chat với Beeftown, đơn đã điền sẵn. Bạn bấm Gửi thì quán mới nhận được.
+          Mini App không lưu tên, số điện thoại, địa chỉ của bạn.
+        </p>
+      )}
       <div className="khoang-duoi co-thanh" />
 
       <div className="thanh-duoi">
@@ -269,7 +356,13 @@ export default function DonHang() {
           </ul>
         )}
         <button type="button" className="nut-chinh rong" onClick={guiDon} disabled={dangGui}>
-          {dangGui ? "Đang mở Zalo…" : "Gửi đơn qua Zalo"}
+          {TRA_TRUOC
+            ? dangGui
+              ? "Đang gửi đơn…"
+              : "Gửi đơn và trả tiền"
+            : dangGui
+              ? "Đang mở Zalo…"
+              : "Gửi đơn qua Zalo"}
         </button>
       </div>
 

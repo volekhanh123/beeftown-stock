@@ -1,6 +1,6 @@
 // Các lệnh của Zalo dùng trong app. Chỉ chạy được bên trong ứng dụng Zalo trên điện thoại.
 
-import { followOA, openChat } from "zmp-sdk";
+import { followOA, openChat, saveImageToGallery } from "zmp-sdk";
 import { CAU_HINH } from "./cau-hinh";
 
 /** Cùng cách zmp-sdk tự nhận biết: trình duyệt bên trong Zalo có chữ "zalo" trong user agent. */
@@ -30,5 +30,16 @@ export async function quanTamQuan(): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+/** Lưu ảnh mã QR vào máy để khách chọn ảnh trong app ngân hàng (khách trả tiền trên chính điện thoại đang mở app). */
+export async function luuAnhVaoMay(anhBase64: string): Promise<"da-luu" | "ngoai-zalo" | "loi"> {
+  if (!dangTrongZalo()) return "ngoai-zalo";
+  try {
+    await saveImageToGallery({ imageBase64Data: anhBase64 });
+    return "da-luu";
+  } catch {
+    return "loi";
   }
 }
