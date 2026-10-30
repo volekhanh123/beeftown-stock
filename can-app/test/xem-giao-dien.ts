@@ -11,8 +11,8 @@
  * `--hai-can`: như trên nhưng WiFi có hai cân (127.0.0.1 và .5) — trang hiện nút chọn cân.
  * `--chua-co-goc`: chưa có file gốc (thấy bước Bắt đầu, có nút đọc từ cân qua WiFi).
  * 2.6: bấm Gửi xuống cân → cân giả hai chiều nhận PLU như cân thật, chương trình đọc lại thấy khớp ("Cân đã nhận").
- * `--can-bo-qua`: cân bỏ qua mọi lần gửi (lỗi thấy ở quán 03/10) → khung đỏ "cân CHƯA nhận".
- * `--khong-doc-lai`: cổng hai chiều không trả lời sau khi gửi → khung vàng "chưa kiểm được".
+ * `--can-bo-qua`: cân bỏ qua mọi lần gửi (lỗi thấy ở quán 03/10) → khung viền đỏ (tam giác "!") "cân CHƯA nhận".
+ * `--khong-doc-lai`: cổng hai chiều không trả lời sau khi gửi → khung lưu ý (vòng tròn "!") "chưa kiểm được".
  * Dây RS232 dùng PowerShell giả: có cổng COM3, cân ở đầu dây luôn trả lời giờ (kiểm tra dây, gửi thử đều được).
  *
  * Bản 2.2: cân giả hai chiều (test/can-gia-hai-chieu.ts) trên 127.0.0.1 cho mục Cân & thông số, Nhật ký
@@ -45,7 +45,7 @@ const LAS = [
 const MAU_TEM = ['LAB\t28\tBEEFTOWN\t1\t58\t40\tĐơn giá\tTrọng Lượng\t\tThành Tiền\tNgày đóng gói\t\t\t\t\t\t\t\tBEEFTOWN\t\t\t\t1\tHSD\t', ...LAS, 'LAE\t'];
 /** Dòng PLU có HSD n ngày (cột 27 = 1, cột 32 = n). */
 const coHsd = (dong: string, n: number) => { const c = dong.split('\t'); c[27] = '1'; c[32] = String(n); return c.join('\t'); };
-// Gầu bò đang in HSD 6 ngày, tính từ hôm qua (hsd-tinh-ngay.txt bên dưới) — thấy khung đỏ "HSD trên cân tính cho ngày …".
+// Gầu bò đang in HSD 6 ngày, tính từ hôm qua (hsd-tinh-ngay.txt bên dưới) — thấy khung viền đỏ "HSD trên cân tính cho ngày …".
 const PLU = [plu(1, '10001', '845,0', 'Lõi vai bò Mỹ'), plu(2, '10002', '876,0', 'Sườn bò Hàn Quốc'),
   coHsd(plu(3, '10003', '695,0', 'Gầu bò'), 6), plu(5, '10005', '516,0', 'Ba chỉ bò cuộn'),
   plu(6, '90001', '945,0', 'Steak Ribeye Angus -30%'), plu(7, '10071', '1350,0', 'Steak Ribeye Angus #0142'),

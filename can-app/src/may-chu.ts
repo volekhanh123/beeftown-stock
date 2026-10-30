@@ -11,14 +11,21 @@ import * as path from 'node:path';
 import { exec } from 'node:child_process';
 import GIAO_DIEN_FILE from './giao-dien.html' with { type: 'text' };
 import HUONG_DAN_FILE from './huong-dan.html' with { type: 'text' };
+import LOGO_PHU_TRANG from '../../web/public/thuong-hieu/chu-beeftown-trang.svg' with { type: 'text' };
+import BIEU_TUONG from '../../web/public/bieu-tuong.svg' with { type: 'text' };
 import { UngDung, cauLoi } from './nghiep-vu.ts';
 import { LoiCapNhat } from './cap-nhat.ts';
+import { ganNhanDien } from './nhan-dien.ts';
 import type { SuaO, ThayDoiTem, ThemO } from './tem.ts';
 
-// `with { type: 'text' }`: Bun nhập file .html thành chuỗi. Kiểu của bun-types cho "*.html" là HTMLBundle (cách nhập không
-// thuộc tính, cho máy chủ HTML của Bun) — tsc không phân biệt theo thuộc tính nhập, nên ghi rõ kiểu ở đây.
-const GIAO_DIEN = GIAO_DIEN_FILE as unknown as string;
-const HUONG_DAN = HUONG_DAN_FILE as unknown as string;
+// `with { type: 'text' }`: Bun nhập file thành chuỗi (đóng gói vào .exe). Kiểu của bun-types cho "*.html" là HTMLBundle
+// (cách nhập không thuộc tính, cho máy chủ HTML của Bun), của astro/client cho "*.svg" là thành phần ảnh — tsc không phân
+// biệt theo thuộc tính nhập, nên ghi rõ kiểu ở đây. 2.12: logo phụ trắng và biểu tượng cửa sổ của bộ nhận diện 21/10/2026
+// lấy thẳng file của web/public (máy quầy không mạng) — ganNhanDien đặt vào hai trang một lần lúc mở chương trình.
+const LOGO = LOGO_PHU_TRANG as unknown as string;
+const ICON = BIEU_TUONG as unknown as string;
+const GIAO_DIEN = ganNhanDien(GIAO_DIEN_FILE as unknown as string, LOGO, ICON);
+const HUONG_DAN = ganNhanDien(HUONG_DAN_FILE as unknown as string, LOGO, ICON);
 
 const json = (v: unknown, status = 200) =>
   new Response(JSON.stringify(v), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });

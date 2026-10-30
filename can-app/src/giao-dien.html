@@ -6,122 +6,177 @@
 <title>Beeftown · Máy quầy</title>
 <link rel="icon" href="data:,">
 <style>
+  /* Bộ nhận diện 21/10/2026 (THUONG-HIEU.md): bảng 22/10/2026 — đỏ #BD0000, đen, trắng — và các màu pha cho màn hình
+     (đỏ đậm, bốn xám). Biến cùng tên, cùng giá trị với :root của web/src/styles/chung.css (--kem là trắng, --than là
+     đen — tên giữ như web): đổi một mã thì đổi cả chung.css, khối .ck của cong-khai.css và hai trang của Beeftown Cân
+     (crm/test/test-can-nhan-dien.mjs so từng mã). Ngoài khối này chỉ dùng var(--…). Không màu trạng thái: trạng thái
+     vẽ bằng chữ, dấu, nét — sáu kiểu nhãn của /noi-bo và kho (THUONG-HIEU.md mục 4), xem .nhan-l bên dưới. */
   :root {
-    --do: #B23A2C; --do-dam: #8E2B20; --kem: #FBF4E1; --kem-sau: #F3E8CC; --mu-tat: #F2A900;
-    --than: #1E160E; --da: #B8A98C; --vach: #E4D8BC; --trang: #FFFFFF;
-    --xanh: #1F7A4C; --xanh-nen: #E9F5EE; --do-nen: #FDECEA; --vang-nen: #FFF5DC;
+    --do: #BD0000; --do-dam: #8F0000; --kem: #FFFFFF; --kem-sau: #F4F4F4; --kem-dam: #E2E2E2;
+    --than: #000000; --da: #E2E2E2; --muc-nhat: #555555; --vach: #E2E2E2; --vien-o: #767676;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--kem); color: var(--than); font: 15px/1.5 "Segoe UI", system-ui, sans-serif; }
-  header { background: var(--than); color: var(--kem); padding: 14px 24px; display: flex; align-items: baseline; gap: 14px; }
-  header b { font-size: 18px; letter-spacing: .08em; color: var(--mu-tat); }
+  body { margin: 0; background: var(--kem-sau); color: var(--than); font: 15px/1.5 "Segoe UI", system-ui, sans-serif; }
+  /* Vòng focus theo nền: đen trên nền sáng (21 : 1 với thẻ trắng), trắng trên đầu trang đen. */
+  :focus-visible { outline: 3px solid var(--than); outline-offset: 3px; }
+  header { background: var(--than); color: var(--kem); padding: 12px 24px; display: flex; align-items: center; gap: 14px; }
+  header :focus-visible { outline-color: var(--kem); }
+  /* Logo phụ trắng (web/public/thuong-hieu/chu-beeftown-trang.svg, path gốc của Brand Guidelines 21/10/2026) — may-chu.ts
+     đặt vào chỗ đánh dấu khi phục vụ trang (src/nhan-dien.ts). Rộng 148px: cỡ tối thiểu của logo phụ trên đầu trang. */
+  header .logo { display: block; flex: none; line-height: 0; }
+  header .logo svg { display: block; width: 148px; height: auto; }
   header span { color: var(--da); }
   header small { margin-left: auto; color: var(--da); }
   main { max-width: 1120px; margin: 0 auto; padding: 20px 24px 40px; }
   h2 { font-size: 17px; margin: 0 0 10px; }
-  .the { background: var(--trang); border: 1px solid var(--vach); border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+  .the { background: var(--kem); border: 1px solid var(--vach); border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
   .hang { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
-  .o { background: var(--trang); border: 1px solid var(--vach); border-radius: 12px; padding: 12px 16px; }
-  .o .nhan { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #7A6C52; }
+  .o { background: var(--kem); border: 1px solid var(--vach); border-radius: 12px; padding: 12px 16px; }
+  .o .nhan { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muc-nhat); }
   .o .gt { font-weight: 600; margin-top: 2px; }
-  .o .phu { font-size: 13px; color: #6A5D45; }
-  .den { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--da); margin-right: 6px; }
-  .den.xanh { background: var(--xanh); } .den.do { background: var(--do); }
+  .o .phu { font-size: 13px; color: var(--muc-nhat); }
+  /* Đèn ô Cân — hình, không màu riêng (như đèn sức khỏe ở /noi-bo): vòng rỗng = chưa kiểm tra, chấm đen = nối được cân
+     (.noi), tam giác đỏ = không nối được (.loi). Dòng chữ ngay bên cạnh luôn nói rõ. */
+  .den { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: transparent; border: 2px solid var(--vien-o); margin-right: 6px; vertical-align: -1px; }
+  .den.noi { background: var(--than); border-color: var(--than); }
+  .den.loi { width: 12px; height: 11px; border: 0; border-radius: 0; background: var(--do); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
   label.truong { display: block; margin-bottom: 10px; }
   label.truong span { display: block; font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+  /* Ô nhập: nền trắng, viền --vien-o (4,54 : 1 với ô trắng, 4,13 với nền F4) — viền xám vạch E2 chỉ 1,30 : 1. */
   input[type=text], input[type=email], input[type=password], input[type=number], select {
-    width: 100%; max-width: 380px; padding: 8px 10px; border: 1px solid var(--da); border-radius: 8px; font: inherit; background: #fff;
+    width: 100%; max-width: 380px; padding: 8px 10px; border: 1px solid var(--vien-o); border-radius: 8px; font: inherit; background: var(--kem); color: var(--than);
   }
-  button { font: inherit; font-weight: 600; border-radius: 8px; padding: 9px 16px; cursor: pointer; border: 1px solid var(--da); background: var(--trang); color: var(--than); }
-  button:hover { background: var(--kem-sau); }
-  button.chinh { background: var(--do); border-color: var(--do); color: #fff; }
+  ::placeholder { color: var(--muc-nhat); opacity: 1; }
+  /* Ô đánh dấu, ô chọn một: màu nhấn của trình duyệt (xanh dương) thành đỏ, như ô đã chọn ở /noi-bo. */
+  input[type=checkbox], input[type=radio] { accent-color: var(--do); }
+  button { font: inherit; font-weight: 600; border-radius: 8px; padding: 9px 16px; cursor: pointer; border: 1px solid var(--vien-o); background: var(--kem); color: var(--than); }
+  button:hover { background: var(--kem-dam); }
+  button.chinh { background: var(--do); border-color: var(--do); color: var(--kem); }
   button.chinh:hover { background: var(--do-dam); }
   button.to { font-size: 17px; padding: 12px 26px; }
   button:disabled { opacity: .5; cursor: default; }
   .nut { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
-  .bao { border-radius: 10px; padding: 10px 14px; margin: 10px 0; border-left: 4px solid; }
-  .bao.loi { background: var(--do-nen); border-color: var(--do); }
-  .bao.xong { background: var(--xanh-nen); border-color: var(--xanh); }
-  .bao.luu-y { background: var(--vang-nen); border-color: var(--mu-tat); }
+  /* Khối báo: nền thẻ trắng, vạch trái 6px. Không nền màu — ba trạng thái khác nhau ở dấu và nét (như .nb-bao của /noi-bo):
+       gốc        vạch xám --vien-o, không dấu — khung thông tin
+       .xong      vạch đen, dấu ✓ trắng trong vòng đen
+       .luu-y     vạch --muc-nhat, vòng tròn "!" viền --muc-nhat (7,46 : 1 với trắng)
+       .loi       viền đỏ 2px quanh khối, vạch đỏ, tam giác đỏ "!"
+     content viết hai lần: trình duyệt cũ đọc dòng đầu, trình duyệt mới đọc dòng sau (trình đọc màn hình đọc câu, không đọc dấu). */
+  .bao { position: relative; background: var(--kem); border: 1px solid var(--vach); border-left: 6px solid var(--vien-o); border-radius: 10px; padding: 10px 14px; margin: 10px 0; }
+  .bao.xong, .bao.luu-y, .bao.loi { padding-left: 44px; }
+  .bao.xong::before, .bao.luu-y::before, .bao.loi::before {
+    position: absolute; left: 12px; top: 11px; display: grid; place-items: center; box-sizing: border-box;
+    width: 21px; height: 21px; font-size: 12px; font-weight: 800; line-height: 1;
+  }
+  .bao.xong { border-left-color: var(--than); }
+  .bao.xong::before { content: '✓'; content: '✓' / ''; background: var(--than); color: var(--kem); border-radius: 50%; }
+  .bao.luu-y { border-left-color: var(--muc-nhat); }
+  .bao.luu-y::before { content: '!'; content: '!' / ''; background: var(--kem); color: var(--muc-nhat); border: 2px solid var(--muc-nhat); border-radius: 50%; }
+  .bao.loi { border: 2px solid var(--do); border-left: 6px solid var(--do); }
+  .bao.loi::before { content: '!'; content: '!' / ''; width: 24px; padding-top: 5px; background: var(--do); color: var(--kem); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
   .bao p { margin: 4px 0; }
   .dem { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
-  .nhan-l { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
-  .nhan-l.them { background: var(--xanh-nen); color: var(--xanh); }
-  .nhan-l.sua { background: var(--mu-tat); color: var(--than); }
-  .nhan-l.xoa { background: var(--do); color: #fff; }
-  .nhan-l.giu { background: var(--kem-sau); color: #6A5D45; }
-  .nhan-l.khong-len { border: 1px dashed #6A5D45; color: #6A5D45; }
+  /* Nhãn trạng thái — sáu kiểu của /noi-bo và kho (THUONG-HIEU.md mục 4, .nb-nhan của web/src/styles/noi-bo.css); đỏ chỉ
+     cho "làm ngay". Viền trong suốt 1,5px ở lớp gốc: nhãn nền đặc cùng cỡ nhãn viền, chế độ tương phản cao vẽ thành khung.
+       .cho        K1 nền đỏ, chữ trắng, dấu "!"   làm ngay: hết hạn, hết ở quầy, bỏ khỏi cân, kho không có, hỏng
+       .nhap       K3 nền đen, chữ trắng           sẽ ghi xuống cân (thêm, sửa), đang lóc, đang soạn, ô tem mới
+       .song       K4 viền đen, dấu ✓              xong, đúng: khớp kho, giữ nguyên, đủ, đang bán, đã lên cân, đạt
+       .luu-y      K5 nền xám E2, chữ đen          lưu ý: khác kho, cận date, dưới mức, chờ thủ kho, chưa gửi
+       .tat        K6 nét đứt, chữ #555            tắt, chưa, bỏ qua: không đưa lên, chưa lên cân, PLU trống, đã tắt
+       .thong-tin  K7 viền mảnh, chữ đen           thuộc tính, không phải trạng thái: số tảng, chỉ xem, giữ ngoài kho */
+  .nhan-l { display: inline-block; font-size: 12px; font-weight: 700; padding: 1px 7px; border-radius: 4px; white-space: nowrap; border: 1.5px solid transparent; }
+  .nhan-l.cho { background: var(--do); color: var(--kem); }
+  .nhan-l.cho::before { content: '! '; content: '! ' / ''; font-weight: 800; }
+  .nhan-l.nhap { background: var(--than); color: var(--kem); }
+  .nhan-l.song { background: transparent; color: var(--than); border-color: var(--than); }
+  .nhan-l.song::before { content: '✓ '; content: '✓ ' / ''; }
+  .nhan-l.luu-y { background: var(--kem-dam); color: var(--than); }
+  .nhan-l.tat { background: transparent; color: var(--muc-nhat); border: 1.5px dashed var(--vien-o); }
+  .nhan-l.thong-tin { background: transparent; color: var(--than); border: 1px solid var(--vien-o); }
   .khung-bang { overflow: auto; max-height: 420px; border: 1px solid var(--vach); border-radius: 8px; }
   table { border-collapse: collapse; width: 100%; font-size: 14px; }
   th, td { padding: 7px 10px; border-bottom: 1px solid var(--vach); text-align: left; vertical-align: top; }
   th { position: sticky; top: 0; background: var(--kem-sau); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
   td.so, th.so { text-align: right; font-variant-numeric: tabular-nums; }
-  tr.mo td { color: #8A7C62; }
-  .phu { font-size: 13px; color: #6A5D45; }
+  tr.mo td { color: var(--muc-nhat); }
+  .phu { font-size: 13px; color: var(--muc-nhat); }
   details summary { cursor: pointer; font-weight: 600; }
   /* 2.11: mục gập trong thẻ (Tảng & ô mã, Tất cả hàng, Mẫu tem, Cân & thông số, Phím tắt, Nhật ký cân) — tiêu đề nằm trên dòng gập. */
   details.the > summary h2 { display: inline; margin: 0; }
-  code { background: var(--kem-sau); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  code { background: var(--kem-dam); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
   .an { display: none !important; }
-  .dang-lam { color: #6A5D45; font-style: italic; }
+  .dang-lam { color: var(--muc-nhat); font-style: italic; }
   .thanh-tab { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 2px solid var(--vach); margin: 4px 0 16px; }
-  .thanh-tab button { border: 0; border-radius: 8px 8px 0 0; background: transparent; padding: 10px 11px; font-size: 14px; color: #6A5D45; margin-bottom: -2px; border-bottom: 3px solid transparent; }
-  .thanh-tab button:hover { background: var(--kem-sau); }
-  .thanh-tab button.chon { color: var(--than); border-bottom-color: var(--do); background: var(--trang); }
+  .thanh-tab button { border: 0; border-radius: 8px 8px 0 0; background: transparent; padding: 10px 11px; font-size: 14px; color: var(--muc-nhat); margin-bottom: -2px; border-bottom: 3px solid transparent; }
+  .thanh-tab button:hover { background: var(--kem-dam); }
+  .thanh-tab button.chon { color: var(--than); border-bottom-color: var(--do); background: var(--kem); }
   .loc { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
   .loc button { padding: 4px 12px; font-size: 13px; border-radius: 999px; }
   .loc button.chon { background: var(--than); border-color: var(--than); color: var(--kem); }
-  input[type=search] { width: 100%; max-width: 380px; padding: 8px 10px; border: 1px solid var(--da); border-radius: 8px; font: inherit; background: #fff; }
-  .phim { display: inline-grid; place-items: center; min-width: 26px; height: 24px; padding: 0 5px; border: 1px solid var(--da); border-bottom-width: 3px; border-radius: 5px; font-size: 12px; font-weight: 700; background: #fff; }
+  input[type=search] { width: 100%; max-width: 380px; padding: 8px 10px; border: 1px solid var(--vien-o); border-radius: 8px; font: inherit; background: var(--kem); color: var(--than); }
+  .phim { display: inline-grid; place-items: center; min-width: 26px; height: 24px; padding: 0 5px; border: 1px solid var(--vien-o); border-bottom-width: 3px; border-radius: 5px; font-size: 12px; font-weight: 700; background: var(--kem); }
   .tem-luoi { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; margin-top: 12px; }
-  .giay { position: relative; width: 100%; max-width: 420px; background: #fff; color: #111; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.18), 0 8px 24px rgba(30,22,14,.12); container-type: inline-size; overflow: hidden; }
+  /* Tem xem trước: giấy tem trắng, mực đen — như tem in ra. */
+  .giay { position: relative; width: 100%; max-width: 420px; background: var(--kem); color: var(--than); border-radius: 6px; box-shadow: 0 1px 2px rgba(0, 0, 0, .18), 0 8px 24px rgba(0, 0, 0, .12); container-type: inline-size; overflow: hidden; }
   .giay .el { position: absolute; display: flex; align-items: center; white-space: nowrap; overflow: hidden; line-height: 1; font-family: "Segoe UI", Arial, sans-serif; font-weight: 600; }
   .giay .el.dam { font-weight: 800; }
-  .giay .el.trong { outline: 1px dashed #b9b9b9; outline-offset: -1px; }
-  .giay .el.sang { background: rgba(242,169,0,.4); }
+  .giay .el.trong { outline: 1px dashed var(--vien-o); outline-offset: -1px; }
+  .giay .el.sang { background: var(--kem-dam); }
   .giay .vach { width: 100%; height: 100%; }
-  .o-tem { border: 1px solid var(--vach); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; background: #fff; }
-  .o-tem.tat { background: var(--kem); }
-  .o-tem.tat .ten-o { color: #8A7C62; text-decoration: line-through; }
+  .o-tem { border: 1px solid var(--vach); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; background: var(--kem); }
+  .o-tem.tat { background: var(--kem-sau); }
+  .o-tem.tat .ten-o { color: var(--muc-nhat); text-decoration: line-through; }
   .o-tem label.chon-o { display: flex; gap: 8px; align-items: center; cursor: pointer; }
   .o-tem input[type=text] { margin-top: 6px; }
-  .o-tem.doi { border-color: var(--mu-tat); box-shadow: 0 0 0 1px var(--mu-tat); }
+  /* Ô đã sửa, chưa gửi: vạch đen 4px ở đầu ô — không chỉ đổi màu viền. Ô đang chọn (.chon, bên dưới): viền đỏ quanh ô.
+     Vạch dày hơn viền thường 3px nên đệm trái bớt 3px: chữ và ô nhập không nhảy khi gõ. */
+  .o-tem.doi { border-left: 4px solid var(--than); padding-left: 9px; }
   .so-o { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 4px 0 14px; }
-  .so-o .o { padding: 10px 14px; }
+  .so-o .o { position: relative; padding: 10px 14px; }
   .so-o .gt { font-size: 24px; font-weight: 700; line-height: 1.2; }
-  .so-o .o.do { border-color: var(--do); background: var(--do-nen); }
-  .so-o .o.vang { border-color: var(--mu-tat); background: var(--vang-nen); }
-  .so-o .o.xanh { border-color: var(--xanh); background: var(--xanh-nen); }
+  /* Ô số "làm ngay" (.gap, K2): viền đỏ 2px, số đỏ, tam giác đỏ "!" ở góc. Ô "lưu ý" (.luu-y, K5): viền #555 2px, vòng tròn
+     "!" ở góc. Nền vẫn là thẻ trắng — như .kho-o-so của kho. */
+  .so-o .o.gap, .so-o .o.luu-y { padding-right: 40px; }
+  .so-o .o.gap { border: 2px solid var(--do); }
+  .so-o .o.gap .gt { color: var(--do); }
+  .so-o .o.luu-y { border: 2px solid var(--muc-nhat); }
+  .so-o .o.gap::after, .so-o .o.luu-y::after {
+    position: absolute; top: 10px; right: 10px; display: grid; place-items: center; box-sizing: border-box;
+    width: 21px; height: 21px; font-size: 12px; font-weight: 800; line-height: 1;
+  }
+  .so-o .o.gap::after { content: '!'; content: '!' / ''; width: 24px; padding-top: 5px; background: var(--do); color: var(--kem); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+  .so-o .o.luu-y::after { content: '!'; content: '!' / ''; background: var(--kem); color: var(--muc-nhat); border: 2px solid var(--muc-nhat); border-radius: 50%; }
   h3 { font-size: 15px; margin: 18px 0 6px; display: flex; gap: 8px; align-items: center; }
-  .nhan-l.do { background: var(--do); color: #fff; }
-  .nhan-l.vang { background: var(--mu-tat); color: var(--than); }
-  .nhan-l.xanh { background: var(--xanh-nen); color: var(--xanh); }
-  .nhan-l.xam { background: var(--kem-sau); color: #6A5D45; }
-  .giam { display: inline-block; margin: 2px 6px 2px 0; padding: 2px 8px; border: 1px solid var(--mu-tat); border-radius: 6px; background: var(--vang-nen); font-size: 13px; }
-  .khung-form { border: 1px solid var(--vach); border-radius: 10px; padding: 12px 14px; margin-top: 10px; background: var(--kem); }
-  input.nho { width: 80px; padding: 4px 6px; border: 1px solid var(--da); border-radius: 6px; font: inherit; text-align: right; }
-  textarea { width: 100%; max-width: 520px; padding: 8px 10px; border: 1px solid var(--da); border-radius: 8px; font: inherit; min-height: 54px; }
-  .thanh { height: 8px; background: var(--kem-sau); border-radius: 4px; overflow: hidden; min-width: 60px; }
-  .thanh > span { display: block; height: 100%; background: var(--xanh); }
+  /* Mã giảm giá của lô cận date ở thẻ Quầy: chip thông tin, viền mảnh (như nhãn K7). */
+  .giam { display: inline-block; margin: 2px 6px 2px 0; padding: 2px 8px; border: 1px solid var(--vien-o); border-radius: 6px; background: var(--kem); font-size: 13px; }
+  .khung-form { border: 1px solid var(--vach); border-radius: 10px; padding: 12px 14px; margin-top: 10px; background: var(--kem-sau); }
+  input.nho { width: 80px; padding: 4px 6px; border: 1px solid var(--vien-o); border-radius: 6px; font: inherit; text-align: right; background: var(--kem); color: var(--than); }
+  textarea { width: 100%; max-width: 520px; padding: 8px 10px; border: 1px solid var(--vien-o); border-radius: 8px; font: inherit; min-height: 54px; background: var(--kem); color: var(--than); }
+  /* Thanh tỷ lệ: rãnh xám E2, phần đã có đen (16,21 : 1 với rãnh) — số luôn ghi bằng chữ cạnh thanh. */
+  .thanh { height: 8px; background: var(--kem-dam); border-radius: 4px; overflow: hidden; min-width: 60px; }
+  .thanh > span { display: block; height: 100%; background: var(--than); }
   .cot-gio { display: flex; align-items: flex-end; gap: 4px; height: 140px; padding: 8px 4px 0; border-bottom: 1px solid var(--vach); }
   .cot-gio div { flex: 1; background: var(--do); border-radius: 3px 3px 0 0; min-height: 1px; position: relative; }
   .cot-gio div:hover { background: var(--do-dam); }
-  .nhan-gio { display: flex; gap: 4px; padding: 0 4px; font-size: 11px; color: #6A5D45; }
+  .nhan-gio { display: flex; gap: 4px; padding: 0 4px; font-size: 11px; color: var(--muc-nhat); }
   .nhan-gio span { flex: 1; text-align: center; }
   .hai-cot { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   /* 2.2 */
-  header .nut-dau { margin-left: 12px; padding: 4px 12px; font-size: 13px; background: transparent; color: var(--kem); border-color: #6A5D45; }
-  header .nut-dau:hover { background: #3A2D20; }
-  header .nut-dau.ban-moi { background: var(--mu-tat); color: var(--than); border-color: var(--mu-tat); font-weight: 600; }
-  header .nut-dau.ban-moi:hover { filter: brightness(1.06); }
+  header .nut-dau { margin-left: 12px; padding: 4px 12px; font-size: 13px; background: transparent; color: var(--kem); border-color: var(--vien-o); }
+  header .nut-dau:hover { background: rgba(255, 255, 255, .1); }
+  /* Có bản mới: nút đỏ chữ trắng — như nút chính trên dải đen của trang công khai (mép đỏ trên đen 3,16 : 1). */
+  header .nut-dau.ban-moi { background: var(--do); color: var(--kem); border-color: var(--do); font-weight: 600; }
+  header .nut-dau.ban-moi:hover { background: var(--do-dam); border-color: var(--do-dam); }
   .giay { user-select: none; }
   .giay.sua-duoc { touch-action: none; }
   .giay.sua-duoc .el { cursor: move; }
   .giay .el { transform-origin: 0 0; }
   .giay .el .noi { display: inline-block; white-space: pre; }
+  /* Ô trên tem xem trước khác nhau ở nét, không chỉ ở màu: đang chọn liền đỏ 2px, mới thêm chấm đen 2px, ra ngoài tem đứt
+     đỏ 2px, ô trống đứt xám 1px (ở trên). */
   .giay .el.chon { outline: 2px solid var(--do); outline-offset: -1px; z-index: 2; }
   .giay .el.khong-in { opacity: .3; }
-  .giay .el.moi { outline: 1px dashed var(--xanh); outline-offset: -1px; }
+  .giay .el.moi { outline: 2px dotted var(--than); outline-offset: -1px; }
   .giay .el.ngoai { outline: 2px dashed var(--do); outline-offset: -2px; }
   .giay .tay-keo { position: absolute; right: 0; bottom: 0; width: 10px; height: 10px; background: var(--do); cursor: nwse-resize; }
   .o-tem.chon { border-color: var(--do); box-shadow: 0 0 0 1px var(--do); }
@@ -131,17 +186,36 @@
   .truong-nho input[type=number] { width: 88px; padding: 4px 6px; }
   .truong-nho select { padding: 4px 6px; }
   .ts { border-top: 1px solid var(--vach); padding: 10px 8px; }
-  .ts.doi { background: var(--vang-nen); }
-  .ts .canh-bao { color: #7A5200; font-size: 13px; margin-top: 4px; }
+  /* Thông số / chữ cài đặt đã sửa, chưa gửi: nền F4 và vạch đen 4px ở đầu dòng; dòng còn ghi "trên cân (file gốc) đang là …".
+     Đệm trái bớt đúng 4px của vạch: ô nhập không nhảy sang phải ở lần gõ đầu. */
+  .ts.doi { background: var(--kem-sau); border-left: 4px solid var(--than); padding-left: 4px; }
+  /* Câu lưu ý của một thông số: vòng tròn "!" viền #555 trước câu (như khối lưu ý), chữ đen. */
+  .ts .canh-bao { position: relative; padding-left: 24px; font-size: 13px; margin-top: 4px; }
+  .ts .canh-bao::before {
+    content: '!'; content: '!' / ''; position: absolute; left: 0; top: 1px; display: grid; place-items: center; box-sizing: border-box;
+    width: 17px; height: 17px; border: 2px solid var(--muc-nhat); border-radius: 50%; color: var(--muc-nhat); font-size: 11px; font-weight: 800; line-height: 1;
+  }
   .ts .canh-bao-o { color: var(--do-dam); font-size: 13px; font-weight: 600; margin-top: 4px; }
-  h4.nhom-ts { margin: 18px 0 2px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #7A6C52; }
-  tr.doi-phim td { background: var(--vang-nen); }
-  .bang-tt td:first-child { color: #6A5D45; white-space: nowrap; }
+  h4.nhom-ts { margin: 18px 0 2px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muc-nhat); }
+  /* Phím đã đổi, chưa gửi: nền F4, vạch đen 4px ở ô đầu dòng; cột "đang" và ô chọn khác nhau bằng chữ. Bảng gộp viền
+     (border-collapse) nên nửa vạch (2px) nằm trong ô: đệm trái bớt 2px, chữ phím không nhảy. */
+  tr.doi-phim td { background: var(--kem-sau); }
+  tr.doi-phim td:first-child { border-left: 4px solid var(--than); padding-left: 8px; }
+  .bang-tt td:first-child { color: var(--muc-nhat); white-space: nowrap; }
+  /* Tương phản cao (Windows): chế độ này ép nền về màu trang — dấu vẽ bằng nền (vòng ✓, tam giác "!", đèn) giữ hình bằng
+     màu hệ thống; chữ "!" / "✓" và câu bên cạnh vẫn nói rõ. Nhãn nền đặc đã có viền trong suốt, chế độ này vẽ thành khung. */
+  @media (forced-colors: active) {
+    .bao.xong::before, .bao.loi::before, .so-o .o.gap::after { forced-color-adjust: none; background: CanvasText; color: Canvas; }
+    .den { forced-color-adjust: none; background: transparent; border-color: CanvasText; }
+    .den.noi, .den.loi { background: CanvasText; border-color: CanvasText; }
+    /* Logo trắng (fill="#FFFFFF" của file SVG) mà nền đầu trang bị ép thành màu trang sáng thì mất: tô theo màu chữ. */
+    header .logo svg path { fill: CanvasText; }
+  }
   @media (max-width: 760px) { .hang, .tem-luoi, .hai-cot { grid-template-columns: 1fr; } .so-o { grid-template-columns: repeat(2, 1fr); } }
 </style>
 </head>
 <body>
-<header><b>BEEFTOWN</b><span>Máy quầy · cân in tem</span><small id="phien-ban"></small><button type="button" class="nut-dau ban-moi an" id="nut-ban-moi"></button><button type="button" class="nut-dau" id="nut-huong-dan">Hướng dẫn</button></header>
+<header><span class="logo" role="img" aria-label="Beeftown"><!--logo-phu-trang--></span><span>Máy quầy · cân in tem</span><small id="phien-ban"></small><button type="button" class="nut-dau ban-moi an" id="nut-ban-moi"></button><button type="button" class="nut-dau" id="nut-huong-dan">Hướng dẫn</button></header>
 <main>
   <div id="bao-cap-nhat"></div>
   <div id="bao-chung"></div>
@@ -643,8 +717,8 @@
   }
 
   /**
-   * 2.8 — kết nối giữ mở và việc chạy nền (/api/can → nen): đèn ô Cân xanh khi cân trả lời trong 75 giây vừa qua (nhịp 30
-   * giây), đỏ khi lần nhịp gần nhất hỏng. Giữ kết nối tắt: đèn chỉ theo nút Kiểm tra kết nối như trước.
+   * 2.8 — kết nối giữ mở và việc chạy nền (/api/can → nen): đèn ô Cân là chấm đen (.noi) khi cân trả lời trong 75 giây vừa
+   * qua (nhịp 30 giây), tam giác đỏ (.loi) khi lần nhịp gần nhất hỏng. Giữ kết nối tắt: đèn chỉ theo nút Kiểm tra kết nối như trước.
    */
   const gioNgan = (t) => new Date(t).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' });
   const giayChu = (g) => { const a = Math.abs(g); return a < 90 ? a + ' giây' : a < 5400 ? Math.round(a / 60) + ' phút' : Math.round(a / 3600) + ' giờ'; };
@@ -660,11 +734,11 @@
     } else {
       const moi = n.giu.lucNghe && Date.now() - new Date(n.giu.lucNghe).getTime() < 75000;
       if (moi && !n.loi) {
-        $('den-can').className = 'den xanh';
+        $('den-can').className = 'den noi';
         dong.push(`Đang nối cân (cổng hai chiều) · cân trả lời lúc ${e(gioNgan(n.giu.lucNghe))}`
           + (n.gio ? ` · giờ cân ${Math.abs(n.gio.lechGiay) <= 30 ? 'đúng' : (n.gio.lechGiay > 0 ? 'nhanh ' : 'chậm ') + e(giayChu(n.gio.lechGiay))}` : '') + '.');
       } else if (n.loi) {
-        $('den-can').className = 'den do';
+        $('den-can').className = 'den loi';
         dong.push(`<b>Chưa nối được cân</b> (lúc ${e(gioNgan(n.loi.luc))}): ${e(n.loi.cau)}`);
       } else {
         dong.push('Đang nối cân…');
@@ -725,10 +799,10 @@
     const hen = setTimeout(() => $('dang-tim-can').classList.remove('an'), 800);
     try {
       const k = await goi('/api/thu-can');
-      den.className = 'den ' + (k.thongCan ? 'xanh' : 'do');
+      den.className = 'den ' + (k.thongCan ? 'noi' : 'loi');
       if (k.doi) baoChung('xong', daDoiDiaChi(k.doi));
       else if (!k.thongCan) baoKhongThongCan($('bao-chung'), k);
-    } catch (err) { den.className = 'den do'; baoChung('loi', e(err.message)); }
+    } catch (err) { den.className = 'den loi'; baoChung('loi', e(err.message)); }
     finally { clearTimeout(hen); $('dang-tim-can').classList.add('an'); nut.disabled = false; }
   }
 
@@ -777,8 +851,12 @@
   }
 
   // ---- xem trước ------------------------------------------------------------
-  const NHAN = { them: ['Thêm', 'them'], sua: ['Sửa', 'sua'], giu: ['Giữ nguyên', 'giu'], xoa: ['Bỏ khỏi cân', 'xoa'],
-                 ngoai_kho: ['Giữ, ngoài kho', 'giu'], bo_qua: ['Không đưa lên', 'khong-len'] };
+  // 2.12 — nhãn theo sáu kiểu của /noi-bo (CSS .nhan-l): sẽ ghi xuống cân (thêm, sửa) nền đen; bỏ khỏi cân đỏ "!"; cân đã
+  // đúng ✓; giữ hàng ngoài kho là thuộc tính (viền mảnh); không đưa lên nét đứt.
+  const NHAN = { them: ['Thêm', 'nhap'], sua: ['Sửa', 'nhap'], giu: ['Giữ nguyên', 'song'], xoa: ['Bỏ khỏi cân', 'cho'],
+                 ngoai_kho: ['Giữ, ngoài kho', 'thong-tin'], bo_qua: ['Không đưa lên', 'tat'] };
+  // "Giữ nguyên" theo lần gửi chưa được cân xác nhận (dấu kiểu 2.9.2): chưa chắc — nhãn lưu ý, không dấu ✓.
+  const GIU_CHUA_XAC_NHAN = ['Giữ nguyên (chưa xác nhận)', 'luu-y'];
   const DEM = [['them', 'thêm'], ['sua', 'sửa'], ['xoa', 'bỏ khỏi cân'], ['giu', 'giữ nguyên'], ['ngoai_kho', 'giữ, ngoài kho'], ['bo_qua', 'không đưa lên']];
   const giuNgoaiKho = () => $('giu-ngoai-kho').checked;
 
@@ -796,15 +874,15 @@
       const theoLanChuaKiem = chuaKiemDuoc && !x.chuaXacNhan.thuLaiLuc;
       const canChuaNhan = x.chuaXacNhan && x.chuaXacNhan.loai === 'lech';
       let h = baoHsdCu(x.hsdTrenCan) + baoCanChuaRo(x.canChuaRo) + baoChuaXacNhan(x.chuaXacNhan) + '<div class="dem">' + DEM.filter(([k]) => x.dem[k] > 0)
-        .map(([k, chu]) => `<span class="nhan-l ${NHAN[k][1]}">${x.dem[k]} ${chu}</span>`).join('') + '</div>';
+        .map(([k, chu]) => `<span class="nhan-l ${(k === 'giu' && theoLanChuaKiem ? GIU_CHUA_XAC_NHAN : NHAN[k])[1]}">${x.dem[k]} ${chu}</span>`).join('') + '</div>';
       const coHsd = x.dong.some(d => d.hsd !== undefined);
       h += '<div class="khung-bang"><table><thead><tr><th>Thay đổi</th><th class="so">PLU</th><th class="so">Mã cân</th><th>Tên trên tem</th><th class="so">Giá/kg</th>'
         + (coHsd ? `<th title="Số ngày in trên tem = số ngày còn lại của lô, tính cho ngày ${e(ngayChu(x.ngayHsd))}">HSD</th>` : '') + '</tr></thead><tbody>';
       for (const d of x.dong) {
         const mo = d.loai === 'xoa' || d.loai === 'bo_qua';
-        // "Giữ nguyên" là so với file gốc; lần gửi gần nhất chưa được cân xác nhận thì nói rõ.
-        const nhan = d.loai === 'giu' && theoLanChuaKiem ? 'Giữ nguyên (chưa xác nhận)' : NHAN[d.loai][0];
-        h += `<tr class="${mo ? 'mo' : ''}"><td><span class="nhan-l ${NHAN[d.loai][1]}">${nhan}</span></td>`
+        // "Giữ nguyên" là so với file gốc; lần gửi gần nhất chưa được cân xác nhận thì nói rõ (dòng đếm ở trên cũng vậy).
+        const [nhan, lop] = d.loai === 'giu' && theoLanChuaKiem ? GIU_CHUA_XAC_NHAN : NHAN[d.loai];
+        h += `<tr class="${mo ? 'mo' : ''}"><td><span class="nhan-l ${lop}">${nhan}</span></td>`
           + `<td class="so">${d.so ?? '—'}</td><td class="so">${e(d.maCan || '—')}</td><td>${e(d.ten)}`
           + (d.loai === 'sua' && d.tenCu !== d.ten ? `<div class="phu">Trên cân đang là: ${e(d.tenCu)}</div>` : '')
           + (d.lyDo ? `<div class="phu">${e(d.lyDo)}</div>` : '') + (d.canhBao ? `<div class="phu">${e(d.canhBao)}</div>` : '')
@@ -890,7 +968,7 @@
   const hsdChu = (v) => (v === undefined ? '' : v === null ? 'không in' : `${Number(v).toLocaleString('vi-VN')} ngày`);
 
   /**
-   * 2.6 — lần gửi gần nhất cân chưa xác nhận (chua-xac-nhan.json). 'khong-doc': chưa đọc lại được cân (khung vàng) — 2.9.3:
+   * 2.6 — lần gửi gần nhất cân chưa xác nhận (chua-xac-nhan.json). 'khong-doc': chưa đọc lại được cân (khung lưu ý) — 2.9.3:
    * chương trình CHƯA ghi nhận (trước 2.9.3 ghi nhận như cân đã nhận), tự gửi thử lại lúc thuLaiLuc; 'lech': đọc lại thấy cân
    * chưa nhận, chương trình chưa ghi nhận lần gửi đó, tự gửi tạm dừng (khung đỏ).
    */
@@ -988,7 +1066,7 @@
 
   /**
    * 2.7 — báo sau khi gửi thông số / chữ cài đặt / phím / tem: "cân đã nhận" chỉ khi chương trình đọc lại cân thấy khớp
-   * (k.xacNhan). Không đọc lại được: khung vàng, nói vì sao, chỉ cách tự kiểm trên cân và đường USB. (Đọc lại thấy cân
+   * (k.xacNhan). Không đọc lại được: khung lưu ý, nói vì sao, chỉ cách tự kiểm trên cân và đường USB. (Đọc lại thấy cân
    * chưa nhận thì máy chủ trả lỗi — không tới đây.)
    */
   function baoCaiDat(tieuDe, k, cachKiem, cachUsb) {
@@ -1023,10 +1101,12 @@
   }
 
   // ---- tất cả hàng -------------------------------------------------------------
+  // 2.12 — sáu kiểu nhãn: khớp ✓; khác kho lưu ý; kho không có, còn nằm lại đỏ "!"; chưa lên, không lên được, PLU trống nét
+  // đứt; trên cân (chưa so được với kho) là thuộc tính.
   const TINH_TRANG = {
-    khop: ['Khớp kho', 'them'], lech: ['Khác kho', 'sua'], ngoai_kho: ['Kho không có', 'xoa'], con_lai: ['Còn nằm lại', 'xoa'],
-    chua_len: ['Chưa lên cân', 'giu'], khong_len: ['Không lên được', 'khong-len'], tren_can: ['Trên cân', 'giu'],
-    trong: ['PLU trống', 'khong-len'],   // 2.7: số PLU đã gỡ hàng bằng ghi đè — hàng mới dùng lại được
+    khop: ['Khớp kho', 'song'], lech: ['Khác kho', 'luu-y'], ngoai_kho: ['Kho không có', 'cho'], con_lai: ['Còn nằm lại', 'cho'],
+    chua_len: ['Chưa lên cân', 'tat'], khong_len: ['Không lên được', 'tat'], tren_can: ['Trên cân', 'thong-tin'],
+    trong: ['PLU trống', 'tat'],   // 2.7: số PLU đã gỡ hàng bằng ghi đè — hàng mới dùng lại được
   };
   let dsHang = null, locHang = 'tat_ca';
   const boDau = (t) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').toLowerCase();
@@ -1054,9 +1134,9 @@
    * gửi gần nhất chưa đọc lại được cân (chuaXacNhan 'khong-doc') thì "khớp" là theo lần gửi đó, chưa xác nhận — 2.9.3: chỉ
    * với dấu kiểu 2.9.2 (không có giờ thử lại); từ 2.9.3 file gốc là lần cân xác nhận, "khớp" đúng nghĩa.
    */
-  const tinhTrangChu = (k) => (k === 'khop' && dsHang && dsHang.canChuaRo ? ['Chưa rõ trên cân', 'xoa']
+  const tinhTrangChu = (k) => (k === 'khop' && dsHang && dsHang.canChuaRo ? ['Chưa rõ trên cân', 'cho']
     : k === 'khop' && dsHang && dsHang.chuaXacNhan && dsHang.chuaXacNhan.loai === 'khong-doc' && !dsHang.chuaXacNhan.thuLaiLuc
-      ? ['Khớp kho, chưa xác nhận', 'sua']
+      ? ['Khớp kho, chưa xác nhận', 'luu-y']
     : TINH_TRANG[k]);
 
   function veHang() {
@@ -1223,7 +1303,7 @@
       const the = document.createElement('div');
       the.className = 'o-tem'; the.dataset.khoa = o.khoa;
       if (o.moi) {
-        the.innerHTML = '<div style="display:flex;gap:8px;align-items:center"><span class="nhan-l xanh">Ô mới</span>'
+        the.innerHTML = '<div style="display:flex;gap:8px;align-items:center"><span class="nhan-l nhap">Ô mới</span>'
           + `<span class="ten-o" style="cursor:pointer"><b>${e(o.ten)}</b></span><button type="button" class="sua-nho bo-moi">Bỏ</button></div>`;
         the.querySelector('.bo-moi').onclick = () => { temSua.them.splice(Number(o.khoa.slice(2)), 1); chonO = null; veTemHet(); };
         the.addEventListener('cap', () => the.classList.toggle('chon', o.khoa === chonO));
@@ -1270,7 +1350,7 @@
     let x = 0; const dung = [];
     for (const b of vach) {
       const a = x / tong * 100, z = (x + b) / tong * 100;
-      dung.push(`#111 ${a.toFixed(2)}% ${z.toFixed(2)}%`, `transparent ${z.toFixed(2)}% ${((x + b + 1) / tong * 100).toFixed(2)}%`);
+      dung.push(`var(--than) ${a.toFixed(2)}% ${z.toFixed(2)}%`, `transparent ${z.toFixed(2)}% ${((x + b + 1) / tong * 100).toFixed(2)}%`);
       x += b + 1;
     }
     const d = document.createElement('div'); d.className = 'vach';
@@ -1576,28 +1656,28 @@
   function veQuay() {
     const q = quay, vh = q.quyen.vanHanh;
     let h = '<div class="so-o">'
-      + `<div class="o ${q.dem.hetHan ? 'do' : ''}"><div class="nhan">Hết hạn — phải huỷ</div><div class="gt">${q.dem.hetHan}</div><div class="phu">lô ở quầy</div></div>`
-      + `<div class="o ${q.dem.canDate ? 'vang' : ''}"><div class="nhan">Cận date — bán trước</div><div class="gt">${q.dem.canDate}</div><div class="phu">lô ở quầy</div></div>`
-      + `<div class="o ${q.dem.canLay ? 'vang' : ''}"><div class="nhan">Dưới mức — lấy thêm</div><div class="gt">${q.dem.canLay}</div><div class="phu">món</div></div>`
+      + `<div class="o ${q.dem.hetHan ? 'gap' : ''}"><div class="nhan">Hết hạn — phải huỷ</div><div class="gt">${q.dem.hetHan}</div><div class="phu">lô ở quầy</div></div>`
+      + `<div class="o ${q.dem.canDate ? 'luu-y' : ''}"><div class="nhan">Cận date — bán trước</div><div class="gt">${q.dem.canDate}</div><div class="phu">lô ở quầy</div></div>`
+      + `<div class="o ${q.dem.canLay ? 'luu-y' : ''}"><div class="nhan">Dưới mức — lấy thêm</div><div class="gt">${q.dem.canLay}</div><div class="phu">món</div></div>`
       + `<div class="o"><div class="nhan">Yêu cầu đang chờ</div><div class="gt">${q.dem.yeuCau}</div><div class="phu">${q.dangMang.length ? q.dangMang.length + ' chuyến đang mang ra' : 'phiếu'}</div></div>`
       + '</div>';
     if (!q.dem.hetHan && !q.dem.canDate && !q.dem.canLay) h += '<div class="bao xong">Quầy ổn: không có gói hết hạn, cận date hay món dưới mức.</div>';
 
     const hangLo = (l, chon) => `<tr><td>${vh ? `<input type="checkbox" class="chon-huy" data-lo="${e(l.lo_id)}" ${chon ? 'checked' : ''}>` : ''}</td>`
-      + `<td><b>${e(l.ten)}</b>${l.so_tang ? ` <span class="nhan-l xam">tảng ${e(l.so_tang)}</span>` : ''}<div class="phu">Lô ${e(l.ma_lo)}</div></td>`
+      + `<td><b>${e(l.ten)}</b>${l.so_tang ? ` <span class="nhan-l thong-tin">tảng ${e(l.so_tang)}</span>` : ''}<div class="phu">Lô ${e(l.ma_lo)}</div></td>`
       + `<td class="so">${l.dem_goi ? soChu(l.so_goi) + ' ' + e(l.don_vi_goi) : ''}<div class="phu">${kgChu(l.so_kg)}</div></td>`
       + `<td>${ngayVn(l.han_dung)}<div class="phu">${conNgay(l.so_ngay_con)}</div></td>`;
 
     if (q.hetHan.length) {
-      h += '<h3><span class="nhan-l do">Phải huỷ</span> Hết hạn — không bán, bỏ riêng ra rồi tạo phiếu huỷ</h3>'
+      h += '<h3><span class="nhan-l cho">Phải huỷ</span> Hết hạn — không bán, bỏ riêng ra rồi tạo phiếu huỷ</h3>'
         + '<div class="khung-bang"><table><thead><tr><th></th><th>Món</th><th class="so">Còn</th><th>Hạn</th></tr></thead><tbody>'
         + q.hetHan.map(l => hangLo(l, true) + '</tr>').join('') + '</tbody></table></div>';
     }
     if (q.canDate.length) {
-      h += '<h3><span class="nhan-l vang">Cận date</span> Bán trước — xếp ra phía trước, hoặc cân lại bằng mã giảm giá</h3>'
+      h += '<h3><span class="nhan-l luu-y">Cận date</span> Bán trước — xếp ra phía trước, hoặc cân lại bằng mã giảm giá</h3>'
         + '<div class="khung-bang"><table><thead><tr><th></th><th>Món</th><th class="so">Còn</th><th>Hạn</th><th>Làm gì</th></tr></thead><tbody>'
         + q.canDate.map(l => hangLo(l, false) + '<td>'
-          + (l.xepTruoc ? '<div><span class="nhan-l xanh">Xếp ra trước</span> <span class="phu">quầy có lô hạn xa hơn</span></div>' : '')
+          + (l.xepTruoc ? '<div><span class="nhan-l luu-y">Xếp ra trước</span> <span class="phu">quầy có lô hạn xa hơn</span></div>' : '')
           + (l.maGiam.length
             ? l.maGiam.map(g => `<span class="giam">Cân lại bằng ${g.plu ? `<b>PLU ${g.plu}</b> · ` : ''}mã <b>${e(g.ma_can)}</b> · −${g.phan_tram}% · ${tien(g.gia_giam_kg)}/kg</span>`).join('')
               + (l.maGiam.some(g => !g.plu) ? '<div class="phu">Mã chưa lên cân: quản lý gửi xuống cân ở thẻ Cân.</div>' : '')
@@ -1609,7 +1689,7 @@
     }
 
     if (q.canLay.length) {
-      h += '<h3><span class="nhan-l vang">Dưới mức</span> Cần lấy thêm từ kho</h3>'
+      h += '<h3><span class="nhan-l luu-y">Dưới mức</span> Cần lấy thêm từ kho</h3>'
         + '<div class="khung-bang"><table><thead><tr><th></th><th>Món</th><th class="so">Ở quầy</th><th class="so">Đang mang ra</th><th class="so">Kho còn</th><th class="so">Tối thiểu</th><th class="so">Xin thêm</th></tr></thead><tbody>'
         + q.canLay.map(c => {
           const de = c.dem_goi ? (c.deNghi ?? 0) : (c.deNghiKg ?? 0);
@@ -1625,7 +1705,7 @@
     }
 
     // Tồn quầy từng món.
-    const TT = { het: ['Hết ở quầy', 'do'], duoi_muc: ['Dưới mức', 'vang'], co_het_han: ['Có gói hết hạn', 'do'], du: ['Đủ', 'xanh'] };
+    const TT = { het: ['Hết ở quầy', 'cho'], duoi_muc: ['Dưới mức', 'luu-y'], co_het_han: ['Có gói hết hạn', 'cho'], du: ['Đủ', 'song'] };
     h += '<h3>Tồn quầy</h3><div class="nut" style="margin-top:0"><input type="search" id="tim-ton" placeholder="Tìm món…"></div>'
       + '<div class="khung-bang" style="max-height:520px"><table><thead><tr><th>Món</th><th class="so">Mã cân</th><th class="so">Còn</th><th class="so">Số lô</th><th>Hạn gần nhất</th><th>Tình trạng</th></tr></thead><tbody id="bang-ton"></tbody></table></div>';
 
@@ -1634,7 +1714,7 @@
       h += '<h3>Đang chờ</h3><div class="hai-cot"><div>';
       if (q.yeuCau.length) {
         h += '<p><b>Yêu cầu lấy hàng</b></p>' + q.yeuCau.map(y => `<div class="khung-form" style="margin-top:6px"><b>${e(y.so_phieu)}</b> · `
-          + `<span class="nhan-l ${y.trang_thai === 'cho' ? 'vang' : 'xanh'}">${y.trang_thai === 'cho' ? 'Chờ thủ kho' : 'Đang soạn'}</span> <span class="phu">${lucVn(y.created_at)}${y.nguoi ? ' · ' + e(y.nguoi) : ''}</span>`
+          + `<span class="nhan-l ${y.trang_thai === 'cho' ? 'luu-y' : 'nhap'}">${y.trang_thai === 'cho' ? 'Chờ thủ kho' : 'Đang soạn'}</span> <span class="phu">${lucVn(y.created_at)}${y.nguoi ? ' · ' + e(y.nguoi) : ''}</span>`
           + `<div class="phu">${y.dong.map(d => e(d.ten) + ' ' + (d.so_kg ? kgChu(d.so_kg) : soChu(d.so_goi) + ' ' + e(d.don_vi_goi || 'gói'))).join(' · ')}</div></div>`).join('');
       }
       h += '</div><div>';
@@ -1780,7 +1860,7 @@
     const d = tangO;
     $('tang-o-tom-tat').innerHTML = tomTatTangO(d);
     if (!d.nhom.length) { $('tang-o-noi-dung').innerHTML = '<p>Chưa có món nào dùng ô mã. Quản lý điền "Ô mã" ở Mặt hàng (phần cắt theo tảng) trên trang kho.</p>'; return; }
-    const TT = { trong: ['Trống', 'xam'], dang_loc: ['Đang lóc', 'vang'], dang_ban: ['Đang bán', 'xanh'], het_hang: ['Bán hết — chờ trả ô', 'xam'] };
+    const TT = { trong: ['Trống', 'tat'], dang_loc: ['Đang lóc', 'nhap'], dang_ban: ['Đang bán', 'song'], het_hang: ['Bán hết — chờ trả ô', 'luu-y'] };
     let chuaDoi = 0;
     let h = '';
     for (const n of d.nhom) {
@@ -1790,8 +1870,8 @@
         const [nhan, lop] = TT[o.tinhTrang];
         let can;
         if (o.tenTrenCan === null) can = '<span class="phu">chưa lên cân</span>';
-        else if (o.canDaDoi) can = '<span class="nhan-l xanh">Đúng</span>';
-        else { chuaDoi++; can = `<span class="nhan-l vang">Cân chưa đổi</span><div class="phu">đang in: ${e(o.tenTrenCan)}</div>`; }
+        else if (o.canDaDoi) can = '<span class="nhan-l song">Đúng</span>';
+        else { chuaDoi++; can = `<span class="nhan-l luu-y">Cân chưa đổi</span><div class="phu">đang in: ${e(o.tenTrenCan)}</div>`; }
         h += `<tr class="${o.tinhTrang === 'trong' ? 'mo' : ''}"><td class="so"><b>${o.so_o}</b></td><td class="so">${e(o.ma_can)}</td>`
           + `<td><span class="nhan-l ${lop}">${nhan}</span>${o.soTang ? ` <b>${e(o.soTang)}</b>` : ''}${o.so_phieu_loc ? `<div class="phu">${e(o.so_phieu_loc)} · từ ${lucVn(o.tu_luc)}</div>` : ''}</td>`
           + `<td>${ngayVn(o.han_dung)}</td>`
@@ -1837,7 +1917,7 @@
         + '<div class="khung-bang"><table><thead><tr><th>Món</th><th class="so">Mức</th><th class="so">Mã cân / mã FABi</th><th>Tên trên cân</th><th class="so">Giá gốc</th><th class="so">Giá đã giảm</th><th>Trên cân</th><th></th></tr></thead><tbody>'
         + d.ds.map(g => `<tr class="${g.dang_dung ? '' : 'mo'}"><td><b>${e(g.ten)}</b></td><td class="so">−${g.phan_tram}%</td><td class="so"><b>${e(g.ma_can)}</b></td>`
           + `<td>${e(g.tenTrenCan)}</td><td class="so">${tien(g.giaGoc)}</td><td class="so"><b>${tien(g.giaGiam)}</b></td>`
-          + `<td>${g.dang_dung ? (g.daLenCan ? '<span class="nhan-l xanh">Đã lên cân</span>' : '<span class="nhan-l vang">Chưa gửi</span>') : '<span class="nhan-l xam">Đã tắt</span>'}</td>`
+          + `<td>${g.dang_dung ? (g.daLenCan ? '<span class="nhan-l song">Đã lên cân</span>' : '<span class="nhan-l luu-y">Chưa gửi</span>') : '<span class="nhan-l tat">Đã tắt</span>'}</td>`
           + `<td>${d.sua ? `<button class="bat-giam" data-id="${e(g.id)}" data-bat="${g.dang_dung ? '0' : '1'}" style="padding:3px 10px;font-size:13px">${g.dang_dung ? 'Tắt' : 'Bật lại'}</button>` : ''}</td></tr>`).join('')
         + '</tbody></table></div>'
         + '<p class="phu">Mỗi mã cần một món trên FABi: <b>mã món = mã cân</b>, bán theo kg, giá = giá đã giảm. Đổi giá món trong kho thì giá giảm đổi theo — sửa cả trên FABi.</p>';
@@ -1883,8 +1963,8 @@
     let h = '<div class="so-o">'
       + `<div class="o"><div class="nhan">Doanh thu</div><div class="gt">${tien(t.doanhThu)}</div><div class="phu">${t.soNgay} ngày có bán</div></div>`
       + `<div class="o"><div class="nhan">Đã bán</div><div class="gt">${kgChu(t.kg)}</div><div class="phu">${soChu(t.soDong)} dòng bán</div></div>`
-      + `<div class="o ${t.soDongGiam ? 'vang' : ''}"><div class="nhan">Bán giảm giá</div><div class="gt">${tien(t.doanhThuGiam)}</div><div class="phu">${kgChu(t.kgGiam)} · đã giảm ~${tien(t.tienGiam)}</div></div>`
-      + `<div class="o ${t.soDongLechO ? 'do' : ''}"><div class="nhan">Lệch ô</div><div class="gt">${soChu(t.soDongLechO)}</div><div class="phu">dòng bán không khớp tảng</div></div></div>`;
+      + `<div class="o ${t.soDongGiam ? 'luu-y' : ''}"><div class="nhan">Bán giảm giá</div><div class="gt">${tien(t.doanhThuGiam)}</div><div class="phu">${kgChu(t.kgGiam)} · đã giảm ~${tien(t.tienGiam)}</div></div>`
+      + `<div class="o ${t.soDongLechO ? 'gap' : ''}"><div class="nhan">Lệch ô</div><div class="gt">${soChu(t.soDongLechO)}</div><div class="phu">dòng bán không khớp tảng</div></div></div>`;
     if (t.soDongGiamSom) h += `<div class="bao loi"><b>${t.soDongGiamSom} lần bán bằng mã giảm giá cho gói còn hạn xa</b> (hơn mức cảnh báo cận date). Kiểm tra lại với NV quầy.</div>`;
     if (!t.soDong) h += '<div class="bao luu-y">Không có dòng bán iPOS nào trong khoảng này. Chi nhánh chưa trừ kho theo iPOS thì số bán lấy từ đếm quầy — xem báo cáo trên trang kho.</div>';
     else {
@@ -1900,7 +1980,7 @@
         + '</tbody></table></div></div>';
       h += '<div><h3>Món bán chạy <button id="nut-csv-mon" style="padding:3px 10px;font-size:13px">Excel</button></h3><div class="khung-bang"><table><thead><tr><th>Món</th><th class="so">Doanh thu</th><th class="so">Kg</th><th class="so">Giảm / lệch</th></tr></thead><tbody>'
         + b.theoMon.map(m => `<tr><td>${e(m.ten)}</td><td class="so">${tien(m.doanhThu)}</td><td class="so">${kgChu(m.kg)}</td>`
-          + `<td class="so">${m.kgGiam ? kgChu(m.kgGiam) + (m.soDongGiamSom ? ` <span class="nhan-l do">${m.soDongGiamSom} sớm</span>` : '') : ''}${m.soDongLechO ? `<div class="phu">${m.soDongLechO} lệch ô</div>` : ''}</td></tr>`).join('')
+          + `<td class="so">${m.kgGiam ? kgChu(m.kgGiam) + (m.soDongGiamSom ? ` <span class="nhan-l cho">${m.soDongGiamSom} sớm</span>` : '') : ''}${m.soDongLechO ? `<div class="phu">${m.soDongLechO} lệch ô</div>` : ''}</td></tr>`).join('')
         + '</tbody></table></div></div></div>';
     }
     if (b.tang.length) {
@@ -2022,7 +2102,7 @@
   };
 
   // ---- 2.7: chẩn đoán WiFi --------------------------------------------------------------
-  const KQ_BUOC = { dat: ['Đạt', 'xanh'], hong: ['Hỏng', 'do'], 'bo-qua': ['Bỏ qua', 'xam'] };
+  const KQ_BUOC = { dat: ['Đạt', 'song'], hong: ['Hỏng', 'cho'], 'bo-qua': ['Bỏ qua', 'tat'] };
   $('nut-chan-doan').onclick = () => {
     const ghiThu = $('chan-doan-ghi').checked;
     if (ghiThu && !confirm(`Chẩn đoán CÓ GHI THỬ xuống cân?\n\nChương trình sẽ: ghi lại y hệt một hàng đang có (không đổi gì); thêm hàng thử "THỬ WIFI" ở PLU 9999, `
@@ -2104,7 +2184,7 @@
       for (const m of ds) {
         const doi = m.id in tsSua, gt = doi ? tsSua[m.id] : m.giaTri;
         let dk;
-        if (m.chiXem) dk = `<span class="nhan-l xam">Chỉ xem</span> <b>${e(tenGiaTri(m, m.giaTri))}</b>`;
+        if (m.chiXem) dk = `<span class="nhan-l thong-tin">Chỉ xem</span> <b>${e(tenGiaTri(m, m.giaTri))}</b>`;
         else if (m.kieu === 'chon') {
           const coGt = (m.luaChon || []).some(l => cungGiaTri(l.gt, gt));
           dk = `<select data-ts="${m.id}" style="max-width:560px">`
@@ -2203,7 +2283,7 @@
       h += `<h4 class="nhom-ts">${e(nhom)}</h4>`;
       for (const m of ds) {
         const doi = m.id in ccSua;
-        const dk = m.chiXem ? `<span class="nhan-l xam">Chỉ xem</span> <b>${e(chuHien(m.giaTri))}</b>`
+        const dk = m.chiXem ? `<span class="nhan-l thong-tin">Chỉ xem</span> <b>${e(chuHien(m.giaTri))}</b>`
           : `<input type="text" data-cc="${m.id}" value="${e(doi ? ccSua[m.id] : (m.giaTri ?? ''))}" style="width:100%;max-width:420px"> <span class="phu dem-chu"></span>`;
         h += `<div class="ts ${doi ? 'doi' : ''}"><div><b>${e(m.ten)}</b> <span class="phu">chữ số ${m.id}${doi ? ' · trên cân (file gốc) đang là ' + e(chuHien(m.giaTri)) : ''}</span></div>`
           + `<div class="phu">${e(m.moTa)}</div><div style="margin-top:4px">${dk}</div>`
@@ -2389,7 +2469,7 @@
       + `<div class="o"><div class="nhan">Gói bán (trừ trả hàng)</div><div class="gt">${soChu(t.soGoi)}</div><div class="phu">chỉ dòng tính kho</div></div>`
       + `<div class="o"><div class="nhan">Trọng lượng</div><div class="gt">${kgChu(t.kg)}</div><div class="phu">${t.cai ? soChu(t.cai) + ' cái' : 'hàng cân ký'}</div></div>`
       + `<div class="o"><div class="nhan">Thành tiền trên tem</div><div class="gt">${tien(t.tien)}</div><div class="phu">theo giá trên cân lúc in</div></div>`
-      + `<div class="o ${d.tomTat.chuaIn ? 'vang' : ''}"><div class="nhan">Cân chưa in tem</div><div class="gt">${soChu(d.tomTat.chuaIn)}</div>`
+      + `<div class="o ${d.tomTat.chuaIn ? 'luu-y' : ''}"><div class="nhan">Cân chưa in tem</div><div class="gt">${soChu(d.tomTat.chuaIn)}</div>`
       + `<div class="phu">${d.tomTat.khongRoMa ? `${soChu(d.tomTat.khongRoMa)} dòng chưa rõ mã cân` : 'mọi dòng đã rõ mã cân'}</div></div></div>`;
     h += '<div class="hai-cot"><div><h3>Theo ngày</h3><div class="khung-bang" style="max-height:300px"><table><thead><tr><th>Ngày</th><th class="so">Gói</th><th class="so">Kg</th><th class="so">Thành tiền</th></tr></thead><tbody>'
       + (d.tomTat.theoNgay.map(n => `<tr><td>${ngayVn(n.ngay)}</td><td class="so">${soChu(n.soGoi)}</td><td class="so">${kgChu(n.kg)}</td><td class="so">${tien(n.tien)}</td></tr>`).join('')
@@ -2512,7 +2592,7 @@
     nut.disabled = true; $('dang-tim-can-2').classList.remove('an'); bao(noi, '', '');
     try {
       const k = await goi('/api/tim-can');
-      $('den-can').className = 'den ' + (k.thongCan ? 'xanh' : 'do');
+      $('den-can').className = 'den ' + (k.thongCan ? 'noi' : 'loi');
       if (k.doi) bao(noi, 'xong', daDoiDiaChi(k.doi));
       else if (!k.thongCan) baoKhongThongCan(noi, k);
       else bao(noi, 'xong', `Cân ở ${e(k.ipCan)} — đúng địa chỉ đang dùng.`
@@ -2601,7 +2681,7 @@
   // ---- cập nhật chương trình (2.5) ------------------------------------------
   // Mỗi lần mở tự hỏi (im lặng nếu hỏng); nút "Kiểm tra bản mới" hỏi lại và báo lỗi. Cập nhật: xác nhận → máy chủ tải,
   // kiểm, đổi file (chờ việc gửi xuống cân đang chạy) → cửa sổ này báo rồi tự đóng, cửa sổ mới tự mở. Tiến độ và lỗi hiện
-  // ở đầu trang (#bao-cap-nhat) — nút vàng ở đầu trang bấm được cả khi khung Cài đặt đang gập.
+  // ở đầu trang (#bao-cap-nhat) — nút đỏ "Có bản mới" ở đầu trang bấm được cả khi khung Cài đặt đang gập.
   // dangCapNhat: đang cập nhật — nút không bấm được lần hai.
   // laNguoiBam: chính trang này bấm Cập nhật (lỗi hiện ở capNhat); trang tải lại giữa chừng chỉ theo dõi.
   let banMoi = null, dangCapNhat = false, daBaoCapNhat = false, hoiTienDo = null, laNguoiBam = false;

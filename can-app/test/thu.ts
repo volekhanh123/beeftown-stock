@@ -1066,6 +1066,20 @@ console.log('6d · Bản 2.2: cổng hai chiều, nhật ký cân, thông số, 
   ok('Trang hướng dẫn tự chứa: không tải gì từ mạng; mọi liên kết #… có đích', !/(src|href)\s*=\s*["']?(https?:)?\/\//i.test(hdChu)
     && [...hdChu.matchAll(/href="#([^"]+)"/g)].every(m => hdChu.includes(`id="${m[1]}"`)));
   ok('/huong-dan thiếu hoặc sai mã bí mật → 403', (await fetch(`${goc9}/huong-dan`)).status === 403 && (await fetch(`${goc9}/huong-dan?t=sai`)).status === 403);
+  // 2.12: bộ nhận diện 21/10/2026 — logo phụ trắng và biểu tượng cửa sổ là file của web/public, nhập thành chuỗi lúc đóng gói
+  // (máy quầy không mạng), đặt vào trang bằng ganNhanDien. Đây là trang máy chủ trả thật, không phải file nguồn.
+  const gdChu = await (await fetch(`${goc9}/?t=thu`)).text();
+  const logoFile = fs.readFileSync(path.join(import.meta.dir, '..', '..', 'web', 'public', 'thuong-hieu', 'chu-beeftown-trang.svg'), 'utf8');
+  const duongSvg = (s: string) => [...s.matchAll(/\sd="([^"]+)"/g)].map(m => m[1]).join('|');
+  for (const [ten, chu] of [['/', gdChu], ['/huong-dan', hdChu]] as const) {
+    const dau = chu.match(/<header\b[^>]*>[\s\S]*?<\/header>/)?.[0] ?? '';
+    const to = [...(dau.match(/<svg\b[\s\S]*?<\/svg>/)?.[0] ?? '').matchAll(/\bfill="([^"]+)"/g)].map(m => m[1]);
+    ok(`2.12 GET ${ten}: đầu trang có logo phụ trắng (đúng path của web/public/thuong-hieu/chu-beeftown-trang.svg, chỉ #FFFFFF), `
+      + 'không gõ chữ BEEFTOWN; biểu tượng cửa sổ là brandmark đỏ',
+      !chu.includes('<!--logo-phu-trang-->') && duongSvg(dau).length > 100 && duongSvg(dau) === duongSvg(logoFile)
+      && to.length > 0 && to.every(t => t === '#FFFFFF') && !/>\s*BEEFTOWN\s*</.test(dau)
+      && /<link rel="icon" href="data:image\/svg\+xml,[^"]*%23BD0000/.test(chu) && !chu.includes('href="data:,"'), dau.slice(0, 200));
+  }
 
   mc9.stop(true);
   await can2.dong();
@@ -2136,7 +2150,7 @@ console.log('6g · 2.6: gửi xong đọc lại cân để kiểm');
   {
     const gd = fs.readFileSync(path.join(import.meta.dir, '../src/giao-dien.html'), 'utf8');
     const hd = fs.readFileSync(path.join(import.meta.dir, '../src/huong-dan.html'), 'utf8');
-    ok('Trang: sau khi gửi chỉ nói "Cân đã nhận" khi k.xacNhan; không thì khung vàng "chưa kiểm được"',
+    ok('Trang: sau khi gửi chỉ nói "Cân đã nhận" khi k.xacNhan; không thì khung lưu ý "chưa kiểm được"',
       /baoChung\(k\.xacNhan \? 'xong' : 'luu-y'/.test(gd) && /<b>Cân đã nhận\.<\/b>/.test(gd) && /cân có đủ \$\{k\.soHang\} hàng/.test(gd) && /chưa kiểm được cân đã nhận chưa/.test(gd));
     const thanGui = gd.slice(gd.indexOf('async function gui()'), gd.indexOf('async function taoUsb()'));
     ok('Trang: gửi hỏng → câu lỗi ở đầu trang (baoChung), không ở #ket-qua-gui mà taiTrangThai dựng lại bảng sẽ xoá',
@@ -2997,9 +3011,9 @@ console.log('6i · 2.8: giữ kết nối hai chiều mở, nhịp, nghe cân b�
     ok('Máy chủ: /api/can và /api/trang-thai trả trạng thái nền; /api/cau-hinh chỉ nhận true / false cho ba công tắc',
       mc.includes("nen: ud.trangThaiNen()") && /case '\/api\/can': return json\(\{[^\n]*nen: ud\.trangThaiNen\(\)/.test(mc)
       && mc.includes("giuKetNoi: typeof b.giuKetNoi === 'boolean' ? b.giuKetNoi : undefined") && mc.includes("ngheUdp: typeof b.ngheUdp === 'boolean' ? b.ngheUdp : undefined"));
-    ok('main.ts: nhịp mỗi NHIP_CAN_MS (dừng khi đang cập nhật), bật UDP theo cài đặt lúc mở; phiên bản 2.11.0',
+    ok('main.ts: nhịp mỗi NHIP_CAN_MS (dừng khi đang cập nhật), bật UDP theo cài đặt lúc mở; phiên bản 2.12.0',
       /setInterval\(\(\) => \{ if \(!dangCapNhat\(\)\) void ud\.nhipCan\(\); \}, NHIP_CAN_MS\)/.test(mn) && mn.includes('void ud.capNhatUdp();')
-      && mn.includes("const PHIEN_BAN = '2.11.0';"));
+      && mn.includes("const PHIEN_BAN = '2.12.0';"));
     ok('Cập nhật: đổi file xong thì đóng kết nối đang giữ trước khi bản mới mở (cân có thể chỉ nhận một kết nối)',
       /this\.dangKhoiDongLai = true;[\s\S]{0,200}this\.dongNen\(\);/.test(nv));
     ok('Hướng dẫn: giữ kết nối, tự đọc nhật ký khi cân báo, tự chỉnh giờ, nghe UDP và hộp hỏi tường lửa',
@@ -3061,7 +3075,7 @@ if (!thuMucTam) {
   process.exit(1);
 }
 ok('Trạng thái: chưa có file gốc, cân mặc định 192.168.1.22', tt.ok && tt.goc === null && tt.cauHinh.ipCan === '192.168.1.22', JSON.stringify(tt));
-ok('Phiên bản 2.11.0', (tt as unknown as { phienBan: string }).phienBan === '2.11.0');
+ok('Phiên bản 2.12.0', (tt as unknown as { phienBan: string }).phienBan === '2.12.0');
 {
   // 2.8: chương trình thật có nhịp giữ kết nối; cân 192.168.1.22 không có ở đây → trạng thái nền có, chưa nối được, không lỗi chết.
   const n = (tt as unknown as { nen?: { giu?: { bat?: boolean; dangMo?: boolean }; udp?: { bat?: boolean } } }).nen;
@@ -3076,7 +3090,7 @@ ok('Phiên bản 2.11.0', (tt as unknown as { phienBan: string }).phienBan === '
   const cnApi = await (await api('/api/cap-nhat')).json() as { ok: boolean; loi?: string };
   const ttCn = (tt as unknown as { capNhat?: { coTheCapNhat: boolean; vuaCapNhatTu: string | null } }).capNhat;
   ok('2.5: dang-chay.json có phiên bản; chạy bằng bun → không cập nhật được, không hỏi mạng; /api/cap-nhat từ chối',
-    dangChay.phienBan === '2.11.0' && bm.ok && !bm.coTheCapNhat && /Chỉ cập nhật được bản BeeftownCan\.exe/.test(bm.cau)
+    dangChay.phienBan === '2.12.0' && bm.ok && !bm.coTheCapNhat && /Chỉ cập nhật được bản BeeftownCan\.exe/.test(bm.cau)
     && !cnApi.ok && /Chỉ cập nhật được/.test(cnApi.loi ?? '') && ttCn?.coTheCapNhat === false && ttCn.vuaCapNhatTu === null,
     JSON.stringify([dangChay, bm, cnApi, ttCn]));
 }

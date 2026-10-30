@@ -7,8 +7,8 @@
  * Ngày 22/10/2026 Khánh chốt bảng màu thương hiệu mới (THUONG-HIEU.md mục 0): đỏ #BD0000, đen, trắng; ngày
  * 25/10/2026 duyệt các màu pha chỉ dùng trên màn hình (đỏ đậm #8F0000, xám #767676, #555555, #F4F4F4, #E2E2E2)
  * và bỏ màu trạng thái xanh / vàng / đỏ nhạt ở /noi-bo và kho. Trang công khai: test-cong-khai-giao-dien.mjs
- * nhóm 6. File này gác hai nơi nhân viên dùng trên web: /noi-bo và kho. Beeftown Cân (chương trình Windows)
- * có kiểm thử màu riêng, cùng PR đổi màu của nó. Bất biến:
+ * nhóm 6. File này gác hai nơi nhân viên dùng trên web: /noi-bo và kho. Beeftown Cân (chương trình Windows,
+ * từ bản 2.12 cùng bảng) có kiểm thử riêng: test-can-nhan-dien.mjs. Bất biến:
  *
  *   1. MỘT BẢNG MÀU. Hai khối :root của web/src/styles/chung.css khai đúng 12 mã của bảng 22/10/2026, mỗi
  *      biến một lần, không thêm biến màu nào khác; khối .ck đầu tiên của cong-khai.css (trang công khai) cùng

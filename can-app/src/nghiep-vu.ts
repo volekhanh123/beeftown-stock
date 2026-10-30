@@ -2501,8 +2501,9 @@ export class UngDung {
       const { kho, cn } = kn;
       const ch = this.cauHinh();
       const bayGio = this.bayGio();
-      // Tự gửi tắt: vẫn so kho với cân (đọc kho, không gửi gì) mỗi TINH_LECH_MS — kho đổi mà cân chưa nhận thì đèn vàng
-      // "Tự gửi đang tắt: quản lý bấm Gửi". Không so được (chưa có file gốc, kho lỗi) → chưa biết (null).
+      // Tự gửi tắt: vẫn so kho với cân (đọc kho, không gửi gì) mỗi TINH_LECH_MS — kho đổi mà cân chưa nhận thì đèn "Beeftown
+      // Cân" ở /noi-bo báo mức 'vang' ("Xem hôm nay") "Tự gửi đang tắt: quản lý bấm Gửi". Không so được (chưa có file gốc,
+      // kho lỗi) → chưa biết (null).
       if (ch.tuGui !== true && this.coFileGoc() && bayGio - this.lucTinhLech >= TINH_LECH_MS) {
         this.lucTinhLech = bayGio;
         try {
