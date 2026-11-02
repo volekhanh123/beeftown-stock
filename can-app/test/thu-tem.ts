@@ -12,6 +12,7 @@ import {
   CANH_CHU, CAU_PHAN_VUNG, CO_CHU, DIEU_KIEN_IN, DONG_LOGO, ID_LOGO, LOAI_O, LoiTem, MAU_BEEFTOWN_CO, O_MAU_BEEFTOWN, O_THEM_DUOC,
   TEN_CONG_TY_TREN_TEM, TRUONG_BAN, TRUONG_HANG, XOAY,
   docTem, dongBmp, goiYHsd, kemLogo, khoiLogo, khungThat, mauBeeftown, suaTem, temDungLogo, xemTem, type DaTat, type SuaO, type ThayDoiTem,
+  LOAI_FILE_MAU, MAU_BEEFTOWN, apMauTem, docMauTemFile, xuatMauTem,
 } from '../src/tem.ts';
 import { LOGO_TEM } from '../src/logo-tem.ts';
 import { kiemDongBmp, kiemKhoiGhi } from '../src/giao-thuc.ts';
@@ -273,6 +274,85 @@ export async function thuTem(ok: Ok): Promise<void> {
   // ===========================================================================
   console.log('T8 · Logo trên tem (2.13): hình đen trắng, dòng BMP, file và khối gửi kèm logo');
   await thuLogo(ok);
+
+  // ===========================================================================
+  console.log('T9 · File mẫu tem (2.14): đọc, kiểm, áp lên tem, tải tem đang dùng ra');
+  thuFileMau(ok);
+}
+
+function thuFileMau(ok: Ok): void {
+  const goc = file28();
+  const f0 = docFileCan(goc);
+  const loiDoc = (v: unknown) => loiCua(() => docMauTemFile(typeof v === 'string' ? v : JSON.stringify(v)));
+  const coBan = { loai: LOAI_FILE_MAU, phienBan: 1, ten: 'Thử', rong: 58, cao: 40 };
+
+  // Mẫu Beeftown là một file mẫu: viết ra JSON rồi đọc lại → áp ra đúng như nút "Xếp tem theo mẫu Beeftown".
+  const tuFile = docMauTemFile(JSON.stringify(MAU_BEEFTOWN));
+  const ap1 = apMauTem(goc, {}, tuFile, f0);
+  ok('Mẫu Beeftown viết thành file rồi nạp lại: ra đúng thay đổi như nút mẫu Beeftown', JSON.stringify(ap1.thay) === JSON.stringify(mauBeeftown(goc, {}).thay)
+    && ap1.lyDo === null && ap1.canhBao.length === 0, JSON.stringify(ap1.canhBao));
+  ok('File có BOM và trường lạ (ghiChu): vẫn đọc được', docMauTemFile('\uFEFF' + JSON.stringify({ ...MAU_BEEFTOWN, ghiChu: { x: 1 }, khongXuatDuoc: ['a'] })).o.length === MAU_BEEFTOWN.o.length);
+
+  // Tải tem đang dùng ra rồi nạp lại: không có gì đổi (đúng từng ô).
+  const xuat = xuatMauTem(f0);
+  const lai = apMauTem(goc, {}, docMauTemFile(JSON.stringify(xuat)), f0);
+  ok('Tải tem 28 ra file rồi nạp lại ngay: tem đã đúng mẫu, không có gì đổi', lai.thay === null && lai.lyDo === null && xuat.o.length === 14
+    && !xuat.khongXuatDuoc, JSON.stringify(lai.thay));
+  ok('File tải ra tự giải thích: loại, bản, cỡ tem, ghi chú đơn vị và các mã (cỡ chữ, canh, khi nào in, loại ô)', xuat.loai === LOAI_FILE_MAU && xuat.phienBan === 1
+    && xuat.rong === 58 && xuat.cao === 40 && /8 chấm = 1 mm/.test(String(xuat.ghiChu.cachDoc))
+    && ['coChu', 'canh', 'khiNaoIn', 'loaiO', 'xoay'].every(k => k in xuat.ghiChu) && (xuat.ghiChu.loaiO as Record<string, string>)['logo'] === 'Logo Beeftown');
+  ok('File tải ra ghi chữ của ô chữ (có dấu, đúng như tem) và không có tên / mật khẩu WiFi', xuat.o.some(o => o.loai === 'chu' && o.chu === 'Ngày đóng gói')
+    && xuat.o.some(o => o.loai === 'hsd') && !JSON.stringify(xuat).includes('WiFi'));
+
+  // Đổi qua lại: áp mẫu Beeftown, rồi nạp file tem cũ → về đúng bố cục cũ (cùng tập ô, cùng khung).
+  const daAp = suaTem(goc, {}, mauBeeftown(goc, {}).thay!);
+  const veCu = apMauTem(daAp.du, daAp.daTat, docMauTemFile(JSON.stringify(xuat)));
+  const sauVe = suaTem(daAp.du, daAp.daTat, veCu.thay!);
+  const tap = (fx: Uint8Array) => xuatMauTem(docFileCan(fx)).o.map(o => JSON.stringify(o)).sort().join('\n');
+  ok('Áp mẫu Beeftown rồi nạp file tem cũ: tem về đúng bố cục cũ (cùng ô, cùng khung, cỡ chữ, canh, khi nào in)', veCu.lyDo === null && tap(sauVe.du) === tap(goc));
+
+  // Ô không viết được bằng file mẫu: liệt kê, không bỏ lặng.
+  const coLa = file28([...O_28, [40, 6, 2, 0, 1, 0, 5, 0, 0, 300, 40, 10], [41, 1, 3, 0, 1, 0, 5, 0, 50, 300, 40, 10]]);
+  const xLa = xuatMauTem(docFileCan(coLa));
+  ok('Tem có hình số 2, dòng hàng cộng dồn: file tải ra liệt kê ở khongXuatDuoc, không ghi vào "o"', xLa.o.length === 14
+    && JSON.stringify(xLa.khongXuatDuoc) === JSON.stringify(['Hình số 2', 'Tên hàng (hàng thứ 3)']), JSON.stringify(xLa.khongXuatDuoc));
+
+  // Đọc file: sai thì nói đúng ô nào, sai gì.
+  const ca: [string, unknown, RegExp][] = [
+    ['không phải JSON', 'abc', /không phải JSON/],
+    ['trống', '  ', /trống/],
+    ['thiếu loai', { phienBan: 1, rong: 58, cao: 40, o: [] }, /không phải mẫu tem của Beeftown Cân/],
+    ['bản 2', { ...coBan, phienBan: 2, o: [] }, /bản 2 — chương trình này đọc bản 1/],
+    ['cỡ tem lạ', { ...coBan, rong: 5, o: [{ loai: 'ten-hang', x: 0, y: 0 }] }, /rộng tem/],
+    ['không có ô', { ...coBan, o: [] }, /không có ô nào/],
+    ['quá 100 ô', { ...coBan, o: Array.from({ length: 101 }, () => ({ loai: 'chu', chu: 'a', x: 0, y: 0 })) }, /tối đa 100 ô/],
+    ['loại ô lạ (WiFi)', { ...coBan, o: [{ loai: 'mat-khau-wifi', x: 0, y: 0 }] }, /Ô thứ 1: loại ô "mat-khau-wifi" không có/],
+    ['x âm', { ...coBan, o: [{ loai: 'ten-hang', x: -1, y: 0 }] }, /Ô thứ 1 \(Tên hàng\): vị trí ngang \("x"\)/],
+    ['cỡ chữ 10', { ...coBan, o: [{ loai: 'ten-hang', x: 0, y: 0 }, { loai: 'don-gia', x: 0, y: 0, coChu: 10 }] }, /Ô thứ 2 \(Đơn giá\): cỡ chữ/],
+    ['khi nào in lạ', { ...coBan, o: [{ loai: 'ten-hang', x: 0, y: 0, khiNaoIn: 50 }] }, /không có trong danh sách/],
+    ['ô chữ thiếu chữ', { ...coBan, o: [{ loai: 'chu', x: 0, y: 0 }] }, /thiếu chữ in ra/],
+    ['chữ quá 40', { ...coBan, o: [{ loai: 'chu', chu: 'x'.repeat(41), x: 0, y: 0 }] }, /dài quá 40/],
+    ['số lẻ', { ...coBan, o: [{ loai: 'ten-hang', x: 1.5, y: 0 }] }, /số nguyên/],
+  ];
+  const hong = ca.filter(([, v, re]) => !re.test(loiDoc(v)));
+  ok('File sai bị từ chối, câu nói đúng ô và chỗ sai: không phải JSON, thiếu loại, bản khác, cỡ tem, 0 / 101 ô, loại ô lạ, số sai, chữ thiếu / dài',
+    hong.length === 0, hong.map(([t, v]) => `${t}: ${loiDoc(v)}`).join(' | '));
+  const hsd = docMauTemFile(JSON.stringify({ ...coBan, o: [{ loai: 'chu-hsd', x: 1, y: 2 }, { loai: 'ten-hang', x: 0, y: 40 }] }));
+  ok('Ô "chu-hsd" không ghi chữ → chữ "HSD"; bỏ trống rộng / cao → cỡ mặc định, bỏ trống cỡ chữ / canh / khi nào in → để trống',
+    hsd.o[0].loai === 'chu-hsd' && hsd.o[0].chu === 'HSD' && hsd.o[0].khiNaoIn === undefined && hsd.o[1].w === 400 && hsd.o[1].coChu === undefined);
+  const apHsd = apMauTem(goc, {}, hsd, f0);
+  const sauHsd = oSauKhiAp(suaTem(goc, {}, apHsd.thay!).du);
+  ok('Bỏ trống thì ô đang có giữ nguyên (chữ "HSD" của tem vẫn "Luôn in", tên hàng vẫn cỡ 5); ô khác của tem bị tắt',
+    sauHsd.length === 2 && sauHsd.some(x => x.chuIn === 'HSD' && x.inKhi === 1 && x.x === 1 && x.y === 2)
+    && sauHsd.some(x => x.ten === 'Tên hàng' && x.font === 5 && x.y === 40 && x.w === 400), JSON.stringify(sauHsd.map(x => [x.ten, x.inKhi, x.font])));
+
+  // Áp: khác cỡ tem không áp; chữ dài hơn ô, ô ra ngoài mép: cảnh báo, không chặn.
+  const lech = apMauTem(goc, {}, docMauTemFile(JSON.stringify({ ...coBan, rong: 60, o: [{ loai: 'ten-hang', x: 0, y: 0 }] })), f0);
+  ok('File mẫu cỡ 60×40 mm, tem cân 58×40 mm: không áp, nói tên mẫu và hai cỡ', lech.thay === null && /Mẫu "Thử" làm cho tem 60×40 mm; tem cân đang dùng là 58×40 mm/.test(lech.lyDo ?? ''), String(lech.lyDo));
+  const hep = apMauTem(goc, {}, docMauTemFile(JSON.stringify({ ...coBan, o: [{ loai: 'chu', chu: 'Thịt bò tươi mỗi ngày', x: 4, y: 4, w: 60, h: 18, coChu: 0 },
+    { loai: 'ten-hang', x: 300, y: 300, w: 400, h: 34, coChu: 2 }] })), f0);
+  ok('Chữ dài hơn ô, ô ra ngoài mép tem: vẫn áp được, kèm cảnh báo', hep.thay !== null && hep.canhBao.some(c => /Thịt bò tươi mỗi ngày.*có thể bị cắt/.test(c))
+    && hep.canhBao.some(c => /ngoài tem/.test(c)), JSON.stringify(hep.canhBao));
 }
 
 /** Ô đang in của mẫu đang dùng sau khi áp: chữ (ô chữ cố định) hoặc tên ô, kèm khung, cỡ, canh, khi nào in. */

@@ -173,6 +173,9 @@ export function moMayChu(ud: UngDung, tuy: {
           case '/api/hang': return json({ ok: true, ...(await ud.tatCaHang()) });
           case '/api/tem': return json({ ok: true, ...ud.tem() });
           case '/api/tem/gui': return json(await ud.guiTem(thayDoiTem(await docThan(req))));   // đã có ok: true
+          // 2.14: file mẫu tem — nạp (chỉ tính thay đổi, không ghi gì) và tải tem đang dùng ra.
+          case '/api/tem/nap-mau': return json({ ok: true, ...ud.napMauTem((await docThan(req)).noiDung) });
+          case '/api/tem/xuat-mau': return json({ ok: true, ...ud.xuatMauTem() });
           case '/api/tem/usb': return json({ ok: true, ...(await ud.taoFileUsbTem(thayDoiTem(await docThan(req)))) });
           case '/api/da-nap-usb': return json({ ok: true, ...ud.daNapUsb() });
           // Ô Cân tự làm mới (2.8: mỗi 15 giây): chỉ đọc cài đặt, lần tự gửi, ngày tính HSD trên cân (qua nửa đêm thì báo HSD

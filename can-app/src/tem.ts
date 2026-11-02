@@ -761,111 +761,261 @@ export function suaTem(du: Uint8Array, daTat: DaTat, thay: ThayDoiTem): KetQuaSu
 }
 
 // -----------------------------------------------------------------------------
-// MẪU TEM BEEFTOWN (2.12; bản 2 từ 2.13: logo, bỏ địa chỉ, hai ô ngày cao gấp đôi)
+// MẪU TEM: FILE MẪU (2.14) VÀ MẪU BEEFTOWN (2.12; bản 2 từ 2.13)
 // -----------------------------------------------------------------------------
-/** Khung một ô của mẫu (chấm), cỡ chữ (CO_CHU), canh (CANH_CHU), khi nào in (DIEU_KIEN_IN). Mã vạch không có cỡ / canh. */
-interface KhungMau { x: number; y: number; w: number; h: number; font?: number; canh?: number; inKhi: number }
+/**
+ * File mẫu tem (2.14) — một bố cục tem viết bằng JSON, để thiết kế ngoài chương trình (Claude, người) rồi nạp vào mục Mẫu
+ * tem, hay tải tem đang dùng ra để sửa. Ô gọi theo khoá của O_THEM_DUOC ('ten-hang', 'thanh-tien', 'chu', 'logo'…); x, y,
+ * rộng, cao tính bằng chấm (8 chấm = 1 mm, gốc ở góc trên trái); coChu / canh / khiNaoIn theo CO_CHU / CANH_CHU /
+ * DIEU_KIEN_IN. Mẫu Beeftown có sẵn (nút "Xếp tem theo mẫu Beeftown") cũng là một file mẫu: MAU_BEEFTOWN. Mô tả đủ:
+ * CAN-TMA.md §5.13.
+ */
+export const LOAI_FILE_MAU = 'beeftown-mau-tem';
+export const PHIEN_BAN_FILE_MAU = 1;
+/** File mẫu dài quá thì không đọc (một mẫu đủ 100 ô vẫn chỉ vài chục KB). */
+const FILE_MAU_TOI_DA = 200_000;
+
+export interface OMauFile {
+  loai: string;           // khoá trong O_THEM_DUOC; 'chu' và 'chu-hsd' là ô chữ ('chu-hsd' mặc định chữ "HSD", chỉ in khi có HSD)
+  x: number; y: number; w: number; h: number;   // w, h bỏ trống: như O_THEM_DUOC
+  coChu?: number;         // CO_CHU 0–9 — bỏ trống: ô đang có giữ nguyên, ô mới như O_THEM_DUOC (mã vạch không dùng)
+  canh?: number;          // CANH_CHU 0–9 — như trên
+  khiNaoIn?: number;      // DIEU_KIEN_IN — như trên
+  xoay?: number;          // 0–3 × 90°
+  chu?: string;           // ô chữ: chữ in ra, tối đa 40 ký tự
+}
+export interface MauTemFile {
+  loai: typeof LOAI_FILE_MAU;
+  phienBan: number;
+  ten: string;
+  rong: number; cao: number;   // mm — phải đúng cỡ tem cân đang dùng
+  o: OMauFile[];
+}
+
+/** Ô có sẵn trên tem ứng với một ô của file mẫu: dữ liệu theo loại / mã, ô chữ theo đúng chữ. */
+function laOCuaMau(m: MauOThem, chu: string | undefined, chuCua: (o: OTem) => string): (o: OTem) => boolean {
+  switch (m.flag1) {
+    case 0: return o => o.loai === '0';
+    case 1: return o => o.loai === '1' && o.chu === 0 && o.duLieu === m.flag3;
+    case 2: return o => o.loai === '2' && o.chu === m.flag2;
+    case 3: return o => o.loai === '3' && chuCua(o) === chu;
+    default: return o => o.loai === String(m.flag1) && o.chu === m.flag2;
+  }
+}
+
+/** Tên công ty in cuối tem — chép từ PHAP_NHAN.ten (web/src/lib/chu.ts); thu-tem.ts so hai bên. Địa chỉ quán bỏ từ 2.13 (Khánh). */
+export const TEN_CONG_TY_TREN_TEM = 'CÔNG TY TNHH SLK GROUP';
 
 /** Mẫu Beeftown chỉ làm cho tem 58 × 40 mm (464 × 320 chấm) — cỡ tem 28 của quán. */
 export const MAU_BEEFTOWN_CO = { rong: 58, cao: 40 } as const;
 
 /**
- * Ô lấy dữ liệu (của hàng / lúc in): ô đang in đầu tiên cùng loại được dời tới đây; tem chưa có thì thêm theo O_THEM_DUOC.
- * Bốn mép cột: x = 4 (mã vạch, tên hàng, cột 1), 162 (cột 2), 320 (cột 3 — thành tiền), mép phải 460. Cao mỗi ô bằng đúng
- * dòng chữ của cỡ chữ (CO_CHU): 18 · 26 · 34 · 52 · 68.
+ * Mẫu tem Beeftown — Khánh duyệt 02/11/2026, theo mẫu tem thịt siêu thị Khánh gửi: mã vạch và logo phụ trên cùng, tên hàng,
+ * bảng ba cột (Ngày đóng gói · Hạn sử dụng · Thành tiền, ba số cao gấp đôi; Khối lượng · Đơn giá) thẳng mép trái, đường kẻ,
+ * tên công ty. Bốn mép cột: x = 4 (mã vạch, tên hàng, cột 1), 162 (cột 2), 320 (cột 3 — thành tiền), mép phải 460; cao mỗi ô
+ * bằng đúng dòng chữ của cỡ chữ (CO_CHU). Logo canh mép phải 448, giữa theo chiều cao mã vạch. "Khối lượng (kg)" / "Số lượng"
+ * (và "Đơn giá (đ/kg)" / "Đơn giá") chung một chỗ, mỗi lần cân chỉ in một — như mẫu tem tiếng Việt gốc của hãng (dac-ta/
+ * label-format.md, mẫu 90000). (Bản 2.12: chữ BEEFTOWN thay logo, thêm dòng địa chỉ quán — hai ô đó bị tắt khi bấm lại.)
  */
-const O_DU_LIEU_BEEFTOWN: readonly { mau: string; la: (o: OTem) => boolean; k: KhungMau }[] = [
-  { mau: 'ma-vach', la: o => o.loai === '0', k: { x: 4, y: 10, w: 257, h: 74, inKhi: 1 } },
-  // 2.13: logo phụ thay chữ BEEFTOWN — canh mép phải 448, giữa theo chiều cao mã vạch.
-  { mau: 'logo', la: o => o.loai === '6' && o.chu === ID_LOGO,
-    k: { x: 448 - LOGO_TEM.rong, y: 10 + (74 - LOGO_TEM.cao) / 2, w: LOGO_TEM.rong, h: LOGO_TEM.cao, canh: 5, inKhi: 1 } },
-  { mau: 'ten-hang', la: o => o.loai === '1' && o.chu === 0 && o.duLieu === 0, k: { x: 4, y: 92, w: 456, h: 34, font: 2, canh: 4, inKhi: 1 } },
-  // 2.13: hai ô ngày cỡ 4 (cao gấp đôi) — cao bằng thành tiền, ba số thẳng một hàng.
-  { mau: 'ngay-in', la: o => o.loai === '2' && o.chu === 3, k: { x: 4, y: 154, w: 154, h: 52, font: 4, canh: 4, inKhi: 1 } },
-  { mau: 'hsd', la: o => o.loai === '1' && o.chu === 0 && o.duLieu === 15, k: { x: 162, y: 154, w: 154, h: 52, font: 4, canh: 4, inKhi: 9 } },
-  { mau: 'thanh-tien', la: o => o.loai === '2' && o.chu === 27, k: { x: 320, y: 154, w: 140, h: 52, font: 4, canh: 4, inKhi: 1 } },
-  { mau: 'trong-luong', la: o => o.loai === '1' && o.chu === 0 && o.duLieu === 1, k: { x: 4, y: 228, w: 154, h: 26, font: 1, canh: 4, inKhi: 1 } },
-  { mau: 'don-gia', la: o => o.loai === '1' && o.chu === 0 && o.duLieu === 4, k: { x: 162, y: 228, w: 154, h: 26, font: 1, canh: 4, inKhi: 1 } },
-];
+export const MAU_BEEFTOWN: MauTemFile = {
+  loai: LOAI_FILE_MAU, phienBan: PHIEN_BAN_FILE_MAU, ten: 'Mẫu tem Beeftown', ...MAU_BEEFTOWN_CO,
+  o: [
+    { loai: 'ma-vach', x: 4, y: 10, w: 257, h: 74, khiNaoIn: 1 },
+    { loai: 'logo', x: 448 - LOGO_TEM.rong, y: 10 + (74 - LOGO_TEM.cao) / 2, w: LOGO_TEM.rong, h: LOGO_TEM.cao, canh: 5, khiNaoIn: 1 },
+    { loai: 'ten-hang', x: 4, y: 92, w: 456, h: 34, coChu: 2, canh: 4, khiNaoIn: 1 },
+    { loai: 'ngay-in', x: 4, y: 154, w: 154, h: 52, coChu: 4, canh: 4, khiNaoIn: 1 },
+    { loai: 'hsd', x: 162, y: 154, w: 154, h: 52, coChu: 4, canh: 4, khiNaoIn: 9 },
+    { loai: 'thanh-tien', x: 320, y: 154, w: 140, h: 52, coChu: 4, canh: 4, khiNaoIn: 1 },
+    { loai: 'trong-luong', x: 4, y: 228, w: 154, h: 26, coChu: 1, canh: 4, khiNaoIn: 1 },
+    { loai: 'don-gia', x: 162, y: 228, w: 154, h: 26, coChu: 1, canh: 4, khiNaoIn: 1 },
+    { loai: 'chu', chu: 'Ngày đóng gói', x: 4, y: 136, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 1 },
+    { loai: 'chu', chu: 'Hạn sử dụng', x: 162, y: 136, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 9 },
+    { loai: 'chu', chu: 'Thành tiền (đ)', x: 320, y: 136, w: 140, h: 18, coChu: 0, canh: 4, khiNaoIn: 1 },
+    { loai: 'chu', chu: 'Khối lượng (kg)', x: 4, y: 210, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 2 },
+    { loai: 'chu', chu: 'Số lượng', x: 4, y: 210, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 3 },
+    { loai: 'chu', chu: 'Đơn giá (đ/kg)', x: 162, y: 210, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 2 },
+    { loai: 'chu', chu: 'Đơn giá', x: 162, y: 210, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 3 },
+    { loai: 'chu', chu: '-'.repeat(CHU_TEM_TOI_DA), x: 4, y: 256, w: 456, h: 18, coChu: 0, canh: 5, khiNaoIn: 1 },
+    { loai: 'chu', chu: TEN_CONG_TY_TREN_TEM, x: 4, y: 274, w: 456, h: 26, coChu: 1, canh: 5, khiNaoIn: 1 },
+  ],
+};
 
-/** Tên công ty in cuối tem — chép từ PHAP_NHAN.ten (web/src/lib/chu.ts); thu-tem.ts so hai bên. Địa chỉ quán bỏ từ 2.13 (Khánh). */
-export const TEN_CONG_TY_TREN_TEM = 'CÔNG TY TNHH SLK GROUP';
+/** Khung một ô của mẫu (chấm), cỡ chữ (CO_CHU), canh (CANH_CHU), khi nào in (DIEU_KIEN_IN). Mã vạch không có cỡ / canh. */
+interface KhungMau { x: number; y: number; w: number; h: number; font?: number; canh?: number; inKhi: number }
+
+/** Các ô của mẫu Beeftown, gọi tên như mục Mẫu tem (để kiểm thử và tài liệu đọc lại đúng một nơi). */
+export const O_MAU_BEEFTOWN: readonly { ten: string; k: Readonly<KhungMau> }[] = MAU_BEEFTOWN.o.map(o => ({
+  ten: o.loai === 'chu' ? `Chữ "${o.chu}"` : tenNgan(O_THEM_DUOC.find(m => m.khoa === o.loai)!.ten),
+  k: { x: o.x, y: o.y, w: o.w, h: o.h, font: o.coChu, canh: o.canh, inKhi: o.khiNaoIn ?? 1 },
+}));
 
 /**
- * Ô chữ cố định: ô đang in có đúng chữ đó được dời tới đây; chưa có thì thêm ô chữ mới. "Khối lượng (kg)" / "Số lượng" (và
- * "Đơn giá (đ/kg)" / "Đơn giá") chung một chỗ, mỗi lần cân chỉ in một — như mẫu tem tiếng Việt gốc của hãng (dac-ta/
- * label-format.md, mẫu 90000: "số kg" in khi hàng cân ký, "Count" khi hàng đếm cái, cùng một khung).
+ * Đọc file mẫu tem (chữ JSON) — kiểm chặt, không đoán: sai thì LoiTem nói đúng ô nào, sai gì. Trường lạ ở ngoài (ghiChu,
+ * khongXuatDuoc của file tải ra) bỏ qua. Trả mẫu đã chuẩn hoá (đủ coChu / canh / khiNaoIn / xoay; ô chữ có chữ đã gọn, NFC).
  */
-const O_CHU_BEEFTOWN: readonly { chu: string; k: KhungMau }[] = [
-  { chu: 'Ngày đóng gói', k: { x: 4, y: 136, w: 154, h: 18, font: 0, canh: 4, inKhi: 1 } },
-  { chu: 'Hạn sử dụng', k: { x: 162, y: 136, w: 154, h: 18, font: 0, canh: 4, inKhi: 9 } },
-  { chu: 'Thành tiền (đ)', k: { x: 320, y: 136, w: 140, h: 18, font: 0, canh: 4, inKhi: 1 } },
-  { chu: 'Khối lượng (kg)', k: { x: 4, y: 210, w: 154, h: 18, font: 0, canh: 4, inKhi: 2 } },
-  { chu: 'Số lượng', k: { x: 4, y: 210, w: 154, h: 18, font: 0, canh: 4, inKhi: 3 } },
-  { chu: 'Đơn giá (đ/kg)', k: { x: 162, y: 210, w: 154, h: 18, font: 0, canh: 4, inKhi: 2 } },
-  { chu: 'Đơn giá', k: { x: 162, y: 210, w: 154, h: 18, font: 0, canh: 4, inKhi: 3 } },
-  { chu: '-'.repeat(CHU_TEM_TOI_DA), k: { x: 4, y: 256, w: 456, h: 18, font: 0, canh: 5, inKhi: 1 } },
-  { chu: TEN_CONG_TY_TREN_TEM, k: { x: 4, y: 274, w: 456, h: 26, font: 1, canh: 5, inKhi: 1 } },
-];
+export function docMauTemFile(noiDung: unknown): MauTemFile {
+  if (typeof noiDung !== 'string' || !noiDung.trim()) throw new LoiTem('File mẫu tem trống.');
+  if (noiDung.length > FILE_MAU_TOI_DA) throw new LoiTem('File mẫu tem quá lớn — không phải file mẫu tem.');
+  let j: Record<string, unknown>;
+  try { j = JSON.parse(noiDung.replace(/^﻿/, '')); } catch { throw new LoiTem('File không đọc được (không phải JSON) — chọn file mẫu tem .json.'); }
+  if (!j || typeof j !== 'object' || Array.isArray(j) || j.loai !== LOAI_FILE_MAU) {
+    throw new LoiTem(`File không phải mẫu tem của Beeftown Cân (thiếu "loai": "${LOAI_FILE_MAU}").`);
+  }
+  if (j.phienBan !== PHIEN_BAN_FILE_MAU) {
+    throw new LoiTem(`File mẫu tem bản ${String(j.phienBan)} — chương trình này đọc bản ${PHIEN_BAN_FILE_MAU}. Cập nhật Beeftown Cân hoặc tải lại file.`);
+  }
+  const ten = typeof j.ten === 'string' && j.ten.trim() ? j.ten.replace(/[\t\r\n]+/g, ' ').trim().normalize('NFC').slice(0, 80) : 'Mẫu tem trong file';
+  const mm = (v: unknown, tenTruong: string) => {
+    if (!Number.isInteger(v) || (v as number) < 10 || (v as number) > 200) throw new LoiTem(`File mẫu tem: ${tenTruong} phải là số mm nguyên từ 10 đến 200.`);
+    return v as number;
+  };
+  const rong = mm(j.rong, 'rộng tem ("rong")'), cao = mm(j.cao, 'cao tem ("cao")');
+  if (!Array.isArray(j.o) || j.o.length === 0) throw new LoiTem('File mẫu tem không có ô nào ("o").');
+  if (j.o.length > O_TOI_DA) throw new LoiTem(`File mẫu tem có ${j.o.length} ô — tối đa ${O_TOI_DA} ô.`);
+  const o = j.o.map((x: unknown, i: number): OMauFile => {
+    const goi = `Ô thứ ${i + 1}`;
+    if (!x || typeof x !== 'object' || Array.isArray(x)) throw new LoiTem(`${goi} không đúng dạng.`);
+    const r = x as Record<string, unknown>;
+    const mau = O_THEM_DUOC.find(m => m.khoa === r.loai);
+    if (!mau) throw new LoiTem(`${goi}: loại ô "${String(r.loai)}" không có. Loại ô dùng được: ${O_THEM_DUOC.map(m => m.khoa).join(', ')}.`);
+    const so = (k: string, ten: string, tu: number, den: number, macDinh?: number) => {
+      const v = r[k] === undefined ? macDinh : r[k];
+      if (!Number.isInteger(v) || (v as number) < tu || (v as number) > den) throw new LoiTem(`${goi} (${mau.ten}): ${ten} ("${k}") phải là số nguyên từ ${tu} đến ${den}.`);
+      return v as number;
+    };
+    // Bỏ trống cỡ chữ / canh / khi nào in: ô đang có trên tem giữ nguyên, ô mới lấy mặc định của O_THEM_DUOC (suaTem).
+    const tuyChon = (k: string, ten: string, tu: number, den: number) => (r[k] === undefined ? {} : { [k]: so(k, ten, tu, den) });
+    const ra: OMauFile = {
+      loai: mau.khoa,
+      x: so('x', 'vị trí ngang', 0, CHAM_TOI_DA), y: so('y', 'vị trí dọc', 0, CHAM_TOI_DA),
+      w: so('w', 'chiều rộng', 1, CHAM_TOI_DA, mau.w), h: so('h', 'chiều cao', 1, CHAM_TOI_DA, mau.h),
+      ...tuyChon('coChu', 'cỡ chữ', 0, CO_CHU.length - 1), ...tuyChon('canh', 'canh chữ', 0, 9), ...tuyChon('khiNaoIn', 'khi nào in', 0, 99),
+      xoay: so('xoay', 'góc xoay', 0, 3, 0),
+    };
+    if (ra.khiNaoIn !== undefined && DIEU_KIEN_IN[ra.khiNaoIn] === undefined) {
+      throw new LoiTem(`${goi} (${mau.ten}): khi nào in ("khiNaoIn") ${ra.khiNaoIn} không có trong danh sách.`);
+    }
+    if (mau.flag1 === 3) {
+      const chu = r.chu === undefined ? mau.chu : r.chu;
+      if (typeof chu !== 'string') throw new LoiTem(`${goi} (ô chữ): thiếu chữ in ra ("chu").`);
+      try { ra.chu = sachChu(chu); } catch (e) { throw new LoiTem(`${goi} (ô chữ "${chu.slice(0, 20)}…"): ${(e as Error).message}`); }
+      if (!ra.chu) throw new LoiTem(`${goi} (ô chữ): chữ in ra ("chu") đang trống.`);
+    }
+    return ra;
+  });
+  return { loai: LOAI_FILE_MAU, phienBan: PHIEN_BAN_FILE_MAU, ten, rong, cao, o };
+}
 
-/** Các ô của mẫu Beeftown (để kiểm thử và tài liệu đọc lại đúng một nơi). */
-export const O_MAU_BEEFTOWN: readonly { ten: string; k: Readonly<KhungMau> }[] = [
-  ...O_DU_LIEU_BEEFTOWN.map(d => ({ ten: tenNgan(O_THEM_DUOC.find(m => m.khoa === d.mau)!.ten), k: d.k })),
-  ...O_CHU_BEEFTOWN.map(c => ({ ten: `Chữ "${c.chu}"`, k: c.k })),
-];
+/** Chữ của ô chữ dài hơn ô, ô thấp hơn dòng chữ — theo cỡ chữ của phần mềm hãng (CO_CHU). Chỉ cảnh báo: cân in bằng phông riêng. */
+function canhBaoChuVua(mau: MauTemFile): string[] {
+  const ra: string[] = [];
+  mau.o.forEach((o, i) => {
+    if (o.coChu === undefined || o.loai === 'ma-vach' || o.loai === 'logo') return;
+    const f = CO_CHU[o.coChu];
+    if (o.chu !== undefined && [...o.chu].length * f.rong > o.w) {
+      ra.push(`Ô thứ ${i + 1}: chữ "${o.chu}" rộng khoảng ${[...o.chu].length * f.rong} chấm, ô chỉ ${o.w} chấm — có thể bị cắt.`);
+    }
+    if (o.h < f.cao) ra.push(`Ô thứ ${i + 1}: ô cao ${o.h} chấm, thấp hơn dòng chữ cỡ ${o.coChu} (${f.cao} chấm).`);
+  });
+  return ra;
+}
 
-export interface MauBeeftown {
-  /** Thay đổi đưa tem đang dùng về mẫu Beeftown (chưa kèm dấu mẫu tem); null khi không áp được hoặc tem đã đúng mẫu. */
+export interface KetQuaApMau {
+  /** Thay đổi đưa tem đang dùng về đúng mẫu (chưa kèm dấu mẫu tem); null khi không áp được hoặc tem đã đúng mẫu. */
   thay: { tat: string[]; sua: SuaO[]; them: ThemO[] } | null;
   /** Vì sao không áp được; null khi áp được hoặc tem đã đúng mẫu. */
   lyDo: string | null;
+  /** Cảnh báo không chặn: ô ra ngoài mép tem, chữ dài hơn ô… */
+  canhBao: string[];
+}
+export type MauBeeftown = Pick<KetQuaApMau, 'thay' | 'lyDo'>;
+
+/**
+ * Đưa tem cân đang dùng về đúng một mẫu (file mẫu hay MAU_BEEFTOWN), thành thay đổi cho mục Mẫu tem đổ vào sơ đồ (chưa gửi):
+ * ô đã có cùng loại (ô chữ: cùng chữ) thì dời / đổi cỡ / canh / khi nào in, chưa có thì thêm, ô khác (số PLU, chữ cũ, ô lạ)
+ * thì tắt — nhớ trong tem-da-tat.json, bật lại được. Áp lần hai trên tem đã đúng mẫu: không có gì đổi. Chạy thử suaTem trên
+ * chính file này: lỗi (hết số ô, hết ô chữ, dòng LAB thiếu cột) thành lyDo — không bao giờ đưa ra thay đổi mà bấm gửi mới
+ * hỏng. Ô đang tắt không dùng lại (sửa ô vừa bật lại phải gửi trước). Mẫu có Phân vùng, khác cỡ tem: không áp.
+ * Chưa thử trên cân thật.
+ */
+export function apMauTem(du: Uint8Array, daTat: DaTat, mau: MauTemFile, file: FileCan = docFileCan(du), tenGoi = `Mẫu "${mau.ten}"`): KetQuaApMau {
+  const { dangDung: m } = docTem(file);
+  if (!m) return { thay: null, lyDo: 'File của cân không có mẫu tem (phần LAB).', canhBao: [] };
+  if (m.phanVung || daTatHopLe(m, daTat).some(x => laPhanVung(docO(x.tho)))) return { thay: null, lyDo: CAU_PHAN_VUNG, canhBao: [] };
+  if (m.rong !== mau.rong || m.cao !== mau.cao) {
+    return { thay: null, lyDo: `${tenGoi} làm cho tem ${mau.rong}×${mau.cao} mm; tem cân đang dùng là ${m.rong}×${m.cao} mm.`, canhBao: [] };
+  }
+  const chuCua = (o: OTem) => docChu(m.cot[cotChu(o.chu)]).trim().normalize('NFC');
+  const conLai = new Set(m.o.map((_, i) => i));   // ô chưa có chỗ trong mẫu → tắt
+  const sua: SuaO[] = [], them: ThemO[] = [];
+  for (const om of mau.o) {
+    const mo = O_THEM_DUOC.find(x => x.khoa === om.loai);
+    if (!mo) return { thay: null, lyDo: `${tenGoi}: loại ô "${om.loai}" không có.`, canhBao: [] };
+    const la = laOCuaMau(mo, om.chu, chuCua);
+    const i = m.o.findIndex((o, j) => conLai.has(j) && la(o));
+    const xoay = om.xoay ?? 0;
+    if (i < 0) {
+      them.push({ mau: om.loai, x: om.x, y: om.y, w: om.w, h: om.h, xoay, ...(om.khiNaoIn !== undefined ? { inKhi: om.khiNaoIn } : {}),
+        ...(om.coChu !== undefined ? { font: om.coChu } : {}), ...(om.canh !== undefined ? { canh: om.canh } : {}),
+        ...(om.chu !== undefined ? { chu: om.chu } : {}) });
+      continue;
+    }
+    conLai.delete(i);
+    const o = m.o[i], s: SuaO = { khoa: `o:${i}` };
+    for (const t of ['x', 'y', 'w', 'h'] as const) if (o[t] !== om[t]) s[t] = om[t];
+    if (om.coChu !== undefined && o.font !== om.coChu) s.font = om.coChu;
+    if (om.canh !== undefined && (o.canh & 0x0F) !== om.canh) s.canh = om.canh;
+    if (om.khiNaoIn !== undefined && o.inKhi !== om.khiNaoIn) s.inKhi = om.khiNaoIn;
+    if (o.xoay !== xoay) s.xoay = xoay;
+    if (Object.keys(s).length > 1) sua.push(s);
+  }
+  const tat = [...conLai].sort((a, b) => a - b).map(i => `o:${i}`);
+  if (!tat.length && !sua.length && !them.length) return { thay: null, lyDo: null, canhBao: [] };
+  const thay = { tat, sua, them };
+  let thu: KetQuaSuaTem;
+  try { thu = suaTem(du, daTat, thay); }
+  catch (e) { if (e instanceof LoiTem) return { thay: null, lyDo: `Không xếp được tem theo ${tenGoi.charAt(0).toLowerCase() + tenGoi.slice(1)}: ${e.message}`, canhBao: [] }; throw e; }
+  return { thay, lyDo: null, canhBao: [...thu.canhBao, ...canhBaoChuVua(mau)] };
+}
+
+/** Nút "Xếp tem theo mẫu Beeftown" (2.12): apMauTem với MAU_BEEFTOWN. */
+export function mauBeeftown(du: Uint8Array, daTat: DaTat, file: FileCan = docFileCan(du)): MauBeeftown {
+  const { thay, lyDo } = apMauTem(du, daTat, MAU_BEEFTOWN, file, 'Mẫu Beeftown');
+  return { thay, lyDo };
 }
 
 /**
- * Mẫu tem Beeftown — Khánh duyệt 02/11/2026, theo mẫu tem thịt siêu thị Khánh gửi: mã vạch và logo phụ trên cùng, tên hàng,
- * bảng ba cột (Ngày đóng gói · Hạn sử dụng · Thành tiền, ba số cao gấp đôi; Khối lượng · Đơn giá) thẳng mép trái, đường kẻ, tên
- * công ty. (Bản 2.12: chữ BEEFTOWN thay logo, thêm dòng địa chỉ quán — hai ô đó nay bị tắt khi bấm lại.) Trả thay đổi cho
- * mục Mẫu tem đổ vào sơ đồ (chưa gửi): ô dữ liệu và ô chữ đã có thì dời / đổi cỡ, chưa có thì
- * thêm, ô khác (số PLU, chữ cũ, ô lạ) thì tắt — nhớ trong tem-da-tat.json, bật lại được. Áp lần hai trên tem đã đúng mẫu:
- * không có gì đổi. Chạy thử suaTem trên chính file này: lỗi (hết số ô, hết ô chữ, dòng LAB thiếu cột) thành lyDo, không bao
- * giờ đưa ra nút mà bấm gửi mới hỏng. Ô đang tắt không dùng lại (sửa ô vừa bật lại phải gửi trước). Chưa thử trên cân thật.
+ * Tem cân đang dùng thành file mẫu (để lưu, hay đưa cho người / Claude thiết kế lại rồi nạp). Kèm `ghiChu` giải thích đơn vị
+ * và các mã — file tự đọc hiểu được; nạp lại thì bỏ qua. Ô không viết được bằng file mẫu (Phân vùng, khung viền, hình khác
+ * logo, dòng hàng cộng dồn…) liệt kê ở `khongXuatDuoc`: nạp lại file đó thì các ô này bị tắt. Không có mẫu tem → LoiTem.
  */
-export function mauBeeftown(du: Uint8Array, daTat: DaTat, file: FileCan = docFileCan(du)): MauBeeftown {
+export function xuatMauTem(file: FileCan): MauTemFile & { ghiChu: Record<string, unknown>; khongXuatDuoc?: string[] } {
   const { dangDung: m } = docTem(file);
-  if (!m) return { thay: null, lyDo: 'File của cân không có mẫu tem (phần LAB).' };
-  if (m.phanVung || daTatHopLe(m, daTat).some(x => laPhanVung(docO(x.tho)))) return { thay: null, lyDo: CAU_PHAN_VUNG };
-  if (m.rong !== MAU_BEEFTOWN_CO.rong || m.cao !== MAU_BEEFTOWN_CO.cao) {
-    return { thay: null, lyDo: `Mẫu Beeftown làm cho tem ${MAU_BEEFTOWN_CO.rong}×${MAU_BEEFTOWN_CO.cao} mm; tem cân đang dùng là ${m.rong}×${m.cao} mm.` };
-  }
-  const conLai = new Set(m.o.map((_, i) => i));   // ô chưa có chỗ trong mẫu → tắt
-  const sua: SuaO[] = [], them: ThemO[] = [];
-  const doi = (i: number, k: KhungMau) => {
-    conLai.delete(i);
-    const o = m.o[i], s: SuaO = { khoa: `o:${i}` };
-    for (const t of ['x', 'y', 'w', 'h'] as const) if (o[t] !== k[t]) s[t] = k[t];
-    if (k.font !== undefined && o.font !== k.font) s.font = k.font;
-    if (k.canh !== undefined && (o.canh & 0x0F) !== k.canh) s.canh = k.canh;
-    if (o.inKhi !== k.inKhi) s.inKhi = k.inKhi;
-    if (o.xoay !== 0) s.xoay = 0;
-    if (Object.keys(s).length > 1) sua.push(s);
-  };
-  const moi = (k: KhungMau) => ({ x: k.x, y: k.y, w: k.w, h: k.h, inKhi: k.inKhi, xoay: 0,
-    ...(k.font !== undefined ? { font: k.font } : {}), ...(k.canh !== undefined ? { canh: k.canh } : {}) });
-  for (const d of O_DU_LIEU_BEEFTOWN) {
-    const i = m.o.findIndex((o, j) => conLai.has(j) && d.la(o));
-    if (i >= 0) doi(i, d.k); else them.push({ mau: d.mau, ...moi(d.k) });
-  }
+  if (!m) throw new LoiTem('File của cân không có mẫu tem (phần LAB).');
   const chuCua = (o: OTem) => docChu(m.cot[cotChu(o.chu)]).trim().normalize('NFC');
-  for (const c of O_CHU_BEEFTOWN) {
-    const i = m.o.findIndex((o, j) => conLai.has(j) && o.loai === '3' && chuCua(o) === c.chu);
-    if (i >= 0) doi(i, c.k); else them.push({ mau: 'chu', chu: c.chu, ...moi(c.k) });
+  const o: OMauFile[] = [], khongXuat: string[] = [];
+  for (const x of m.o) {
+    const mo = x.loai === '3' ? O_THEM_DUOC.find(k => k.khoa === 'chu')!
+      : O_THEM_DUOC.find(k => k.flag1 !== 3 && laOCuaMau(k, undefined, chuCua)(x));
+    const chu = x.loai === '3' ? chuCua(x) : undefined;
+    if (!mo || (chu !== undefined && (!chu || [...chu].length > CHU_TEM_TOI_DA))) { khongXuat.push(tenO(x, m.cot)); continue; }
+    o.push({ loai: mo.khoa, ...(chu !== undefined ? { chu } : {}), x: x.x, y: x.y, w: x.w, h: x.h,
+      ...(mo.flag1 !== 0 ? { coChu: x.font } : {}), canh: x.canh & 0x0F, khiNaoIn: x.inKhi, xoay: x.xoay });
   }
-  const tat = [...conLai].sort((a, b) => a - b).map(i => `o:${i}`);
-  if (!tat.length && !sua.length && !them.length) return { thay: null, lyDo: null };
-  const thay = { tat, sua, them };
-  try { suaTem(du, daTat, thay); }
-  catch (e) { if (e instanceof LoiTem) return { thay: null, lyDo: `Không xếp được tem theo mẫu Beeftown: ${e.message}` }; throw e; }
-  return { thay, lyDo: null };
+  const bang = (b: Readonly<Record<number, string>>) => Object.fromEntries(Object.entries(b));
+  return {
+    loai: LOAI_FILE_MAU, phienBan: PHIEN_BAN_FILE_MAU, ten: `Tem đang dùng — mẫu số ${m.id} "${m.ten}"`, rong: m.rong, cao: m.cao,
+    ghiChu: {
+      cachDoc: 'File mẫu tem của Beeftown Cân. Mỗi phần tử của "o" là một ô in trên tem. x, y, w, h tính bằng chấm (8 chấm = 1 mm), '
+        + 'gốc ở góc trên trái tem. Ô "chu" in đúng chữ ở "chu" (tối đa 40 ký tự); ô khác lấy dữ liệu từ hàng / lúc in. '
+        + 'Nạp lại ở thẻ Thiết lập cân → Mẫu tem → Nạp mẫu tem từ file; các trường trong "ghiChu" chỉ để đọc, chương trình bỏ qua.',
+      loaiO: Object.fromEntries([...O_THEM_DUOC.map(k => [k.khoa, k.ten]), ['chu-hsd', 'Chữ "HSD" (ô chữ, mặc định chữ HSD)']]),
+      coChu: Object.fromEntries(CO_CHU.map((c, i) => [i, `${c.ten}: rộng một chữ ${c.rong} chấm, cao dòng ${c.cao} chấm`])),
+      canh: bang(CANH_CHU), khiNaoIn: bang(DIEU_KIEN_IN), xoay: bang(XOAY),
+    },
+    o,
+    ...(khongXuat.length ? { khongXuatDuoc: khongXuat } : {}),
+  };
 }
 
 // -----------------------------------------------------------------------------
