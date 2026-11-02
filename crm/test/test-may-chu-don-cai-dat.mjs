@@ -157,6 +157,8 @@ await nhom('4 · Script: cú pháp, kiểm thử trước khi chạy lại, quay
   ok('cai: tên miền kiểm dạng trước khi đưa vào sed và Caddyfile', cai.indexOf('grep -Eq') > 0
     && cai.indexOf('grep -Eq') < cai.indexOf('printf \'%s\\n\' "$ten_mien" >"$TEP_TEN_MIEN"'));
 
+  ok('Không cài gói chuyển tiếp đã bỏ trên Ubuntu mới (26.04: apt-transport-https, debian-keyring)',
+    !/apt-transport-https|debian-keyring|debian-archive-keyring/.test(shMa));
   const thuc = thanHam('giu_may_thuc');
   ok('Laptop (có pin): gập máy không ngủ, tắt ngủ / ngủ đông; máy không pin thì bỏ qua',
     /compgen -G '\/sys\/class\/power_supply\/BAT\*' >\/dev\/null \|\| return 0/.test(thuc)

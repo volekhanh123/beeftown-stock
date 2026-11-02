@@ -182,7 +182,7 @@ lenh_cai() {
     || loi "Tên miền không hợp lệ: $ten_mien (chỉ chữ thường, số, dấu - và dấu chấm, ví dụ don.beeftown.vn)."
   # shellcheck disable=SC1091
   . /etc/os-release
-  [ "${ID:-}" = ubuntu ] || [ "${ID:-}" = debian ] || loi "Bộ cài này viết cho Ubuntu 24.04 (máy này: ${PRETTY_NAME:-không rõ})."
+  [ "${ID:-}" = ubuntu ] || [ "${ID:-}" = debian ] || loi "Bộ cài này viết cho Ubuntu 24.04 trở lên (máy này: ${PRETTY_NAME:-không rõ})."
 
   bao "Giờ của máy: Asia/Ho_Chi_Minh (để nhật ký đọc theo giờ Việt Nam)"
   timedatectl set-timezone Asia/Ho_Chi_Minh 2>/dev/null || true
@@ -190,8 +190,8 @@ lenh_cai() {
   bao "Cài gói hệ thống"
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -q
-  apt-get install -y -q ca-certificates curl git gnupg ufw debian-keyring debian-archive-keyring apt-transport-https \
-    unattended-upgrades
+  # Chỉ gói có trên mọi bản Ubuntu LTS từ 24.04 (26.04 bỏ vài gói chuyển tiếp như apt-transport-https).
+  apt-get install -y -q ca-certificates curl git gnupg ufw unattended-upgrades
   cai_node
   cai_caddy
   giu_may_thuc
