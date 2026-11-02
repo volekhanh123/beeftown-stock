@@ -21,6 +21,9 @@ import { GioiHan, cungNguon, ipKhach, taoXuLy } from '../src/may-chu.ts';
 import { createHmac } from 'node:crypto';
 import { chuoiVietQr, crc16, docTruong, laTaiKhoanNhan, noiDungChuyenKhoan } from '../src/viet-qr.ts';
 import { DA_NHAN, docTinTienVe, kiemChuKy, timMaDon, type TinTienVe } from '../src/sepay.ts';
+import {
+  buocTraTien, docDonTuMayChu, guiDonLenMayChu, taoMaGui, taoThanDon, type HamFetchApi,
+} from '../../mini-app/src/tra-truoc.ts';
 
 let dat = 0, hong = 0;
 const ok = (ten: string, dieuKien: boolean, chiTiet = '') => {
@@ -611,6 +614,10 @@ nhom('16 · Đường /sepay/tien-ve và thông tin trả tiền trong /api/don'
   ok('Ảnh mã QR: SVG, không cache, có CORS cho Mini App', qr.status === 200 && qr.headers.get('content-type') === 'image/svg+xml'
     && (await qr.text()).startsWith('<svg') && qr.headers.get('cache-control') === 'no-store' && qr.headers.get('access-control-allow-origin') === '*');
   ok('Ảnh mã QR sai khóa → 404', (await goi(xuLy, `/api/don/${j.ma}/qr.svg?khoa=${'0'.repeat(32)}`)).status === 404);
+  const khongCo = await goi(xuLy, `/api/don/${j.ma}?khoa=${'0'.repeat(32)}`), duongLa = await goi(xuLy, '/api/khong-co-duong');
+  ok('Không có đơn → 404 kèm lyDo "khong_thay_don"; sai đường → 404 không có lyDo đó (Mini App không xóa đơn đã giữ)',
+    khongCo.status === 404 && (await khongCo.json() as { lyDo?: string }).lyDo === 'khong_thay_don'
+    && duongLa.status === 404 && (await duongLa.json() as { lyDo?: string }).lyDo === undefined);
 
   const gui = (than: unknown, them: Record<string, string> = {}, giay = Math.floor(LUC_DAT / 1000)) => {
     const chu = typeof than === 'string' ? than : JSON.stringify(than);
@@ -735,6 +742,77 @@ nhom('17 · Chạy src/main.ts thật');
   p.kill('SIGTERM');
   ok('SIGTERM → tắt gọn', await Promise.race([p.exited.then(c => c === 0), Bun.sleep(5000).then(() => false)]));
   fs.rmSync(tam, { recursive: true, force: true });
+}
+
+// =====================================================================================================
+nhom('18 · Mini App gọi máy chủ thật (mini-app/src/tra-truoc.ts): đặt, trả thiếu, trả nốt');
+{
+  const so = new SoDon(':memory:');
+  const { xuLy } = taoMay(so, { taiKhoan: TK, khoaSepay: KHOA_SEPAY, choTraGiaThu: true });
+  const GOC_MAY = 'http://don.beeftown.test';
+  // fetch của Mini App đi thẳng vào taoXuLy: cùng Request, cùng thân, cùng mã trả lời như qua mạng.
+  const quaMayChu: HamFetchApi = async (url, init) => {
+    const tra = await xuLy(new Request(url, { method: init.method, headers: init.headers, body: init.body }), '10.0.0.9');
+    return { status: tra.status, json: () => tra.json() };
+  };
+  const nhan = { cachNhan: 'tai-quan' as const, ngay: '2026-11-13', gio: '18:30', ten: ' Khánh ', dienThoai: '0912 345 678',
+    diaChi: '', cachTra: 'chuyen-khoan' as const, ghiChu: '' };
+  const than = taoThanDon(taoMaGui(), { 'ribeye-with-cap': 2, 'la-galbi': 1 }, nhan);
+  const g1 = await guiDonLenMayChu(GOC_MAY, than, quaMayChu);
+  ok('Thân đơn Mini App soạn được máy chủ nhận: đơn ghi, có khóa xem, có mã trả tiền đúng tổng tiền máy chủ tính',
+    g1.loai === 'da-ghi' && g1.don.thanhToan.traDuoc && g1.don.thanhToan.soTien === g1.don.tongTien
+    && g1.don.tongTien === so.layDon(g1.don.ma)!.tongTien, JSON.stringify(g1));
+  const g2 = await guiDonLenMayChu(GOC_MAY, than, quaMayChu);
+  ok('Mini App gửi lại cùng mã gửi (mất câu trả lời) → cùng đơn, không ra đơn thứ hai',
+    g1.loai === 'da-ghi' && g2.loai === 'da-ghi' && g2.don.ma === g1.don.ma
+    && (so.db.query('select count(*) as n from don').get() as { n: number }).n === 1);
+  if (g1.loai === 'da-ghi') {
+    const { ma } = g1.don, khoa = g1.khoa;
+    const doc = () => docDonTuMayChu(GOC_MAY, ma, khoa, quaMayChu);
+    const d0 = await doc();
+    ok('Mini App đọc đơn: chờ trả tiền, hiện mã QR', d0.loai === 'co' && buocTraTien(d0.don).buoc === 'cho-tra'
+      && d0.don.ngayNhan === '2026-11-13' && d0.don.gioNhan === '18:30');
+    const tienVe = (id: number, soTien: number) => {
+      const chu = JSON.stringify({ id, gateway: 'VietinBank', transactionDate: '2026-11-13 09:02:00', accountNumber: TK.soTaiKhoan,
+        subAccount: '', code: null, content: `BT${ma} chuyen tien`, transferType: 'in', description: '', transferAmount: soTien,
+        accumulated: 0, referenceCode: `FT${id}` });
+      const giay = Math.floor(LUC_DAT / 1000);
+      return goi(xuLy, '/sepay/tien-ve', { method: 'POST', body: chu, headers: { 'content-type': 'application/json',
+        'x-sepay-signature': kyThu(chu, giay), 'x-sepay-timestamp': String(giay) } });
+    };
+    await tienVe(7001, 100_000);
+    const d1 = await doc();
+    const b1 = d1.loai === 'co' ? buocTraTien(d1.don) : null;
+    ok('Chuyển thiếu → Mini App vẫn hiện mã, đúng phần còn thiếu, ghi đã nhận 100.000 đ',
+      b1?.buoc === 'cho-tra' && b1.daNhan === 100_000 && b1.thanhToan.soTien === g1.don.tongTien - 100_000, JSON.stringify(b1));
+    await tienVe(7002, g1.don.tongTien - 100_000);
+    const d2 = await doc();
+    const b2 = d2.loai === 'co' ? buocTraTien(d2.don) : null;
+    ok('Chuyển nốt → Mini App hiện "đã nhận đủ" chỉ khi máy chủ đã ghi đơn sang đã trả tiền',
+      b2?.buoc === 'da-nhan-du' && b2.thua === 0 && so.layDon(ma)!.trangThai === 'da_thanh_toan', JSON.stringify(b2));
+    ok('Sai khóa xem → Mini App báo không thấy đơn',
+      (await docDonTuMayChu(GOC_MAY, ma, '0'.repeat(32), quaMayChu)).loai === 'khong-thay');
+    ok('Mini App sai đường (sai địa chỉ máy chủ) → "không rõ", không phải "không thấy đơn"',
+      (await docDonTuMayChu(`${GOC_MAY}/sai`, ma, khoa, quaMayChu)).loai === 'khong-ro');
+    let bi429 = 0;
+    for (let i = 0; i < 160; i++) if ((await goi(xuLy, `/api/don/${ma}?khoa=${khoa}`, {}, '10.0.0.77')).status === 429) bi429++;
+    ok('10 khách sau một IP nhà mạng hỏi 4 giây một lần (150 lượt / phút) → không ai bị 429', bi429 === 0, String(bi429));
+  }
+  const loiGio = await guiDonLenMayChu(GOC_MAY, taoThanDon(taoMaGui(), { 'la-galbi': 1 }, { ...nhan, gio: '03:00' }), quaMayChu);
+  ok('Máy chủ từ chối (giờ nhận không chọn được) → Mini App hiện đúng câu của máy chủ, đơn chưa ghi',
+    loiGio.loai === 'chua-ghi' && loiGio.loi.includes('Giờ nhận này không còn chọn được. Chọn lại giờ nhận.'), JSON.stringify(loiGio));
+  const hong = Object.create(so) as SoDon;
+  hong.taoDon = () => { throw new Error('database is locked'); };
+  hong.layTheoMaGui = () => null;
+  const { xuLy: xuLyHong } = taoMay(hong, { taiKhoan: TK, khoaSepay: KHOA_SEPAY, choTraGiaThu: true });
+  const quaMayHong: HamFetchApi = async (url, init) => {
+    const tra = await xuLyHong(new Request(url, { method: init.method, headers: init.headers, body: init.body }), '10.0.0.9');
+    return { status: tra.status, json: () => tra.json() };
+  };
+  const gHong = await guiDonLenMayChu(GOC_MAY, taoThanDon(taoMaGui(), { 'la-galbi': 1 }, nhan), quaMayHong);
+  ok('Sổ đơn hỏng lúc ghi → Mini App nhận "chưa ghi" kèm câu "đơn CHƯA được ghi", không bao giờ "đã ghi"',
+    gHong.loai === 'chua-ghi' && gHong.loi.some(l => l.includes('CHƯA được ghi')), JSON.stringify(gHong));
+  so.dong();
 }
 
 console.log(hong === 0 ? `\nTẤT CẢ ${dat} KIỂM TRA MÁY CHỦ ĐƠN ĐỀU ĐẠT` : `\n${hong} KIỂM TRA HỎNG / ${dat + hong}`);
