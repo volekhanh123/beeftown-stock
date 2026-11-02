@@ -80,8 +80,8 @@ import {
 } from '../../web/src/lib/kho/can-tma.ts';
 import {
   CANH_CHU, CAU_DOI, CAU_LOGO, CO_CHU, DIEU_KIEN_IN, LOGO_TREN_SO_DO, LoiTem, O_THEM_DUOC, XOAY, dauTem, docTem, dongMauTemDangDung, goiYHsd, kemLogo,
-  khoiLogo, mauBeeftown, suaTem, temDungLogo, xemTem,
-  type DaTat, type MauBeeftown, type MauTem, type TemXem, type ThayDoiTem,
+  khoiLogo, mauBeeftown, suaTem, temDungLogo, xemTem, apMauTem, docMauTemFile, xuatMauTem,
+  type DaTat, type KetQuaApMau, type MauBeeftown, type MauTem, type TemXem, type ThayDoiTem,
 } from './tem.ts';
 import {
   CONG_HAI_CHIEU, LoiGiaoThuc, docFileTuKetNoi, ghepFileUsb, khoiTim, khoiXoaVaNapPlu, laThongSoMang, moKetNoi,
@@ -2727,6 +2727,27 @@ export class UngDung {
       ghiJson(this.fileDaTat, daTat, this.phu.vietByte);
       return { ok: true as const, canhBao, ...gui };
     });
+  }
+
+  /**
+   * 2.14 — "Nạp mẫu tem từ file": đọc file mẫu (chữ JSON, tem.ts docMauTemFile) và tính thay đổi đưa tem đang dùng về đúng
+   * mẫu (apMauTem) — trang đổ vào sơ đồ, người dùng xem rồi bấm Gửi tem xuống cân như mọi lần sửa tem. Không ghi gì, không
+   * nói gì với cân. Trả kèm dấu mẫu tem: trang so với dấu lúc mở mục — khác thì tem vừa đổi, khoá "o:i" không còn đúng.
+   */
+  napMauTem(noiDung: unknown): KetQuaApMau & { ten: string; dau: string } {
+    let mau;
+    try { mau = docMauTemFile(noiDung); } catch (e) { if (e instanceof LoiTem) throw new LoiCan(e.message); throw e; }
+    const du = this.docGoc(), daTat = this.docDaTat(), file = docFileCan(du);
+    return { ...apMauTem(du, daTat, mau, file), ten: mau.ten, dau: dauTem(file, daTat) };
+  }
+
+  /** 2.14 — "Tải mẫu tem đang dùng": tem trong file gốc (thứ cân đang có — chưa tính thay đổi chưa gửi trên trang) thành file mẫu. */
+  xuatMauTem(): { mau: ReturnType<typeof xuatMauTem>; tenFile: string } {
+    const file = docFileCan(this.docGoc());
+    try {
+      const mau = xuatMauTem(file);
+      return { mau, tenFile: `mau-tem-so-${docTem(file).dangDung!.id}.json` };
+    } catch (e) { if (e instanceof LoiTem) throw new LoiCan(e.message); throw e; }
   }
 
   async taoFileUsbTem(thay: ThayDoiTem): Promise<{ duongDan: string; soHang: number; canhBao: string[] }> {

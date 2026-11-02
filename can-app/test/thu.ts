@@ -26,7 +26,7 @@ import { MA_CAN_THU, MA_CAN_TRONG, TEN_PLU_TRONG, docFileCan, dongPluRieng } fro
 import type { HangKho } from '../../web/src/lib/kho/can-tma.ts';
 import { docThongSo } from '../src/thong-so.ts';
 import { chuoiByte, moCanGia } from './can-gia-hai-chieu.ts';
-import { CAU_LOGO, DONG_LOGO, type ThayDoiTem } from '../src/tem.ts';
+import { CAU_LOGO, DONG_LOGO, MAU_BEEFTOWN, type ThayDoiTem } from '../src/tem.ts';
 import { thuGiaoThuc } from './thu-giao-thuc.ts';
 import { thuTem } from './thu-tem.ts';
 import { thuBaoCaoCan } from './thu-bao-cao-can.ts';
@@ -855,6 +855,22 @@ console.log('6d · Bản 2.2: cổng hai chiều, nhật ký cân, thông số, 
     && ud9.tem().tem!.o.some(o => o.loai === '6' && o.ten === 'Logo Beeftown'));
   fs.writeFileSync(ud9.fileGoc, gocTruocLogo);
   if (daTatTruocLogo) fs.writeFileSync(ud9.fileDaTat, daTatTruocLogo); else fs.rmSync(ud9.fileDaTat, { force: true });
+
+  // 2.14 — file mẫu tem qua API: tải tem đang dùng ra, nạp lại (không đổi gì), nạp mẫu Beeftown (có thay đổi), file hỏng báo rõ;
+  // nạp không ghi gì xuống cân, không đổi file gốc.
+  const soNhanFile = nhan.length, soKhoiFile = can2.khoi.length, gocTruocFile = fs.readFileSync(ud9.fileGoc);
+  const xm = await api9('/api/tem/xuat-mau') as { ok: boolean; tenFile: string; mau: { loai: string; o: unknown[] } };
+  ok('2.14: API tải mẫu tem đang dùng — tên file theo số mẫu, đủ 14 ô', xm.ok && xm.tenFile === 'mau-tem-so-28.json' && xm.mau.loai === 'beeftown-mau-tem'
+    && xm.mau.o.length === 14, JSON.stringify({ ok: xm.ok, tenFile: xm.tenFile }));
+  const nl = await api9('/api/tem/nap-mau', { noiDung: JSON.stringify(xm.mau) });
+  ok('2.14: nạp lại đúng file vừa tải: không có gì đổi; trả dấu mẫu tem trùng dấu của mục Mẫu tem', nl.ok === true && nl.thay === null && nl.lyDo === null
+    && nl.dau === ud9.tem().dau, JSON.stringify(nl).slice(0, 200));
+  const nb = await api9('/api/tem/nap-mau', { noiDung: JSON.stringify(MAU_BEEFTOWN) }) as { ok: boolean; thay: { them: unknown[] } | null; ten: string };
+  ok('2.14: nạp file mẫu Beeftown: có thay đổi để đổ vào sơ đồ, tên mẫu đúng', nb.ok && nb.thay !== null && nb.thay.them.length > 0 && nb.ten === 'Mẫu tem Beeftown');
+  const nh = await api9('/api/tem/nap-mau', { noiDung: 'không phải json' });
+  ok('2.14: nạp file hỏng: báo lỗi rõ, không phải câu lỗi chung', nh.ok === false && /không phải JSON/.test(String(nh.loi)), JSON.stringify(nh));
+  ok('2.14: nạp / tải file mẫu không gửi gì xuống cân, file gốc y nguyên', nhan.length === soNhanFile && can2.khoi.length === soKhoiFile
+    && Buffer.compare(fs.readFileSync(ud9.fileGoc), gocTruocFile) === 0);
 
   console.log('6d4 · HSD từ kho: cột HSD, tự gửi không tự bật in HSD');
   danhMuc9 = { ...danhMuc9, matHang: [{ ...hang('LOI-VAI', '10001', 'Lõi vai bò Mỹ', 845000), han_dung_ngay: 3 },
@@ -3020,9 +3036,9 @@ console.log('6i · 2.8: giữ kết nối hai chiều mở, nhịp, nghe cân b�
     ok('Máy chủ: /api/can và /api/trang-thai trả trạng thái nền; /api/cau-hinh chỉ nhận true / false cho ba công tắc',
       mc.includes("nen: ud.trangThaiNen()") && /case '\/api\/can': return json\(\{[^\n]*nen: ud\.trangThaiNen\(\)/.test(mc)
       && mc.includes("giuKetNoi: typeof b.giuKetNoi === 'boolean' ? b.giuKetNoi : undefined") && mc.includes("ngheUdp: typeof b.ngheUdp === 'boolean' ? b.ngheUdp : undefined"));
-    ok('main.ts: nhịp mỗi NHIP_CAN_MS (dừng khi đang cập nhật), bật UDP theo cài đặt lúc mở; phiên bản 2.13.0',
+    ok('main.ts: nhịp mỗi NHIP_CAN_MS (dừng khi đang cập nhật), bật UDP theo cài đặt lúc mở; phiên bản 2.14.0',
       /setInterval\(\(\) => \{ if \(!dangCapNhat\(\)\) void ud\.nhipCan\(\); \}, NHIP_CAN_MS\)/.test(mn) && mn.includes('void ud.capNhatUdp();')
-      && mn.includes("const PHIEN_BAN = '2.13.0';"));
+      && mn.includes("const PHIEN_BAN = '2.14.0';"));
     ok('Cập nhật: đổi file xong thì đóng kết nối đang giữ trước khi bản mới mở (cân có thể chỉ nhận một kết nối)',
       /this\.dangKhoiDongLai = true;[\s\S]{0,200}this\.dongNen\(\);/.test(nv));
     ok('Hướng dẫn: giữ kết nối, tự đọc nhật ký khi cân báo, tự chỉnh giờ, nghe UDP và hộp hỏi tường lửa',
@@ -3084,7 +3100,7 @@ if (!thuMucTam) {
   process.exit(1);
 }
 ok('Trạng thái: chưa có file gốc, cân mặc định 192.168.1.22', tt.ok && tt.goc === null && tt.cauHinh.ipCan === '192.168.1.22', JSON.stringify(tt));
-ok('Phiên bản 2.13.0', (tt as unknown as { phienBan: string }).phienBan === '2.13.0');
+ok('Phiên bản 2.14.0', (tt as unknown as { phienBan: string }).phienBan === '2.14.0');
 {
   // 2.8: chương trình thật có nhịp giữ kết nối; cân 192.168.1.22 không có ở đây → trạng thái nền có, chưa nối được, không lỗi chết.
   const n = (tt as unknown as { nen?: { giu?: { bat?: boolean; dangMo?: boolean }; udp?: { bat?: boolean } } }).nen;
@@ -3099,7 +3115,7 @@ ok('Phiên bản 2.13.0', (tt as unknown as { phienBan: string }).phienBan === '
   const cnApi = await (await api('/api/cap-nhat')).json() as { ok: boolean; loi?: string };
   const ttCn = (tt as unknown as { capNhat?: { coTheCapNhat: boolean; vuaCapNhatTu: string | null } }).capNhat;
   ok('2.5: dang-chay.json có phiên bản; chạy bằng bun → không cập nhật được, không hỏi mạng; /api/cap-nhat từ chối',
-    dangChay.phienBan === '2.13.0' && bm.ok && !bm.coTheCapNhat && /Chỉ cập nhật được bản BeeftownCan\.exe/.test(bm.cau)
+    dangChay.phienBan === '2.14.0' && bm.ok && !bm.coTheCapNhat && /Chỉ cập nhật được bản BeeftownCan\.exe/.test(bm.cau)
     && !cnApi.ok && /Chỉ cập nhật được/.test(cnApi.loi ?? '') && ttCn?.coTheCapNhat === false && ttCn.vuaCapNhatTu === null,
     JSON.stringify([dangChay, bm, cnApi, ttCn]));
 }

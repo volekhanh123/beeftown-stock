@@ -19,7 +19,7 @@ cả `README.md` (860 dòng, phần lớn là ghi chép từng bản):
 | `src/may-chu.ts` | Máy chủ nhỏ `127.0.0.1` mang mã bí mật `?t=`, mọi đường dẫn của giao diện |
 | `src/nghiep-vu.ts` | Gửi giá / tem / thông số xuống cân rồi đọc lại để kiểm |
 | `src/giao-thuc.ts`, `src/giu-ket-noi.ts`, `src/udp-can.ts`, `src/day-rs232.ts`, `src/tim-can.ts` | Nói chuyện với cân: TCP hai chiều, giữ kết nối, nghe UDP, dây RS232, dò WiFi |
-| `src/tem.ts`, `src/thong-so.ts` | Mẫu tem (cả mẫu Beeftown, logo — phần BMP), thông số, chữ, phím |
+| `src/tem.ts`, `src/thong-so.ts` | Mẫu tem (mẫu Beeftown, file mẫu tem `.json` — CAN-TMA.md §5.13, logo — phần BMP), thông số, chữ, phím |
 | `src/logo-tem.ts` | Logo đen trắng của tem — máy tạo bằng `scripts/tao-logo-tem.ts`, đừng sửa tay |
 | `src/quay.ts` | Máy quầy: phần tính của thẻ Quầy, Giảm giá, Báo cáo (hàm thuần) |
 | `src/bao-kho.ts`, `src/bao-cao-can.ts` | Báo về kho (migration 0061); nhật ký bán của cân |

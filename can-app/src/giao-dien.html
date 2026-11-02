@@ -272,6 +272,15 @@
       <p><b>Lần đầu đổi tem:</b> sau khi gửi, cân thử một món rồi in một tem xem đã đổi chưa. Nếu tem chưa đổi: bấm <b>Lưu file nạp USB</b> ở đây (không cần sửa lại — file đã có tem vừa gửi) rồi nạp USB.
         Dời ô, đổi cỡ chữ, thêm ô: <b>chưa thử trên cân thật</b> — in thử một tem trước khi bán.</p></div>
     <div id="tem-mau"></div>
+    <div id="tem-file">
+      <div class="nut" style="margin-top:0">
+        <button type="button" id="nut-nap-mau">Nạp mẫu tem từ file…</button>
+        <input type="file" id="tep-mau-tem" accept=".json,application/json" class="an">
+        <button type="button" id="nut-xuat-mau">Tải mẫu tem đang dùng (.json)</button>
+        <span class="phu">File mẫu tem: thiết kế ngoài chương trình (hay nhờ Claude) rồi nạp vào — nạp xong vẫn chưa gửi.</span>
+      </div>
+      <div id="tem-file-bao"></div>
+    </div>
     <div id="tem-goi-y"></div>
     <div class="tem-luoi">
       <div><div class="giay" id="giay"></div>
@@ -1129,7 +1138,8 @@
   // dangGuiTem: đang gửi tem — mọi nút và chỗ sửa tem khoá lại (bấm lần hai, sửa giữa chừng sẽ gửi lại thay đổi cũ).
   // mauDaXep (2.12): thay đổi chưa gửi lúc vừa bấm "Xếp tem theo mẫu Beeftown" (JSON của temSua; false: chưa bấm) — còn đúng
   // như vậy thì sơ đồ đang là mẫu, sửa tay thêm thì khung thôi nói "đã xếp theo mẫu".
-  let temDL = null, temSua = moiTemSua(), chonO = null, keo = null, dangGuiTem = false, mauDaXep = false;
+  // fileDaNap (2.14): mẫu vừa nạp từ file { ten, trangThai (JSON của temSua lúc nạp), canhBao } — cùng cách như mauDaXep.
+  let temDL = null, temSua = moiTemSua(), chonO = null, keo = null, dangGuiTem = false, mauDaXep = false, fileDaNap = null;
   function moiTemSua() { return { chu: {}, bat: {}, sua: {}, them: [] }; }
   const p2 = (n) => String(n).padStart(2, '0');
   const CHAM = 8;   // máy in của cân 203 dpi = 8 chấm mỗi mm
@@ -1144,7 +1154,7 @@
     $('tem-o').innerHTML = '<p class="dang-lam">Đang đọc mẫu tem…</p>';
     try {
       temDL = await goi('/api/tem');
-      temSua = moiTemSua(); chonO = null; keo = null; mauDaXep = false;
+      temSua = moiTemSua(); chonO = null; keo = null; mauDaXep = false; fileDaNap = null; $('tem-file-bao').innerHTML = '';
       if (!temDL.tem) {
         for (const id of ['tem-o', 'giay', 'tem-sua-o', 'tem-mau', 'tem-goi-y', 'tem-canh-bao']) $(id).innerHTML = '';
         $('tem-them').classList.add('an');
@@ -1208,8 +1218,9 @@
     // Lưu file nạp USB được cả khi chưa sửa gì: file lấy từ file gốc — đã có tem vừa gửi (gửi WiFi mà tem chưa đổi thì nạp USB).
     $('nut-usb-tem').disabled = dangGuiTem || !(temDL && temDL.tem);
     // Đang gửi: khoá sơ đồ, danh sách ô, khung sửa, thêm ô (inert: không bấm, không gõ, không Tab vào được).
-    for (const id of ['giay', 'tem-o', 'tem-sua-o', 'tem-them', 'tem-mau', 'tem-goi-y', 'tem-xem-voi']) $(id).inert = dangGuiTem;
+    for (const id of ['giay', 'tem-o', 'tem-sua-o', 'tem-them', 'tem-mau', 'tem-file', 'tem-goi-y', 'tem-xem-voi']) $(id).inert = dangGuiTem;
     $('tem-dem').textContent = dangGuiTem ? 'Đang gửi…' : n ? `${n} thay đổi chưa gửi` : 'Chưa có thay đổi';
+    veTemFile();   // 2.14: mỗi lần sơ đồ đổi — sửa tay sau khi nạp file thì câu "Đã nạp mẫu…" thôi hiện
   }
 
   function viTriO(o, t) {
@@ -1480,14 +1491,55 @@
       + 'Chưa thử trên cân thật — in thử một tem, quét thử mã vạch trước khi bán.</p>'
       + '<div class="nut"><button type="button" id="nut-mau-beeftown">Xếp tem theo mẫu Beeftown</button>'
       + `<span class="phu">${mauDaXep && JSON.stringify(temSua) === mauDaXep ? 'Sơ đồ đã xếp theo mẫu — chưa gửi xuống cân.' : 'Thay mọi thay đổi chưa gửi.'}</span></div></div>`;
-    $('nut-mau-beeftown').onclick = () => {
-      temSua = moiTemSua();
-      for (const k of mb.thay.tat) temSua.bat[k] = false;
-      for (const { khoa, ...truong } of mb.thay.sua) for (const [t, v] of Object.entries(truong)) datO(khoa, t, v);
-      temSua.them = mb.thay.them.map(x => ({ ...x }));
-      chonO = null; mauDaXep = JSON.stringify(temSua); veTemHet();
-    };
+    $('nut-mau-beeftown').onclick = () => { apThayMau(mb.thay); mauDaXep = JSON.stringify(temSua); fileDaNap = null; veTemHet(); };
   }
+
+  /** Đổ thay đổi của một mẫu (tem.ts apMauTem: tắt / sửa / thêm ô) vào sơ đồ, thay mọi thay đổi chưa gửi. */
+  function apThayMau(thay) {
+    temSua = moiTemSua();
+    for (const k of thay.tat) temSua.bat[k] = false;
+    for (const { khoa, ...truong } of thay.sua) for (const [t, v] of Object.entries(truong)) datO(khoa, t, v);
+    temSua.them = thay.them.map(x => ({ ...x }));
+    chonO = null;
+  }
+
+  /** 2.14 — câu dưới hai nút file mẫu: mẫu vừa nạp (còn đúng như lúc nạp) kèm cảnh báo; sửa tay thêm thì thôi nói. */
+  function veTemFile() {
+    const noi = $('tem-file-bao');
+    if (!fileDaNap || JSON.stringify(temSua) !== fileDaNap.trangThai) { if (fileDaNap) { fileDaNap = null; noi.innerHTML = ''; } return; }
+    noi.innerHTML = `<div class="bao luu-y"><p>Đã nạp mẫu <b>"${e(fileDaNap.ten)}"</b> lên sơ đồ — <b>chưa gửi</b>. Xem lại rồi bấm `
+      + '<b>Gửi tem xuống cân</b>; bấm <b>Bỏ thay đổi</b> để về như cũ. Ô của tem không có trong mẫu được tắt, bật lại được ở danh sách ô.</p>'
+      + (fileDaNap.canhBao.length ? `<p>${fileDaNap.canhBao.map(e).join('<br>')}</p>` : '') + '</div>';
+  }
+  $('nut-nap-mau').onclick = () => { if (!dangGuiTem && temDL && temDL.tem) $('tep-mau-tem').click(); };
+  $('tep-mau-tem').onchange = async () => {
+    const tep = $('tep-mau-tem').files[0];
+    $('tep-mau-tem').value = '';
+    if (!tep || !temDL || !temDL.tem) return;
+    const noi = $('tem-file-bao');
+    try {
+      if (tep.size > 200000) throw new Error('File quá lớn — không phải file mẫu tem (.json).');
+      const k = await goi('/api/tem/nap-mau', { noiDung: await tep.text() });
+      if (k.dau !== temDL.dau) { bao(noi, 'loi', 'Tem trên máy vừa đổi (vừa gửi, hay thẻ khác vừa sửa). Mở lại mục Mẫu tem rồi nạp lại file.'); return; }
+      if (!k.thay) { bao(noi, k.lyDo ? 'loi' : 'xong', e(k.lyDo || `Tem đang đúng như mẫu "${k.ten}" — không có gì đổi.`)); return; }
+      apThayMau(k.thay);
+      mauDaXep = false;
+      fileDaNap = { ten: k.ten, trangThai: JSON.stringify(temSua), canhBao: k.canhBao || [] };
+      veTemHet();
+    } catch (err) { bao(noi, 'loi', e(err.message)); }
+  };
+  $('nut-xuat-mau').onclick = async () => {
+    if (dangGuiTem) return;
+    try {
+      const k = await goi('/api/tem/xuat-mau');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(k.mau, null, 2) + '\n'], { type: 'application/json;charset=utf-8' }));
+      a.download = k.tenFile; document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      bao($('tem-file-bao'), 'xong', `Đã tải <b>${e(k.tenFile)}</b> — tem đang có trên cân (chưa tính thay đổi chưa gửi trên sơ đồ).`
+        + (k.mau.khongXuatDuoc ? ` Không ghi được vào file: ${e(k.mau.khongXuatDuoc.join(', '))}.` : ''));
+    } catch (err) { bao($('tem-file-bao'), 'loi', e(err.message)); }
+  };
 
   /** Gợi ý "Chỉ in HSD khi hàng có hạn dùng" (tem.ts goiYHsd): ô Hạn dùng / chữ "HSD" đang "Luôn in". */
   function veGoiYHsd() {
@@ -1576,7 +1628,7 @@
       if (k.canhBao && k.canhBao.length) $('khung-usb-tem').insertAdjacentHTML('afterbegin', `<div class="bao luu-y"><p>${k.canhBao.map(e).join('<br>')}</p></div>`);
     } catch (err) { bao($('khung-usb-tem'), 'loi', e(err.message)); }
   };
-  $('nut-bo-tem').onclick = () => { temSua = moiTemSua(); chonO = null; mauDaXep = false; veTemHet(); };
+  $('nut-bo-tem').onclick = () => { temSua = moiTemSua(); chonO = null; mauDaXep = false; fileDaNap = null; $('tem-file-bao').innerHTML = ''; veTemHet(); };
 
   // =====================================================================
   // MÁY QUẦY (0054)

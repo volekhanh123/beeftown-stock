@@ -719,6 +719,41 @@ theo §3.9 / dac-ta label-format mục 5 (`dongBmp`: đầu 96 byte — số hì
 mỗi byte hai chữ `@`…`O`). File (nạp USB, đường lui 33571) mang phần BMP trước phần LAB (`kemLogo`). Cân không cho đọc lại
 hình: gửi xong chỉ kiểm được phần LAB, câu báo nói phải in thử.
 
+
+### 5.13 File mẫu tem (2.14)
+
+Một bố cục tem viết bằng JSON — nạp ở mục Mẫu tem ("Nạp mẫu tem từ file…"), tải tem đang dùng ra ("Tải mẫu tem đang dùng").
+Đọc: `tem.ts` `docMauTemFile` (kiểm chặt); áp: `apMauTem` (chung với nút mẫu Beeftown — `MAU_BEEFTOWN` là một file mẫu); tải
+ra: `xuatMauTem`.
+
+```json
+{
+  "loai": "beeftown-mau-tem", "phienBan": 1, "ten": "Tem siêu thị", "rong": 58, "cao": 40,
+  "o": [
+    { "loai": "ma-vach", "x": 4, "y": 10, "w": 257, "h": 74 },
+    { "loai": "logo", "x": 264, "y": 34, "w": 184, "h": 26 },
+    { "loai": "ten-hang", "x": 4, "y": 92, "w": 456, "h": 34, "coChu": 2, "canh": 4 },
+    { "loai": "chu", "chu": "Ngày đóng gói", "x": 4, "y": 136, "w": 154, "h": 18, "coChu": 0, "canh": 4 },
+    { "loai": "ngay-in", "x": 4, "y": 154, "w": 154, "h": 52, "coChu": 4, "canh": 4, "khiNaoIn": 1 }
+  ]
+}
+```
+
+| Trường | Nghĩa |
+|---|---|
+| `loai`, `phienBan` | Luôn `"beeftown-mau-tem"`, `1`. Bản khác → không nạp, báo cập nhật chương trình. |
+| `ten` | Tên mẫu, hiện trên trang và câu báo (≤ 80 ký tự). |
+| `rong`, `cao` | Cỡ tem, mm — phải đúng cỡ tem cân đang dùng (tem 28: 58 × 40), không thì không nạp. |
+| `o[].loai` | Khoá của `O_THEM_DUOC`: `ten-hang`, `so-plu`, `ma-hang`, `trong-luong`, `don-gia`, `don-vi-tinh`, `thanh-tien`, `don-vi-tien`, `ngay-in`, `gio-in`, `hsd`, `chu-hsd`, `chu`, `ten-quan`, `ghi-chu-1`…`ghi-chu-8`, `ma-vach`, `logo`. Không có tên / mật khẩu WiFi. |
+| `o[].x`, `y`, `w`, `h` | Chấm (8 chấm = 1 mm), gốc góc trên trái. `w`, `h` bỏ trống: cỡ mặc định của loại ô. |
+| `o[].coChu`, `canh`, `khiNaoIn`, `xoay` | Mã của §5.5, §5.6, §5.4 và góc 0–3. Bỏ trống: ô đang có giữ nguyên, ô mới lấy mặc định; `xoay` bỏ trống là 0. |
+| `o[].chu` | Ô `chu` / `chu-hsd`: chữ in ra, ≤ 40 ký tự, có dấu (NFC). `chu-hsd` bỏ trống là `"HSD"`. |
+| `ghiChu`, `khongXuatDuoc` | Chỉ có ở file tải ra — giải thích mã, ô không ghi được. Nạp lại thì bỏ qua. |
+
+Cách áp: ô của mẫu khớp ô đang in đầu tiên cùng loại (ô chữ: cùng chữ; ô dữ liệu hàng: dòng hàng đang in) → sửa; không có → thêm
+(số thứ tự lớn nhất + 1); ô đang in còn lại → tắt. Chạy thử `suaTem` trước khi trả: lỗi thành câu, không bao giờ trả thay đổi mà gửi
+mới hỏng. Cảnh báo (không chặn): ô ra ngoài mép (§5.11), chữ dài hơn ô hay ô thấp hơn dòng chữ theo `CO_CHU`. Trả kèm dấu mẫu tem —
+trang so với dấu lúc mở mục, khác thì bắt mở lại. Chưa thử trên cân thật (cùng đường gửi tem như mọi lần sửa).
 ---
 
 ## 6. Mã vạch — `BAR` và chuỗi mẫu `TChar`

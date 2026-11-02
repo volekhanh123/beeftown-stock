@@ -27,6 +27,7 @@ import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import { moGiaoDienGia } from './xem-giao-dien.ts';
 import { MUC_CUA_THE, MUC_GAP, NAM_THE } from './thu-giao-dien-gon.ts';
+import { MAU_BEEFTOWN } from '../src/tem.ts';
 
 type Ok = (ten: string, dieuKien: boolean, chiTiet?: string) => void;
 
@@ -40,6 +41,7 @@ interface TrangPw {
   clock: { install(): Promise<void>; runFor(ms: number): Promise<void> };
   route(khop: (url: URL) => boolean, xuLy: (d: DuongPw) => Promise<void>): Promise<void>;
   fill(chon: string, giaTri: string): Promise<void>;
+  setInputFiles(chon: string, tep: { name: string; mimeType: string; buffer: Buffer }): Promise<void>;
   on(suKien: 'console', f: (m: TinConsole) => void): void;
   on(suKien: 'pageerror', f: (e: Error) => void): void;
   waitForFunction<A>(f: (a: A) => unknown, a: A, tuy?: { timeout?: number }): Promise<unknown>;
@@ -419,6 +421,19 @@ async function thuMauTem(ok: Ok, trang: TrangPw): Promise<void> {
   await trang.click('#thanh-tab button:text-is("Thiết lập cân")');
   if (!(await dangMo(trang, 'tem'))) await trang.click('#the-tem > summary');
   await trang.waitForSelector('#nut-mau-beeftown', { state: 'visible', timeout: 15000 });
+  // 2.14: nạp file mẫu (mẫu Beeftown viết thành file) → sơ đồ đổi, câu "Đã nạp mẫu … chưa gửi"; Bỏ thay đổi → về như cũ.
+  await trang.setInputFiles('#tep-mau-tem', { name: 'mau-tem-beeftown.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(MAU_BEEFTOWN)) });
+  let napDuoc = true;
+  try { await trang.waitForFunction(() => /Đã nạp mẫu/.test(document.getElementById('tem-file-bao')?.textContent ?? ''), null, { timeout: 10000 }); }
+  catch { napDuoc = false; }
+  const sauNap = await trang.evaluate(() => ({ bao: document.getElementById('tem-file-bao')?.textContent ?? '', dem: document.getElementById('tem-dem')?.textContent ?? '',
+    logo: !!document.querySelector('#giay .el img.logo-tem') }), null);
+  await trang.click('#nut-bo-tem');
+  const sauBo = await trang.evaluate(() => ({ bao: document.getElementById('tem-file-bao')?.textContent ?? '', dem: document.getElementById('tem-dem')?.textContent ?? '',
+    logo: !!document.querySelector('#giay .el img.logo-tem') }), null);
+  ok('Quản lý: nạp mẫu tem từ file → sơ đồ có logo, câu "Đã nạp mẫu … chưa gửi", có thay đổi chưa gửi; Bỏ thay đổi → về như cũ, hết câu',
+    napDuoc && /Mẫu tem Beeftown/.test(sauNap.bao) && /chưa gửi/.test(sauNap.bao) && sauNap.logo && /thay đổi chưa gửi/.test(sauNap.dem)
+    && sauBo.bao === '' && !sauBo.logo && /Chưa có thay đổi/.test(sauBo.dem), JSON.stringify({ sauNap, sauBo }));
   await trang.click('#nut-mau-beeftown');
   const sauBam = await trang.evaluate(() => ({
     dem: document.getElementById('tem-dem')?.textContent ?? '',
