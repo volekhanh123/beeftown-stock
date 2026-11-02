@@ -702,7 +702,11 @@ xuống dòng = `\v`, NFC; giữ cột 22 và bit cao của cột 7; luôn có `
 của hãng từ chối ô có khung thật ra ngoài tem hoặc rộng / cao < 1 — kiểm khi sửa, nhưng không từ chối file khi
 đọc (mẫu gốc của hãng có ô chạm y = −1). Dòng `LAS` không sửa giữ y nguyên byte.
 
-### 5.12 Mẫu tem Beeftown (2.12; bản 2 từ 2.13)
+### 5.12 Mẫu tem Beeftown (2.12; bản 2 từ 2.13; bản 3 từ 2.15)
+
+Bản 3 (2.15, theo tem Khánh in thử 02/11/2026): Khối lượng · Đơn giá · Thành tiền một hàng, Ngày đóng gói · Hạn sử dụng hàng dưới,
+năm số cỡ 4; bỏ đường kẻ. Nhãn ghi đơn vị nên cân để 185 / 186 / 187 = 0 (không in "kg", "VND/kg", "VND" sau số) — §8. Số đo:
+`MAU_BEEFTOWN` trong `tem.ts`. Bản 2 và bản 1 ở dưới để biết lịch sử.
 
 Nút "Xếp tem theo mẫu Beeftown" (`mauBeeftown` trong `tem.ts`) đưa tem 28 về bố cục Khánh duyệt 02/11/2026: mã vạch +
 chữ BEEFTOWN (cỡ 5) trên cùng, tên hàng cỡ 2 rộng hết tem, bảng ba cột (nhãn cỡ 0 trên, số cỡ 1 dưới; thành tiền cỡ 4), đường
@@ -941,7 +945,7 @@ Danh mục của hãng ghi phạm vi không phải lúc nào cũng đúng (ví d
 | 166–169 | Cổng 33581 / 33582 / 33583 / 33584 | | 33581… | **không bao giờ sửa** |
 | 150–165, 430–441 | Địa chỉ IP, cổng mạng, mặt nạ (chính / phụ) | 153 = 0 là tự cấp | | **không sửa** (như 43) — sai là cân rời mạng tới khi sửa tay |
 | 180 / 181 | Dấu thập phân / dấu nghìn khi in | | 0 / 0 | giữ 0: dấu chấm đọc như dấu nghìn kiểu Việt |
-| 185–187 | In đơn vị sau trọng lượng / đơn giá / tiền | 0 / 1 | 1 / 1 / 1 | |
+| 185 / 186 / 187 | In đơn vị sau khối lượng / đơn giá / thành tiền ("0.14kg", "600.000VND/kg", "84.000VND" — đã thấy trên tem in thử 02/11/2026) | 0 không, 1 in | 1 / 1 / 1 (trình cài đặt hãng cho VN) | Mẫu tem Beeftown bản 3: để 0 — nhãn đã ghi đơn vị. Sửa được từ 2.15 (`thong-so.ts`) |
 | 188 / 189 | Số chữ số đơn giá / thành tiền trên màn | 0 tự, 1–7 | 6 / 7 | → đơn giá tối đa 999.999 đ/kg; 188 = 7 có dùng được không [chưa biết] |
 | 196 / 208 / 209 | Số lẻ số cái / trọng lượng / tiền trong mã vạch | 0–5 | 3 / 3 / 2 | chỉ xem (§6) |
 | 201 | Số lẻ trọng lượng | | 3 | |
