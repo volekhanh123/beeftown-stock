@@ -22,7 +22,7 @@ Với cân (quản lý, chủ):
 
 - **Gửi giá từ kho** — đăng nhập kho Beeftown, lấy **mã cân, tên, giá bán/kg** từ Mặt hàng, xem trước thay đổi, bấm **Gửi xuống cân**. Không cần USB.
 - **Tất cả hàng (SKU)** — mọi hàng đang có trên cân: số PLU, phím tắt, mã cân, **mã FABi** (5 số trong mã vạch), tên, giá, và đối chiếu với kho (khớp / khác kho / kho không có / còn nằm lại / chưa lên cân / không lên được). Có tìm kiếm, lọc, tải về Excel (CSV). Xem được cả khi chưa đăng nhập kho.
-- **Mẫu tem** — sơ đồ tem đang dùng; chọn ô nào được in (tên hàng, số PLU, trọng lượng, đơn giá, thành tiền, mã vạch, ngày đóng gói, hạn dùng…) và sửa chữ cố định (tên quán, "Đơn giá", "HSD"…), rồi gửi xuống cân hoặc lưu file nạp USB.
+- **Mẫu tem** — sơ đồ tem đang dùng; chọn ô nào được in (tên hàng, số PLU, trọng lượng, đơn giá, thành tiền, mã vạch, ngày đóng gói, hạn dùng…) và sửa chữ cố định (tên quán, "Đơn giá", "HSD"…), rồi gửi xuống cân hoặc lưu file nạp USB. Từ 2.12 có nút **Xếp tem theo mẫu Beeftown** (mục "Bản 2.12").
 - **Cân đổi địa chỉ** (từ 2.1.0) — nối cân không được thì chương trình tự dò WiFi tìm cân, dùng địa chỉ mới và gửi lại (xem mục bên dưới).
 
 Từ 2.2.0 (quản lý, chủ — **chưa thử trên cân thật**, xem mục "Bản 2.2" bên dưới):
@@ -199,6 +199,46 @@ Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn 
     (chưa gửi): ô Cân có khung đỏ; gửi (hay tự gửi) → số ngày giảm 1, HSD trên tem vẫn đúng hạn của lô.
 
 Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
+
+## Bản 2.12 — mẫu tem Beeftown
+
+Khánh duyệt 02/11/2026, theo mẫu tem thịt siêu thị Khánh gửi: thẻ **Thiết lập cân → Mẫu tem** có khung **Mẫu tem Beeftown**
+với nút **Xếp tem theo mẫu Beeftown**. Bấm nút thì sơ đồ đổi theo mẫu nhưng **chưa gửi** — xem lại rồi bấm **Gửi tem xuống cân**
+như mọi lần sửa tem (gửi, đọc lại, USB như 2.7). Không có migration; chỉ đổi Beeftown Cân.
+
+Mẫu (tem 58 × 40 mm, 464 × 320 chấm; số đo từng ô ở `O_DU_LIEU_BEEFTOWN` / `O_CHU_BEEFTOWN` của `src/tem.ts`):
+
+| Tầng | Trái → phải |
+|---|---|
+| Trên cùng | mã vạch · chữ **BEEFTOWN** cỡ 5 (lớn, cao gấp đôi), canh phải, cách mép phải 1,5 mm |
+| Tên hàng | cỡ 2, rộng hết tem (25 ký tự — đủ tên có số tảng) |
+| Bảng, hàng 1 | **Ngày đóng gói** · **Hạn sử dụng** (chỉ khi hàng có hạn dùng) · **Thành tiền (đ)** — nhãn cỡ 0, ngày cỡ 1, thành tiền cỡ 4 (cao gấp đôi) |
+| Bảng, hàng 2 | **Khối lượng (kg)** / **Số lượng** · **Đơn giá (đ/kg)** / **Đơn giá** — nhãn thứ nhất in với hàng cân ký, nhãn thứ hai với hàng đếm cái, cùng một chỗ |
+| Dưới cùng | đường kẻ (40 dấu gạch ngang) · **CÔNG TY TNHH SLK GROUP** · **Tầng 3, 63 Hồ Tùng Mậu** (chép từ `PHAP_NHAN.ten`, `DIA_CHI_PHAN.duong` của `web/src/lib/chu.ts`) |
+
+Bốn mép cột: chấm 4 (mã vạch, tên hàng, cột 1), 162, 320 (thành tiền), mép phải 460. Cao mỗi ô bằng đúng dòng chữ của cỡ chữ.
+
+- Ô dữ liệu đã có (tên hàng, trọng lượng, đơn giá, thành tiền, mã vạch, ngày in, hạn dùng) được **dời** — giữ số thứ tự ô; chưa có
+  thì thêm. Ô chữ đã có đúng chữ đó ("Ngày đóng gói", "Đơn giá", "BEEFTOWN") cũng dời; ô khác (số PLU, chữ cũ "Trọng Lượng",
+  "Thành Tiền", "HSD", ô lạ) được **tắt** và nhớ trong `tem-da-tat.json` như mọi lần tắt ô — bật lại được ở danh sách ô.
+- Bấm nút thay mọi thay đổi chưa gửi. Tem đã đúng mẫu thì khung chỉ còn dòng "Tem đang dùng đúng mẫu tem Beeftown." (áp lần hai
+  không đổi gì). Tem khác cỡ 58 × 40 mm, mẫu có ô Phân vùng, hết số thứ tự ô / ô chữ: không có nút, dòng nói lý do.
+- Ngày in kiểu 02/11/26 không nằm trong mẫu tem: mục **Cân & thông số → Kiểu ngày in**. Để nguyên thì cân in 2026.11.02, vẫn vừa ô.
+- Chữ BEEFTOWN là chữ thường cao gấp đôi — cân không có chữ đậm, và Beeftown Cân chưa gửi được ảnh logo xuống cân.
+- Cỡ chữ theo bảng của phần mềm hãng (`CO_CHU`); cân in bằng phông của nó nên tem thật có thể khác sơ đồ một chút. Dời ô, đổi
+  cỡ chữ, thêm ô, "chỉ in khi hàng có hạn dùng": **chưa thử trên cân thật**.
+
+**Thử ở quán (2.12)** — sau khi bấm **Cập nhật**, đăng nhập quản lý hoặc chủ:
+1. Thẻ **Thiết lập cân** → mở **Mẫu tem**. Chưa sửa gì, bấm **Lưu file nạp USB** — giữ file đó (tem cũ), cần thì nạp lại.
+2. Bấm **Xếp tem theo mẫu Beeftown**. Đổi "Xem tem với" qua bốn kiểu hàng: sơ đồ giống mẫu Khánh duyệt; dòng dưới nút "… thay đổi
+   chưa gửi".
+3. Bấm **Gửi tem xuống cân** → khung xanh "Cân đã nhận mẫu tem". Không xanh: làm theo câu trên khung (nạp USB).
+4. Cân thử rồi in bốn tem: hàng cân ký có hạn dùng, cân ký không hạn dùng, hàng theo gói (nếu quầy có), một ô mã có số tảng (tên
+   dài). So với sơ đồ: chữ không bị cắt, không chồng nhau, thành tiền to nhất.
+5. **Quét mã vạch** trên tem mới bằng máy quét của quầy: FABi ra đúng món, đúng số ký. Vạch không sát mép trái như các cột chữ
+   thì thu hẹp khung mã vạch vài mm, gửi lại, in và quét lại.
+6. Chữ nào to hay nhỏ quá: bấm ô đó, đổi cỡ chữ một bậc, gửi lại. Tem hỏng thì nạp lại file USB ở bước 1.
+7. (Tuỳ chọn) **Cân & thông số → Kiểu ngày in** → kiểu ngày / tháng / năm, gửi, in một tem: ngày in 02/11/26.
 
 ## Bản 2.11 — gọn còn 5 thẻ
 
@@ -771,6 +811,8 @@ Bấm `Prog`, đi bằng `↓ V3` / `↑ V1` hoặc bấm thẳng số mục (`P
 - **Tắt ô** = bỏ dòng `LAS`; dòng bỏ được nhớ trong `Tài liệu\Beeftown Can\tem-da-tat.json` để **bật lại** đúng chỗ. Dòng không sửa giữ y nguyên từng byte.
 - **Sửa ô** (2.2) chỉ đổi đúng cột có giá trị mới; **thêm ô** lấy số thứ tự lớn nhất + 1 (tối đa 99, tối đa 100 ô), ô chữ mới
   lấy ô chữ trống đầu tiên của dòng `LAB`. Ô ra ngoài mép tem chỉ cảnh báo. Mẫu tem có ô Phân vùng thì chỉ sửa chữ và tắt / bật.
+- **Mẫu tem Beeftown** (2.12, `mauBeeftown`): tính một lần sửa / tắt / thêm bình thường như trên (không ghi gì riêng), chạy thử
+  `suaTem` trước khi đưa ra nút — lỗi thành câu lý do, không bao giờ có nút mà bấm gửi mới hỏng.
 
 ## Cách chạy bên trong
 

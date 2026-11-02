@@ -178,7 +178,7 @@ async function thuMotVai(ok: Ok, trinhDuyet: TrinhDuyetPw, kb: KichBan): Promise
     ok(`${kb.ten}: bấm từng thẻ đúng các mục; mở từng mục gập — nội dung tải xong`, hong.length === 0, hong.join(' | '));
 
     if (kb.vai !== null && !kb.chuaCoGoc) await thuTangO(ok, trang, kb);
-    if (kb.vai === 'quan_ly' && !kb.chuaCoGoc) await thuPhimTem(ok, trang);
+    if (kb.vai === 'quan_ly' && !kb.chuaCoGoc) { await thuPhimTem(ok, trang); await thuMauTem(ok, trang); }
     await trang.waitForTimeout(300);
     ok(`${kb.ten}: không lỗi JavaScript, không dòng lỗi nào ở console`, loi.length === 0, loi.slice(0, 5).join(' | '));
   } catch (e) {
@@ -409,6 +409,35 @@ async function thuPhimTem(ok: Ok, trang: TrangPw): Promise<void> {
   const theKhac = await viTri();
   ok('Quản lý: phím mũi tên dời ô tem khi mục Mẫu tem mở; mục gập hay đang ở thẻ Quầy thì không dời',
     chonDuoc && truoc !== null && mo !== truoc && gap === mo && theKhac === mo, JSON.stringify({ chonDuoc, truoc, mo, gap, theKhac }));
+}
+
+/**
+ * 2.12 — Mẫu tem Beeftown: bấm "Xếp tem theo mẫu Beeftown" → sơ đồ đổi theo mẫu, chưa gửi (thay cả ô vừa dời bằng phím mũi tên);
+ * Gửi tem xuống cân → cân giả hai chiều nhận và đọc lại khớp; thẻ đọc lại tem: đã đúng mẫu, không còn nút.
+ */
+async function thuMauTem(ok: Ok, trang: TrangPw): Promise<void> {
+  await trang.click('#thanh-tab button:text-is("Thiết lập cân")');
+  if (!(await dangMo(trang, 'tem'))) await trang.click('#the-tem > summary');
+  await trang.waitForSelector('#nut-mau-beeftown', { state: 'visible', timeout: 15000 });
+  await trang.click('#nut-mau-beeftown');
+  const sauBam = await trang.evaluate(() => ({
+    dem: document.getElementById('tem-dem')?.textContent ?? '',
+    chu: [...document.querySelectorAll('#giay .el')].map(x => (x.textContent ?? '').trim()).filter(Boolean),
+    guiDuoc: !(document.getElementById('nut-gui-tem') as HTMLButtonElement).disabled,
+    baoDaXep: /đã xếp theo mẫu/.test(document.getElementById('tem-mau')?.textContent ?? ''),
+  }), null);
+  const canCo = ['BEEFTOWN', 'Ngày đóng gói', 'Hạn sử dụng', 'Thành tiền (đ)', 'Khối lượng (kg)', 'Đơn giá (đ/kg)', 'CÔNG TY TNHH SLK GROUP', 'Tầng 3, 63 Hồ Tùng Mậu'];
+  ok('Quản lý: bấm "Xếp tem theo mẫu Beeftown" — sơ đồ có BEEFTOWN, nhãn tiếng Việt, tên công ty; chưa gửi, nút Gửi bật',
+    canCo.every(c => sauBam.chu.includes(c)) && /thay đổi chưa gửi/.test(sauBam.dem) && sauBam.guiDuoc && sauBam.baoDaXep, JSON.stringify(sauBam));
+  await trang.click('#nut-gui-tem');
+  let nhan = true;
+  try {
+    await trang.waitForFunction(() => /Cân đã nhận mẫu tem/.test(document.getElementById('bao-chung')?.textContent ?? ''), null, { timeout: 20000 });
+    await trang.waitForFunction(() => /đúng mẫu tem Beeftown/.test(document.getElementById('tem-mau')?.textContent ?? ''), null, { timeout: 15000 });
+  } catch { nhan = false; }
+  const sauGui = await trang.evaluate(() => ({ bao: (document.getElementById('bao-chung')?.textContent ?? '').slice(0, 200),
+    mau: document.getElementById('tem-mau')?.textContent ?? '', nut: !!document.getElementById('nut-mau-beeftown') }), null);
+  ok('Quản lý: gửi tem theo mẫu — cân giả nhận, đọc lại thấy đúng; mở lại thẻ: tem đã đúng mẫu, không còn nút', nhan && !sauGui.nut, JSON.stringify(sauGui));
 }
 
 if (import.meta.main) {

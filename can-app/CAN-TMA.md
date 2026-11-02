@@ -702,6 +702,16 @@ xuống dòng = `\v`, NFC; giữ cột 22 và bit cao của cột 7; luôn có `
 của hãng từ chối ô có khung thật ra ngoài tem hoặc rộng / cao < 1 — kiểm khi sửa, nhưng không từ chối file khi
 đọc (mẫu gốc của hãng có ô chạm y = −1). Dòng `LAS` không sửa giữ y nguyên byte.
 
+### 5.12 Mẫu tem Beeftown (2.12)
+
+Nút "Xếp tem theo mẫu Beeftown" (`mauBeeftown` trong `tem.ts`) đưa tem 28 về bố cục Khánh duyệt 02/11/2026: mã vạch +
+chữ BEEFTOWN (cỡ 5) trên cùng, tên hàng cỡ 2 rộng hết tem, bảng ba cột (nhãn cỡ 0 trên, số cỡ 1 dưới; thành tiền cỡ 4), đường
+kẻ bằng 40 dấu `-`, tên công ty, địa chỉ quán. Cỡ chữ chỉ dùng 0 / 1 / 2 và bản cao gấp đôi 4 / 5, khung cao đúng dòng chữ
+(18 / 26 / 34 / 52 / 68 chấm) như mẫu gốc 11000 của hãng (§5.5). Nhãn hàng cân ký và hàng đếm cái chung một khung với điều
+kiện in 2 / 3 — như mẫu tiếng Việt gốc 90000 ("số kg" / "Count"). Không dùng Khung viền (loại 4, cân in thế nào [chưa
+biết]); đường kẻ bằng chữ cố định như phiếu gốc của cân (dac-ta, "dashed separator rows"). Chỉ áp cho tem 58 × 40 mm, mẫu
+không có Phân vùng. **Chưa thử trên cân thật.**
+
 ---
 
 ## 6. Mã vạch — `BAR` và chuỗi mẫu `TChar`
