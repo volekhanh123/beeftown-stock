@@ -1,0 +1,49 @@
+# systemd — chạy máy chủ đơn như một dịch vụ: tự bật khi máy khởi động, tự chạy lại sau 3 giây khi hỏng.
+# may-chu.sh chép file này vào /etc/systemd/system/may-chu-don.service. Đừng sửa bản trong /etc: sửa ở repo rồi "cap-nhat".
+#
+# Ba biến cố định đặt bằng /usr/bin/env trên dòng ExecStart, nên file bí mật /etc/beeftown/may-chu-don.env không
+# đè được (EnvironmentFile đè Environment=, không đè dòng lệnh):
+#   DIA_CHI_NGHE=127.0.0.1   chỉ nghe trong máy, ngoài mạng chỉ tới được qua Caddy (HTTPS)
+#   TIN_PROXY=1              IP khách lấy từ X-Forwarded-For của Caddy (giới hạn lượt, khóa sai mật khẩu theo IP)
+#   THU_MUC_DU_LIEU          sổ đơn nằm ngoài mọi thư mục mã (bản mã cũ bị xóa khi dọn, sổ đơn thì không)
+#
+# /opt/beeftown/hien-tai là liên kết tới bản đã qua kiểm thử (may-chu.sh, "cap-nhat"): tự chạy lại giữa lúc cập nhật vẫn
+# chạy bản cũ cho tới khi liên kết được chuyển.
+# KHONG_HTTPS không bao giờ đặt ở đây: cookie đăng nhập quầy phải có cờ Secure.
+
+[Unit]
+Description=Beeftown — máy chủ đơn của Mini App Zalo
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=beeftown
+Group=beeftown
+WorkingDirectory=/opt/beeftown/hien-tai/may-chu-don
+EnvironmentFile=/etc/beeftown/may-chu-don.env
+# Thư mục mã chỉ đọc (ProtectSystem=strict): tắt bộ đệm biên dịch của Bun, khỏi ghi vào thư mục nhà.
+Environment=BUN_RUNTIME_TRANSPILER_CACHE_PATH=0
+ExecStart=/usr/bin/env DIA_CHI_NGHE=127.0.0.1 TIN_PROXY=1 CONG=8787 THU_MUC_DU_LIEU=/var/lib/beeftown-may-chu-don /opt/beeftown/hien-tai/may-chu-don/node_modules/.bin/bun src/main.ts
+Restart=always
+RestartSec=3
+# Đơn đang ghi dở khi tắt: main.ts đóng sổ đơn khi nhận SIGTERM; mỗi lần ghi là một giao dịch nên không nửa vời.
+KillSignal=SIGTERM
+TimeoutStopSec=15
+
+# Khóa bớt quyền: chỉ ghi được thư mục sổ đơn.
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/beeftown-may-chu-don
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
