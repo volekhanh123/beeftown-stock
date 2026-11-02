@@ -80,6 +80,7 @@
   .giay .el.trong { outline: 1px dashed #b9b9b9; outline-offset: -1px; }
   .giay .el.sang { background: rgba(242,169,0,.4); }
   .giay .vach { width: 100%; height: 100%; }
+  .giay .logo-tem { width: 100%; height: 100%; display: block; image-rendering: pixelated; pointer-events: none; }
   .o-tem { border: 1px solid var(--vach); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; background: #fff; }
   .o-tem.tat { background: var(--kem); }
   .o-tem.tat .ten-o { color: #8A7C62; text-decoration: line-through; }
@@ -1281,6 +1282,21 @@
     return d;
   }
 
+  /**
+   * 2.13 — logo Beeftown (danhMuc.logo: mỗi hàng chấm là hex, bit cao bên trái, 1 = đen — đúng thứ gửi xuống cân) thành ảnh để
+   * vẽ ô Hình trên sơ đồ. Vẽ một lần, giữ lại.
+   */
+  let anhLogoDaVe = null;
+  function anhLogo() {
+    const lg = temDL && temDL.danhMuc && temDL.danhMuc.logo;
+    if (!lg) return null;
+    if (anhLogoDaVe) return anhLogoDaVe;
+    const c = document.createElement('canvas'); c.width = lg.rong; c.height = lg.cao;
+    const g = c.getContext('2d'); g.fillStyle = '#111';
+    lg.hang.forEach((h, y) => { for (let x = 0; x < lg.rong; x++) if (parseInt(h.substr((x >> 3) * 2, 2), 16) & (0x80 >> (x & 7))) g.fillRect(x, y, 1, 1); });
+    return (anhLogoDaVe = c.toDataURL('image/png'));
+  }
+
   /** Hàng mẫu để vẽ tem, theo ô "Xem tem với" (cân ký / theo gói, có / không hạn dùng). */
   function hangXem() {
     const hm = temDL.hangMau || { so: 1, ten: 'Hàng mẫu', gia: 845000, theoGoi: false, hsd: null, maCan: '10001' };
@@ -1338,6 +1354,7 @@
       if (xoay) el.style.transform = `rotate(${xoay * 90}deg)`;   // quanh góc (x, y) như cân (transform-origin 0 0)
       let chu = null;
       if (o.loai === '0') el.append(vachMa());
+      else if (o.loai === '6' && anhLogo() && o.chu === temDL.danhMuc.logo.id) { const a = document.createElement('img'); a.className = 'logo-tem'; a.alt = 'Logo Beeftown'; a.draggable = false; a.src = anhLogo(); el.append(a); }
       else if (o.loai === '3') { chu = o.moi ? o.chuMoi : chuO(o.cot); if (!o.moi) el.dataset.cot = o.cot; }
       else if (o.loai === '1') {
         chu = { 0: hm.ten, 1: hm.theoGoi ? '1' : kg.toFixed(3), 4: so(hm.gia), 6: String(hm.so), 10: hm.maCan || '', 15: hsd, 24: hm.theoGoi ? 'cái' : 'kg' }[o.duLieu] ?? null;
@@ -1346,7 +1363,7 @@
         chu = { 0: 'Tên quán', 3: ngay, 4: `${p2(bay.gio)}:${p2(bay.phut)}`, 16: 'đ', 27: so(thanhTien) }[o.chu] ?? null;
         if (o.chu === 27) el.classList.add('dam');
       }
-      if (o.loai !== '0') {
+      if (o.loai !== '0' && !el.querySelector('.logo-tem')) {
         if (!chu) el.classList.add('trong');
         else {
           // Cỡ chữ của cân: rộng một chữ Latin × cao dòng (chấm). Chữ vẽ cao ~82% dòng, rồi kéo ngang cho đúng bề rộng chữ.
@@ -1455,8 +1472,9 @@
       noi.innerHTML = mb.lyDo ? `<p class="phu">Mẫu tem Beeftown: ${e(mb.lyDo)}</p>` : '<p class="phu">Tem đang dùng đúng mẫu tem Beeftown.</p>';
       return;
     }
-    noi.innerHTML = '<div class="bao luu-y"><p><b>Mẫu tem Beeftown:</b> mã vạch và chữ BEEFTOWN trên cùng; tên hàng; Ngày đóng gói · Hạn sử dụng · '
-      + 'Thành tiền, rồi Khối lượng · Đơn giá, thẳng cột; tên công ty và địa chỉ quán dưới cùng.</p>'
+    noi.innerHTML = '<div class="bao luu-y"><p><b>Mẫu tem Beeftown:</b> mã vạch và logo Beeftown trên cùng; tên hàng; Ngày đóng gói · Hạn sử dụng · '
+      + 'Thành tiền (ba số to), rồi Khối lượng · Đơn giá, thẳng cột; tên công ty dưới cùng. Logo gửi kèm tem; cân không cho đọc lại hình — '
+      + 'in thử xem có logo chưa. Cân không in logo: bật lại chữ "BEEFTOWN" ở danh sách ô, bỏ chọn ô Logo Beeftown.</p>'
       + '<p>Bấm nút: sơ đồ đổi theo mẫu nhưng <b>chưa gửi</b> — xem lại rồi bấm <b>Gửi tem xuống cân</b>. Muốn giữ tem cũ: bấm <b>Lưu file nạp USB</b> '
       + 'trước khi bấm nút này. Số PLU và chữ cũ không có trong mẫu được tắt, bật lại được ở danh sách ô. Ngày kiểu 02/11/26: mục Cân &amp; thông số → Kiểu ngày in. '
       + 'Chưa thử trên cân thật — in thử một tem, quét thử mã vạch trước khi bán.</p>'

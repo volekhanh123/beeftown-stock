@@ -33,6 +33,7 @@
  */
 import { createHash } from 'node:crypto';
 import { docFileCan, sangChuoiByte, tuChuoiByte, type FileCan } from '../../web/src/lib/kho/can-tma.ts';
+import { LOGO_TEM } from './logo-tem.ts';
 
 const UTF8 = new TextDecoder('utf-8');
 const docChu = (s: string | undefined) => UTF8.decode(tuChuoiByte(s ?? ''));
@@ -45,6 +46,8 @@ export const O_TOI_DA = 100;
 export const SO_THU_TU_TOI_DA = 99;
 /** Dòng LAB có 32 ô chữ cố định, số 0–31. */
 export const SO_O_CHU = 32;
+/** 2.13 — số hình của logo Beeftown trên cân (ô Hình loại 6, cột 3; phần BMP). Hình 1 là logo của phiếu gốc của cân (dac-ta). */
+export const ID_LOGO = 1;
 /** Máy in của cân: 8 chấm mỗi mm (203 dpi). */
 export const CHAM_MOI_MM = 8;
 /** x, y, rộng, cao lưu 2 byte trên cân. */
@@ -299,6 +302,9 @@ export const O_THEM_DUOC: readonly MauOThem[] = [
     inKhi: 1, font: 0, canh: 5, w: 400, h: 20,
     ghiChu: `Chữ của ô này sửa ở thẻ Thiết lập cân → Cân & thông số, phần 6 (Ghi chú cân ${i + 1}) — chưa thử trên cân thật.` })),
   { khoa: 'ma-vach', ten: 'Mã vạch', flag1: 0, flag2: 0, flag3: 0, inKhi: 1, font: 0, canh: 5, w: 257, h: 74 },
+  // 2.13: hình số ID_LOGO — tem có ô này thì chương trình gửi kèm logo (khoiLogo / kemLogo). Khung đúng cỡ logo.
+  { khoa: 'logo', ten: 'Logo Beeftown', flag1: 6, flag2: 1, flag3: 0, inKhi: 1, font: 0, canh: 5, w: LOGO_TEM.rong, h: LOGO_TEM.cao,
+    ghiChu: 'Chương trình gửi kèm logo mỗi lần gửi tem; cân không cho đọc lại hình — in thử một tem xem có logo chưa (chưa thử trên cân thật).' },
 ];
 
 // -----------------------------------------------------------------------------
@@ -405,7 +411,7 @@ export function tenO(o: OTem, cot: string[]): string {
   }
   if (o.loai === '4') return `Khung viền (dày ${o.chu} chấm)`;
   if (o.loai === '5') return 'Phân vùng';
-  if (o.loai === '6') return `Hình số ${o.chu}`;
+  if (o.loai === '6') return o.chu === ID_LOGO ? 'Logo Beeftown' : `Hình số ${o.chu}`;
   if (o.loai === '7') return 'In riêng của hãng';
   return `Ô loại ${o.loai}`;
 }
@@ -755,7 +761,7 @@ export function suaTem(du: Uint8Array, daTat: DaTat, thay: ThayDoiTem): KetQuaSu
 }
 
 // -----------------------------------------------------------------------------
-// MẪU TEM BEEFTOWN (2.12)
+// MẪU TEM BEEFTOWN (2.12; bản 2 từ 2.13: logo, bỏ địa chỉ, hai ô ngày cao gấp đôi)
 // -----------------------------------------------------------------------------
 /** Khung một ô của mẫu (chấm), cỡ chữ (CO_CHU), canh (CANH_CHU), khi nào in (DIEU_KIEN_IN). Mã vạch không có cỡ / canh. */
 interface KhungMau { x: number; y: number; w: number; h: number; font?: number; canh?: number; inKhi: number }
@@ -769,18 +775,21 @@ export const MAU_BEEFTOWN_CO = { rong: 58, cao: 40 } as const;
  * dòng chữ của cỡ chữ (CO_CHU): 18 · 26 · 34 · 52 · 68.
  */
 const O_DU_LIEU_BEEFTOWN: readonly { mau: string; la: (o: OTem) => boolean; k: KhungMau }[] = [
-  { mau: 'ma-vach', la: o => o.loai === '0', k: { x: 4, y: 8, w: 257, h: 74, inKhi: 1 } },
+  { mau: 'ma-vach', la: o => o.loai === '0', k: { x: 4, y: 10, w: 257, h: 74, inKhi: 1 } },
+  // 2.13: logo phụ thay chữ BEEFTOWN — canh mép phải 448, giữa theo chiều cao mã vạch.
+  { mau: 'logo', la: o => o.loai === '6' && o.chu === ID_LOGO,
+    k: { x: 448 - LOGO_TEM.rong, y: 10 + (74 - LOGO_TEM.cao) / 2, w: LOGO_TEM.rong, h: LOGO_TEM.cao, canh: 5, inKhi: 1 } },
   { mau: 'ten-hang', la: o => o.loai === '1' && o.chu === 0 && o.duLieu === 0, k: { x: 4, y: 92, w: 456, h: 34, font: 2, canh: 4, inKhi: 1 } },
-  { mau: 'ngay-in', la: o => o.loai === '2' && o.chu === 3, k: { x: 4, y: 156, w: 154, h: 26, font: 1, canh: 4, inKhi: 1 } },
-  { mau: 'hsd', la: o => o.loai === '1' && o.chu === 0 && o.duLieu === 15, k: { x: 162, y: 156, w: 154, h: 26, font: 1, canh: 4, inKhi: 9 } },
-  { mau: 'thanh-tien', la: o => o.loai === '2' && o.chu === 27, k: { x: 320, y: 156, w: 140, h: 52, font: 4, canh: 4, inKhi: 1 } },
-  { mau: 'trong-luong', la: o => o.loai === '1' && o.chu === 0 && o.duLieu === 1, k: { x: 4, y: 208, w: 154, h: 26, font: 1, canh: 4, inKhi: 1 } },
-  { mau: 'don-gia', la: o => o.loai === '1' && o.chu === 0 && o.duLieu === 4, k: { x: 162, y: 208, w: 154, h: 26, font: 1, canh: 4, inKhi: 1 } },
+  // 2.13: hai ô ngày cỡ 4 (cao gấp đôi) — cao bằng thành tiền, ba số thẳng một hàng.
+  { mau: 'ngay-in', la: o => o.loai === '2' && o.chu === 3, k: { x: 4, y: 154, w: 154, h: 52, font: 4, canh: 4, inKhi: 1 } },
+  { mau: 'hsd', la: o => o.loai === '1' && o.chu === 0 && o.duLieu === 15, k: { x: 162, y: 154, w: 154, h: 52, font: 4, canh: 4, inKhi: 9 } },
+  { mau: 'thanh-tien', la: o => o.loai === '2' && o.chu === 27, k: { x: 320, y: 154, w: 140, h: 52, font: 4, canh: 4, inKhi: 1 } },
+  { mau: 'trong-luong', la: o => o.loai === '1' && o.chu === 0 && o.duLieu === 1, k: { x: 4, y: 228, w: 154, h: 26, font: 1, canh: 4, inKhi: 1 } },
+  { mau: 'don-gia', la: o => o.loai === '1' && o.chu === 0 && o.duLieu === 4, k: { x: 162, y: 228, w: 154, h: 26, font: 1, canh: 4, inKhi: 1 } },
 ];
 
-/** Tên công ty và địa chỉ quán in cuối tem — chép từ PHAP_NHAN.ten và DIA_CHI_PHAN.duong (web/src/lib/chu.ts); thu-tem.ts so hai bên. */
+/** Tên công ty in cuối tem — chép từ PHAP_NHAN.ten (web/src/lib/chu.ts); thu-tem.ts so hai bên. Địa chỉ quán bỏ từ 2.13 (Khánh). */
 export const TEN_CONG_TY_TREN_TEM = 'CÔNG TY TNHH SLK GROUP';
-export const DIA_CHI_TREN_TEM = 'Tầng 3, 63 Hồ Tùng Mậu';
 
 /**
  * Ô chữ cố định: ô đang in có đúng chữ đó được dời tới đây; chưa có thì thêm ô chữ mới. "Khối lượng (kg)" / "Số lượng" (và
@@ -788,17 +797,15 @@ export const DIA_CHI_TREN_TEM = 'Tầng 3, 63 Hồ Tùng Mậu';
  * label-format.md, mẫu 90000: "số kg" in khi hàng cân ký, "Count" khi hàng đếm cái, cùng một khung).
  */
 const O_CHU_BEEFTOWN: readonly { chu: string; k: KhungMau }[] = [
-  { chu: 'BEEFTOWN', k: { x: 264, y: 8, w: 184, h: 68, font: 5, canh: 6, inKhi: 1 } },
-  { chu: 'Ngày đóng gói', k: { x: 4, y: 138, w: 154, h: 18, font: 0, canh: 4, inKhi: 1 } },
-  { chu: 'Hạn sử dụng', k: { x: 162, y: 138, w: 154, h: 18, font: 0, canh: 4, inKhi: 9 } },
-  { chu: 'Thành tiền (đ)', k: { x: 320, y: 138, w: 140, h: 18, font: 0, canh: 4, inKhi: 1 } },
-  { chu: 'Khối lượng (kg)', k: { x: 4, y: 190, w: 154, h: 18, font: 0, canh: 4, inKhi: 2 } },
-  { chu: 'Số lượng', k: { x: 4, y: 190, w: 154, h: 18, font: 0, canh: 4, inKhi: 3 } },
-  { chu: 'Đơn giá (đ/kg)', k: { x: 162, y: 190, w: 154, h: 18, font: 0, canh: 4, inKhi: 2 } },
-  { chu: 'Đơn giá', k: { x: 162, y: 190, w: 154, h: 18, font: 0, canh: 4, inKhi: 3 } },
-  { chu: '-'.repeat(CHU_TEM_TOI_DA), k: { x: 4, y: 238, w: 456, h: 18, font: 0, canh: 5, inKhi: 1 } },
-  { chu: TEN_CONG_TY_TREN_TEM, k: { x: 4, y: 256, w: 456, h: 26, font: 1, canh: 5, inKhi: 1 } },
-  { chu: DIA_CHI_TREN_TEM, k: { x: 4, y: 282, w: 456, h: 18, font: 0, canh: 5, inKhi: 1 } },
+  { chu: 'Ngày đóng gói', k: { x: 4, y: 136, w: 154, h: 18, font: 0, canh: 4, inKhi: 1 } },
+  { chu: 'Hạn sử dụng', k: { x: 162, y: 136, w: 154, h: 18, font: 0, canh: 4, inKhi: 9 } },
+  { chu: 'Thành tiền (đ)', k: { x: 320, y: 136, w: 140, h: 18, font: 0, canh: 4, inKhi: 1 } },
+  { chu: 'Khối lượng (kg)', k: { x: 4, y: 210, w: 154, h: 18, font: 0, canh: 4, inKhi: 2 } },
+  { chu: 'Số lượng', k: { x: 4, y: 210, w: 154, h: 18, font: 0, canh: 4, inKhi: 3 } },
+  { chu: 'Đơn giá (đ/kg)', k: { x: 162, y: 210, w: 154, h: 18, font: 0, canh: 4, inKhi: 2 } },
+  { chu: 'Đơn giá', k: { x: 162, y: 210, w: 154, h: 18, font: 0, canh: 4, inKhi: 3 } },
+  { chu: '-'.repeat(CHU_TEM_TOI_DA), k: { x: 4, y: 256, w: 456, h: 18, font: 0, canh: 5, inKhi: 1 } },
+  { chu: TEN_CONG_TY_TREN_TEM, k: { x: 4, y: 274, w: 456, h: 26, font: 1, canh: 5, inKhi: 1 } },
 ];
 
 /** Các ô của mẫu Beeftown (để kiểm thử và tài liệu đọc lại đúng một nơi). */
@@ -815,9 +822,10 @@ export interface MauBeeftown {
 }
 
 /**
- * Mẫu tem Beeftown — Khánh duyệt 02/11/2026, theo mẫu tem thịt siêu thị Khánh gửi: mã vạch và chữ BEEFTOWN trên cùng, tên
- * hàng, bảng ba cột (Ngày đóng gói · Hạn sử dụng · Thành tiền; Khối lượng · Đơn giá) thẳng mép trái, đường kẻ, tên công ty,
- * địa chỉ quán. Trả thay đổi cho mục Mẫu tem đổ vào sơ đồ (chưa gửi): ô dữ liệu và ô chữ đã có thì dời / đổi cỡ, chưa có thì
+ * Mẫu tem Beeftown — Khánh duyệt 02/11/2026, theo mẫu tem thịt siêu thị Khánh gửi: mã vạch và logo phụ trên cùng, tên hàng,
+ * bảng ba cột (Ngày đóng gói · Hạn sử dụng · Thành tiền, ba số cao gấp đôi; Khối lượng · Đơn giá) thẳng mép trái, đường kẻ, tên
+ * công ty. (Bản 2.12: chữ BEEFTOWN thay logo, thêm dòng địa chỉ quán — hai ô đó nay bị tắt khi bấm lại.) Trả thay đổi cho
+ * mục Mẫu tem đổ vào sơ đồ (chưa gửi): ô dữ liệu và ô chữ đã có thì dời / đổi cỡ, chưa có thì
  * thêm, ô khác (số PLU, chữ cũ, ô lạ) thì tắt — nhớ trong tem-da-tat.json, bật lại được. Áp lần hai trên tem đã đúng mẫu:
  * không có gì đổi. Chạy thử suaTem trên chính file này: lỗi (hết số ô, hết ô chữ, dòng LAB thiếu cột) thành lyDo, không bao
  * giờ đưa ra nút mà bấm gửi mới hỏng. Ô đang tắt không dùng lại (sửa ô vừa bật lại phải gửi trước). Chưa thử trên cân thật.
@@ -858,4 +866,85 @@ export function mauBeeftown(du: Uint8Array, daTat: DaTat, file: FileCan = docFil
   try { suaTem(du, daTat, thay); }
   catch (e) { if (e instanceof LoiTem) return { thay: null, lyDo: `Không xếp được tem theo mẫu Beeftown: ${e.message}` }; throw e; }
   return { thay, lyDo: null };
+}
+
+// -----------------------------------------------------------------------------
+// LOGO (2.13) — phần BMP của file cân
+// -----------------------------------------------------------------------------
+/** Một byte → hai chữ '@' + nửa byte, nửa cao trước (cách hãng gửi dữ liệu nhị phân: dac-ta/net-protocol.md mục 1.6). */
+const nuaByte = (b: number) => String.fromCharCode(64 + (b >> 4), 64 + (b & 15));
+
+/**
+ * Dòng BMP của một hình đen trắng: `BMP⇥<số>⇥<dữ liệu>⇥`. Dữ liệu = đầu 96 byte (số hình 4 byte, rộng 2 byte, cao 2 byte —
+ * byte thấp trước — rồi 88 byte 0) + các hàng chấm (ceil(rộng / 8) byte mỗi hàng, bit cao bên trái, 1 = đen), mỗi byte viết
+ * thành hai chữ '@'…'O' (dac-ta/label-format.md mục 5; phần mềm hãng WizardPicForm.cs). Bit thừa cuối hàng ghi 0 (trắng).
+ */
+export function dongBmp(id: number, anh: { rong: number; cao: number; hang: readonly string[] }): string {
+  if (!Number.isInteger(id) || id < 1 || id > 255) throw new LoiTem('Số hình phải từ 1 đến 255.');
+  const moiHang = Math.ceil(anh.rong / 8);
+  if (!Number.isInteger(anh.rong) || !Number.isInteger(anh.cao) || anh.rong < 1 || anh.cao < 1 || anh.rong > 432 || anh.cao > 432
+    || anh.hang.length !== anh.cao || anh.hang.some(h => !new RegExp(`^[0-9a-f]{${moiHang * 2}}$`).test(h))) {
+    throw new LoiTem('Hình không đúng cỡ (tối đa 432 × 432 chấm, mỗi hàng đủ số byte).');
+  }
+  const dau = new Uint8Array(96);
+  const v = new DataView(dau.buffer);
+  v.setUint32(0, id, true); v.setUint16(4, anh.rong, true); v.setUint16(6, anh.cao, true);
+  const mat = anh.rong % 8 ? (0xFF << (8 - (anh.rong % 8))) & 0xFF : 0xFF;   // giữ bit trong hình của byte cuối hàng
+  let ra = Array.from(dau, nuaByte).join('');
+  for (const h of anh.hang) {
+    for (let i = 0; i < moiHang; i++) ra += nuaByte(parseInt(h.slice(i * 2, i * 2 + 2), 16) & (i === moiHang - 1 ? mat : 0xFF));
+  }
+  return `BMP\t${id}\t${ra}\t`;
+}
+
+/** Dòng BMP của logo Beeftown (LOGO_TEM, số ID_LOGO). */
+export const DONG_LOGO = dongBmp(ID_LOGO, LOGO_TEM);
+/** Logo gửi cho trang để vẽ ô Hình số ID_LOGO trên sơ đồ tem (mỗi hàng là hex, bit cao bên trái, 1 = đen). */
+export const LOGO_TREN_SO_DO = { id: ID_LOGO, rong: LOGO_TEM.rong, cao: LOGO_TEM.cao, hang: LOGO_TEM.hang } as const;
+/** Câu kèm khi gửi hay lưu file nạp USB của tem có logo: đúng sự thật — có kèm logo, nhưng không kiểm được. */
+export const CAU_LOGO = 'Tem có kèm logo Beeftown. Cân không cho đọc lại hình nên chương trình không kiểm được logo — '
+  + 'in thử một tem xem có logo chưa (chưa thử trên cân thật).';
+
+/** Mẫu tem cân đang dùng có ô Hình số ID_LOGO đang in. */
+export function temDungLogo(file: FileCan): boolean {
+  return !!docTem(file).dangDung?.o.some(o => o.loai === '6' && o.chu === ID_LOGO);
+}
+
+/**
+ * Khối gửi logo qua cổng hai chiều, đặt TRƯỚC khối mẫu tem (cân có hình rồi mới nhận ô trỏ tới nó): rỗng khi tem không có ô
+ * logo. Gửi lại mỗi lần gửi tem — cân không cho đọc lại hình, nên không biết lần trước cân đã có chưa; ghi đè cùng một hình
+ * số ID_LOGO thì vô hại. Chưa thử trên cân thật.
+ */
+export function khoiLogo(file: FileCan): string[] {
+  return temDungLogo(file) ? ['DWL\tBMP\t', DONG_LOGO, 'END\tBMP\t'] : [];
+}
+
+/**
+ * File có kèm logo khi tem dùng logo: thêm phần BMP (trước phần LAB, như khối gửi) hoặc thay dòng hình số ID_LOGO đã có — để
+ * file nạp USB và đường lui 33571 (gửi cả file) cũng mang logo. Dòng khác giữ nguyên từng byte; tem không có ô logo thì trả
+ * nguyên file. Phần BMP hỏng (thiếu END) → LoiTem, không đoán.
+ */
+export function kemLogo(du: Uint8Array): Uint8Array<ArrayBuffer> {
+  const file = docFileCan(du);
+  const banSao = () => { const r = new Uint8Array(du.length); r.set(du); return r; };
+  if (!temDungLogo(file)) return banSao();
+  const L = file.dong.slice();
+  const dau = L.indexOf('DWL\tBMP\t');
+  if (dau >= 0) {
+    const cuoi = L.indexOf('END\tBMP\t', dau);
+    if (cuoi < 0) throw new LoiTem('Phần hình (BMP) trong file của cân thiếu dòng kết thúc — sửa bằng USB hoặc phần mềm của hãng.');
+    const i = L.findIndex((d, j) => j > dau && j < cuoi && Number(d.split('\t')[1]) === ID_LOGO);
+    if (i >= 0) {
+      if (L[i] === DONG_LOGO) return banSao();
+      L[i] = DONG_LOGO;
+    } else L.splice(cuoi, 0, DONG_LOGO);
+  } else {
+    const lab = L.indexOf('DWL\tLAB\t');
+    L.splice(lab >= 0 ? lab : L.length, 0, 'DWL\tBMP\t', DONG_LOGO, 'END\tBMP\t', '');
+  }
+  const than = tuChuoiByte(L.join(file.xuongDong));
+  if (!file.coBom) return than;
+  const ra = new Uint8Array(than.length + 3);
+  ra.set([0xEF, 0xBB, 0xBF]); ra.set(than, 3);
+  return ra;
 }
