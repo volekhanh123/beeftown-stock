@@ -11,8 +11,8 @@
 import * as net from 'node:net';
 import { docFileCan, sangChuoiByte, tuChuoiByte, type FileCan } from '../../web/src/lib/kho/can-tma.ts';
 import {
-  CHU_CHUNG, CHU_MANG, LoiThongSo, NHAN_PHIM, NHOM_CHU_CHUNG, NHOM_THONG_SO, THONG_SO, docChuChung, docPhim, docThongSo, fileNho,
-  kiemChuChung, kiemThongSo, suaChuChung, suaPhim, suaThongSo,
+  CHU_CHUNG, CHU_MANG, DON_VI_SAU_SO, LoiThongSo, NHAN_PHIM, NHOM_CHU_CHUNG, NHOM_THONG_SO, THONG_SO, docChuChung, docPhim, docThongSo,
+  donViDangIn, fileNho, kiemChuChung, kiemThongSo, suaChuChung, suaPhim, suaThongSo,
 } from '../src/thong-so.ts';
 import { O_THEM_DUOC, TRUONG_BAN } from '../src/tem.ts';
 
@@ -151,6 +151,24 @@ export async function thuThongSo(ok: Ok): Promise<void> {
   const fc = docFileCan(goc);
   const ts = docThongSo(fc);
   ok('docThongSo: đủ 500 thông số, 104 = 0, 202 = 3, 166 = 33581', ts.size === 500 && ts.get(104) === '0' && ts.get(202) === '3' && ts.get(166) === '33581');
+
+  // 2.16 — donViDangIn: thông số in đơn vị sau số (185–187) nào cân đang bật
+  ok('2.16 DON_VI_SAU_SO = 185, 186, 187 — đúng ba mục "In … sau …" sửa được của nhóm In tem',
+    DON_VI_SAU_SO.join() === '185,186,187' && DON_VI_SAU_SO.every(id => /^In .*sau/.test(THONG_SO.find(m => m.id === id)?.ten ?? '')));
+  const bat3 = suaThongSo(goc, { 185: '1', 186: '1', 187: '1' }).du;
+  const chiGia = suaThongSo(goc, { 186: '1' }).du;
+  const thieuDonVi = taoFile(dongFileCan().filter(d => !/^TMS\t18[567]\t/.test(d)));
+  const chuLa = taoFile(dongFileCan().map(d => d === 'TMS\t185\t0\t' ? 'TMS\t185\t 01 \t' : d === 'TMS\t187\t0\t' ? 'TMS\t187\t00\t' : d));
+  ok('2.16 donViDangIn: cả ba 0 → không có; trình cài đặt hãng (1 / 1 / 1) → 185, 186, 187; chỉ 186 → 186; file không có dòng → không có '
+    + '(mặc định của hãng là không in); " 01 " → bật, "00" → tắt',
+    donViDangIn(fc).join() === '' && donViDangIn(docFileCan(bat3)).join() === '185,186,187' && donViDangIn(docFileCan(chiGia)).join() === '186'
+    && donViDangIn(docFileCan(thieuDonVi)).join() === '' && donViDangIn(docFileCan(chuLa)).join() === '185',
+    JSON.stringify([donViDangIn(fc), donViDangIn(docFileCan(bat3)), donViDangIn(docFileCan(chiGia)), donViDangIn(docFileCan(thieuDonVi)),
+      donViDangIn(docFileCan(chuLa))]));
+  const tat3 = suaThongSo(bat3, { 185: 0, 186: 0, 187: 0 });
+  ok('2.16 tắt cả ba (gửi số 0 như nút "Tắt đơn vị in sau số"): khối gửi đúng ba dòng, đọc lại hết đơn vị; gửi lần hai không còn gì đổi',
+    JSON.stringify(tat3.khoi) === JSON.stringify(['DWL\tTMS\t', 'TMS\t185\t0\t', 'TMS\t186\t0\t', 'TMS\t187\t0\t', 'END\tTMS\t'])
+    && donViDangIn(docFileCan(tat3.du)).join() === '' && suaThongSo(tat3.du, { 185: 0, 186: 0, 187: 0 }).khoi.length === 0, JSON.stringify(tat3.khoi));
 
   // suaThongSo — đổi 104 và 266
   const s1 = suaThongSo(goc, { 104: '4', 266: '1' });

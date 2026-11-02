@@ -1477,15 +1477,24 @@
    * Chưa gửi gì: người dùng xem sơ đồ rồi bấm Gửi tem xuống cân như mọi lần sửa tem.
    */
   function veMauBeeftown() {
-    const noi = $('tem-mau'), mb = temDL.mauBeeftown;
+    const noi = $('tem-mau'), mb = temDL.mauBeeftown, dv = temDL.donViSauSo || [];
     if (!mb) { noi.innerHTML = ''; return; }
+    if (!mb.thay && mb.lyDo) { noi.innerHTML = `<p class="phu">Mẫu tem Beeftown: ${e(mb.lyDo)}</p>`; return; }
     if (!mb.thay) {
-      noi.innerHTML = mb.lyDo ? `<p class="phu">Mẫu tem Beeftown: ${e(mb.lyDo)}</p>` : '<p class="phu">Tem đang dùng đúng mẫu tem Beeftown.</p>';
+      // 2.16: tem đã đúng mẫu (gửi rồi, hay nạp file mẫu) — không còn gì để gửi ở phần tem. Cân còn in đơn vị sau số: nút tắt riêng.
+      noi.innerHTML = !dv.length ? '<p class="phu">Tem đang dùng đúng mẫu tem Beeftown.</p>'
+        : '<div class="bao luu-y"><p><b>Tem trên cân đã đúng mẫu tem Beeftown</b> — không cần gửi lại tem (nút Gửi tem xuống cân chỉ sáng khi '
+          + `sơ đồ có thay đổi). Cân còn in ${CAU_DON_VI(dv)} liền sau số, trùng với nhãn.</p>`
+          + '<div class="nut"><button type="button" class="chinh" id="nut-tat-don-vi">Tắt đơn vị in sau số</button>'
+          + '<span class="phu">gửi ngay xuống cân rồi đọc lại để kiểm</span></div></div>';
+      if (dv.length) $('nut-tat-don-vi').onclick = tatDonViSauSo;
       return;
     }
     noi.innerHTML = '<div class="bao luu-y"><p><b>Mẫu tem Beeftown:</b> mã vạch và logo Beeftown trên cùng; tên hàng; Khối lượng · Đơn giá · '
-      + 'Thành tiền, rồi Ngày đóng gói · Hạn sử dụng — năm số to, thẳng cột; tên công ty dưới cùng. Nhãn đã ghi đơn vị: để cân thôi in "kg", '
-      + '"VND/kg", "VND" sau số, mục Cân &amp; thông số → In tem → ba mục "In … sau …" chọn Không in. Logo gửi kèm tem; cân không cho đọc lại hình — '
+      + 'Thành tiền, rồi Ngày đóng gói · Hạn sử dụng — năm số to, thẳng cột; tên công ty dưới cùng. '
+      + (dv.length ? `Nhãn đã ghi đơn vị: gửi tem bằng nút Gửi tem xuống cân xong, chương trình tự tắt ${CAU_DON_VI(dv)} cân in liền sau số `
+        + '(nạp USB thì không — tắt ở mục Cân &amp; thông số → In tem). ' : '')
+      + 'Logo gửi kèm tem; cân không cho đọc lại hình — '
       + 'in thử xem có logo chưa. Cân không in logo: bật lại chữ "BEEFTOWN" ở danh sách ô, bỏ chọn ô Logo Beeftown.</p>'
       + '<p>Bấm nút: sơ đồ đổi theo mẫu nhưng <b>chưa gửi</b> — xem lại rồi bấm <b>Gửi tem xuống cân</b>. Muốn giữ tem cũ: bấm <b>Lưu file nạp USB</b> '
       + 'trước khi bấm nút này. Số PLU và chữ cũ không có trong mẫu được tắt, bật lại được ở danh sách ô. Ngày kiểu 02/11/26: mục Cân &amp; thông số → Kiểu ngày in. '
@@ -1493,6 +1502,40 @@
       + '<div class="nut"><button type="button" id="nut-mau-beeftown">Xếp tem theo mẫu Beeftown</button>'
       + `<span class="phu">${mauDaXep && JSON.stringify(temSua) === mauDaXep ? 'Sơ đồ đã xếp theo mẫu — chưa gửi xuống cân.' : 'Thay mọi thay đổi chưa gửi.'}</span></div></div>`;
     $('nut-mau-beeftown').onclick = () => { apThayMau(mb.thay); mauDaXep = JSON.stringify(temSua); fileDaNap = null; veTemHet(); };
+  }
+
+  /** 2.16 — đơn vị cân in liền sau số (thông số 185 "kg", 186 "VND/kg", 187 "VND" — thong-so.ts DON_VI_SAU_SO), thành chữ cho câu báo. */
+  const CHU_DON_VI = { 185: '"kg"', 186: '"VND/kg"', 187: '"VND"' };
+  const CAU_DON_VI = (dv) => dv.map(id => CHU_DON_VI[id] || `thông số ${id}`).join(', ');
+
+  /**
+   * 2.16 — cho cân thôi in đơn vị sau số: gửi các thông số 185–187 đang bật = 0 qua đường gửi thông số có sẵn (đọc lại để kiểm).
+   * Trả câu trả lời của máy chủ; lỗi thì ném (người gọi báo).
+   */
+  const guiTatDonVi = (dv) => goi('/api/thong-so/gui', { thay: Object.fromEntries(dv.map(id => [id, 0])) });
+  /**
+   * Đọc lại đơn vị cân đang in ngay trước khi gửi (temDL có thể cũ: mục Cân &amp; thông số vừa đổi 185–187) rồi tắt các mục còn bật.
+   * Trả { dv, k }: dv rỗng = cân đã không in đơn vị, không gửi gì (k null).
+   */
+  async function tatDonViConBat() {
+    const dv = (await goi('/api/tem')).donViSauSo || [];
+    return { dv, k: dv.length ? await guiTatDonVi(dv) : null };
+  }
+
+  /** 2.16 — nút "Tắt đơn vị in sau số" (tem đã đúng mẫu Beeftown mà cân còn in đơn vị). */
+  async function tatDonViSauSo() {
+    const dv = (temDL && temDL.donViSauSo) || [];
+    if (dangGuiTem || !dv.length) return;
+    dangGuiTem = true; $('nut-tat-don-vi').textContent = 'Đang gửi…'; capNutTem();
+    try {
+      const { dv: conBat, k } = await tatDonViConBat();
+      if (!k) baoChung('xong', '<p><b>Cân đã không in đơn vị sau số</b> (thông số 185, 186, 187 đều là Không in) — không gửi gì.</p>');
+      else baoCaiDat(`lệnh thôi in ${CAU_DON_VI(conBat)} sau số (thông số ${conBat.join(', ')})`, k,
+        'Cân thử một món rồi in một tem: số không còn đơn vị phía sau.',
+        'thẻ Thiết lập cân → Cân &amp; thông số → <b>Lưu file nạp USB</b> (file có sẵn thay đổi vừa gửi) rồi nạp USB.');
+      await taiTrangThai();
+    } catch (err) { baoChung('loi', e(err.message)); }
+    finally { dangGuiTem = false; if ($('nut-tat-don-vi')) $('nut-tat-don-vi').textContent = 'Tắt đơn vị in sau số'; capNutTem(); }
   }
 
   /** Đổ thay đổi của một mẫu (tem.ts apMauTem: tắt / sửa / thêm ô) vào sơ đồ, thay mọi thay đổi chưa gửi. */
@@ -1607,6 +1650,8 @@
   async function guiTem() {
     if (dangGuiTem) return;
     const nut = $('nut-gui-tem');
+    // 2.16: sơ đồ xếp bằng nút mẫu Beeftown (chưa bỏ thay đổi) và cân còn in đơn vị sau số → gửi tem xong thì tắt luôn đơn vị.
+    const dv = mauDaXep && temDL && temDL.donViSauSo ? temDL.donViSauSo : [];
     dangGuiTem = true; nut.textContent = 'Đang gửi…'; capNutTem();
     try {
       const k = await goi('/api/tem/gui', thayDoiTem());
@@ -1614,6 +1659,21 @@
         'bấm <b>Lưu file nạp USB</b> ở mục Mẫu tem (thẻ Thiết lập cân; không cần sửa lại — file đã có tem vừa gửi) rồi nạp USB; nạp USB thì cân nhận chắc chắn.');
       if (k.canhBao && k.canhBao.length) document.querySelector('#bao-chung .bao')?.insertAdjacentHTML('beforeend', `<p>${k.canhBao.map(e).join('<br>')}</p>`);
       $('khung-usb-tem').innerHTML = '';
+      if (dv.length) {
+        // Tem đã gửi xong (câu trên đúng); câu về đơn vị đi theo đúng lần gửi thông số này, khung đổi màu theo kết quả xấu nhất.
+        const khung = document.querySelector('#bao-chung .bao');
+        const them = (loai, html) => { if (!khung) return; khung.insertAdjacentHTML('beforeend', html); if (loai) khung.className = `bao ${loai}`; };
+        try {
+          const { dv: conBat, k: ts } = await tatDonViConBat();
+          if (!ts) them(null, '<p>Cân đã không in đơn vị sau số (thông số 185, 186, 187 đều là Không in).</p>');
+          else if (ts.xacNhan) them(null, `<p><b>Cân đã thôi in ${CAU_DON_VI(conBat)} sau số</b> (thông số ${conBat.join(', ')}, đọc lại thấy đúng).</p>`);
+          else them(khung && khung.classList.contains('loi') ? null : 'luu-y', `<p><b>Đã gửi lệnh thôi in ${CAU_DON_VI(conBat)} sau số, nhưng chưa kiểm được `
+            + `cân đã nhận chưa:</b> ${e(ts.cauXacNhan || '')} In thử một tem xem số còn đơn vị không.</p>`);
+        } catch (err) {
+          them('loi', `<p><b>Chưa tắt được ${CAU_DON_VI(dv)} in sau số:</b> ${e(err.message)} Tem đã gửi như câu trên — bấm <b>Tắt đơn vị in sau số</b> `
+            + 'ở mục Mẫu tem để thử lại.</p>');
+        }
+      }
       await taiTrangThai();
     } catch (err) { baoChung('loi', e(err.message)); }
     finally { dangGuiTem = false; nut.textContent = 'Gửi tem xuống cân'; capNutTem(); }

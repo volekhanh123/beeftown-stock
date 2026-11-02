@@ -945,7 +945,7 @@ Danh mục của hãng ghi phạm vi không phải lúc nào cũng đúng (ví d
 | 166–169 | Cổng 33581 / 33582 / 33583 / 33584 | | 33581… | **không bao giờ sửa** |
 | 150–165, 430–441 | Địa chỉ IP, cổng mạng, mặt nạ (chính / phụ) | 153 = 0 là tự cấp | | **không sửa** (như 43) — sai là cân rời mạng tới khi sửa tay |
 | 180 / 181 | Dấu thập phân / dấu nghìn khi in | | 0 / 0 | giữ 0: dấu chấm đọc như dấu nghìn kiểu Việt |
-| 185 / 186 / 187 | In đơn vị sau khối lượng / đơn giá / thành tiền ("0.14kg", "600.000VND/kg", "84.000VND" — đã thấy trên tem in thử 02/11/2026) | 0 không, 1 in | 1 / 1 / 1 (trình cài đặt hãng cho VN) | Mẫu tem Beeftown bản 3: để 0 — nhãn đã ghi đơn vị. Sửa được từ 2.15 (`thong-so.ts`) |
+| 185 / 186 / 187 | In đơn vị sau khối lượng / đơn giá / thành tiền ("0.14kg", "600.000VND/kg", "84.000VND" — đã thấy trên tem in thử 02/11/2026) | 0 không, 1 in | 1 / 1 / 1 (trình cài đặt hãng cho VN) | Mẫu tem Beeftown bản 3: để 0 — nhãn đã ghi đơn vị. Sửa được từ 2.15 (`thong-so.ts`); 2.16: gửi tem theo mẫu Beeftown thì tự gửi 0, tem đã đúng mẫu mà còn bật thì mục Mẫu tem có nút "Tắt đơn vị in sau số" (`donViDangIn`) |
 | 188 / 189 | Số chữ số đơn giá / thành tiền trên màn | 0 tự, 1–7 | 6 / 7 | → đơn giá tối đa 999.999 đ/kg; 188 = 7 có dùng được không [chưa biết] |
 | 196 / 208 / 209 | Số lẻ số cái / trọng lượng / tiền trong mã vạch | 0–5 | 3 / 3 / 2 | chỉ xem (§6) |
 | 201 | Số lẻ trọng lượng | | 3 | |
