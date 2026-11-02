@@ -52,7 +52,7 @@ const PLU = [plu(1, '10001', '845,0', 'Lõi vai bò Mỹ'), plu(2, '10002', '876
   plu(8, '10072', '1350,0', 'Steak Ribeye Angus')];
 // Thông số: các mục THONG_SO của thong-so.ts, giá trị như cân của quán (chỉ số, không có tên / WiFi).
 const TMS = Object.entries({ 0: 28, 1: 28, 2: 20, 5: 0, 21: 1, 22: 9, 42: 1, 43: 1, 104: 0, 105: 0, 106: 0, 131: 1, 166: 33581,
-  188: 6, 202: 3, 203: 3, 208: 3, 209: 2, 250: 1, 265: 0, 266: 0, 283: 1 }).map(([id, v]) => `TMS\t${id}\t${v}\t`);
+  185: 1, 186: 1, 187: 1, 188: 6, 202: 3, 203: 3, 208: 3, 209: 2, 250: 1, 265: 0, 266: 0, 283: 1 }).map(([id, v]) => `TMS\t${id}\t${v}\t`);
 // Phím tắt: tầng 0 phím 1–73 (64–73 là phím chức năng), tầng 1 và 2 phím 1–63.
 const SCP = [
   ...Array.from({ length: 73 }, (_, i) => `SCP\t0\t${i + 1}\t${[1, 2, 3, 5, 6, 7, 8][i] ?? 0}\t`),

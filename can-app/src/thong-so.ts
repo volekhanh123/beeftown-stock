@@ -438,6 +438,18 @@ export function docThongSo(f: FileCan): Map<number, string> {
 
 const chuanGiaTri = (v: string) => (/^\s*-?\d{1,10}\s*$/.test(v) ? String(parseInt(v, 10)) : v);
 
+/** 2.16 — ba thông số in đơn vị liền sau số trên tem: 185 khối lượng ("kg"), 186 đơn giá ("VND/kg"), 187 thành tiền ("VND"). */
+export const DON_VI_SAU_SO = [185, 186, 187] as const;
+
+/**
+ * 2.16 — thông số nào trong DON_VI_SAU_SO cân đang bật (khác 0): mẫu tem Beeftown ghi đơn vị ở nhãn nên để cả ba bằng 0.
+ * File không có dòng của thông số đó thì theo mặc định của hãng (0, không in — dac-ta/spec-wizard.md).
+ */
+export function donViDangIn(f: FileCan): number[] {
+  const gt = docThongSo(f);
+  return DON_VI_SAU_SO.filter(id => { const v = (gt.get(id) ?? '').trim(); return v !== '' && chuanGiaTri(v) !== '0'; });
+}
+
 /**
  * Sửa thông số trong file gốc.
  *   - `thay`: số thông số → giá trị mới. Kiểm TẤT CẢ trước khi sửa (một giá trị sai → LoiThongSo, không sửa gì).

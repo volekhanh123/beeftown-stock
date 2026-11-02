@@ -200,6 +200,26 @@ Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn 
 
 Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
 
+## Bản 2.16 — gửi tem theo mẫu Beeftown thì tự tắt đơn vị sau số
+
+Khánh in thử 02/11/2026 sau bản 2.15: bố cục bản 3 đã lên cân (nạp file mẫu bản 3), nhưng số vẫn in "0.55kg", "600.000VND/kg",
+"330.000VND" — chưa đổi ba thông số 185 / 186 / 187 ở mục Cân & thông số (bước riêng, dễ quên). Bấm "Xếp tem theo mẫu Beeftown" thì
+không có gì đổi (tem đã đúng mẫu) nên nút **Gửi tem xuống cân** tắt — trông như "gửi không được".
+
+- **Gửi tem theo mẫu Beeftown tự tắt đơn vị:** sơ đồ xếp bằng nút "Xếp tem theo mẫu Beeftown" mà cân còn in đơn vị (`donViDangIn`,
+  `thong-so.ts`) → gửi tem xong, trang gửi luôn các thông số đang bật = 0 qua đường gửi thông số có sẵn (đọc lại để kiểm). Câu báo nói
+  riêng từng phần: tem đã nhận; "Cân đã thôi in "kg", "VND/kg", "VND" sau số" hay "Chưa tắt được …" (khung đỏ, kèm lỗi, chỉ nút thử lại).
+- **Tem đã đúng mẫu mà cân còn in đơn vị:** khung mẫu Beeftown nói không cần gửi lại tem (nút Gửi chỉ sáng khi sơ đồ có thay đổi) và có
+  nút **Tắt đơn vị in sau số** — gửi ngay, đọc lại để kiểm.
+- Nạp file mẫu không tự tắt đơn vị (mẫu khác có thể muốn in đơn vị); nạp file mẫu Beeftown xong thì khung trên hiện nút tắt.
+
+**Thử ở quán (2.16)** — sau khi bấm **Cập nhật**, đăng nhập quản lý hoặc chủ:
+1. Thẻ **Thiết lập cân** → **Mẫu tem**: khung mẫu Beeftown nói "Tem trên cân đã đúng mẫu tem Beeftown — không cần gửi lại tem" và cân
+   còn in "kg", "VND/kg", "VND" → bấm **Tắt đơn vị in sau số**.
+2. Chờ câu "Cân đã nhận lệnh thôi in …" (khung vàng "chưa kiểm được" thì vẫn in thử ở bước 3).
+3. Cân thử một món, in một tem: "0.55", "600.000", "330.000" — không còn "kg", "VND". Còn đơn vị: tắt bật lại cân rồi in lại; vẫn còn
+   thì chụp khung báo ở bước 2 gửi Claude.
+
 ## Bản 2.15 — tem không lặp đơn vị, số to hơn (mẫu tem Beeftown bản 3)
 
 Khánh in thử tem bản 2 ở quán (02/11/2026): logo in rõ, nhưng số in kèm đơn vị trùng với nhãn — "0.14kg" dưới "Khối lượng (kg)",

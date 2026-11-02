@@ -94,7 +94,8 @@ import {
   tuyChonTuThongSo, type DongBanCan, type KetQuaNhatKy, type SuKienCan, type TomTatNhatKy,
 } from './bao-cao-can.ts';
 import {
-  CHU_CHUNG, CHU_MANG, LoiThongSo, NHAN_PHIM, NHOM_CHU_CHUNG, NHOM_THONG_SO, PHIM_CHU_TOI_DA, THONG_SO, docChuChung, docPhim, docThongSo, fileNho,
+  CHU_CHUNG, CHU_MANG, LoiThongSo, NHAN_PHIM, NHOM_CHU_CHUNG, NHOM_THONG_SO, PHIM_CHU_TOI_DA, THONG_SO, docChuChung, docPhim, docThongSo,
+  donViDangIn, fileNho,
   suaChuChung as suaChuChungTrongFile, suaPhim as suaPhimTrongFile, suaThongSo as suaThongSoTrongFile,
   type MucChuChung, type MucThongSo, type PhimXem,
 } from './thong-so.ts';
@@ -2663,7 +2664,7 @@ export class UngDung {
   /**
    * Mẫu tem cân đang dùng, một hàng trên cân để vẽ tem mẫu, và (2.2) danh mục để sửa tem (ô thêm được, cỡ chữ,
    * điều kiện in, canh, xoay), các ô nên đổi sang "chỉ in khi có HSD" (goiYHsd), kiểu ngày in (Spec104), (2.12) thay đổi để
-   * xếp tem theo mẫu Beeftown (mauBeeftown — trang đổ vào sơ đồ, người dùng xem rồi mới gửi).
+   * xếp tem theo mẫu Beeftown (mauBeeftown — trang đổ vào sơ đồ, người dùng xem rồi mới gửi), (2.16) đơn vị cân đang in sau số.
    */
   tem(): {
     tem: TemXem | null;
@@ -2672,6 +2673,8 @@ export class UngDung {
       logo: typeof LOGO_TREN_SO_DO };
     goiYHsd: string[];
     mauBeeftown: MauBeeftown;
+    /** 2.16 — thông số in đơn vị sau số (185–187) cân đang bật: mục Mẫu tem tự tắt khi gửi tem theo mẫu Beeftown, hay có nút tắt riêng. */
+    donViSauSo: number[];
     kieuNgay: number;
     /** Dấu mẫu tem (dauTem) — trang gửi lại kèm thay đổi; mẫu tem đã đổi từ lúc mở thẻ thì không áp thay đổi cũ. */
     dau: string;
@@ -2687,6 +2690,7 @@ export class UngDung {
       danhMuc: { oThem: O_THEM_DUOC, coChu: CO_CHU, dieuKienIn: DIEU_KIEN_IN, canhChu: CANH_CHU, xoay: XOAY, logo: LOGO_TREN_SO_DO },
       goiYHsd: goiYHsd(goc, daTat),
       mauBeeftown: mauBeeftown(du, daTat, goc),
+      donViSauSo: donViDangIn(goc),
       kieuNgay: Number.isInteger(k) ? k : 0,
       dau: dauTem(goc, daTat),
     };

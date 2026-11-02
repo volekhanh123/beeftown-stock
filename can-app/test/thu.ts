@@ -2573,8 +2573,10 @@ console.log('6h · 2.7: so khối vừa gửi với bản đọc lại, bỏ dò
     ok('Trang: nút "Gỡ khỏi cân qua WiFi (ghi đè)" có hỏi lại (2.10: "qua dây COMx" khi dùng dây); nhãn "PLU trống" ở Tất cả hàng',
       gd.includes('Gỡ khỏi cân ${quaDuongDung()} (ghi đè)') && /const quaDuongDung = \(\) => laDay\(\) \? 'qua dây ' \+ trangThai\.cauHinh\.com : 'qua WiFi';/.test(gd)
       && /async function goQuaWifi[\s\S]{0,300}if \(!confirm\(/.test(gd) && gd.includes("trong: ['PLU trống'"));
-    ok('Trang: thông số / chữ / phím / tem chỉ nói "Cân đã nhận" khi chương trình đọc lại khớp (k.xacNhan); không còn câu "qua cổng 33571" cũ',
-      /if \(k\.xacNhan\) \{\s*baoChung\('xong', `<p><b>Cân đã nhận/.test(gd) && (gd.match(/baoCaiDat\(/g) ?? []).length === 5
+    ok('Trang: thông số / chữ / phím / tem / (2.16) tắt đơn vị sau số chỉ nói "Cân đã nhận" / "Cân đã thôi in" khi chương trình đọc lại khớp '
+      + '(xacNhan); không còn câu "qua cổng 33571" cũ',
+      /if \(k\.xacNhan\) \{\s*baoChung\('xong', `<p><b>Cân đã nhận/.test(gd) && (gd.match(/baoCaiDat\(/g) ?? []).length === 6
+      && (gd.match(/Cân đã thôi in/g) ?? []).length === 1 && /if \(ts\.xacNhan\) them\(null, `<p><b>Cân đã thôi in/.test(gd)
       && !/qua cổng 33571\. Chưa thử trên cân thật: cân không trả lời/.test(gd));
     ok('Máy chủ: /api/can/go-con-lai (kèm dấu kế hoạch), /api/can/chan-doan', mc.includes("case '/api/can/go-con-lai'")
       && /goHangConLai\(b\.giuHangNgoaiKho === true, typeof b\.dauVan === 'string' \? b\.dauVan : undefined\)/.test(mc) && mc.includes("case '/api/can/chan-doan'"));
@@ -3036,9 +3038,9 @@ console.log('6i · 2.8: giữ kết nối hai chiều mở, nhịp, nghe cân b�
     ok('Máy chủ: /api/can và /api/trang-thai trả trạng thái nền; /api/cau-hinh chỉ nhận true / false cho ba công tắc',
       mc.includes("nen: ud.trangThaiNen()") && /case '\/api\/can': return json\(\{[^\n]*nen: ud\.trangThaiNen\(\)/.test(mc)
       && mc.includes("giuKetNoi: typeof b.giuKetNoi === 'boolean' ? b.giuKetNoi : undefined") && mc.includes("ngheUdp: typeof b.ngheUdp === 'boolean' ? b.ngheUdp : undefined"));
-    ok('main.ts: nhịp mỗi NHIP_CAN_MS (dừng khi đang cập nhật), bật UDP theo cài đặt lúc mở; phiên bản 2.15.0',
+    ok('main.ts: nhịp mỗi NHIP_CAN_MS (dừng khi đang cập nhật), bật UDP theo cài đặt lúc mở; phiên bản 2.16.0',
       /setInterval\(\(\) => \{ if \(!dangCapNhat\(\)\) void ud\.nhipCan\(\); \}, NHIP_CAN_MS\)/.test(mn) && mn.includes('void ud.capNhatUdp();')
-      && mn.includes("const PHIEN_BAN = '2.15.0';"));
+      && mn.includes("const PHIEN_BAN = '2.16.0';"));
     ok('Cập nhật: đổi file xong thì đóng kết nối đang giữ trước khi bản mới mở (cân có thể chỉ nhận một kết nối)',
       /this\.dangKhoiDongLai = true;[\s\S]{0,200}this\.dongNen\(\);/.test(nv));
     ok('Hướng dẫn: giữ kết nối, tự đọc nhật ký khi cân báo, tự chỉnh giờ, nghe UDP và hộp hỏi tường lửa',
@@ -3100,7 +3102,7 @@ if (!thuMucTam) {
   process.exit(1);
 }
 ok('Trạng thái: chưa có file gốc, cân mặc định 192.168.1.22', tt.ok && tt.goc === null && tt.cauHinh.ipCan === '192.168.1.22', JSON.stringify(tt));
-ok('Phiên bản 2.15.0', (tt as unknown as { phienBan: string }).phienBan === '2.15.0');
+ok('Phiên bản 2.16.0', (tt as unknown as { phienBan: string }).phienBan === '2.16.0');
 {
   // 2.8: chương trình thật có nhịp giữ kết nối; cân 192.168.1.22 không có ở đây → trạng thái nền có, chưa nối được, không lỗi chết.
   const n = (tt as unknown as { nen?: { giu?: { bat?: boolean; dangMo?: boolean }; udp?: { bat?: boolean } } }).nen;
@@ -3115,7 +3117,7 @@ ok('Phiên bản 2.15.0', (tt as unknown as { phienBan: string }).phienBan === '
   const cnApi = await (await api('/api/cap-nhat')).json() as { ok: boolean; loi?: string };
   const ttCn = (tt as unknown as { capNhat?: { coTheCapNhat: boolean; vuaCapNhatTu: string | null } }).capNhat;
   ok('2.5: dang-chay.json có phiên bản; chạy bằng bun → không cập nhật được, không hỏi mạng; /api/cap-nhat từ chối',
-    dangChay.phienBan === '2.15.0' && bm.ok && !bm.coTheCapNhat && /Chỉ cập nhật được bản BeeftownCan\.exe/.test(bm.cau)
+    dangChay.phienBan === '2.16.0' && bm.ok && !bm.coTheCapNhat && /Chỉ cập nhật được bản BeeftownCan\.exe/.test(bm.cau)
     && !cnApi.ok && /Chỉ cập nhật được/.test(cnApi.loi ?? '') && ttCn?.coTheCapNhat === false && ttCn.vuaCapNhatTu === null,
     JSON.stringify([dangChay, bm, cnApi, ttCn]));
 }
