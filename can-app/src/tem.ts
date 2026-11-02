@@ -810,33 +810,34 @@ export const TEN_CONG_TY_TREN_TEM = 'CÔNG TY TNHH SLK GROUP';
 export const MAU_BEEFTOWN_CO = { rong: 58, cao: 40 } as const;
 
 /**
- * Mẫu tem Beeftown — Khánh duyệt 02/11/2026, theo mẫu tem thịt siêu thị Khánh gửi: mã vạch và logo phụ trên cùng, tên hàng,
- * bảng ba cột (Ngày đóng gói · Hạn sử dụng · Thành tiền, ba số cao gấp đôi; Khối lượng · Đơn giá) thẳng mép trái, đường kẻ,
- * tên công ty. Bốn mép cột: x = 4 (mã vạch, tên hàng, cột 1), 162 (cột 2), 320 (cột 3 — thành tiền), mép phải 460; cao mỗi ô
+ * Mẫu tem Beeftown — bản 3, Khánh duyệt 02/11/2026 theo tem in thử ở quán: mã vạch và logo phụ trên cùng, tên hàng, bảng ba
+ * cột thẳng mép trái (Khối lượng · Đơn giá · Thành tiền, rồi Ngày đóng gói · Hạn sử dụng — năm số đều cỡ 4, cao gấp đôi), tên
+ * công ty. Không còn đường kẻ (bản 2) — năm số to cần chỗ. Nhãn đã ghi đơn vị, nên cân để thông số 185–187 = 0 (không in "kg",
+ * "VND/kg", "VND" sau số). Bốn mép cột: x = 4 (mã vạch, tên hàng, cột 1), 162 (cột 2), 320 (cột 3 — thành tiền), mép phải 460; cao mỗi ô
  * bằng đúng dòng chữ của cỡ chữ (CO_CHU). Logo canh mép phải 448, giữa theo chiều cao mã vạch. "Khối lượng (kg)" / "Số lượng"
  * (và "Đơn giá (đ/kg)" / "Đơn giá") chung một chỗ, mỗi lần cân chỉ in một — như mẫu tem tiếng Việt gốc của hãng (dac-ta/
- * label-format.md, mẫu 90000). (Bản 2.12: chữ BEEFTOWN thay logo, thêm dòng địa chỉ quán — hai ô đó bị tắt khi bấm lại.)
+ * label-format.md, mẫu 90000). Tem xếp theo bản cũ (2.12: chữ BEEFTOWN, dòng địa chỉ; 2.13: đường kẻ) bấm lại thì ô thừa bị tắt.
  */
 export const MAU_BEEFTOWN: MauTemFile = {
   loai: LOAI_FILE_MAU, phienBan: PHIEN_BAN_FILE_MAU, ten: 'Mẫu tem Beeftown', ...MAU_BEEFTOWN_CO,
   o: [
-    { loai: 'ma-vach', x: 4, y: 10, w: 257, h: 74, khiNaoIn: 1 },
-    { loai: 'logo', x: 448 - LOGO_TEM.rong, y: 10 + (74 - LOGO_TEM.cao) / 2, w: LOGO_TEM.rong, h: LOGO_TEM.cao, canh: 5, khiNaoIn: 1 },
-    { loai: 'ten-hang', x: 4, y: 92, w: 456, h: 34, coChu: 2, canh: 4, khiNaoIn: 1 },
-    { loai: 'ngay-in', x: 4, y: 154, w: 154, h: 52, coChu: 4, canh: 4, khiNaoIn: 1 },
-    { loai: 'hsd', x: 162, y: 154, w: 154, h: 52, coChu: 4, canh: 4, khiNaoIn: 9 },
-    { loai: 'thanh-tien', x: 320, y: 154, w: 140, h: 52, coChu: 4, canh: 4, khiNaoIn: 1 },
-    { loai: 'trong-luong', x: 4, y: 228, w: 154, h: 26, coChu: 1, canh: 4, khiNaoIn: 1 },
-    { loai: 'don-gia', x: 162, y: 228, w: 154, h: 26, coChu: 1, canh: 4, khiNaoIn: 1 },
-    { loai: 'chu', chu: 'Ngày đóng gói', x: 4, y: 136, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 1 },
-    { loai: 'chu', chu: 'Hạn sử dụng', x: 162, y: 136, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 9 },
-    { loai: 'chu', chu: 'Thành tiền (đ)', x: 320, y: 136, w: 140, h: 18, coChu: 0, canh: 4, khiNaoIn: 1 },
-    { loai: 'chu', chu: 'Khối lượng (kg)', x: 4, y: 210, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 2 },
-    { loai: 'chu', chu: 'Số lượng', x: 4, y: 210, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 3 },
-    { loai: 'chu', chu: 'Đơn giá (đ/kg)', x: 162, y: 210, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 2 },
-    { loai: 'chu', chu: 'Đơn giá', x: 162, y: 210, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 3 },
-    { loai: 'chu', chu: '-'.repeat(CHU_TEM_TOI_DA), x: 4, y: 256, w: 456, h: 18, coChu: 0, canh: 5, khiNaoIn: 1 },
-    { loai: 'chu', chu: TEN_CONG_TY_TREN_TEM, x: 4, y: 274, w: 456, h: 26, coChu: 1, canh: 5, khiNaoIn: 1 },
+    { loai: 'ma-vach', x: 4, y: 6, w: 257, h: 74, khiNaoIn: 1 },
+    { loai: 'logo', x: 448 - LOGO_TEM.rong, y: 6 + (74 - LOGO_TEM.cao) / 2, w: LOGO_TEM.rong, h: LOGO_TEM.cao, canh: 5, khiNaoIn: 1 },
+    { loai: 'ten-hang', x: 4, y: 84, w: 456, h: 34, coChu: 2, canh: 4, khiNaoIn: 1 },
+    // Bản 3 (2.15): khối lượng, đơn giá, thành tiền một hàng, cả ba cỡ 4 — cân thôi in đơn vị sau số (thông số 185–187 = 0).
+    { loai: 'trong-luong', x: 4, y: 140, w: 154, h: 52, coChu: 4, canh: 4, khiNaoIn: 1 },
+    { loai: 'don-gia', x: 162, y: 140, w: 154, h: 52, coChu: 4, canh: 4, khiNaoIn: 1 },
+    { loai: 'thanh-tien', x: 320, y: 140, w: 140, h: 52, coChu: 4, canh: 4, khiNaoIn: 1 },
+    { loai: 'ngay-in', x: 4, y: 216, w: 154, h: 52, coChu: 4, canh: 4, khiNaoIn: 1 },
+    { loai: 'hsd', x: 162, y: 216, w: 154, h: 52, coChu: 4, canh: 4, khiNaoIn: 9 },
+    { loai: 'chu', chu: 'Khối lượng (kg)', x: 4, y: 122, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 2 },
+    { loai: 'chu', chu: 'Số lượng', x: 4, y: 122, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 3 },
+    { loai: 'chu', chu: 'Đơn giá (đ/kg)', x: 162, y: 122, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 2 },
+    { loai: 'chu', chu: 'Đơn giá', x: 162, y: 122, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 3 },
+    { loai: 'chu', chu: 'Thành tiền (đ)', x: 320, y: 122, w: 140, h: 18, coChu: 0, canh: 4, khiNaoIn: 1 },
+    { loai: 'chu', chu: 'Ngày đóng gói', x: 4, y: 198, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 1 },
+    { loai: 'chu', chu: 'Hạn sử dụng', x: 162, y: 198, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 9 },
+    { loai: 'chu', chu: TEN_CONG_TY_TREN_TEM, x: 4, y: 276, w: 456, h: 26, coChu: 1, canh: 5, khiNaoIn: 1 },
   ],
 };
 

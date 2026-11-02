@@ -112,7 +112,13 @@ export async function thuThongSo(ok: Ok): Promise<void> {
   const ids = THONG_SO.map(m => m.id);
   ok('Danh mục thông số: không trùng số', new Set(ids).size === ids.length, ids.join());
   const suaDuoc = THONG_SO.filter(m => !m.chiXem).map(m => m.id).sort((a, b) => a - b);
-  ok('Sửa được đúng 104, 105, 106, 265, 266, 250, 283 và 22 (độ đậm in)', suaDuoc.join() === '22,104,105,106,250,265,266,283', suaDuoc.join());
+  ok('Sửa được đúng 104, 105, 106, 265, 266, 250, 283, 22 (độ đậm in) và 185–187 (in đơn vị sau số, 2.15)',
+    suaDuoc.join() === '22,104,105,106,185,186,187,250,265,266,283', suaDuoc.join());
+  ok('2.15: 185 / 186 / 187 — chọn 0 Không in (mẫu tem Beeftown) / 1 In, ví dụ đúng chữ in ra, nhóm In tem', [185, 186, 187].every(id => {
+    const m = THONG_SO.find(x => x.id === id)!;
+    return m.nhom === 'In tem' && m.kieu === 'chon' && m.luaChon!.map(l => l.gt).join() === '0,1' && /mẫu tem Beeftown/.test(m.luaChon![0].ten);
+  }) && /0\.14kg/.test(THONG_SO.find(x => x.id === 185)!.moTa) && /600\.000VND\/kg/.test(THONG_SO.find(x => x.id === 186)!.moTa)
+    && /84\.000VND/.test(THONG_SO.find(x => x.id === 187)!.moTa));
   const phaiChiXem = [0, 1, 2, 5, 21, 42, 43, 166, 188, 202, 203, 208, 209];
   ok('Chỉ xem: 0, 1, 2, 5, 21, 42, 43, 166, 188, 202, 203, 208, 209', phaiChiXem.every(id => THONG_SO.find(m => m.id === id)?.chiXem === true));
   ok('Mỗi mục có tên, mô tả tiếng Việt và nhóm hợp lệ', THONG_SO.every(m => m.ten && m.moTa.length > 20 && /[ăâđêôơư]/i.test(m.moTa)

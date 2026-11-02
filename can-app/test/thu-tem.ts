@@ -371,7 +371,7 @@ async function thuMauBeeftown(ok: Ok): Promise<void> {
   const { mb, kq } = ap(goc);
   ok('Tem 28 của quán: áp được, không có lý do chặn', mb.thay !== null && mb.lyDo === null && kq !== null && kq.coDoi && kq.canhBao.length === 0, JSON.stringify(mb.lyDo ?? kq?.canhBao));
   const o = oSauKhiAp(kq!.du);
-  ok('Sau khi áp: 17 ô đang in (8 ô dữ liệu gồm logo + 9 ô chữ)', o.length === 17, String(o.length));
+  ok('Sau khi áp: 16 ô đang in (8 ô dữ liệu gồm logo + 8 ô chữ)', o.length === 16, String(o.length));
 
   // Từng ô của mẫu có mặt đúng khung, cỡ chữ, canh, khi nào in.
   const thieu = O_MAU_BEEFTOWN.filter(({ ten, k }) => !o.some(x => (x.chuIn !== null ? `Chữ "${x.chuIn}"` : x.ten) === ten
@@ -386,12 +386,14 @@ async function thuMauBeeftown(ok: Ok): Promise<void> {
   const tat = kq!.daTat['28'].map(x => docO2(x.tho));
   ok('Ô không có trong mẫu được tắt và nhớ (bật lại được): số PLU, chữ "Thành tiền", "Trọng lượng", "HSD", tên quán cũ',
     tat.length === 5 && [1, 4, 5, 28, 29].every(so => tat.some(x => x.subId === so)), tat.map(x => x.subId).join());
-  ok('Ô mới số 30 trở đi (logo + 7 ô chữ), chữ mới vào ô chữ trống (không đè chữ cũ của ô đã tắt)', o.filter(x => x.subId >= 30).length === 8
-    && new Set(o.filter(x => x.loai === '3').map(x => x.chu)).size === 9 && !o.some(x => x.loai === '3' && [1, 3, 12, 16].includes(x.chu) && x.chuIn !== 'Đơn giá'));
+  ok('Ô mới số 30 trở đi (logo + 6 ô chữ), chữ mới vào ô chữ trống (không đè chữ cũ của ô đã tắt)', o.filter(x => x.subId >= 30).length === 7
+    && new Set(o.filter(x => x.loai === '3').map(x => x.chu)).size === 8 && !o.some(x => x.loai === '3' && [1, 3, 12, 16].includes(x.chu) && x.chuIn !== 'Đơn giá'));
   ok('Ô logo: hình số 1, đúng cỡ logo, góc trên phải (mép phải 448), giữa theo chiều cao mã vạch', o.some(x => x.loai === '6' && x.chu === ID_LOGO
-    && x.ten === 'Logo Beeftown' && x.w === LOGO_TEM.rong && x.h === LOGO_TEM.cao && x.x + x.w === 448 && x.y + x.h / 2 === 10 + 74 / 2));
-  ok('Ba số to (ngày đóng gói, hạn sử dụng, thành tiền) cùng cỡ 4, cùng hàng', ['Ngày in', 'Hạn dùng', 'Thành tiền']
-    .every(t => o.some(x => x.ten === t && x.font === 4 && x.y === 154 && x.h === 52)));
+    && x.ten === 'Logo Beeftown' && x.w === LOGO_TEM.rong && x.h === LOGO_TEM.cao && x.x + x.w === 448 && x.y + x.h / 2 === 6 + 74 / 2));
+  ok('Bản 3: khối lượng, đơn giá, thành tiền cỡ 4 cùng một hàng; ngày đóng gói, hạn sử dụng cỡ 4 hàng dưới; không còn đường kẻ',
+    ['Trọng lượng / số lượng', 'Đơn giá', 'Thành tiền'].every(t => o.some(x => x.ten === t && x.font === 4 && x.y === 140 && x.h === 52))
+    && ['Ngày in', 'Hạn dùng'].every(t => o.some(x => x.ten === t && x.font === 4 && x.y === 216 && x.h === 52))
+    && !o.some(x => /^-+$/.test(x.chuIn ?? '')));
 
   // Hình học: trong tem, không chồng nhau (trừ cặp nhãn cân ký / theo gói cùng một chỗ), cao đúng dòng chữ, chữ dài nhất vẫn vừa.
   const R = MAU_BEEFTOWN_CO.rong * 8, C = MAU_BEEFTOWN_CO.cao * 8;
@@ -437,8 +439,8 @@ async function thuMauBeeftown(ok: Ok): Promise<void> {
   const { kq: kqThieu } = ap(file28(bien({ 0: [0, 1, 0, 0, 1, 1, 5, 5, 400, 0, 408, 43] }, [8, 11])));
   const oThieu = oSauKhiAp(kqThieu!.du);
   ok('Tem không có mã vạch, hạn dùng: thêm ô mới đúng chỗ; tên hàng đang xoay 90° về 0°',
-    oThieu.some(x => x.ten === 'Mã vạch' && x.subId >= 30 && x.x === 4 && x.y === 10) && oThieu.some(x => x.ten === 'Hạn dùng' && x.subId >= 30 && x.inKhi === 9)
-    && oThieu.some(x => x.ten === 'Tên hàng' && x.subId === 0 && x.xoay === 0 && x.x === 4) && oThieu.length === 17);
+    oThieu.some(x => x.ten === 'Mã vạch' && x.subId >= 30 && x.x === 4 && x.y === 6) && oThieu.some(x => x.ten === 'Hạn dùng' && x.subId >= 30 && x.inKhi === 9)
+    && oThieu.some(x => x.ten === 'Tên hàng' && x.subId === 0 && x.xoay === 0 && x.x === 4) && oThieu.length === 16);
 
   // Không áp được: lý do rõ, không bao giờ trả thay đổi hỏng.
   const khac40 = mauBeeftown(fileCan([...MAU_1, dongLab('28', 'THU', CHU_28, { rong: 40, cao: 30 }), ...O_28.map(las), 'LAE\t']), {});
