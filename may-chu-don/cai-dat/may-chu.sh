@@ -11,6 +11,10 @@
 # sau khi kiểm thử đạt; hỏng ở bất kỳ bước nào trước đó thì bản đang chạy không bị đụng tới, kể cả khi dịch vụ tự chạy
 # lại giữa chừng. Bản mới không trả lời thì liên kết trỏ về bản cũ.
 #
+# Ranh giới quyền: mọi thứ root đọc, chép hay chạy (kho, các bản, cai-dat/, chính script này) thuộc root. Người dùng
+# beeftown chỉ ghi được node_modules của bản đang dựng (npm ci chạy bằng beeftown, kể cả script cài của thư viện) và
+# thư mục nhà riêng — một thư viện bị chèn mã không sửa được file dịch vụ hay Caddyfile mà root sắp cài.
+#
 # Chạy lại "cai" không mất gì: không đè mật khẩu, không xóa sổ đơn. Sổ đơn ở /var/lib/beeftown-may-chu-don, ngoài
 # mọi thư mục mã.
 set -euo pipefail
@@ -21,6 +25,7 @@ GOC=/opt/beeftown
 KHO="$GOC/kho"
 BAN="$GOC/ban"
 HIEN_TAI="$GOC/hien-tai"
+NHA="$GOC/nha"
 GIU_BAN=3
 DU_LIEU=/var/lib/beeftown-may-chu-don
 THU_MUC_BI_MAT=/etc/beeftown
@@ -35,7 +40,7 @@ loi() { printf '\nLỖI: %s\n' "$*" >&2; exit 1; }
 can_root() { [ "$(id -u)" -eq 0 ] || loi "Chạy bằng quyền root: sudo bash $0 $*"; }
 
 # Chạy một lệnh bằng người dùng beeftown (không phải root) trong thư mục $1.
-la_beeftown() { local o="$1"; shift; runuser -u beeftown -- env -C "$o" HOME="$GOC" "$@"; }
+la_beeftown() { local o="$1"; shift; runuser -u beeftown -- env -C "$o" HOME="$NHA" "$@"; }
 
 doc_bi_mat() { grep -E "^$1=" "$BI_MAT" 2>/dev/null | tail -n 1 | cut -d= -f2- || true; }
 
@@ -45,17 +50,19 @@ ngau_nhien() { tr -dc 'a-z0-9' </dev/urandom | head -c "$1" || true; }
 # Commit mà dịch vụ đang chạy (tên thư mục mà hien-tai trỏ tới); chưa có thì rỗng.
 ban_dang_chay() { basename "$(readlink -f "$HIEN_TAI" 2>/dev/null || echo khong)" | grep -E '^[0-9a-f]{40}$' || true; }
 
-mo_ta_ban() { la_beeftown "$KHO" git log -1 --format='%h · %cd · %s' --date=format:'%d/%m/%Y %H:%M' "$1" 2>/dev/null || echo "${1:0:7}"; }
+mo_ta_ban() { git -C "$KHO" log -1 --format='%h · %cd · %s' --date=format:'%d/%m/%Y %H:%M' "$1" 2>/dev/null || echo "${1:0:7}"; }
 
-# Dựng bản $1 trong thư mục riêng: lấy mã, cài thư viện, chạy kiểm thử (giống CI "Kiểm thử") ngay trên máy này.
-# Hỏng bước nào thì xóa thư mục dở và trả 1 — bản đang chạy không bị đụng tới.
+# Dựng bản $1 trong thư mục riêng: lấy mã (root), cài thư viện và chạy kiểm thử (beeftown, giống CI "Kiểm thử") ngay
+# trên máy này, rồi khóa cả bản về root. Hỏng bước nào thì xóa thư mục dở và trả 1 — bản đang chạy không bị đụng tới.
 dung_ban() {
   local cm="$1" thu_muc="$BAN/$1"
   if [ -f "$thu_muc/.da-kiem-thu" ]; then return 0; fi
   rm -rf "$thu_muc"
-  install -d -o beeftown -g beeftown -m 0755 "$BAN" "$thu_muc"
+  install -d -o root -g root -m 0755 "$BAN" "$thu_muc"
   bao "Lấy mã bản ${cm:0:7} vào thư mục riêng"
-  if ! la_beeftown "$KHO" bash -c "set -o pipefail; git archive '$cm' | tar -x -C '$thu_muc'"; then rm -rf "$thu_muc"; return 1; fi
+  if ! { git -C "$KHO" archive "$cm" | tar -x --no-same-owner -C "$thu_muc"; }; then rm -rf "$thu_muc"; return 1; fi
+  # beeftown chỉ ghi được node_modules; phần còn lại của bản (gồm cai-dat/) thuộc root.
+  install -d -o beeftown -g beeftown -m 0755 "$thu_muc/may-chu-don/node_modules"
   bao "Cài thư viện máy chủ đơn (npm ci)"
   if ! la_beeftown "$thu_muc/may-chu-don" npm ci --no-audit --no-fund --loglevel=error; then rm -rf "$thu_muc"; return 1; fi
   bao "Chạy kiểm thử máy chủ đơn trên máy này (khoảng 30 giây)"
@@ -65,7 +72,8 @@ dung_ban() {
     return 1
   fi
   tail -n 1 "$NHAT_KY_THU"
-  la_beeftown "$thu_muc" touch .da-kiem-thu
+  chown -R root:root "$thu_muc/may-chu-don/node_modules"
+  touch "$thu_muc/.da-kiem-thu"
 }
 
 # Trỏ hien-tai sang bản $1 trong một bước (mv -T thay liên kết, không có lúc nào thiếu liên kết).
@@ -112,8 +120,8 @@ cho_may_chu() {
 don_ban_cu() {
   local dang d
   dang="$(ban_dang_chay)"
-  ls -1dt "$BAN"/*/ 2>/dev/null | tail -n +"$((GIU_BAN + 1))" | while read -r d; do
-    if [ "$(basename "$d")" != "$dang" ]; then rm -rf "$d"; fi
+  ls -1dt "$BAN"/* 2>/dev/null | tail -n +"$((GIU_BAN + 1))" | while read -r d; do
+    if [ "$(basename "$d")" != "$dang" ] && [ -d "$d" ] && [ ! -L "$d" ]; then rm -rf -- "$d"; fi
   done
 }
 
@@ -176,19 +184,20 @@ lenh_cai() {
   cai_caddy
 
   bao "Người dùng beeftown (chạy máy chủ đơn, không đăng nhập được)"
-  id beeftown >/dev/null 2>&1 || useradd --system --home-dir "$GOC" --create-home --shell /usr/sbin/nologin beeftown
-  install -d -o beeftown -g beeftown -m 0755 "$GOC"
+  install -d -o root -g root -m 0755 "$GOC"
+  id beeftown >/dev/null 2>&1 || useradd --system --home-dir "$NHA" --no-create-home --shell /usr/sbin/nologin beeftown
+  install -d -o beeftown -g beeftown -m 0700 "$NHA"
 
   if [ ! -d "$KHO/.git" ]; then
     bao "Tải mã từ GitHub ($NHANH)"
-    la_beeftown "$GOC" git clone --quiet --depth 1 --branch "$NHANH" "$KHO_MA" "$KHO"
+    git clone --quiet --depth 1 --branch "$NHANH" "$KHO_MA" "$KHO"
   fi
   install -d -o beeftown -g beeftown -m 0700 "$DU_LIEU"
 
   # Lần cài đầu: dựng bản của kho. Đã có bản đang chạy (chạy lại "cai"): giữ nguyên bản đó — bản mới đi qua "cap-nhat".
   cm="$(ban_dang_chay)"
   if [ -z "$cm" ]; then
-    cm="$(la_beeftown "$KHO" git rev-parse HEAD)"
+    cm="$(git -C "$KHO" rev-parse HEAD)"
     dung_ban "$cm" || loi "Bản ${cm:0:7} chưa qua kiểm thử trên máy này — chưa bật máy chủ. Nhật ký đủ: $NHAT_KY_THU"
     chuyen_sang "$cm"
   fi
@@ -233,14 +242,14 @@ lenh_cap_nhat() {
   cu="$(ban_dang_chay)"
   { [ -n "$cu" ] && [ -d "$KHO/.git" ]; } || loi "Chưa cài. Chạy trước: sudo bash $0 cai <tên miền>"
   bao "Lấy bản mới của $NHANH"
-  la_beeftown "$KHO" git fetch --quiet --depth 1 origin "$NHANH"
-  moi="$(la_beeftown "$KHO" git rev-parse FETCH_HEAD)"
+  git -C "$KHO" fetch --quiet --depth 1 origin "$NHANH"
+  moi="$(git -C "$KHO" rev-parse FETCH_HEAD)"
   if [ "$cu" = "$moi" ]; then
     echo "Đã là bản mới nhất ($(mo_ta_ban "$cu"))."
     return 0
   fi
   # Kho chỉ để lấy mã; dịch vụ không chạy từ đây, nên đổi kho không đụng tới bản đang chạy.
-  la_beeftown "$KHO" git reset --quiet --hard "$moi"
+  git -C "$KHO" reset --quiet --hard "$moi"
 
   dung_ban "$moi" || loi "Bản mới ${moi:0:7} chưa qua kiểm thử trên máy này. Máy chủ vẫn chạy bản cũ ${cu:0:7}. Nhật ký đủ: $NHAT_KY_THU"
 

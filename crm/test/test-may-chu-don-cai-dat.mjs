@@ -16,6 +16,9 @@
  *   4. Script: cú pháp bash; ba bộ đường dẫn khớp nhau; mỗi bản dựng và kiểm thử trong thư mục riêng, đạt mới
  *      chuyển liên kết hien-tai sang (dịch vụ tự chạy lại giữa chừng vẫn chạy bản cũ), bản mới không trả lời thì về
  *      bản cũ; tường lửa không mở 8787.
+ *   5. Ranh giới quyền (rà soát bảo mật 02/11/2026): mọi thứ root đọc, chép hay chạy — kho, các bản, cai-dat/, chính
+ *      script — thuộc root. beeftown (npm ci, kể cả script cài của thư viện) chỉ ghi được node_modules lúc dựng và
+ *      thư mục nhà; không thì một thư viện bị chèn mã sửa file dịch vụ mà root sắp cài (User=root) và lên root.
  *
  * SePay đổi IP (developer.sepay.vn/vi/dia-chi-ip): sửa IP_SEPAY dưới đây và Caddyfile.mau cùng một PR.
  */
@@ -130,8 +133,9 @@ await nhom('4 · Script: cú pháp, kiểm thử trước khi chạy lại, quay
   ok('dung_ban: mỗi bước hỏng (lấy mã, npm ci, kiểm thử) đều xóa thư mục dở và trả 1',
     (dung.match(/rm -rf "\$thu_muc"; return 1|rm -rf "\$thu_muc"\n\s*return 1/g) ?? []).length === 3);
   ok('dung_ban: đánh dấu "đã kiểm thử" chỉ sau khi kiểm thử đạt (bản dở không bao giờ được dùng lại)',
-    vt(dung, 'touch .da-kiem-thu') > vt(dung, 'npx bun test/thu.ts') && /\.da-kiem-thu" \]; then return 0/.test(dung));
-  ok('dung_ban: lấy mã bằng git archive có pipefail (git hỏng thì không giải nén nửa vời)', /set -o pipefail; git archive/.test(dung));
+    vt(dung, 'touch "$thu_muc/.da-kiem-thu"') > vt(dung, 'npx bun test/thu.ts') && /\.da-kiem-thu" \]; then return 0/.test(dung));
+  ok('dung_ban: root lấy mã bằng git archive (pipefail của script: git hỏng thì không giải nén nửa vời)',
+    /git -C "\$KHO" archive "\$cm" \| tar -x --no-same-owner/.test(dung) && /^set -euo pipefail$/m.test(shMa));
   ok('chuyen_sang: đổi liên kết trong một bước (ln tạm rồi mv -T)', /ln -sfn[\s\S]*mv -Tf "\$HIEN_TAI\.moi" "\$HIEN_TAI"/.test(thanHam('chuyen_sang')));
 
   const capNhat = thanHam('lenh_cap_nhat');
@@ -167,6 +171,27 @@ await nhom('4 · Script: cú pháp, kiểm thử trước khi chạy lại, quay
     const khongRoot = spawnSync('bash', [join(GOC, 'may-chu-don/cai-dat/may-chu.sh'), 'cai', 'don.beeftown.vn'], { encoding: 'utf8' });
     ok('Không phải root → dừng ngay, không cài gì', khongRoot.status === 1 && khongRoot.stderr.includes('quyền root'));
   }
+});
+
+await nhom('5 · Ranh giới quyền: beeftown không sửa được thứ root sắp chạy', async () => {
+  const dung = thanHam('dung_ban');
+  const cai = thanHam('lenh_cai');
+  const lenhBeeftown = [...shMa.matchAll(/la_beeftown "([^"]+)" ([^\n]*)/g)].map(m => `${m[1]} ${m[2]}`);
+  ok('beeftown chỉ chạy npm ci và kiểm thử, trong thư mục may-chu-don của bản đang dựng',
+    lenhBeeftown.length === 2 && lenhBeeftown.every(l => l.startsWith('$thu_muc/may-chu-don npm ci') || l.startsWith('$thu_muc/may-chu-don npx bun test/thu.ts')),
+    lenhBeeftown.join(' | '));
+  ok('Git (clone, fetch, reset, archive, log) chạy bằng root trên kho của root, không bằng beeftown',
+    !/runuser[^\n]*git|la_beeftown[^\n]*git/.test(shMa) && /git clone --quiet --depth 1 --branch "\$NHANH" "\$KHO_MA" "\$KHO"/.test(cai));
+  ok('/opt/beeftown và thư mục các bản thuộc root (beeftown không cắm được liên kết vào chỗ root xóa, chép)',
+    /install -d -o root -g root -m 0755 "\$GOC"/.test(cai) && /install -d -o root -g root -m 0755 "\$BAN" "\$thu_muc"/.test(dung));
+  ok('Lúc dựng, beeftown chỉ ghi được node_modules; kiểm thử xong thì node_modules cũng về root',
+    /install -d -o beeftown -g beeftown -m 0755 "\$thu_muc\/may-chu-don\/node_modules"/.test(dung)
+      && dung.indexOf('chown -R root:root "$thu_muc/may-chu-don/node_modules"') > dung.indexOf('npx bun test/thu.ts'));
+  ok('Đánh dấu "đã kiểm thử" do root ghi (beeftown không tự đánh dấu một bản dở)', /\n\s*touch "\$thu_muc\/\.da-kiem-thu"/.test(dung));
+  ok('Nhà của beeftown là thư mục riêng (bộ đệm npm, bun), không phải /opt/beeftown',
+    bienSh('NHA') === '$GOC/nha' && /useradd --system --home-dir "\$NHA"/.test(cai) && /HOME="\$NHA"/.test(shMa));
+  ok('Dọn bản cũ: không đi theo liên kết, không dấu / cuối (rm -rf liên-kết/ xóa nội dung đích)',
+    /ls -1dt "\$BAN"\/\* /.test(thanHam('don_ban_cu')) && /\[ ! -L "\$d" \]/.test(thanHam('don_ban_cu')));
 });
 
 process.exit(ketThuc('BỘ CÀI MÁY CHỦ ĐƠN'));
