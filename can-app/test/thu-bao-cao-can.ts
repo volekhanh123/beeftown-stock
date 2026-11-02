@@ -9,7 +9,7 @@
  */
 import { giaTuFile, docFileCan, sangChuoiByte } from '../../web/src/lib/kho/can-tma.ts';
 import {
-  PLU_HE_THONG, TEN_LOAI, docKhoNhatKy, docNhatKy, ghiChuDong, ghiKhoNhatKy, gopNhatKy, laTheoCai, nhatKyTuFile,
+  PLU_HE_THONG, TEN_LOAI, docKhoNhatKy, docNhatKy, donGiaKg, ghiChuDong, ghiKhoNhatKy, gopNhatKy, laTheoCai, nhatKyTuFile,
   pluLucDocTuDong, sangCsv, soKieuViet, soTuFile, tenLoai, tienTuFile, tomTatNhatKy, tuyChonTuThongSo,
   type DongBanCan, type PluLucDoc, type TuyChonNhatKy,
 } from '../src/bao-cao-can.ts';
@@ -226,6 +226,27 @@ export async function thuBaoCaoCan(ok: Ok): Promise<void> {
   ok('Nhật ký cân: bảng PLU từ dòng PLU (mã chuẩn hoá, giá theo Spec202, cột 4 = 2 là cái)',
     giong(bangDoc.get(1), { ma: '10001', donGia: 845000, theoCai: false }) && giong(bangDoc.get(4), { ma: '10004', donGia: 22000, theoCai: true }) && bangDoc.size === 2,
     JSON.stringify([...bangDoc]));
+
+  // 2.17 — giá theo 100 g: dòng PLU đơn vị 8, giá 100 g. Dòng bán có thể ghi đơn vị 8 hay kg (chưa thấy trên cân thật).
+  ok('2.17 donGiaKg: đơn vị 8 (100 g) × 10, kg / cân ký giữ nguyên, hàng đếm cái giữ nguyên, null giữ null',
+    donGiaKg(84500, 8) === 845000 && donGiaKg(845000, 3) === 845000 && donGiaKg(845000, 1) === 845000 && donGiaKg(22000, 2) === 22000
+    && donGiaKg(null, 8) === null);
+  const bang100 = pluLucDocTuDong([plu(1, '10001', '8', '845,1', 'x'), 'END\tPLU\t'], 3);
+  ok('2.17 bảng PLU: dòng đơn vị 8 "845,1" (84.500 đ / 100 g) → đồng / kg 845.000, cân ký, giữ giá 100 g để khớp dòng bán',
+    giong(bang100.get(1), { ma: '10001', donGia: 845000, theoCai: false, donGia100g: 84500 }), JSON.stringify([...bang100]));
+  const ban100 = docNhatKy([
+    rep(26, 11, 2, 9, 0, 0, 70, 1), res({ tien: '46475,3', plu: 1, sl: '55,1', dv: 8, donGia: '84500,3', ten: 'x' }), 'REE\t',
+    rep(26, 11, 2, 9, 1, 0, 71, 2), res({ tien: '46475,3', plu: 1, sl: '55,2', dv: 3, donGia: '84500,3', ten: 'x' }), 'REE\t',
+    rep(26, 11, 2, 9, 2, 0, 72, 3), res({ tien: '46475,3', plu: 1, sl: '55,2', dv: 3, donGia: '845000,3', ten: 'x' }), 'REE\t',
+  ], { ...TUY, pluLucDoc: bang100 });
+  ok('2.17 dòng bán theo 100 g — cả ba kiểu cân có thể ghi (đơn vị 8 giá 100 g; kg giá 100 g; kg giá/kg) đều ra 0,55 kg × 845.000 đ/kg, '
+    + 'thành tiền 46.475 đ, gắn mã 10001',
+    ban100.dong.length === 3 && ban100.dong.every(d => d.maCan === '10001' && d.donGia === 845000 && d.soLuong === 0.55 && !d.theoCai && d.thanhTien === 46475),
+    JSON.stringify(ban100.dong.map(d => [d.maCan, d.donGia, d.soLuong, d.thanhTien])));
+  const khacGia = docNhatKy([rep(26, 11, 2, 9, 3, 0, 73, 1), res({ tien: '46475,3', plu: 1, sl: '55,2', dv: 3, donGia: '84000,3', ten: 'x' }), 'REE\t'],
+    { ...TUY, pluLucDoc: bang100 });
+  ok('2.17 giá khác cả giá/kg lẫn giá 100 g của PLU (số PLU nay là hàng khác) → mã trống, giữ đơn giá đọc được',
+    khacGia.dong[0]?.maCan === '' && khacGia.dong[0]?.donGia === 84000, JSON.stringify(khacGia.dong[0]));
 
   const f = docFileCan(fileCan({ rep: NHAT_KY }));
   const tuFile = nhatKyTuFile(f);

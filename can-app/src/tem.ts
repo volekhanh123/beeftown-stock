@@ -832,7 +832,7 @@ export const MAU_BEEFTOWN: MauTemFile = {
     { loai: 'hsd', x: 162, y: 216, w: 154, h: 52, coChu: 4, canh: 4, khiNaoIn: 9 },
     { loai: 'chu', chu: 'Khối lượng (kg)', x: 4, y: 122, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 2 },
     { loai: 'chu', chu: 'Số lượng', x: 4, y: 122, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 3 },
-    { loai: 'chu', chu: 'Đơn giá (đ/kg)', x: 162, y: 122, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 2 },
+    { loai: 'chu', chu: 'Đơn giá (đ/kg)', x: 162, y: 122, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 2 },   // NHAN_DON_GIA_KG; 2.17: theo 100 g → NHAN_DON_GIA_100G
     { loai: 'chu', chu: 'Đơn giá', x: 162, y: 122, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 3 },
     { loai: 'chu', chu: 'Thành tiền (đ)', x: 320, y: 122, w: 140, h: 18, coChu: 0, canh: 4, khiNaoIn: 1 },
     { loai: 'chu', chu: 'Ngày đóng gói', x: 4, y: 198, w: 154, h: 18, coChu: 0, canh: 4, khiNaoIn: 1 },
@@ -979,9 +979,23 @@ export function apMauTem(du: Uint8Array, daTat: DaTat, mau: MauTemFile, file: Fi
   return { thay, lyDo: null, canhBao: [...thu.canhBao, ...canhBaoChuVua(mau)] };
 }
 
-/** Nút "Xếp tem theo mẫu Beeftown" (2.12): apMauTem với MAU_BEEFTOWN. */
+/** Nhãn đơn giá hàng cân ký của MAU_BEEFTOWN khi cân để giá theo kg. */
+export const NHAN_DON_GIA_KG = 'Đơn giá (đ/kg)';
+/**
+ * 2.17 — nhãn đơn giá hàng cân ký khi cân để giá theo 100 g (thông số 211 = 8, FileCan.giaTheo100g — can-tma.ts). Ngắn hơn
+ * "Đơn giá (đ/100g)" (16 ký tự ≈ 160 chấm cỡ 0, ô 154 chấm — dễ bị cắt).
+ */
+export const NHAN_DON_GIA_100G = 'Giá (đ/100g)';
+
+/** 2.17 — mẫu Beeftown theo cân: giá theo 100 g thì nhãn đơn giá hàng cân ký là NHAN_DON_GIA_100G, còn lại như MAU_BEEFTOWN. */
+export function mauBeeftownTheoCan(file: Pick<FileCan, 'giaTheo100g'>): MauTemFile {
+  if (!file.giaTheo100g) return MAU_BEEFTOWN;
+  return { ...MAU_BEEFTOWN, o: MAU_BEEFTOWN.o.map(o => (o.loai === 'chu' && o.chu === NHAN_DON_GIA_KG ? { ...o, chu: NHAN_DON_GIA_100G } : o)) };
+}
+
+/** Nút "Xếp tem theo mẫu Beeftown" (2.12): apMauTem với mẫu Beeftown theo cân (2.17: nhãn đơn giá theo đơn vị của đơn giá). */
 export function mauBeeftown(du: Uint8Array, daTat: DaTat, file: FileCan = docFileCan(du)): MauBeeftown {
-  const { thay, lyDo } = apMauTem(du, daTat, MAU_BEEFTOWN, file, 'Mẫu Beeftown');
+  const { thay, lyDo } = apMauTem(du, daTat, mauBeeftownTheoCan(file), file, 'Mẫu Beeftown');
   return { thay, lyDo };
 }
 

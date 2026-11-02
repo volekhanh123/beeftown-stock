@@ -7,12 +7,12 @@
  * thật (mẫu tem 28, 58×40 mm, 14 ô: vị trí, cỡ chữ, số thứ tự ô như trên cân của
  * quán), chữ trên tem là chữ giả, không có tên hàng thật.
  */
-import { docFileCan } from '../../web/src/lib/kho/can-tma.ts';
+import { docFileCan, tuChuoiByte } from '../../web/src/lib/kho/can-tma.ts';
 import {
   CANH_CHU, CAU_PHAN_VUNG, CO_CHU, DIEU_KIEN_IN, DONG_LOGO, ID_LOGO, LOAI_O, LoiTem, MAU_BEEFTOWN_CO, O_MAU_BEEFTOWN, O_THEM_DUOC,
   TEN_CONG_TY_TREN_TEM, TRUONG_BAN, TRUONG_HANG, XOAY,
   docTem, dongBmp, goiYHsd, kemLogo, khoiLogo, khungThat, mauBeeftown, suaTem, temDungLogo, xemTem, type DaTat, type SuaO, type ThayDoiTem,
-  LOAI_FILE_MAU, MAU_BEEFTOWN, apMauTem, docMauTemFile, xuatMauTem,
+  LOAI_FILE_MAU, MAU_BEEFTOWN, apMauTem, docMauTemFile, xuatMauTem, NHAN_DON_GIA_100G, NHAN_DON_GIA_KG, mauBeeftownTheoCan,
 } from '../src/tem.ts';
 import { LOGO_TEM } from '../src/logo-tem.ts';
 import { kiemDongBmp, kiemKhoiGhi } from '../src/giao-thuc.ts';
@@ -56,10 +56,10 @@ const mau28 = (o: readonly DongO[] = O_28, chu = CHU_28) => [dongLab('28', 'QUAN
 // Một mẫu khác đứng trước (như mẫu 1–11 trong file cân thật): không bao giờ bị đụng.
 const MAU_1 = [dongLab('1', 'PF-1', { 6: 'Price' }, { rong: 54, cao: 37 }), las([0, 1, 0, 0, 1, 0, 5, 2, 0, 0, 362, 34]), las([12, 0, 0, 0, 1, 0, 5, 1, 0, 88, 281, 113]), 'LAE\t'];
 
-function fileCan(labs: string[], mauDung = '28', bom = false): Uint8Array {
+function fileCan(labs: string[], mauDung = '28', bom = false, themTms: string[] = []): Uint8Array {
   const L = ['ECS\tVER\tV3.14E8\t', '', 'DWL\tPLU\t', 'PLU\t1\t10001\t\t1\t100,0\t0,0\t0,0\t0\t0\t0\t0\t0\t0\t9\tHàng thử\t', 'END\tPLU\t', '',
     'DWL\tLAB\t', ...labs, 'END\tLAB\t', '',
-    'DWL\tTMS\t', `TMS\t0\t${mauDung}\t`, 'TMS\t202\t3\t', 'END\tTMS\t', '',
+    'DWL\tTMS\t', `TMS\t0\t${mauDung}\t`, 'TMS\t202\t3\t', ...themTms, 'END\tTMS\t', '',
     'DWL\tTIM\t', 'TIM\t26\t9\t29\t8\t0\t0\t', 'END\tTIM\t', '', 'END\tECS\t', ''];
   const u = new TextEncoder().encode(L.join('\r\n'));
   const dau = bom ? 3 : 0;
@@ -278,6 +278,39 @@ export async function thuTem(ok: Ok): Promise<void> {
   // ===========================================================================
   console.log('T9 · File mẫu tem (2.14): đọc, kiểm, áp lên tem, tải tem đang dùng ra');
   thuFileMau(ok);
+
+  // ===========================================================================
+  console.log('T10 · Giá theo 100 g (2.17): nhãn đơn giá của mẫu Beeftown theo thông số 211');
+  thuGia100g(ok);
+}
+
+/** T10 — cân để giá theo 100 g (thông số 211 = 8): mẫu Beeftown ghi "Giá (đ/100g)" thay "Đơn giá (đ/kg)". */
+function thuGia100g(ok: Ok): void {
+  ok('Nhãn: theo kg "Đơn giá (đ/kg)" (đúng ô của MAU_BEEFTOWN), theo 100 g "Giá (đ/100g)" — vừa ô 154 chấm ở cỡ chữ 0',
+    NHAN_DON_GIA_KG === 'Đơn giá (đ/kg)' && MAU_BEEFTOWN.o.some(o => o.chu === NHAN_DON_GIA_KG) && NHAN_DON_GIA_100G === 'Giá (đ/100g)'
+    && [...NHAN_DON_GIA_100G].length * CO_CHU[0].rong <= 154);
+  ok('mauBeeftownTheoCan: cân theo kg → đúng MAU_BEEFTOWN; theo 100 g → chỉ đổi nhãn đơn giá, mọi ô khác như cũ',
+    mauBeeftownTheoCan({ giaTheo100g: false }) === MAU_BEEFTOWN && (() => {
+      const m = mauBeeftownTheoCan({ giaTheo100g: true });
+      return m.o.length === MAU_BEEFTOWN.o.length && m.o.filter((o, i) => JSON.stringify(o) !== JSON.stringify(MAU_BEEFTOWN.o[i])).length === 1
+        && m.o.some(o => o.chu === NHAN_DON_GIA_100G) && !m.o.some(o => o.chu === NHAN_DON_GIA_KG);
+    })());
+  const TS100 = ['TMS\t211\t8\t'];
+  const f100 = fileCan([...MAU_1, ...mau28()], '28', false, TS100);
+  const mb = mauBeeftown(f100, {});
+  const daAp = suaTem(f100, {}, mb.thay!);
+  const t100 = xemTem(docFileCan(daAp.du), daAp.daTat)!;
+  const nhan = t100.o.filter(o => o.bat && o.cot !== undefined).map(o => t100.chu[o.cot!]);
+  ok('Cân 211 = 8: xếp theo mẫu Beeftown → ô chữ đang in có "Giá (đ/100g)", không có "Đơn giá (đ/kg)"; xếp lần hai không còn gì đổi',
+    nhan.includes(NHAN_DON_GIA_100G) && !nhan.includes(NHAN_DON_GIA_KG)
+    && mauBeeftown(daAp.du, daAp.daTat).thay === null && mauBeeftown(daAp.du, daAp.daTat).lyDo === null, JSON.stringify(nhan));
+  // Tem đã xếp theo mẫu khi cân còn giá theo kg, rồi đổi 211 = 8: nút mẫu Beeftown hiện lại (đổi nhãn).
+  const kgDaAp = suaTem(file28(), {}, mauBeeftown(file28(), {}).thay!);
+  const sang100 = tuChuoiByte(docFileCan(kgDaAp.du).dong.join('\r\n').replace('TMS\t202\t3\t', 'TMS\t202\t3\t\r\nTMS\t211\t8\t'));
+  const lai = mauBeeftown(sang100, kgDaAp.daTat);
+  ok('Tem theo mẫu (giá theo kg) rồi đổi 211 = 8: mẫu Beeftown có thay đổi — thêm nhãn "Giá (đ/100g)", tắt nhãn "Đơn giá (đ/kg)"',
+    mauBeeftown(kgDaAp.du, kgDaAp.daTat).thay === null && lai.thay !== null && lai.thay.them.some(o => o.chu === NHAN_DON_GIA_100G)
+    && lai.thay.tat.length === 1, JSON.stringify(lai.thay));
 }
 
 function thuFileMau(ok: Ok): void {

@@ -72,14 +72,17 @@ export interface DongBanCan {
   tinhKho: boolean;       // chỉ loại 0 bán và 1 trả hàng, không PLU hệ thống ≥ 9999981
   soLuong: number;        // kg hoặc cái, giữ dấu như cân gửi
   theoCai: boolean;
-  donGia: number | null;  // đồng, theo Spec202
+  donGia: number | null;  // đồng, theo Spec202; hàng cân ký: đồng / kg (2.17: dòng đơn vị 100 g đã nhân 10 — donGiaKg)
   thanhTien: number | null; // đồng, theo Spec203
 }
 
 export interface SuKienCan { fid: number; luc: string; loai: number; tenLoai: string; ghiChu: string }
 
-/** Dòng PLU trên cân lúc đọc nhật ký — để gắn mã cân có kiểm đơn giá và cách bán. */
-export interface PluLucDoc { ma: string; donGia: number | null; theoCai: boolean }
+/**
+ * Dòng PLU trên cân lúc đọc nhật ký — để gắn mã cân có kiểm đơn giá và cách bán. donGia: hàng cân ký là đồng / kg (donGiaKg);
+ * 2.17 donGia100g: dòng đơn vị 100 g thì giá 100 g ghi trong file (dòng bán ghi đơn vị kg mà giữ giá 100 g vẫn khớp được).
+ */
+export interface PluLucDoc { ma: string; donGia: number | null; theoCai: boolean; donGia100g?: number | null }
 
 export interface TuyChonNhatKy {
   mac: string;
@@ -191,6 +194,16 @@ export function laTheoCai(donVi: number): boolean {
   return !(donVi in KG_MOT_DON_VI);
 }
 
+/**
+ * 2.17 — đơn giá của một đơn vị cân ký → đồng / kg (đơn vị 8 "100 g": × 10; kg, cân ký: như cũ); hàng đếm cái giữ nguyên.
+ * Cân để giá theo 100 g (thông số 211 = 8) thì dòng PLU Beeftown Cân gửi là đơn vị 8, giá 100 g (can-tma.ts). Dòng bán có thể
+ * ghi đơn vị 8 hay 3 (kg) — chưa thấy trên cân thật; quy cả hai về đồng / kg để so với dòng PLU và báo về kho cùng một nghĩa.
+ */
+export function donGiaKg(donGia: number | null, donVi: number): number | null {
+  if (donGia === null || !(donVi in KG_MOT_DON_VI)) return donGia;
+  return khongAmKhong(lamTron(donGia / KG_MOT_DON_VI[donVi], 3));
+}
+
 // -----------------------------------------------------------------------------
 // SỐ VÀ CHỮ
 // -----------------------------------------------------------------------------
@@ -256,20 +269,27 @@ function lucTuRep(c: string[]): string | null {
 // -----------------------------------------------------------------------------
 const LOAI_THANH_TOAN = new Set([0, 1, 10, 11]);
 
-function timMaCan(tuy: TuyChonNhatKy, c: string[], plu: number, donGia: number | null, theoCai: boolean): string {
-  if (plu <= 0 || plu >= PLU_HE_THONG) return '';
+/**
+ * Mã cân của dòng bán, kèm đơn giá đã quy về đồng / kg khi dòng bán giữ giá 100 g dưới đơn vị kg (2.17 — chưa biết cân ghi
+ * kiểu nào: đơn vị 8 thì donGiaKg đã nhân 10; đơn vị kg mà giá 100 g thì khớp với PluLucDoc.donGia100g và lấy giá/kg của PLU).
+ */
+function timMaCan(tuy: TuyChonNhatKy, c: string[], plu: number, donGia: number | null, theoCai: boolean): { ma: string; donGia: number | null } {
+  if (plu <= 0 || plu >= PLU_HE_THONG) return { ma: '', donGia };
+  const p = tuy.pluLucDoc?.get(plu);
+  const theo100g = !theoCai && donGia !== null && p !== undefined && !p.theoCai && p.donGia100g != null && p.donGia100g === donGia
+    && p.donGia !== donGia;
+  const gia = theo100g ? p!.donGia : donGia;
   const o = tuy.oMaCan;
   if (o !== undefined && Number.isInteger(o) && o >= 1 && o <= 4) {
     const ma = chuanMa(docChu(c[10 + o]));
-    if (ma) return ma;
+    if (ma) return { ma, donGia: gia };
   }
   if (tuy.pluLucDoc) {
-    const p = tuy.pluLucDoc.get(plu);
-    const khop = p !== undefined && p.ma !== '' && p.donGia !== null && donGia !== null
-      && p.donGia === donGia && p.theoCai === theoCai;
-    return khop ? chuanMa(p.ma) : '';
+    const khop = p !== undefined && p.ma !== '' && p.donGia !== null && gia !== null
+      && p.donGia === gia && p.theoCai === theoCai;
+    return { ma: khop ? chuanMa(p!.ma) : '', donGia: gia };
   }
-  return chuanMa(tuy.maTheoPlu?.get(plu));
+  return { ma: chuanMa(tuy.maTheoPlu?.get(plu)), donGia: gia };
 }
 
 /**
@@ -342,14 +362,14 @@ export function docNhatKy(dong: string[], tuy: TuyChonNhatKy): KetQuaNhatKy {
       if (sl === null) loi.push(`Dòng ${so}: số lượng "${c[7]}" không đọc được — ghi 0.`);
       const heSo = theoCai ? 1 : KG_MOT_DON_VI[donVi as number];
       const soLuong = heSo === 1 ? (sl ?? 0) : lamTron((sl ?? 0) * heSo, 6);
-      const donGia = tienTuFile(c[15], tuy.soLeDonGia);
+      const tim = timMaCan(tuy, c, plu, theoCai ? tienTuFile(c[15], tuy.soLeDonGia) : donGiaKg(tienTuFile(c[15], tuy.soLeDonGia), donVi ?? 3), theoCai);
       ra.push({
         mac, fid: g.fid, luc: g.luc, sid: g.sid, stt, plu,
         ten: docChu(c[17]),
-        maCan: timMaCan(tuy, c, plu, donGia, theoCai),
+        maCan: tim.ma,
         loai, tenLoai: tenLoai(loai),
         tinhKho: (loai === 0 || loai === 1) && plu > 0 && plu < PLU_HE_THONG,
-        soLuong, theoCai, donGia, thanhTien,
+        soLuong, theoCai, donGia: tim.donGia, thanhTien,
       });
     } else if (c[0] === 'REE') {
       dang = null;
@@ -394,7 +414,9 @@ export function pluLucDocTuDong(dong: string[], soLeDonGia: number): Map<number,
     if (c[0] !== 'PLU') continue;
     const so = nguyen(c[1]);
     if (so === null || so <= 0) continue;
-    m.set(so, { ma: chuanMa(c[2]), donGia: tienTuFile(c[5], soLeDonGia), theoCai: laTheoCai(nguyen(c[4]) ?? 1) });
+    const donVi = nguyen(c[4]) ?? 1;
+    const giaFile = tienTuFile(c[5], soLeDonGia);
+    m.set(so, { ma: chuanMa(c[2]), donGia: donGiaKg(giaFile, donVi), theoCai: laTheoCai(donVi), ...(donVi === 8 ? { donGia100g: giaFile } : {}) });
   }
   return m;
 }

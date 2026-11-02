@@ -2637,18 +2637,21 @@ export class UngDung {
     // 2.9.3: dòng của lần gửi chưa xác nhận (cho-xac-nhan.tsv) mà số PLU không thuộc file gốc, tren-can.tsv hay kế hoạch theo kho
     // (hàng kho còn muốn đã hiện ở dòng "Chưa lên cân" / "Khác kho"): có thể đang nằm trên cân.
     const tren = this.docTrenCan(), cho = this.docChoXacNhan();
+    // Giá ghi trong file (tren-can.tsv, cho-xac-nhan.tsv không giữ đơn vị) → đồng/kg như DongPlu.gia: cân để giá theo 100 g thì
+    // dòng Beeftown Cân gửi là đơn vị 8, giá 100 g (2.17, can-tma.ts) — nhân 10. Dòng trống giá 0 nên không lệch.
+    const giaHien = (tho: string): number | null => { const g = giaTuFile(tho, goc.soLeGia); return g !== null && goc.giaTheo100g ? g * 10 : g; };
     const choRieng = new Set<number>();
     for (const [so, h] of cho) if (!tren.has(so) && !soKeHoach.has(so) && !trongFile.has(so)) { tren.set(so, h); choRieng.add(so); }
     for (const h of tren.values()) {
       if (trongFile.has(h.so)) continue;
       if (laPluTrong(h)) {
-        hang.push({ so: h.so, phim: null, maCan: h.ma, maFabi: '', ten: h.ten, gia: giaTuFile(h.gia, goc.soLeGia),
+        hang.push({ so: h.so, phim: null, maCan: h.ma, maFabi: '', ten: h.ten, gia: giaHien(h.gia),
           theoGoi: false, tinhTrang: 'trong', ghiChu: 'PLU trống — đã gỡ hàng bằng ghi đè qua WiFi. Hàng mới sẽ dùng lại số PLU này.' });
         continue;
       }
       // Chưa đọc được kho: dòng chờ xác nhận không biết kho còn muốn không — "trên cân" (chưa đối chiếu), không "còn nằm lại".
       const cho1 = choRieng.has(h.so);
-      hang.push({ so: h.so, phim: null, maCan: h.ma, maFabi: fabi(h.ma), ten: h.ten, gia: giaTuFile(h.gia, goc.soLeGia),
+      hang.push({ so: h.so, phim: null, maCan: h.ma, maFabi: fabi(h.ma), ten: h.ten, gia: giaHien(h.gia),
         theoGoi: false, tinhTrang: cho1 && !dm ? 'tren_can' : 'con_lai', ghiChu: !cho1
           ? 'Đã bỏ khỏi danh sách nhưng gửi qua WiFi không xoá được — gỡ khỏi cân qua WiFi (ghi đè) hoặc nạp USB.'
           : dm ? 'Đã gửi xuống cân nhưng cân chưa xác nhận, rồi kho bỏ — có thể còn nằm trên cân: gỡ khỏi cân qua WiFi (ghi đè) hoặc nạp USB.'
@@ -2686,7 +2689,9 @@ export class UngDung {
     const k = Number(docThongSo(goc).get(104));
     return {
       tem: xemTem(goc, daTat),
-      hangMau: p ? { so: p.so, ten: p.ten, gia: p.gia, theoGoi: p.cachBan === '2', hsd: p.hsd, maCan: p.ma } : null,
+      // 2.17: cân để giá theo 100 g → tem in giá 100 g (DongPlu.gia của hàng cân ký là giá/kg).
+      hangMau: p ? { so: p.so, ten: p.ten, gia: p.gia !== null && goc.giaTheo100g && p.cachBan !== '2' ? p.gia / 10 : p.gia,
+        theoGoi: p.cachBan === '2', hsd: p.hsd, maCan: p.ma } : null,
       danhMuc: { oThem: O_THEM_DUOC, coChu: CO_CHU, dieuKienIn: DIEU_KIEN_IN, canhChu: CANH_CHU, xoay: XOAY, logo: LOGO_TREN_SO_DO },
       goiYHsd: goiYHsd(goc, daTat),
       mauBeeftown: mauBeeftown(du, daTat, goc),
