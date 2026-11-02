@@ -94,13 +94,13 @@ await nhom('2 · KHÔNG FILE MÃ NGUỒN NÀO BỊ .gitignore CHẶN ÂM THẦM'
   // .claude/skills/: skill dùng chung — .gitignore mở từng skill, nên skill mới bị chặn tới khi có dòng mở.
   // mini-app/: cả thư mục là mã nguồn (www/ là thư mục bị chặn cả khối, không hiện từng file; .env không mang đuôi mã).
   // mo-rong-fabi/: extension Chrome — cả thư mục là mã nguồn, .gitignore mở từng file.
-  // may-chu-don/: máy chủ đơn của Mini App — src/, test/, scripts/ như can-app; du-lieu/ (sổ đơn có dữ liệu khách) cố ý chặn.
-  const CHO_MA = /^(web\/(src|kiem-tra|cong-cu)\/|crm\/(test|supabase|sao-luu)\/|can-app\/(src|test|scripts)\/|may-chu-don\/(src|test|scripts)\/|mini-app\/|mo-rong-fabi\/|\.github\/|\.claude\/skills\/|CLAUDE\.md$)/;
+  // may-chu-don/: máy chủ đơn của Mini App — src/, test/, scripts/ như can-app, cai-dat/ (bộ cài máy chủ thuê); du-lieu/ (sổ đơn có dữ liệu khách) cố ý chặn.
+  const CHO_MA = /^(web\/(src|kiem-tra|cong-cu)\/|crm\/(test|supabase|sao-luu)\/|can-app\/(src|test|scripts)\/|may-chu-don\/(src|test|scripts|cai-dat)\/|mini-app\/|mo-rong-fabi\/|\.github\/|\.claude\/skills\/|CLAUDE\.md$)/;
   const DUOI_MA = /\.(ts|tsx|mts|mjs|js|astro|sql|ya?ml|md|json|css|html|ps1|sh|py|cmd)$/;
   // --directory: thư mục bị chặn cả khối (node_modules, dist, ảnh lỗi) hiện một dòng "thư mục/" thay vì từng
   // file. Thư mục bị chặn chỉ đáng ngờ khi nằm trong chỗ CHỈ chứa mã nguồn — web/kiem-tra/anh-loi/ hay
   // crm/supabase/.temp/ là cố ý chặn.
-  const THU_MUC_MA = /^(web\/src|crm\/test|crm\/sao-luu|crm\/supabase\/(migrations|thu)|can-app\/(src|test|scripts)|may-chu-don\/(src|test|scripts)|mini-app\/(src|scripts)|mo-rong-fabi|\.github|\.claude\/skills)\//;
+  const THU_MUC_MA = /^(web\/src|crm\/test|crm\/sao-luu|crm\/supabase\/(migrations|thu)|can-app\/(src|test|scripts)|may-chu-don\/(src|test|scripts|cai-dat)|mini-app\/(src|scripts)|mo-rong-fabi|\.github|\.claude\/skills)\//;
   const biChan = git(['ls-files', '--others', '--ignored', '--exclude-standard', '--directory'])
     .split('\n').filter(f => (f.endsWith('/') ? THU_MUC_MA.test(f) : CHO_MA.test(f) && DUOI_MA.test(f)) && !/node_modules\//.test(f));
   const coSkill = biChan.some(f => f.startsWith('.claude/'));
