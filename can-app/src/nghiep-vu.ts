@@ -79,8 +79,8 @@ import {
   LoiFileCan, type DongKeHoach, type DongPlu, type FileCan, type HangKho, type KeHoach, type LoaiDong,
 } from '../../web/src/lib/kho/can-tma.ts';
 import {
-  CANH_CHU, CAU_DOI, CO_CHU, DIEU_KIEN_IN, LoiTem, O_THEM_DUOC, XOAY, dauTem, docTem, dongMauTemDangDung, goiYHsd, suaTem, xemTem,
-  type DaTat, type MauTem, type TemXem, type ThayDoiTem,
+  CANH_CHU, CAU_DOI, CO_CHU, DIEU_KIEN_IN, LoiTem, O_THEM_DUOC, XOAY, dauTem, docTem, dongMauTemDangDung, goiYHsd, mauBeeftown, suaTem, xemTem,
+  type DaTat, type MauBeeftown, type MauTem, type TemXem, type ThayDoiTem,
 } from './tem.ts';
 import {
   CONG_HAI_CHIEU, LoiGiaoThuc, docFileTuKetNoi, ghepFileUsb, khoiTim, khoiXoaVaNapPlu, laThongSoMang, moKetNoi,
@@ -2661,18 +2661,21 @@ export class UngDung {
 
   /**
    * Mẫu tem cân đang dùng, một hàng trên cân để vẽ tem mẫu, và (2.2) danh mục để sửa tem (ô thêm được, cỡ chữ,
-   * điều kiện in, canh, xoay), các ô nên đổi sang "chỉ in khi có HSD" (goiYHsd), kiểu ngày in (Spec104).
+   * điều kiện in, canh, xoay), các ô nên đổi sang "chỉ in khi có HSD" (goiYHsd), kiểu ngày in (Spec104), (2.12) thay đổi để
+   * xếp tem theo mẫu Beeftown (mauBeeftown — trang đổ vào sơ đồ, người dùng xem rồi mới gửi).
    */
   tem(): {
     tem: TemXem | null;
     hangMau: { so: number; ten: string; gia: number | null; theoGoi: boolean; hsd: number | null; maCan: string } | null;
     danhMuc: { oThem: typeof O_THEM_DUOC; coChu: typeof CO_CHU; dieuKienIn: typeof DIEU_KIEN_IN; canhChu: typeof CANH_CHU; xoay: typeof XOAY };
     goiYHsd: string[];
+    mauBeeftown: MauBeeftown;
     kieuNgay: number;
     /** Dấu mẫu tem (dauTem) — trang gửi lại kèm thay đổi; mẫu tem đã đổi từ lúc mở thẻ thì không áp thay đổi cũ. */
     dau: string;
   } {
-    const goc = docFileCan(this.docGoc());
+    const du = this.docGoc();
+    const goc = docFileCan(du);
     const daTat = this.docDaTat();
     const p = goc.plu.filter(x => x.ten).sort((a, b) => a.so - b.so)[0];
     const k = Number(docThongSo(goc).get(104));
@@ -2681,6 +2684,7 @@ export class UngDung {
       hangMau: p ? { so: p.so, ten: p.ten, gia: p.gia, theoGoi: p.cachBan === '2', hsd: p.hsd, maCan: p.ma } : null,
       danhMuc: { oThem: O_THEM_DUOC, coChu: CO_CHU, dieuKienIn: DIEU_KIEN_IN, canhChu: CANH_CHU, xoay: XOAY },
       goiYHsd: goiYHsd(goc, daTat),
+      mauBeeftown: mauBeeftown(du, daTat, goc),
       kieuNgay: Number.isInteger(k) ? k : 0,
       dau: dauTem(goc, daTat),
     };
