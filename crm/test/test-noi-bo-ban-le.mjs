@@ -83,8 +83,8 @@ await nhom('1 · Vai: thư viện = database = menu', async () => {
   ok('Vai của mục menu "Bán lẻ" = VAI_XEM_BAN_LE (policy SELECT)', sapXep(muc?.vai ?? []) === sapXep(BL.VAI_XEM_BAN_LE));
   ok('Mục "Bán lẻ" đứng ngay sau "Thực đơn"', NB.MUC_NOI_BO.findIndex(m => m.ma === 'ban_le') === NB.MUC_NOI_BO.findIndex(m => m.ma === 'thuc_don') + 1);
   ok('Tên ngắn "Bán lẻ" / "Retail" ≤ 10 ký tự', muc && muc.ngan.vi.length <= 10 && muc.ngan.en.length <= 10);
-  ok('GIA_TOI_DA của thư viện là hằng của Beeftown Cân (999.999), không chép số', BL.GIA_TOI_DA === 999999
-     && /import \{ GIA_TOI_DA \} from '\.\/kho\/can-tma\.ts'/.test(NGUON_LIB) && !/999999|999_999/.test(NGUON_LIB));
+  ok('GIA_TOI_DA (và 2.17 GIA_KG_TOI_DA_100G) của thư viện là hằng của Beeftown Cân (999.999 / 9.999.990), không chép số', BL.GIA_TOI_DA === 999999
+     && /import \{ GIA_KG_TOI_DA_100G, GIA_TOI_DA \} from '\.\/kho\/can-tma\.ts'/.test(NGUON_LIB) && !/999999|999_999|9999990|9_999_990/.test(NGUON_LIB));
 });
 
 // ===========================================================================

@@ -200,6 +200,34 @@ Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn 
 
 Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
 
+## Bản 2.17 — giá trên cân theo 100 g
+
+Khánh 02/11/2026: "tôi cần giá theo 100 gram, chứ nếu giá theo kg thì lỡ trên 1tr/kí thì sao" — ô đơn giá của cân có 6 chữ
+số, giá/kg tối đa 999.999 đ; món đắt hơn trước đây không lên cân được.
+
+- **Cân & thông số → Giá và số lẻ → Đơn vị của đơn giá** (thông số 211, mới sửa được): Theo kg (mặc định) / **Theo 100 g**.
+- Cân để 211 = 8: mọi lần **Gửi giá xuống cân** (và trang Đồng bộ cân của kho) ghi dòng hàng cân ký với đơn vị 8 ("100 g"
+  trong danh mục đơn vị của hãng) và **giá 100 g = giá/kg ÷ 10** (`web/src/lib/kho/can-tma.ts`, `DON_VI_100G`). Giá/kg đưa
+  lên được tới **9.999.990 đ**; giá không chia hết cho 10 làm tròn tới đồng / 100 g, kèm cảnh báo. Đổi đơn vị thì luôn ghi lại
+  cả giá (không bao giờ để giá/kg cũ dưới đơn vị 100 g — tem sẽ sai gấp 10). Quay lại Theo kg: lần gửi giá sau ghi lại về
+  đơn vị 1, giá/kg.
+- Kho, FABi, trang web vẫn giữ giá/kg; mã vạch trên tem mang khối lượng nên máy quầy, FABi tính tiền như cũ. Xem trước, Tất
+  cả hàng vẫn hiện giá/kg (dòng đơn vị 8 đọc ra × 10).
+- **Mẫu tem Beeftown** theo cân: giá theo 100 g thì nhãn đơn giá là **"Giá (đ/100g)"** (`NHAN_DON_GIA_100G` — "Đơn giá
+  (đ/100g)" dài quá ô). Tem đã xếp theo mẫu mà đổi 211 thì nút Xếp tem theo mẫu Beeftown hiện lại.
+- Nhật ký bán (`bao-cao-can.ts`): đơn giá hàng cân ký quy về đồng / kg (`donGiaKg`); dòng bán ghi đơn vị 8 hay kg kèm giá
+  100 g đều gắn đúng mã cân.
+- Trang bán lẻ (/noi-bo): câu "cân chỉ nhận tối đa 999.999 đ/kg" chỉ thêm cách đặt giá theo 100 g.
+
+**Thử ở quán (2.17)** — chưa thử trên cân thật; thử lúc vắng khách. Sau khi bấm **Cập nhật**, đăng nhập quản lý hoặc chủ:
+1. Thẻ **Thiết lập cân** → **Cân & thông số** → nhóm **Giá và số lẻ** → **Đơn vị của đơn giá** chọn **Theo 100 g** → gửi.
+2. Thẻ **Cân** → **Gửi giá xuống cân** (mọi hàng cân ký đổi sang giá 100 g).
+3. **Mẫu tem** → **Xếp tem theo mẫu Beeftown** → **Gửi tem xuống cân** (nhãn "Giá (đ/100g)").
+4. Cân thử một món (ví dụ 845.000 đ/kg, 0,55 kg): màn hình cân và tem hiện đơn giá **84.500**, thành tiền **464.750** —
+   như trước khi đổi. Quét mã vạch ở quầy: FABi tính đúng tiền.
+5. Sai (màn hình hiện 845.000, hay thành tiền gấp / chia 10): làm lại bước 1 với **Theo kg**, bước 2, bước 3 — chụp màn hình
+   cân và tem gửi Claude.
+
 ## Bản 2.16 — gửi tem theo mẫu Beeftown thì tự tắt đơn vị sau số
 
 Khánh in thử 02/11/2026 sau bản 2.15: bố cục bản 3 đã lên cân (nạp file mẫu bản 3), nhưng số vẫn in "0.55kg", "600.000VND/kg",
@@ -1000,8 +1028,7 @@ npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói
 - HSD đếm ngược: tự gửi đang dừng cả loạt khi có một hàng bật / tắt in HSD — có thể gửi phần đếm ngược và giữ riêng hàng
   bật / tắt. Hàng kho không lên được / ngoài kho mà cân đang in HSD: chưa báo riêng.
 - Chữ ngoài bảng chữ của cân (ký hiệu đặc biệt) trên tem: chưa biết cân in ra sao.
-- Giá từ 1.000.000 đ/kg: ô đơn giá trên cân có 6 chữ số (tối đa 999.999), nên chương trình không gửi món giá cao
-  hơn. Hướng đi: món vượt mức gửi theo đơn vị **100g** (giá kho chia 10); kho vẫn giữ giá/kg, FABi không đổi vì mã
-  vạch chỉ mang mã món và trọng lượng. Theo phần mềm của hãng, đơn vị 100g là `UnitID 8` ở cột 4 của dòng PLU
-  (`CAN-TMA.md`, bảng cột PLU) — chưa thử trên cân thật. Còn phải thử: ô thành tiền có quá 6 chữ số không (gói trên
-  999.999 đ có in được tem không), và thông số 188 (số chữ số ô đơn giá, cân quán đang để 6).
+- Giá từ 1.000.000 đ/kg: đã làm ở 2.17 (giá trên cân theo 100 g, mục "Bản 2.17") — chưa thử trên cân thật. Còn phải
+  thử: cân có hiện / in giá 100 g khi 211 = 8 không (hay vẫn tự đổi về giá/kg), dòng bán của nhật ký ghi đơn vị và đơn
+  giá kiểu nào (`bao-cao-can.ts` đọc được cả ba kiểu), dòng bán đơn vị 8 ghi khối lượng theo 100 g hay kg (đang coi là 100 g —
+  `KG_MOT_DON_VI`; sai thì số kg của nhật ký lệch 10 lần, tiền vẫn đúng), ô thành tiền gói trên 999.999 đ (thông số 189 = 7 chữ số).

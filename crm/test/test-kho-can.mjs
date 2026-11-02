@@ -18,6 +18,7 @@ import {
   docFileCan, lapKeHoach, ghiFileCan, giaTuFile, giaVaoFile, maTimKiem, chuanMa,
   soChuSoMa, tenFileCan, sangBase64, tuBase64, LoiFileCan, GIA_TOI_DA,
 } from '../../web/src/lib/kho/can-tma.ts';
+import { DON_VI_100G, GIA_KG_TOI_DA_100G, TS_DON_VI_GIA } from '../../web/src/lib/kho/can-tma.ts';
 import { COT_NGAY, HSD_TOI_DA, dongHsd, datHsd } from '../../web/src/lib/kho/can-tma.ts';
 import { MA_CAN_TRONG, MA_CAN_THU, MA_CAN_DANH_RIENG, PLU_RIENG_TOI_DA, TEN_PLU_TRONG, dongPluRieng } from '../../web/src/lib/kho/can-tma.ts';
 
@@ -50,7 +51,7 @@ const HANG_BEEFTOWN = [
  * Dựng file .TMS giả. Chuỗi "~LOI~" được thay bằng byte 0xFF (không phải UTF-8).
  * bo: tên các phần không đưa vào file (mặc định không bỏ phần nào — file như cũ).
  */
-function taoFile({ dongPlu, dau = 'ECS\tVER\tV3.14E8\t', mo = 'DWL', coGio = true, bom = false, bo = [] }) {
+function taoFile({ dongPlu, dau = 'ECS\tVER\tV3.14E8\t', mo = 'DWL', coGio = true, bom = false, bo = [], themTms = [] }) {
   const L = [dau, ''];
   const phan = (ten, dong) => { if (!bo.includes(ten)) L.push(`${mo}\t${ten}\t`, ...dong, `END\t${ten}\t`, ''); };
   phan('DPT', ['DPT\t9\tDefault\t']);
@@ -64,7 +65,7 @@ function taoFile({ dongPlu, dau = 'ECS\tVER\tV3.14E8\t', mo = 'DWL', coGio = tru
   phan('REP', ['REP\t26\t9\t25\t15\t16\t46\t29\t1\t0\t',
     'RES\t1\t16000,3\t6\t9\t9\t0,3\t16,2\t3\t0\t0,3\t\t\t\t\t100000,3\t0\tTHIT BO~LOI~\t', 'REE\t']);
   phan('SCP', ['SCP\t0\t1\t1\t', 'SCP\t0\t2\t2\t', 'SCP\t0\t3\t3\t']);
-  phan('TMS', ['TMS\t0\t28\t', 'TMS\t1\t28\t', 'TMS\t2\t20\t', 'TMS\t202\t3\t', 'TMS\t203\t3\t']);
+  phan('TMS', ['TMS\t0\t28\t', 'TMS\t1\t28\t', 'TMS\t2\t20\t', 'TMS\t202\t3\t', 'TMS\t203\t3\t', ...themTms]);
   phan('TMT', ['TMT\t0\tFactory\t', 'TMT\t3\tVND\t']);
   phan('INF', ['INF\tFactory\tFactory Device\t0\tTM-xA UA006 V3.14E8\t']);
   if (coGio) phan('TIM', ['TIM\t26\t9\t25\t16\t54\t12\t']);
@@ -558,6 +559,69 @@ await nhom('15 · MÃ CÂN DÀNH RIÊNG CỦA BEEFTOWN CÂN 2.7: DÒNG TRỐNG (
      && khG.dong.find(d => d.so === 9999)?.loai === 'xoa' && /Hàng thử của Chẩn đoán WiFi/.test(khG.dong.find(d => d.so === 9999)?.lyDo ?? '')
      && !khG.dong.some(d => d.loai === 'ngoai_kho') && khG.dong.some(d => d.loai === 'them' && d.maCan === '10007' && d.so === 4),
      JSON.stringify(khG.dong.map(d => [d.so, d.maCan, d.loai])));
+});
+
+// ===========================================================================
+await nhom('GIÁ THEO 100 G (Beeftown Cân 2.17 — thông số 211 = 8, dòng hàng đơn vị 8)', async () => {
+  const TS100 = [`TMS\t${TS_DON_VI_GIA}\t8\t`];
+  ok('Hằng: đơn vị 100 g là "8", thông số 211, giá/kg tối đa 9.999.990 đ (ô đơn giá 6 chữ số × 10)',
+     DON_VI_100G === '8' && TS_DON_VI_GIA === 211 && GIA_KG_TOI_DA_100G === 9999990);
+  const fKg = docFileCan(taoFile({ dongPlu: HANG_BEEFTOWN }));
+  const f100 = docFileCan(taoFile({ dongPlu: HANG_BEEFTOWN, themTms: TS100 }));
+  ok('Đọc thông số 211: không có / 3 → giá theo kg; 8 (kể cả " 08 ") → giá theo 100 g',
+     !fKg.giaTheo100g && f100.giaTheo100g && docFileCan(taoFile({ dongPlu: [], themTms: ['TMS\t211\t 08 \t'] })).giaTheo100g
+     && !docFileCan(taoFile({ dongPlu: [], themTms: ['TMS\t211\t3\t'] })).giaTheo100g);
+  const dong100 = plu(7, '10007', '8', '845,1', 'Nạm bò', 'nambo');   // 84.500 đ / 100 g
+  ok('Dòng đơn vị 8 "845,1" (84.500 đ / 100 g) đọc ra giá 845.000 đ/kg — so với kho như dòng giá/kg',
+     docFileCan(taoFile({ dongPlu: [dong100] })).plu[0].gia === 845000);
+
+  // Chuyển sang giá theo 100 g: hàng khớp kho, giá không đổi vẫn phải ghi lại đơn vị VÀ giá.
+  const kh = lapKeHoach(f100, DANH_MUC, TUY);
+  const sua = kh.dong.filter(d => ['10001', '10002', '10003', '10005'].includes(d.maCan));
+  ok('Cân vừa đặt 211 = 8, dòng còn đơn vị 1: bốn hàng khớp kho đều "sửa" (đổi đơn vị) dù giá như cũ; giá kế hoạch vẫn là giá/kg',
+     sua.length === 4 && sua.every(d => d.loai === 'sua') && sua.find(d => d.maCan === '10001')?.gia === 845000, JSON.stringify(sua.map(d => [d.maCan, d.loai, d.gia])));
+  const ra = docFileCan(ghiFileCan(f100, kh, TUY));
+  const d1 = ra.plu.find(p => p.ma === '10001');
+  ok('HỒI QUY rà soát: đổi đơn vị thì ghi lại cả giá — dòng 10001 đơn vị 8, giá "845,1" (84.500 đ / 100 g), không để "845,0" (= 8.450.000 đ/kg)',
+     d1?.cachBan === '8' && d1?.cot[5] === '845,1' && d1?.gia === 845000, JSON.stringify(d1 && [d1.cachBan, d1.cot[5], d1.gia]));
+  ok('Mọi hàng cân ký từ kho sau khi ghi: đơn vị 8, giá đọc lại = giá kho/kg',
+     ra.plu.filter(p => p.ma !== '').every(p => p.cachBan === '8')
+     && ['10001:845000', '10002:876000', '10003:695000', '10005:516000'].every(x => { const [m, g] = x.split(':'); return ra.plu.find(p => p.ma === m)?.gia === Number(g); }),
+     JSON.stringify(ra.plu.map(p => [p.ma, p.cachBan, p.cot[5], p.gia])));
+  const lan2 = lapKeHoach(ra, DANH_MUC, TUY);
+  ok('Gửi lần hai (file đã đơn vị 8): không còn gì đổi ở bốn hàng cũ — không ghi lại mãi vì làm tròn hay đơn vị',
+     lan2.dong.filter(d => ['10001', '10002', '10003', '10005'].includes(d.maCan)).every(d => d.loai === 'giu'),
+     JSON.stringify(lan2.dong.map(d => [d.maCan, d.loai])));
+
+  // Giá quá 999.999 đ/kg: theo kg thì không đưa lên (chỉ cách đặt theo 100 g); theo 100 g thì đưa lên, làm tròn tới đồng / 100 g.
+  const lyDoKg = lapKeHoach(fKg, DANH_MUC, TUY).dong.find(d => d.maCan === '10004');
+  ok('Theo kg: giá 1.096.667 đ/kg không đưa lên cân, lý do giữ câu cũ và chỉ cách đặt giá theo 100 g',
+     lyDoKg?.loai === 'bo_qua' && /vượt mức cân hiện được \(999\.999 đ\)\. Đặt giá trên cân theo 100 g/.test(lyDoKg?.lyDo ?? ''), JSON.stringify(lyDoKg));
+  const than = kh.dong.find(d => d.maCan === '10004');
+  ok('Theo 100 g: giá 1.096.667 đ/kg đưa lên cân, làm tròn 109.667 đ / 100 g (1.096.670 đ/kg), cảnh báo nói rõ',
+     than?.loai === 'them' && than?.gia === 1096670 && /Giá theo 100 g làm tròn: 109\.667 đ\/100 g \(1\.096\.670 đ\/kg\)/.test(than?.canhBao ?? '')
+     && ra.plu.find(p => p.ma === '10004')?.cot[5] === '109667,3' && ra.plu.find(p => p.ma === '10004')?.cachBan === '8', JSON.stringify(than));
+  const dmCao = [hang('WAGYU', '10020', 'Wagyu A5', 9999990), hang('QUA-CAO', '10021', 'Quá cao', 9999991)];
+  const khCao = lapKeHoach(f100, dmCao, TUY);
+  ok('Theo 100 g: 9.999.990 đ/kg lên được ("999999,3"); 9.999.991 đ/kg không (lý do nói kể cả khi theo 100 g)',
+     khCao.dong.find(d => d.maCan === '10020')?.loai === 'them'
+     && docFileCan(ghiFileCan(f100, khCao, TUY)).plu.find(p => p.ma === '10020')?.cot[5] === '999999,3'
+     && khCao.dong.find(d => d.maCan === '10021')?.loai === 'bo_qua'
+     && /kể cả khi giá theo 100 g \(9\.999\.990 đ\/kg\)/.test(khCao.dong.find(d => d.maCan === '10021')?.lyDo ?? ''),
+     JSON.stringify(khCao.dong.map(d => [d.maCan, d.loai, d.lyDo])));
+  const khEn = lapKeHoach(f100, dmCao, TUY, 'en');
+  ok('Câu tiếng Anh: "even with prices per 100 g", "Price per 100 g rounded"',
+     /even with prices per 100 g/.test(khEn.dong.find(d => d.maCan === '10021')?.lyDo ?? '')
+     && /Price per 100 g rounded/.test(lapKeHoach(f100, DANH_MUC, TUY, 'en').dong.find(d => d.maCan === '10004')?.canhBao ?? ''));
+
+  // Quay lại giá theo kg (bỏ 211 = 8): dòng đơn vị 8 về đơn vị 1, giá ghi lại theo kg.
+  const fVe = docFileCan(taoFile({ dongPlu: ra.plu.map(p => p.tho) }));
+  const ve = docFileCan(ghiFileCan(fVe, lapKeHoach(fVe, DANH_MUC.slice(0, 2), TUY), TUY));
+  ok('Quay lại giá theo kg: dòng về đơn vị 1, giá "845,0" (845.000 đ/kg)',
+     ve.plu.find(p => p.ma === '10001')?.cachBan === '1' && ve.plu.find(p => p.ma === '10001')?.cot[5] === '845,0'
+     && ve.plu.find(p => p.ma === '10001')?.gia === 845000, JSON.stringify(ve.plu.map(p => [p.ma, p.cachBan, p.cot[5]])));
+  ok('Cân theo kg (không có 211): file ra y như trước — hàng theo gói không bị đụng, dòng cân ký đơn vị 1',
+     docFileCan(ghiFileCan(fKg, lapKeHoach(fKg, DANH_MUC, TUY), TUY)).plu.filter(p => p.ma !== '').every(p => p.cachBan === '1'));
 });
 
 process.exit(ketThuc('ĐỒNG BỘ CÂN'));

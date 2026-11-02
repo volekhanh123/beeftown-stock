@@ -15,6 +15,7 @@ import {
   donViDangIn, fileNho, kiemChuChung, kiemThongSo, suaChuChung, suaPhim, suaThongSo,
 } from '../src/thong-so.ts';
 import { O_THEM_DUOC, TRUONG_BAN } from '../src/tem.ts';
+import { DON_VI_100G, TS_DON_VI_GIA } from '../../web/src/lib/kho/can-tma.ts';
 
 type Ok = (ten: string, dk: boolean, ct?: string) => void;
 
@@ -112,8 +113,14 @@ export async function thuThongSo(ok: Ok): Promise<void> {
   const ids = THONG_SO.map(m => m.id);
   ok('Danh mục thông số: không trùng số', new Set(ids).size === ids.length, ids.join());
   const suaDuoc = THONG_SO.filter(m => !m.chiXem).map(m => m.id).sort((a, b) => a - b);
-  ok('Sửa được đúng 104, 105, 106, 265, 266, 250, 283, 22 (độ đậm in) và 185–187 (in đơn vị sau số, 2.15)',
-    suaDuoc.join() === '22,104,105,106,185,186,187,250,265,266,283', suaDuoc.join());
+  ok('Sửa được đúng 104, 105, 106, 265, 266, 250, 283, 22 (độ đậm in), 185–187 (in đơn vị sau số, 2.15) và 211 (đơn vị của đơn giá, 2.17)',
+    suaDuoc.join() === '22,104,105,106,185,186,187,211,250,265,266,283', suaDuoc.join());
+  const m211 = THONG_SO.find(x => x.id === 211)!;
+  ok('2.17: 211 "Đơn vị của đơn giá" — chọn 0 theo kg / 8 theo 100 g (đúng TS_DON_VI_GIA, DON_VI_100G của can-tma.ts), nhóm Giá và số lẻ; '
+    + 'mô tả chỉ bước gửi lại giá và xếp lại tem, giá tới 9.999.990 đ/kg; chưa thử trên cân thật',
+    m211.id === TS_DON_VI_GIA && m211.nhom === 'Giá và số lẻ' && m211.kieu === 'chon' && m211.luaChon!.map(l => l.gt).join() === `0,${DON_VI_100G}`
+    && /Gửi giá xuống cân/.test(m211.moTa) && /Đơn giá \(đ\/100g\)/.test(m211.moTa) && /9\.999\.990/.test(m211.moTa)
+    && /chưa thử trên cân thật/i.test(m211.canhBao ?? '') && !!m211.luaChon![1].canhBao, JSON.stringify(m211));
   ok('2.15: 185 / 186 / 187 — chọn 0 Không in (mẫu tem Beeftown) / 1 In, ví dụ đúng chữ in ra, nhóm In tem', [185, 186, 187].every(id => {
     const m = THONG_SO.find(x => x.id === id)!;
     return m.nhom === 'In tem' && m.kieu === 'chon' && m.luaChon!.map(l => l.gt).join() === '0,1' && /mẫu tem Beeftown/.test(m.luaChon![0].ten);

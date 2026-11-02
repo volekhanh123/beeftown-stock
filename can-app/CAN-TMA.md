@@ -356,8 +356,8 @@ Thứ tự này giống hệt ở mọi đường của hãng (file, RS-232, m�
 | 1 | PLUID | Số PLU (số gõ trên cân để gọi hàng) | nguyên | — | Người dùng 1–9.999.990; từ 9.999.981 trở lên là PLU hệ thống hoặc bị nhật ký coi là thanh toán (§9.3) → giữ dưới 9.999.981. Chương trình dùng 1–9.999 |
 | 2 | Remark | **Mã hàng** = mã cân = mã FABi; in trong mã vạch | nguyên | 0 | 0–99.999.999; mã vạch 28 lấy 5 chữ số. Mất số 0 đầu. Nên ≥ 1 (mã 0 có nghĩa riêng, §6.4). Không bắt buộc duy nhất. |
 | 3 | Index | Mã vạch ngoài (EAN quét để gọi hàng) | chữ nguyên văn | rỗng | ≤ 255 |
-| 4 | UnitID | Đơn vị | nguyên | 1 | 1 = cân theo đơn vị cân mặc định (kg) · 2 = cái · 3 = kg · 4 = g · 5 = tấn · 6 = lb · 7 = 500 g · 8 = 100 g (· 9 = ¼ lb, chỉ phần mềm). Đơn giá tính theo đơn vị này. Quán dùng 1 (cân ký) và 2 (theo cái). |
-| 5 | Price | Đơn giá | thập phân | `0,0` | Quán: nghìn đồng, 3 số lẻ → tối đa `999.999` trên màn (thông số 188 = 6) = 999.999 đ/kg (`GIA_TOI_DA`). |
+| 4 | UnitID | Đơn vị | nguyên | 1 | 1 = cân theo đơn vị cân mặc định (kg) · 2 = cái · 3 = kg · 4 = g · 5 = tấn · 6 = lb · 7 = 500 g · 8 = 100 g (· 9 = ¼ lb, chỉ phần mềm). Đơn giá tính theo đơn vị này. Quán dùng 1 (cân ký) và 2 (theo cái); 2.17: cân để giá theo 100 g (thông số 211 = 8) thì hàng cân ký từ kho ghi 8. |
+| 5 | Price | Đơn giá | thập phân | `0,0` | Quán: nghìn đồng, 3 số lẻ → tối đa `999.999` trên màn (thông số 188 = 6) = 999.999 đ/kg (`GIA_TOI_DA`). 2.17: đơn vị 8 thì là giá 100 g (giá/kg ÷ 10) → giá/kg tới 9.999.990 đ (`GIA_KG_TOI_DA_100G`); đọc file nhân lại 10 (`DongPlu.gia` luôn là đồng / kg). |
 | 6 | Cost | Giá vốn | thập phân | `0,0` | |
 | 7 | Tare | Bì đặt sẵn (kg); hàng cân có cờ 2 → trọng lượng cố định | thập phân | `0,0` | 0–9.999 |
 | 8 | LabelID1 | Mẫu tem hoá đơn 1 | nguyên | 0 | 0 = theo thông số 0 (tem một hàng) / 5 (tem cộng dồn), §5.9 |
@@ -947,6 +947,7 @@ Danh mục của hãng ghi phạm vi không phải lúc nào cũng đúng (ví d
 | 180 / 181 | Dấu thập phân / dấu nghìn khi in | | 0 / 0 | giữ 0: dấu chấm đọc như dấu nghìn kiểu Việt |
 | 185 / 186 / 187 | In đơn vị sau khối lượng / đơn giá / thành tiền ("0.14kg", "600.000VND/kg", "84.000VND" — đã thấy trên tem in thử 02/11/2026) | 0 không, 1 in | 1 / 1 / 1 (trình cài đặt hãng cho VN) | Mẫu tem Beeftown bản 3: để 0 — nhãn đã ghi đơn vị. Sửa được từ 2.15 (`thong-so.ts`); 2.16: gửi tem theo mẫu Beeftown thì tự gửi 0, tem đã đúng mẫu mà còn bật thì mục Mẫu tem có nút "Tắt đơn vị in sau số" (`donViDangIn`) |
 | 188 / 189 | Số chữ số đơn giá / thành tiền trên màn | 0 tự, 1–7 | 6 / 7 | → đơn giá tối đa 999.999 đ/kg; 188 = 7 có dùng được không [chưa biết] |
+| 211 | Đơn vị của đơn giá (System U.Price Unit) | 0 mặc định, 3 kg, 4 g, 7 500 g, 8 100 g | 0 | Sửa được từ 2.17 (0 / 8). 8 = giá theo 100 g: Beeftown Cân ghi dòng hàng cân ký đơn vị 8, giá 100 g (`can-tma.ts` `DON_VI_100G`), mẫu tem Beeftown nhãn "Giá (đ/100g)". Theo sách hãng cân đổi giá về đơn vị hiện (Pack) — 211 = 8 để hiện / in đúng giá 100 g [suy ra, chưa thử] (`dac-ta/spec-wizard.md` mục Spec210–212) |
 | 196 / 208 / 209 | Số lẻ số cái / trọng lượng / tiền trong mã vạch | 0–5 | 3 / 3 / 2 | chỉ xem (§6) |
 | 201 | Số lẻ trọng lượng | | 3 | |
 | **202 / 203** | **Số lẻ đơn giá / thành tiền** | 0–5 | **3 / 3** | chỉ xem — đổi là sai hết giá |
