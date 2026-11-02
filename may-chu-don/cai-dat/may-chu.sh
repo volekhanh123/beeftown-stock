@@ -162,6 +162,18 @@ dat_tuong_lua() {
   ufw status | sed -n '1,12p'
 }
 
+# Laptop dùng làm máy chủ (thử trước khi thuê máy): gập máy không ngủ, tắt hẳn ngủ / ngủ đông. Máy không có pin (máy
+# chủ thuê) thì bỏ qua.
+giu_may_thuc() {
+  compgen -G '/sys/class/power_supply/BAT*' >/dev/null || return 0
+  bao "Máy có pin (laptop): gập máy không ngủ, tắt chế độ ngủ"
+  install -d -m 0755 /etc/systemd/logind.conf.d
+  printf '[Login]\nHandleLidSwitch=ignore\nHandleLidSwitchExternalPower=ignore\nHandleLidSwitchDocked=ignore\n' \
+    >/etc/systemd/logind.conf.d/beeftown-may-chu.conf
+  systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target >/dev/null 2>&1 || true
+  systemctl kill -s HUP systemd-logind 2>/dev/null || true
+}
+
 lenh_cai() {
   local ten_mien="${1:-}" moi_tao=0 mat_khau='' cm
   [ -n "$ten_mien" ] || loi "Thiếu tên miền. Ví dụ: sudo bash $0 cai don.beeftown.vn"
@@ -182,6 +194,7 @@ lenh_cai() {
     unattended-upgrades
   cai_node
   cai_caddy
+  giu_may_thuc
 
   bao "Người dùng beeftown (chạy máy chủ đơn, không đăng nhập được)"
   install -d -o root -g root -m 0755 "$GOC"

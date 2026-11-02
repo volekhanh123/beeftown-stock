@@ -9,6 +9,9 @@ từ Checkout SDK của Zalo sang SePay cùng ngày), quầy xem đơn trên **m
 chuyển lên máy chủ thuê ở Việt Nam** khi mở bán, khách được báo **trong app và bằng ZNS**. Claude đề xuất, Khánh
 chưa chốt: đơn trả trước đợt đầu chỉ nhận tại quán (phí giao chưa chốt), hoàn tiền do người làm tay.
 
+Khánh 02/11/2026: tên miền máy chủ đơn là **`don.beeftown.vn`**; thử trước trên một **laptop dư cài Ubuntu** (xóa
+Windows), mở ra internet qua router nhà — cùng bộ cài `cai-dat/` như máy thuê; mở bán thật thì chuyển sang máy thuê.
+
 ## Vì sao là một máy chủ riêng
 
 Dữ liệu khách của Mini App phải xử lý và lưu ở Việt Nam (thỏa thuận nhà phát triển Zalo Mini App, Điều 5.3.3b, 7.5 —
@@ -25,7 +28,7 @@ mạng: dữ liệu đi qua máy chủ Cloudflare.
 | 2a | SePay: mã VietQR cho từng đơn (`viet-qr.ts`), nhận tin tiền về có ký HMAC (`sepay.ts`, `POST /sepay/tien-ve`), sổ `giao_dich` đúng một lần mỗi id, đủ / thiếu / dư / không khớp, mục "Tiền về cần xem" ở màn quầy | đã gộp (PR #143) |
 | 2b | Mini App gửi đơn lên máy chủ thay vì mở chat, màn trả tiền (mã QR, chép số tài khoản / số tiền / nội dung), hỏi lại trạng thái đến khi đã nhận tiền (chỉ bản thử) | PR #146 (nháp) |
 | 3 | ZNS: "đã nhận đơn", "khay đã sẵn sàng" | chờ mẫu tin được duyệt |
-| 4a | Bộ cài máy chủ thuê (`cai-dat/`): Ubuntu 24.04, Caddy HTTPS, systemd, tường lửa, `/sepay` chỉ IP SePay, `cap-nhat` chạy kiểm thử rồi mới chạy lại | PR này |
+| 4a | Bộ cài máy chủ thuê (`cai-dat/`): Ubuntu 24.04, Caddy HTTPS, systemd, tường lửa, `/sepay` chỉ IP SePay, `cap-nhat` chạy kiểm thử rồi mới chạy lại; laptop dư (tự tắt ngủ, README mục 1b) | PR #155 |
 | 4 | Máy chủ thuê ở Việt Nam, HTTPS, sao lưu sổ đơn ở Việt Nam, xóa dữ liệu khách quá hạn, đèn sức khỏe trong `/noi-bo`, báo số khay sang kho | chờ thuê máy |
 
 ## File

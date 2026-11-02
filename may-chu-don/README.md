@@ -73,6 +73,42 @@ thứ bằng một lệnh: Node 24, Caddy (tự lấy chứng chỉ HTTPS), dị
 - Nhà cung cấp gửi lại: **địa chỉ IP** và **mật khẩu root** (hoặc tài khoản `ubuntu` có sudo).
 - Trang quản lý của nhà cung cấp có tường lửa riêng thì mở cổng 22, 80, 443.
 
+### 1b. Hoặc dùng laptop dư (thử trước khi thuê máy)
+
+Laptop đặt ở Việt Nam thì giữ đúng quy tắc dữ liệu khách. Bộ cài như máy thuê; khác ở bốn chỗ dưới đây. Khi mở bán thật
+nên chuyển sang máy thuê: laptop ở nhà có điện, mạng, IP thay đổi, không ai trực.
+
+1. **Cài Ubuntu (xóa sạch Windows).** Chép dữ liệu cần giữ ra trước.
+   - Tải **Ubuntu Server 24.04 LTS** ở ubuntu.com/download/server.
+   - Ghi ra USB (từ 4 GB) bằng **Rufus** (rufus.ie) trên một máy Windows khác.
+   - Cắm USB vào laptop, bật máy, bấm phím chọn ổ khởi động (thường F12, F9 hoặc Esc — tùy hãng), chọn USB.
+   - Khi cài:
+     - chọn dùng cả ổ đĩa;
+     - đặt tên người dùng, ví dụ `beeftown-admin`, và một mật khẩu mạnh;
+     - **đánh dấu "Install OpenSSH server"**;
+     - không chọn thêm gói nào.
+   - Cắm dây mạng LAN thì ổn định hơn WiFi.
+2. **Giữ laptop luôn bật.**
+   - Cắm sạc.
+   - Bộ cài tự nhận ra laptop: gập máy không ngủ, tắt chế độ ngủ.
+   - Nếu BIOS có mục "Power on after AC loss" / "AC Recovery" thì bật, để mất điện có lại tự khởi động.
+3. **Kiểm nhà mạng có cấp IP công khai không.**
+   - Đăng nhập trang quản lý router (thường `192.168.1.1`, mật khẩu dán dưới đáy router), xem **địa chỉ WAN**.
+   - Trên laptop sau khi cài, chạy `curl -4 https://api.ipify.org`.
+   - Hai số **trùng nhau** là được.
+   - Khác nhau, hoặc WAN bắt đầu bằng `100.64`–`100.127`, `10.` hay `172.16`–`172.31`, là nhà mạng dùng IP chung (CGNAT): từ ngoài không vào được laptop. Gọi tổng đài (FPT, Viettel, VNPT) xin **"IP public"** (thường miễn phí hoặc thu thêm), hoặc thuê máy.
+4. **Mở cổng trên router.** Mục **NAT / Port Forwarding / Virtual Server**:
+   - chuyển cổng **80 TCP** và **443 TCP** (thêm 443 UDP nếu có) về IP trong mạng nhà của laptop (`ip -4 addr` trên laptop, dạng `192.168.1.x`);
+   - ở mục DHCP, **giữ cố định IP đó cho laptop** (DHCP reservation / static lease), kẻo khởi động lại là đổi.
+   - Router có mạng khách (guest) mà đặt được laptop vào thì tốt hơn: laptop mở ra internet, đừng để nó chung mạng với máy cá nhân.
+
+IP nhà mạng của gói gia đình có thể đổi (sau khi mất điện, khởi động lại modem). Đổi thì `don.beeftown.vn` trỏ sai và
+Mini App không gửi được đơn. Trong lúc thử: thấy `https://don.beeftown.vn/quay` không mở được thì chạy lại
+`curl -4 https://api.ipify.org` trên laptop và sửa IP ở bản ghi Cloudflare (bước 2).
+
+Rồi làm tiếp bước 2–7 như máy thuê. Đăng nhập laptop từ máy khác trong nhà bằng `ssh beeftown-admin@192.168.1.x`, hoặc
+gõ thẳng trên laptop. Tài khoản này không phải root, nên lệnh ở bước 3 thêm `sudo` trước `bash`.
+
 ### 2. Trỏ tên miền về máy (một lần, trước bước 3)
 
 Ở Cloudflare → `beeftown.vn` → **DNS** → **Records** → **Add record**:

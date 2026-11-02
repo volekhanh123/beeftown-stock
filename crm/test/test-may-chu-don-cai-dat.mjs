@@ -157,6 +157,13 @@ await nhom('4 · Script: cú pháp, kiểm thử trước khi chạy lại, quay
   ok('cai: tên miền kiểm dạng trước khi đưa vào sed và Caddyfile', cai.indexOf('grep -Eq') > 0
     && cai.indexOf('grep -Eq') < cai.indexOf('printf \'%s\\n\' "$ten_mien" >"$TEP_TEN_MIEN"'));
 
+  const thuc = thanHam('giu_may_thuc');
+  ok('Laptop (có pin): gập máy không ngủ, tắt ngủ / ngủ đông; máy không pin thì bỏ qua',
+    /compgen -G '\/sys\/class\/power_supply\/BAT\*' >\/dev\/null \|\| return 0/.test(thuc)
+      && /HandleLidSwitch=ignore/.test(thuc) && /HandleLidSwitchExternalPower=ignore/.test(thuc)
+      && /systemctl mask sleep\.target suspend\.target hibernate\.target hybrid-sleep\.target/.test(thuc)
+      && cai.indexOf('giu_may_thuc') > 0 && cai.indexOf('giu_may_thuc') < cai.indexOf('systemctl restart "$DICH_VU"'));
+
   const tuongLua = thanHam('dat_tuong_lua');
   ok('Tường lửa mở SSH, 80, 443 — không bao giờ mở cổng máy chủ đơn',
     /ufw allow 80\/tcp/.test(tuongLua) && /ufw allow 443\/tcp/.test(tuongLua) && /ufw allow "\$c\/tcp"/.test(tuongLua)
