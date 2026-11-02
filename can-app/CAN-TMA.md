@@ -302,7 +302,7 @@ Phần này **rỗng** trên cân quán (thông số 135 = 0: không đăng nh�
 | Phần | Dòng | Vì sao không gửi |
 |---|---|---|
 | `FNT` | `FNT⇥<phông mã hoá nửa byte>⇥` (một dòng ~2,5 MB) | Sai phông là hỏng chữ Việt trên màn và tem. `CLR⇥FNT⇥` xoá phông. |
-| `BMP` | `BMP⇥<số>⇥<đầu 96 byte + ảnh 1 bit>⇥` | Hình (logo). Không cần; không đọc lại được từ cân. |
+| `BMP` | `BMP⇥<số>⇥<đầu 96 byte + ảnh 1 bit>⇥` | Hình (logo). Không đọc lại được từ cân. **Từ 2.13 có gửi — chỉ logo của tem** (hình số 1, `tem.ts` `khoiLogo`, Khánh muốn in logo 02/11/2026): mỗi lần gửi tem có ô Logo, khối BMP đi trước khối LAB; `giao-thuc.ts` `kiemDongBmp` kiểm dạng từng dòng; không bao giờ `CLR⇥BMP⇥`. Chưa thử trên cân thật. |
 | `VER` | `VER⇥<firmware mã hoá nửa byte>⇥` | **Nạp firmware**. Phần mềm hãng không kiểm gì — file sai là hỏng cân. |
 | `PAS` | `PAS⇥<0 quản trị, 1 bán, 2 cài đặt, 3 báo cáo, 4 ngăn kéo, 5 sửa giá nhanh>⇥<mật khẩu>⇥` | Đặt mật khẩu cân → khoá người dùng. |
 | `MAC` | `MAC⇥0⇥35⇥240⇥255⇥x⇥y⇥` | Đổi địa chỉ MAC → nhật ký tách thành máy khác. Không có cách đổi lại. |
@@ -702,7 +702,7 @@ xuống dòng = `\v`, NFC; giữ cột 22 và bit cao của cột 7; luôn có `
 của hãng từ chối ô có khung thật ra ngoài tem hoặc rộng / cao < 1 — kiểm khi sửa, nhưng không từ chối file khi
 đọc (mẫu gốc của hãng có ô chạm y = −1). Dòng `LAS` không sửa giữ y nguyên byte.
 
-### 5.12 Mẫu tem Beeftown (2.12)
+### 5.12 Mẫu tem Beeftown (2.12; bản 2 từ 2.13)
 
 Nút "Xếp tem theo mẫu Beeftown" (`mauBeeftown` trong `tem.ts`) đưa tem 28 về bố cục Khánh duyệt 02/11/2026: mã vạch +
 chữ BEEFTOWN (cỡ 5) trên cùng, tên hàng cỡ 2 rộng hết tem, bảng ba cột (nhãn cỡ 0 trên, số cỡ 1 dưới; thành tiền cỡ 4), đường
@@ -711,6 +711,13 @@ kẻ bằng 40 dấu `-`, tên công ty, địa chỉ quán. Cỡ chữ chỉ d�
 kiện in 2 / 3 — như mẫu tiếng Việt gốc 90000 ("số kg" / "Count"). Không dùng Khung viền (loại 4, cân in thế nào [chưa
 biết]); đường kẻ bằng chữ cố định như phiếu gốc của cân (dac-ta, "dashed separator rows"). Chỉ áp cho tem 58 × 40 mm, mẫu
 không có Phân vùng. **Chưa thử trên cân thật.**
+
+Bản 2 (2.13, Khánh chọn 02/11/2026): logo phụ thay chữ BEEFTOWN (ô Hình loại 6, hình số 1, 184 × 26 chấm, canh mép phải 448,
+giữa theo chiều cao mã vạch), bỏ dòng địa chỉ quán, hai ô ngày cỡ 4 cao bằng thành tiền. Logo: `src/logo-tem.ts`, do
+`scripts/tao-logo-tem.ts` tạo từ `web/public/thuong-hieu/chu-beeftown-den.svg` (Chromium vẽ đúng cỡ, sáng < 128 là đen); dòng BMP
+theo §3.9 / dac-ta label-format mục 5 (`dongBmp`: đầu 96 byte — số hình 4 byte, rộng 2, cao 2, byte thấp trước — rồi hàng chấm,
+mỗi byte hai chữ `@`…`O`). File (nạp USB, đường lui 33571) mang phần BMP trước phần LAB (`kemLogo`). Cân không cho đọc lại
+hình: gửi xong chỉ kiểm được phần LAB, câu báo nói phải in thử.
 
 ---
 

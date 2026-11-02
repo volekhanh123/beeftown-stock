@@ -426,18 +426,32 @@ async function thuMauTem(ok: Ok, trang: TrangPw): Promise<void> {
     guiDuoc: !(document.getElementById('nut-gui-tem') as HTMLButtonElement).disabled,
     baoDaXep: /đã xếp theo mẫu/.test(document.getElementById('tem-mau')?.textContent ?? ''),
   }), null);
-  const canCo = ['BEEFTOWN', 'Ngày đóng gói', 'Hạn sử dụng', 'Thành tiền (đ)', 'Khối lượng (kg)', 'Đơn giá (đ/kg)', 'CÔNG TY TNHH SLK GROUP', 'Tầng 3, 63 Hồ Tùng Mậu'];
-  ok('Quản lý: bấm "Xếp tem theo mẫu Beeftown" — sơ đồ có BEEFTOWN, nhãn tiếng Việt, tên công ty; chưa gửi, nút Gửi bật',
-    canCo.every(c => sauBam.chu.includes(c)) && /thay đổi chưa gửi/.test(sauBam.dem) && sauBam.guiDuoc && sauBam.baoDaXep, JSON.stringify(sauBam));
+  const canCo = ['Ngày đóng gói', 'Hạn sử dụng', 'Thành tiền (đ)', 'Khối lượng (kg)', 'Đơn giá (đ/kg)', 'CÔNG TY TNHH SLK GROUP'];
+  // 2.13: logo vẽ trên sơ đồ (ảnh 184 × 26 có chấm đen), không còn chữ BEEFTOWN hay dòng địa chỉ.
+  const logo = await trang.evaluate(() => {
+    const a = document.querySelector<HTMLImageElement>('#giay .el img.logo-tem');
+    if (!a || !a.complete || !a.naturalWidth) return null;
+    const c = document.createElement('canvas'); c.width = a.naturalWidth; c.height = a.naturalHeight;
+    const g = c.getContext('2d')!; g.drawImage(a, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    let den = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) den++;
+    return { w: c.width, h: c.height, den };
+  }, null);
+  ok('Quản lý: bấm "Xếp tem theo mẫu Beeftown" — sơ đồ có logo (ảnh 184 × 26, có chấm đen), nhãn tiếng Việt, tên công ty; không còn chữ '
+    + 'BEEFTOWN, dòng địa chỉ; chưa gửi, nút Gửi bật',
+    canCo.every(c => sauBam.chu.includes(c)) && !sauBam.chu.includes('BEEFTOWN') && !sauBam.chu.some(c => /Hồ Tùng Mậu/.test(c))
+    && logo !== null && logo.w === 184 && logo.h === 26 && logo.den > 1000
+    && /thay đổi chưa gửi/.test(sauBam.dem) && sauBam.guiDuoc && sauBam.baoDaXep, JSON.stringify({ sauBam, logo }));
   await trang.click('#nut-gui-tem');
   let nhan = true;
   try {
     await trang.waitForFunction(() => /Cân đã nhận mẫu tem/.test(document.getElementById('bao-chung')?.textContent ?? ''), null, { timeout: 20000 });
     await trang.waitForFunction(() => /đúng mẫu tem Beeftown/.test(document.getElementById('tem-mau')?.textContent ?? ''), null, { timeout: 15000 });
   } catch { nhan = false; }
-  const sauGui = await trang.evaluate(() => ({ bao: (document.getElementById('bao-chung')?.textContent ?? '').slice(0, 200),
+  const sauGui = await trang.evaluate(() => ({ bao: (document.getElementById('bao-chung')?.textContent ?? '').slice(0, 400),
     mau: document.getElementById('tem-mau')?.textContent ?? '', nut: !!document.getElementById('nut-mau-beeftown') }), null);
-  ok('Quản lý: gửi tem theo mẫu — cân giả nhận, đọc lại thấy đúng; mở lại thẻ: tem đã đúng mẫu, không còn nút', nhan && !sauGui.nut, JSON.stringify(sauGui));
+  ok('Quản lý: gửi tem theo mẫu — cân giả nhận, đọc lại thấy đúng; câu báo nói logo không kiểm được (in thử); mở lại thẻ: tem đã đúng mẫu, '
+    + 'không còn nút', nhan && !sauGui.nut && /không kiểm được logo/.test(sauGui.bao), JSON.stringify(sauGui));
 }
 
 if (import.meta.main) {

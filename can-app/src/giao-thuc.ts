@@ -230,8 +230,29 @@ export function khoiXoaVaNapPlu(dongPlu: string[]): string[] {
   return ['CLR\tPLU\t', 'CLR\tEND\t', 'DWL\tPLU\t', ...dongPlu, 'END\tPLU\t'];
 }
 
-/** Phần ghi được qua `ghi` (DWL). TIM chỉ qua datGio; REP, INF, MAC, VER, FNT, PAS… không bao giờ (§9). */
-export const PHAN_GHI_DUOC: readonly PhanDoc[] = ['TMS', 'TMT', 'SCP', 'DPT', 'CLS', 'PLU', 'BAR', 'LAB', 'SAL'];
+/**
+ * Phần ghi được qua `ghi` (DWL). TIM chỉ qua datGio; REP, INF, MAC, VER, FNT, PAS… không bao giờ (§9). BMP (2.13): chỉ dòng
+ * hình đúng dạng (kiemDongBmp) — logo của tem (tem.ts khoiLogo).
+ */
+export const PHAN_GHI_DUOC: readonly string[] = ['TMS', 'TMT', 'SCP', 'DPT', 'CLS', 'PLU', 'BAR', 'LAB', 'SAL', 'BMP'];
+
+/**
+ * Dòng BMP đúng dạng: `BMP⇥<1–255>⇥<dữ liệu>⇥`, dữ liệu toàn chữ '@'…'O' (mỗi byte hai chữ), đủ đầu 96 byte, số hình trong
+ * đầu trùng số ở cột 2, rộng / cao 1–432 chấm, đủ byte cho rộng × cao (dac-ta/label-format.md mục 5). Sai → lý do; đúng → null.
+ */
+export function kiemDongBmp(d: string): string | null {
+  const m = /^BMP\t([1-9]\d{0,2})\t([@-O]+)\t$/.exec(d);
+  if (!m || Number(m[1]) > 255) return 'dòng hình (BMP) không đúng dạng';
+  const du = m[2];
+  if (du.length % 2 || du.length < 192) return 'dòng hình (BMP) thiếu dữ liệu';
+  const byte = (i: number) => ((du.charCodeAt(i * 2) - 64) << 4) | (du.charCodeAt(i * 2 + 1) - 64);
+  const so = (i: number, n: number) => { let v = 0; for (let k = n - 1; k >= 0; k--) v = v * 256 + byte(i + k); return v; };
+  if (so(0, 4) !== Number(m[1])) return 'số hình trong dữ liệu khác số hình của dòng';
+  const rong = so(4, 2), cao = so(6, 2);
+  if (rong < 1 || cao < 1 || rong > 432 || cao > 432) return 'hình quá cỡ (tối đa 432 × 432 chấm)';
+  if (du.length !== 192 + Math.ceil(rong / 8) * cao * 2) return 'dữ liệu hình không khớp rộng × cao';
+  return null;
+}
 /** Phần được xoá cả phần (CLR) qua `ghi`. CLR TMS/TMT đặt lại cả cài đặt mạng của cân (§9.1). */
 export const PHAN_XOA_DUOC: readonly PhanDoc[] = ['PLU'];
 /** Thông số mạng (§9.2): gửi sai là cân rời WiFi tới khi sửa bằng tay trên cân. Cũng bỏ khỏi mọi lần gửi qua 33571 (2.7). */
@@ -260,7 +281,7 @@ export function kiemKhoiGhi(dong: string[]): void {
     if (trong === null) {
       if (d === '') continue;
       if (f.length === 3 && f[2] === '' && f[0] === 'DWL') {
-        if (!PHAN_GHI_DUOC.includes(f[1] as PhanDoc)) {
+        if (!PHAN_GHI_DUOC.includes(f[1])) {
           throw loiChan(f[1] === 'TIM' ? 'giờ cân chỉ đặt bằng nút đặt giờ' : `phần ${f[1]} không được ghi qua WiFi`);
         }
         trong = f[1];
@@ -283,6 +304,7 @@ export function kiemKhoiGhi(dong: string[]): void {
     if (d === '') throw loiChan(`dòng trống giữa khối ${trong}`);
     const hopLe = f[0] === trong || (trong === 'LAB' && (f[0] === 'LAS' || f[0] === 'LAE'));
     if (!hopLe) throw loiChan(`dòng ${f[0]} nằm trong khối ${trong}`);
+    if (trong === 'BMP') { const ly = kiemDongBmp(d); if (ly) throw loiChan(ly); }
     if (trong === 'TMS' || trong === 'TMT') {
       if (!LA_SO_NGUYEN.test(f[1] ?? '')) throw loiChan(`dòng ${trong} không có số thứ tự`);
       const id = parseInt(f[1], 10);

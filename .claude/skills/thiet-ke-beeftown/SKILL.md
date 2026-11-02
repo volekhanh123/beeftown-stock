@@ -299,7 +299,8 @@ khối: [tham-khao/trang-cong-khai.md](tham-khao/trang-cong-khai.md) (công khai
   brandmark `dau-bo-{do,den,trang}.svg`; riêng đầu bò `net-dau-bo.svg` chỉ để dựng biểu tượng app.
   Đúng bản cho nền: đỏ trên trắng, đen trên xám nhạt hay giấy in, trắng trên đỏ và đen. Chỗ dùng: đầu
   trang công khai và `/noi-bo` logo phụ trắng; chân trang logo chính trắng; thẻ "Đọc nhãn khay" logo
-  chính đỏ; đầu trang kho brandmark trắng; trang in của kho logo chính đen. Biểu tượng tab, favicon, ảnh
+  chính đỏ; đầu trang kho brandmark trắng; trang in của kho logo chính đen; tem cân (Beeftown Cân 2.13) logo phụ
+  đen 184 × 26 chấm, đổi sang đen trắng bằng `can-app/scripts/tao-logo-tem.ts` (không vẽ lại). Biểu tượng tab, favicon, ảnh
   chia sẻ, biểu tượng app dựng từ các SVG đó bằng `web/cong-cu/thuong-hieu/tao-bieu-tuong.py`. SVG chỉ
   được dùng `#BD0000`, `#000000`, `#FFFFFF` (`BANG_MAU` của `test-cong-khai-giao-dien.mjs`).
 - **Luật logo** (guideline trang 2–5, mọi nơi): khoảng trống mỗi phía một ô đầu bò; chỉ ba bản màu;

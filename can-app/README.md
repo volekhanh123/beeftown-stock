@@ -22,7 +22,7 @@ Với cân (quản lý, chủ):
 
 - **Gửi giá từ kho** — đăng nhập kho Beeftown, lấy **mã cân, tên, giá bán/kg** từ Mặt hàng, xem trước thay đổi, bấm **Gửi xuống cân**. Không cần USB.
 - **Tất cả hàng (SKU)** — mọi hàng đang có trên cân: số PLU, phím tắt, mã cân, **mã FABi** (5 số trong mã vạch), tên, giá, và đối chiếu với kho (khớp / khác kho / kho không có / còn nằm lại / chưa lên cân / không lên được). Có tìm kiếm, lọc, tải về Excel (CSV). Xem được cả khi chưa đăng nhập kho.
-- **Mẫu tem** — sơ đồ tem đang dùng; chọn ô nào được in (tên hàng, số PLU, trọng lượng, đơn giá, thành tiền, mã vạch, ngày đóng gói, hạn dùng…) và sửa chữ cố định (tên quán, "Đơn giá", "HSD"…), rồi gửi xuống cân hoặc lưu file nạp USB. Từ 2.12 có nút **Xếp tem theo mẫu Beeftown** (mục "Bản 2.12").
+- **Mẫu tem** — sơ đồ tem đang dùng; chọn ô nào được in (tên hàng, số PLU, trọng lượng, đơn giá, thành tiền, mã vạch, ngày đóng gói, hạn dùng…) và sửa chữ cố định (tên quán, "Đơn giá", "HSD"…), rồi gửi xuống cân hoặc lưu file nạp USB. Từ 2.12 có nút **Xếp tem theo mẫu Beeftown** (mục "Bản 2.12"); từ 2.13 tem có logo (mục "Bản 2.13").
 - **Cân đổi địa chỉ** (từ 2.1.0) — nối cân không được thì chương trình tự dò WiFi tìm cân, dùng địa chỉ mới và gửi lại (xem mục bên dưới).
 
 Từ 2.2.0 (quản lý, chủ — **chưa thử trên cân thật**, xem mục "Bản 2.2" bên dưới):
@@ -199,6 +199,39 @@ Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn 
     (chưa gửi): ô Cân có khung đỏ; gửi (hay tự gửi) → số ngày giảm 1, HSD trên tem vẫn đúng hạn của lô.
 
 Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
+
+## Bản 2.13 — logo trên tem; mẫu tem Beeftown bản 2
+
+Khánh chọn 02/11/2026 (bộ 2 trong các ảnh mẫu): nút **Xếp tem theo mẫu Beeftown** (thẻ Thiết lập cân → Mẫu tem) nay xếp theo
+bản 2:
+
+| Đổi | Bản 2.12 | Bản 2.13 |
+|---|---|---|
+| Góc trên phải | chữ BEEFTOWN cỡ 5 | **logo phụ** của bộ nhận diện (chữ BEEFTOWN có đầu bò), 23 × 3,25 mm, đen trắng |
+| Ngày đóng gói, hạn sử dụng | cỡ 1 | cỡ 4 (cao gấp đôi) — cao bằng thành tiền, ba số to thẳng một hàng |
+| Cuối tem | tên công ty + "Tầng 3, 63 Hồ Tùng Mậu" | chỉ tên công ty (bỏ địa chỉ) |
+
+- Tem đã xếp theo 2.12: bấm lại nút là chuyển sang bản 2. Chữ BEEFTOWN và dòng địa chỉ được **tắt** (nhớ trong `tem-da-tat.json`,
+  bật lại được ở danh sách ô).
+- **Logo** (ô Hình, loại 6, hình số 1): mỗi lần gửi tem có ô này, chương trình gửi kèm hình logo — khối `DWL BMP` đi trước khối
+  mẫu tem qua cổng hai chiều; file nạp USB và đường lui 33571 có phần BMP trước phần LAB. Logo cũng thêm được bằng tay: danh
+  sách ô → Thêm → **Logo Beeftown**.
+- Cân **không cho đọc lại hình**: gửi xong chương trình chỉ kiểm được mẫu tem, câu báo nói rõ "không kiểm được logo — in thử".
+- Hình số 1 cũng là logo mà các mẫu phiếu gốc của cân (PF-7, 8, 9 — giấy thường) trỏ tới: nếu quán in phiếu, phiếu cũng có logo.
+- Logo đen trắng là `src/logo-tem.ts`, do `scripts/tao-logo-tem.ts` tạo từ `web/public/thuong-hieu/chu-beeftown-den.svg` (Chromium
+  vẽ đúng 184 × 26 chấm) — không vẽ lại. SVG đổi thì chạy lại công cụ; `test/thu-tem.ts` so sha256 của SVG.
+- Trước 2.13, `CAN-TMA.md` §3.9 ghi BMP là phần không bao giờ gửi ("không cần"). Nay gửi — chỉ dòng hình đúng dạng
+  (`giao-thuc.ts` `kiemDongBmp`), chỉ hình số 1, không bao giờ xoá cả phần (`CLR BMP`). **Chưa thử trên cân thật.**
+
+**Thử ở quán (2.13)** — sau khi bấm **Cập nhật**, đăng nhập quản lý hoặc chủ:
+1. Thẻ **Thiết lập cân** → mở **Mẫu tem**. Chưa sửa gì, bấm **Lưu file nạp USB** — giữ file đó (tem đang in).
+2. Bấm **Xếp tem theo mẫu Beeftown**: sơ đồ có logo ở góc trên phải, hai ô ngày to, không còn dòng địa chỉ.
+3. Bấm **Gửi tem xuống cân** → khung xanh "Cân đã nhận mẫu tem", kèm câu "không kiểm được logo — in thử".
+4. Cân thử một món, in một tem: **có logo không, có rõ không** (nhất là đầu bò trong chữ O).
+5. Có logo: in thêm hàng có / không hạn dùng, hàng theo gói; quét mã vạch bằng máy quét của quầy (FABi ra đúng món, đúng số ký).
+6. **Không có logo** (góc trên phải trống): danh sách ô → bỏ chọn **Logo Beeftown**, chọn lại **Chữ "BEEFTOWN"** → Gửi tem
+   xuống cân. Báo lại để tìm cách khác (nạp USB file ở bước "Lưu file nạp USB" sau khi xếp mẫu — file có phần BMP).
+7. Tem hỏng hẳn: nạp lại file USB ở bước 1.
 
 ## Bản 2.12 — mẫu tem Beeftown
 
@@ -811,6 +844,8 @@ Bấm `Prog`, đi bằng `↓ V3` / `↑ V1` hoặc bấm thẳng số mục (`P
 - **Tắt ô** = bỏ dòng `LAS`; dòng bỏ được nhớ trong `Tài liệu\Beeftown Can\tem-da-tat.json` để **bật lại** đúng chỗ. Dòng không sửa giữ y nguyên từng byte.
 - **Sửa ô** (2.2) chỉ đổi đúng cột có giá trị mới; **thêm ô** lấy số thứ tự lớn nhất + 1 (tối đa 99, tối đa 100 ô), ô chữ mới
   lấy ô chữ trống đầu tiên của dòng `LAB`. Ô ra ngoài mép tem chỉ cảnh báo. Mẫu tem có ô Phân vùng thì chỉ sửa chữ và tắt / bật.
+- **Logo** (2.13): ô Hình (loại 6) số 1 = logo Beeftown; tem có ô đó thì file mang phần `BMP` (`kemLogo`) và mỗi lần gửi tem
+  có khối `DWL BMP` đi trước (`khoiLogo`). Hình không đọc lại được từ cân.
 - **Mẫu tem Beeftown** (2.12, `mauBeeftown`): tính một lần sửa / tắt / thêm bình thường như trên (không ghi gì riêng), chạy thử
   `suaTem` trước khi đưa ra nút — lỗi thành câu lý do, không bao giờ có nút mà bấm gửi mới hỏng.
 

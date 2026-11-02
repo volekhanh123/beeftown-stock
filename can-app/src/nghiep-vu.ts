@@ -79,7 +79,8 @@ import {
   LoiFileCan, type DongKeHoach, type DongPlu, type FileCan, type HangKho, type KeHoach, type LoaiDong,
 } from '../../web/src/lib/kho/can-tma.ts';
 import {
-  CANH_CHU, CAU_DOI, CO_CHU, DIEU_KIEN_IN, LoiTem, O_THEM_DUOC, XOAY, dauTem, docTem, dongMauTemDangDung, goiYHsd, mauBeeftown, suaTem, xemTem,
+  CANH_CHU, CAU_DOI, CAU_LOGO, CO_CHU, DIEU_KIEN_IN, LOGO_TREN_SO_DO, LoiTem, O_THEM_DUOC, XOAY, dauTem, docTem, dongMauTemDangDung, goiYHsd, kemLogo,
+  khoiLogo, mauBeeftown, suaTem, temDungLogo, xemTem,
   type DaTat, type MauBeeftown, type MauTem, type TemXem, type ThayDoiTem,
 } from './tem.ts';
 import {
@@ -2667,7 +2668,8 @@ export class UngDung {
   tem(): {
     tem: TemXem | null;
     hangMau: { so: number; ten: string; gia: number | null; theoGoi: boolean; hsd: number | null; maCan: string } | null;
-    danhMuc: { oThem: typeof O_THEM_DUOC; coChu: typeof CO_CHU; dieuKienIn: typeof DIEU_KIEN_IN; canhChu: typeof CANH_CHU; xoay: typeof XOAY };
+    danhMuc: { oThem: typeof O_THEM_DUOC; coChu: typeof CO_CHU; dieuKienIn: typeof DIEU_KIEN_IN; canhChu: typeof CANH_CHU; xoay: typeof XOAY;
+      logo: typeof LOGO_TREN_SO_DO };
     goiYHsd: string[];
     mauBeeftown: MauBeeftown;
     kieuNgay: number;
@@ -2682,7 +2684,7 @@ export class UngDung {
     return {
       tem: xemTem(goc, daTat),
       hangMau: p ? { so: p.so, ten: p.ten, gia: p.gia, theoGoi: p.cachBan === '2', hsd: p.hsd, maCan: p.ma } : null,
-      danhMuc: { oThem: O_THEM_DUOC, coChu: CO_CHU, dieuKienIn: DIEU_KIEN_IN, canhChu: CANH_CHU, xoay: XOAY },
+      danhMuc: { oThem: O_THEM_DUOC, coChu: CO_CHU, dieuKienIn: DIEU_KIEN_IN, canhChu: CANH_CHU, xoay: XOAY, logo: LOGO_TREN_SO_DO },
       goiYHsd: goiYHsd(goc, daTat),
       mauBeeftown: mauBeeftown(du, daTat, goc),
       kieuNgay: Number.isInteger(k) ? k : 0,
@@ -2698,11 +2700,13 @@ export class UngDung {
   private dungTem(thay: ThayDoiTem): { du: Uint8Array; daTat: DaTat; canhBao: string[] } {
     const goc = this.docGoc(), daTat = this.docDaTat();
     if (typeof thay.dau !== 'string' || thay.dau === '' || thay.dau !== dauTem(docFileCan(goc), daTat)) throw new LoiCan(CAU_DOI);
-    let kq;
-    try { kq = suaTem(goc, daTat, thay); }
+    let kq, du;
+    // 2.13: tem có ô logo → file mang kèm phần BMP (file nạp USB, đường lui 33571 gửi cả file).
+    try { kq = suaTem(goc, daTat, thay); du = kemLogo(kq.du); }
     catch (e) { if (e instanceof LoiTem) throw new LoiCan(e.message); throw e; }
     if (!kq.coDoi) throw new LoiCan('Tem chưa có gì thay đổi.');
-    return { du: ghiFileCan(docFileCan(kq.du), KHONG_DOI, { giuGioCan: true, boPhanChiDoc: true }), daTat: kq.daTat, canhBao: kq.canhBao };
+    const canhBao = temDungLogo(docFileCan(du)) ? [...kq.canhBao, CAU_LOGO] : kq.canhBao;
+    return { du: ghiFileCan(docFileCan(du), KHONG_DOI, { giuGioCan: true, boPhanChiDoc: true }), daTat: kq.daTat, canhBao };
   }
 
   /**
@@ -2715,7 +2719,8 @@ export class UngDung {
     return this.motLuc(async () => {
       const { du, daTat, canhBao } = this.dungTem(thay);
       let khoi: string[];
-      try { khoi = ['DWL\tLAB\t', ...dongMauTemDangDung(docFileCan(du)), 'END\tLAB\t']; }
+      // 2.13: logo (khối BMP) đi trước mẫu tem — cân có hình rồi mới nhận ô trỏ tới nó. Đọc lại chỉ kiểm phần LAB.
+      try { const f = docFileCan(du); khoi = [...khoiLogo(f), 'DWL\tLAB\t', ...dongMauTemDangDung(f), 'END\tLAB\t']; }
       catch (e) { if (e instanceof LoiTem) throw new LoiCan(e.message); throw e; }
       const gui = await this.guiCaiDat('LAB', khoi, du, 'mẫu tem');
       this.luuGoc(du);

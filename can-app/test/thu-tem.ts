@@ -9,10 +9,13 @@
  */
 import { docFileCan } from '../../web/src/lib/kho/can-tma.ts';
 import {
-  CANH_CHU, CAU_PHAN_VUNG, CO_CHU, DIA_CHI_TREN_TEM, DIEU_KIEN_IN, LOAI_O, LoiTem, MAU_BEEFTOWN_CO, O_MAU_BEEFTOWN, O_THEM_DUOC,
+  CANH_CHU, CAU_PHAN_VUNG, CO_CHU, DIEU_KIEN_IN, DONG_LOGO, ID_LOGO, LOAI_O, LoiTem, MAU_BEEFTOWN_CO, O_MAU_BEEFTOWN, O_THEM_DUOC,
   TEN_CONG_TY_TREN_TEM, TRUONG_BAN, TRUONG_HANG, XOAY,
-  docTem, goiYHsd, khungThat, mauBeeftown, suaTem, xemTem, type DaTat, type SuaO, type ThayDoiTem,
+  docTem, dongBmp, goiYHsd, kemLogo, khoiLogo, khungThat, mauBeeftown, suaTem, temDungLogo, xemTem, type DaTat, type SuaO, type ThayDoiTem,
 } from '../src/tem.ts';
+import { LOGO_TEM } from '../src/logo-tem.ts';
+import { kiemDongBmp, kiemKhoiGhi } from '../src/giao-thuc.ts';
+import { createHash } from 'node:crypto';
 
 export type Ok = (ten: string, dieuKien: boolean, chiTiet?: string) => void;
 
@@ -264,8 +267,12 @@ export async function thuTem(ok: Ok): Promise<void> {
     && /dài quá 40/.test(loiCua(() => sua({ chu: { 23: 'x'.repeat(41) } }))) && /không có trên tem/.test(loiCua(() => sua({ chu: { 11: 'lạ' } }))));
 
   // ===========================================================================
-  console.log('T7 · Mẫu tem Beeftown (2.12): xếp tem 28 theo mẫu tem thịt siêu thị');
+  console.log('T7 · Mẫu tem Beeftown (2.12; bản 2 từ 2.13): xếp tem 28 theo mẫu tem thịt siêu thị');
   await thuMauBeeftown(ok);
+
+  // ===========================================================================
+  console.log('T8 · Logo trên tem (2.13): hình đen trắng, dòng BMP, file và khối gửi kèm logo');
+  await thuLogo(ok);
 }
 
 /** Ô đang in của mẫu đang dùng sau khi áp: chữ (ô chữ cố định) hoặc tên ô, kèm khung, cỡ, canh, khi nào in. */
@@ -284,7 +291,7 @@ async function thuMauBeeftown(ok: Ok): Promise<void> {
   const { mb, kq } = ap(goc);
   ok('Tem 28 của quán: áp được, không có lý do chặn', mb.thay !== null && mb.lyDo === null && kq !== null && kq.coDoi && kq.canhBao.length === 0, JSON.stringify(mb.lyDo ?? kq?.canhBao));
   const o = oSauKhiAp(kq!.du);
-  ok('Sau khi áp: 18 ô đang in (7 ô dữ liệu + 11 ô chữ)', o.length === 18, String(o.length));
+  ok('Sau khi áp: 17 ô đang in (8 ô dữ liệu gồm logo + 9 ô chữ)', o.length === 17, String(o.length));
 
   // Từng ô của mẫu có mặt đúng khung, cỡ chữ, canh, khi nào in.
   const thieu = O_MAU_BEEFTOWN.filter(({ ten, k }) => !o.some(x => (x.chuIn !== null ? `Chữ "${x.chuIn}"` : x.ten) === ten
@@ -299,8 +306,12 @@ async function thuMauBeeftown(ok: Ok): Promise<void> {
   const tat = kq!.daTat['28'].map(x => docO2(x.tho));
   ok('Ô không có trong mẫu được tắt và nhớ (bật lại được): số PLU, chữ "Thành tiền", "Trọng lượng", "HSD", tên quán cũ',
     tat.length === 5 && [1, 4, 5, 28, 29].every(so => tat.some(x => x.subId === so)), tat.map(x => x.subId).join());
-  ok('Ô mới số 30 trở đi, chữ mới vào ô chữ trống (không đè chữ cũ của ô đã tắt)', o.filter(x => x.subId >= 30).length === 9
-    && new Set(o.filter(x => x.loai === '3').map(x => x.chu)).size === 11 && !o.some(x => x.loai === '3' && [1, 3, 12, 16].includes(x.chu) && x.chuIn !== 'Đơn giá'));
+  ok('Ô mới số 30 trở đi (logo + 7 ô chữ), chữ mới vào ô chữ trống (không đè chữ cũ của ô đã tắt)', o.filter(x => x.subId >= 30).length === 8
+    && new Set(o.filter(x => x.loai === '3').map(x => x.chu)).size === 9 && !o.some(x => x.loai === '3' && [1, 3, 12, 16].includes(x.chu) && x.chuIn !== 'Đơn giá'));
+  ok('Ô logo: hình số 1, đúng cỡ logo, góc trên phải (mép phải 448), giữa theo chiều cao mã vạch', o.some(x => x.loai === '6' && x.chu === ID_LOGO
+    && x.ten === 'Logo Beeftown' && x.w === LOGO_TEM.rong && x.h === LOGO_TEM.cao && x.x + x.w === 448 && x.y + x.h / 2 === 10 + 74 / 2));
+  ok('Ba số to (ngày đóng gói, hạn sử dụng, thành tiền) cùng cỡ 4, cùng hàng', ['Ngày in', 'Hạn dùng', 'Thành tiền']
+    .every(t => o.some(x => x.ten === t && x.font === 4 && x.y === 154 && x.h === 52)));
 
   // Hình học: trong tem, không chồng nhau (trừ cặp nhãn cân ký / theo gói cùng một chỗ), cao đúng dòng chữ, chữ dài nhất vẫn vừa.
   const R = MAU_BEEFTOWN_CO.rong * 8, C = MAU_BEEFTOWN_CO.cao * 8;
@@ -314,7 +325,7 @@ async function thuMauBeeftown(ok: Ok): Promise<void> {
   ok('Không ô nào chồng ô nào (trừ "Khối lượng (kg)"/"Số lượng", "Đơn giá (đ/kg)"/"Đơn giá")', chong.length === 0, chong.join(' | '));
   const MAU_DAI: Record<string, string> = { 'Tên hàng': 'Thăn ngoại cắt lát #0142', 'Ngày in': '2026.11.02', 'Hạn dùng': '2026.11.05',
     'Trọng lượng / số lượng': '99.999', 'Đơn giá': '1.250.000', 'Thành tiền': '9.999.999' };
-  const khongVua = o.filter(x => x.loai !== '0').filter(x => {
+  const khongVua = o.filter(x => x.loai !== '0' && x.loai !== '6').filter(x => {
     const t = x.chuIn ?? MAU_DAI[x.ten];
     return t === undefined || [...t].length * CO_CHU[x.font].rong > x.w || x.h !== CO_CHU[x.font].cao;
   });
@@ -334,18 +345,20 @@ async function thuMauBeeftown(ok: Ok): Promise<void> {
   ok('Áp lần hai trên tem đã đúng mẫu: không có gì đổi, không lý do', lan2.thay === null && lan2.lyDo === null, JSON.stringify(lan2));
   ok('Tem đã đúng mẫu: không còn gợi ý HSD (nhãn "Hạn sử dụng" và ô hạn dùng đã "chỉ khi có hạn dùng")', goiYHsd(docFileCan(kq!.du), kq!.daTat).length === 0);
 
-  // Chữ thương hiệu cũ "BEEFTOWN" với canh có bit cao: dùng lại, giữ bit cao.
-  const { kq: kqB } = ap(file28(O_28, { ...CHU_28, 18: 'BEEFTOWN' }));
-  const beef = oSauKhiAp(kqB!.du).find(x => x.chuIn === 'BEEFTOWN')!;
-  ok('Ô chữ "BEEFTOWN" có sẵn (số 29, canh 192): dùng lại, canh 192 → 198 (giữ bit cao), cỡ 5', beef.subId === 29 && beef.canh === 198 && beef.font === 5
-    && beef.x === 264 && beef.w === 184, JSON.stringify(beef));
+  // Tem đã xếp theo bản 2.12 (chữ BEEFTOWN góc trên phải, dòng địa chỉ cuối tem): bấm lại → hai ô đó tắt, nhớ để bật lại
+  // (cân không in được logo thì bật lại chữ BEEFTOWN, bỏ chọn ô logo).
+  const { kq: kqB } = ap(file28([...O_28, [30, 3, 5, 0, 1, 0, 5, 0, 4, 282, 456, 18]], { ...CHU_28, 18: 'BEEFTOWN', 11: 'Tầng 3, 63 Hồ Tùng Mậu' }));
+  const tatB = kqB!.daTat['28'].map(x => docO2(x.tho).subId);
+  ok('Tem bản 2.12 (chữ BEEFTOWN, dòng địa chỉ): bấm lại thì hai ô đó tắt và được nhớ; tem có ô logo',
+    tatB.includes(29) && tatB.includes(30) && !oSauKhiAp(kqB!.du).some(x => x.chuIn === 'BEEFTOWN' || x.chuIn === 'Tầng 3, 63 Hồ Tùng Mậu')
+    && temDungLogo(docFileCan(kqB!.du)), tatB.join());
 
   // Tem thiếu ô: thêm theo O_THEM_DUOC; ô xoay được xoay về 0.
   const { kq: kqThieu } = ap(file28(bien({ 0: [0, 1, 0, 0, 1, 1, 5, 5, 400, 0, 408, 43] }, [8, 11])));
   const oThieu = oSauKhiAp(kqThieu!.du);
   ok('Tem không có mã vạch, hạn dùng: thêm ô mới đúng chỗ; tên hàng đang xoay 90° về 0°',
-    oThieu.some(x => x.ten === 'Mã vạch' && x.subId >= 30 && x.x === 4 && x.y === 8) && oThieu.some(x => x.ten === 'Hạn dùng' && x.subId >= 30 && x.inKhi === 9)
-    && oThieu.some(x => x.ten === 'Tên hàng' && x.subId === 0 && x.xoay === 0 && x.x === 4) && oThieu.length === 18);
+    oThieu.some(x => x.ten === 'Mã vạch' && x.subId >= 30 && x.x === 4 && x.y === 10) && oThieu.some(x => x.ten === 'Hạn dùng' && x.subId >= 30 && x.inKhi === 9)
+    && oThieu.some(x => x.ten === 'Tên hàng' && x.subId === 0 && x.xoay === 0 && x.x === 4) && oThieu.length === 17);
 
   // Không áp được: lý do rõ, không bao giờ trả thay đổi hỏng.
   const khac40 = mauBeeftown(fileCan([...MAU_1, dongLab('28', 'THU', CHU_28, { rong: 40, cao: 30 }), ...O_28.map(las), 'LAE\t']), {});
@@ -358,10 +371,86 @@ async function thuMauBeeftown(ok: Ok): Promise<void> {
   ok('Số thứ tự ô gần 99 (ô mới không đủ số): không áp, nói lý do của suaTem', gan99.thay === null && /số thứ tự ô 99/.test(gan99.lyDo ?? ''), String(gan99.lyDo));
   ok('Không có mẫu tem: không áp', mauBeeftown(fileCan([]), {}).thay === null);
 
-  // Tên công ty và địa chỉ trên tem khớp chữ pháp lý / địa chỉ quán của website (web/src/lib/chu.ts).
+  // Tên công ty trên tem khớp chữ pháp lý của website (web/src/lib/chu.ts).
   const chuTs = await Bun.file(new URL('../../web/src/lib/chu.ts', import.meta.url)).text();
-  ok('Tên công ty = PHAP_NHAN.ten, địa chỉ = DIA_CHI_PHAN.duong của web/src/lib/chu.ts',
-    chuTs.includes(`ten: '${TEN_CONG_TY_TREN_TEM}'`) && chuTs.includes(`duong: '${DIA_CHI_TREN_TEM}'`));
+  ok('Tên công ty = PHAP_NHAN.ten của web/src/lib/chu.ts; tem không còn dòng địa chỉ (bỏ từ 2.13)',
+    chuTs.includes(`ten: '${TEN_CONG_TY_TREN_TEM}'`) && !o.some(x => /Hồ Tùng Mậu/.test(x.chuIn ?? '')));
+}
+
+/** Giải dữ liệu của dòng BMP (hai chữ '@'…'O' mỗi byte) — để kiểm thử đọc lại đúng thứ đã mã hoá. */
+function giaiBmp(d: string): { id: number; du: number[] } {
+  const f = d.split('\t');
+  const du: number[] = [];
+  for (let i = 0; i < f[2].length; i += 2) du.push(((f[2].charCodeAt(i) - 64) << 4) | (f[2].charCodeAt(i + 1) - 64));
+  return { id: Number(f[1]), du };
+}
+
+async function thuLogo(ok: Ok): Promise<void> {
+  // Logo đen trắng tạo từ SVG của bộ nhận diện (scripts/tao-logo-tem.ts): đúng nguồn, đúng cỡ, có chấm đen.
+  const svg = await Bun.file(new URL('../../' + LOGO_TEM.nguon, import.meta.url)).text();
+  ok('Logo tạo từ đúng SVG hiện tại (sha256 khớp — SVG đổi thì chạy lại scripts/tao-logo-tem.ts)',
+    LOGO_TEM.nguon === 'web/public/thuong-hieu/chu-beeftown-den.svg' && createHash('sha256').update(svg).digest('hex') === LOGO_TEM.sha256Nguon);
+  const den = LOGO_TEM.hang.join('').split('').reduce((n, c) => n + (parseInt(c, 16).toString(2).match(/1/g)?.length ?? 0), 0);
+  ok('Logo 184 × 26 chấm (23 × 3,25 mm), mỗi hàng 23 byte, có chấm đen và chấm trắng', LOGO_TEM.rong === 184 && LOGO_TEM.cao === 26
+    && LOGO_TEM.hang.length === 26 && LOGO_TEM.hang.every(h => /^[0-9a-f]{46}$/.test(h)) && den > 1000 && den < 184 * 26 - 1000, String(den));
+
+  // Dòng BMP: đầu 96 byte (số hình, rộng, cao — byte thấp trước — rồi 88 byte 0), các hàng chấm, mỗi byte hai chữ '@'…'O'.
+  const { id, du } = giaiBmp(DONG_LOGO);
+  ok('Dòng BMP của logo: "BMP⇥1⇥…⇥", toàn chữ @…O, đầu 96 byte đúng số hình / rộng / cao, sau đó đúng từng byte của logo',
+    /^BMP\t1\t[@-O]+\t$/.test(DONG_LOGO) && id === 1 && du.length === 96 + 23 * 26
+    && du[0] === 1 && du[1] === 0 && du[2] === 0 && du[3] === 0 && du[4] === 184 && du[5] === 0 && du[6] === 26 && du[7] === 0
+    && du.slice(8, 96).every(b => b === 0)
+    && du.slice(96).map(b => b.toString(16).padStart(2, '0')).join('') === LOGO_TEM.hang.join(''));
+  const le = giaiBmp(dongBmp(7, { rong: 10, cao: 2, hang: ['ffff', '8040'] })).du.slice(96);
+  ok('Hình rộng không chia hết cho 8: bit thừa cuối hàng ghi 0 (trắng); số hình 7 vào đầu', JSON.stringify(le) === JSON.stringify([0xFF, 0xC0, 0x80, 0x40])
+    && giaiBmp(dongBmp(7, { rong: 10, cao: 2, hang: ['ffff', '8040'] })).du[0] === 7);
+  ok('Hình sai bị từ chối: số hình 0 / 256, hàng thiếu byte, sai số hàng, quá 432 chấm',
+    [() => dongBmp(0, LOGO_TEM), () => dongBmp(256, LOGO_TEM), () => dongBmp(1, { rong: 16, cao: 1, hang: ['ff'] }),
+      () => dongBmp(1, { rong: 8, cao: 2, hang: ['ff'] }), () => dongBmp(1, { rong: 440, cao: 1, hang: ['00'.repeat(55)] })]
+      .every(f => /Số hình|Hình không đúng cỡ/.test(loiCua(f))));
+
+  // Cổng ghi (giao-thuc.ts kiemKhoiGhi): nhận khối BMP đúng dạng, chặn dòng hỏng trước khi gửi byte nào.
+  const loiGhi = (k: string[]) => { try { kiemKhoiGhi(k); return ''; } catch (e) { return (e as Error).message; } };
+  ok('Cổng ghi nhận khối logo đi trước khối mẫu tem', kiemDongBmp(DONG_LOGO) === null
+    && loiGhi(['DWL\tBMP\t', DONG_LOGO, 'END\tBMP\t', 'DWL\tLAB\t', ...mau28().map(d => Buffer.from(d, 'utf8').toString('latin1')), 'END\tLAB\t']) === '');
+  const sai = [
+    DONG_LOGO.replace('BMP\t1\t', 'BMP\t2\t'),                       // số hình ở cột 2 khác số trong đầu
+    DONG_LOGO.slice(0, -3) + '\t',                                     // thiếu một chữ
+    DONG_LOGO.slice(0, -2) + 'Z\t',                                    // chữ ngoài @…O
+    DONG_LOGO.replace('BMP\t1\t', 'BMP\t300\t'),                     // số hình quá 255
+    'BMP\t1\t' + 'A'.repeat(100) + '\t',                              // thiếu đầu 96 byte
+  ];
+  ok('Cổng ghi chặn dòng BMP hỏng: sai số hình, thiếu / thừa dữ liệu, chữ lạ, số hình quá 255, thiếu đầu',
+    sai.every(d => kiemDongBmp(d) !== null && /hình|BMP/.test(loiGhi(['DWL\tBMP\t', d, 'END\tBMP\t']))), sai.map(d => kiemDongBmp(d)).join(' | '));
+  ok('Cổng ghi vẫn chặn phần khác: FNT, VER, CLR BMP', /FNT/.test(loiGhi(['DWL\tFNT\t', 'FNT\tAA\t', 'END\tFNT\t']))
+    && /VER/.test(loiGhi(['DWL\tVER\t', 'VER\tAA\t', 'END\tVER\t'])) && /BMP/.test(loiGhi(['CLR\tBMP\t', 'CLR\tEND\t'])));
+
+  // File và khối gửi: tem có ô logo → kèm logo; không có → nguyên như cũ.
+  const goc = file28();
+  const mb = mauBeeftown(goc, {});
+  const daAp = suaTem(goc, {}, mb.thay!).du;
+  const coLogo = kemLogo(daAp);
+  const dong = docFileCan(coLogo).dong;
+  const iBmp = dong.indexOf('DWL\tBMP\t'), iLab = dong.indexOf('DWL\tLAB\t');
+  ok('Tem có ô logo: file thêm phần BMP (DWL BMP, dòng logo, END BMP, dòng trống) ngay trước phần LAB; phần khác giữ nguyên',
+    iBmp >= 0 && iBmp < iLab && dong[iBmp + 1] === DONG_LOGO && dong[iBmp + 2] === 'END\tBMP\t' && dong[iBmp + 3] === ''
+    && JSON.stringify(dong.filter((_, i) => i < iBmp || i > iBmp + 3)) === JSON.stringify(docFileCan(daAp).dong));
+  ok('Kèm logo lần hai: file y nguyên (không thêm phần BMP thứ hai)', bang(kemLogo(coLogo), coLogo));
+  ok('Tem không có ô logo: file y nguyên, không khối gửi logo', bang(kemLogo(goc), goc) && khoiLogo(docFileCan(goc)).length === 0);
+  ok('Tem có ô logo: khối gửi là DWL BMP, dòng logo, END BMP', JSON.stringify(khoiLogo(docFileCan(coLogo))) === JSON.stringify(['DWL\tBMP\t', DONG_LOGO, 'END\tBMP\t']));
+  // Phần BMP có sẵn: hình khác số thì thêm logo vào cùng phần; hình số 1 khác thì thay; thiếu END thì báo, không đoán.
+  const voiBmp = (bmp: string[]) => {
+    const L = docFileCan(daAp).dong.slice(); L.splice(L.indexOf('DWL\tLAB\t'), 0, 'DWL\tBMP\t', ...bmp, '');
+    return new TextEncoder().encode(L.join('\r\n'));
+  };
+  const hinh2 = dongBmp(2, { rong: 8, cao: 1, hang: ['ff'] });
+  const d2 = docFileCan(kemLogo(voiBmp([hinh2, 'END\tBMP\t']))).dong;
+  ok('Phần BMP đã có hình số 2: thêm logo vào cùng phần, giữ hình số 2', d2.filter(d => d === 'DWL\tBMP\t').length === 1
+    && d2.includes(hinh2) && d2.includes(DONG_LOGO));
+  const cu1 = dongBmp(1, { rong: 8, cao: 1, hang: ['0f'] });
+  const d1 = docFileCan(kemLogo(voiBmp([cu1, 'END\tBMP\t']))).dong;
+  ok('Hình số 1 khác (logo cũ): thay bằng logo Beeftown', d1.includes(DONG_LOGO) && !d1.includes(cu1));
+  ok('Phần BMP thiếu END: báo lỗi, không đoán', /thiếu dòng kết thúc/.test(loiCua(() => kemLogo(voiBmp([hinh2])))));
 }
 
 /** Đọc một dòng LAS (dòng ô đã tắt trong tem-da-tat.json). */
