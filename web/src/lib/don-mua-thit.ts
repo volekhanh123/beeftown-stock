@@ -74,6 +74,14 @@ export function dinhDangTien(n: number): string {
  * CHỮ CÓ SỐ CỦA KHỐI ĐƠN — máy chủ (component) và script của trang dùng chung, để hai bản dựng ra cùng một chữ.
  * Mỗi khóa đủ vi / en / ko. Không câu nào chứa số tiền.
  */
+/** "3 gói · 1 hộp" — dùng chung cho CHU_DON.dem và CHU_DON.daChon (một chỗ giữ số ít / số nhiều). */
+const DEM = {
+  vi: (soGoi: number, soHop: number) => noi([soGoi && `${soGoi} gói`, soHop && `${soHop} hộp`]),
+  en: (soGoi: number, soHop: number) =>
+    noi([soGoi && `${soGoi} ${soGoi === 1 ? 'pack' : 'packs'}`, soHop && `${soHop} ${soHop === 1 ? 'box' : 'boxes'}`]),
+  ko: (soGoi: number, soHop: number) => noi([soGoi && `${soGoi}팩`, soHop && `${soHop}통`]),
+};
+
 export const CHU_DON = {
   /** Nhãn cỡ gói: thịt "khoảng" (quyết định 2), hộp ghi khối lượng tịnh. Số gam không dấu ngăn. */
   goiChu: {
@@ -82,17 +90,18 @@ export const CHU_DON = {
     ko: (donVi: DonVi, n: number) => (donVi === 'hop' ? `${n} g 통` : `약 ${n} g 팩`),
   },
   /** "3 gói · 1 hộp"; vế bằng 0 bỏ; cả hai bằng 0 → chuỗi rỗng (trang hiện câu giỏ rỗng). */
-  dem: {
-    vi: (soGoi: number, soHop: number) => noi([soGoi && `${soGoi} gói`, soHop && `${soHop} hộp`]),
-    en: (soGoi: number, soHop: number) =>
-      noi([soGoi && `${soGoi} ${soGoi === 1 ? 'pack' : 'packs'}`, soHop && `${soHop} ${soHop === 1 ? 'box' : 'boxes'}`]),
-    ko: (soGoi: number, soHop: number) => noi([soGoi && `${soGoi}팩`, soHop && `${soHop}통`]),
-  },
+  dem: DEM,
   /** Đầu một dòng đơn; trang ghép ngay sau nó <span data-tien>thành tiền</span> (vì vậy kết bằng "= "). */
   dongDau: {
     vi: (ten: string, goi: string, n: number) => `${ten} · ${goi} × ${n} = `,
     en: (ten: string, goi: string, n: number) => `${ten} · ${goi} × ${n} = `,
     ko: (ten: string, goi: string, n: number) => `${ten} · ${goi} × ${n} = `,
+  },
+  /** Dòng "Đã chọn: 2 gói" trên thẻ sản phẩm và ở chân hộp chọn gói (MuaThitThe.astro; script của trang đổi). */
+  daChon: {
+    vi: (soGoi: number, soHop: number) => `Đã chọn: ${DEM.vi(soGoi, soHop)}`,
+    en: (soGoi: number, soHop: number) => `Chosen: ${DEM.en(soGoi, soHop)}`,
+    ko: (soGoi: number, soHop: number) => `고른 수량: ${DEM.ko(soGoi, soHop)}`,
   },
   tamTinh: { vi: 'Tạm tính', en: 'Subtotal', ko: '소계' },
   donTrong: { vi: 'Bạn chưa chọn gói nào', en: 'You have not chosen any packs yet', ko: '아직 고른 팩이 없어요' },

@@ -4,8 +4,8 @@
  * ==============================================================
  *
  * Khánh 03/11/2026: "Menu này phức tạp quá" — "đã lên website rồi thì cần gì Zalo OA" — "chỉ giao tận nơi". Trang
- * như một shop thịt online: lưới gói có giá, khách chọn số gói, điền họ tên, số điện thoại, địa chỉ giao, bấm Đặt
- * hàng. Đơn ghi thẳng vào database (tao_don_mua_thit, 0113 — lib/dat-hang-mua-thit.ts, lib/xu-ly-form.ts); quán gọi
+ * như một shop thịt online: lưới thẻ gọn kiểu El Gaucho (tên, giá "Từ …", nút "Chọn gói" mở hộp chọn của sản phẩm —
+ * MuaThitThe.astro), khách chọn số gói, điền họ tên, số điện thoại, địa chỉ giao, bấm Đặt hàng. Đơn ghi thẳng vào database (tao_don_mua_thit, 0113 — lib/dat-hang-mua-thit.ts, lib/xu-ly-form.ts); quán gọi
  * lại xác nhận tổng tiền, phí giao, giờ giao ở hộp thư /noi-bo/don-mua-thit. Website không thu tiền.
  *
  * Trạng thái (ba file vỏ tính bằng trangThaiMuaThit(muaThitVeMo(noiDung), menu)):
@@ -24,7 +24,8 @@
  *
  * Luật dựng (crm/test/test-cong-khai-mua-thit-ve.mjs giữ):
  *   · Số tiền chỉ qua dinhDangTien, chỉ trong phần tử có data-tien — bộ quét chữ cấm miễn đúng chỗ đó.
- *   · Thứ chỉ chạy nhờ script (nút −/+, thanh giỏ) ra trang với hidden. Tắt JavaScript vẫn đặt được.
+ *   · Thứ chỉ chạy nhờ script (nút −/+, thanh giỏ) ra trang với hidden. Tắt JavaScript vẫn đặt được (hộp chọn là
+ *     popover, mở bằng popovertarget).
  *   · Form POST: họ tên, số điện thoại, địa chỉ không bao giờ nằm trên địa chỉ trang.
  *   · Một nút chính cho mỗi nhóm nút; không khối kêu gọi cuối trang: trang có một hành động chính là Đặt hàng.
  */
@@ -424,6 +425,24 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
     const theoKhoa = new Map<string, { ten: string; nhan: string }>();
     for (const sp of menu) for (const g of sp.goi) theoKhoa.set(g.khoa, { ten: sp.ten, nhan: nhanGoi(sp.donVi, g.soGam, nn) });
 
+    // Hộp chọn gói (popover của MuaThitThe): trình duyệt chưa biết popover thì hộp đã đứng thẳng trong thẻ — ẩn nút
+    // mở / đóng vô dụng. Biết popover: mở hộp thì con trỏ vào ô chọn đầu tiên của hộp.
+    if (!Object.prototype.hasOwnProperty.call(HTMLElement.prototype, 'popover')) {
+      form.querySelectorAll<HTMLElement>('[data-mtv-mo-hop], [data-mtv-dong-hop]').forEach(nut => { nut.hidden = true; });
+    } else {
+      form.querySelectorAll<HTMLElement>('[data-mtv-hop]').forEach(hop => {
+        hop.addEventListener('toggle', e => {
+          if ((e as ToggleEvent).newState === 'open') { hop.querySelector<HTMLSelectElement>('select.mtv-so')?.focus(); return; }
+          // Đóng bằng bấm ra ngoài: trình duyệt không trả con trỏ — đưa về nút "Chọn gói" của hộp (không giật con trỏ
+          // khi khách đã bấm sang chỗ khác).
+          const conTro = document.activeElement;
+          if (!conTro || conTro === document.body || hop.contains(conTro)) {
+            form.querySelector<HTMLElement>(`[data-mtv-mo-hop][popovertarget="${CSS.escape(hop.id)}"]`)?.focus();
+          }
+        });
+      });
+    }
+
     let donHienTai: Don | null = null;
     let khoiDatDangHien = false;
 
@@ -442,6 +461,15 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
       const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
 
       dongDon?.replaceChildren(...dongCua(don, nn));
+      // "Đã chọn: 2 gói" trên thẻ và ở chân hộp của từng sản phẩm.
+      for (const sp of menu) {
+        const so = don.dong.filter(d => d.sanPham.ma === sp.ma).reduce((tong, d) => tong + d.soLuong, 0);
+        const chu = CHU_DON.daChon[nn](sp.donVi === 'hop' ? 0 : so, sp.donVi === 'hop' ? so : 0);
+        form.querySelectorAll<HTMLElement>(`[data-mtv-the="${CSS.escape(sp.ma)}"] [data-mtv-da-chon]`).forEach(o => {
+          o.textContent = chu;
+          o.hidden = so === 0;
+        });
+      }
       if (trong) trong.hidden = !rong;
       if (demGoi) { demGoi.textContent = dem; demGoi.hidden = rong; }
       tamTinh?.querySelector<HTMLElement>('[data-tien]')?.replaceWith(oTien(don.tamTinh));
@@ -505,7 +533,9 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
       if (!donHienTai || donHienTai.dong.length === 0) {
         e.preventDefault();
         if (bao) bao.textContent = form.dataset.thieuGio ?? '';
-        form.querySelector<HTMLSelectElement>('select.mtv-so')?.focus();
+        // Nút "Chọn gói" đầu tiên (ô chọn nằm trong hộp đang đóng); trình duyệt chưa biết popover: ô chọn đầu tiên.
+        const dau = [...form.querySelectorAll<HTMLElement>('[data-mtv-mo-hop], select.mtv-so')].find(o => !o.hidden && o.offsetParent !== null);
+        dau?.focus();
         return;
       }
       if (dangGui) { e.preventDefault(); return; }

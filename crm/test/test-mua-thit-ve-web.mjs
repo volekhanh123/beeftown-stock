@@ -401,7 +401,7 @@ await nhom('4 · GỬI HAI LẦN (bam-hai-lan)', async () => {
 
 // ===========================================================================
 await nhom('7 · CHỮ CỦA KHỐI ĐƠN (CHU_DON)', async () => {
-  const KHOA = ['goiChu', 'dem', 'dongDau', 'tamTinh', 'donTrong', 'vuaDoi'];
+  const KHOA = ['goiChu', 'dem', 'dongDau', 'daChon', 'tamTinh', 'donTrong', 'vuaDoi'];
   const C = DON.CHU_DON;
   const thieu = KHOA.filter(k => !C[k] || NGON_NGU.some(nn => C[k][nn] === undefined || typeof C[k][nn] !== typeof C[k].vi));
   ok('Mọi khóa đủ vi, en, ko', thieu.length === 0 && Object.keys(C).sort().join() === [...KHOA].sort().join(),
@@ -414,6 +414,7 @@ await nhom('7 · CHỮ CỦA KHỐI ĐƠN (CHU_DON)', async () => {
     ...[[1, 0], [2, 1], [0, 2], [3, 3], [1, 1]].map(([a, b]) => C.dem[nn](a, b)),
     C.dongDau[nn](TEN[nn], DON.nhanGoi('goi', 200, nn), 2), C.tamTinh[nn], C.donTrong[nn],
     C.vuaDoi[nn](TEN[nn], DON.nhanGoi('goi', 400, nn), 3),
+    ...[[1, 0], [2, 0], [0, 1], [0, 3]].map(([a, b]) => C.daChon[nn](a, b)),
   ];
   const moiCau = NGON_NGU.flatMap(nn => cauCua(nn).map(c => [nn, c]));
   const xau = moiCau.filter(([, c]) => typeof c !== 'string' || timChuoiCam(c).length > 0 || /thành công|success|성공|[[\]]|báo giá|quote|견적/i.test(c));
@@ -430,6 +431,10 @@ await nhom('7 · CHỮ CỦA KHỐI ĐƠN (CHU_DON)', async () => {
     C.dongDau[nn]('Ribeye with Cap', DON.nhanGoi('goi', 200, nn), 2), C.vuaDoi[nn]('Ribeye with Cap', DON.nhanGoi('goi', 200, nn), 2)]) !== JSON.stringify(CHU[nn]));
   ok('Đúng chữ: Tạm tính / Subtotal / 소계; câu giỏ rỗng; dòng đơn kết bằng "= " (số tiền ghép sau, trong data-tien); câu vừa đổi',
      lech.length === 0, lech.map(nn => `${nn}: ${JSON.stringify([C.tamTinh[nn], C.donTrong[nn], C.dongDau[nn]('Ribeye with Cap', DON.nhanGoi('goi', 200, nn), 2), C.vuaDoi[nn]('Ribeye with Cap', DON.nhanGoi('goi', 200, nn), 2)])}`).join(' | '));
+  const DA_CHON = { vi: ['Đã chọn: 1 gói', 'Đã chọn: 2 hộp'], en: ['Chosen: 1 pack', 'Chosen: 2 boxes'], ko: ['고른 수량: 1팩', '고른 수량: 2통'] };
+  const lechDaChon = NGON_NGU.filter(nn => JSON.stringify([C.daChon[nn](1, 0), C.daChon[nn](0, 2)]) !== JSON.stringify(DA_CHON[nn]));
+  ok('Đúng chữ "Đã chọn: 1 gói" / "Chosen: 2 boxes" / "고른 수량: 1팩" (thẻ sản phẩm và chân hộp chọn gói; số ít / số nhiều tiếng Anh)',
+     lechDaChon.length === 0, lechDaChon.map(nn => `${nn}: ${C.daChon[nn](1, 0)} · ${C.daChon[nn](0, 2)}`).join(' | '));
   ok('Không câu nào của CHU_DON chứa số tiền (số tiền luôn ở phần tử data-tien riêng)',
      moiCau.every(([, c]) => !/\d{1,3}(\.\d{3})+\s?đ/.test(c)));
 });
