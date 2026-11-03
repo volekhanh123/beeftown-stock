@@ -35,6 +35,8 @@ import { ghiKetQua, docKetQua, layIp, type KetQua } from './phien.ts';
 import type { BaThuTieng } from './chu';
 import { nopHoSo, CAU_NOP, type KetQuaNop } from './nop-ho-so.ts';
 import { guiYeuCauDatBan, CAU_DAT_BAN, type KetQuaDatBan } from './dat-ban.ts';
+import { docDonGui, guiDonMuaThit, CAU_DAT_HANG, type KetQuaDatHang } from './dat-hang-mua-thit.ts';
+import { gioThanhDiaChi } from './don-mua-thit.ts';
 import { docFormGioiHan } from './than-gioi-han.ts';
 
 /**
@@ -44,6 +46,8 @@ import { docFormGioiHan } from './than-gioi-han.ts';
  */
 export const THAN_TOI_DA_UNG_TUYEN = 6 * 1024 * 1024;
 export const THAN_TOI_DA_DAT_BAN = 256 * 1024;
+/** Đơn mua thịt: tối đa 60 gói, mỗi gói hai ô ngắn, cộng ba ô liên hệ và ghi chú — 64 KB là quá đủ. */
+export const THAN_TOI_DA_DAT_HANG = 64 * 1024;
 
 // Câu của riêng tầng này: khi chưa gọi được tới database, hoặc gọi rồi mà
 // không nghe được trả lời.
@@ -106,6 +110,29 @@ const CAU = {
     vi: 'Chưa gửi được yêu cầu.',
     en: 'Your request could not be sent.',
     ko: '요청을 보내지 못했어요.',
+  },
+  datHangChuaSan: {
+    vi: 'Đặt hàng trên website chưa sẵn sàng. Đơn của bạn CHƯA được ghi nhận. Vui lòng gọi Beeftown.',
+    en: 'Online orders are not ready yet. Your order has NOT been recorded. Please call Beeftown.',
+    ko: '웹사이트 주문이 아직 준비되지 않았어요. 주문은 접수되지 않았어요. Beeftown에 전화해 주세요.',
+  },
+  datHangKhongChac: {
+    vi: 'Không nhận được phản hồi. Chúng tôi KHÔNG CHẮC đơn đã được ghi nhận hay chưa. '
+      + 'Vui lòng gọi Beeftown để kiểm tra — đừng đặt lại.',
+    en: 'We did not get a response. We are NOT SURE whether your order was recorded. '
+      + 'Please call Beeftown to check — please do not order again.',
+    ko: '응답을 받지 못했어요. 주문이 접수되었는지 저희도 확실히 알 수 없어요. '
+      + '다시 주문하지 마시고 Beeftown에 전화해 확인해 주세요.',
+  },
+  datHangQuaLon: {
+    vi: 'Đơn gửi lên quá dài nên CHƯA được ghi nhận. Vui lòng rút gọn ghi chú rồi đặt lại.',
+    en: 'Your order was too long, so it has NOT been recorded. Please shorten the note and order again.',
+    ko: '주문 내용이 너무 길어서 접수되지 않았어요. 메모를 줄여서 다시 주문해 주세요.',
+  },
+  datHangKhongDoc: {
+    vi: 'Không đọc được đơn gửi lên — mạng có thể đã đứt giữa chừng. Đơn CHƯA được ghi nhận. Vui lòng đặt lại.',
+    en: 'We could not read your order — the connection may have dropped. It has NOT been recorded. Please order again.',
+    ko: '보내신 주문을 읽지 못했어요. 연결이 중간에 끊겼을 수 있어요. 주문은 접수되지 않았어요. 다시 주문해 주세요.',
   },
 } as const satisfies Record<string, BaThuTieng>;
 
@@ -232,4 +259,69 @@ export function ketQuaDatBan(ctx: Pick<APIContext, 'cookies'>, ngonNgu: NgonNgu)
   return kq.ok
     ? { ok: true, ma: kq.ma, cau: CAU_DAT_BAN.daNhan[ngonNgu] }
     : { ok: false, cau: kq.loi ?? CAU.datBanLoi[ngonNgu], khongChac: kq.khongChac === true };
+}
+
+// -----------------------------------------------------------------------------
+// ĐƠN MUA THỊT VỀ (0113) — cùng khuôn, cùng lý do
+// -----------------------------------------------------------------------------
+/**
+ * Một lượt đặt hàng, không cần Astro.
+ *
+ * Đã nhận → về #da-nhan (trang dựng thẻ "đã nhận đơn", không dựng lại form). Không chắc → về #dat-hang, không mang
+ * giỏ (đặt lại chỉ còn một cú bấm thì quán nhận hai đơn). Chưa ghi (chặn sớm hay database từ chối) → về #dat-hang
+ * KÈM giỏ trên địa chỉ (gioThanhDiaChi: chỉ khóa gói và số gói) để khách không phải chọn lại; họ tên, số điện thoại,
+ * địa chỉ thì script của trang điền lại từ sessionStorage — không bao giờ đi qua địa chỉ trang.
+ */
+export async function luotDatHang(
+  request: Request, client: Pick<SupabaseClient, 'rpc'> | null, duongDan: string, ngonNgu: NgonNgu,
+): Promise<LuotGui> {
+  const veForm = `${duongDan}#dat-hang`;
+  const kq = await luotDatHangTho(request, client, ngonNgu);
+  return { ketQua: { ...kq.ketQua, loai: 'dat_hang' }, ve: kq.ve === null ? veForm : kq.ve === 'da_nhan' ? `${duongDan}#da-nhan` : `${duongDan}?${kq.ve}#dat-hang` };
+}
+
+/** Phần quyết định của luotDatHang. ve: null → #dat-hang; 'da_nhan' → #da-nhan; chuỗi khác → giỏ trên địa chỉ trang. */
+async function luotDatHangTho(
+  request: Request, client: Pick<SupabaseClient, 'rpc'> | null, ngonNgu: NgonNgu,
+): Promise<{ ketQua: KetQua; ve: string | null }> {
+  const veForm = null;
+  if (!client) return { ketQua: { ok: false, loi: CAU.datHangChuaSan[ngonNgu] }, ve: veForm };
+
+  const doc = await docFormGioiHan(request, THAN_TOI_DA_DAT_HANG);
+  if (doc.loi) {
+    const loi = doc.loi === 'qua_lon' ? CAU.datHangQuaLon[ngonNgu] : CAU.datHangKhongDoc[ngonNgu];
+    return { ketQua: { ok: false, loi }, ve: veForm };
+  }
+
+  const don = docDonGui(doc.form);
+  let kq: KetQuaDatHang;
+  try {
+    kq = await guiDonMuaThit(client, don, layIp(request), ngonNgu);
+  } catch (e) {
+    console.error('[dat-hang] không chắc đã ghi:', loiNgan(e));
+    return { ketQua: { ok: false, loi: CAU.datHangKhongChac[ngonNgu], khongChac: true }, ve: veForm };
+  }
+
+  if (kq.ok) return { ketQua: { ok: true, ma: kq.ma }, ve: 'da_nhan' };
+  const gio = gioThanhDiaChi(don.gio);
+  return { ketQua: { ok: false, loi: kq.cau }, ve: gio || veForm };
+}
+
+export async function xuLyDatHang(
+  ctx: APIContext, duongDan: string, ngonNgu: NgonNgu,
+): Promise<Response | null> {
+  if (ctx.request.method !== 'POST') return null;
+  const { ketQua, ve } = await luotDatHang(ctx.request, taoClient(), duongDan, ngonNgu);
+  ghiKetQua(ctx.cookies, ketQua);
+  return ctx.redirect(ve, 303);
+}
+
+export function ketQuaDatHang(ctx: Pick<APIContext, 'cookies'>, ngonNgu: NgonNgu): KetQuaDatHang | null {
+  const kq = docKetQua(ctx.cookies);
+  // Cookie kết quả dùng chung với Hỏi bàn, Tuyển dụng: kết quả của form khác (lượt chuyển hướng bị bỏ dở) không bao giờ
+  // thành thẻ "đã nhận đơn" với mã đặt bàn.
+  if (!kq || kq.loai !== 'dat_hang') return null;
+  return kq.ok
+    ? { ok: true, ma: kq.ma, cau: CAU_DAT_HANG.daNhan[ngonNgu] }
+    : { ok: false, cau: kq.loi ?? CAU_DAT_HANG.chuaGhi[ngonNgu], khongChac: kq.khongChac === true };
 }

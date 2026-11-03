@@ -118,6 +118,9 @@ await nhom('1 · QUYỀN THỰC THI HÀM (lỗ hổng 1 và 4)', async () => {
     'noi_dung_cong_khai',
     'nop_ho_so_ung_tuyen',
     'tao_dat_ban',
+    // Mua thịt về đặt trên website (0113): ghi một đơn giao tận nơi; đơn tính ở database từ giá đã chốt, giới hạn
+    // theo số điện thoại, IP, chi nhánh; không đọc lại được gì ngoài mã đơn vừa tạo. test-mua-thit-dat-hang.mjs.
+    'tao_don_mua_thit',
     'thuc_don_cong_khai',
     'tin_tuyen_dung_cong_khai',
     // tra_cuu_mot_dat_ban THAY tra_cuu_dat_ban từ 0084: hàm trả bảng cho người gọi PostgREST hủy

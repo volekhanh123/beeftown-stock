@@ -4,27 +4,25 @@
  *
  *     node test/test-cong-khai-mua-thit-dieu-huong.mjs
  *
- * Phần của trang Mua thịt về nằm NGOÀI hai component (bản thiết kế PR 2, mục 2.4, 2.5, 2.6, 2.12, 2.13):
+ * Phần của trang Mua thịt về nằm NGOÀI hai component. Từ 0113 (Khánh 03/11/2026: "đã lên website rồi thì cần gì
+ * Zalo OA", "chỉ giao tận nơi") khách đặt thẳng trên website:
  *
- *   1. Đích đặt hàng (web/src/lib/dich-dat-hang.ts — quyết định 4 của Khánh, 26/10/2026): link gửi đơn chỉ
- *      là link chat Zalo OA dạng https://zalo.me/<mã> (cùng mẫu la_link_zalo_oa() của migration 0101), một
- *      file quyết định nút gửi trỏ đâu và giỏ đi sang quán thế nào. Luồng "Chép đơn → mở chat → dán → Gửi" là
- *      TẠM: PR sau đổi sang deep link Mini App chỉ sửa file này. File chỉ có import type (script của trang
- *      nạp nó trong trình duyệt). Chữ của bước gửi đủ vi / en / ko, không chữ cấm, không hứa "thành công".
- *   2. Một trạng thái: muaThitVeMo(nd) đúng khi và chỉ khi công tắc HIỆU LỰC của database
- *      (nd.hien_mua_thit_ve) là true VÀ link Zalo OA qua laLinkZaloOa.
+ *   1. web/src/lib/dich-dat-hang.ts còn hai việc: mẫu link Zalo OA (laLinkZaloOa — cùng mẫu la_link_zalo_oa() của
+ *      0101, link liên hệ chỉ chủ đổi được) và muaThitVeMo. Không còn đích đặt hàng, link gửi đơn, chữ bước gửi.
+ *      File chỉ có import type.
+ *   2. Một trạng thái: muaThitVeMo(nd) đúng khi và chỉ khi công tắc HIỆU LỰC của database (nd.hien_mua_thit_ve) là
+ *      true — link Zalo không còn là điều kiện.
  *   3. Điều hướng: bốn mục như cũ khi chưa có database hay trang chưa mở; năm mục khi mở — "Mua thịt về"
  *      ngay sau "Thực đơn", mục cuối vẫn là "Hỏi bàn". Đầu trang và chân trang đưa nd vào dieuHuong.
- *   4. Đường dẫn và ba file vỏ: dòng CAP_DUONG_DAN ngay sau /thuc-don (thứ tự sitemap); vỏ đọc nội dung
- *      và menu song song, tính trạng thái bằng trangThaiMuaThit(muaThitVeMo(noiDung), menu).
- *   5. Mô tả trang: câu "chưa mở" không hứa gửi đơn, không nhắc Zalo.
- *   6. Quyền riêng tư, xóa dữ liệu: nói đúng đường đi của dữ liệu — gói đã chọn lên máy chủ qua địa chỉ
- *      trang, không kèm thông tin cá nhân, Beeftown không lưu đơn; tin đơn đi qua Zalo.
+ *   4. Đường dẫn và ba file vỏ: dòng CAP_DUONG_DAN ngay sau /thuc-don; vỏ nhận POST đặt hàng (xuLyDatHang) trước khi
+ *      đọc gì, đọc nội dung và menu song song, tính trạng thái bằng trangThaiMuaThit(muaThitVeMo(noiDung), menu).
+ *   5. Mô tả trang: giao tận nơi, đặt trên web, quán gọi xác nhận; câu "chưa mở" không hứa gì.
+ *   6. Quyền riêng tư, xóa dữ liệu: nói đúng dữ liệu đơn lưu gì (họ tên, số điện thoại, địa chỉ, ghi chú, gói),
+ *      ai đọc, không thu tiền; IP chỉ để chặn gửi quá nhiều; không còn câu "tin đơn qua Zalo".
  *
- * Phần trong component: test-cong-khai-mua-thit-ve.mjs. Lib đơn và menu: test-mua-thit-ve-web.mjs.
- * Database: test-mua-thit-ve.mjs (nhóm 9 so la_link_zalo_oa() với laLinkZaloOa() trên một bảng mẫu).
+ * Phần trong component: test-cong-khai-mua-thit-ve.mjs. Lib đơn và menu: test-mua-thit-ve-web.mjs. Gửi đơn:
+ * test-mua-thit-dat-hang-web.mjs. Database: test-mua-thit-ve.mjs, test-mua-thit-dat-hang.mjs.
  */
-
 import { readFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
@@ -37,7 +35,7 @@ const LIB = join(SRC, 'lib');
 const nap = f => import(pathToFileURL(join(LIB, f)).href);
 const doc = duong => readFileSync(join(GOC, duong), 'utf8');
 
-const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — MUA THỊT VỀ: ĐÍCH ĐẶT HÀNG, ĐIỀU HƯỚNG, VỎ TRANG, QUYỀN RIÊNG TƯ');
+const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — MUA THỊT VỀ: TRANG MỞ, ĐIỀU HƯỚNG, VỎ TRANG, QUYỀN RIÊNG TƯ');
 
 const { chu, duongDanTuongUng, CAP_DUONG_DAN, NGON_NGU } = await nap('chu.ts');
 const { dieuHuong, moTaTrangMuaThit } = await nap('trang-cong-khai.ts');
@@ -46,7 +44,7 @@ const { timChuoiCam } = await nap('chuoi-cam.js');
 // File của bước 1 chưa có thì từng nhóm đỏ với lý do rõ, không đổ cả file.
 const TEP_DICH = join(LIB, 'dich-dat-hang.ts');
 const dichDatHangLib = existsSync(TEP_DICH) ? await nap('dich-dat-hang.ts') : null;
-const { laLinkZaloOa, MAU_LINK_ZALO_OA, dichDatHang, linkGuiDon, muaThitVeMo, CHU_DICH } = dichDatHangLib ?? {};
+const { laLinkZaloOa, MAU_LINK_ZALO_OA, muaThitVeMo } = dichDatHangLib ?? {};
 const CHUA_CO_DICH = 'chưa có web/src/lib/dich-dat-hang.ts';
 
 // Bản nền đúng như trang thấy khi chưa nối database: mọi khóa null.
@@ -57,7 +55,7 @@ const LINK_OA = 'https://zalo.me/3030027075662095415';
 const CHU_VIET = /[ăâđêôơưàáảãạằắẳẵặầấẩẫậèéẻẽẹềếểễệìíỉĩịòóỏõọồốổỗộờớởỡợùúủũụừứửữựỳýỷỹỵ]/iu;
 
 // ===========================================================================
-await nhom('1 · ĐÍCH ĐẶT HÀNG (web/src/lib/dich-dat-hang.ts, quyết định 4)', async () => {
+await nhom('1 · MẪU LINK ZALO OA, KHÔNG CÒN ĐÍCH ĐẶT HÀNG (web/src/lib/dich-dat-hang.ts)', async () => {
   if (!dichDatHangLib) { ok('web/src/lib/dich-dat-hang.ts có và nạp được', false, CHUA_CO_DICH); return; }
 
   const NHAN = [
@@ -83,70 +81,18 @@ await nhom('1 · ĐÍCH ĐẶT HÀNG (web/src/lib/dich-dat-hang.ts, quyết đ�
      MAU_LINK_ZALO_OA instanceof RegExp && MAU_LINK_ZALO_OA.flags === '' && MAU_LINK_ZALO_OA.test(LINK_OA),
      String(MAU_LINK_ZALO_OA));
 
-  const khongCo = [nd(), nd({ zalo_oa_url: 'http://zalo.me/beeftown' }), nd({ zalo_oa_url: 'https://www.facebook.com/beeftown' }),
-    nd({ zalo_oa_url: 'javascript:alert(1)' })].map(x => dichDatHang(x));
-  const co = dichDatHang(nd({ zalo_oa_url: `  ${LINK_OA} ` }));
-  ok('dichDatHang: không link hợp lệ → null; có → cach chep_tin_mo_chat_oa, coBuocChep true, url đúng link đã trim',
-     khongCo.every(d => d === null) && co !== null && co.cach === 'chep_tin_mo_chat_oa' && co.coBuocChep === true && co.url === LINK_OA
-       && Object.keys(co).sort().join() === 'cach,coBuocChep,url',
-     JSON.stringify({ khongCo, co }));
-  ok('Đích chuyển được qua data-dich: JSON.parse(JSON.stringify(dich)) giữ nguyên ba trường',
-     co !== null && JSON.stringify(JSON.parse(JSON.stringify(co))) === JSON.stringify(co));
-
-  const gioRong = new Map();
-  const gioCo = new Map([['ribeye-cap_200', 2], ['kim-chi-cai-thao_500', 1]]);
-  const link = co ? [gioRong, gioCo].flatMap(g => ['quay', 'giao'].map(cn => linkGuiDon(co, g, cn))) : [];
-  ok('linkGuiDon (PR 2) trả đúng dich.url với giỏ rỗng, giỏ có gói, cả quầy và giao',
-     link.length === 4 && link.every(l => l === LINK_OA), link.join(' · '));
-
-  const KHOA = ['buocGui', 'nutXemDon', 'buocSau', 'nutGui', 'nutChep', 'daChep', 'chepLoi', 'chepTay', 'sauNut'];
-  const bang = CHU_DICH?.chep_tin_mo_chat_oa;
-  const loiBang = [];
-  if (!bang) loiBang.push('không có CHU_DICH.chep_tin_mo_chat_oa');
-  else {
-    const thua = Object.keys(bang).filter(k => !KHOA.includes(k));
-    if (thua.length || KHOA.some(k => !bang[k])) loiBang.push(`khóa lệch: thiếu ${KHOA.filter(k => !bang[k]).join(', ')} thừa ${thua.join(', ')}`);
-    for (const k of KHOA) for (const nn of NGON_NGU) {
-      const cau = bang[k]?.[nn];
-      if (typeof cau !== 'string' || !cau.trim()) { loiBang.push(`${k}.${nn} rỗng`); continue; }
-      const cam = timChuoiCam(cau);
-      if (cam.length) loiBang.push(`${k}.${nn} chữ cấm «${cam.map(c => c.tim_thay).join(', ')}»`);
-      if (/thành công|success|성공|đã đặt|đã gửi đơn|đã xác nhận|quán báo giá|mã đơn|order (code|number)|주문 번호|[[\]]/iu.test(cau)) loiBang.push(`${k}.${nn} hứa / chữ bỏ: ${cau}`);
-      if (nn !== 'vi' && CHU_VIET.test(cau)) loiBang.push(`${k}.${nn} còn dấu tiếng Việt: ${cau}`);
-    }
-  }
-  ok('CHU_DICH đủ vi, en, ko cho mọi khóa; không chữ cấm, không "thành công / success / 성공"; en, ko không dấu tiếng Việt',
-     loiBang.length === 0, loiBang.join(' | '));
-  ok('Chữ của bước gửi đúng bản thiết kế (mục 3.2): nút xem đơn, nút mở chat, nút chép ở ba thứ tiếng',
-     bang?.nutXemDon?.vi === 'Xem đơn và gửi qua Zalo' && bang?.nutXemDon?.en === 'Review and send on Zalo'
-       && bang?.nutXemDon?.ko === '주문 확인 후 Zalo로 보내기' && bang?.nutGui?.vi === 'Mở chat Zalo với Beeftown'
-       && bang?.nutChep?.vi === 'Chép đơn' && bang?.daChep?.en === 'Order copied.',
-     JSON.stringify(bang?.nutXemDon));
-  ok('Câu "Đã chép" chỉ nói đã chép, câu sau nút nói quán chỉ nhận đơn khi khách gửi tin (đúng sự thật, không hứa đã nhận)',
-     /chỉ nhận đơn khi bạn gửi tin/.test(bang?.sauNut?.vi ?? '') && /only get your order once you send it/.test(bang?.sauNut?.en ?? '')
-       && !/nhận đơn|đơn đã/.test(bang?.daChep?.vi ?? 'x'));
+  ok('dich-dat-hang.ts không còn đích đặt hàng: không dichDatHang, linkGuiDon, CHU_DICH (0113: đơn ghi thẳng vào database)',
+     ['dichDatHang', 'linkGuiDon', 'CHU_DICH'].every(k => !(k in dichDatHangLib))
+       && Object.keys(dichDatHangLib).sort().join() === 'MAU_LINK_ZALO_OA,laLinkZaloOa,muaThitVeMo', Object.keys(dichDatHangLib).join(', '));
 
   const ma = readFileSync(TEP_DICH, 'utf8');
   const dongNap = [...ma.matchAll(/^\s*(?:import|export)\b[^;]*?\bfrom\s+['"][^'"]+['"]/gmu)].map(m => m[0].trim());
   const napThat = dongNap.filter(d => !/^(?:import|export)\s+type\b/.test(d));
-  ok('dich-dat-hang.ts chỉ có import type (chạy được trong trình duyệt)',
-     dongNap.length >= 1 && napThat.length === 0 && !/import\s*\(/.test(ma) && !/supabase/i.test(ma.replace(/\/\*[\s\S]*?\*\//g, '')),
-     napThat.join(' | '));
+  ok('dich-dat-hang.ts chỉ có import type', dongNap.length >= 1 && napThat.length === 0 && !/import\s*\(/.test(ma), napThat.join(' | '));
   ok('dich-dat-hang.ts không đọc đồng hồ, không DOM, không mạng',
      !/\bDate\.now\b|new Date\b|\bdocument\.|\bwindow\.|\bfetch\(|\blocalStorage\b/.test(ma.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')));
-  // Chú thích đầu file, bỏ dấu " * " đầu dòng để câu xuống dòng vẫn đọc liền.
   const dau = (ma.match(/^\/\*\*[\s\S]*?\*\//)?.[0] ?? '').replace(/\n\s*\*(?!\/)\s?/g, ' ');
-  const thieuDau = [
-    ['26/10/2026', /26\/10\/2026/], ['câu của Khánh', /Mốt đổi Mini App link trực tiếp đặt chứ không gửi tin nhắn nữa/],
-    ['TẠM', /TẠM/], ['Mini App ID', /2858300068641327950/], ['cach mini_app', /'mini_app'/], ['getRouteParams', /getRouteParams/],
-    ['linkGuiDon dựng link từ giỏ', /linkGuiDon/], ['coBuocChep = false', /coBuocChep\s*=\s*false/],
-    ['sửa kiểm thử của file này', /crm\/test\/test-cong-khai-mua-thit-dieu-huong\.mjs/],
-    ['chữ khác còn nhắc gửi tin', /moTaMuaThit/], ['trang quyền riêng tư, xóa dữ liệu', /quyền\s+riêng\s+tư[\s\S]*xóa\s+dữ\s+liệu/],
-    ['hướng dẫn trực OA', /web\/README\.md/], ['script đọc data-dich', /data-dich/],
-    ['mẫu trùng la_link_zalo_oa()', /la_link_zalo_oa\(\)/],
-  ].filter(([, re]) => !re.test(dau)).map(([ten]) => ten);
-  ok('Chú thích đầu file ghi quyết định 26/10/2026, Mini App ID 2858300068641327950 và danh sách việc của PR đổi sang Mini App',
-     dau.length > 0 && thieuDau.length === 0, `thiếu: ${thieuDau.join(', ')}`);
+  ok('Chú thích đầu file ghi quyết định 03/11/2026 và vì sao tên file còn giữ', /03\/11\/2026/.test(dau) && /0113/.test(dau) && /Tên file giữ/.test(dau), dau.slice(0, 200));
 });
 
 // ===========================================================================
@@ -156,11 +102,11 @@ await nhom('2 · MỘT TRẠNG THÁI — muaThitVeMo', async () => {
   const LINK = [null, 'http://zalo.me/beeftown', 'https://www.facebook.com/beeftown', LINK_OA];
   const sai = [];
   for (const bat of CONG_TAC) for (const link of LINK) {
-    const mong = bat === true && link === LINK_OA;
+    const mong = bat === true;   // 0113: link Zalo không còn là điều kiện
     const that = muaThitVeMo(nd({ hien_mua_thit_ve: bat, zalo_oa_url: link }));
     if (that !== mong) sai.push(`(${bat}, ${link}) → ${that}`);
   }
-  ok('muaThitVeMo: bảng chân trị — hien_mua_thit_ve null / false / true × zalo_oa_url null / http / máy chủ khác / hợp lệ; chỉ (true, hợp lệ) cho true',
+  ok('muaThitVeMo: bảng chân trị — hien_mua_thit_ve null / false / true × zalo_oa_url null / http / máy chủ khác / hợp lệ; true khi và chỉ khi công tắc hiệu lực true (0113)',
      sai.length === 0, sai.join(' · '));
   ok('Chưa nối database (CI): muaThitVeMo(bản nền) = false', muaThitVeMo(NEN) === false);
   ok('Công tắc là giá trị database tính, không đoán: chuỗi "true" hay số 1 không mở trang',
@@ -170,13 +116,13 @@ await nhom('2 · MỘT TRẠNG THÁI — muaThitVeMo', async () => {
 
 // ===========================================================================
 await nhom('3 · ĐIỀU HƯỚNG (vi, en, ko)', async () => {
-  const MO = nd({ hien_mua_thit_ve: true, zalo_oa_url: LINK_OA });
+  const MO = nd({ hien_mua_thit_ve: true });   // 0113: mở dù chưa công bố link Zalo
   for (const nn of NGON_NGU) {
     const t = chu(nn);
     const bonMuc = dieuHuong(nn);
     const gon = ds => JSON.stringify(ds.map(m => [m.url, m.chu, m.duong]));
-    const chuaMo = [NEN, nd({ hien_mua_thit_ve: true }), nd({ hien_mua_thit_ve: false, zalo_oa_url: LINK_OA }),
-      nd({ hien_mua_thit_ve: true, zalo_oa_url: 'http://zalo.me/beeftown' })].map(x => dieuHuong(nn, x));
+    const chuaMo = [NEN, nd({ hien_mua_thit_ve: null, zalo_oa_url: LINK_OA }), nd({ hien_mua_thit_ve: false, zalo_oa_url: LINK_OA }),
+      nd({ hien_mua_thit_ve: 'true' })].map(x => dieuHuong(nn, x));
     ok(`[${nn}] Không nd hoặc trang chưa mở: bốn mục như cũ`,
        bonMuc.length === 4 && chuaMo.every(ds => gon(ds) === gon(bonMuc)), chuaMo.map(gon).join(' | '));
 
@@ -220,7 +166,7 @@ await nhom('4 · ĐƯỜNG DẪN, VỎ TRANG', async () => {
   ok('Ba file vỏ có thật', coFile.length === 3, VO.filter(v => !coFile.includes(v)).map(v => v[1]).join(', '));
   if (coFile.length !== 3) return;
 
-  const loiSongSong = [], loiTrangThai = [], loiTieuDe = [], loiNap = [];
+  const loiSongSong = [], loiTrangThai = [], loiTieuDe = [], loiNap = [], loiPost = [];
   for (const [nn, f, duong, tieuDe, len] of VO) {
     const s = doc(f);
     const q = `'${nn}'`;
@@ -230,21 +176,29 @@ await nhom('4 · ĐƯỜNG DẪN, VỎ TRANG', async () => {
       || /duongDan=\{/.test(s)) loiSongSong.push(f);
     if (!/const trangThai = trangThaiMuaThit\(muaThitVeMo\(noiDung\), menu\);/.test(s)
       || !s.includes(`moTa={moTaTrangMuaThit(${q}, trangThai === 'mo' || trangThai === 'het_quay')}`)
-      || !/<TrangMuaThitVe ngonNgu="[a-z]+" noiDung=\{noiDung\} menu=\{menu\} trangThai=\{trangThai\}\s+thamSo=\{\[\.\.\.Astro\.url\.searchParams\]\} duongDan="[^"]+" \/>/.test(s)) loiTrangThai.push(f);
+      || !s.includes(`const ketQua = ketQuaDatHang(Astro, ${q});`)
+      || !/<TrangMuaThitVe ngonNgu="[a-z]+" noiDung=\{noiDung\} menu=\{menu\} trangThai=\{trangThai\} ketQua=\{ketQua\}\s+thamSo=\{\[\.\.\.Astro\.url\.searchParams\]\} duongDan="[^"]+" \/>/.test(s)) loiTrangThai.push(f);
+    // POST đặt hàng xử lý TRƯỚC khi đọc nội dung, menu: chuyển hướng 303 về chính trang (lib/xu-ly-form.ts).
+    const iPost = s.indexOf(`const chuyenHuong = await xuLyDatHang(Astro, '${duong}', ${q});`);
+    if (iPost < 0 || !/if \(chuyenHuong\) return chuyenHuong;/.test(s) || iPost > s.indexOf('await Promise.all')) loiPost.push(f);
     if (!s.includes(`tieuDe="${tieuDe}"`)) loiTieuDe.push(`${f}: ${s.match(/tieuDe="[^"]*"/)?.[0]}`);
     const mongNap = [`import Trang from '${len}layouts/Trang.astro';`, `import TrangMuaThitVe from '${len}components/TrangMuaThitVe.astro';`,
       `import { docNoiDung } from '${len}lib/noi-dung';`, `import { docMuaThitVe, trangThaiMuaThit } from '${len}lib/mua-thit-ve';`,
-      `import { muaThitVeMo } from '${len}lib/dich-dat-hang';`, `import { moTaTrangMuaThit } from '${len}lib/trang-cong-khai';`];
+      `import { muaThitVeMo } from '${len}lib/dich-dat-hang';`, `import { moTaTrangMuaThit } from '${len}lib/trang-cong-khai';`,
+      `import { xuLyDatHang, ketQuaDatHang } from '${len}lib/xu-ly-form';`];
     if (mongNap.some(d => !s.includes(d))) loiNap.push(`${f}: thiếu ${mongNap.filter(d => !s.includes(d)).join(' ')}`);
   }
   ok('Ba file vỏ đọc docNoiDung và docMuaThitVe song song (Promise.all), đúng thứ tiếng, duongDan là chuỗi cố định',
      loiSongSong.length === 0, loiSongSong.join(', '));
-  ok('Ba file vỏ tính trạng thái bằng trangThaiMuaThit(muaThitVeMo(noiDung), menu); mô tả mở khi mo hoặc het_quay',
+  ok('Ba file vỏ tính trạng thái bằng trangThaiMuaThit(muaThitVeMo(noiDung), menu); mô tả mở khi mo hoặc het_quay; kết quả lượt đặt qua ketQuaDatHang',
      loiTrangThai.length === 0, loiTrangThai.join(', '));
+  ok('Ba file vỏ nhận POST đặt hàng (xuLyDatHang, đúng đường dẫn và thứ tiếng) trước khi đọc nội dung và menu',
+     loiPost.length === 0, loiPost.join(', '));
   ok('Tiêu đề ba file đúng chữ', loiTieuDe.length === 0, loiTieuDe.join(' | '));
-  ok('Ba file vỏ nạp đúng sáu thứ, đúng đường dẫn tương đối của thư mục', loiNap.length === 0, loiNap.join(' | '));
+  ok('Ba file vỏ nạp đúng bảy thứ, đúng đường dẫn tương đối của thư mục', loiNap.length === 0, loiNap.join(' | '));
 
-  const MOI = ['web/src/lib/dich-dat-hang.ts', ...VO.map(v => v[1]), 'crm/test/test-cong-khai-mua-thit-dieu-huong.mjs'];
+  const MOI = ['web/src/lib/dich-dat-hang.ts', 'web/src/lib/dat-hang-mua-thit.ts', 'web/src/pages/noi-bo/don-mua-thit.astro',
+    ...VO.map(v => v[1]), 'crm/test/test-cong-khai-mua-thit-dieu-huong.mjs'];
   const thay = execFileSync('git', ['ls-files', '-co', '--exclude-standard', ...MOI], { cwd: GOC, encoding: 'utf8' });
   ok('File mới của phần này không bị .gitignore chặn', MOI.every(f => thay.includes(f)), MOI.filter(f => !thay.includes(f)).join(', '));
 });
@@ -254,9 +208,9 @@ await nhom('5 · MÔ TẢ TRANG', async () => {
   const MONG = {
     muaThitVe: { vi: 'Mua thịt về', en: 'Take home', ko: '포장 구매' },
     moTaMuaThit: {
-      vi: 'Thịt bò của quầy Beeftown chia gói để mang về. Chọn gói trên web, gửi đơn qua Zalo; quán xác nhận tổng tiền và giờ nhận.',
-      en: 'Beef from the Beeftown counter in packs to take home. Choose your packs here and send the order on Zalo; we confirm the total and the time.',
-      ko: 'Beeftown 매장의 소고기를 팩으로 포장해 가세요. 여기서 팩을 고르고 Zalo로 주문을 보내 주시면 총액과 받으실 시간을 확인해 드려요.',
+      vi: 'Thịt bò của quầy Beeftown chia gói, giao tận nơi. Chọn gói và đặt hàng trên web; quán gọi lại xác nhận tổng tiền, phí giao và giờ giao.',
+      en: 'Beef from the Beeftown counter in packs, delivered to you. Choose your packs and order here; we call you back to confirm the total, the delivery fee and the time.',
+      ko: 'Beeftown 매장의 소고기를 팩으로 배달해 드려요. 여기서 팩을 고르고 주문해 주시면 전화로 총액, 배달비, 배달 시간을 확인해 드려요.',
     },
     moTaMuaThitChuaMo: {
       vi: 'Beeftown chưa mở mua thịt về qua website.',
@@ -264,13 +218,13 @@ await nhom('5 · MÔ TẢ TRANG', async () => {
       ko: 'Beeftown 웹사이트의 포장 구매는 아직 열리지 않았어요.',
     },
   };
-  const HUA = { vi: /gửi đơn|Zalo/iu, en: /\bsend\b|Zalo/iu, ko: /보내|Zalo/iu };
+  const HUA = { vi: /gửi đơn|đặt hàng|Zalo/iu, en: /\bsend\b|\border\b|Zalo/iu, ko: /보내|주문해|Zalo/iu };
   for (const nn of NGON_NGU) {
     const t = chu(nn);
     ok(`[${nn}] moTaTrangMuaThit(nn, true) = t.moTaMuaThit; (nn, false) = t.moTaMuaThitChuaMo`,
        typeof moTaTrangMuaThit === 'function' && !!t.moTaMuaThit && moTaTrangMuaThit(nn, true) === t.moTaMuaThit
          && moTaTrangMuaThit(nn, false) === t.moTaMuaThitChuaMo && t.moTaMuaThit !== t.moTaMuaThitChuaMo);
-    ok(`[${nn}] Ba câu đúng chữ bản thiết kế (mục 3.1)`,
+    ok(`[${nn}] Ba câu đúng chữ (0113: giao tận nơi, đặt trên web, không còn Zalo)`,
        Object.entries(MONG).every(([k, ba]) => t[k] === ba[nn]),
        Object.keys(MONG).filter(k => t[k] !== MONG[k][nn]).map(k => `${k}: ${t[k]}`).join(' | '));
     ok(`[${nn}] Câu chưa mở không hứa: ${String(HUA[nn])} không có`, !!t.moTaMuaThitChuaMo && !HUA[nn].test(t.moTaMuaThitChuaMo),
@@ -285,53 +239,40 @@ await nhom('5 · MÔ TẢ TRANG', async () => {
 // ===========================================================================
 await nhom('6 · QUYỀN RIÊNG TƯ, XÓA DỮ LIỆU', async () => {
   const RIENG_TU = [
-    ['vi', 'web/src/pages/quyen-rieng-tu.astro', 'Khi bạn gửi đơn mua thịt qua Zalo', 'Dùng để làm gì', /Ngoài Supabase[^<]*/u,
-      /lên máy chủ[^.]*qua địa chỉ trang/u, /không kèm thông tin cá nhân/u, /không lưu đơn/u],
-    ['en', 'web/src/pages/en/privacy.astro', 'When you send a take-home order on Zalo', 'What we use it for', /Apart\s+from Supabase[^<]*/u,
-      /server[^.]*through the page address/u, /no personal (?:information|details)/u, /(?:does not|do not) (?:store|keep) (?:your )?orders?/u],
-    ['ko', 'web/src/pages/ko/privacy.astro', 'Zalo로 포장 구매 주문을 보내실 때', '이용 목적', /Supabase\s+외에[^<]*/u,
-      /페이지\s*주소[^.]*서버/u, /개인정보는\s*(?:들어\s*있지\s*않|포함되지\s*않)/u, /주문을\s*저장하지\s*않/u],
+    ['vi', 'web/src/pages/quyen-rieng-tu.astro', 'Khi bạn đặt mua thịt về', 'Dùng để làm gì',
+      [/họ tên,\s*số điện thoại,\s*địa chỉ giao,\s*ghi chú/u, /chủ nhà hàng,\s*quản lý và thu ngân/u, /không thu tiền/u, /IP[^.]*chặn/u, /15 phút/u]],
+    ['en', 'web/src/pages/en/privacy.astro', 'When you order beef to take home', 'What we use it for',
+      [/name, phone number, delivery address, note/u, /owner, managers and\s*cashiers/u, /does not take\s*payment/u, /IP address[^.]*block/u, /15 minutes/u]],
+    ['ko', 'web/src/pages/ko/privacy.astro', '소고기 포장 주문을 하실 때', '이용 목적',
+      [/이름,\s*전화번호,\s*배달 주소,\s*메모/u, /대표,\s*매니저,\s*캐셔/u, /결제하지 않으며/u, /IP 주소[^.]*막는/u, /15분/u]],
   ];
-  const loiMuc = [], loiCau = [], loiNgoai = [];
-  for (const [nn, f, tieuDe, sau, ngoai, len, khongKem, khongLuu] of RIENG_TU) {
+  const loiMuc = [], loiCau = [];
+  for (const [nn, f, tieuDe, sau, y] of RIENG_TU) {
     const s = doc(f);
     const iMuc = s.indexOf(`<h2>${tieuDe}</h2>`);
     const iMess = s.search(/<h2>[^<]*Messenger[^<]*<\/h2>/u);
     const iSau = s.indexOf(`<h2>${sau}</h2>`);
     if (iMuc < 0 || !(iMess >= 0 && iMess < iMuc && iMuc < iSau)) loiMuc.push(`${nn}: mục ở ${iMuc}, Messenger ${iMess}, ${sau} ${iSau}`);
-    const muc = iMuc >= 0 ? s.slice(iMuc, s.indexOf('<h2>', iMuc + 4)).replace(/\s+/g, ' ') : '';
-    if (/soạn ngay trên máy|on your device|기기에서/iu.test(s)) loiCau.push(`${nn}: còn câu "soạn ngay trên máy"`);
-    if (!len.test(muc) || !khongKem.test(muc) || !khongLuu.test(muc) || !/Zalo/.test(muc)) {
-      loiCau.push(`${nn}: thiếu ý ${[len, khongKem, khongLuu].filter(re => !re.test(muc)).map(String).join(' ')}`);
+    const muc = iMuc >= 0 ? s.slice(iMuc, s.indexOf('<h2>', iMuc + 4)).replace(/\s+/g, ' ').replace(/<\/?strong>/g, '') : '';
+    const thieu = y.filter(re => !re.test(muc));
+    if (thieu.length) loiCau.push(`${nn}: thiếu ý ${thieu.map(String).join(' ')}`);
+    if (/qua Zalo|on Zalo|Zalo로/u.test(muc) || /tin đơn bạn gửi qua Zalo|order messages you send us on Zalo|Zalo로 보내신 주문 메시지/u.test(s)) {
+      loiCau.push(`${nn}: còn câu đơn đi qua Zalo`);
     }
-    const cauNgoai = s.replace(/\s+/g, ' ').match(ngoai)?.[0] ?? '';
-    if (!/Zalo/.test(cauNgoai) || !/Messenger/.test(cauNgoai)) loiNgoai.push(`${nn}: ${cauNgoai.slice(0, 160)}`);
     const cam = timChuoiCam(muc);
     if (cam.length) loiCau.push(`${nn}: chữ cấm ${cam.map(c => c.tim_thay).join(', ')}`);
   }
-  ok('Ba trang quyền riêng tư có mục tin đơn qua Zalo ngay sau mục Messenger', loiMuc.length === 0, loiMuc.join(' | '));
-  ok('Ba trang quyền riêng tư có mục tin đơn qua Zalo; không câu "soạn ngay trên máy" / "on your device" / "기기에서"; có ý gói đã chọn đi lên máy chủ qua địa chỉ trang, không kèm thông tin cá nhân',
+  ok('Ba trang quyền riêng tư có mục đặt mua thịt về ngay sau mục Messenger', loiMuc.length === 0, loiMuc.join(' | '));
+  ok('Mục đó nói đủ: lưu họ tên, số điện thoại, địa chỉ, ghi chú; ai đọc; không thu tiền; IP chỉ để chặn; trình duyệt giữ 15 phút; không còn "đơn qua Zalo"',
      loiCau.length === 0, loiCau.join(' | '));
-  ok('Câu "Ngoài Supabase…" ở cả ba bản nhắc Zalo', loiNgoai.length === 0, loiNgoai.join(' | '));
 
   const XOA = [
-    ['vi', 'web/src/pages/xoa-du-lieu.astro', 'Tin đơn mua thịt gửi qua Zalo', /Website không lưu đơn mua thịt/u],
-    ['en', 'web/src/pages/en/data-deletion.astro', 'Take-home order messages sent on Zalo', /website does not store take-home orders/iu],
-    ['ko', 'web/src/pages/ko/data-deletion.astro', 'Zalo로 보내신 포장 구매 주문 메시지', /웹사이트는\s*포장\s*구매\s*주문을\s*저장하지\s*않/u],
+    ['vi', 'web/src/pages/xoa-du-lieu.astro', /<h2>[^<]*đơn mua thịt[^<]*<\/h2>/u],
+    ['en', 'web/src/pages/en/data-deletion.astro', /<h2>[^<]*take-home orders[^<]*<\/h2>/u],
+    ['ko', 'web/src/pages/ko/data-deletion.astro', /<h2>[^<]*포장 주문[^<]*<\/h2>/u],
   ];
-  const loiXoa = [];
-  for (const [nn, f, tieuDe, khongLuu] of XOA) {
-    const s = doc(f);
-    const iMuc = s.indexOf(`<h2>${tieuDe}</h2>`);
-    const iMess = s.search(/<h2>[^<]*Messenger[^<]*<\/h2>/u);
-    const muc = iMuc >= 0 ? s.slice(iMuc, s.indexOf('<h2>', iMuc + 4)).replace(/\s+/g, ' ') : '';
-    if (iMuc < 0 || iMess < 0 || iMess > iMuc || !khongLuu.test(muc) || !/Zalo/.test(muc.slice(tieuDe.length + 9))) {
-      loiXoa.push(`${nn}: mục ở ${iMuc}, Messenger ở ${iMess}, ${muc.slice(0, 120)}`);
-    }
-    const cam = timChuoiCam(muc);
-    if (cam.length) loiXoa.push(`${nn}: chữ cấm ${cam.map(c => c.tim_thay).join(', ')}`);
-  }
-  ok('Ba trang xóa dữ liệu có mục tin đơn mua thịt', loiXoa.length === 0, loiXoa.join(' | '));
+  const loiXoa = XOA.filter(([, f, re]) => !re.test(doc(f)) || /Zalo OA/.test(doc(f))).map(([nn]) => nn);
+  ok('Ba trang xóa dữ liệu có đơn mua thịt trong mục xóa theo yêu cầu; không còn mục tin đơn qua Zalo', loiXoa.length === 0, loiXoa.join(', '));
 });
 
-process.exit(ketThuc('MUA THỊT VỀ: ĐÍCH ĐẶT HÀNG, ĐIỀU HƯỚNG, VỎ TRANG, QUYỀN RIÊNG TƯ'));
+process.exit(ketThuc('MUA THỊT VỀ: TRANG MỞ, ĐIỀU HƯỚNG, VỎ TRANG, QUYỀN RIÊNG TƯ'));

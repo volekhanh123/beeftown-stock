@@ -141,10 +141,13 @@ await nhom('2 · GẮN Ở ĐÂU: CHỈ TRANG.ASTRO, TRỪ 404; MỌI LỜI GỌ
   ok('TrangDatBan.astro: Lead chỉ khi khung kết quả là "da-nhan" và có mã, một lần cho mỗi mã',
      /if \(khungKetQua\?\.dataset\.ketQua === 'da-nhan' && khungKetQua\.dataset\.ma\) guiSuKienMotLan\('Lead', khungKetQua\.dataset\.ma\);/.test(datBan));
   const mua = doc('web/src/components/TrangMuaThitVe.astro');
-  ok('TrangMuaThitVe.astro: InitiateCheckout khi gửi form có giỏ và khi bấm "Xem đơn" của thanh dưới, một lần cho mỗi giỏ',
-     /if \(donHienTai && donHienTai\.dong\.length > 0\) \{\s*baoXemDon\(\);\s*return;\s*\}/.test(mua)
-       && /thanhXem\?\.addEventListener\('click', baoXemDon\);/.test(mua)
-       && /guiSuKienMotLan\('InitiateCheckout', gio\.sort\(\)\.join\('&'\)\);/.test(mua));
+  // 0113: khách đặt thẳng trên website — InitiateCheckout khi bấm Đặt hàng với giỏ có gói (đã qua chặn giỏ rỗng và
+  // chặn bấm đúp), một lần cho mỗi giỏ. Mã đơn và thông tin khách không tới Meta.
+  const iChan = mua.indexOf('if (dangGui) { e.preventDefault(); return; }');
+  const iGui = mua.indexOf("guiSuKienMotLan('InitiateCheckout'");
+  ok('TrangMuaThitVe.astro: InitiateCheckout khi bấm Đặt hàng có giỏ (sau chặn giỏ rỗng và bấm đúp), một lần cho mỗi giỏ, không kèm thông tin khách',
+     iChan > 0 && iGui > iChan && /guiSuKienMotLan\('InitiateCheckout', donHienTai\.dong\.map\(d => `\$\{d\.goi\.khoa\}=\$\{d\.soLuong\}`\)\.join\('&'\)\);/.test(mua)
+       && !/guiSuKien(?:MotLan)?\([^)]*(ho_ten|sdt|dia_chi|ma_don|ketQua)/.test(mua));
 });
 
 // ===========================================================================
@@ -264,21 +267,21 @@ await nhom('5 · TRANG QUYỀN RIÊNG TƯ NÓI ĐÚNG META NHẬN GÌ (VI / EN /
     vi: { f: 'web/src/pages/quyen-rieng-tu.astro', muc: 'Khi bạn xem trang web này', truoc: 'Chúng tôi thu những gì',
       sau: 'Khi bạn nhắn Beeftown qua Messenger',
       cam: /không pixel quảng cáo|không dùng công cụ đo lường của bên thứ ba|không theo dõi bạn/i,
-      nut: ['gọi điện', 'mở Zalo', 'mở Messenger', 'xem đơn mua thịt', 'gửi yêu cầu đặt bàn'],
+      nut: ['gọi điện', 'mở Zalo', 'mở Messenger', 'đặt mua thịt', 'gửi yêu cầu đặt bàn'],
       con: ['Meta Pixel', 'trang bạn đang xem', 'địa chỉ IP', 'loại trình duyệt', 'mã cookie', 'không gửi cho Meta',
         'bất kỳ thông tin nào bạn điền vào form', 'nước ngoài', 'chặn trình theo dõi', 'Cài đặt quảng cáo'],
       luat: ['Luật Bảo vệ dữ liệu cá nhân 2025', '01/01/2026', 'Nghị định 13/2023/NĐ-CP'] },
     en: { f: 'web/src/pages/en/privacy.astro', muc: 'When you browse this website', truoc: 'What we collect',
       sau: 'When you message Beeftown on Messenger',
       cam: /no advertising pixels|uses no third-party analytics|no tracking you/i,
-      nut: ['calling', 'opening Zalo', 'opening Messenger', 'viewing a take-home order', 'sending a table request'],
+      nut: ['calling', 'opening Zalo', 'opening Messenger', 'placing a take-home order', 'sending a table request'],
       con: ['Meta Pixel', 'the page you are viewing', 'IP address', 'browser type', 'cookie ID', 'does not send Meta',
         'anything you type into a form', 'outside Vietnam', 'tracker blocking', 'ad preferences'],
       luat: ['Law on Personal Data Protection 2025', '1 January 2026', 'Decree 13/2023/ND-CP'] },
     ko: { f: 'web/src/pages/ko/privacy.astro', muc: '이 웹사이트를 보실 때', truoc: '수집하는 정보',
       sau: 'Messenger로 Beeftown에 메시지를 보내실 때',
       cam: /광고 픽셀도 쓰지 않|제3자 분석 도구를 사용하지 않|추적하지도/,
-      nut: ['전화 걸기', 'Zalo 열기', 'Messenger 열기', '포장 구매 주문 보기', '테이블 문의 보내기'],
+      nut: ['전화 걸기', 'Zalo 열기', 'Messenger 열기', '포장 구매 주문하기', '테이블 문의 보내기'],
       con: ['Meta Pixel', '보고 계신 페이지', 'IP 주소', '브라우저 종류', '쿠키 식별값', 'Meta에 보내지 않아요',
         '양식에 입력하신 어떤 정보도', '해외', '추적 방지', '광고 설정'],
       luat: ['Luật Bảo vệ dữ liệu cá nhân 2025', '2026년 1월 1일', 'Nghị định 13/2023/NĐ-CP'] },
@@ -295,7 +298,7 @@ await nhom('5 · TRANG QUYỀN RIÊNG TƯ NÓI ĐÚNG META NHẬN GÌ (VI / EN /
        chuDoc(than).match(x.cam)?.[0]);
     const muc = iMuc > -1 ? chuDoc(than.slice(iMuc, than.indexOf('<h2>', iMuc + 4))) : '';
     const thieuNut = x.nut.filter(n => !muc.includes(n));
-    ok(`[${nn}] mục Meta Pixel kể đủ năm nút gửi sự kiện: gọi điện, Zalo, Messenger (Contact), xem đơn mua thịt (InitiateCheckout), gửi yêu cầu đặt bàn (Lead)`,
+    ok(`[${nn}] mục Meta Pixel kể đủ năm nút gửi sự kiện: gọi điện, Zalo, Messenger (Contact), đặt mua thịt (InitiateCheckout), gửi yêu cầu đặt bàn (Lead)`,
        thieuNut.length === 0, `thiếu: ${thieuNut.join(', ')}`);
     const thieuY = x.con.filter(c => !muc.includes(c));
     ok(`[${nn}] mục Meta Pixel có: trang đang xem, IP, trình duyệt, cookie, câu "không gửi cho Meta" thông tin form, máy chủ nước ngoài, cách không bị đo`,

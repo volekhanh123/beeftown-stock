@@ -121,8 +121,8 @@ await nhom('2 · THANH MENU: TỐI ĐA 5 NÚT, KHÔNG MỤC NÀO MẤT', async (
   // Từ khi có mục Thực đơn, marketing có 6 mục: 4 màn nội dung + "Thêm" (Đặt bàn, Tin tuyển dụng nằm ở trang Tất cả chức năng).
   ok('Marketing: Tổng quan · Nội dung · Thực đơn · Zalo · Thêm', ma('marketing') === 'tong_quan,noi_dung,thuc_don,zalo,them', ma('marketing'));
   // Từ khi có Menu bán lẻ (0099), thu ngân có 5 mục — vừa đủ thanh đáy, chưa cần nút "Thêm".
-  ok('Thu ngân: Tổng quan · Đặt bàn · Thực đơn · Bán lẻ · Tin tuyển dụng',
-    ma('thu_ngan') === 'tong_quan,dat_ban,thuc_don,ban_le,tin_tuyen_dung', ma('thu_ngan'));
+  ok('Thu ngân: Tổng quan · Đặt bàn · Đơn thịt · Bán lẻ · Thêm (0113: 6 mục, Đơn mua thịt lên thanh đáy)',
+    ma('thu_ngan') === 'tong_quan,dat_ban,don_mua_thit,ban_le,them', ma('thu_ngan'));
   ok('Vai lạ / chưa đăng nhập: không mục nào, không lỗi', NB.thanhDayNoiBo('may_chung').length === 0 && NB.thanhDayNoiBo(undefined).length === 0);
   // Vai chỉ-kho mở một trang khung NoiBo: chỉ một mục (Kho) → không hiện thanh nào, như bản cũ;
   // không có "Tất cả chức năng" (trang đó chuyển họ sang trang Khác của kho).

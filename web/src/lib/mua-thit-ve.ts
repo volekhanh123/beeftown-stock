@@ -2,8 +2,8 @@
  * MUA THỊT VỀ — ĐỌC MENU CHO TRANG CÔNG KHAI, qua đúng một cửa: mua_thit_ve_cong_khai() (migration 0101)
  * =====================================================================================================
  *
- * Database quyết định gói nào được hiện và giá bao nhiêu: chỉ khi kênh mở (công tắc hien_mua_thit_ve bật, có link
- * Zalo OA hợp lệ), chỉ sản phẩm Đang bán, kênh website, đã được chủ chốt giá ở /noi-bo/ban-le; giá là giá gói
+ * Database quyết định gói nào được hiện và giá bao nhiêu: chỉ khi kênh mở (công tắc hien_mua_thit_ve bật — từ 0113
+ * không còn đòi link Zalo OA), chỉ sản phẩm Đang bán, kênh website, đã được chủ chốt giá ở /noi-bo/ban-le; giá là giá gói
  * trong ảnh chụp lần chốt (Khánh 26/10/2026 — giá mỗi kg ở Kho đổi sau đó thì trang vẫn giữ giá đã chốt, quán báo
  * tổng tiền khi xác nhận đơn). Hàm không trả mã nội bộ, giá kg hay số tồn. Trang chỉ trình bày, thêm vài lớp chặn:
  *
@@ -18,11 +18,11 @@
  *    Không đệm trong Worker: giá vừa chốt phải lên trang ngay.
  *
  * File chỉ chạy ở máy chủ (nạp supabase-js qua noi-dung.ts). Phần tính đơn chạy cả trong trình duyệt nằm ở
- * don-mua-thit.ts; đích đặt hàng (link Zalo OA, cách chuyển giỏ) ở dich-dat-hang.ts — file này không nạp nó, nên
- * trangThaiMuaThit nhận `mo` (muaThitVeMo của dich-dat-hang.ts) làm tham số. Kiểm thử: crm/test/test-mua-thit-ve-web.mjs.
+ * don-mua-thit.ts; gửi đơn lên database ở dat-hang-mua-thit.ts; trangThaiMuaThit nhận `mo` (muaThitVeMo của
+ * dich-dat-hang.ts) làm tham số. Kiểm thử: crm/test/test-mua-thit-ve-web.mjs.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { taoClient, maChiNhanh, type NgonNgu, type NoiDung } from './noi-dung.ts';
+import { taoClient, maChiNhanh, type NgonNgu } from './noi-dung.ts';
 import { timChuoiCam } from './chuoi-cam.js';
 import { khoaGoi, type BaoQuan, type DonVi, type GoiMua, type SanPhamMua } from './don-mua-thit.ts';
 
@@ -181,7 +181,7 @@ export async function docMuaThitVe(
   }
 }
 
-/** Trạng thái của trang — một bảng chân trị cho điều hướng, trang và form (bản thiết kế PR 2, mục 2.5). */
+/** Trạng thái của trang — một bảng chân trị cho điều hướng, trang và form. */
 export type TrangThaiTrang = 'chua_mo' | 'loi' | 'mo' | 'het_quay';
 
 /** Có ít nhất một gói khách đặt được (không "Tạm hết ở quầy"). */
@@ -190,9 +190,9 @@ export function coGoiDatDuoc(menu: MenuMuaThit): boolean {
 }
 
 /**
- * `mo` là muaThitVeMo(noiDung) của dich-dat-hang.ts — công tắc HIỆU LỰC của database (0101) và có đích đặt hàng.
- * Chưa mở → chua_mo; mở mà đọc menu lỗi → loi (trang mời nhắn Zalo OA); menu rỗng (gói vừa bị bỏ giữa hai lời gọi)
- * → chua_mo; mọi gói tạm hết ở quầy → het_quay (liệt kê gói, không form); còn lại → mo.
+ * `mo` là muaThitVeMo(noiDung) của dich-dat-hang.ts — công tắc HIỆU LỰC của database (0101, 0113).
+ * Chưa mở → chua_mo; mở mà đọc menu lỗi → loi (trang mời tải lại, gọi quán); menu rỗng (gói vừa bị bỏ giữa hai lời
+ * gọi) → chua_mo; mọi gói tạm hết ở quầy → het_quay (liệt kê gói, không form); còn lại → mo.
  */
 export function trangThaiMuaThit(mo: boolean, menu: MenuMuaThit): TrangThaiTrang {
   if (!mo) return 'chua_mo';
@@ -200,10 +200,4 @@ export function trangThaiMuaThit(mo: boolean, menu: MenuMuaThit): TrangThaiTrang
   if (menu.sanPham.length === 0) return 'chua_mo';
   if (!coGoiDatDuoc(menu)) return 'het_quay';
   return 'mo';
-}
-
-/** Trang nhận giao tận nơi: khóa mua_thit_giao_hang (chỉ chủ) đã công bố và có chữ. Chưa thì chỉ nhận tại quầy. */
-export function coGiaoHang(nd: Pick<NoiDung, 'mua_thit_giao_hang'> | null | undefined): boolean {
-  const v = nd?.mua_thit_giao_hang;
-  return typeof v === 'string' && v.trim() !== '';
 }

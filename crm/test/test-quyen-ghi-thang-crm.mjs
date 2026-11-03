@@ -285,6 +285,9 @@ await nhom('8 · CỔNG — mọi hàm definer authenticated gọi được ph�
     // 0102 — cài đặt bán lẻ (cỡ gói thịt bò): đọc = bốn vai của menu, lưu = chủ, quản lý; từ chối từng vai bằng 42501
     // kèm câu cũ (test-ban-le-cai-dat.mjs nhóm 1).
     ban_le_cai_dat: 'tu_kiem_vai', ban_le_luu_co_goi: 'tu_kiem_vai',
+    // 0113 — hộp thư đơn mua thịt website: chủ, quản lý, thu ngân, theo chi nhánh; từ chối marketing, vai kho, nhân sự
+    // đã nghỉ, không nhan_su, chi nhánh khác (test-mua-thit-dat-hang.mjs nhóm 1, test-noi-bo-don-mua-thit.mjs nhóm 1).
+    don_mua_thit_danh_sach: 'tu_kiem_vai', don_mua_thit_chuyen: 'tu_kiem_vai',
     // Chỉ đọc thứ đã công khai cho anon (cong_tac_bat: công tắc đã công bố; lịch trống: như lich_trong_theo_ma).
     cong_tac_bat: 'cong_khai', khung_gio_trong_ngay: 'cong_khai', so_ban_con_trong: 'cong_khai',
     lich_trong_theo_ngay: 'cong_khai',
