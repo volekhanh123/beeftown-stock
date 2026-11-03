@@ -219,15 +219,16 @@ await nhom('5 · BỘ QUÉT, TRÌNH DUYỆT, THU-DAY-DU DÙNG ĐÚNG HÀM VÀ Đ
 // Supabase giả: kịch bản → trạng thái. Đọc qua HTTP bằng supabase-js thật (bản của web/), như trang đọc.
 await nhom('6 · SUPABASE GIẢ: MENU THỬ ĐÚNG HỢP ĐỒNG 11 CỘT, MỖI KỊCH BẢN ĐÚNG TRẠNG THÁI TRANG', async () => {
   const gia = await napWeb('kiem-tra/gia-supabase.mjs');
-  const { nhomMuaThitVe, docMuaThitVe, trangThaiMuaThit, coGiaoHang } = await napWeb('src/lib/mua-thit-ve.ts');
+  const { nhomMuaThitVe, docMuaThitVe, trangThaiMuaThit } = await napWeb('src/lib/mua-thit-ve.ts');
+  const coGiaoHang = nd => typeof nd?.mua_thit_giao_hang === 'string' && nd.mua_thit_giao_hang.trim() !== '';
   const { muaThitVeMo, laLinkZaloOa } = await napWeb('src/lib/dich-dat-hang.ts');
   const requireWeb = createRequire(join(WEB, 'package.json'));
   const { createClient } = await import(pathToFileURL(requireWeb.resolve('@supabase/supabase-js')).href);
 
   const COT = ['san_pham_ma', 'loai', 'don_vi', 'bao_quan', 'ten', 'ten_vi', 'mo_ta', 'cach_dung', 'so_gam', 'gia', 'tam_het'];
-  const MOI = ['mua-thit-mo', 'mua-thit-giao', 'mua-thit-het-quay', 'mua-thit-rong', 'mua-thit-khong-zalo', 'mua-thit-zalo-la',
-    'mua-thit-lech', 'mua-thit-loi', 'mua-thit-dut', 'mua-thit-treo'];
-  ok('KICH_BAN có đủ mười kịch bản mua-thit-*', MOI.every(k => gia.KICH_BAN.includes(k)), MOI.filter(k => !gia.KICH_BAN.includes(k)).join(', '));
+  const MOI = ['mua-thit-mo', 'mua-thit-giao', 'mua-thit-het-quay', 'mua-thit-rong', 'mua-thit-khong-zalo',
+    'mua-thit-lech', 'mua-thit-loi', 'mua-thit-dut', 'mua-thit-treo', 'mua-thit-dat-loi', 'mua-thit-dat-dut'];
+  ok('KICH_BAN có đủ mười một kịch bản mua-thit-*', MOI.every(k => gia.KICH_BAN.includes(k)), MOI.filter(k => !gia.KICH_BAN.includes(k)).join(', '));
   ok('MENU_THU export cho thu-day-du.mjs, có Ribeye with Cap, Thăn ngoại, Ba chỉ bò Mỹ, LA Galbi, Kim chi cải thảo và một sản phẩm tên dài',
      Array.isArray(gia.MENU_THU) && ['ribeye-cap', 'than-ngoai', 'ba-chi-bo-my', 'la-galbi', 'kim-chi-cai-thao'].every(ma => gia.MENU_THU.some(s => s.ma === ma))
        && gia.MENU_THU.length === 6);
@@ -283,7 +284,7 @@ await nhom('6 · SUPABASE GIẢ: MENU THỬ ĐÚNG HỢP ĐỒNG 11 CỘT, MỖI
        !dung.error && Array.isArray(dung.data) && dung.data.length > 0 && dung.data.every(d => d.ten_vi) && sai.error?.code === 'PGRST202',
        JSON.stringify(dung.error ?? sai.error ?? null));
 
-    // [kịch bản, trang mở (muaThitVeMo), trạng thái trang, nhận giao, có hotline]
+    // [kịch bản, trang mở (muaThitVeMo), trạng thái trang, đã công bố chữ giao hàng, có hotline]
     const BANG = [
       ['rong', false, 'chua_mo', false, false],
       ['day-du', false, 'chua_mo', false, true],
@@ -292,8 +293,10 @@ await nhom('6 · SUPABASE GIẢ: MENU THỬ ĐÚNG HỢP ĐỒNG 11 CỘT, MỖI
       ['mua-thit-giao', true, 'mo', true, false],
       ['mua-thit-het-quay', true, 'het_quay', false, true],
       ['mua-thit-rong', false, 'chua_mo', false, true],
-      ['mua-thit-khong-zalo', false, 'chua_mo', false, true],
-      ['mua-thit-zalo-la', false, 'chua_mo', false, true],
+      // 0113: link Zalo không còn là điều kiện mở trang.
+      ['mua-thit-khong-zalo', true, 'mo', false, true],
+      ['mua-thit-dat-loi', true, 'mo', false, true],
+      ['mua-thit-dat-dut', true, 'mo', false, true],
       ['mua-thit-lech', true, 'chua_mo', false, true],
       ['mua-thit-loi', true, 'loi', false, true],
       ['mua-thit-dut', true, 'loi', false, true],

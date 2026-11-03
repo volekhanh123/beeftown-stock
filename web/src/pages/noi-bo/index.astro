@@ -32,6 +32,7 @@ const t = dichNB(nn, {
   dan:         { vi: 'Hôm nay còn vướng gì.', en: 'What is still stuck today.' },
   dangCho:     { vi: 'Đang chờ người xử lý', en: 'Waiting for someone' },
   banCho:      { vi: 'yêu cầu đặt bàn chờ gọi lại', en: 'booking requests waiting for a call back' },
+  donThitCho:  { vi: 'đơn mua thịt chờ gọi xác nhận', en: 'take-home orders waiting for a call' },
   hoSoMoi:     { vi: 'hồ sơ ứng tuyển chưa ai mở', en: 'job applications nobody has opened' },
   gach1:       { vi: 'Dấu ', en: 'A ' },
   gach2:       { vi: ' nghĩa là không đọc được, thường vì vai trò của bạn không có quyền xem mục đó. Nó không có nghĩa là bằng không.',
@@ -74,6 +75,15 @@ if (['thu_kho', 'nhan_vien_quay', 'ke_toan'].includes(nhanSu.vai_tro)) {
 }
 
 /** Đếm mà không kéo dòng về — dữ liệu cá nhân không cần đi qua đây chỉ để đếm. */
+/** Đơn mua thịt chờ gọi (0113): bảng khóa kín, đếm qua hàm hộp thư — chỉ chủ, quản lý, thu ngân (null = không hiện ô). */
+const xemDonThit = ['chu_so_huu', 'quan_ly', 'thu_ngan'].includes(nhanSu.vai_tro);
+async function demDonThitCho(): Promise<number | null> {
+  try {
+    const { data, error } = await client.rpc('don_mua_thit_danh_sach', { p_loc: 'cho' });
+    return error || !Array.isArray(data) ? null : data.length;
+  } catch { return null; }
+}
+
 async function dem(bang: string, loc: (q: any) => any): Promise<number | null> {
   try {
     const { count, error } = await loc(client.from(bang).select('*', { count: 'exact', head: true }));
@@ -95,7 +105,7 @@ const [
   congBoThieu, anhThieu, monVuong,
   banChoXacNhan, hoSoMoi, tinDangTuyen,
   dichCho, dichNoiDung,
-  sucKhoe,
+  sucKhoe, donThitCho,
 ] = await Promise.all([
   docView<{ khoa: string; mo_ta: string }>('v_cong_bo_con_thieu', 'khoa, mo_ta'),
   docView<{ ma: string; ten: string; bat_buoc: boolean }>('v_anh_con_thieu', 'ma, ten, bat_buoc'),
@@ -108,6 +118,7 @@ const [
   dem('v_viec_dich', (q: any) => q.neq('bang', 'noi_dung_cong_bo')),
   dem('v_viec_dich', (q: any) => q.eq('bang', 'noi_dung_cong_bo')),
   xemSucKhoe ? docSucKhoeVaSaoLuu(client) : Promise.resolve(null),
+  xemDonThit ? demDonThitCho() : Promise.resolve(null),
 ]);
 
 const anhBatBuocThieu = anhThieu?.filter(a => a.bat_buoc) ?? [];
@@ -179,6 +190,14 @@ const viec = [
       </strong>
       <span style="font-size:.88rem">{t.banCho}</span>
     </a>
+    {xemDonThit && (
+      <a href="/noi-bo/don-mua-thit" class="nb-the" style="text-decoration:none">
+        <strong style="font-size:2rem;display:block;line-height:1.1">
+          {donThitCho ?? '—'}
+        </strong>
+        <span style="font-size:.88rem">{t.donThitCho}</span>
+      </a>
+    )}
     {['chu_so_huu', 'quan_ly'].includes(nhanSu.vai_tro) && (
       <a href="/noi-bo/tuyen-dung" class="nb-the" style="text-decoration:none">
         <strong style="font-size:2rem;display:block;line-height:1.1">

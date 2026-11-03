@@ -59,19 +59,21 @@
  *   da-mo         như day-du, thêm ngay_khai_truong là một ngày ĐÃ qua (NGAY_DA_MO_THU) và
  *                 dong_trang_thai dài hai câu: màn đầu trang chủ hiện dòng "Mở cửa từ …"
  *
- *   Trang Mua thịt về (PR 2, 0101). hien_mua_thit_ve dưới đây là giá trị DATABASE TRẢ — công tắc hiệu lực mà
- *   noi_dung_cong_khai() đã tính (bật + link Zalo OA hợp lệ + có gói trên menu web). Mọi kịch bản cũ: null, menu [].
- *   mua-thit-mo         như day-du (có hotline); hien_mua_thit_ve true, zalo_oa_url = ZALO_OA_THU, giờ nhận có chữ
+ *   Trang Mua thịt về (0101, đặt thẳng trên website từ 0113). hien_mua_thit_ve dưới đây là giá trị DATABASE TRẢ —
+ *   công tắc hiệu lực mà noi_dung_cong_khai() đã tính (bật + có gói trên menu web; từ 0113 không còn đòi link Zalo).
+ *   Mọi kịch bản cũ: null, menu []. tao_don_mua_thit (0113) ghi đơn ở mọi kịch bản có menu, trừ hai kịch bản -dat-.
+ *   mua-thit-mo         như day-du (có hotline); hien_mua_thit_ve true, zalo_oa_url = ZALO_OA_THU, giờ giao có chữ
  *                       thử; menu MENU_THU (Ba chỉ bò Mỹ 400 g "Tạm hết ở quầy")
  *   mua-thit-giao       như mua-thit-mo, thêm mua_thit_giao_hang (chữ thử, không số tiền), hotline null
  *   mua-thit-het-quay   như mua-thit-mo, mọi gói tam_het
- *   mua-thit-rong       database tự tính false (bật, có link, 0 gói); menu []
- *   mua-thit-khong-zalo false, zalo_oa_url null; menu []
- *   mua-thit-zalo-la    true (phòng hờ database lệch) mà zalo_oa_url là https://example.com/…; menu MENU_THU
- *   mua-thit-lech       true, link hợp lệ, menu [] (gói vừa bị bỏ giữa hai lời gọi song song)
- *   mua-thit-loi        true, link hợp lệ; mua_thit_ve_cong_khai trả 500
- *   mua-thit-dut        true, link hợp lệ; mua_thit_ve_cong_khai cắt kết nối (như dat-ban-dut)
- *   mua-thit-treo       true, link hợp lệ; mua_thit_ve_cong_khai không trả lời trong 10 giây
+ *   mua-thit-rong       database tự tính false (bật, 0 gói); menu []
+ *   mua-thit-khong-zalo true, zalo_oa_url null; menu MENU_THU — 0113: trang mở và đặt được dù chưa có link Zalo
+ *   mua-thit-lech       true, menu [] (gói vừa bị bỏ giữa hai lời gọi song song)
+ *   mua-thit-loi        true; mua_thit_ve_cong_khai trả 500
+ *   mua-thit-dut        true; mua_thit_ve_cong_khai cắt kết nối (như dat-ban-dut)
+ *   mua-thit-treo       true; mua_thit_ve_cong_khai không trả lời trong 10 giây
+ *   mua-thit-dat-loi    như mua-thit-mo; tao_don_mua_thit trả 400 P0001 "Giá vừa đổi…" (database từ chối — CHƯA ghi)
+ *   mua-thit-dat-dut    như mua-thit-mo; tao_don_mua_thit cắt kết nối không trả lời (KHÔNG CHẮC đã ghi)
  *
  * GET /__dem → { tên hàm: số lần gọi } — để kiểm "bấm đúp → tao_dat_ban đúng một lần".
  * GET /__nhat-ky → 200 lần gọi gần nhất { ham, thamSo }.
@@ -89,8 +91,8 @@ import { homNayVn } from '../src/lib/gio-vn.ts';
 export const CONG_MAC_DINH = 54331;
 export const KICH_BAN = ['rong', 'day-du', 'dat-ban-dong', 'dat-ban-loi', 'dat-ban-500', 'dat-ban-dut', 'dat-ban-sap', 'dia-chi-cong-bo',
   'tuyen-dung-mo', 'tuyen-dung-dut', 'tuyen-dung-loi', 'sap-mo', 'da-mo', 'khong-con-tat', 'thuc-don-thu-suc',
-  'mua-thit-mo', 'mua-thit-giao', 'mua-thit-het-quay', 'mua-thit-rong', 'mua-thit-khong-zalo', 'mua-thit-zalo-la',
-  'mua-thit-lech', 'mua-thit-loi', 'mua-thit-dut', 'mua-thit-treo'];
+  'mua-thit-mo', 'mua-thit-giao', 'mua-thit-het-quay', 'mua-thit-rong', 'mua-thit-khong-zalo',
+  'mua-thit-lech', 'mua-thit-loi', 'mua-thit-dut', 'mua-thit-treo', 'mua-thit-dat-loi', 'mua-thit-dat-dut'];
 
 // Liên hệ "đã công bố" của kịch bản day-du. Đường dẫn thử, không phải trang thật của nhà hàng.
 export const LIEN_HE_THU = {
@@ -144,12 +146,10 @@ const ba = (vi, en, ko) => ({ vi, en, ko });
 // ---------------------------------------------------------------------------
 /** Link Zalo OA "đã công bố" — đúng mẫu https://zalo.me/<mã> (laLinkZaloOa, la_link_zalo_oa()). */
 export const ZALO_OA_THU = 'https://zalo.me/beeftown-thu';
-/** Kịch bản mua-thit-zalo-la: link không phải Zalo — trang phải coi như chưa mở dù database nói true. */
-export const ZALO_LA_THU = 'https://example.com/beeftown';
 export const GIO_NHAN_THU = ba(
-  'Nhận tại quầy từ 10:30 đến 21:00, sau khi quán gọi lại xác nhận.',
-  'Pick up at the counter from 10:30 to 21:00, once we have called to confirm.',
-  '주문 확인 전화를 드린 뒤 10:30부터 21:00까지 매장에서 받아 가실 수 있어요.',
+  'Giao từ 10:30 đến 21:00, sau khi quán gọi lại xác nhận.',
+  'We deliver from 10:30 to 21:00, once we have called to confirm.',
+  '주문 확인 전화를 드린 뒤 10:30부터 21:00 사이에 배달해 드려요.',
 );
 export const GIAO_HANG_THU = ba(
   'Giao trong bán kính 5 km quanh quán; quán báo phí giao khi gọi lại xác nhận đơn.',
@@ -157,16 +157,17 @@ export const GIAO_HANG_THU = ba(
   '매장에서 5km 이내로 배달해요. 배달비는 주문 확인 전화로 알려 드려요.',
 );
 /** Kịch bản có menu (mua_thit_ve_cong_khai trả MENU_THU). */
-const KICH_BAN_CO_MENU = new Set(['mua-thit-mo', 'mua-thit-giao', 'mua-thit-het-quay', 'mua-thit-zalo-la']);
+const KICH_BAN_CO_MENU = new Set(['mua-thit-mo', 'mua-thit-giao', 'mua-thit-het-quay', 'mua-thit-khong-zalo',
+  'mua-thit-dat-loi', 'mua-thit-dat-dut']);
 
 /** Khóa nhóm "Mua thịt về" của một kịch bản (rỗng với kịch bản cũ: mọi khóa null). */
 function noiDungMuaThit(kichBan, n) {
   if (!kichBan.startsWith('mua-thit-')) return {};
   const nd = {
-    // Công tắc HIỆU LỰC: database tự tính false khi chưa có link hợp lệ hay chưa gói nào (mua-thit-rong,
-    // mua-thit-khong-zalo); mua-thit-zalo-la giả một database lệch (true với link lạ) — lớp chặn ở web phải đỡ.
-    hien_mua_thit_ve: !['mua-thit-rong', 'mua-thit-khong-zalo'].includes(kichBan),
-    zalo_oa_url: kichBan === 'mua-thit-khong-zalo' ? null : kichBan === 'mua-thit-zalo-la' ? ZALO_LA_THU : ZALO_OA_THU,
+    // Công tắc HIỆU LỰC: database tự tính false khi chưa có gói nào (mua-thit-rong). Từ 0113 link Zalo không còn là
+    // điều kiện: mua-thit-khong-zalo vẫn mở.
+    hien_mua_thit_ve: kichBan !== 'mua-thit-rong',
+    zalo_oa_url: kichBan === 'mua-thit-khong-zalo' ? null : ZALO_OA_THU,
   };
   if (['mua-thit-mo', 'mua-thit-giao', 'mua-thit-het-quay'].includes(kichBan)) nd.mua_thit_gio_nhan = GIO_NHAN_THU[n];
   if (kichBan === 'mua-thit-giao') Object.assign(nd, { mua_thit_giao_hang: GIAO_HANG_THU[n], hotline: null });
@@ -525,6 +526,9 @@ const THAM_SO_NOP_HO_SO = [
   'p_vi_tri_ma', 'p_ho_ten', 'p_sdt', 'p_email', 'p_nam_sinh', 'p_gioi_thieu', 'p_kinh_nghiem', 'p_ca_lam_duoc',
   'p_ma_tai_len', 'p_ten_tep', 'p_dong_y', 'p_bay', 'p_giay_tren_form', 'p_utm_source', 'p_utm_campaign', 'p_ip',
 ];
+const THAM_SO_DAT_HANG = [
+  'p_ma_gui', 'p_chi_nhanh_ma', 'p_ho_ten', 'p_sdt', 'p_dia_chi', 'p_ghi_chu', 'p_gio', 'p_gia_da_xem', 'p_ngon_ngu', 'p_ip',
+];
 const HAM = {
   noi_dung_cong_khai: { thamSo: ['p_ngon_ngu'], batBuoc: [] },
   thuc_don_cong_khai: { thamSo: ['p_ngon_ngu'], batBuoc: [] },
@@ -533,6 +537,7 @@ const HAM = {
   tao_dat_ban: { thamSo: THAM_SO_DAT_BAN, batBuoc: THAM_SO_DAT_BAN.slice(0, 6) },
   nop_ho_so_ung_tuyen: { thamSo: THAM_SO_NOP_HO_SO, batBuoc: THAM_SO_NOP_HO_SO.slice(0, 3) },
   mua_thit_ve_cong_khai: { thamSo: ['p_ngon_ngu', 'p_chi_nhanh_ma'], batBuoc: [] },
+  tao_don_mua_thit: { thamSo: THAM_SO_DAT_HANG, batBuoc: THAM_SO_DAT_HANG.slice(0, 8) },
 };
 
 const loiPostgrest = (code, message, details = null, hint = null) => ({ code, message, details, hint });
@@ -558,6 +563,8 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
   let nhatKy = [];
   let soDatBan = 0;
   let soHoSo = 0;
+  let soDonMuaThit = 0;
+  const donTheoMaGui = new Map();
   const henGio = new Set();   // lời trả lời đang hoãn (mua-thit-treo) — dong() hủy hết
 
   const datKichBan = (ten, { cham: ms = 0 } = {}) => {
@@ -626,6 +633,10 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
           if (cham > 0) return void setTimeout(() => nopHoSo(), cham);
           return nopHoSo();
         }
+        case 'tao_don_mua_thit': {
+          if (cham > 0) return void setTimeout(() => taoDonMuaThit(thamSo), cham);
+          return taoDonMuaThit(thamSo);
+        }
         case 'mua_thit_ve_cong_khai': {
           if (hienTai === 'mua-thit-loi') return tra(500, loiPostgrest('XX000', 'upstream request timeout'));
           if (hienTai === 'mua-thit-dut') { req.socket.destroy(); return; }   // mất mạng giữa chừng: không một byte
@@ -654,6 +665,36 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
         soHoSo++;
         // PostgREST trả một chuỗi JSON (có ngoặc kép) — tra() gửi chuỗi trần nguyên văn, nên tự stringify.
         return tra(200, JSON.stringify(`BT-UV-2610-${maDatBan(soHoSo).slice(0, 5)}`));
+      }
+
+      // Trả lời tao_don_mua_thit (0113) như hàm thật: kênh đóng / gói lạ / giá lệch → 400 P0001 câu tiếng Việt;
+      // cùng p_ma_gui → đơn cũ (da_co); ghi được → { ma_don, tam_tinh, da_co: false }. Hai kịch bản -dat-: từ chối
+      // (CHƯA ghi) và cắt kết nối (KHÔNG CHẮC).
+      function taoDonMuaThit(ts) {
+        if (hienTai === 'mua-thit-dat-dut') { req.socket.destroy(); return; }
+        if (!KICH_BAN_CO_MENU.has(hienTai) || hienTai === 'mua-thit-het-quay') {
+          return tra(400, loiPostgrest('P0001', 'Mua thịt về qua website đang tạm đóng'));
+        }
+        if (hienTai === 'mua-thit-dat-loi') {
+          return tra(400, loiPostgrest('P0001', 'Giá vừa đổi, vui lòng tải lại trang để xem giá mới'));
+        }
+        const cu = donTheoMaGui.get(ts.p_ma_gui);
+        if (cu) return tra(200, { ...cu, da_co: true });
+        const gia = new Map(MENU_THU.flatMap(sp => sp.goi.filter(g => !g.tamHet).map(g => [`${sp.ma}_${g.soGam}`, g.gia])));
+        let tamTinh = 0;
+        for (const [khoa, so] of Object.entries(ts.p_gio ?? {})) {
+          const n = Number(so);
+          if (!gia.has(khoa)) return tra(400, loiPostgrest('P0001', 'Có gói trong đơn không còn bán, vui lòng tải lại trang và chọn lại'));
+          if (Number(ts.p_gia_da_xem?.[khoa]) !== gia.get(khoa)) {
+            return tra(400, loiPostgrest('P0001', 'Giá vừa đổi, vui lòng tải lại trang để xem giá mới'));
+          }
+          tamTinh += n * gia.get(khoa);
+        }
+        if (tamTinh === 0) return tra(400, loiPostgrest('P0001', 'Đơn chưa có gói nào'));
+        soDonMuaThit++;
+        const don = { ma_don: maDatBan(1000 + soDonMuaThit), tam_tinh: tamTinh };
+        donTheoMaGui.set(ts.p_ma_gui, don);
+        return tra(200, { ...don, da_co: false });
       }
 
       // Trả lời tao_dat_ban theo kịch bản. Tách thành hàm để chờ được ("cham").

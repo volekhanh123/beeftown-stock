@@ -236,6 +236,35 @@ export const CAU_EN: Readonly<Record<string, string>> = {
   'Link Zalo OA phải có dạng https://zalo.me/ và mã OA, không thêm gì phía sau.':
     'The Zalo OA link must be https://zalo.me/ followed by the OA ID, with nothing after it.',
 
+  // 0113 — hộp thư đơn mua thịt website (don_mua_thit_danh_sach, don_mua_thit_chuyen, sinh_ma_don_mua_thit)
+  'Không có quyền xem đơn mua thịt': 'You are not allowed to see take-home orders',
+  'Không có quyền xử lý đơn mua thịt': 'You are not allowed to handle take-home orders',
+  'Bước chuyển trạng thái đơn không hợp lệ': 'That order status change is not allowed',
+  'Không thấy đơn này': 'This order could not be found',
+  'Không sinh được mã đơn, vui lòng thử lại': 'Could not create an order code, please try again',
+  // 0113 — tao_don_mua_thit (khách đọc bản en / ko ở LOI_DATABASE của lib/chu.ts; đây là bản cho màn nội bộ)
+  'Mua thịt về qua website đang tạm đóng': 'Take-home orders on the website are paused',
+  'Chưa điền họ tên': 'No name entered',
+  'Số điện thoại không hợp lệ': 'The phone number is not valid',
+  'Họ tên dài quá 120 ký tự': 'The name is longer than 120 characters',
+  'Địa chỉ giao hàng quá ngắn, vui lòng ghi rõ số nhà, tên đường và khu vực':
+    'The delivery address is too short, please include the house number, street and area',
+  'Địa chỉ giao hàng dài quá 300 ký tự': 'The delivery address is longer than 300 characters',
+  'Ghi chú dài quá 500 ký tự': 'The note is longer than 500 characters',
+  'Đơn chưa có gói nào': 'The order has no packs',
+  'Số gói mỗi loại phải từ 0 đến 10': 'Each pack can be ordered 0 to 10 times',
+  'Có gói trong đơn vừa tạm hết, vui lòng tải lại trang và chọn lại':
+    'A pack in the order has just sold out, please reload the page and choose again',
+  'Có gói trong đơn không còn bán, vui lòng tải lại trang và chọn lại':
+    'A pack in the order is no longer for sale, please reload the page and choose again',
+  'Giá vừa đổi, vui lòng tải lại trang để xem giá mới': 'Prices have just changed, please reload the page to see the new prices',
+  'Số điện thoại này đã có nhiều đơn đang chờ quán gọi xác nhận, vui lòng gọi quán':
+    'This phone number already has several orders waiting for a confirmation call, please call us',
+  'Mạng bạn đang dùng đã gửi quá nhiều đơn, vui lòng thử lại sau hoặc gọi quán':
+    'Too many orders were sent from this network, please try again later or call us',
+  'Hệ thống đang nhận quá nhiều đơn, vui lòng thử lại sau hoặc gọi quán':
+    'The system is receiving too many orders, please try again later or call us',
+
   // 0102 — cài đặt bán lẻ: cỡ gói thịt bò dùng chung (ban_le_luu_co_goi). Câu có % ở MAU_EN.
   'Danh sách cỡ gói không hợp lệ — tải lại trang.': 'Invalid pack size list — reload the page.',
   'Danh sách có tối đa 30 cỡ gói.': 'The list can have at most 30 pack sizes.',
@@ -260,7 +289,7 @@ export const MO_TA_KHOA_EN: Readonly<Record<string, string>> = {
   hotline:              'Restaurant phone number. Publish only when a real person answers during the published hours.',
   instagram_url:        'Official Instagram page.',
   tiktok_url:           'Official TikTok channel.',
-  zalo_oa_url:          'Official Zalo OA, as https://zalo.me/<OA ID> (Beeftown Hồ Tùng Mậu OA: https://zalo.me/3030027075662095415). Owner only (from 0101): the Take home page sends orders — and customers get the transfer QR code — through exactly this link.',
+  zalo_oa_url:          'Official Zalo OA, as https://zalo.me/<OA ID> (Beeftown Hồ Tùng Mậu OA: https://zalo.me/3030027075662095415). Owner only (from 0101): customers tap this link to message us. From 0113 take-home orders no longer go through Zalo — the page opens without this key.',
   ngay_khai_truong:     'Official opening date. Do NOT publish until it is confirmed in writing — changing the date after it is out is the biggest risk of the whole project.',
   ngay_treo_bang_ron:   'Date the construction banner goes up. Used to schedule when the address block goes live.',
   anh_chia_se:          'Image shown when the link is shared. Without it, a link pasted into Zalo shows only a bare line of blue text.',
@@ -276,16 +305,16 @@ export const MO_TA_KHOA_EN: Readonly<Record<string, string>> = {
   hien_tuyen_dung:      'Show the careers section.',
   // Mua thịt về (0101). Tám khóa văn bản kết bằng cùng một câu dặn không ghi số tiền (KHONG_TIEN của
   // crm/test/test-mua-thit-ve.mjs).
-  hien_mua_thit_ve:     'Opens the Take home page and its menu item: customers choose packs and the site writes an order message for them to send on Zalo OA. The page ONLY opens when all three hold: this switch is on, zalo_oa_url is published (an https://zalo.me/… link), and at least one product is On sale, on the website channel, with prices confirmed by the owner in Retail. The page shows the confirmed pack prices; if a price per kg changes in Warehouse, the page keeps the confirmed price until the owner confirms again — Zalo OA staff always recalculate the total from FABi when confirming, never from the numbers in the message (customers can edit it). Name and description edits in Retail show at once. Turn it on only when someone answers orders on the Zalo OA, copying the order was tested on a real phone, and the lawyer has advised on labelling fixed-price packs by weight.',
+  hien_mua_thit_ve:     'Opens the Take home page and its menu item: customers choose packs, enter their name, phone number and delivery address and place the order on the website; the order lands in the Take-home orders inbox in /noi-bo, and staff call the customer to confirm the total, the delivery fee and the delivery time. Delivery only, the website does not take payment. The page ONLY opens when this switch is on AND at least one product is On sale, on the website channel, with prices confirmed by the owner in Retail. The page shows the confirmed pack prices; if a price per kg changes in Warehouse, the page keeps the confirmed price until the owner confirms again. Turn it on only when someone watches the inbox and calls customers during opening hours, who delivers is settled, and the lawyer has advised on labelling fixed-price packs by weight.',
   mua_thit_hien_tam_het: 'The Take home page says "Sold out at the counter for now" from counter stock in the warehouse. ONLY turn it on once the branch deducts stock from iPOS and the counter records goods in and out on time — if the warehouse shows too little, customers see "sold out" while the counter still has stock.',
-  mua_thit_gio_nhan:    'Pickup and delivery hours for take-home orders, as customers read them. Until published, the page says we agree the time when we confirm the order. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
-  mua_thit_giao_hang:   'Publishing this key OPENS delivery on the Take home page: delivery area and how the fee works, as customers read them. Until published, the page offers pickup only. Publish only once who delivers, how far and cold bags are settled. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
+  mua_thit_gio_nhan:    'Delivery hours for take-home orders, as customers read them. Until published, the page says we agree the delivery time when we call to confirm the order. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
+  mua_thit_giao_hang:   'Delivery area and how the delivery fee works for take-home orders, as customers read them (the page is delivery only). Until published, the page says we give the delivery fee when we call to confirm the order. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
   mua_thit_thue:        'One sentence about VAT for prices on the Take home page. Until published, the page says nothing about tax. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
   mua_thit_bao_quan_mat: 'How to store chilled beef at home: temperature and how many days to use it. Until published, chilled cuts have no Storage section. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
   mua_thit_bao_quan_dong_lanh: 'How to store and thaw frozen beef at home. Until published, frozen cuts have no Storage section. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
   mua_thit_can_lech:    'How a pack is charged when its real weight is a few grams off the weight on the page. Until published, the page does not show this question. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
-  mua_thit_hang_loi:    'A problem with a take-home order: how soon to tell us and what we do. Until published, the page only says to message us on Zalo OA with a photo of the pack. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
-  mua_thit_doi_huy:     'Changing or cancelling a take-home order before and after we confirm it. Until published, the page only says to message us in the same Zalo chat. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
+  mua_thit_hang_loi:    'A problem with a take-home order: how soon to tell us and what we do. Until published, the page does not show this question. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
+  mua_thit_doi_huy:     'Changing or cancelling a take-home order before and after we confirm it. Until published, the page does not show this question. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
 };
 
 /** Tên khung ảnh bắt buộc (v_anh_con_thieu, 0009) ở tiếng Anh, tra theo mã khung. */

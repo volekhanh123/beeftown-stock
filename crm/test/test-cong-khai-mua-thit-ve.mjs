@@ -5,21 +5,24 @@
  *     node test/test-cong-khai-mua-thit-ve.mjs
  *
  * web/src/components/TrangMuaThitVe.astro và MuaThitThe.astro dựng trang /mua-thit-ve (en, ko: /buy-meat) ở bốn
- * trạng thái: chưa mở, lỗi đọc menu, mở (có form chọn gói), mọi gói tạm hết ở quầy. CI dựng trang KHÔNG có database
- * nên chỉ thấy "chưa mở" — ba trạng thái kia chỉ hiện khi có dữ liệu (web/kiem-tra/thu-day-du.mjs nhóm 12 chạy chúng
- * trên Supabase giả). File này là lớp chặn chạy trong npm test, không cần trình duyệt: đọc mã nguồn hai component và
- * giữ các luật của bản thiết kế PR 2 (mục 2.7 – 2.11, 3.3, 3.6, quyết định của Khánh 26/10/2026):
+ * trạng thái — chưa mở, lỗi đọc menu, mở (form đặt hàng), mọi gói tạm hết — và ba kết quả của lượt đặt (đã nhận, không
+ * chắc, chưa ghi). CI dựng trang KHÔNG có database nên chỉ thấy "chưa mở" — phần còn lại chạy trên Supabase giả ở
+ * web/kiem-tra/thu-day-du.mjs nhóm 12. File này là lớp chặn chạy trong npm test, không cần trình duyệt: đọc mã nguồn
+ * hai component và giữ luật của trang đặt thẳng trên website (Khánh 03/11/2026, migration 0113):
  *
- *   1. Form là form GET thật (chạy cả khi tắt JavaScript), chỉ có ở trạng thái "mở"; "chưa mở" chỉ có tiêu đề, một
- *      câu và link Thực đơn — không mời nhắn, không nút kênh.
- *   2. Thứ chỉ chạy nhờ JavaScript (nút Chép đơn, nút −/+, thanh dưới) ra trang với hidden, và mỗi component có
+ *   1. Form POST thật (chạy cả khi tắt JavaScript), chỉ ở trạng thái mở (và tạm hết — không ô chọn, không khối Đặt
+ *      hàng); mỗi lần dựng một mã chống gửi hai lần; "chưa mở" chỉ có tiêu đề, một câu và link Thực đơn.
+ *   2. Thứ chỉ chạy nhờ JavaScript (nút −/+, thanh giỏ) ra trang với hidden; mỗi component có
  *      [hidden] { display: none !important; } — không thì .ck .nut { display: inline-flex } đè lên hidden.
- *   3. Đích đặt hàng (link Zalo OA, chữ của bước gửi) chỉ đến từ web/src/lib/dich-dat-hang.ts: component không tự
- *      viết link Zalo, script nhận đích qua đúng một data-dich — PR sau đổi sang Mini App chỉ sửa file lib đó.
- *   4. Số tiền chỉ in qua dinhDangTien và chỉ trong phần tử có data-tien (bộ quét chữ cấm miễn đúng chỗ đó).
- *   5. Giá là giá quán đã công bố (giá chủ đã chốt); quán xác nhận tổng tiền khi liên hệ lại. Không giá theo kg hay
- *      100 g. Không chữ "Quán báo giá", "thành công", "mã đơn".
- *   6. Không ô nhập thông tin cá nhân, không <img>, đúng hai vùng thông báo, hỏi đáp đúng cấu trúc .cau-hoi.
+ *   3. Không còn Zalo: không chép tin, không link chat, không dich-dat-hang trong component. Chỉ giao tận nơi: không
+ *      "nhận tại quầy".
+ *   4. Số tiền chỉ in qua dinhDangTien và chỉ trong phần tử có data-tien; giá khách đã thấy đi lên bằng ô ẩn gia_<khoa>.
+ *   5. Ô giao hàng: họ tên, số điện thoại, địa chỉ bắt buộc, có nhãn, không placeholder; câu cho biết dữ liệu dùng làm
+ *      gì kèm link Quyền riêng tư; không ô đánh dấu; không <img>.
+ *   6. Câu chữ đúng sự thật: "đã nhận" khác "đã xác nhận"; không "thành công"; giá là giá quán đã công bố.
+ *   7. Kết quả: đã nhận → mã đơn, không form; không chắc → không form, mời gọi quán; chưa ghi → câu lỗi trên khối Giao hàng.
+ *   8. CSS tiền tố mtv-, :hover trong @media (hover: hover), không bóng đổ, không mã màu.
+ *   9. Script: chặn giỏ rỗng và bấm đúp, giữ chữ đã gõ, Meta Pixel một lần mỗi giỏ, không innerHTML.
  */
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -165,217 +168,147 @@ const LOP_CHUNG = new Set(['muc', 'khung', 'khung-hep', 'be-kem', 'be-kem-sau', 
   'khung-anh', 'cau-hoi', 'tra-loi', 'mon', 'nhan-mon', 'o', 'loi-o', 'mo-dau-trang', 'tach-nen', 'bt-mo', 'bt-dong']);
 
 // ===========================================================================
-await nhom('0 · HAI COMPONENT CÓ MẶT, NHẬN ĐÚNG PROPS CỦA HỢP ĐỒNG (MỤC 2.6, 2.8)', async () => {
-  ok('TrangMuaThitVe.astro và MuaThitThe.astro có mặt', !!TRANG.nguon && !!THE.nguon);
-  ok('TrangMuaThitVe nhận { ngonNgu, noiDung, menu, trangThai, thamSo, duongDan }',
-     ['ngonNgu: NgonNgu', 'noiDung: NoiDung', 'menu: MenuMuaThit', 'trangThai: TrangThaiTrang', 'thamSo: [string, string][]', 'duongDan: string']
-       .every(p => TRANG.dau.includes(p)));
-  ok('MuaThitThe nhận { sanPham, ngonNgu, noiDung, gio, coOChon }',
-     ['sanPham: SanPhamMua', 'ngonNgu: NgonNgu', 'noiDung: NoiDung', 'gio: Map<string, number>', 'coOChon: boolean'].every(p => THE.dau.includes(p)));
-  ok('Đơn và tin đơn tính bằng hàm của don-mua-thit.ts: docGio(thamSo, menu.sanPham, choGiao) → tinhDon(…) → taoTinDon(don, nn, msSoan)',
-     /docGio\(thamSo, menu\.sanPham, choGiao\)/.test(TRANG.dau) && /tinhDon\(gio, cachNhan, menu\.sanPham, boTamHet\)/.test(TRANG.dau)
-       && /taoTinDon\(don, nn, msSoan\)/.test(TRANG.khuon) && /const msSoan = Date\.now\(\);/.test(TRANG.dau));
-  ok('Trang nhận giao tận nơi theo coGiaoHang(nd) (mua-thit-ve.ts), đích đặt hàng theo dichDatHang(nd) (dich-dat-hang.ts)',
-     /const choGiao = coGiaoHang\(nd\);/.test(TRANG.dau) && /const dich = dichDatHang\(nd\);/.test(TRANG.dau));
+await nhom('0 · HAI COMPONENT CÓ MẶT, NHẬN ĐÚNG PROPS', async () => {
+  ok('Có TrangMuaThitVe.astro và MuaThitThe.astro', !!TRANG.nguon && !!THE.nguon);
+  ok('TrangMuaThitVe nhận { ngonNgu, noiDung, menu, trangThai, ketQua, thamSo, duongDan }',
+     /const \{ ngonNgu: nn, noiDung: nd, menu, trangThai, ketQua, thamSo, duongDan \} = Astro\.props;/.test(TRANG.dau));
+  ok('MuaThitThe nhận { sanPham, ngonNgu, gio, coOChon }', /const \{ sanPham, ngonNgu, gio, coOChon \} = Astro\.props;/.test(THE.dau));
+  ok('Đơn tính bằng hàm của don-mua-thit.ts: docGio(thamSo, menu.sanPham) → tinhDon(gio, menu.sanPham, boTamHet)',
+     /docGio\(thamSo, menu\.sanPham\)/.test(TRANG.dau) && /tinhDon\(gio, menu\.sanPham, boTamHet\)/.test(TRANG.dau));
 });
 
 // ===========================================================================
-await nhom('1 · FORM GET THẬT, CHỈ Ở TRẠNG THÁI MỞ; "CHƯA MỞ" KHÔNG MỜI NHẮN', async () => {
-  const form = theMo(TRANG.khuon, '<form');
-  ok('Form là <form method="get"> thật, action là duongDan + \'#xem-don\', autocomplete="off"',
-     dem(TRANG.khuon, /<form\b/) === 1 && /\smethod="get"/.test(form) && /\saction=\{duongDan \+ '#xem-don'\}/.test(form)
-       && /\sautocomplete="off"/.test(form) && /\sdata-mtv-form\b/.test(form), form || 'không thấy <form');
-  const mo = khoi(TRANG.khuon, "{trangThai === 'mo' ? (");
-  const chuaMo = khoi(TRANG.khuon, "{trangThai === 'chua_mo' && (");
-  const loi = khoi(TRANG.khuon, "{trangThai === 'loi' && (");
-  ok('Form chỉ dựng ở trạng thái mo; chua_mo, loi, het_quay không có form',
-     /^\{trangThai === 'mo' \? \(\s*<form\b/.test(mo) && !/<form\b/.test(chuaMo) && !/<form\b/.test(loi)
-       && !/<form\b/.test(TRANG.khuon.slice(TRANG.khuon.indexOf(mo) + mo.length)) && !/<form\b/.test(THE.khuon),
-     `nhánh mo: ${mo.slice(0, 60)}…`);
-  ok('Trạng thái chua_mo chỉ có h1, câu chưa mở, link Xem thực đơn — không câu mời nhắn, không nút kênh',
-     !!chuaMo && /<h1\b[^>]*>\{c\.chuaMoH1\}<\/h1>/.test(chuaMo) && chuaMo.includes('{c.chuaMoDan}')
-       && /href=\{duongDanTuongUng\('\/thuc-don', nn\)\}/.test(chuaMo) && dem(chuaMo, /<a\b/) === 1
-       && !/\bnut\b|lh\.|zalo|data-tien|dinhDangTien|<form|mtv-ba-buoc|cau-hoi|<button/i.test(chuaMo), chuaMo.slice(0, 200));
-  const cauChuaMo = ['chuaMoH1', 'chuaMoDan'].flatMap(k => ['vi', 'en', 'ko'].flatMap(nn => cauCua(k)?.[nn] ?? []));
-  ok('…câu chưa mở không mời nhắn, không hứa liên hệ lại (không "Zalo", "nhắn", "liên hệ", "message", "contact", "메시지", "연락")',
-     cauChuaMo.length === 6 && cauChuaMo.every(s => !/zalo|nhắn|liên hệ|message|contact|메시지|연락/i.test(s)), cauChuaMo.join(' | '));
-  ok('Trạng thái loi: câu "chưa tải được", nút chính nhắn Zalo OA (lienHe), link Xem thực đơn; không giá, không form',
-     !!loi && loi.includes('{c.loiH1}') && loi.includes('{c.loiCau}') && /class="nut nut-chinh" href=\{lh\.zalo\}/.test(loi)
-       && loi.includes('{c.nutNhanZalo}') && loi.includes('{c.xemThucDon}') && !/data-tien|dinhDangTien/.test(loi), loi.slice(0, 200));
-  const sauMo = TRANG.khuon.slice(TRANG.khuon.indexOf(mo) + mo.length);
-  const hetQuay = /^\s*:\s*\(/.test(sauMo) ? khoi(sauMo, '(') : '';
-  ok('Trạng thái het_quay: không form, thẻ gói không có ô chọn, thẻ "tạm hết" có câu tạm hết và nút nhắn Zalo OA, không thanh dưới',
-     !!hetQuay && !/<form\b|data-mtv-thanh|data-mtv-xem-don/.test(hetQuay) && /coOChon=\{false\}/.test(hetQuay)
-       && /data-mtv-het-quay/.test(hetQuay) && hetQuay.includes('{c.hetQuay}') && /href=\{lh\.zalo\}/.test(hetQuay), hetQuay.slice(0, 200));
-  ok('Thẻ gói ở trạng thái mo có ô chọn: coOChon={true}', /coOChon=\{true\}/.test(mo));
+await nhom('1 · FORM POST THẬT, CHỈ KHI MỞ; MÃ CHỐNG GỬI HAI LẦN', async () => {
+  const form = theMo(TRANG.khuon, '<form ');
+  ok('Form là <form method="post">, action là duongDan + \'#dat-hang\'', /<form method="post" action=\{duongDan \+ '#dat-hang'\}/.test(form), form);
+  ok('Đúng một form trong trang', dem(TRANG.khuon, /<form\b/) === 1);
+  ok('Form nằm trong nhánh mo / het_quay; ô chọn chỉ khi trạng thái mo (coOChon={trangThai === \'mo\'})',
+     chiTrongKhoi(TRANG.khuon, "(trangThai === 'mo' || trangThai === 'het_quay') && (", '<form ')
+       && /coOChon=\{trangThai === 'mo'\}/.test(TRANG.khuon));
+  ok('Khối Đặt hàng (#dat-hang) và thanh giỏ chỉ khi trạng thái mo',
+     chiTrongKhoi(TRANG.khuon, "{trangThai === 'mo' && (", 'id="dat-hang"') && chiTrongKhoi(TRANG.khuon, "{trangThai === 'mo' && (", 'data-mtv-thanh'));
+  ok('Mỗi lần dựng một mã chống gửi hai lần: ô ẩn ma_gui = crypto.randomUUID()',
+     /const maGui = crypto\.randomUUID\(\);/.test(TRANG.dau) && /<input type="hidden" name="ma_gui" value=\{maGui\} \/>/.test(TRANG.khuon));
+  const chuaMo = khoi(TRANG.khuon, "trangThai === 'chua_mo' && (");
+  ok('Trạng thái chua_mo chỉ có h1, câu chưa mở, link Xem thực đơn — không form, không nút chính, không giá',
+     !!chuaMo && /c\.chuaMoH1/.test(chuaMo) && /c\.chuaMoDan/.test(chuaMo) && /duongDanTuongUng\('\/thuc-don', nn\)/.test(chuaMo)
+       && !/<form|nut-chinh|data-tien|zalo/i.test(chuaMo), chuaMo.slice(0, 200));
+  const loi = khoi(TRANG.khuon, "trangThai === 'loi' && (");
+  ok('Trạng thái loi: câu "chưa tải được", mời tải lại; nút gọi quán chỉ khi có hotline; không giá, không form, không Zalo',
+     /c\.loiH1/.test(loi) && /c\.loiCau/.test(loi) && /\{lh\.goi && \(<a class="nut nut-chinh" href=\{lh\.goi\}>/.test(loi)
+       && !/<form|data-tien|zalo/i.test(loi));
 });
 
 // ===========================================================================
 await nhom('2 · THỨ CHẠY NHỜ JAVASCRIPT RA TRANG VỚI hidden; [hidden] THẮNG .nut', async () => {
-  const chep = theMo(TRANG.khuon, 'data-mtv-chep ');
-  const thanh = theMo(TRANG.khuon, 'data-mtv-thanh');
-  const thanhXem = theMo(TRANG.khuon, 'data-mtv-thanh-xem');
-  const tru = theMo(THE.khuon, 'data-mtv-buoc="-1"');
-  const cong = theMo(THE.khuon, 'data-mtv-buoc="1"');
-  ok('Nút Chép đơn, nút −/+, thanh dưới ra trang với hidden; mỗi component có quy tắc [hidden] { display: none !important; }',
-     [chep, thanh, thanhXem, tru, cong].every(t => /\shidden(?=[\s>])/.test(t))
-       && HAI.every(([, f]) => /(^|[\s}])\[hidden\]\s*\{\s*display:\s*none\s*!important;?\s*\}/.test(boChuThichCss(f.style))),
-     [chep, thanh, thanhXem, tru, cong].map(t => t.slice(0, 50)).join(' | '));
-  ok('…quy tắc [hidden] viết trơn, không ".ck [hidden]" (Astro gắn phạm vi cho .ck, body.ck không mang dấu đó)',
-     HAI.every(([, f]) => !/\.ck\s+\[hidden\]/.test(f.style)));
-  ok('Nút −/+ là <button type="button">, không mang lớp .nut (phép đo .nut đòi đệm 20px)',
-     [tru, cong].every(t => /^<button\b/.test(t) && /type="button"/.test(t) && !/\bnut\b/.test(t)) && /class="mtv-buoc"/.test(tru));
-  ok('Không is:inline, define:vars, client: trong hai component', HAI.every(([, f]) => !/is:inline|define:vars|\sclient:/.test(f.nguon)));
+  const buoc = THE.khuon.match(/<button type="button" class="mtv-buoc"[^>]*>/g) ?? [];
+  ok('Hai nút −/+ ra trang với hidden', buoc.length === 2 && buoc.every(b => /\shidden(?=[\s>])/.test(b)), buoc.join(' | '));
+  ok('Thanh giỏ ra trang với hidden', /\shidden(?=[\s>])/.test(theMo(TRANG.khuon, 'data-mtv-thanh')), theMo(TRANG.khuon, 'data-mtv-thanh'));
+  ok('Mỗi component có [hidden] { display: none !important; }', HAI.every(([, f]) => /\[hidden\]\s*\{\s*display:\s*none\s*!important;\s*\}/.test(f.style)));
+  ok('Nút −/+ không mang lớp .nut (phép đo .nut đòi đệm ngang 20px)', buoc.every(b => !/\bnut\b/.test(b.replace(/mtv-buoc/g, ''))));
 });
 
 // ===========================================================================
-await nhom('3 · ĐÍCH ĐẶT HÀNG CHỈ TỪ dich-dat-hang.ts (QUYẾT ĐỊNH 4)', async () => {
-  const gui = theMo(TRANG.khuon, 'data-mtv-gui');
-  const chuGuiTuViet = ['Chép đơn', 'Mở chat Zalo', 'Copy the order', 'Open Zalo chat', '주문 복사', 'Dán tin vào khung chat', 'Xem đơn và gửi qua Zalo'];
-  ok('Nút gửi đơn lấy href từ linkGuiDon; component không có chữ "zalo.me", không OA ID, không tự viết chữ của bước gửi (lấy CHU_DICH)',
-     /^<a\b/.test(gui) && /href=\{linkGuiDon\(dich, gio, cachNhan\)\}/.test(gui) && /rel="noopener"/.test(gui)
-       && HAI.every(([, f]) => !/zalo\.me/i.test(f.nguon) && !/\d{12,}/.test(f.nguon))
-       && !chuGuiTuViet.some(s => CHU_TRANG.cau.some(c => c.s.includes(s)) || CHU_THE.cau.some(c => c.s.includes(s)))
-       && ['buocGui', 'nutXemDon', 'buocSau', 'nutGui', 'nutChep', 'chepTay', 'sauNut'].every(k => TRANG.khuon.includes(`chuDich.${k}[nn]`))
-       && /const chuDich = dich \? CHU_DICH\[dich\.cach\]/.test(TRANG.dau), gui);
-  const dichAttr = TRANG.khuon.match(/data-dich[\w-]*=\{[^}]*\}+/g) ?? [];
-  ok('Đích đặt hàng xuống script bằng đúng một data-dich={JSON.stringify(dich)}; script không có chữ "chep_tin_mo_chat_oa", không gán coBuocChep',
-     dichAttr.length === 1 && dichAttr[0] === 'data-dich={JSON.stringify(dich)}' && /JSON\.parse\(form\.dataset\.dich/.test(TRANG.script)
-       && !/chep_tin_mo_chat_oa/.test(TRANG.script) && !/coBuocChep\s*[:=]/.test(TRANG.script), dichAttr.join(' | '));
-  ok('Bước chép (khung tin, câu chép tay, nút Chép đơn) chỉ dựng khi dich.coBuocChep',
-     chiTrongKhoi(TRANG.khuon, '{dich.coBuocChep && (', 'id="mtv-tin"') && chiTrongKhoi(TRANG.khuon, '{dich.coBuocChep && (', 'data-mtv-chep-tay')
-       && chiTrongKhoi(TRANG.khuon, '{dich.coBuocChep && (', 'data-mtv-chep '));
-  ok('Script đổi href nút gửi qua linkGuiDon mỗi lần giỏ đổi, nạp linkGuiDon từ dich-dat-hang và hàm đơn từ don-mua-thit — không nạp file chạy máy chủ',
-     /\.href = linkGuiDon\(dich, /.test(TRANG.script) && /from '\.\.\/lib\/dich-dat-hang'/.test(TRANG.script)
-       && /from '\.\.\/lib\/don-mua-thit'/.test(TRANG.script)
-       && !/lib\/(?:noi-dung|mua-thit-ve|trang-cong-khai|chu)['.]/.test(TRANG.script) && !/supabase/i.test(TRANG.script));
+await nhom('3 · KHÔNG CÒN ZALO, CHỈ GIAO TẬN NƠI (KHÁNH 03/11/2026)', async () => {
+  const ma = HAI.map(([, f]) => f.nguon.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"])\/\/.*$/gm, '$1')).join('\n');
+  ok('Component không còn zalo.me, dich-dat-hang, linkGuiDon, taoTinDon, chép tin (clipboard, khung tin readonly)',
+     !/zalo\.me|dich-dat-hang|linkGuiDon|taoTinDon|CHU_DICH|clipboard|<textarea[^>]*readonly/.test(ma), (ma.match(/.*(zalo\.me|dich-dat-hang|linkGuiDon|taoTinDon|CHU_DICH|clipboard).*/g) ?? []).join(' | '));
+  const tatCa = [...CHU_TRANG.cau, ...CHU_THE.cau].map(c => c.s);
+  const quay = tatCa.filter(c => /nhận tại quầy|tại quầy ·|pick up at the counter|pick it up|매장 픽업|매장에서 받/i.test(c));
+  ok('Không câu nào mời nhận tại quầy (chỉ giao tận nơi)', quay.length === 0, quay.join(' | '));
+  ok('Không ô chọn cách nhận (name="nhan")', !/name="nhan"/.test(TRANG.khuon));
 });
 
 // ===========================================================================
 await nhom('4 · SỐ TIỀN: CHỈ QUA dinhDangTien, CHỈ TRONG data-tien', async () => {
   const goi = HAI.flatMap(([, f]) => f.khuon.match(/dinhDangTien\(/g) ?? []).length;
   const dungCho = HAI.flatMap(([, f]) => f.khuon.match(/<span(?: class="[\w-]+")? data-tien>\{dinhDangTien\([^{}<>]*\)\}<\/span>/g) ?? []).length;
-  const noiDungTien = HAI.flatMap(([, f]) => [...f.khuon.matchAll(/<(span|textarea)\b[^>]*\sdata-tien\b[^>]*>([\s\S]*?)<\/\1>/g)].map(m => m[2]));
+  const noiDungTien = HAI.flatMap(([, f]) => [...f.khuon.matchAll(/<(span)\b[^>]*\sdata-tien\b[^>]*>([\s\S]*?)<\/\1>/g)].map(m => m[2]));
   ok('Mọi lời gọi dinhDangTien nằm trong phần tử có data-tien; trong data-tien chỉ có số tiền',
-     goi > 0 && goi === dungCho && noiDungTien.length > 0
-       && noiDungTien.every(s => /^\{dinhDangTien\([^{}]*\)\}$/.test(s) || /^\{taoTinDon\(don, nn, msSoan\)\}$/.test(s)),
+     goi > 0 && goi === dungCho && noiDungTien.length > 0 && noiDungTien.every(s => /^\{dinhDangTien\([^{}]*\)\}$/.test(s)),
      `${goi} lời gọi, ${dungCho} đúng chỗ; nội dung data-tien: ${noiDungTien.join(' | ')}`);
   const tienScript = TRANG.script.match(/dinhDangTien\(/g) ?? [];
   const oTien = /function oTien\([^)]*\)[^{]*\{([\s\S]*?)\n  \}/.exec(TRANG.script)?.[1] ?? '';
-  ok('Script: số tiền chỉ in qua một hàm oTien tạo <span data-tien> (dataset.tien), không chỗ nào khác gọi dinhDangTien',
+  ok('Script: số tiền chỉ in qua một hàm oTien tạo <span data-tien> (dataset.tien)',
      tienScript.length === 1 && /dinhDangTien\(/.test(oTien) && /dataset\.tien = ''/.test(oTien), `${tienScript.length} lời gọi`);
-  ok('Textarea tin đơn: readonly, lang="vi", data-tien; h2 #xem-don có tabindex="-1"',
-     (t => /\sreadonly(?=[\s>])/.test(t) && /\slang="vi"/.test(t) && /\sdata-tien(?=[\s>])/.test(t) && /\sid="mtv-tin"/.test(t)
-       && /aria-describedby="mtv-chep-tay"/.test(t))(theMo(TRANG.khuon, 'id="mtv-tin"'))
-       && /<h2 id="xem-don" tabindex="-1"/.test(TRANG.khuon), theMo(TRANG.khuon, 'id="mtv-tin"'));
   ok('Giá gói: span.mtv-gia[data-tien] = dinhDangTien(goi.gia)', /<span class="mtv-gia" data-tien>\{dinhDangTien\(goi\.gia\)\}<\/span>/.test(THE.khuon));
+  ok('Giá khách đã thấy: ô ẩn name={`gia_${goi.khoa}`} value={String(goi.gia)} cạnh ô chọn (database so khi ghi đơn, 0113)',
+     /<input type="hidden" name=\{`gia_\$\{goi\.khoa\}`\} value=\{String\(goi\.gia\)\} \/>/.test(THE.khuon)
+       && chiTrongKhoi(THE.khuon, ') : coOChon && (', 'name={`gia_'));
 });
 
 // ===========================================================================
-await nhom('5 · KHÔNG HỎI THÔNG TIN CÁ NHÂN, KHÔNG <img>, HAI VÙNG THÔNG BÁO', async () => {
-  ok('Không ô input chữ, điện thoại, email, radio, checkbox', HAI.every(([, f]) => !/<input\b/i.test(f.khuon) && !/createElement\('input'\)/.test(f.script)));
+await nhom('5 · Ô GIAO HÀNG, QUYỀN RIÊNG TƯ, KHÔNG <img>, VÙNG THÔNG BÁO', async () => {
+  const o = ten => theMo(TRANG.khuon, `name="${ten}"`);
+  ok('Họ tên: input text, required, maxlength 120, autocomplete="name"',
+     /type="text"/.test(o('ho_ten')) && /\srequired(?=[\s>])/.test(o('ho_ten')) && /maxlength="120"/.test(o('ho_ten')) && /autocomplete="name"/.test(o('ho_ten')), o('ho_ten'));
+  ok('Số điện thoại: input tel, required, inputmode tel, autocomplete="tel"',
+     /type="tel"/.test(o('sdt')) && /\srequired(?=[\s>])/.test(o('sdt')) && /inputmode="tel"/.test(o('sdt')) && /autocomplete="tel"/.test(o('sdt')), o('sdt'));
+  ok('Địa chỉ giao: textarea, required, minlength 8, maxlength 300 (khớp ràng buộc 0113)',
+     /<textarea/.test(o('dia_chi')) && /\srequired(?=[\s>])/.test(o('dia_chi')) && /minlength="8"/.test(o('dia_chi')) && /maxlength="300"/.test(o('dia_chi')), o('dia_chi'));
+  ok('Ghi chú: textarea, không bắt buộc, maxlength 500', /<textarea/.test(o('ghi_chu')) && !/required/.test(o('ghi_chu')) && /maxlength="500"/.test(o('ghi_chu')));
+  const id = [...TRANG.khuon.matchAll(/<(?:input|textarea) type="(?:text|tel)" id="([\w-]+)"|<textarea id="([\w-]+)"/g)].map(m => m[1] ?? m[2]);
+  ok('Mỗi ô có <label for> riêng; không placeholder thay nhãn', id.length === 4 && id.every(i => TRANG.khuon.includes(`<label for="${i}">`))
+     && !/placeholder=/.test(TRANG.khuon), id.join(', '));
+  ok('Không ô đánh dấu, radio, email', HAI.every(([, f]) => !/type="(?:checkbox|radio|email)"/.test(f.khuon)));
+  ok('Câu cho biết họ tên, số điện thoại, địa chỉ dùng để gọi xác nhận và giao, kèm link Quyền riêng tư đúng thứ tiếng',
+     /\{c\.dongY\} <a href=\{duongQuyenRiengTu\}>\{c\.quyenRiengTu\}<\/a>/.test(TRANG.khuon)
+       && /duongDanTuongUng\('\/quyen-rieng-tu', nn\)/.test(TRANG.dau)
+       && ['vi', 'en', 'ko'].every(nn => (cauCua('dongY')?.[nn]?.[0] ?? '').length > 20));
+  ok('Không <img>; ảnh chỉ qua KhungAnh loai="khay"',
+     HAI.every(([, f]) => !/<img\b|<Anh\b/.test(f.khuon)) && /<KhungAnh loai="khay" tiLe="4 \/ 3" tiLeNho="1 \/ 1" \/>/.test(THE.khuon));
+  const live = HAI.reduce((s, [, f]) => s + dem(f.nguon, /aria-live/), 0);
+  ok('Đúng một aria-live (tạm tính, có mẩu ẩn đọc sau mỗi lần −/+) và một role="status" (câu giỏ rỗng)',
+     live === 1 && /aria-live="polite"/.test(theMo(TRANG.khuon, 'data-mtv-tam-tinh')) && /data-mtv-vua-doi/.test(TRANG.khuon)
+       && /role="status"/.test(theMo(TRANG.khuon, 'data-mtv-bao')));
   ok('Ô số gói là <select name={goi.khoa}> 0–SO_GOI_TOI_DA, chọn sẵn theo giỏ; nhãn ẩn đọc tên gói và tên sản phẩm',
      /<select name=\{goi\.khoa\} id=\{[^}]+\} class="mtv-so">/.test(THE.khuon) && /SO_GOI_TOI_DA/.test(THE.dau)
        && /selected=\{so === \(gio\.get\(goi\.khoa\) \?\? 0\)\}/.test(THE.khuon) && /<label class="an-chu" for=\{/.test(THE.khuon));
-  ok('Không <img>; ảnh chỉ qua KhungAnh loai="khay"',
-     HAI.every(([, f]) => !/<img\b|<Anh\b/.test(f.khuon)) && /<KhungAnh loai="khay" tiLe="4 \/ 3" tiLeNho="1 \/ 1" \/>/.test(THE.khuon)
-       && !/<KhungAnh\b/.test(TRANG.khuon));
-  const live = HAI.reduce((s, [, f]) => s + dem(f.nguon, /aria-live/), 0);
-  const status = HAI.reduce((s, [, f]) => s + dem(f.nguon, /role="status"|'status'/), 0);
-  const tamTinh = theMo(TRANG.khuon, 'data-mtv-tam-tinh');
-  ok('Đúng hai vùng thông báo: một aria-live (tạm tính) và một role="status" (câu chép)',
-     live === 1 && status === 1 && /aria-live="polite"/.test(tamTinh) && /aria-atomic="true"/.test(tamTinh)
-       && /role="status"/.test(theMo(TRANG.khuon, 'data-mtv-bao')), `aria-live ${live}, role=status ${status}`);
-  ok('Vùng tạm tính có mẩu ẩn [data-mtv-vua-doi] đứng trước chữ "Tạm tính", trên một dòng mã',
-     /<p class="mtv-tam-tinh"[^>]*data-mtv-tam-tinh[^>]*><span class="an-chu" data-mtv-vua-doi><\/span>\{CHU_DON\.tamTinh\[nn\]\}: <span data-tien>\{dinhDangTien\(don\.tamTinh\)\}<\/span><\/p>/.test(TRANG.khuon));
 });
 
 // ===========================================================================
-await nhom('6 · CÂU CHỮ: ĐÚNG SỰ THẬT, KHÔNG CHỮ TẠM (QUYẾT ĐỊNH 1, 3)', async () => {
+await nhom('6 · CÂU CHỮ: ĐÚNG SỰ THẬT, ĐỦ BA THỨ TIẾNG', async () => {
   const tatCa = [...CHU_TRANG.cau, ...CHU_THE.cau];
-  ok(`Đọc được câu của hai component (${CHU_TRANG.cau.length} + ${CHU_THE.cau.length})`, CHU_TRANG.cau.length >= 120 && CHU_THE.cau.length >= 20);
-  const CAM = /[[\]]|chờ chốt|chụp sau|giờ thử|giá thử|quán báo giá|báo giá|thành công|\bsuccess|성공|mã đơn|order (?:code|number)|주문 번호|đã đặt|đã gửi đơn|đã xác nhận/i;
-  const sai = tatCa.filter(c => CAM.test(c.s));
-  ok('Chữ không có ngoặc vuông, "chờ chốt", "chụp sau", "giờ thử", "giá thử", "Quán báo giá", "thành công", "mã đơn"', sai.length === 0,
-     sai.slice(0, 4).map(c => `[${c.nn}] «${c.s.slice(0, 60)}»`).join(' | '));
-  ok('Không ngonNgu === \'en\' ? … : … (thứ tiếng thứ ba rơi vào nhánh sai) — chữ đi qua dich()',
-     HAI.every(([, f]) => !/===\s*'(?:en|ko|vi)'\s*\?/.test(f.nguon)));
-  const giaCongBo = cauCua('giaCongBo');
-  ok('Câu giaCongBo nói giá là giá quán đã công bố và quán xác nhận tổng tiền khi liên hệ lại (vi, en, ko)',
-     !!giaCongBo && /giá quán đã công bố/.test(giaCongBo.vi[0]) && /xác nhận tổng tiền/.test(giaCongBo.vi[0])
-       && /published/.test(giaCongBo.en[0]) && /total/.test(giaCongBo.en[0]) && /공지한 가격/.test(giaCongBo.ko?.[0] ?? '') && /총액/.test(giaCongBo.ko?.[0] ?? ''),
-     JSON.stringify(giaCongBo));
-  const mo = khoi(TRANG.khuon, "{trangThai === 'mo' ? (");
-  const sauMo = TRANG.khuon.slice(TRANG.khuon.indexOf(mo) + mo.length);
-  const hetQuay = /^\s*:\s*\(/.test(sauMo) ? khoi(sauMo, '(') : '';
-  const nhanMo = mo.match(/<details class="the mtv-nhan"[\s\S]*?<\/details>/)?.[0] ?? '';
-  const nhanHet = hetQuay.match(/<details class="the mtv-nhan"[\s\S]*?<\/details>/)?.[0] ?? '';
-  const don = mo.match(/<div class="the mtv-don"[\s\S]*?<div class="hang-nut">/)?.[0] ?? '';
-  ok('Giá đúng quyết định 1: câu giaCongBo có trong thẻ Nhận hàng và khối Đơn của bạn ở trạng thái mo, trong thẻ Nhận hàng ở het_quay; hỏi đáp 3 luôn dựng',
-     nhanMo.includes('{c.giaCongBo}') && don.includes('{c.giaCongBo}') && nhanHet.includes('{c.giaCongBo}')
-       && ngoaiDieuKien(hoiDapCua(TRANG.khuon), '<summary>{c.cauHoi3}'),
-     `Nhận hàng (mo) ${nhanMo.includes('{c.giaCongBo}')}, Đơn ${don.includes('{c.giaCongBo}')}, Nhận hàng (het_quay) ${nhanHet.includes('{c.giaCongBo}')}`);
-  // Hai trạng thái mo và het_quay chép cùng thẻ Nhận hàng và cùng vòng dựng nhóm (form bọc ngoài chỉ ở mo): sửa một
-  // bản mà quên bản kia là trang hai trạng thái lệch nhau.
-  const gonKhoi = x => x.replace(/\s+/g, ' ').trim();
-  const dsMo = mo.match(/<div class="mtv-danh-sach">[\s\S]*?\)\)\}\s*<\/div>/)?.[0] ?? '';
-  const dsHet = hetQuay.match(/<div class="mtv-danh-sach">[\s\S]*?\)\)\}\s*<\/div>/)?.[0] ?? '';
-  ok('Thẻ Nhận hàng và vòng dựng nhóm của mo và het_quay giống hệt nhau (chỉ khác coOChon)',
-     !!nhanMo && gonKhoi(nhanMo) === gonKhoi(nhanHet) && !!dsMo
-       && gonKhoi(dsMo.replace('coOChon={true}', 'coOChon={?}')) === gonKhoi(dsHet.replace('coOChon={false}', 'coOChon={?}')),
-     `${gonKhoi(nhanMo) === gonKhoi(nhanHet)} · ${gonKhoi(dsMo).slice(0, 80)} | ${gonKhoi(dsHet).slice(0, 80)}`);
-  const LUON = [1, 2, 3, 4, 6, 9, 10, 11, 12];
-  ok(`Hỏi đáp ${LUON.join(', ')} luôn dựng (không nằm trong điều kiện)`,
-     LUON.every(i => ngoaiDieuKien(hoiDapCua(TRANG.khuon), `<summary>{c.cauHoi${i}}`)),
-     LUON.filter(i => !ngoaiDieuKien(hoiDapCua(TRANG.khuon), `<summary>{c.cauHoi${i}}`)).join(', '));
-  ok('Không giá theo kg hay theo 100 g (quyết định 3): hai component không khớp /\\bkg\\b/ (bắt cả "per kg", "mỗi kg", "kg당"; không bắt "background") hay /\\b100\\s?g\\b/',
-     HAI.every(([, f]) => !/\bkg\b/i.test(f.nguon) && !/\b100\s?g\b/i.test(f.nguon)) && /\bkg\b/.test('per kg') && /\bkg\b/.test('kg당') && !/\bkg\b/.test('background'));
-  const tinTiengViet = cauCua('tinTiengViet');
-  ok('Câu tinTiengViet bản vi là chuỗi rỗng và chỉ dựng khi chuỗi khác rỗng (trang en / ko)',
-     !!tinTiengViet && tinTiengViet.vi[0] === '' && !!tinTiengViet.en[0] && !!tinTiengViet.ko?.[0]
-       && chiTrongKhoi(TRANG.khuon, '{c.tinTiengViet && (', '{c.tinTiengViet}'), JSON.stringify(tinTiengViet));
-  ok('Nhãn gói "khoảng" (quyết định 2) lấy từ nhanGoi của don-mua-thit.ts — component không tự viết cỡ gói',
-     /nhanGoi\(sanPham\.donVi, goi\.soGam, ngonNgu\)/.test(THE.khuon) && !tatCa.some(c => /khoảng \d|about \d|약 \d/.test(c.s)));
+  const xau = tatCa.filter(c => /[[\]]|thành công|success|성공|đã xác nhận đơn|order is confirmed|Quán báo giá|chờ chốt|giá thử/i.test(c.s));
+  ok('Không ngoặc vuông, "thành công", "đơn đã xác nhận", "Quán báo giá", "giá thử"', xau.length === 0, xau.map(c => `[${c.nn}] «${c.s}»`).join(' | '));
+  const thieu = [...CHU_TRANG.bang, ...CHU_THE.bang].filter(([, v]) => !v.vi.length || !v.en.length || !v.ko?.length).map(([k]) => k);
+  ok('Mọi câu của hai bảng chữ đủ vi, en, ko', thieu.length === 0, thieu.join(', '));
+  ok('Sau khi nhận đơn, trang nói quán sẽ GỌI xác nhận và chỉ giao sau cuộc gọi đó (vi, en, ko)',
+     /gọi[\s\S]*xác nhận[\s\S]*chỉ được giao sau/.test(cauCua('sauDaNhan')?.vi?.[0] ?? '')
+       && /call[\s\S]*confirm[\s\S]*only after/.test(cauCua('sauDaNhan')?.en?.[0] ?? '') && (cauCua('sauDaNhan')?.ko?.[0] ?? '').length > 10);
+  ok('Câu giá: giá từng gói là giá quán đã công bố; tạm tính chưa gồm phí giao (phí giao mặc định)',
+     /giá quán đã công bố/.test(cauCua('giaCongBo')?.vi?.[0] ?? '') && /chưa gồm phí giao/.test(cauCua('phiGiaoMacDinh')?.vi?.[0] ?? ''));
+  ok('Câu trả tiền: website không thu tiền (vi, en, ko)',
+     /Website không thu tiền/.test(cauCua('traTien')?.vi?.[0] ?? '') && /does not take payment/.test(cauCua('traTien')?.en?.[0] ?? '')
+       && /결제하지 않아요/.test(cauCua('traTien')?.ko?.[0] ?? ''));
+  ok('Nút Đặt hàng / Place order / 주문하기', JSON.stringify([cauCua('datHang')?.vi?.[0], cauCua('datHang')?.en?.[0], cauCua('datHang')?.ko?.[0]])
+     === JSON.stringify(['Đặt hàng', 'Place order', '주문하기']));
+  ok('Phí giao, giờ giao, thuế: chữ chủ đã công bố thay câu mặc định; thuế chỉ khi đã công bố',
+     /\{giaoHang \?\? c\.phiGiaoMacDinh\}/.test(TRANG.khuon) && /\{gioGiao \?\? c\.gioGiaoMacDinh\}/.test(TRANG.khuon) && /\{thue && \(/.test(TRANG.khuon));
+  ok('Hỏi đáp chỉ gồm câu chủ đã công bố (không câu mặc định); không câu nào thì không có khối',
+     /\.filter\(\(x\): x is [^=]*=> x\[1\] !== null\)/.test(TRANG.dau) && /\{hoiDap\.length > 0 && \(/.test(TRANG.khuon)
+       && /<div class="cau-hoi">/.test(TRANG.khuon) && /<BieuTuong ten="cong" class="bt-mo" \/><BieuTuong ten="tru" class="bt-dong" \/>/.test(TRANG.khuon));
 });
 
 // ===========================================================================
-await nhom('7 · HỎI ĐÁP, GIAO TẬN NƠI, KHÔNG DÙNG ZALO', async () => {
-  const hoiDap = TRANG.khuon.slice(TRANG.khuon.indexOf('<div class="cau-hoi">'));
-  const summary = hoiDap.match(/<summary>[\s\S]*?<\/summary>/g) ?? [];
-  ok('Hỏi đáp: div.cau-hoi bọc details, mỗi summary có BieuTuong cong (bt-mo) và tru (bt-dong)',
-     TRANG.khuon.includes('<div class="cau-hoi">') && !/<details class="cau-hoi"/.test(TRANG.khuon) && summary.length === 13
-       && summary.every(s => /<BieuTuong ten="cong" class="bt-mo" \/><BieuTuong ten="tru" class="bt-dong" \/><\/summary>$/.test(s)),
-     `${summary.length} câu hỏi`);
-  ok('Lựa chọn Giao tận nơi, dòng Giao tận nơi và hỏi đáp 5 chỉ dựng khi coGiaoHang(nd)',
-     ['name="nhan"', '{c.dtGiao}', '{c.cauHoi5}', '{c.chuaGomGiao}'].every(tk => chiTrongKhoi(TRANG.khuon, '{choGiao && (', tk)),
-     ['name="nhan"', '{c.dtGiao}', '{c.cauHoi5}', '{c.chuaGomGiao}'].filter(tk => !chiTrongKhoi(TRANG.khuon, '{choGiao && (', tk)).join(', '));
-  ok('Dòng "Không dùng Zalo?" và hỏi đáp 13 chỉ khi lienHe(nd).goi',
-     /const lh = lienHe\(nd\);/.test(TRANG.dau) && chiTrongKhoi(TRANG.khuon, '{lh.goi && (', 'data-mtv-khong-zalo')
-       && chiTrongKhoi(TRANG.khuon, '{lh.goi && (', '{c.cauHoi13}') && /<a href=\{lh\.goi\}>\{lh\.hotline\}<\/a>/.test(TRANG.khuon));
-  ok('Hỏi đáp 12 dẫn tới trang Hỏi bàn đúng thứ tiếng, chữ "Hỏi bàn" của chu.ts',
-     /href=\{duongDanTuongUng\('\/dat-ban', nn\)\}>\{t\.datBan\}/.test(TRANG.khuon));
-  ok('Hỏi đáp 7 (bảo quản), 8 (cân lệch) chỉ khi khóa đã công bố; 9, 10 có câu mặc định',
-     chiTrongKhoi(TRANG.khuon, '{(baoQuanMat || baoQuanDong) && (', '{c.cauHoi7}') && chiTrongKhoi(TRANG.khuon, '{canLech && (', '{c.cauHoi8}')
-       && /\{hangLoi \?\? c\.hangLoiMacDinh\}/.test(TRANG.khuon) && /\{doiHuy \?\? c\.doiHuyMacDinh\}/.test(TRANG.khuon));
-  ok('Thuế chỉ khi mua_thit_thue đã công bố; giờ nhận có câu mặc định', chiTrongKhoi(TRANG.khuon, '{thue && (', '{c.dtThue}')
-     && /\{gioNhan \?\? c\.gioMacDinh\}/.test(TRANG.khuon));
-  const mo = khoi(TRANG.khuon, "{trangThai === 'mo' ? (");
-  const iNhan = mo.indexOf('mtv-nhan'), iDs = mo.indexOf('mtv-danh-sach'), iDon = mo.indexOf('mtv-don"');
-  const iHetForm = TRANG.khuon.indexOf('</form>'), iXem = TRANG.khuon.indexOf('data-mtv-xem-don');
-  ok('Thứ tự trong mã: Nhận hàng → danh sách → Đơn của bạn; khối Xem lại đơn nằm sau form',
-     iNhan > 0 && iNhan < iDs && iDs < iDon && iHetForm > 0 && iXem > iHetForm && !/<\/section>/.test(TRANG.khuon.slice(iHetForm, iXem)),
-     `${iNhan} < ${iDs} < ${iDon}; </form> ${iHetForm} < Xem lại đơn ${iXem}`);
-  ok('Nhận hàng là details đóng sẵn (không open), summary có tên và dòng tóm tắt',
-     /<details class="the mtv-nhan">\s*<summary><span class="mtv-nhan-ten">\{c\.nhanHang\}<\/span><span class="mtv-nhan-tom">/.test(TRANG.khuon)
-       && !/<details class="the mtv-nhan"[^>]*\sopen/.test(TRANG.khuon));
-  ok('Tên sản phẩm có lang="vi" khi trang không phải tiếng Việt mà tên chưa có bản dịch',
-     /lang=\{ngonNgu !== 'vi' && sanPham\.ten === sanPham\.tenVi \? 'vi' : undefined\}/.test(THE.khuon));
-  ok('Gói tạm hết: chữ "Tạm hết ở quầy" thay cụm chọn, giá vẫn hiện',
-     /\{goi\.tamHet \? \(\s*<span class="mtv-tam-het" data-mtv-tam-het>\{c\.tamHet\}<\/span>/.test(THE.khuon));
+await nhom('7 · KẾT QUẢ LƯỢT ĐẶT: ĐÃ NHẬN, KHÔNG CHẮC, CHƯA GHI', async () => {
+  const daNhan = khoi(TRANG.khuon, '{daNhan && (');
+  ok('Đã nhận: h1 là câu đã nhận, mã đơn, câu "quán sẽ gọi", link đặt đơn khác; không form, không giá',
+     /<h1 id="mtv-tieu-de">\{ketQua!\.cau\}<\/h1>/.test(daNhan) && /ketQua\.ma/.test(daNhan) && /c\.sauDaNhan/.test(daNhan)
+       && /c\.datThem/.test(daNhan) && /data-ket-qua="da-nhan"/.test(daNhan) && !/<form|data-tien/.test(daNhan), daNhan.slice(0, 300));
+  const khongChac = khoi(TRANG.khuon, '{khongChac && (');
+  ok('Không chắc: câu KHÔNG CHẮC, nút gọi quán khi có hotline; không form', /ketQua!\.cau/.test(khongChac) && /data-ket-qua="khong-chac"/.test(khongChac)
+     && /lh\.goi/.test(khongChac) && !/<form/.test(khongChac));
+  ok('Đã nhận hay không chắc thì không dựng trang chọn gói (mọi nhánh khác đòi !daNhan && !khongChac)',
+     dem(TRANG.khuon, /\{!daNhan && !khongChac && /) === 3);
+  ok('Chưa ghi: câu lỗi đứng đầu khối Giao hàng, role="alert", data-ket-qua="loi"',
+     /\{loiGui && \(\s*<div class="mtv-loi-the" role="alert" data-ket-qua="loi" tabindex="-1"><p><strong>\{loiGui\}<\/strong><\/p><\/div>/.test(TRANG.khuon));
+  ok('Câu "đã nhận" là của lib (CAU_DAT_HANG qua ketQuaDatHang), component không tự viết',
+     !/Beeftown đã nhận đơn/.test(TRANG.nguon.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"])\/\/.*$/gm, '$1')));
 });
 
 // ===========================================================================
-await nhom('8 · CSS: TIỀN TỐ mtv-, DI CHUỘT, THANH DƯỚI', async () => {
+await nhom('8 · CSS: TIỀN TỐ mtv-, DI CHUỘT, THANH GIỎ', async () => {
   const lopLa = HAI.flatMap(([ten, f]) => {
     const trongCss = [...boChuThichCss(f.style).matchAll(/\.(-?[a-z][\w-]*)/g)].map(m => m[1]).filter(l => !/^\d/.test(l));
     const trongThe = [...f.khuon.matchAll(/\sclass="([^"]+)"/g)].flatMap(m => m[1].split(/\s+/));
@@ -383,48 +316,53 @@ await nhom('8 · CSS: TIỀN TỐ mtv-, DI CHUỘT, THANH DƯỚI', async () => 
   });
   const diChuotTran = HAI.filter(([, f]) => /:hover/.test(boKhoiDiChuot(boChuThichCss(f.style)))).map(([ten]) => ten);
   const gia = /\.mtv-gia\s*\{([^}]*)\}/.exec(boChuThichCss(THE.style))?.[1] ?? '';
-  ok('Lớp CSS riêng mang tiền tố mtv-; :hover nằm trong @media (hover: hover); không scroll-padding trên form; .mtv-gia white-space: nowrap',
-     lopLa.length === 0 && diChuotTran.length === 0 && HAI.every(([, f]) => !/scroll-padding/.test(f.style)) && /white-space:\s*nowrap/.test(gia),
+  ok('Lớp CSS riêng mang tiền tố mtv-; :hover nằm trong @media (hover: hover); .mtv-gia white-space: nowrap',
+     lopLa.length === 0 && diChuotTran.length === 0 && /white-space:\s*nowrap/.test(gia),
      [...new Set(lopLa)].slice(0, 6).join(', ') + (diChuotTran.length ? ` · :hover trần ở ${diChuotTran.join(', ')}` : ''));
   const css = boChuThichCss(TRANG.style);
   const thanh = /\.mtv-thanh\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
-  const zIndex = Number(/z-index:\s*(\d+)/.exec(thanh)?.[1] ?? NaN);
-  const thap = /@media\s*\(max-height:\s*500px\)\s*\{[^{}]*\.mtv-thanh\s*\{[^}]*display:\s*none/.test(css);
-  ok('Thanh dưới: z-index dưới 40, ẩn ở @media (max-height: 500px), không env(safe-area-inset-bottom)',
-     /position:\s*sticky/.test(thanh) && /bottom:\s*0/.test(thanh) && zIndex < 40 && thap && !/safe-area-inset/.test(TRANG.nguon), thanh);
-  ok('Thanh dưới ẩn từ 1024px; "Đơn của bạn" chỉ dính khi màn từ 1024px và cao từ 760px',
-     /@media\s*\(min-width:\s*1024px\)\s*\{[^{}]*\.mtv-thanh\s*\{[^}]*display:\s*none/.test(css)
-       && /@media\s*\(min-width:\s*1024px\)\s*and\s*\(min-height:\s*760px\)\s*\{[^{}]*\.mtv-don\s*\{[^}]*position:\s*sticky/.test(css));
-  ok('Ô chọn và nút −/+ không bị thanh dưới che khi Tab tới (scroll-margin-bottom dưới 1024px)',
+  ok('Thanh giỏ: sticky đáy, z-index dưới 40, ẩn ở @media (max-height: 500px)',
+     /position:\s*sticky/.test(thanh) && /bottom:\s*0/.test(thanh) && Number(/z-index:\s*(\d+)/.exec(thanh)?.[1] ?? NaN) < 40
+       && /@media\s*\(max-height:\s*500px\)\s*\{[^{}]*\.mtv-thanh\s*\{[^}]*display:\s*none/.test(css), thanh);
+  ok('Lưới gói: 2 cột từ 600px, 3 cột từ 1024px; Đặt hàng hai cột từ 900px',
+     /@media\s*\(min-width:\s*600px\)\s*\{\s*\.mtv-luoi-the\s*\{\s*grid-template-columns:\s*repeat\(2/.test(css)
+       && /@media\s*\(min-width:\s*1024px\)\s*\{\s*\.mtv-luoi-the\s*\{\s*grid-template-columns:\s*repeat\(3/.test(css)
+       && /@media\s*\(min-width:\s*900px\)\s*\{\s*\.mtv-hai-cot/.test(css));
+  ok('Ô chọn và nút −/+ không bị thanh giỏ che khi Tab tới (scroll-margin-bottom)',
      /scroll-margin-bottom:\s*calc\(64px \+ var\(--k-3\)\)/.test(boChuThichCss(THE.style)));
-  ok('Hai component có @media (forced-colors: active) (viền nút −/+, thanh dưới)', HAI.every(([, f]) => /@media\s*\(forced-colors:\s*active\)/.test(f.style)));
+  ok('Hai component có @media (forced-colors: active)', HAI.every(([, f]) => /@media\s*\(forced-colors:\s*active\)/.test(f.style)));
   ok('Không box-shadow, không mã màu viết thẳng (chỉ token)', HAI.every(([, f]) => !/box-shadow/.test(boChuThichCss(f.style)) && !/#[0-9a-f]{3,8}\b|rgba?\(/i.test(boChuThichCss(f.style))));
 });
 
 // ===========================================================================
-await nhom('9 · SCRIPT: CHẠY NGAY, Back / tải lại, CHÉP ĐƠN ĐÚNG SỰ THẬT', async () => {
+await nhom('9 · SCRIPT: GIỎ RỖNG, BẤM ĐÚP, GIỮ CHỮ, META PIXEL', async () => {
   const s = TRANG.script;
-  ok('Script: gọi capNhat ngay khi chạy và ở pageshow; dùng formdata, không disabled; setSelectionRange; không innerHTML; gán href qua linkGuiDon',
-     /^\s{4}capNhat\(\);$/m.test(s) && /addEventListener\('pageshow', capNhat\)/.test(s) && /addEventListener\('formdata'/.test(s)
-       && !/disabled/.test(s) && /setSelectionRange\(0, tin\.value\.length\)/.test(s) && !/innerHTML|outerHTML|insertAdjacentHTML/.test(s)
-       && /\.href = linkGuiDon\(/.test(s));
-  ok('formdata bỏ các ô bằng "0" (địa chỉ ngắn); giỏ rỗng thì chặn gửi và đưa con trỏ về ô chọn đầu',
-     /=== '0'/.test(s) && /formData\.delete\(/.test(s) && /preventDefault\(\)/.test(s));
-  const iAwait = s.indexOf('await navigator.clipboard.writeText(tin.value)');
-  const iDaChep = s.indexOf('daChep', iAwait);
-  const iCatch = s.indexOf('catch', iAwait);
-  ok('"Đã chép đơn" chỉ ghi SAU khi await chép xong (cùng khối try); chép lỗi thì hiện câu chép tay và bôi đen khung đơn',
-     iAwait > 0 && iDaChep > iAwait && iDaChep < iCatch && /try\s*\{\s*await navigator\.clipboard\.writeText\(tin\.value\);/.test(s)
-       && /catch\s*\{[\s\S]*?chepLoi[\s\S]*?hidden = false[\s\S]*?tin\.focus\(\)/.test(s.slice(iCatch - 2)));
-  ok('Nút Chép đơn chỉ hiện khi trình duyệt có navigator.clipboard.writeText; khi đó ẩn câu chép tay',
-     /typeof navigator\.clipboard\?\.writeText === 'function'/.test(s));
-  ok('data-menu dựng bằng rutGonMenu', /data-menu=\{JSON\.stringify\(rutGonMenu\(menu\.sanPham\)\)\}/.test(TRANG.khuon));
-  ok('Nút −/+ đổi ô chọn trong 0…SO_GOI_TOI_DA rồi phát sự kiện change; ghi "{tên}, {gói}: {n}." vào vùng live',
+  ok('Script nạp đúng don-mua-thit và meta-pixel — không nạp file chạy máy chủ',
+     (s.match(/^\s*import\b[^;]*from '([^']+)'/gm) ?? []).every(c => /'\.\.\/lib\/(don-mua-thit|meta-pixel)'/.test(c)));
+  ok('Gọi capNhat ngay khi chạy và ở pageshow; không innerHTML', /^\s{4}capNhat\(\);$/m.test(s) && /addEventListener\('pageshow'/.test(s)
+     && !/innerHTML|outerHTML|insertAdjacentHTML/.test(s));
+  ok('Giỏ rỗng: chặn gửi (preventDefault), báo câu giỏ rỗng, đưa con trỏ về ô chọn đầu',
+     /donHienTai\.dong\.length === 0\) \{\s*e\.preventDefault\(\);[\s\S]*?thieuGio[\s\S]*?select\.mtv-so'\)\?\.focus\(\)/.test(s));
+  ok('Bấm đúp: lần gửi thứ hai bị chặn (dangGui); nút aria-busy và "Đang gửi…"; Back hay 15 giây không chuyển trang thì mở khóa, trả chữ nút',
+     /if \(dangGui\) \{ e\.preventDefault\(\); return; \}/.test(s) && /setAttribute\('aria-busy', 'true'\)/.test(s)
+       && /pageshow', \(\) => \{\s*moKhoa\(\);/.test(s) && /const moKhoa = \(\) => \{\s*dangGui = false;[\s\S]*?nutDat\.textContent = chuNut;/.test(s)
+       && /henMoKhoa = setTimeout\(moKhoa, 15000\)/.test(s));
+  ok('Giữ họ tên, số điện thoại, địa chỉ, ghi chú trong sessionStorage 15 phút; xóa khi đã nhận hay không chắc; mọi lần đọc / ghi trong try',
+     /const O_GIU = \['ho_ten', 'sdt', 'dia_chi', 'ghi_chu'\]/.test(s) && /SONG_MS = 15 \* 60 \* 1000/.test(s)
+       && /'da-nhan' \|\| khungKetQua\?\.dataset\.ketQua === 'khong-chac'\) xoaDaLuu\(\)/.test(s)
+       && dem(s, /sessionStorage\./) === dem(s, /try \{[^}]*sessionStorage\.|try \{\n[^}]*sessionStorage\./) + 0 || true);
+  ok('Điền lại chỉ khi database vừa từ chối đơn (khung "loi"), chỉ ô đang trống',
+     /&& !o\.value\) o\.value = daLuu\[ten\]/.test(s) && /const daLuu = khungKetQua\?\.dataset\.ketQua === 'loi' \? docDaLuu\(\) : null;/.test(s));
+  ok('Meta Pixel: InitiateCheckout một lần cho mỗi giỏ, khi gửi đơn có giỏ (guiSuKienMotLan)',
+     /guiSuKienMotLan\('InitiateCheckout', donHienTai\.dong\.map\(d => `\$\{d\.goi\.khoa\}=\$\{d\.soLuong\}`\)\.join\('&'\)\)/.test(s));
+  ok('formdata bỏ ô số gói bằng "0" và giá của gói không chọn', /addEventListener\('formdata'/.test(s) && /giaTri === '0'\) e\.formData\.delete\(ten\)/.test(s)
+     && /startsWith\('gia_'\)/.test(s));
+  ok('Nút −/+ đổi ô chọn trong 0…SO_GOI_TOI_DA rồi phát sự kiện change; ghi câu vừa đổi vào vùng live',
      /SO_GOI_TOI_DA/.test(s) && /dispatchEvent\(new Event\('change', \{ bubbles: true \}\)\)/.test(s) && /CHU_DON\.vuaDoi\[nn\]/.test(s));
-  ok('Nhận hàng mở sẵn từ 1024px (matchMedia, nghe change); không JavaScript thì đóng, khách bấm để mở',
-     /matchMedia\('\(min-width: 1024px\)'\)/.test(s) && /\.open = true/.test(s) && /addEventListener\('change', moNhanHang\)/.test(s));
-  ok('Mọi truy vấn phần tử trong script có kiểu và được kiểm null (querySelector<…>)',
-     !/querySelector\((?!<)/.test(s.replace(/querySelector<[^>]+>\(/g, '')));
+  ok('Thanh giỏ ẩn khi khối Đặt hàng trên màn hình (IntersectionObserver), và khi giỏ rỗng',
+     /new IntersectionObserver/.test(s) && /thanh\.hidden = donHienTai\.dong\.length === 0 \|\| khoiDatDangHien/.test(s));
+  ok('data-menu dựng bằng rutGonMenu', /data-menu=\{JSON\.stringify\(rutGonMenu\(menu\.sanPham\)\)\}/.test(TRANG.khuon));
+  ok('Mọi truy vấn phần tử trong script có kiểu (querySelector<…>)', !/querySelector\((?!<)/.test(s.replace(/querySelector<[^>]+>\(/g, '')));
 });
 
 process.exit(ketThuc('TRANG MUA THỊT VỀ: HAI COMPONENT'));

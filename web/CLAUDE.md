@@ -12,7 +12,7 @@ thẳng file `.ts` của `src/lib/`. Tìm test của một file: `cd crm && npm 
 | Giao diện, màu, chữ, ảnh trang công khai | skill `thiet-ke-beeftown` (tự nạp), `THIET-KE.md` | `src/components/`, `src/styles/cong-khai.css`, `src/lib/chu.ts` (câu cố định vi/en/ko, đường dẫn) |
 | Nội dung chủ bật / tắt trên trang | `README.md`, "Ý tưởng duy nhất cần hiểu" | `src/lib/noi-dung.ts`, `src/lib/cong-tac.ts` |
 | Thực đơn công khai | `THUC-DON.md` | `src/lib/thuc-don.ts`, `src/lib/thuc-don-noi-bo.ts` |
-| Mua thịt về | `README.md`, "Mua thịt về" | `src/lib/mua-thit-ve.ts`, `src/lib/don-mua-thit.ts`, `src/lib/dich-dat-hang.ts` |
+| Mua thịt về (khách đặt trên website, giao tận nơi; hộp thư `/noi-bo/don-mua-thit`) | `README.md`, "Mua thịt về" | `src/lib/mua-thit-ve.ts`, `src/lib/don-mua-thit.ts`, `src/lib/dat-hang-mua-thit.ts`, `src/lib/dich-dat-hang.ts`, `src/pages/noi-bo/don-mua-thit.astro` |
 | Đặt bàn, tuyển dụng | `README.md`, "Cấu trúc" | `src/lib/dat-ban.ts`, `src/lib/nop-ho-so.ts`, `src/lib/xu-ly-form.ts` |
 | Màn `/noi-bo` (CRM) | `README.md`, "Giao diện nội bộ", "Tiếng Anh ở giao diện nội bộ" | `src/pages/noi-bo/`, `src/lib/gui-noi-bo.ts`, `src/lib/cau-noi-bo.ts` |
 | Kho | bảng "Kho" bên dưới | `src/pages/noi-bo/kho/`, `src/lib/kho/` |

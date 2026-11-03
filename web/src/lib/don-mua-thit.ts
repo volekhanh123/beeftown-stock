@@ -1,38 +1,29 @@
 /**
- * ĐƠN MUA THỊT VỀ — GIỎ, TẠM TÍNH VÀ TIN ĐƠN (hàm thuần, chạy cả ở máy chủ lẫn trong trình duyệt)
- * ==============================================================================================
+ * ĐƠN MUA THỊT VỀ — GIỎ VÀ TẠM TÍNH (hàm thuần, chạy cả ở máy chủ lẫn trong trình duyệt)
+ * =====================================================================================
  *
- * Trang /mua-thit-ve (en, ko: /buy-meat) dựng "Đơn của bạn" và tin đơn hai lần bằng CÙNG các hàm này:
- *   · máy chủ — component đọc giỏ từ địa chỉ trang (form GET, chạy được cả khi tắt JavaScript);
+ * Trang /mua-thit-ve (en, ko: /buy-meat) dựng "Đơn của bạn" hai lần bằng CÙNG các hàm này:
+ *   · máy chủ — component đọc giỏ từ địa chỉ trang (database vừa từ chối đơn: lib/xu-ly-form.ts đưa khách về trang
+ *     kèm giỏ trên địa chỉ, để không phải chọn lại);
  *   · trình duyệt — script của trang đọc giỏ từ form mỗi lần khách đổi số gói.
- * Một nguồn sự thật cho cả hai đường nên tin khách chép luôn khớp số trên trang.
+ * Tiền chỉ để khách xem trước: database tự tính lại đơn từ giá đã chốt khi khách bấm Đặt hàng (tao_don_mua_thit,
+ * 0113), và từ chối nếu giá khách đã thấy khác giá hiện tại.
  *
- * Vì chạy trong trình duyệt, file này chỉ nạp kiểu (import type, bị xóa khi dựng) và gioVnTuMs của gio-vn.ts
- * (file đó không nạp gì): không kéo supabase-js, không đọc database, không chạm DOM, không gọi mạng — và không
- * đọc đồng hồ: giờ soạn tin là tham số (msSoan), nên kiểm thử cho ra đúng từng chữ ở mọi mốc giờ.
- * crm/test/test-mua-thit-ve-web.mjs giữ những điều đó.
+ * Vì chạy trong trình duyệt, file này chỉ nạp kiểu (import type, bị xóa khi dựng): không kéo supabase-js, không đọc
+ * database, không chạm DOM, không gọi mạng, không đọc đồng hồ. crm/test/test-mua-thit-ve-web.mjs giữ những điều đó.
  *
  * Luật đã chốt:
- *   · Giá là giá gói quán đã công bố (giá chủ đã chốt, Khánh 26/10/2026 — quyết định 1). Tin đơn vẫn ghi "Tạm tính
- *     theo giá trên web" và nhờ quán xác nhận tổng tiền: khách sửa được tin trước khi gửi, nhân viên trực Zalo OA
- *     luôn tính lại theo FABi.
+ *   · Giá là giá gói quán đã công bố (giá chủ đã chốt, Khánh 26/10/2026 — quyết định 1).
  *   · Gói thịt ghi "khoảng 200 g" (quyết định 2); số gam không dấu ngăn ở mọi thứ tiếng ("1000 g" — "1.000 g" ở
  *     trang tiếng Anh đọc thành một gam). Hộp kim chi ghi khối lượng tịnh ("Hộp 500 g").
- *   · Tin đơn luôn tiếng Việt, tên tiếng Việt (nhân viên trực OA đọc tiếng Việt); trang en / ko thêm một dòng cho
- *     nhân viên biết khách đọc tiếng gì. Không mã đơn: gửi hai lần là hai tin giống hệt từng chữ (cùng dòng giờ
- *     soạn), nhân viên nhận ra. Tiêu đề không mở đầu bằng chữ "đặt" (bot Messenger đưa tin "ĐẶT…" vào luồng đặt bàn).
+ *   · Chỉ giao tận nơi (Khánh 03/11/2026) — không còn cách nhận "tại quầy" trên website.
  *   · Số tiền chỉ ở dạng "400.000 đ" (dấu cách thường), và trên trang chỉ in trong phần tử có data-tien — bộ quét
  *     chữ cấm miễn đúng chỗ đó. CHU_DON không chứa số tiền: trang ghép chữ + <span data-tien> riêng.
- *
- * Luồng chép tin rồi dán vào chat Zalo là TẠM (quyết định 4 — sau này đặt thẳng trong Mini App): link và cách
- * chuyển giỏ nằm ở dich-dat-hang.ts, không ở đây. File này chỉ tính đơn và soạn chữ.
  */
 import type { NgonNgu } from './noi-dung.ts';
-import { gioVnTuMs } from './gio-vn.ts';
 
 export type DonVi = 'goi' | 'hop';
 export type BaoQuan = 'mat' | 'giu_lanh' | 'dong_lanh';
-export type CachNhan = 'quay' | 'giao';
 
 /** Một gói khách chọn được. `khoa` là tên ô chọn trong form và trong địa chỉ trang (khoaGoi). */
 export interface GoiMua { khoa: string; soGam: number; gia: number; tamHet: boolean }
@@ -45,14 +36,14 @@ export interface SanPhamMua {
   baoQuan: BaoQuan;
   /** Tên theo thứ tiếng của trang (bản dịch còn hiệu lực, không thì tên tiếng Việt). */
   ten: string;
-  /** Tên tiếng Việt hiện tại — cho tin đơn. */
+  /** Tên tiếng Việt hiện tại (database chụp lại tên này vào đơn). */
   tenVi: string;
   moTa: string | null;
   cachDung: string | null;
   goi: GoiMua[];
 }
 
-/** Số gói tối đa mỗi ô chọn (0–10). Cần nhiều hơn thì khách ghi thêm vào tin (hỏi đáp của trang). */
+/** Số gói tối đa mỗi ô chọn (0–10) — cùng giới hạn của tao_don_mua_thit (0113). Cần nhiều hơn: ghi vào ô Ghi chú. */
 export const SO_GOI_TOI_DA = 10;
 
 type BaTieng<T> = Readonly<Record<NgonNgu, T>>;
@@ -104,7 +95,7 @@ export const CHU_DON = {
     ko: (ten: string, goi: string, n: number) => `${ten} · ${goi} × ${n} = `,
   },
   tamTinh: { vi: 'Tạm tính', en: 'Subtotal', ko: '소계' },
-  donTrong: { vi: 'Chọn gói để soạn đơn', en: 'Choose packs to start your order', ko: '팩을 고르면 주문이 만들어져요' },
+  donTrong: { vi: 'Bạn chưa chọn gói nào', en: 'You have not chosen any packs yet', ko: '아직 고른 팩이 없어요' },
   /** Mẩu ẩn đọc cho trình đọc màn hình sau mỗi lần bấm −/+ (vùng aria-live của tạm tính). */
   vuaDoi: {
     vi: (ten: string, goi: string, n: number) => `${ten}, ${goi}: ${n}.`,
@@ -127,7 +118,6 @@ export interface DongDon { sanPham: SanPhamMua; goi: GoiMua; soLuong: number; th
 export interface Don {
   /** Theo thứ tự menu, không theo thứ tự khách chọn — cùng giỏ thì cùng tin. */
   dong: DongDon[];
-  cachNhan: CachNhan;
   soGoi: number;
   soHop: number;
   tamTinh: number;
@@ -147,25 +137,18 @@ const laSoGoi = (n: unknown): n is number => typeof n === 'number' && Number.isI
 /**
  * Giỏ từ các cặp [tên ô, giá trị] — địa chỉ trang (máy chủ: [...Astro.url.searchParams]) hoặc FormData (script).
  * Chỉ đọc ô có trong menu; giá trị sai kiểu bị bỏ (không bao giờ thành 1000 gói); ô lặp lại thì lấy lần đầu. Gói
- * "Tạm hết ở quầy" mà khách chọn > 0 → bỏ và đếm vào boTamHet. `nhan=giao` chỉ được nhận khi trang đang nhận giao
- * (choGiao — khóa mua_thit_giao_hang đã công bố); thiếu, lạ hay chưa nhận giao → nhận tại quầy.
+ * "Tạm hết ở quầy" mà khách chọn > 0 → bỏ và đếm vào boTamHet. Ô khác của form (họ tên, giá đã thấy…) bị bỏ qua.
  */
 export function docGio(
-  thamSo: Iterable<readonly [string, unknown]>, menu: readonly SanPhamMua[], choGiao: boolean,
-): { gio: Map<string, number>; cachNhan: CachNhan; boTamHet: number } {
+  thamSo: Iterable<readonly [string, unknown]>, menu: readonly SanPhamMua[],
+): { gio: Map<string, number>; boTamHet: number } {
   const theoKhoa = new Map<string, GoiMua>();
   for (const sp of menu) for (const g of sp.goi) theoKhoa.set(g.khoa, g);
 
   const gio = new Map<string, number>();
   const daDoc = new Set<string>();
-  let cachNhan: CachNhan = 'quay';
-  let daDocNhan = false;
   let boTamHet = 0;
   for (const [ten, giaTri] of thamSo) {
-    if (ten === 'nhan') {
-      if (!daDocNhan) { daDocNhan = true; cachNhan = choGiao && giaTri === 'giao' ? 'giao' : 'quay'; }
-      continue;
-    }
     const g = theoKhoa.get(ten);
     if (!g || daDoc.has(ten)) continue;
     daDoc.add(ten);
@@ -174,16 +157,14 @@ export function docGio(
     if (g.tamHet) { boTamHet++; continue; }
     gio.set(ten, n);
   }
-  return { gio, cachNhan, boTamHet };
+  return { gio, boTamHet };
 }
 
 /**
  * Đơn từ giỏ: thành tiền = số gói × giá gói; tạm tính = tổng. Dòng theo thứ tự menu. Giỏ không qua docGio cũng an
  * toàn: số ngoài 1–10 bị bỏ, gói tạm hết bị bỏ và đếm vào boTamHet.
  */
-export function tinhDon(
-  gio: ReadonlyMap<string, number>, cachNhan: CachNhan, menu: readonly SanPhamMua[], boTamHet = 0,
-): Don {
+export function tinhDon(gio: ReadonlyMap<string, number>, menu: readonly SanPhamMua[], boTamHet = 0): Don {
   const dong: DongDon[] = [];
   let soGoi = 0, soHop = 0, tamTinh = 0, bo = boTamHet;
   for (const sanPham of menu) {
@@ -197,53 +178,17 @@ export function tinhDon(
       if (sanPham.donVi === 'hop') soHop += soLuong; else soGoi += soLuong;
     }
   }
-  return { dong, cachNhan: cachNhan === 'giao' ? 'giao' : 'quay', soGoi, soHop, tamTinh, boTamHet: bo };
+  return { dong, soGoi, soHop, tamTinh, boTamHet: bo };
 }
-
-/** Mốc ms → "23:50 ngày 13/11/2026" theo giờ Việt Nam (gioVnTuMs, không tự cộng giờ). Mốc không hợp lệ → "". */
-export function gioSoanVn(ms: number): string {
-  const s = gioVnTuMs(ms);
-  return s ? `${s.slice(11, 16)} ngày ${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : '';
-}
-
-/** Dòng đầu của tin đơn website — nhân viên trực Zalo OA nhận tin đơn bằng dòng này (web/README.md, mục Mua thịt về). */
-export const TIEU_DE_TIN = 'MUA THỊT VỀ – BEEFTOWN · beeftown.vn';
-
-/** Câu của tin đơn: luôn tiếng Việt, nhân viên trực OA đọc. */
-const TIN = {
-  soanLuc: (gio: string) => `Soạn lúc ${gio} (giờ Việt Nam)`,
-  coGoi: (donVi: DonVi, soGam: number) => (donVi === 'hop' ? `hộp ${soGam} g` : `gói khoảng ${soGam} g`),
-  dongLanh: ' (đông lạnh)',
-  tamTinhQuay: (tien: string) => `Tạm tính theo giá trên web: ${tien}.`,
-  tamTinhGiao: (tien: string) => `Tạm tính theo giá trên web: ${tien}, chưa gồm phí giao.`,
-  nhanQuay: 'Nhận: tại quầy Beeftown.',
-  nhanGiao: 'Nhận: giao tận nơi (mình gửi địa chỉ trong tin tiếp theo).',
-  thuTieng: { en: 'Khách đọc trang tiếng Anh.', ko: 'Khách đọc trang tiếng Hàn.' } as Partial<Record<NgonNgu, string>>,
-  nhoQuay: 'Nhờ quán liên hệ lại xác nhận tổng tiền và giờ nhận giúp mình.',
-  nhoGiao: 'Nhờ quán liên hệ lại xác nhận tổng tiền, phí giao và giờ giao giúp mình.',
-} as const;
 
 /**
- * Tin đơn khách chép rồi gửi qua Zalo OA. Luôn tiếng Việt, xuống dòng bằng "\n", không thông tin cá nhân, không mã
- * đơn. Giỏ rỗng → "". msSoan là giờ soạn (ms) — người gọi truyền Date.now() lúc dựng; mốc không hợp lệ thì tin
- * không có dòng "Soạn lúc".
+ * Giỏ thành chuỗi truy vấn "ribeye-cap_200=2&kim-chi_500=1" (theo thứ tự của giỏ) — lib/xu-ly-form.ts đưa khách về
+ * trang với chuỗi này khi database từ chối đơn, để trang chọn sẵn đúng giỏ. Chỉ khóa gói và số gói: không bao giờ
+ * họ tên, số điện thoại, địa chỉ (địa chỉ trang nằm trong lịch sử trình duyệt và header Referer).
  */
-export function taoTinDon(don: Don, ngonNguTrang: NgonNgu, msSoan: number): string {
-  if (don.dong.length === 0) return '';
-  const giao = don.cachNhan === 'giao';
-  const gio = gioSoanVn(msSoan);
-  const dong: string[] = [TIEU_DE_TIN];
-  if (gio) dong.push(TIN.soanLuc(gio));
-  for (const d of don.dong) {
-    const coGoi = TIN.coGoi(d.sanPham.donVi, d.goi.soGam) + (d.sanPham.baoQuan === 'dong_lanh' ? TIN.dongLanh : '');
-    dong.push(`• ${d.sanPham.tenVi}, ${coGoi}: ${d.soLuong} × ${dinhDangTien(d.goi.gia)} = ${dinhDangTien(d.thanhTien)}`);
-  }
-  dong.push(giao ? TIN.tamTinhGiao(dinhDangTien(don.tamTinh)) : TIN.tamTinhQuay(dinhDangTien(don.tamTinh)));
-  dong.push(giao ? TIN.nhanGiao : TIN.nhanQuay);
-  const thuTieng = TIN.thuTieng[nnHopLe(ngonNguTrang)];
-  if (thuTieng) dong.push(thuTieng);
-  dong.push(giao ? TIN.nhoGiao : TIN.nhoQuay);
-  return dong.join('\n');
+export function gioThanhDiaChi(gio: ReadonlyMap<string, number>): string {
+  return [...gio].filter(([k, n]) => /^[a-z0-9]+(?:-[a-z0-9]+)*_[0-9]{2,4}$/.test(k) && laSoGoi(n))
+    .map(([k, n]) => `${k}=${n}`).join('&');
 }
 
 /**

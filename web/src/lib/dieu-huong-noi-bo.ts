@@ -63,6 +63,12 @@ export const MUC_NOI_BO: readonly MucNoiBo[] = [
     ten: { vi: 'Đặt bàn', en: 'Bookings' }, ngan: { vi: 'Đặt bàn', en: 'Bookings' },
     vai: VAI_CRM, bieuTuong: 'lich', nhom: 'khach',
     tuKhoa: { vi: 'giữ bàn khách gọi lại xác nhận', en: 'reservation table guest call back confirm' } },
+  // Đơn mua thịt khách đặt trên website (0113): chủ, quản lý, thu ngân — như don_mua_thit_duoc_xem(). Marketing không
+  // thấy: đơn có địa chỉ nhà khách, chỉ người gọi xác nhận và giao cần đọc.
+  { ma: 'don_mua_thit', link: '/noi-bo/don-mua-thit',
+    ten: { vi: 'Đơn mua thịt về', en: 'Take-home orders' }, ngan: { vi: 'Đơn thịt', en: 'Orders' },
+    vai: ['chu_so_huu', 'quan_ly', 'thu_ngan'], bieuTuong: 'dat_hang', nhom: 'khach',
+    tuKhoa: { vi: 'mua thịt về giao hàng đặt hàng website gọi xác nhận', en: 'take home delivery order website call confirm' } },
   { ma: 'zalo', link: '/noi-bo/zalo',
     ten: { vi: 'Tin Zalo', en: 'Zalo messages' }, ngan: { vi: 'Zalo', en: 'Zalo' },
     vai: ['chu_so_huu', 'quan_ly', 'marketing'], bieuTuong: 'tin_nhan', nhom: 'khach',
@@ -119,6 +125,8 @@ const UU_TIEN_DAY: Record<string, string[]> = {
   quan_ly:    ['tong_quan', 'dat_ban', 'kho', 'zalo'],
   // Marketing có 6 mục từ khi có Thực đơn: giữ trên thanh đáy những màn nội dung — việc chính của vai này.
   marketing:  ['tong_quan', 'noi_dung', 'thuc_don', 'zalo'],
+  // Thu ngân có 6 mục từ khi có Đơn mua thịt (0113): người gọi khách xác nhận đơn — giữ Đơn thịt trên thanh đáy.
+  thu_ngan:   ['tong_quan', 'dat_ban', 'don_mua_thit', 'ban_le'],
 };
 
 export const SO_NUT_DAY = 5;

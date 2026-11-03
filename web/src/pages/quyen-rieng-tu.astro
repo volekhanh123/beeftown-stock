@@ -18,19 +18,19 @@ const nd = await docNoiDung('vi');
       <h2>Chúng tôi thu những gì</h2>
       <p>Khi bạn gửi yêu cầu đặt bàn hoặc hồ sơ ứng tuyển, Beeftown lưu họ tên,
         số điện thoại, những thông tin bạn tự điền, và <strong>địa chỉ IP của
-        lượt gửi đó</strong>. Địa chỉ IP dùng để chặn spam và để làm bằng chứng
+        lượt gửi đó</strong>. Khi bạn đặt mua thịt về, Beeftown lưu đơn của bạn:
+        xem mục bên dưới. Địa chỉ IP dùng để chặn spam và để làm bằng chứng
         về việc bạn đã bấm đồng ý; nó bị xóa cùng lúc với phần thông tin còn
         lại. Nếu bạn đính kèm CV, file đó được lưu trong kho riêng tư mà chỉ
         chủ nhà hàng và quản lý mở được.</p>
       <p>Dữ liệu được lưu tại Supabase, một dịch vụ database mà Beeftown thuê.
         Ngoài Supabase, không đơn vị nào khác đọc được dữ liệu này — riêng tin
-        nhắn bạn gửi qua Messenger thì đi qua Meta, và tin đơn bạn gửi qua Zalo
-        thì đi qua Zalo (xem các mục bên dưới).</p>
+        nhắn bạn gửi qua Messenger thì đi qua Meta (xem mục bên dưới).</p>
 
       <h2>Khi bạn xem trang web này</h2>
       <p>Beeftown dùng Meta Pixel, công cụ đo lường của Meta (công ty sở hữu
         Facebook và Instagram). Khi bạn mở trang, Meta Pixel gửi cho Meta: trang
-        bạn đang xem, nút bạn bấm (gọi điện, mở Zalo, mở Messenger, xem đơn mua
+        bạn đang xem, nút bạn bấm (gọi điện, mở Zalo, mở Messenger, đặt mua
         thịt, gửi yêu cầu đặt bàn), địa chỉ IP, loại trình duyệt và một mã
         cookie. Beeftown dùng các số này để biết quảng cáo trên Facebook,
         Instagram đưa bao nhiêu người tới trang, và để hiện quảng cáo của
@@ -60,18 +60,20 @@ const nd = await docNoiDung('vi');
         để gửi quảng cáo.</p>
       <p>Cách xóa dữ liệu: xem <a href="/xoa-du-lieu">hướng dẫn xóa dữ liệu</a>.</p>
 
-      <h2>Khi bạn gửi đơn mua thịt qua Zalo</h2>
-      <p>Trang Mua thịt về <strong>không lưu đơn</strong> và không hỏi tên, số
-        điện thoại hay địa chỉ của bạn. Khi bạn bấm Xem đơn, những gói bạn chọn
-        được gửi lên máy chủ của trang qua địa chỉ trang để dựng tin đơn; địa
-        chỉ đó không kèm thông tin cá nhân nào, và Beeftown không lưu đơn.</p>
-      <p>Bạn tự dán tin vào khung chat Zalo của Beeftown và tự bấm Gửi; tin đó
-        đi qua Zalo, và Zalo xử lý tin theo chính sách quyền riêng tư của Zalo.
-        Beeftown đọc tin trong hộp chat Zalo OA để xác nhận đơn với bạn.</p>
+      <h2>Khi bạn đặt mua thịt về</h2>
+      <p>Khi bạn bấm Đặt hàng ở trang Mua thịt về, Beeftown lưu <strong>họ tên,
+        số điện thoại, địa chỉ giao, ghi chú</strong> và các gói bạn chọn, cùng
+        giá lúc đặt. Chỉ chủ nhà hàng, quản lý và thu ngân của chi nhánh đọc
+        được đơn. Website không thu tiền và không lưu thông tin thanh toán nào.</p>
+      <p>Địa chỉ IP của lượt đặt chỉ dùng để chặn gửi quá nhiều đơn, không lưu
+        kèm đơn. Nếu việc gửi đơn không thành, trình duyệt của bạn tạm giữ họ
+        tên, số điện thoại, địa chỉ trong thẻ đang mở 15 phút để bạn không phải
+        gõ lại; dữ liệu đó không rời máy của bạn.</p>
 
       <h2>Dùng để làm gì</h2>
-      <p>Thông tin đặt bàn dùng để nhà hàng gọi xác nhận với bạn. Hồ sơ ứng tuyển
-        dùng để liên hệ hẹn gặp. Chúng tôi chỉ gửi tin giới thiệu món hoặc hoạt
+      <p>Thông tin đặt bàn dùng để nhà hàng gọi xác nhận với bạn. Đơn mua thịt
+        dùng để gọi xác nhận tổng tiền, phí giao, giờ giao và để giao hàng cho
+        bạn. Hồ sơ ứng tuyển dùng để liên hệ hẹn gặp. Chúng tôi chỉ gửi tin giới thiệu món hoặc hoạt
         động mới nếu bạn <strong>tự tick chọn</strong> ô đồng ý — ô đó không bao
         giờ được tick sẵn, và không chọn thì bạn vẫn đặt bàn bình thường.</p>
 
@@ -81,7 +83,8 @@ const nd = await docNoiDung('vi');
         lại — ngày nộp và vị trí ứng tuyển — được giữ ở dạng không còn nhận ra
         bạn là ai, để nhà hàng biết mỗi đợt tuyển có bao nhiêu người quan tâm.</p>
       <p>Thông tin đặt bàn được giữ để nhà hàng đối chiếu lịch sử đặt chỗ của
-        bạn. Bạn yêu cầu xóa lúc nào cũng được.</p>
+        bạn. Đơn mua thịt được giữ để quán đối chiếu đơn đã giao. Bạn yêu cầu
+        xóa lúc nào cũng được.</p>
 
       <h2>Quyền của bạn</h2>
       <p>Bạn có quyền yêu cầu xem, sửa hoặc xóa thông tin của mình, và có quyền

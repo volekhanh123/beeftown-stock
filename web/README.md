@@ -102,8 +102,9 @@ web/
 │  │  ├─ cong-tac.ts   ← đọc/ghi bảng công tắc nội dung
 │  │  ├─ nop-ho-so.ts  ← nhận hồ sơ ứng tuyển + tải CV
 │  │  ├─ dat-ban.ts    ← lịch trống và gửi yêu cầu đặt bàn
-│  │  ├─ mua-thit-ve.ts · don-mua-thit.ts ← trang Mua thịt về: đọc menu gói đã chốt giá; tính đơn, soạn tin đơn (chạy cả trong trình duyệt)
-│  │  ├─ dich-dat-hang.ts ← đích đặt hàng của trang Mua thịt về — MỘT chỗ (TẠM: chép tin, mở chat Zalo OA; sau đổi sang Mini App)
+│  │  ├─ mua-thit-ve.ts · don-mua-thit.ts ← trang Mua thịt về: đọc menu gói đã chốt giá; giỏ và tạm tính (chạy cả trong trình duyệt)
+│  │  ├─ dat-hang-mua-thit.ts ← gửi đơn mua thịt lên database (tao_don_mua_thit, 0113): đã nhận / chưa ghi / không chắc
+│  │  ├─ dich-dat-hang.ts ← trang Mua thịt về mở hay chưa (muaThitVeMo) và mẫu link Zalo OA (tên file giữ từ PR 2)
 │  │  ├─ xu-ly-form.ts ← POST → chuyển hướng → GET, dùng chung hai ngôn ngữ
 │  │  ├─ meta-pixel.ts ← Meta Pixel: ID, mã gốc của Meta, sự kiện — chỉ tên trang và thứ tiếng tới Meta
 │  │  ├─ than-gioi-han.ts ← đọc thân POST có giới hạn: form công khai, webhook iPOS, Messenger
@@ -159,34 +160,43 @@ Cỡ ảnh dựng sẵn bằng `python3 -I cong-cu/anh/tao-co-anh.py <thư-mục
 
 ## Mua thịt về (`/mua-thit-ve`)
 
-Trang công khai `/mua-thit-ve` (`/en/buy-meat`, `/ko/buy-meat`): khách chọn gói thịt bò và hộp kim chi để mang về, web soạn sẵn tin đơn tiếng Việt, khách tự gửi tin đó cho Beeftown qua Zalo OA. Website **không lưu đơn, không thu tiền, không hỏi tên, số điện thoại hay địa chỉ** — quán chỉ có đơn khi khách bấm Gửi trong Zalo. Database: `crm/supabase/migrations/0101_mua_thit_ve.sql` (hàm công khai `mua_thit_ve_cong_khai`, công tắc hiệu lực trong `noi_dung_cong_khai`). Kiểm thử: `crm/test/test-mua-thit-ve.mjs` (database), `test-mua-thit-ve-web.mjs` (thư viện), `test-cong-khai-mua-thit-ve.mjs` (component), `test-cong-khai-mua-thit-dieu-huong.mjs` (đích đặt hàng, điều hướng, vỏ trang, quyền riêng tư).
+Trang công khai `/mua-thit-ve` (`/en/buy-meat`, `/ko/buy-meat`): khách chọn gói thịt bò và hộp kim chi, điền họ tên, số điện thoại, địa chỉ giao rồi bấm **Đặt hàng** — đơn ghi thẳng vào database, **chỉ giao tận nơi**, website **không thu tiền**. Khánh 03/11/2026: "Menu này phức tạp quá" — "đã lên website rồi thì cần gì Zalo OA" — "chỉ giao tận nơi". Trước đó (PR 2, 26/10/2026) khách chép tin đơn rồi tự gửi qua Zalo OA; luồng đó đã bỏ.
 
-**Luồng — TẠM (quyết định 4 của Khánh, 26/10/2026).** Khách chọn số gói (0–10 mỗi gói) → bấm "Xem đơn và gửi qua Zalo" (form GET: gói đã chọn đi lên máy chủ qua địa chỉ trang, máy chủ đọc lại menu rồi dựng khung "Xem lại đơn") → "Chép đơn" (máy không cho chép thì giữ ngón tay lên khung đơn, chọn Chép) → "Mở chat Zalo với Beeftown" → dán → Gửi. Tắt JavaScript vẫn đặt được: khung đơn và link Zalo do máy chủ dựng. Khánh: "Mốt đổi Mini App link trực tiếp đặt chứ không gửi tin nhắn nữa" — sau này nút gửi mở Mini App Zalo để đặt thẳng. Mọi thứ quyết định nút gửi trỏ đâu và giỏ đi sang quán thế nào nằm ở **một file**, `src/lib/dich-dat-hang.ts` (`dichDatHang`, `linkGuiDon`, `CHU_DICH`); component và script chỉ đọc file đó (script nhận đích qua `data-dich`). PR đổi sang Mini App sửa file đó và kiểm thử của nó — danh sách việc và những câu chữ còn nhắc "gửi tin qua Zalo" ghi ở chú thích đầu file.
+Database: `crm/supabase/migrations/0101_mua_thit_ve.sql` (menu công khai `mua_thit_ve_cong_khai`, công tắc hiệu lực trong `noi_dung_cong_khai`) và `0113_mua_thit_dat_hang_web.sql` (bảng khóa kín `don_mua_thit`, hàm anon `tao_don_mua_thit`, hộp thư `don_mua_thit_danh_sach` / `don_mua_thit_chuyen`). Web: `src/components/TrangMuaThitVe.astro` (trang), `MuaThitThe.astro` (thẻ sản phẩm), `src/lib/mua-thit-ve.ts` (đọc menu), `src/lib/don-mua-thit.ts` (giỏ, tạm tính — chạy cả trong trình duyệt), `src/lib/dat-hang-mua-thit.ts` (gửi đơn), `luotDatHang` trong `src/lib/xu-ly-form.ts` (POST → chuyển hướng 303 → GET), `src/pages/noi-bo/don-mua-thit.astro` (hộp thư). Kiểm thử: `crm/test/test-mua-thit-dat-hang.mjs` (database đơn), `test-mua-thit-ve.mjs` (database menu), `test-mua-thit-dat-hang-web.mjs` (gửi đơn, mất mạng), `test-mua-thit-ve-web.mjs` (giỏ, menu), `test-cong-khai-mua-thit-ve.mjs` (component), `test-cong-khai-mua-thit-dieu-huong.mjs` (điều hướng, vỏ trang, quyền riêng tư), `test-noi-bo-don-mua-thit.mjs` (hộp thư), `kiem-tra/thu-day-du.mjs` nhóm 12 (trình duyệt thật trên Supabase giả).
 
-**Giá (quyết định 1, 2, 3).** Trang hiện giá gói trong ảnh chụp giá **chủ đã chốt** ở `/noi-bo/ban-le`, không đọc giá mỗi kg của Kho: giá mỗi kg đổi sau lần chốt thì trang vẫn giữ giá đã chốt cho tới khi chủ chốt lại. Sản phẩm chưa chốt giá lần nào: không hiện. Gói thêm sau lần chốt (ảnh chụp không có giá của gói đó): không hiện gói đó. Kim chi: giá chốt của hộp. Trang ghi "Giá từng gói là giá quán đã công bố. Quán xác nhận tổng tiền khi liên hệ lại với bạn." Gói thịt ghi "Gói khoảng 200 g"; không ghi giá theo kg hay 100 g. Số tiền chỉ in qua `dinhDangTien` trong phần tử `data-tien` — bộ quét chữ cấm miễn đúng chỗ đó, trên đúng ba đường dẫn này; trang khác vẫn cấm mọi số tiền.
+**Luồng.** Chọn số gói (0–10 mỗi gói; nút −/+ khi có JavaScript) → "Đơn của bạn" và thanh giỏ dính đáy màn hình cập nhật ngay → điền họ tên, số điện thoại, địa chỉ giao, ghi chú → **Đặt hàng**. Form là POST thật nên tắt JavaScript vẫn đặt được. Database tự tính đơn từ giá chủ đã chốt; mỗi gói có ô ẩn `gia_<khoa>` mang giá khách đã thấy — chủ chốt giá mới giữa lúc khách mở trang và lúc bấm thì database không ghi, khách được mời tải lại trang. Ba kết quả, như form Hỏi bàn:
 
-**Khi nào trang mở — một trạng thái cho điều hướng, mô tả trang và form.** `noi_dung_cong_khai()` trả `hien_mua_thit_ve = true` chỉ khi đủ ba điều kiện: công tắc `hien_mua_thit_ve` bật ở `/noi-bo/noi-dung`; `zalo_oa_url` đã công bố đúng dạng `https://zalo.me/<mã OA>` (khóa chỉ chủ từ 0101); có ít nhất một sản phẩm Đang bán, kênh website, đã chốt giá. Web đọc giá trị đó qua `muaThitVeMo(nd)` (`src/lib/dich-dat-hang.ts`):
+| Kết quả | Trang làm gì |
+|---|---|
+| Đã nhận (database trả mã đơn) | Thẻ "Beeftown đã nhận đơn của bạn", mã đơn 6 ký tự, câu "quán sẽ gọi xác nhận tổng tiền, phí giao, giờ giao; đơn chỉ được giao sau cuộc gọi đó". Không dựng lại form; tải lại trang không tạo đơn thứ hai |
+| Chưa ghi (thiếu ô, giỏ rỗng, database từ chối) | Câu lỗi đầu khối Giao hàng; giỏ chọn sẵn từ địa chỉ trang (chỉ khóa gói và số gói); họ tên, số điện thoại, địa chỉ do script điền lại từ sessionStorage (15 phút) — không bao giờ đi qua địa chỉ trang |
+| Không chắc (mất mạng, hết giờ, cổng 502 sau khi đã gửi) | "KHÔNG CHẮC đơn đã được ghi nhận — gọi Beeftown, đừng đặt lại"; không dựng lại form |
+
+Chống gửi hai lần: form mang mã `ma_gui` (một mã mỗi lần dựng trang); bấm đúp, F5, mạng chập rồi trình duyệt gửi lại → database trả lại đơn cũ. Giới hạn cho khách (không đăng nhập): tối đa 3 đơn chờ gọi mỗi số điện thoại, 5 đơn mỗi giờ mỗi IP, 30 đơn mỗi giờ mỗi chi nhánh.
+
+**Giá (quyết định 1, 2, 3 của Khánh, 26/10/2026).** Trang hiện giá gói trong ảnh chụp giá **chủ đã chốt** ở `/noi-bo/ban-le`, không đọc giá mỗi kg của Kho. Sản phẩm chưa chốt giá lần nào: không hiện. Gói thêm sau lần chốt: không hiện gói đó. Kim chi: giá chốt của hộp. Gói thịt ghi "Gói khoảng 200 g"; không ghi giá theo kg hay 100 g. Tạm tính chưa gồm phí giao. Số tiền chỉ in qua `dinhDangTien` trong phần tử `data-tien` — bộ quét chữ cấm miễn đúng chỗ đó, trên đúng ba đường dẫn này. Đơn chụp lại tên, cỡ gói và giá lúc đặt: chủ đổi tên hay chốt giá sau đó thì đơn cũ vẫn đúng như khách đã thấy.
+
+**Khi nào trang mở.** `noi_dung_cong_khai()` trả `hien_mua_thit_ve = true` khi công tắc `hien_mua_thit_ve` bật ở `/noi-bo/noi-dung` **và** có ít nhất một sản phẩm Đang bán, kênh website, đã chốt giá. Từ 0113 link Zalo OA không còn là điều kiện (khóa `zalo_oa_url` vẫn chỉ chủ, vẫn là nút liên hệ). Web đọc giá trị đó qua `muaThitVeMo(nd)` (`src/lib/dich-dat-hang.ts`):
 
 | Tình trạng | Điều hướng | Trang |
 |---|---|---|
-| Chưa nối database (CI), công tắc tắt, thiếu link Zalo hợp lệ, chưa có gói nào | bốn mục | "chưa mở": một câu và link Xem thực đơn — không form, không giá, không câu mời nhắn |
-| Mở, đọc menu lỗi hay hết giờ (4 giây) | năm mục | "chưa tải được danh sách gói" và nút nhắn Zalo OA |
-| Mở, mọi gói "Tạm hết ở quầy" (chỉ khi bật `mua_thit_hien_tam_het`) | năm mục | gói kèm giá, không form, nút nhắn Zalo OA |
-| Mở, có gói đặt được | năm mục — "Mua thịt về" ngay sau "Thực đơn" | form chọn gói |
+| Chưa nối database (CI), công tắc tắt, chưa có gói nào | bốn mục | "chưa mở": một câu và link Xem thực đơn — không form, không giá |
+| Mở, đọc menu lỗi hay hết giờ (4 giây) | năm mục | "chưa tải được danh sách gói", mời tải lại, nút gọi quán khi có hotline |
+| Mở, mọi gói "Tạm hết ở quầy" (chỉ khi bật `mua_thit_hien_tam_het`) | năm mục | gói kèm giá, không form |
+| Mở, có gói đặt được | năm mục — "Mua thịt về" ngay sau "Thực đơn" | lưới gói, khối Giao hàng, Đặt hàng |
 
-Bật công tắc mà trang vẫn "chưa mở": xem mô tả khóa `hien_mua_thit_ve` ở `/noi-bo/noi-dung` (thiếu link Zalo, hay chưa sản phẩm nào chốt giá). Chỉ bật khi có người trực Zalo OA trả lời đơn, đã thử chép đơn trên điện thoại thật và đã có ý kiến luật sư về cách ghi định lượng gói giá cố định. Trang 404 không đọc database nên luôn bốn mục. "Giao tận nơi" chỉ có khi khóa chỉ chủ `mua_thit_giao_hang` đã công bố. `mua_thit_hien_tam_het` mặc định tắt — chỉ bật khi chi nhánh trừ kho theo iPOS (`KHO.md`, mục 3r).
+Khóa chữ chủ công bố thêm vào trang (chưa công bố thì dùng câu mặc định hoặc ẩn): `mua_thit_giao_hang` (khu vực giao, cách tính phí — mặc định "quán báo khi gọi xác nhận"), `mua_thit_gio_nhan` (giờ giao), `mua_thit_thue`, và năm câu hỏi đáp chỉ hiện khi đã công bố: bảo quản thịt mát, bảo quản thịt đông lạnh, cân lệch, hàng lỗi, đổi / hủy. Chỉ bật công tắc khi có người xem hộp thư và gọi khách trong giờ mở cửa, đã chốt ai giao hàng, và đã có ý kiến luật sư về cách ghi định lượng gói giá cố định.
 
-**Hướng dẫn nhân viên trực Zalo OA:**
+**Hướng dẫn nhân viên xử lý đơn** (`/noi-bo/don-mua-thit` — chủ, quản lý, thu ngân; trang Tổng quan có ô đếm đơn chờ gọi):
 
-1. Tin đơn của website bắt đầu bằng `MUA THỊT VỀ – BEEFTOWN · beeftown.vn`, dòng hai là giờ khách soạn tin (giờ Việt Nam).
-2. **Giá trong tin là giá trên web lúc khách soạn, và khách sửa được tin trước khi gửi.** Luôn tính lại trên FABi; báo khách tổng tiền theo FABi trước khi chốt đơn. Giá web là giá chủ đã chốt; giá quầy đổi sau đó thì FABi có thể khác.
-3. Hai tin giống hệt từng chữ (cùng dòng giờ soạn) trong cùng khung chat: khách gửi hai lần — một đơn. Khác dòng giờ: hỏi khách là đơn mới hay đơn sửa.
-4. "Giao tận nơi" chỉ có khi trang đang nhận giao; hỏi địa chỉ, báo phí giao.
-5. Mã QR chuyển khoản chỉ gửi trong khung chat của OA.
-6. Dòng "Khách đọc trang tiếng Anh / tiếng Hàn" → trả lời bằng thứ tiếng đó nếu được.
-7. Khách ghi thêm "cần hơn 10 gói" → kiểm quầy trước khi nhận.
+1. Đơn mới ở mục "Chờ gọi". Gọi số điện thoại trong đơn (bấm số là gọi trên điện thoại).
+2. **Tạm tính trên đơn là giá web lúc khách đặt, chưa gồm phí giao.** Tính lại trên FABi, báo khách tổng tiền, phí giao, hẹn giờ giao; trả tiền khi nhận hoặc chuyển khoản theo mã QR quán gửi.
+3. Khách đồng ý → bấm **"Đã gọi xác nhận"**. Khách không lấy nữa → **"Khách hủy"**.
+4. Giao xong → mục "Chờ giao" → **"Đã giao"**.
+5. Khách đọc trang tiếng Anh / tiếng Hàn: dòng "Khách đọc trang" của đơn ghi thứ tiếng — trả lời bằng thứ tiếng đó nếu được.
+6. Khách ghi "cần hơn 10 gói một loại" trong ghi chú → kiểm quầy trước khi xác nhận.
 
-**Việc Khánh thử trên máy thật** (trước khi bật công tắc; danh sách đủ mười hai bước và thứ tự triển khai ở mô tả PR của trang Mua thịt về): chạm `https://zalo.me/3030027075662095415` trên iPhone và Android, có và không cài Zalo, tài khoản đã và chưa Quan tâm OA — app mở khung chat hay hồ sơ OA; dán một tin đơn mẫu vào chat — còn xuống dòng, không bị cắt; mở trang từ trình duyệt trong Zalo, Facebook, Messenger — nút "Chép đơn" có chép được không, không chép được thì chữ trong khung có được bôi đen sẵn; Zalo trên máy tính; tin tự động của OA có bắt nhầm tin đơn ("giá", "menu", "mua") không; gửi một tin hai lần; tắt JavaScript rồi đặt thử.
+**Việc Khánh thử trên máy thật** (trước khi bật công tắc cho khách): đặt một đơn trên iPhone và Android (trình duyệt thường và trình duyệt trong Zalo, Facebook) — thấy trang "đã nhận" và mã đơn; đơn hiện ở `/noi-bo/don-mua-thit` và ô đếm ở Tổng quan; bấm đúp nút Đặt hàng — chỉ một đơn; tắt mạng đúng lúc bấm — trang nói "không chắc"; đổi giá ở Bán lẻ rồi chốt lại trong lúc trang đang mở — trang báo giá vừa đổi; tắt JavaScript rồi đặt thử.
 
 ---
 
@@ -209,7 +219,7 @@ gì — đổi sự kiện thì sửa cả ba trang đó.
 | `PageView` | mở trang | mã gốc |
 | `ViewContent` | mở trang Thực đơn (`/thuc-don`, `/en/menu`, `/ko/menu`) | script của `Trang.astro` |
 | `Contact` | bấm link `tel:`, Zalo (`zalo.me`), Messenger (`m.me`, `messenger.com`) ở mọi trang, cả bấm chuột giữa | script của `Trang.astro` |
-| `InitiateCheckout` | bấm "Xem đơn" ở Mua thịt về (có giỏ); một lần cho mỗi giỏ — bấm lại ở trang xem đơn không thêm | script của `TrangMuaThitVe.astro` |
+| `InitiateCheckout` | bấm "Đặt hàng" ở Mua thịt về (có giỏ, đã qua chặn giỏ rỗng và bấm đúp); một lần cho mỗi giỏ; không kèm họ tên, số điện thoại, mã đơn | script của `TrangMuaThitVe.astro` |
 | `Lead` | thẻ "đã nhận yêu cầu" của trang hỏi bàn hiện ra — chỉ dựng khi database đã trả mã; một lần cho mỗi mã, kể cả bấm Back về trang lấy từ bộ nhớ đệm | script của `TrangDatBan.astro` |
 
 Form ứng tuyển chỉ có `PageView`. Giới hạn đã biết: `InitiateCheckout` và `Contact` của link mở trong cùng thẻ gửi
