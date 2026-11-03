@@ -2,24 +2,29 @@
 /**
  * THẺ MỘT SẢN PHẨM CỦA TRANG MUA THỊT VỀ (TrangMuaThitVe.astro dựng)
  *
- * Một article.the kiểu thẻ shop: khung ảnh, tên, nhãn bảo quản bằng chữ, một dòng mô tả, rồi từng gói một hàng — nhãn
- * gói ("Gói khoảng 200 g", quyết định 2 của Khánh 26/10/2026), giá gói quán đã công bố (giá chủ đã chốt, quyết định
- * 1) và ô chọn số gói. Không giá theo cân hay theo trăm gam (quyết định 3). Chưa có ảnh chụp thật của khay: KhungAnh.
- * Khánh 03/11/2026 ("phức tạp quá"): bỏ phần đọc thêm (cách nướng, bảo quản) khỏi thẻ — câu bảo quản chủ đã công
- * bố nằm ở Hỏi đáp cuối trang.
+ * Khánh 03/11/2026 ("phức tạp quá, làm như El Gaucho"), xem tận trang El Gaucho cùng ngày: thẻ chỉ còn khung ảnh,
+ * tên, nhãn bảo quản bằng chữ, giá "Từ …" (gói rẻ nhất còn đặt được — một gói thì nhãn gói và giá) và MỘT nút
+ * "Chọn gói". Bấm nút mở hộp chọn (popover) của sản phẩm: mô tả, rồi từng gói một hàng — nhãn gói ("Gói khoảng
+ * 200 g", quyết định 2 của Khánh 26/10/2026), giá gói đã công bố (giá chủ đã chốt, quyết định 1), ô chọn số gói —
+ * và nút Xong. Không giá theo cân hay theo trăm gam (quyết định 3). Chưa có ảnh chụp thật của khay: KhungAnh.
  *
+ *  · Hộp chọn là <div popover> mở bằng popovertarget: chạy không cần JavaScript. Trình duyệt chưa biết popover thì
+ *    hộp hiện thẳng trong thẻ (như thẻ cũ) — script của trang ẩn hai nút mở / đóng vô dụng ở đó. Hộp nằm TRONG form:
+ *    ô chọn trong hộp đóng vẫn được gửi.
  *  · Ô số gói là <select> 0–10 thật, tên ô là khoaGoi (mã sản phẩm + số gam, chỉ ASCII): form POST chạy cả khi tắt
  *    JavaScript. Hai nút −/+ chỉ chạy nhờ script của trang nên ra trang với hidden; script hiện chúng. Nút −/+ không
  *    mang lớp .nut (phép đo .nut đòi đệm ngang 20px) — vuông 48px, viền --vien-o.
  *  · Mỗi gói đặt được có ô ẩn gia_<khoa> mang giá khách đang thấy: database so với giá hiện tại khi ghi đơn (0113).
- *  · Gói "Tạm hết ở quầy": giá vẫn hiện, chữ tạm hết thay cụm chọn — không ô, không nút.
- *  · coOChon = false (trạng thái mọi gói tạm hết): không ô chọn nào.
+ *  · Gói "Tạm hết ở quầy": trong hộp, giá vẫn hiện, chữ tạm hết thay cụm chọn — không ô, không nút. Mọi gói của sản
+ *    phẩm tạm hết, hay coOChon = false (trạng thái mọi gói tạm hết): thẻ ghi "Tạm hết ở quầy", không nút, không hộp.
+ *  · "Đã chọn: 2 gói" (CHU_DON.daChon) trên thẻ và ở chân hộp: máy chủ dựng từ giỏ (lượt đặt bị từ chối thì giỏ
+ *    chọn sẵn), script đổi khi khách chọn.
  *  · Số tiền chỉ qua dinhDangTien, chỉ trong phần tử có data-tien (bộ quét chữ cấm miễn đúng chỗ đó).
  * Kiểm thử: crm/test/test-cong-khai-mua-thit-ve.mjs.
  */
 import { dich } from '../lib/chu';
 import type { NgonNgu } from '../lib/noi-dung';
-import { SO_GOI_TOI_DA, dinhDangTien, nhanGoi, type SanPhamMua } from '../lib/don-mua-thit';
+import { CHU_DON, SO_GOI_TOI_DA, dinhDangTien, nhanGoi, type SanPhamMua } from '../lib/don-mua-thit';
 import BieuTuong from './BieuTuong.astro';
 import KhungAnh from './KhungAnh.astro';
 
@@ -36,6 +41,11 @@ const c = dich(ngonNgu, {
   bqDong: { vi: 'Đông lạnh', en: 'Frozen', ko: '냉동' },
   bqGiu: { vi: 'Giữ lạnh', en: 'Keep cold', ko: '냉장 보관' },
   tamHet: { vi: 'Tạm hết ở quầy', en: 'Sold out at the counter for now', ko: '지금은 매장에 재고가 없어요' },
+  tu: { vi: 'Từ', en: 'From', ko: '최저' },
+  chonGoi: { vi: 'Chọn gói', en: 'Choose packs', ko: '팩 고르기' },
+  chonHop: { vi: 'Chọn hộp', en: 'Choose boxes', ko: '통 고르기' },
+  dong: { vi: 'Đóng', en: 'Close', ko: '닫기' },
+  xong: { vi: 'Xong', en: 'Done', ko: '완료' },
   // Nhãn đọc cho trình đọc màn hình — cùng một chữ cho gói thịt và hộp kim chi.
   soGoi: {
     vi: (goi: string, ten: string) => `Số lượng: ${goi}, ${ten}`,
@@ -57,43 +67,89 @@ const c = dich(ngonNgu, {
 const laKimChi = sanPham.loai === 'kim_chi';
 const nhanBaoQuan = sanPham.baoQuan === 'dong_lanh' ? c.bqDong : sanPham.baoQuan === 'giu_lanh' ? c.bqGiu : c.bqMat;
 const SO_CHON = Array.from({ length: SO_GOI_TOI_DA + 1 }, (_, i) => i);
+
+// Gói còn đặt được; giá "Từ" là gói rẻ nhất trong số đó (mọi gói tạm hết: gói rẻ nhất của sản phẩm).
+const datDuoc = sanPham.goi.filter(g => !g.tamHet);
+const coHop = coOChon && datDuoc.length > 0;
+const goiGia = (datDuoc.length ? datDuoc : sanPham.goi).reduce((a, b) => (b.gia < a.gia ? b : a));
+const motGoi = sanPham.goi.length === 1;
+// Số đã chọn của sản phẩm này (giỏ chọn sẵn sau lượt đặt bị từ chối) — chỉ gói đặt được.
+const daChonSo = coHop ? datDuoc.reduce((tong, g) => tong + (gio.get(g.khoa) ?? 0), 0) : 0;
+const daChon = CHU_DON.daChon[ngonNgu](sanPham.donVi === 'hop' ? 0 : daChonSo, sanPham.donVi === 'hop' ? daChonSo : 0);
+const idHop = `mtv-hop-${sanPham.ma}`;
+// Tên chưa có bản dịch thì là tên tiếng Việt: trình đọc màn hình đọc đúng giọng.
+const langTen = ngonNgu !== 'vi' && sanPham.ten === sanPham.tenVi ? 'vi' : undefined;
 ---
-<article class:list={['the', 'mtv-the', { 'mtv-the-kim-chi': laKimChi }]}>
+<article class:list={['the', 'mtv-the', { 'mtv-the-kim-chi': laKimChi }]} data-mtv-the={sanPham.ma}>
   <div class="mtv-anh">
     <KhungAnh loai="khay" tiLe="4 / 3" tiLeNho="1 / 1" />
   </div>
   <div class="mtv-the-chu">
-    {/* Tên chưa có bản dịch thì là tên tiếng Việt: trình đọc màn hình đọc đúng giọng. */}
-    <h3 lang={ngonNgu !== 'vi' && sanPham.ten === sanPham.tenVi ? 'vi' : undefined}>{sanPham.ten}</h3>
+    <h3 lang={langTen}>{sanPham.ten}</h3>
     <p class="nhan-mon mtv-bao-quan">{nhanBaoQuan}</p>
-    {sanPham.moTa && <p class="mtv-mo-ta">{sanPham.moTa}</p>}
   </div>
 
-  <div class="mtv-cac-goi">
-    {sanPham.goi.map(goi => {
-      const nhan = nhanGoi(sanPham.donVi, goi.soGam, ngonNgu);
-      const idO = `mtv-o-${goi.khoa}`;
-      return (
-        <div class="mtv-goi">
-          <span class="mtv-nhan-goi">{nhan}</span>
-          <span class="mtv-gia" data-tien>{dinhDangTien(goi.gia)}</span>
-          {goi.tamHet ? (
-            <span class="mtv-tam-het" data-mtv-tam-het>{c.tamHet}</span>
-          ) : coOChon && (
-            <span class="mtv-chon">
-              <input type="hidden" name={`gia_${goi.khoa}`} value={String(goi.gia)} />
-              <label class="an-chu" for={idO}>{c.soGoi(nhan, sanPham.ten)}</label>
-              <button type="button" class="mtv-buoc" data-mtv-buoc="-1" hidden><BieuTuong ten="tru" /><span class="an-chu">{c.bot(nhan, sanPham.ten)}</span></button>
-              <select name={goi.khoa} id={idO} class="mtv-so">
-                {SO_CHON.map(so => <option value={String(so)} selected={so === (gio.get(goi.khoa) ?? 0)}>{so}</option>)}
-              </select>
-              <button type="button" class="mtv-buoc" data-mtv-buoc="1" hidden><BieuTuong ten="cong" /><span class="an-chu">{c.them(nhan, sanPham.ten)}</span></button>
-            </span>
-          )}
-        </div>
-      );
-    })}
+  <div class="mtv-the-chan">
+    <p class="mtv-gia-tu">
+      {motGoi ? <span class="mtv-nhan-goi">{nhanGoi(sanPham.donVi, goiGia.soGam, ngonNgu)}</span> : <span>{c.tu}</span>}{' '}<span class="mtv-gia" data-tien>{dinhDangTien(goiGia.gia)}</span>
+    </p>
+    {coHop ? (
+      <button type="button" class="nut nut-vien mtv-mo-hop" popovertarget={idHop} data-mtv-mo-hop>
+        {sanPham.donVi === 'hop' ? c.chonHop : c.chonGoi}<span class="an-chu">: {sanPham.ten}</span>
+      </button>
+    ) : (
+      <p class="mtv-tam-het" data-mtv-tam-het>{c.tamHet}</p>
+    )}
+    {coHop && (<p class="mtv-da-chon" data-mtv-da-chon hidden={daChonSo === 0}>{daChon}</p>)}
   </div>
+
+  {coHop && (
+    <div popover id={idHop} class="mtv-hop be-kem" role="dialog" aria-labelledby={`${idHop}-ten`} data-mtv-hop>
+      <div class="mtv-hop-dau">
+        <div>
+          <p class="mtv-hop-ten" id={`${idHop}-ten`} lang={langTen}>{sanPham.ten}</p>
+          <p class="nhan-mon mtv-bao-quan">{nhanBaoQuan}</p>
+        </div>
+        <button type="button" class="mtv-dong" popovertarget={idHop} popovertargetaction="hide" data-mtv-dong-hop>
+          <BieuTuong ten="dong" /><span>{c.dong}</span>
+        </button>
+      </div>
+      {sanPham.moTa && <p class="mtv-mo-ta">{sanPham.moTa}</p>}
+
+      <div class="mtv-cac-goi">
+        {sanPham.goi.map(goi => {
+          const nhan = nhanGoi(sanPham.donVi, goi.soGam, ngonNgu);
+          const idO = `mtv-o-${goi.khoa}`;
+          return (
+            <div class="mtv-goi">
+              <span class="mtv-nhan-goi">{nhan}</span>
+              <span class="mtv-gia" data-tien>{dinhDangTien(goi.gia)}</span>
+              {goi.tamHet ? (
+                <span class="mtv-tam-het" data-mtv-tam-het>{c.tamHet}</span>
+              ) : (
+                <span class="mtv-chon">
+                  <input type="hidden" name={`gia_${goi.khoa}`} value={String(goi.gia)} />
+                  <label class="an-chu" for={idO}>{c.soGoi(nhan, sanPham.ten)}</label>
+                  <button type="button" class="mtv-buoc" data-mtv-buoc="-1" hidden><BieuTuong ten="tru" /><span class="an-chu">{c.bot(nhan, sanPham.ten)}</span></button>
+                  <select name={goi.khoa} id={idO} class="mtv-so">
+                    {SO_CHON.map(so => <option value={String(so)} selected={so === (gio.get(goi.khoa) ?? 0)}>{so}</option>)}
+                  </select>
+                  <button type="button" class="mtv-buoc" data-mtv-buoc="1" hidden><BieuTuong ten="cong" /><span class="an-chu">{c.them(nhan, sanPham.ten)}</span></button>
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div class="mtv-hop-chan">
+        <p class="mtv-da-chon" data-mtv-da-chon hidden={daChonSo === 0}>{daChon}</p>
+        <div class="hang-nut">
+          <button type="button" class="nut nut-chinh" popovertarget={idHop} popovertargetaction="hide" data-mtv-dong-hop>{c.xong}</button>
+        </div>
+      </div>
+    </div>
+  )}
 </article>
 
 <style>
@@ -101,35 +157,83 @@ const SO_CHON = Array.from({ length: SO_GOI_TOI_DA + 1 }, (_, i) => i);
      không đặt lớp của body phía trước: Astro gắn phạm vi cho mọi bộ chọn, body không mang dấu phạm vi đó. */
   [hidden] { display: none !important; }
 
-  /* Thẻ shop: ảnh trên, tên và gói dưới. Điện thoại: ảnh vuông 96px bên phải tên cho thẻ gọn. */
-  .mtv-the { display: grid; gap: var(--k-4); align-content: start; grid-template-columns: minmax(0, 1fr) 96px; }
+  /* Thẻ shop kiểu El Gaucho. Điện thoại: tên bên trái, ảnh vuông 96px bên phải, giá và nút dòng dưới. Từ 600px:
+     ảnh trên, tên, rồi giá và nút ở đáy thẻ (thẻ cùng hàng cao bằng nhau, nút thẳng hàng). */
+  .mtv-the { display: grid; gap: var(--k-4); grid-template-columns: minmax(0, 1fr) 96px; align-content: start; }
   .mtv-anh { grid-column: 2; grid-row: 1; }
   .mtv-the-chu { grid-column: 1; grid-row: 1; min-width: 0; }
-  .mtv-cac-goi { grid-column: 1 / -1; }
+  .mtv-the-chan { grid-column: 1 / -1; }
   @media (min-width: 600px) {
-    .mtv-the { grid-template-columns: minmax(0, 1fr); }
-    .mtv-anh, .mtv-the-chu, .mtv-cac-goi { grid-column: 1; grid-row: auto; }
+    .mtv-the { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto 1fr; }
+    .mtv-anh, .mtv-the-chu, .mtv-the-chan { grid-column: 1; grid-row: auto; }
+    .mtv-the-chan { align-self: end; }
   }
   .mtv-the h3 { margin: 0 0 var(--k-2); overflow-wrap: anywhere; }
   .mtv-bao-quan { margin: 0; }
-  .mtv-mo-ta { margin: var(--k-3) 0 0; color: var(--chu-phu); max-width: 60ch; }
 
-  /* Hàng gói. Thẻ hẹp: nhãn gói và giá một dòng, cụm −/ô/+ dòng dưới căn phải. Thẻ rộng (phần gói từ 440px): một
-     hàng. Đo theo bề ngang của thẻ, không theo màn: từ 600px thẻ đứng hai cột, một hàng cần chừng 430px (nhãn gói,
-     giá, −/ô/+ rộng 176px) — theo màn thì nhãn gói bị ép còn vài chục px. */
-  .mtv-cac-goi { container-type: inline-size; border-top: 1px solid var(--vien); }
+  /* Giá "Từ …" trái, nút phải; hẹp quá thì nút xuống dòng. */
+  .mtv-the-chan { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--k-3); }
+  .mtv-gia-tu { margin: 0; font-weight: 600; }
+  .mtv-gia { white-space: nowrap; font-weight: 700; color: var(--nhan); }
+  .mtv-mo-hop { flex: none; }
+  /* "Đã chọn" đứng TRÊN hàng giá – nút: hàng đó vẫn sát đáy thẻ, thẳng với thẻ bên cạnh chưa chọn gì. */
+  .mtv-da-chon { flex-basis: 100%; order: -1; margin: 0; font-weight: 700; }
+  .mtv-tam-het { margin: 0; font-size: var(--co-nho); font-weight: 700; color: var(--chu-chinh); }
+
+  /* --- Hộp chọn gói (popover) -------------------------------------------------------------------
+     Mọi quy tắc vị trí nằm dưới :popover-open: trình duyệt chưa biết popover bỏ cả quy tắc, hộp đứng thẳng trong
+     thẻ. Điện thoại: tấm trượt từ đáy, rộng hết màn. Từ 600px: giữa màn, rộng tối đa 560px. */
+  /* grid-column: trình duyệt chưa biết popover dựng hộp thẳng trong lưới của thẻ — trải hết bề ngang (điện thoại:
+     không rơi vào cột ảnh 96px). Hộp đang mở nằm ở lớp trên cùng, quy tắc này không còn tác dụng. */
+  .mtv-hop { color: var(--chu-chinh); grid-column: 1 / -1; }
+  /* Chưa biết popover, kể cả khi tắt JavaScript: nút mở / đóng (và nút chính Xong của mỗi hộp) vô dụng — ẩn bằng CSS. */
+  @supports not selector(:popover-open) {
+    [data-mtv-mo-hop], [data-mtv-dong-hop] { display: none !important; }
+  }
+  .mtv-hop:popover-open {
+    position: fixed; inset: auto 0 0 0; margin: 0; width: 100%; max-width: none; max-height: 85dvh;
+    overflow-y: auto; overscroll-behavior: contain;
+    padding: var(--k-5) var(--le) var(--k-5);
+    background: var(--kem); border: 0; border-top: 1px solid var(--vach); border-radius: var(--bo-anh) var(--bo-anh) 0 0;
+  }
+  @media (min-width: 600px) {
+    .mtv-hop:popover-open {
+      inset: 0; margin: auto; width: min(560px, calc(100% - 2 * var(--le))); height: fit-content; max-height: min(85dvh, 760px);
+      padding: var(--k-6); border: 1px solid var(--vach); border-radius: var(--bo-anh);
+    }
+  }
+  /* Nền mờ sau hộp: đen của bảng, mờ 55 % — chỉ token, không mã màu viết thẳng. */
+  .mtv-hop::backdrop { background: var(--than); opacity: 0.55; }
+  .mtv-hop-dau { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--k-3); }
+  .mtv-hop-ten { margin: 0 0 var(--k-2); font-size: var(--co-h3); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+  .mtv-mo-ta { margin: var(--k-4) 0 0; color: var(--chu-phu); max-width: 60ch; }
+  /* Nút Đóng: biểu tượng kèm chữ, vùng chạm 48px, không lớp .nut (không phải nút hành động). */
+  .mtv-dong {
+    font: inherit; font-weight: 600; flex: none;
+    display: inline-flex; align-items: center; gap: var(--k-1); min-height: 48px; padding: 0 var(--k-2);
+    color: var(--chu-chinh); background: transparent; border: 0; border-radius: var(--bo); cursor: pointer;
+  }
+  /* Biểu tượng theo --nhan (đỏ trên nền sáng — luật biểu tượng, do-giao-dien.mjs đo); chữ Đóng đen. */
+  .mtv-dong :global(svg) { width: 24px; height: 24px; color: var(--nhan); }
+  .mtv-dong:focus-visible { outline: 3px solid var(--vong-focus); outline-offset: 3px; }
+  .mtv-hop-chan { margin-top: var(--k-5); display: grid; gap: var(--k-3); }
+  .mtv-hop-chan .hang-nut { margin: 0; }
+  .mtv-hop-chan .nut { width: 100%; }
+
+  /* Hàng gói trong hộp. Hộp hẹp: nhãn gói và giá một dòng, cụm −/ô/+ dòng dưới căn phải. Hộp rộng (từ 440px): một
+     hàng — đo theo bề ngang của phần gói, không theo màn. */
+  .mtv-cac-goi { container-type: inline-size; margin-top: var(--k-4); border-top: 1px solid var(--vien); }
   .mtv-goi {
     display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--k-2) var(--k-3);
     padding: var(--k-3) 0; border-bottom: 1px solid var(--vien);
   }
-  .mtv-nhan-goi { font-weight: 600; }
-  .mtv-gia { white-space: nowrap; font-weight: 700; color: var(--nhan); justify-self: end; }
-  .mtv-chon, .mtv-tam-het { grid-column: 1 / -1; justify-self: end; }
+  .mtv-goi .mtv-nhan-goi { font-weight: 600; }
+  .mtv-goi .mtv-gia { justify-self: end; }
+  .mtv-goi .mtv-chon, .mtv-goi .mtv-tam-het { grid-column: 1 / -1; justify-self: end; text-align: right; }
   @container (min-width: 440px) {
     .mtv-goi { grid-template-columns: minmax(0, 1fr) auto auto; }
-    .mtv-chon, .mtv-tam-het { grid-column: auto; }
+    .mtv-goi .mtv-chon, .mtv-goi .mtv-tam-het { grid-column: auto; }
   }
-  .mtv-tam-het { font-size: var(--co-nho); font-weight: 700; color: var(--chu-chinh); text-align: right; }
 
   .mtv-chon { display: inline-flex; align-items: center; gap: var(--k-1); }
   /* Ô số gói: như ô chọn của form (.o, cong-khai.css) nhưng hẹp 72px. Chữ 16px: iPhone không tự phóng to. */
@@ -149,14 +253,15 @@ const SO_CHON = Array.from({ length: SO_GOI_TOI_DA + 1 }, (_, i) => i);
     cursor: pointer; transition: background-color var(--nhanh);
   }
   .mtv-buoc :global(svg) { width: 24px; height: 24px; }
-  .mtv-buoc:active { background: var(--kem-dam); }
-  @media (hover: hover) { .mtv-buoc:hover { background: var(--kem-dam); } }
+  .mtv-buoc:active, .mtv-dong:active { background: var(--kem-dam); }
+  @media (hover: hover) { .mtv-buoc:hover, .mtv-dong:hover { background: var(--kem-dam); } }
 
-  /* Thanh giỏ (64px) dính đáy màn hình: Tab tới ô chọn thì ô dừng trên thanh, không nằm dưới nó. */
-  .mtv-so, .mtv-buoc { scroll-margin-bottom: calc(64px + var(--k-3)); }
+  /* Thanh giỏ (64px) dính đáy màn hình: Tab tới nút hay ô chọn thì chúng dừng trên thanh, không nằm dưới nó. */
+  .mtv-so, .mtv-buoc, .mtv-mo-hop { scroll-margin-bottom: calc(64px + var(--k-3)); }
 
-  /* Tương phản cao (Windows): giữ viền nút −/+ thấy được bằng màu hệ thống. */
+  /* Tương phản cao (Windows): giữ viền nút −/+ và viền hộp thấy được bằng màu hệ thống. */
   @media (forced-colors: active) {
     .mtv-buoc { border: 1px solid ButtonText; }
+    .mtv-hop:popover-open { border: 1px solid CanvasText; }
   }
 </style>

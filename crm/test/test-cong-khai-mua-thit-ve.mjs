@@ -234,7 +234,7 @@ await nhom('4 · SỐ TIỀN: CHỈ QUA dinhDangTien, CHỈ TRONG data-tien', as
   ok('Giá gói: span.mtv-gia[data-tien] = dinhDangTien(goi.gia)', /<span class="mtv-gia" data-tien>\{dinhDangTien\(goi\.gia\)\}<\/span>/.test(THE.khuon));
   ok('Giá khách đã thấy: ô ẩn name={`gia_${goi.khoa}`} value={String(goi.gia)} cạnh ô chọn (database so khi ghi đơn, 0113)',
      /<input type="hidden" name=\{`gia_\$\{goi\.khoa\}`\} value=\{String\(goi\.gia\)\} \/>/.test(THE.khuon)
-       && chiTrongKhoi(THE.khuon, ') : coOChon && (', 'name={`gia_'));
+       && chiTrongKhoi(THE.khuon, '{coHop && (', 'name={`gia_'));
 });
 
 // ===========================================================================
@@ -341,8 +341,8 @@ await nhom('9 · SCRIPT: GIỎ RỖNG, BẤM ĐÚP, GIỮ CHỮ, META PIXEL', as
      (s.match(/^\s*import\b[^;]*from '([^']+)'/gm) ?? []).every(c => /'\.\.\/lib\/(don-mua-thit|meta-pixel)'/.test(c)));
   ok('Gọi capNhat ngay khi chạy và ở pageshow; không innerHTML', /^\s{4}capNhat\(\);$/m.test(s) && /addEventListener\('pageshow'/.test(s)
      && !/innerHTML|outerHTML|insertAdjacentHTML/.test(s));
-  ok('Giỏ rỗng: chặn gửi (preventDefault), báo câu giỏ rỗng, đưa con trỏ về ô chọn đầu',
-     /donHienTai\.dong\.length === 0\) \{\s*e\.preventDefault\(\);[\s\S]*?thieuGio[\s\S]*?select\.mtv-so'\)\?\.focus\(\)/.test(s));
+  ok('Giỏ rỗng: chặn gửi (preventDefault), báo câu giỏ rỗng, đưa con trỏ về nút "Chọn gói" đầu (ô chọn nằm trong hộp đang đóng; trình duyệt chưa biết popover: ô chọn đầu)',
+     /donHienTai\.dong\.length === 0\) \{\s*e\.preventDefault\(\);[\s\S]*?thieuGio[\s\S]*?querySelectorAll<HTMLElement>\('\[data-mtv-mo-hop\], select\.mtv-so'\)\][\s\S]*?\.find\(o => !o\.hidden && o\.offsetParent !== null\);\s*dau\?\.focus\(\);/.test(s));
   ok('Bấm đúp: lần gửi thứ hai bị chặn (dangGui); nút aria-busy và "Đang gửi…"; Back hay 15 giây không chuyển trang thì mở khóa, trả chữ nút',
      /if \(dangGui\) \{ e\.preventDefault\(\); return; \}/.test(s) && /setAttribute\('aria-busy', 'true'\)/.test(s)
        && /pageshow', \(\) => \{\s*moKhoa\(\);/.test(s) && /const moKhoa = \(\) => \{\s*dangGui = false;[\s\S]*?nutDat\.textContent = chuNut;/.test(s)
@@ -363,6 +363,60 @@ await nhom('9 · SCRIPT: GIỎ RỖNG, BẤM ĐÚP, GIỮ CHỮ, META PIXEL', as
      /new IntersectionObserver/.test(s) && /thanh\.hidden = donHienTai\.dong\.length === 0 \|\| khoiDatDangHien/.test(s));
   ok('data-menu dựng bằng rutGonMenu', /data-menu=\{JSON\.stringify\(rutGonMenu\(menu\.sanPham\)\)\}/.test(TRANG.khuon));
   ok('Mọi truy vấn phần tử trong script có kiểu (querySelector<…>)', !/querySelector\((?!<)/.test(s.replace(/querySelector<[^>]+>\(/g, '')));
+});
+
+// ===========================================================================
+// Khánh 03/11/2026 ("làm như El Gaucho", xem tận trang El Gaucho): thẻ gọn — ảnh, tên, giá "Từ …", một nút "Chọn
+// gói" — mở hộp chọn (popover). Hộp phải chạy không cần JavaScript, nằm trong form (ô chọn trong hộp đóng vẫn được
+// gửi), và trình duyệt chưa biết popover vẫn đặt được (hộp đứng thẳng trong thẻ).
+await nhom('10 · THẺ GỌN KIỂU EL GAUCHO, HỘP CHỌN GÓI (popover)', async () => {
+  const k = THE.khuon;
+  // cacKhoi đếm ngoặc từ ký tự cuối của đầu khối (phải là "("): lấy khối {coHop && ( … )} chứa <div popover>.
+  const hop = cacKhoi(k, '{coHop && (').find(x => x.chu.includes('<div popover'))?.chu ?? '';
+  ok('Hộp chọn là <div popover> có id, role="dialog", aria-labelledby tên sản phẩm — chỉ khi coHop',
+     /<div popover id=\{idHop\} class="mtv-hop be-kem" role="dialog" aria-labelledby=\{`\$\{idHop\}-ten`\} data-mtv-hop>/.test(hop)
+       && /id=\{`\$\{idHop\}-ten`\}/.test(hop));
+  ok('coHop = coOChon VÀ còn ít nhất một gói đặt được', /const coHop = coOChon && datDuoc\.length > 0;/.test(THE.dau)
+     && /const datDuoc = sanPham\.goi\.filter\(g => !g\.tamHet\);/.test(THE.dau));
+  ok('Mọi ô chọn số gói, nút −/+ và ô giá ẩn đều nằm trong hộp (thẻ chỉ còn tên, giá "Từ", một nút)',
+     ['<select ', 'data-mtv-buoc', 'name={`gia_'].every(t => chiTrongKhoi(k, '{coHop && (', t) && hop.includes(t)));
+  const moHop = k.match(/<button[^>]*data-mtv-mo-hop[^>]*>/g) ?? [];
+  ok('Thẻ có đúng một nút mở hộp: popovertarget={idHop}, nút viền (không thêm nút chính vào trang), chữ "Chọn gói" / "Chọn hộp"',
+     moHop.length === 1 && /popovertarget=\{idHop\}/.test(moHop[0]) && /class="nut nut-vien mtv-mo-hop"/.test(moHop[0])
+       && !/popovertargetaction/.test(moHop[0]) && /\{sanPham\.donVi === 'hop' \? c\.chonHop : c\.chonGoi\}/.test(k), moHop.join(' | '));
+  const dongHop = k.match(/<button[^>]*data-mtv-dong-hop[^>]*>/g) ?? [];
+  ok('Hai nút đóng hộp (Đóng ở đầu, Xong ở chân) chạy không cần JavaScript: popovertarget + popovertargetaction="hide"',
+     dongHop.length === 2 && dongHop.every(b => /popovertarget=\{idHop\} popovertargetaction="hide"/.test(b)), dongHop.join(' | '));
+  ok('Nút Đóng có chữ cạnh biểu tượng (không chỉ dấu ×); chân hộp đúng một nút chính',
+     /<BieuTuong ten="dong" \/><span>\{c\.dong\}<\/span>/.test(hop) && (hop.match(/nut-chinh/g) ?? []).length === 1);
+  ok('Giá "Từ …": gói rẻ nhất còn đặt được (mọi gói tạm hết: rẻ nhất của sản phẩm); một gói thì nhãn gói thay chữ "Từ"; số tiền trong data-tien',
+     /const goiGia = \(datDuoc\.length \? datDuoc : sanPham\.goi\)\.reduce\(\(a, b\) => \(b\.gia < a\.gia \? b : a\)\);/.test(THE.dau)
+       && /<span class="mtv-gia" data-tien>\{dinhDangTien\(goiGia\.gia\)\}<\/span>/.test(k)
+       && /\{motGoi \? <span class="mtv-nhan-goi">\{nhanGoi\(sanPham\.donVi, goiGia\.soGam, ngonNgu\)\}<\/span> : <span>\{c\.tu\}<\/span>\}/.test(k));
+  ok('Sản phẩm không còn gói đặt được: thẻ ghi "Tạm hết ở quầy" thay nút, không hộp',
+     /\{coHop \? \([\s\S]*?data-mtv-mo-hop[\s\S]*?\) : \(\s*<p class="mtv-tam-het" data-mtv-tam-het>\{c\.tamHet\}<\/p>\s*\)\}/.test(k));
+  ok('"Đã chọn" (CHU_DON.daChon) trên thẻ và ở chân hộp, máy chủ dựng từ giỏ, ẩn khi 0',
+     (k.match(/<p class="mtv-da-chon" data-mtv-da-chon hidden=\{daChonSo === 0\}>\{daChon\}<\/p>/g) ?? []).length === 2
+       && /CHU_DON\.daChon\[ngonNgu\]/.test(THE.dau));
+  const css = boChuThichCss(THE.style);
+  const quyTac = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(m => ({ chon: m[1].trim(), than: m[2] }));
+  const viTriNgoai = quyTac.filter(q => /\bposition:\s*fixed|\binset:/.test(q.than) && !/:popover-open/.test(q.chon)).map(q => q.chon);
+  ok('Mọi quy tắc vị trí của hộp nằm dưới :popover-open (trình duyệt chưa biết popover bỏ cả quy tắc, hộp đứng trong thẻ)',
+     viTriNgoai.length === 0 && quyTac.some(q => /\.mtv-hop:popover-open/.test(q.chon) && /position:\s*fixed/.test(q.than)), viTriNgoai.join(' | '));
+  ok('Không tự giấu hộp bằng display: none (trình duyệt biết popover tự giấu hộp đóng)',
+     !quyTac.some(q => /\.mtv-hop\b(?!-)/.test(q.chon) && !/:popover-open|::backdrop/.test(q.chon) && /display:\s*none/.test(q.than)));
+  const s = TRANG.script;
+  ok('Script: chưa biết popover → ẩn nút mở / đóng; biết → mở hộp thì con trỏ vào ô chọn đầu của hộp',
+     /if \(!Object\.prototype\.hasOwnProperty\.call\(HTMLElement\.prototype, 'popover'\)\) \{\s*form\.querySelectorAll<HTMLElement>\('\[data-mtv-mo-hop\], \[data-mtv-dong-hop\]'\)\.forEach\(nut => \{ nut\.hidden = true; \}\);/.test(s)
+       && /newState === 'open'\) \{ hop\.querySelector<HTMLSelectElement>\('select\.mtv-so'\)\?\.focus\(\); return; \}/.test(s));
+  ok('Đóng hộp bằng bấm ra ngoài: con trỏ về nút "Chọn gói" của hộp (khi con trỏ đang trong hộp hay rơi về body)',
+     /if \(!conTro \|\| conTro === document\.body \|\| hop\.contains\(conTro\)\) \{\s*form\.querySelector<HTMLElement>\(`\[data-mtv-mo-hop\]\[popovertarget="\$\{CSS\.escape\(hop\.id\)\}"\]`\)\?\.focus\(\);/.test(s));
+  ok('Chưa biết popover, kể cả tắt JavaScript: CSS ẩn nút mở / đóng / Xong (@supports not selector(:popover-open)); hộp đứng trong thẻ trải hết bề ngang (grid-column: 1 / -1)',
+     /@supports not selector\(:popover-open\)\s*\{\s*\[data-mtv-mo-hop\], \[data-mtv-dong-hop\] \{ display: none !important; \}/.test(css)
+       && quyTac.some(q => q.chon === '.mtv-hop' && /grid-column:\s*1 \/ -1/.test(q.than)));
+  ok('Script: "Đã chọn" của từng sản phẩm tính từ chính đơn (tinhDon), cùng CHU_DON.daChon với máy chủ',
+     /const so = don\.dong\.filter\(d => d\.sanPham\.ma === sp\.ma\)\.reduce\(\(tong, d\) => tong \+ d\.soLuong, 0\);/.test(s)
+       && /CHU_DON\.daChon\[nn\]/.test(s) && /CSS\.escape\(sp\.ma\)/.test(s));
 });
 
 process.exit(ketThuc('TRANG MUA THỊT VỀ: HAI COMPONENT'));
