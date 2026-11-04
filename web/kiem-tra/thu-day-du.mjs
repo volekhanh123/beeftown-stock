@@ -1433,7 +1433,10 @@ try {
         const theRibeye = p.locator('#chon-goi article', { has: p.locator('select.mtv-so[name="ribeye-cap_200"]') });
         let hopMo = null;
         await trongHop(p, 'ribeye-cap_200', async hop => {
-          // Con trỏ đọc NGAY khi hộp vừa mở, trước khi bấm + (bấm + thì con trỏ sang nút +).
+          // Con trỏ đọc khi hộp vừa mở, trước khi bấm + (bấm + thì con trỏ sang nút +). Script đưa con trỏ vào ô chọn ở
+          // sự kiện toggle — trình duyệt XẾP HÀNG sự kiện này sau khi hộp hiện (chuẩn HTML), nên đọc ngay thì có lúc còn
+          // null (máy CI chậm hơn: main đỏ sau PR #159). Đợi tối đa 3 giây cho con trỏ tới; không tới thì ghi null.
+          await p.waitForFunction(() => document.activeElement?.getAttribute('name') === 'ribeye-cap_200', null, { timeout: 3000 }).catch(() => {});
           const focus = await p.evaluate(() => document.activeElement?.getAttribute('name') ?? null);
           const cong = hop.locator('select.mtv-so[name="ribeye-cap_200"] ~ [data-mtv-buoc="1"]');
           await cong.click();
