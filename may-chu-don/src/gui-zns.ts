@@ -100,11 +100,22 @@ async function layAccessToken(p: PhuThuocGuiZns, buoc: boolean): Promise<KetQuaT
     }
     return { ok: false, cau: `Chưa làm mới được token Zalo: ${cau}` };
   }
-  so.luuTokenZalo({
+  // Refresh token cũ đã chết: lưu cái mới phải được. Sổ đơn bận thì thử lại; vẫn hỏng thì báo rõ phải dán lại.
+  const moi = {
     refreshMa: ph.refreshToken ? maHoaToken(ph.refreshToken, cauHinh.secretKey) : null,
     accessMa: maHoaToken(ph.accessToken, cauHinh.secretKey),
     hetHanLuc: ms + ph.hetHanGiay * 1000,
-  }, ms);
+  };
+  for (let lan = 1; ; lan++) {
+    try { so.luuTokenZalo(moi, ms); break; }
+    catch (e) {
+      if (lan >= 3) {
+        return { ok: false, cau: `Đã làm mới token Zalo nhưng không lưu được (${e instanceof Error ? e.message : String(e)}) — `
+          + 'lấy refresh token mới, đặt ZALO_REFRESH_TOKEN_MOI' };
+      }
+      await new Promise(xong => setTimeout(xong, 200 * lan));
+    }
+  }
   return { ok: true, accessToken: ph.accessToken };
 }
 
@@ -144,6 +155,15 @@ export async function guiZnsMotLuot(p: PhuThuocGuiZns): Promise<KetQuaLuotZns> {
       continue;
     }
     const cau = xoaBiMatZalo(ph.cau, tk.accessToken, cauHinh.secretKey);
+    // Mất mạng, Zalo không trả lời: lỗi chung, không phải của tin này — tin về hàng chờ không tính lần, dừng lượt (mạng
+    // hỏng lâu không làm tin thành "thất bại", tin sau không phải chờ hết giờ từng cái một).
+    if ('loiMang' in kq) {
+      so.traTinZnsVeHang(maDon, loai, sau + (XU_LY_LOI.thu_lai.thuLaiSau ?? 300) * 1000, sau);
+      ra.hoanLai++;
+      ra.dungVi = cau;
+      ghi(`dừng lượt ở ${maDon} ${loai}: ${cau}`);
+      return ra;
+    }
     // Token sai: làm mới một lần rồi gửi lại đúng tin này; vẫn sai thì dừng lượt.
     if (ph.loai === 'token' && !daLamMoiVoiToken) {
       daLamMoiVoiToken = true;

@@ -909,7 +909,8 @@ nhom('20 · ZNS (đợt 3): mỗi đơn mỗi loại một tin, token làm mới
   const ma = maHoaToken('refresh-tho-abc', CH.secretKey);
   ok('Token mã hóa: giải mã đúng khóa ra lại; sai khóa, sửa một ký tự → null; bản mã không chứa token',
     giaiMaToken(ma, CH.secretKey) === 'refresh-tho-abc' && giaiMaToken(ma, 'khoa-khac-0123456') === null
-    && giaiMaToken(ma.slice(0, -3) + (ma.endsWith('A') ? 'B' : 'A') + ma.slice(-2), CH.secretKey) === null && !ma.includes('refresh-tho'));
+    && giaiMaToken((() => { const b = Buffer.from(ma.slice(3), 'base64'); b[b.length - 1] ^= 1; return 'v1.' + b.toString('base64'); })(), CH.secretKey) === null
+    && !ma.includes('refresh-tho'));
 
   // --- hàng chờ ---
   const so = new SoDon(':memory:');
@@ -929,6 +930,10 @@ nhom('20 · ZNS (đợt 3): mỗi đơn mỗi loại một tin, token làm mới
   so.doiTrangThai(mau.ma, 'da_thanh_toan', 'dang_soan', LUC_DAT);
   so.doiTrangThai(mau.ma, 'dang_soan', 'cho_lay', LUC_DAT);
   ok('Đơn đánh dấu đã trả bằng tay (đơn mẫu) → không tin nào, kể cả khi soạn xong', demTin(mau.ma) === '');
+  const taiQuan = donMoi(so, { maGui: 'zns-tai-quan-cu1' });
+  so.db.query("update don set cach_nhan = 'tai-quan', dia_chi = '' where ma = ?").run(taiQuan.ma);
+  traTien(taiQuan);
+  ok('HỒI QUY rà soát: đơn nhận tại quán cũ (không địa chỉ) → không xếp tin "đã nhận đơn" (mẫu ghi "Giao tới")', demTin(taiQuan.ma) === '');
 
   // --- Zalo giả ---
   type Goi = { url: string; headers: Record<string, string>; body: string };
@@ -993,17 +998,27 @@ nhom('20 · ZNS (đợt 3): mỗi đơn mỗi loại một tin, token làm mới
   const tc = so.db.query("select trang_thai, gui_sau, so_lan from zns_tin where ma_don = ?").get(c.ma) as { trang_thai: string; gui_sau: number; so_lan: number };
   ok('Mã lỗi lạ → về hàng chờ, gửi lại sau 5 phút', tc.trang_thai === 'cho' && tc.gui_sau === gio + 300_000 && tc.so_lan === 1);
   gio += 300_000;
+  const c2 = donDaTra('zns-mat-mang-002');
   traGui = () => 'nem';
-  await luot();
-  ok('Mất mạng (fetch ném lỗi) → về hàng chờ, không báo đã gửi', so.trangThaiTinZns(c.ma, 'da_nhan')?.trangThai === 'cho');
-  gio += 300_000;
+  goiZalo.length = 0;
+  const rm = await luot();
+  ok('HỒI QUY rà soát: mất mạng (fetch ném lỗi) → dừng cả lượt, tin về hàng chờ KHÔNG tính lần, tin sau chưa gọi Zalo',
+    rm.dungVi !== null && so.trangThaiTinZns(c.ma, 'da_nhan')?.trangThai === 'cho' && so.trangThaiTinZns(c.ma, 'da_nhan')?.soLan === 1
+    && so.trangThaiTinZns(c2.ma, 'da_nhan')?.soLan === 0 && goiZalo.filter(g => g.url.includes('message')).length === 1);
   traGui = () => 'treo';
+  for (let i = 0; i < 10; i++) { gio += 300_000; await luot(); }
+  ok('HỒI QUY rà soát: Zalo không trả lời 10 lượt liền (mạng hỏng lâu) → tin vẫn chờ, không thành "thất bại"',
+    so.trangThaiTinZns(c.ma, 'da_nhan')?.trangThai === 'cho' && so.trangThaiTinZns(c.ma, 'da_nhan')?.soLan === 1
+    && so.trangThaiTinZns(c2.ma, 'da_nhan')?.trangThai === 'cho');
+  traGui = () => ({ status: 200, json: { error: 0, data: { msg_id: 'msg-c2' } } });
+  gio += 300_000;
   await luot();
-  ok('Zalo không trả lời (hết giờ) → về hàng chờ, không báo đã gửi', so.trangThaiTinZns(c.ma, 'da_nhan')?.trangThai === 'cho'
-    && so.trangThaiTinZns(c.ma, 'da_nhan')?.loi?.includes('không trả lời') === true);
+  ok('Mạng có lại → tin chờ gửi được', so.trangThaiTinZns(c2.ma, 'da_nhan')?.trangThai === 'da_gui');
+  const c3 = donDaTra('zns-qua-so-lan-1');
+  traGui = () => ({ status: 200, json: { error: -999, message: 'Unknown' } });
   for (let i = 0; i < SO_LAN_ZNS_TOI_DA; i++) { gio += 300_000; await luot(); }
-  ok(`Quá ${SO_LAN_ZNS_TOI_DA} lần → "thất bại", thôi gửi`, so.trangThaiTinZns(c.ma, 'da_nhan')?.trangThai === 'that_bai'
-    && so.trangThaiTinZns(c.ma, 'da_nhan')?.soLan === SO_LAN_ZNS_TOI_DA);
+  ok(`Quá ${SO_LAN_ZNS_TOI_DA} lần → "thất bại", thôi gửi`, so.trangThaiTinZns(c3.ma, 'da_nhan')?.trangThai === 'that_bai'
+    && so.trangThaiTinZns(c3.ma, 'da_nhan')?.soLan === SO_LAN_ZNS_TOI_DA);
 
   const d1 = donDaTra('zns-het-quota-01'), d2 = donDaTra('zns-het-quota-02');
   traGui = () => ({ status: 200, json: { error: -115, message: 'Out of quota' } });
@@ -1032,6 +1047,17 @@ nhom('20 · ZNS (đợt 3): mỗi đơn mỗi loại một tin, token làm mới
   ok('Refresh token bị từ chối → dừng lượt, token "bị từ chối", tin còn chờ; câu lỗi không có token',
     rt.dungVi !== null && so.docTokenZalo()?.trangThai === 'bi_tu_choi' && so.trangThaiTinZns(d3.ma, 'da_nhan')?.trangThai === 'cho'
     && !rt.dungVi.includes('refresh-4') && !String(so.docTokenZalo()?.loi).includes('refresh-4'), rt.dungVi ?? '');
+  // Zalo đã trả refresh token mới mà sổ đơn không lưu được: báo rõ phải dán lại, không gửi tin bằng chuỗi đã mất.
+  const soHong = Object.create(so) as SoDon;
+  let lanLuu = 0;
+  soHong.luuTokenZalo = () => { lanLuu++; throw new Error('database is locked'); };
+  so.gieoTokenZalo(maHoaToken('refresh-luu-hong', CH.secretKey), dauToken('refresh-luu-hong'), gio);
+  traToken = () => ({ status: 200, json: { access_token: 'access-lh', refresh_token: 'refresh-lh2', expires_in: 90000 } });
+  goiZalo.length = 0;
+  const rl = await guiZnsMotLuot({ so: soHong, cauHinh: CH, hamFetch: zaloGia, bayGio: () => gio, ghi: c => nhatKy.push(c), msHetGio: 50 });
+  ok('HỒI QUY rà soát: lưu token mới hỏng → thử lưu 3 lần, dừng lượt, câu báo dán lại refresh token, không gửi tin',
+    lanLuu === 3 && rl.dungVi?.includes('ZALO_REFRESH_TOKEN_MOI') === true && goiZalo.filter(g => g.url.includes('message')).length === 0
+    && so.trangThaiTinZns(d3.ma, 'da_nhan')?.trangThai === 'cho', `${lanLuu} ${rl.dungVi} ${JSON.stringify(so.trangThaiTinZns(d3.ma, 'da_nhan'))} ${goiZalo.map(g => g.url).join(',')}`);
   so.gieoTokenZalo(maHoaToken('refresh-5', CH.secretKey), dauToken('refresh-5'), gio);
   traToken = () => ({ status: 200, json: { access_token: 'access-6', refresh_token: 'refresh-7', expires_in: 90000 } });
   traGui = () => ({ status: 200, json: { error: 0, data: { msg_id: 'msg-x' } } });

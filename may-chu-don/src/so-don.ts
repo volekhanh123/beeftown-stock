@@ -358,7 +358,9 @@ export class SoDon {
       this.db.query(`insert into giao_dich (id_sepay, ma_don, so_tien, ngay_giao_dich, ma_tham_chieu, ket_qua, can_xem, nhan_luc)
         values (?, ?, ?, ?, ?, ?, ?, ?)`).run(tin.idSepay, maDon, tin.soTien, tin.ngayGiaoDich, tin.maThamChieu, ketQua, canXem, ms);
       if (maDon && (ketQua === 'du' || ketQua === 'thua') && !DA_CO_TIEN.includes(don!.trang_thai)) {
-        if (this.daThanhToanTrongGiaoDich(maDon, 'sepay', ms) === 'da_doi') this.xepTinZns(maDon, 'da_nhan', ms);
+        // Tin "đã nhận đơn" ghi "Giao tới <địa chỉ>": chỉ đơn giao tận nơi (đơn nhận tại quán cũ của sổ thử không có địa chỉ).
+        if (this.daThanhToanTrongGiaoDich(maDon, 'sepay', ms) === 'da_doi'
+          && this.db.query("select 1 from don where ma = ? and cach_nhan = 'giao-hang'").get(maDon)) this.xepTinZns(maDon, 'da_nhan', ms);
         // Đơn vừa đủ tiền: các lần "thiếu" trước của đơn này không còn phải xem.
         this.db.query("update giao_dich set can_xem = 0 where ma_don = ? and ket_qua = 'thieu'").run(maDon);
       }
