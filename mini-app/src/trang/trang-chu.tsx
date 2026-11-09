@@ -1,5 +1,5 @@
-import React from "react";
-import { Page, useNavigate } from "zmp-ui";
+import React, { useEffect } from "react";
+import { Page, useLocation, useNavigate } from "zmp-ui";
 import { ThongTinTron } from "../bieu-tuong";
 import logo from "../assets/logo-chinh-trang.png";
 import { useGioHang } from "../gio-hang";
@@ -7,11 +7,22 @@ import { SAN_PHAM, dongTuGio } from "../san-pham";
 import { dinhDangTien, tongTienThit } from "../don";
 import { BaoGiaThu, TheThit } from "../thanh-phan";
 import { TRA_TRUOC } from "../may-chu-don";
+import { monTuDuong } from "../chia-se";
 
 export default function TrangChu() {
   const navigate = useNavigate();
   const { soKhay, tongKhay, soPhan, donDaDat } = useGioHang();
   const tongTien = tongTienThit(dongTuGio(soKhay));
+  // Mở từ tin bạn bè chia sẻ ("/mon/<mã>"): cuộn tới đúng phần thịt đó.
+  const { pathname, search } = useLocation();
+  const monChon = monTuDuong(SAN_PHAM, pathname, search);
+  useEffect(() => {
+    if (!monChon) return;
+    const hen = window.setTimeout(() => {
+      document.getElementById(`mon-${monChon.ma}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 350);
+    return () => window.clearTimeout(hen);
+  }, [monChon?.ma]);
 
   return (
     <Page className="trang trang-chu" hideScrollbar>
@@ -65,7 +76,7 @@ export default function TrangChu() {
 
       <section className="danh-sach" aria-label="6 phần thịt">
         {SAN_PHAM.map((sp) => (
-          <TheThit key={sp.ma} sp={sp} />
+          <TheThit key={sp.ma} sp={sp} noiBat={monChon?.ma === sp.ma} />
         ))}
       </section>
 

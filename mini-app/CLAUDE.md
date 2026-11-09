@@ -47,7 +47,8 @@ src/san-pham.ts      6 phần thịt: tên, thịt mát / đông lạnh, mô t�
 src/don.ts           logic thuần (không React, không Zalo): ngày giờ nhận, kiểm tra, soạn tin đơn
 src/con-hang.ts      logic thuần: đọc còn hàng từ website (hỏng thì {}), trạng thái hiện cho từng phần thịt
 src/con-hang-kho.tsx giữ trạng thái còn hàng trong lúc app mở, đọc lại sau 60 giây
-src/zalo.ts          openChat, followOA, saveImageToGallery (lưu ảnh mã QR)
+src/zalo.ts          openChat, followOA, saveImageToGallery (lưu ảnh mã QR), openShareSheet (chia sẻ món)
+src/chia-se.ts       logic thuần của chia sẻ món: đường dẫn /mon/<mã>, đọc lại mã khi mở từ tin chia sẻ, nội dung tin
 src/tra-truoc.ts     logic thuần của trả trước (không React, không Zalo): thân đơn, mã gửi, gửi / đọc đơn qua fetch có hết giờ, màn theo trạng thái, giờ VN, giữ đơn vừa đặt trên máy
 src/may-chu-don.ts   địa chỉ máy chủ đơn (VITE_DIA_CHI_MAY_CHU_DON thắng cau-hinh.ts), TRA_TRUOC, fetch thật, localStorage
 src/anh-qr.ts        vẽ mã QR từ chuỗi VietQR máy chủ gửi (qrcode 1.5.4)
@@ -69,6 +70,7 @@ dua-len-zalo.cmd     cho Khánh bấm đúp trên Windows: cài thư viện, đ�
 
 - Gửi đơn: `openChat({ type: "oa", id, message })` của zmp-sdk 2.53.1 (điền sẵn tin từ SDK 2.20.0); khách vẫn tự bấm Gửi. Quan tâm OA: `followOA({ id })`. Quyền 44 (mở chat) và 56 (yêu cầu theo dõi OA) đã cấp mặc định.
 - Trả trước (khi có máy chủ đơn, `TRA_TRUOC` của `src/may-chu-don.ts`): `POST /api/don` rồi màn `/tra-tien` hỏi `GET /api/don/<mã>?khoa=` (4 giây khi chờ tiền, 15 giây sau đó, ngay khi khách quay lại app). Mã QR vẽ trong app từ `thanhToan.chuoiQr` (không tải ảnh `qr.svg` của máy chủ: khỏi khai thêm tên miền ảnh, và có PNG để `saveImageToGallery`). Chép bằng `navigator.clipboard` (zmp-sdk 2.53.1 không có lệnh chép). Mất mạng, hết giờ, trả lời lạ: "không rõ" — không bao giờ báo đã ghi hay đã trả; gửi lại cùng mã gửi. `saveImageToGallery` có cần khai quyền ở Mini App Center không: chưa thử trên Zalo thật.
+- Chia sẻ món (Khánh chọn 09/11/2026, ý từ mẫu zaui-fashion của Zalo, mã viết mới): nút "Chia sẻ" trên thẻ phần thịt, chỉ hiện trong Zalo. `openShareSheet({ type: "zmp_deep_link" })` với đường dẫn `/mon/<mã>` (route trong `ung-dung.tsx`, mở trang chủ, cuộn tới và viền đậm phần đó); ảnh xem trước là ảnh chia sẻ của website `https://beeftown.vn/thuong-hieu/chia-se-1200x630.png` (chưa có ảnh từng phần thịt). Bạn bè mở tin có đúng phần thịt không và ảnh có hiện không: chưa thử trên Zalo thật.
 - Nhận biết đang ở trong Zalo: `/zalo/i.test(navigator.userAgent)`.
 - Router: `ZMPRouter` của zmp-ui đặt basename `/zapps/${window.APP_ID}` ở bản production.
 - Không dùng `Icon` và `Snackbar` của zmp-ui vì chúng tải phông từ h5.zadn.vn. Biểu tượng vẽ SVG, thông báo tự làm.

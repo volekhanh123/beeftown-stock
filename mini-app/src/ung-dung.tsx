@@ -18,6 +18,7 @@ export default function UngDung() {
             <ZMPRouter>
               <AnimationRoutes>
                 <Route path="/" element={<TrangChu />} />
+                <Route path="/mon/:ma" element={<TrangChu />} />
                 <Route path="/don-hang" element={<DonHang />} />
                 <Route path="/da-gui" element={<DaGui />} />
                 <Route path="/tra-tien" element={<TraTien />} />

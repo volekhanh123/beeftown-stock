@@ -1,5 +1,7 @@
 // Kiểm tra logic đơn hàng: npm run kiem-tra (cần Node 22.6 trở lên).
 import assert from "node:assert/strict";
+import { ANH_CHIA_SE, duongMon, monTuDuong, noiDungChiaSe } from "../src/chia-se.ts";
+import { SAN_PHAM } from "../src/san-pham.ts";
 import { docConHang, trangThaiPhan, type HamFetch } from "../src/con-hang.ts";
 import { CAU_HINH, CAU_HINH_GIO, CAU_HINH_GIO_GIAO } from "../src/cau-hinh.ts";
 import {
@@ -509,6 +511,30 @@ kiem("trả trước: đơn vừa đặt giữ trên máy 2 ngày, không tên, 
   luuDonDaDat(hong, don);
   assert.equal(docDonDaDat(hong, luc), null);
   assert.equal(docDonDaDat(null, luc), null);
+});
+
+kiem("chia sẻ món: đường dẫn /mon/<mã> mở đúng phần thịt; chuỗi hỏi ?mon= cũng được; mã lạ, đường khác thì không", () => {
+  const ribeye = SAN_PHAM.find((sp) => sp.ma === "ribeye-with-cap")!;
+  assert.equal(duongMon("ribeye-with-cap"), "/mon/ribeye-with-cap");
+  assert.equal(monTuDuong(SAN_PHAM, "/mon/ribeye-with-cap"), ribeye);
+  assert.equal(monTuDuong(SAN_PHAM, "/zapps/2858300068641327950/mon/ribeye-with-cap/"), ribeye);
+  assert.equal(monTuDuong(SAN_PHAM, "/", "?mon=ribeye-with-cap&env=TESTING"), ribeye);
+  for (const [duong, hoi] of [["/mon/khong-co", ""], ["/", "?mon=%E0%A4%A"], ["/", ""], ["/don-hang", "?x=1"], ["/mon/", ""], ["/mon/%", ""]]) {
+    assert.equal(monTuDuong(SAN_PHAM, duong, hoi), null, `${duong}${hoi}`);
+  }
+  for (const sp of SAN_PHAM) assert.equal(monTuDuong(SAN_PHAM, duongMon(sp.ma)), sp, sp.ma);
+});
+
+kiem("chia sẻ món: tin có tên phần thịt, câu mô tả, ảnh công khai của Beeftown, đường mở đúng phần; không nhắc giá", () => {
+  for (const sp of SAN_PHAM) {
+    const n = noiDungChiaSe(sp);
+    assert.equal(n.title, `${sp.ten} · Beeftown`);
+    assert.ok(n.description.startsWith(sp.moTa) && n.description.includes(`~${sp.soGamKhay} g`), n.description);
+    assert.ok(!/\d{2,3}\.\d{3}|giá|đ\b/i.test(n.description), `không nhắc giá (giá đang là giá thử): ${n.description}`);
+    assert.equal(n.thumbnail, ANH_CHIA_SE);
+    assert.equal(n.path, duongMon(sp.ma));
+  }
+  assert.match(ANH_CHIA_SE, /^https:\/\/beeftown\.vn\/.+\.png$/);
 });
 
 console.log(`Đạt ${dat}/${dat} kiểm tra.`);
