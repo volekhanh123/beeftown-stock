@@ -109,6 +109,8 @@ export default function TraTien() {
   const buoc = don ? buocTraTien(don) : null;
   const so = don?.soTrongNgay ?? donDaDat.soTrongNgay;
   const lucNhan = don?.ngayNhan && don.gioNhan ? `${don.gioNhan}, ${ngayDayDu(don.ngayNhan)}` : null;
+  // Đơn thử cũ (trước 09/11/2026) là nhận tại quán: giữ chữ của cách nhận thật.
+  const taiQuan = don?.cachNhan === "tai-quan";
 
   return (
     <Page className="trang tra-tien" hideScrollbar>
@@ -117,7 +119,7 @@ export default function TraTien() {
       {don && (
         <div className="tom-tat-don">
           <b>Đơn #{so}</b>
-          {lucNhan && <span>Giao tận nơi lúc {lucNhan}</span>}
+          {lucNhan && <span>{taiQuan ? "Nhận tại quán lúc" : "Giờ muốn nhận"} {lucNhan}</span>}
           <span>Tổng tiền {dinhDangTien(don.tongTien)}</span>
         </div>
       )}
@@ -174,17 +176,19 @@ export default function TraTien() {
           <h2>Quán đã nhận đủ tiền</h2>
           <p>
             {buoc.trangThai === "da_thanh_toan" &&
-              `Đơn #${so} đang chờ quầy soạn.${lucNhan ? ` Quán giao tới bạn lúc ${lucNhan}.` : ""}`}
+              `Đơn #${so} đang chờ quầy soạn.${lucNhan ? (taiQuan ? ` Bạn ghé lấy lúc ${lucNhan}.` : ` Giờ muốn nhận: ${lucNhan}.`) : ""}`}
             {buoc.trangThai === "dang_soan" && `Quầy đang soạn khay cho đơn #${so}.`}
-            {buoc.trangThai === "cho_lay" && `Khay của đơn #${so} đã soạn xong, quán đang giao tới bạn.`}
-            {buoc.trangThai === "da_giao" && `Đơn #${so} đã giao tới bạn. Cảm ơn bạn đã mua ở Beeftown.`}
+            {buoc.trangThai === "cho_lay" &&
+              (taiQuan ? `Khay của đơn #${so} đã sẵn sàng. Mời bạn ghé quán lấy.` : `Khay của đơn #${so} đã soạn xong, chờ giao.`)}
+            {buoc.trangThai === "da_giao" &&
+              (taiQuan ? `Bạn đã lấy khay của đơn #${so}. Cảm ơn bạn đã mua ở Beeftown.` : `Đơn #${so} đã giao. Cảm ơn bạn đã mua ở Beeftown.`)}
           </p>
           {buoc.thua > 0 && (
             <p className="bao-them">Bạn chuyển dư {dinhDangTien(buoc.thua)}. Quán sẽ hoàn phần dư cho bạn.</p>
           )}
           {buoc.trangThai !== "da_giao" && (
             <p className="ghi-chu">
-              Tài xế gọi số điện thoại bạn để lại khi giao. Cần đổi giờ hay địa chỉ giao, bạn chat với Beeftown.
+              {taiQuan ? `Tới quầy, bạn đọc tên người nhận hoặc số đơn #${so}.` : "Cần đổi giờ hay địa chỉ giao, bạn chat với Beeftown."}
             </p>
           )}
           <div className="cot-nut">

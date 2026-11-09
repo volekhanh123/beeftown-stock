@@ -1,6 +1,7 @@
 // Kiểm tra logic đơn hàng: npm run kiem-tra (cần Node 22.6 trở lên).
 import assert from "node:assert/strict";
 import { docConHang, trangThaiPhan, type HamFetch } from "../src/con-hang.ts";
+import { CAU_HINH, CAU_HINH_GIO, CAU_HINH_GIO_GIAO } from "../src/cau-hinh.ts";
 import {
   GIU_DON_MS,
   KHOA_LUU,
@@ -70,6 +71,16 @@ kiem("1 ngày có 17 mốc giờ: 7 mốc trưa, 10 mốc tối", () => {
 kiem("trong ngày: giờ sớm nhất là bây giờ + 60 phút", () => {
   const gio = cacGioChon("2026-11-13", new Date(2026, 10, 13, 16, 10), cfg);
   assert.equal(gio[0], "17:30");
+});
+
+kiem("giao tận nơi: giờ sớm nhất thêm thời gian đi đường (CAU_HINH_GIO_GIAO, cùng bộ máy chủ đơn kiểm)", () => {
+  assert.equal(CAU_HINH_GIO_GIAO.soPhutChuanBi, CAU_HINH_GIO.soPhutChuanBi + CAU_HINH.soPhutDiDuong);
+  assert.ok(CAU_HINH.soPhutDiDuong > 0);
+  const luc = new Date(2026, 10, 13, 16, 10);
+  const nhanQuan = cacGioChon("2026-11-13", luc, { ...CAU_HINH_GIO, ngayBatDauNhanHang: "2026-11-01" });
+  const giao = cacGioChon("2026-11-13", luc, { ...CAU_HINH_GIO_GIAO, ngayBatDauNhanHang: "2026-11-01" });
+  assert.equal(nhanQuan[0], "17:30");
+  assert.equal(giao[0], "18:00");
 });
 
 kiem("sau 20:00 thì hôm nay hết giờ, ngày đầu là ngày mai", () => {

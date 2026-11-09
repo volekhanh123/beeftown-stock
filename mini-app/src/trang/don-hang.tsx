@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Page, useNavigate } from "zmp-ui";
-import { CAU_HINH, CAU_HINH_GIO } from "../cau-hinh";
+import { CAU_HINH, CAU_HINH_GIO, CAU_HINH_GIO_GIAO } from "../cau-hinh";
 import { cacGioChon, cacNgayChon, dinhDangTien, kiemTraDon, taoNoiDungDon, tongTienThit } from "../don";
 import { useGioHang } from "../gio-hang";
 import { SAN_PHAM, dongTuGio } from "../san-pham";
@@ -24,8 +24,10 @@ export default function DonHang() {
   const [loiGui, datLoiGui] = useState<string[]>([]);
 
   const now = useMemo(() => new Date(), []);
-  const cacNgay = useMemo(() => cacNgayChon(now, CAU_HINH_GIO), [now]);
-  const cacGio = useMemo(() => (nhan.ngay ? cacGioChon(nhan.ngay, now, CAU_HINH_GIO) : []), [nhan.ngay, now]);
+  // Giao tận nơi: giờ sớm nhất thêm thời gian đi đường (CAU_HINH_GIO_GIAO, cùng bộ máy chủ đơn kiểm).
+  const cfgGio = nhan.cachNhan === "giao-hang" ? CAU_HINH_GIO_GIAO : CAU_HINH_GIO;
+  const cacNgay = useMemo(() => cacNgayChon(now, cfgGio), [now, cfgGio]);
+  const cacGio = useMemo(() => (nhan.ngay ? cacGioChon(nhan.ngay, now, cfgGio) : []), [nhan.ngay, now, cfgGio]);
 
   useEffect(() => {
     if (!cacNgay.some((n) => n.giaTri === nhan.ngay)) suaNhan({ ngay: cacNgay[0]?.giaTri ?? "", gio: "" });
@@ -290,7 +292,7 @@ export default function DonHang() {
             onChange={(e) => suaNhan({ dienThoai: e.target.value })}
           />
         </label>
-        {TRA_TRUOC && <p className="ghi-chu">Tài xế gọi số này khi giao.</p>}
+        {TRA_TRUOC && <p className="ghi-chu">Quán liên hệ số này khi cần về đơn và giao hàng.</p>}
       </Muc>
 
       <Muc tieuDe="Thanh toán">

@@ -51,6 +51,16 @@ export const BUOC_QUAY: ReadonlyArray<{ tu: TrangThai; den: TrangThai; vi: strin
   { tu: 'can_hoan_tien', den: 'da_hoan_tien', vi: 'Đã hoàn tiền cho khách', en: 'Refund sent', chinh: true },
 ];
 
+/** Đơn nhận tại quán cũ (sổ thử trước 09/11/2026): nhãn và chữ nút của hai bước cuối theo cách nhận thật. */
+export const NHAN_TAI_QUAN: Readonly<Partial<Record<TrangThai, { vi: string; en: string }>>> = {
+  cho_lay: { vi: 'Chờ khách lấy', en: 'Ready for pickup' },
+  da_giao: { vi: 'Khách đã lấy', en: 'Picked up' },
+};
+export const NUT_TAI_QUAN: Readonly<Partial<Record<TrangThai, { vi: string; en: string }>>> = {
+  cho_lay: { vi: 'Soạn xong, chờ khách lấy', en: 'Ready for pickup' },
+  da_giao: { vi: 'Khách đã lấy', en: 'Picked up' },
+};
+
 export const duocBam = (tu: TrangThai, den: TrangThai) => BUOC_QUAY.some(b => b.tu === tu && b.den === den);
 
 /** Trạng thái quầy còn phải làm — màn hình quầy xếp theo thứ tự này. */
