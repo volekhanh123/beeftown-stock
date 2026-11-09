@@ -29,8 +29,12 @@ laptop ở công ty, khi mở bán chuyển lên máy chủ thuê ở Việt Nam
 
 Bộ cài lên máy chủ thuê ở Việt Nam: mục "Đưa lên máy chủ thuê" (đợt 4a).
 
-Chưa có: sao lưu, đèn trong `/noi-bo` (đợt 4). Mini App trên Zalo **chưa** gửi đơn lên máy chủ này:
-địa chỉ còn để trống cho tới khi máy chủ chạy HTTPS — khách vẫn gửi tin vào chat OA.
+Đang chạy từ 09/11/2026 trên máy chủ BizFly Cloud ở TP.HCM (Basic, 1 vCPU, 1 GB RAM, 20 GB, 134.000 đ/tháng gồm sao
+lưu ổ đĩa của BizFly), địa chỉ `https://don.beeftown.vn`. Mini App điền địa chỉ này từ cùng ngày; bản trên Zalo gửi đơn
+lên đây từ lần đưa bản thử kế tiếp. Chưa có tài khoản VietinBank và SePay nên khách chưa trả tiền được trong app: app
+ghi đơn, báo "Quán chưa mở nhận chuyển khoản trong app" và mời khách chat với quán.
+
+Chưa có: sao lưu sổ đơn ra ngoài máy, đèn trong `/noi-bo` (đợt 4).
 
 ## Chạy thử trên laptop
 
@@ -77,7 +81,9 @@ thứ bằng một lệnh: Node 24, Caddy (tự lấy chứng chỉ HTTPS), dị
 ### 1. Thuê máy (một lần)
 
 - Hệ điều hành **Ubuntu 24.04 LTS**, trung tâm dữ liệu **ở Việt Nam** (Hà Nội hoặc TP.HCM — hỏi nhà cung cấp cho chắc).
-- 1 vCPU, 1 GB RAM, 20 GB SSD, một IPv4 riêng là đủ (khoảng 95.000–120.000 đ/tháng chưa VAT).
+- 1 vCPU, 1 GB RAM, 20 GB, một IPv4 riêng là đủ. Khánh thuê 09/11/2026: BizFly Cloud, vùng Hồ Chí Minh, Billing plan
+  **Subscription** (không chọn Spot Instance: máy có thể bị tắt), loại **Basic**, 1 vCPU / 1 GB / 20 GB, Ubuntu,
+  bật Backup schedule — 134.000 đ/tháng. SSH key để trống: BizFly gửi mật khẩu root vào email.
 - Nhà cung cấp gửi lại: **địa chỉ IP** và **mật khẩu root** (hoặc tài khoản `ubuntu` có sudo).
 - Trang quản lý của nhà cung cấp có tường lửa riêng thì mở cổng 22, 80, 443.
 
@@ -175,8 +181,9 @@ báo Claude Code sửa danh sách trong `cai-dat/Caddyfile.mau`.
 
 ### 7. Mini App dùng máy chủ
 
-Sau khi PR màn trả tiền (đợt 2b) gộp: điền `diaChiMayChuDon: 'https://don.beeftown.vn'` trong
-`mini-app/src/cau-hinh.ts`; ở Mini App Center → **Cấu hình API Domains** thêm `https://don.beeftown.vn`; đưa bản thử lên.
+`diaChiMayChuDon: "https://don.beeftown.vn"` trong `mini-app/src/cau-hinh.ts` (điền 09/11/2026). Ở Mini App Center →
+**Cấu hình API Domains** thêm `https://don.beeftown.vn`, rồi đưa bản thử lên (`mini-app/dua-len-zalo.cmd`). Thiếu bước
+khai tên miền thì Zalo chặn và khách không gửi được đơn.
 
 ### Trên máy thuê có gì
 

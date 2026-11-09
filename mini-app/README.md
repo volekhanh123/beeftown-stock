@@ -12,7 +12,7 @@ Có 5 màn hình (màn Trả tiền chỉ có khi đã khai máy chủ đơn, xe
 4. **Thông tin:** cách mua, cách tính tiền, thịt mát và đông lạnh, địa chỉ, liên hệ, thông tin của khách, đơn vị bán hàng.
 5. **Trả tiền** (khi đã khai máy chủ đơn): mã QR chuyển khoản đúng số tiền, chép số tài khoản / số tiền / nội dung, app tự cập nhật khi quán nhận đủ tiền.
 
-Khi chưa khai máy chủ đơn (`diaChiMayChuDon` trong `src/cau-hinh.ts` để trống, như hiện nay): app không có máy chủ, không lưu dữ liệu của khách và không thu tiền trong app. Đơn tới OA dưới dạng tin nhắn. Nhân viên trả lời trong chat OA: xác nhận đơn và tổng tiền (đơn giao tận nơi cộng phí giao), gửi mã QR chuyển khoản hoặc hẹn trả khi nhận.
+Khi chưa khai máy chủ đơn (`diaChiMayChuDon` trong `src/cau-hinh.ts` để trống — tới 09/11/2026; từ đó là `https://don.beeftown.vn`, mục "Đặt và trả tiền trước"): app không có máy chủ, không lưu dữ liệu của khách và không thu tiền trong app. Đơn tới OA dưới dạng tin nhắn. Nhân viên trả lời trong chat OA: xác nhận đơn và tổng tiền (đơn giao tận nơi cộng phí giao), gửi mã QR chuyển khoản hoặc hẹn trả khi nhận.
 
 Tin nhắn mẫu:
 
