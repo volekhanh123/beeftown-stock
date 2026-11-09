@@ -13,6 +13,8 @@
  *                      tài khoản nhận chuyển khoản (VietinBank: BIN 970415). Đặt đủ cả bốn, hoặc không đặt cái nào
  *   SEPAY_KHOA_KY      khóa HMAC-SHA256 của webhook SePay (ít nhất 16 ký tự)
  *   CHO_TRA_GIA_THU=1  cho hiện mã trả tiền khi bảng giá còn là giá thử (chỉ để thử chuyển khoản thật số nhỏ)
+ *   CHE_DO_DEMO=1      chế độ demo: mã QR dùng tài khoản giả, quầy có nút giả lập tiền về. Không chạy cùng tài khoản
+ *                      nhận thật hay SEPAY_KHOA_KY
  *   ZALO_APP_ID, ZALO_SECRET_KEY, ZNS_MAU_DA_NHAN, ZNS_MAU_DANG_GIAO
  *                      tin ZNS báo khách (đợt 3). Đặt đủ cả bốn, hoặc không đặt cái nào (chưa gửi ZNS)
  *   ZALO_CHE_DO        "thu" (mặc định: chỉ quản trị viên OA nhận) hoặc "that"
@@ -21,7 +23,7 @@
 import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { SoDon } from './so-don.ts';
-import { ipKhach, taoXuLy } from './may-chu.ts';
+import { TAI_KHOAN_DEMO, ipKhach, taoXuLy } from './may-chu.ts';
 import { laTaiKhoanNhan } from './viet-qr.ts';
 import { dauToken, docCauHinhZns, maHoaToken } from './zns.ts';
 import { guiZnsMotLuot } from './gui-zns.ts';
@@ -56,6 +58,20 @@ if (khoaSepay && !coTaiKhoan) {
   process.exit(1);
 }
 
+// Chế độ demo (Khánh 09/11/2026: thử trọn luồng khi chưa có tài khoản ngân hàng): tiền về là giả lập, nên không bao
+// giờ chạy cùng tài khoản nhận thật hay khóa SePay — kẻo khách chuyển tiền thật vào mà quầy lại bấm "giả lập".
+const cheDoDemo = (env.CHE_DO_DEMO ?? '').trim();
+if (cheDoDemo && cheDoDemo !== '1') {
+  console.error('CHE_DO_DEMO chỉ nhận giá trị 1 (bật). Muốn tắt thì xóa dòng đó hoặc thêm # ở đầu dòng.');
+  process.exit(1);
+}
+const demo = cheDoDemo === '1';
+if (demo && (coTaiKhoan || khoaSepay)) {
+  console.error('CHE_DO_DEMO=1 không chạy cùng tài khoản nhận thật (NGAN_HANG_BIN, TEN_NGAN_HANG, SO_TAI_KHOAN, TEN_TAI_KHOAN) hay SEPAY_KHOA_KY. '
+    + 'Đã có tài khoản thật thì xóa dòng CHE_DO_DEMO.');
+  process.exit(1);
+}
+
 const zns = docCauHinhZns({
   ZALO_APP_ID: env.ZALO_APP_ID, ZALO_SECRET_KEY: env.ZALO_SECRET_KEY, ZNS_MAU_DA_NHAN: env.ZNS_MAU_DA_NHAN,
   ZNS_MAU_DANG_GIAO: env.ZNS_MAU_DANG_GIAO, ZALO_CHE_DO: env.ZALO_CHE_DO,
@@ -76,7 +92,8 @@ if (zns.cauHinh && tokenMoi && so.gieoTokenZalo(maHoaToken(tokenMoi, zns.cauHinh
 }
 const xuLy = taoXuLy({
   so, matKhauQuay, khoaSucKhoe: env.KHOA_SUC_KHOE || undefined, cookieAnToan: env.KHONG_HTTPS !== '1',
-  taiKhoan: coTaiKhoan ? taiKhoan : undefined, khoaSepay: khoaSepay || undefined, choTraGiaThu: env.CHO_TRA_GIA_THU === '1',
+  taiKhoan: demo ? TAI_KHOAN_DEMO : coTaiKhoan ? taiKhoan : undefined, khoaSepay: khoaSepay || undefined,
+  choTraGiaThu: env.CHO_TRA_GIA_THU === '1', demo,
 });
 const tinProxy = env.TIN_PROXY === '1';
 
@@ -111,7 +128,8 @@ const hetHan = setInterval(() => {
 }, 60_000);
 
 console.log(`Máy chủ đơn đang nghe http://${diaChi}:${mayChu.port} · sổ đơn ${join(thuMuc, 'don.sqlite')}`);
-console.log(coTaiKhoan ? `Nhận chuyển khoản vào ${taiKhoan.tenNganHang} …${taiKhoan.soTaiKhoan.slice(-4)}` : 'Chưa có tài khoản nhận: đơn chưa có mã trả tiền.');
+console.log(demo ? 'CHẾ ĐỘ DEMO: mã QR dùng tài khoản giả, quầy có nút giả lập tiền về — không có tiền thật. Tắt trước khi mở bán.'
+  : coTaiKhoan ? `Nhận chuyển khoản vào ${taiKhoan.tenNganHang} …${taiKhoan.soTaiKhoan.slice(-4)}` : 'Chưa có tài khoản nhận: đơn chưa có mã trả tiền.');
 console.log(khoaSepay ? 'SePay: đã có khóa ký.' : 'SePay: chưa có khóa ký — /sepay/tien-ve trả 503.');
 console.log(!zns.cauHinh ? 'ZNS: chưa cấu hình — không gửi tin Zalo.'
   : `ZNS: chế độ ${zns.cauHinh.cheDo === 'thu' ? 'thử (chỉ quản trị viên OA nhận)' : 'thật'}, token ${so.docTokenZalo()?.refreshMa ? 'đã có' : 'CHƯA có — đặt ZALO_REFRESH_TOKEN_MOI'}.`);

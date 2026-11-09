@@ -67,6 +67,14 @@ export const CHU = {
     vi: 'Có mã đơn trong nội dung nhưng không có đơn nào khớp. Xem lần chuyển này trong app ngân hàng theo mã giao dịch.',
     en: 'The transfer note has an order code but no order matches. Look up this transfer in the banking app by its reference.',
   },
+  demoDauTrang: {
+    vi: 'Chế độ demo: mã QR dùng tài khoản giả, tiền về là giả lập — không có tiền thật. Tắt chế độ này trước khi mở bán.',
+    en: 'Demo mode: QR codes use a fake account and payments are simulated — no real money. Turn this mode off before opening sales.',
+  },
+  demoChoChuyenKhoan: { vi: 'Đơn chờ khách chuyển khoản (demo)', en: 'Orders awaiting transfer (demo)' },
+  demoKhongCoDonCho: { vi: 'Không có đơn nào đang chờ chuyển khoản.', en: 'No orders are awaiting transfer.' },
+  demoGiaLap: { vi: 'Giả lập khách đã chuyển khoản', en: 'Simulate customer payment' },
+  demoTienGiaLap: { vi: 'Tiền giả lập (demo)', en: 'Simulated payment (demo)' },
 } as const satisfies Record<string, { vi: string; en: string }>;
 
 /** Câu báo sau khi bấm một bước (mã trong ?bao= của trang danh sách). */
@@ -82,6 +90,15 @@ export const CAU_BAO = {
   tien_ve_da_xem: { vi: 'Đã ghi: lần chuyển này đã xử lý xong.', en: 'Saved: this transfer is marked as handled.', loi: false },
   tien_ve_xem_roi: { vi: 'Lần chuyển này đã được đánh dấu xử lý xong từ trước.', en: 'This transfer was already marked as handled.', loi: false },
   tien_ve_khong_co: { vi: 'Không thấy lần chuyển này trong mục cần xem.', en: 'This transfer is not in the list to check.', loi: true },
+  demo_da_tra: {
+    vi: 'Đã giả lập: khách chuyển đủ tiền cho đơn #{so}. Đơn đã vào “Còn phải làm”.',
+    en: 'Simulated: the customer paid order #{so} in full. The order is now in “To do”.', loi: false,
+  },
+  demo_da_tra_roi: { vi: 'Đơn #{so} đã có tiền giả lập từ trước.', en: 'Order #{so} already has a simulated payment.', loi: false },
+  demo_khong_cho: {
+    vi: 'Đơn này không còn chờ chuyển khoản (đã có tiền, đã hết hạn hoặc không có).',
+    en: 'This order is no longer awaiting transfer (already paid, expired, or not found).', loi: true,
+  },
 } as const satisfies Record<string, { vi: string; en: string; loi: boolean }>;
 export type MaCauBao = keyof typeof CAU_BAO;
 /** Mã trong ?bao= là một câu có thật — không lấy "constructor", "__proto__" của Object. */
@@ -141,7 +158,7 @@ export function ngayTheoTieng(ngay: string, nn: NgonNgu): string {
 const nhanTrangThai = (tt: TrangThai, nn: NgonNgu, taiQuan = false) =>
   `<span class="qd-nhan ${NHAN[tt].kieu}">${thoat((taiQuan && NHAN_TAI_QUAN[tt]) ? NHAN_TAI_QUAN[tt]![nn] : NHAN[tt][nn])}</span>`;
 
-function theDon(don: DonDayDu, nn: NgonNgu, coNut: boolean, baoHtml = '', daNhan = 0): string {
+function theDon(don: DonDayDu, nn: NgonNgu, coNut: boolean, baoHtml = '', daNhan = 0, tienDemo = false): string {
   const c = (k: keyof typeof CHU) => thoat(CHU[k][nn]);
   const dong = don.dong.map(d => `<li>${thoat(d.ten)} · ${d.baoQuan === 'dong-lanh' ? c('dongLanh') : c('mat')}, ~${d.soGamKhay} g · <b>${d.soKhay} ${c('khay')}</b></li>`).join('');
   const nut = !coNut ? '' : BUOC_QUAY.filter(b => b.tu === don.trangThai).map(b => b.den === 'can_hoan_tien'
@@ -156,7 +173,7 @@ function theDon(don: DonDayDu, nn: NgonNgu, coNut: boolean, baoHtml = '', daNhan
   <p>${thoat(don.ten)} · <a href="tel:${thoat(don.dienThoai)}">${thoat(hienSoDienThoai(don.dienThoai))}</a></p>
   ${don.cachNhan === 'giao-hang' ? `<p class="qd-dia-chi">${c('diaChiGiao')}: ${thoat(don.diaChi)}</p>` : ''}
   <ul>${dong}</ul>
-  <p class="qd-tong">${tong}: ${thoat(dinhDangTien(don.tongTien))}${don.giaThu ? ` <span class="qd-nhan k3">${c('giaThu')}</span>` : ''}</p>
+  <p class="qd-tong">${tong}: ${thoat(dinhDangTien(don.tongTien))}${don.giaThu ? ` <span class="qd-nhan k3">${c('giaThu')}</span>` : ''}${tienDemo ? ` <span class="qd-nhan k3">${c('demoTienGiaLap')}</span>` : ''}</p>
   ${daNhan > 0 ? `<p>${c('daNhanChuyenKhoan')}: ${thoat(dinhDangTien(daNhan))}</p>` : ''}
   ${don.ghiChu ? `<p class="qd-ghi-chu">${c('ghiChu')}: ${thoat(don.ghiChu)}</p>` : ''}
   ${baoHtml}
@@ -193,6 +210,10 @@ export function trangDanhSach(
   bao: { ma: MaCauBao; maDon: string; so: number | null; den: TrangThai | null } | null,
   tienVe: TienVeCanXem[] = [],
   tienDaNhan: (maDon: string) => number = () => 0,
+  /** Đơn có tiền giả lập của chế độ demo — gắn nhãn kể cả khi đã tắt demo, kẻo quầy tưởng đơn đã trả tiền thật. */
+  daGiaLap: Set<string> = new Set(),
+  /** Chế độ demo đang bật: đơn chờ chuyển khoản (có nút giả lập). Không có: màn quầy như thường. */
+  choTienDemo?: DonDayDu[],
 ): string {
   const c = (k: keyof typeof CHU) => thoat(CHU[k][nn]);
   const cau = bao ? CAU_BAO[bao.ma] : undefined;
@@ -202,12 +223,19 @@ export function trangDanhSach(
   const baoHtml = !chu ? '' : `<p class="qd-bao${cau!.loi ? ' loi' : ''}" role="status">${thoat(chu)}</p>`;
   // Thẻ vừa bấm còn trong "Còn phải làm" thì câu báo nằm trong thẻ; đơn đã khép (vào mục đã gập) thì nằm đầu trang.
   const trongThe = !!bao && ds.conViec.some(d => d.ma === bao.maDon);
-  return khung(nn, `${trongThe ? '' : baoHtml}
+  const laDemo = (ma: string) => daGiaLap.has(ma);
+  const nutGiaLap = (d: DonDayDu) => `<div class="qd-hang-nut"><form method="post" action="/quay/demo/tien-ve">
+    <input type="hidden" name="ma" value="${thoat(d.ma)}"><button class="qd-nut chinh" type="submit">${c('demoGiaLap')}</button></form></div>`;
+  const phanDemo = !choTienDemo ? '' : `<p class="qd-bao loi" role="note">${c('demoDauTrang')}</p>
+<h2 id="cho-chuyen-khoan">${c('demoChoChuyenKhoan')} (${choTienDemo.length})</h2>
+${choTienDemo.length ? choTienDemo.map(d => theDon(d, nn, false, nutGiaLap(d))).join('\n') : `<p class="qd-trong">${c('demoKhongCoDonCho')}</p>`}`;
+  return khung(nn, `${phanDemo}
+${trongThe ? '' : baoHtml}
 ${tienVe.length ? `<h2 id="tien-ve">${c('tienVeCanXem')} (${tienVe.length})</h2>\n${tienVe.map(t => theTienVe(t, nn)).join('\n')}` : ''}
 <h2>${c('conViec')} (${ds.conViec.length})</h2>
-${ds.conViec.length ? ds.conViec.map(d => theDon(d, nn, true, trongThe && d.ma === bao!.maDon ? baoHtml : '', tienDaNhan(d.ma))).join('\n') : `<p class="qd-trong">${c('khongCoViec')}</p>`}
+${ds.conViec.length ? ds.conViec.map(d => theDon(d, nn, true, trongThe && d.ma === bao!.maDon ? baoHtml : '', tienDaNhan(d.ma), laDemo(d.ma))).join('\n') : `<p class="qd-trong">${c('khongCoViec')}</p>`}
 ${ds.xongHomNay.length ? `<details class="qd-xong"><summary>${c('xongHomNay')} (${ds.xongHomNay.length})</summary>
-${ds.xongHomNay.map(d => theDon(d, nn, false)).join('\n')}</details>` : ''}`, { taiLai: true, coDangXuat: true });
+${ds.xongHomNay.map(d => theDon(d, nn, false, '', 0, laDemo(d.ma))).join('\n')}</details>` : ''}`, { taiLai: true, coDangXuat: true });
 }
 
 /** `don` null: không có đơn (coDon false), hoặc đơn không còn hủy được (coDon true) — không in câu "khách đã trả tiền". */

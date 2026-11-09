@@ -17,7 +17,7 @@ import { dauNoiDungGui, dongHoVn, kiemDon, lamSachChu } from '../src/tao-don.ts'
 import { SoDon, PHUT_CHO_THANH_TOAN, type DonDayDu } from '../src/so-don.ts';
 import { BUOC_QUAY, NHAN, TRANG_THAI, duocBam } from '../src/trang-thai.ts';
 import { CAU_BAO, CHU, ngayTheoTieng, thoat } from '../src/man-quay.ts';
-import { GioiHan, cungNguon, ipKhach, taoXuLy } from '../src/may-chu.ts';
+import { GioiHan, TAI_KHOAN_DEMO, cungNguon, idTienVeDemo, ipKhach, taoXuLy } from '../src/may-chu.ts';
 import { createHash, createHmac } from 'node:crypto';
 import { chuoiVietQr, crc16, docTruong, laTaiKhoanNhan, noiDungChuyenKhoan } from '../src/viet-qr.ts';
 import { DA_NHAN, docTinTienVe, kiemChuKy, timMaDon, type TinTienVe } from '../src/sepay.ts';
@@ -1105,6 +1105,125 @@ nhom('20 · ZNS (đợt 3): mỗi đơn mỗi loại một tin, token làm mới
   const tokenLe = chay({ ZALO_REFRESH_TOKEN_MOI: 'abc' });
   ok('main.ts: có ZALO_REFRESH_TOKEN_MOI mà chưa cấu hình ZNS → không mở máy chủ', tokenLe.exitCode === 1
     && tokenLe.stderr.toString().includes('ZALO_APP_ID') && !tokenLe.stderr.toString().includes('abc'));
+}
+
+// =====================================================================================================
+nhom('21 · Chế độ demo (Khánh 09/11/2026): QR tài khoản giả, quầy giả lập tiền về qua cùng đường ghiTienVe');
+{
+  const form = { 'content-type': 'application/x-www-form-urlencoded', 'sec-fetch-site': 'same-origin' };
+  const vaoQuay = async (xuLy: ReturnType<typeof taoXuLy>) => ((await goi(xuLy, '/quay/dang-nhap', { method: 'POST',
+    body: `mat_khau=${encodeURIComponent(MK)}`, headers: form })).headers.get('set-cookie') ?? '').split(';')[0];
+  const bamGiaLap = (xuLy: ReturnType<typeof taoXuLy>, phien: string, ma: string, them: Record<string, string> = {}) =>
+    goi(xuLy, '/quay/demo/tien-ve', { method: 'POST', body: `ma=${encodeURIComponent(ma)}`, headers: { ...form, cookie: phien, ...them } });
+  const soGiaoDich = (so: SoDon) => (so.db.query('select count(*) as n from giao_dich').get() as { n: number }).n;
+
+  // Tắt (mặc định): không có nút, đường giả lập là 404, đơn không đổi.
+  const soThuong = new SoDon(':memory:');
+  const { xuLy: thuong } = taoMay(soThuong);
+  const donThuong = await (await guiDon(thuong, donHopLe())).json() as { ma: string; thanhToan: { lyDo?: string } };
+  const phienThuong = await vaoQuay(thuong);
+  ok('Tắt chế độ demo: đơn chưa có mã trả tiền như cũ', donThuong.thanhToan.lyDo === 'chua_co_tai_khoan');
+  const rTat = await bamGiaLap(thuong, phienThuong, donThuong.ma);
+  ok('Tắt chế độ demo: POST /quay/demo/tien-ve → 404, đơn vẫn chờ, không ghi tiền về',
+    rTat.status === 404 && soThuong.layDon(donThuong.ma)!.trangThai === 'cho_thanh_toan' && soGiaoDich(soThuong) === 0);
+  const trangThuong = await (await goi(thuong, '/quay', { headers: { cookie: phienThuong } })).text();
+  ok('Tắt chế độ demo: màn quầy không có dòng demo, không có nút giả lập',
+    !trangThuong.includes(CHU.demoDauTrang.vi) && !trangThuong.includes('/quay/demo/tien-ve'));
+  ok('Tắt chế độ demo: /suc-khoe báo cheDoDemo false', (await (await goi(thuong, '/suc-khoe')).json() as { cheDoDemo: boolean }).cheDoDemo === false);
+  soThuong.dong();
+
+  // Bật: mã QR theo tài khoản giả, kể cả khi bảng giá còn là giá thử.
+  const so = new SoDon(':memory:');
+  const { xuLy, datGio } = taoMay(so, { demo: true, taiKhoan: TAI_KHOAN_DEMO });
+  const j = await (await guiDon(xuLy, donHopLe())).json() as { ma: string; khoa: string; tongTien: number;
+    thanhToan: { traDuoc: boolean; demo?: boolean; soTaiKhoan: string; tenTaiKhoan: string; chuoiQr: string; soTien: number } };
+  ok('Bật demo: đơn có mã trả tiền đánh dấu demo, đúng số tiền, tài khoản giả toàn số 0, tên ghi "DUNG CHUYEN KHOAN"',
+    j.thanhToan.traDuoc && j.thanhToan.demo === true && j.thanhToan.soTien === j.tongTien && /^0+$/.test(j.thanhToan.soTaiKhoan)
+    && j.thanhToan.tenTaiKhoan.includes('DUNG CHUYEN KHOAN') && crc16(j.thanhToan.chuoiQr.slice(0, -4)) === j.thanhToan.chuoiQr.slice(-4), JSON.stringify(j.thanhToan));
+  ok('Bật demo: vẫn hiện mã khi bảng giá còn là giá thử (không có tiền thật)', !CAU_HINH.giaThu || so.layDon(j.ma)!.giaThu);
+  ok('Bật demo: /suc-khoe báo cheDoDemo true', (await (await goi(xuLy, '/suc-khoe')).json() as { cheDoDemo: boolean }).cheDoDemo === true);
+  const xemMini = await docDonTuMayChu('http://don.beeftown.test', j.ma, j.khoa,
+    ((url: string, init?: RequestInit) => goi(xuLy, url.replace('http://don.beeftown.test', ''), init)) as unknown as HamFetchApi);
+  ok('Mini App đọc đơn của máy chủ demo: thanhToan.demo = true (app ghi "đừng chuyển khoản")',
+    xemMini.loai === 'co' && xemMini.don.thanhToan.traDuoc && xemMini.don.thanhToan.demo === true, JSON.stringify(xemMini).slice(0, 200));
+
+  // Quyền: chưa đăng nhập, khác nguồn → không ghi gì.
+  const khongPhien = await goi(xuLy, '/quay/demo/tien-ve', { method: 'POST', body: `ma=${j.ma}`, headers: form });
+  ok('Chưa đăng nhập quầy: giả lập → về trang đăng nhập, đơn vẫn chờ, không ghi tiền về',
+    khongPhien.status === 303 && so.layDon(j.ma)!.trangThai === 'cho_thanh_toan' && soGiaoDich(so) === 0);
+  const phien = await vaoQuay(xuLy);
+  const khacNguon = await bamGiaLap(xuLy, phien, j.ma, { 'sec-fetch-site': 'cross-site' });
+  ok('Form gửi từ trang khác → 403, không ghi', khacNguon.status === 403 && soGiaoDich(so) === 0);
+
+  const trang = await (await goi(xuLy, '/quay', { headers: { cookie: phien } })).text();
+  ok('Màn quầy demo: dòng cảnh báo đầu trang, mục đơn chờ chuyển khoản có đơn vừa đặt và nút giả lập',
+    trang.includes(thoat(CHU.demoDauTrang.vi)) && trang.includes(thoat(CHU.demoChoChuyenKhoan.vi)) && trang.includes(`value="${j.ma}"`)
+    && trang.includes('action="/quay/demo/tien-ve"'));
+
+  // Bấm giả lập: cùng đường ghiTienVe — đơn sang "đã trả tiền", một dòng giao_dich id âm, tin ZNS "đã nhận đơn" được xếp.
+  const r1 = await bamGiaLap(xuLy, phien, j.ma);
+  const gd = so.db.query('select * from giao_dich').all() as { id_sepay: number; so_tien: number; ma_tham_chieu: string; ket_qua: string; ngay_giao_dich: string }[];
+  ok('Bấm "Giả lập khách đã chuyển khoản" → 303 kèm câu demo_da_tra, đơn "đã trả tiền"',
+    r1.status === 303 && (r1.headers.get('location') ?? '').includes('bao=demo_da_tra&') && so.layDon(j.ma)!.trangThai === 'da_thanh_toan');
+  ok('Ghi đúng một lần tiền về: id âm cố định theo đơn, đủ số tiền, mã tham chiếu DEMO, kết quả "du"',
+    gd.length === 1 && gd[0].id_sepay === idTienVeDemo(j.ma) && gd[0].id_sepay < 0 && gd[0].so_tien === j.tongTien
+    && gd[0].ma_tham_chieu === 'DEMO' && gd[0].ket_qua === 'du', JSON.stringify(gd));
+  ok('Giờ của lần tiền về giả lập là giờ Việt Nam ("2026-11-13 09:00:00")', gd[0]?.ngay_giao_dich === '2026-11-13 09:00:00', gd[0]?.ngay_giao_dich);
+  ok('Tin ZNS "đã nhận đơn" được xếp như tiền thật (thử được ZNS ở chế độ thử)', so.trangThaiTinZns(j.ma, 'da_nhan')?.trangThai === 'cho');
+  const r2 = await bamGiaLap(xuLy, phien, j.ma);
+  ok('Bấm đúp → câu "đã có tiền giả lập từ trước", vẫn một dòng tiền về, tiền đã nhận đúng bằng tổng đơn',
+    (r2.headers.get('location') ?? '').includes('bao=demo_da_tra_roi') && soGiaoDich(so) === 1 && so.tienDaNhan(j.ma) === j.tongTien);
+  ok('Hai máy cùng ghi một id giả lập (gọi thẳng sổ đơn) → lần hai không ghi', !so.ghiTienVe({ idSepay: idTienVeDemo(j.ma), vao: true,
+    soTien: 1, soTaiKhoan: TAI_KHOAN_DEMO.soTaiKhoan, taiKhoanPhu: '', coMaQuan: true, ngayGiaoDich: '2026-11-13 09:00:00', maThamChieu: 'DEMO', maDon: j.ma },
+    TAI_KHOAN_DEMO.soTaiKhoan, LUC_DAT).moi && so.tienDaNhan(j.ma) === j.tongTien);
+  const xemSau = await (await goi(xuLy, `/api/don/${j.ma}?khoa=${j.khoa}`)).json() as { trangThai: string; daNhan: number };
+  ok('Khách xem đơn sau khi giả lập: "đã trả tiền", đã nhận đủ (Mini App chuyển sang "Quán đã nhận đủ tiền")',
+    xemSau.trangThai === 'da_thanh_toan' && xemSau.daNhan === j.tongTien);
+  const trangSau = await (await goi(xuLy, `/quay?bao=demo_da_tra&ma=${j.ma}`, { headers: { cookie: phien } })).text();
+  ok('Màn quầy sau khi giả lập: đơn vào "Còn phải làm" có nhãn "Tiền giả lập (demo)" và câu báo; mục chờ chuyển khoản trống',
+    trangSau.includes(thoat(CHU.demoTienGiaLap.vi)) && trangSau.includes(`#${so.layDon(j.ma)!.soTrongNgay}`)
+    && trangSau.includes(CHU.demoKhongCoDonCho.vi) && trangSau.includes('Đã giả lập'));
+  ok('Quầy làm tiếp như đơn thật: "Bắt đầu soạn" đi được', so.doiTrangThai(j.ma, 'da_thanh_toan', 'dang_soan', LUC_DAT) === 'da_doi');
+  const { xuLy: daTat } = taoMay(so);
+  const phienTat = await vaoQuay(daTat);
+  const trangTat = await (await goi(daTat, '/quay', { headers: { cookie: phienTat } })).text();
+  ok('Tắt demo mà sổ còn đơn có tiền giả: thẻ đơn vẫn mang nhãn "Tiền giả lập (demo)" (quầy không tưởng là tiền thật), không còn nút giả lập',
+    trangTat.includes(thoat(CHU.demoTienGiaLap.vi)) && trangTat.includes(`#${so.layDon(j.ma)!.soTrongNgay}`) && !trangTat.includes('/quay/demo/tien-ve')
+    && !trangTat.includes(thoat(CHU.demoDauTrang.vi)));
+
+  // Đơn không còn chờ: hết hạn, không có → câu báo lỗi, không ghi gì.
+  const het = await (await guiDon(xuLy, donHopLe())).json() as { ma: string };
+  datGio(LUC_DAT + (PHUT_CHO_THANH_TOAN + 1) * 60_000);
+  so.datHetHan(LUC_DAT + (PHUT_CHO_THANH_TOAN + 1) * 60_000);
+  const rHet = await bamGiaLap(xuLy, phien, het.ma);
+  ok('Đơn đã hết hạn → câu demo_khong_cho, không ghi tiền về, đơn vẫn hết hạn',
+    (rHet.headers.get('location') ?? '').includes('bao=demo_khong_cho') && soGiaoDich(so) === 1 && so.layDon(het.ma)!.trangThai === 'het_han');
+  const rKhong = await bamGiaLap(xuLy, phien, 'ZZZZZZZZ');
+  ok('Mã đơn không có → câu demo_khong_cho, không ghi', (rKhong.headers.get('location') ?? '').includes('bao=demo_khong_cho') && soGiaoDich(so) === 1);
+  so.dong();
+
+  // main.ts: không bao giờ chạy demo cùng tài khoản thật hay khóa SePay; giá trị lạ thì báo.
+  const chay = (them: Record<string, string>) => Bun.spawnSync(['bun', 'src/main.ts'], { cwd: path.join(import.meta.dir, '..'),
+    env: { ...process.env, MAT_KHAU_QUAY: MK, CONG: '1', THU_MUC_DU_LIEU: path.join(os.tmpdir(), 'may-chu-don-khong-mo'), ...them } });
+  const voiTk = chay({ CHE_DO_DEMO: '1', NGAN_HANG_BIN: TK.bin, TEN_NGAN_HANG: TK.tenNganHang, SO_TAI_KHOAN: TK.soTaiKhoan, TEN_TAI_KHOAN: TK.tenTaiKhoan });
+  ok('main.ts: CHE_DO_DEMO=1 cùng tài khoản nhận thật → không mở máy chủ, báo rõ', voiTk.exitCode === 1 && voiTk.stderr.toString().includes('CHE_DO_DEMO'));
+  const voiKhoa = chay({ CHE_DO_DEMO: '1', SEPAY_KHOA_KY: KHOA_SEPAY, NGAN_HANG_BIN: TK.bin, TEN_NGAN_HANG: TK.tenNganHang,
+    SO_TAI_KHOAN: TK.soTaiKhoan, TEN_TAI_KHOAN: TK.tenTaiKhoan });
+  ok('main.ts: CHE_DO_DEMO=1 cùng SePay thật → không mở máy chủ', voiKhoa.exitCode === 1 && voiKhoa.stderr.toString().includes('CHE_DO_DEMO'));
+  const la = chay({ CHE_DO_DEMO: 'true' });
+  ok('main.ts: CHE_DO_DEMO giá trị lạ ("true") → không mở máy chủ, nói cách bật / tắt', la.exitCode === 1 && la.stderr.toString().includes('chỉ nhận giá trị 1'));
+  const tam = fs.mkdtempSync(path.join(os.tmpdir(), 'may-chu-don-demo-'));
+  const cong = 20000 + Math.floor(Math.random() * 20000);
+  const p = Bun.spawn(['bun', 'src/main.ts'], { cwd: path.join(import.meta.dir, '..'),
+    env: { ...process.env, MAT_KHAU_QUAY: MK, CONG: String(cong), THU_MUC_DU_LIEU: tam, CHE_DO_DEMO: '1' }, stdout: 'pipe', stderr: 'pipe' });
+  let sk: Response | null = null;
+  for (let i = 0; i < 50 && !sk; i++) { await Bun.sleep(100); sk = await fetch(`http://127.0.0.1:${cong}/suc-khoe`).catch(() => null); }
+  ok('main.ts: CHE_DO_DEMO=1 một mình → máy chủ chạy, /suc-khoe báo chế độ demo',
+    sk?.status === 200 && (await sk.json() as { cheDoDemo: boolean }).cheDoDemo === true);
+  p.kill('SIGTERM');
+  const ra = await new Response(p.stdout).text();
+  ok('main.ts: nhật ký khởi động nói rõ CHẾ ĐỘ DEMO, không có tiền thật', ra.includes('CHẾ ĐỘ DEMO'), ra.slice(0, 300));
+  fs.rmSync(tam, { recursive: true, force: true });
 }
 
 console.log(hong === 0 ? `\nTẤT CẢ ${dat} KIỂM TRA MÁY CHỦ ĐƠN ĐỀU ĐẠT` : `\n${hong} KIỂM TRA HỎNG / ${dat + hong}`);

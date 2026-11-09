@@ -426,15 +426,32 @@ export class SoDon {
     const tu = Date.parse(`${homNay}T00:00:00+07:00`), den = Date.parse(`${congNgay(homNay, 1)}T00:00:00+07:00`);
     const xong = this.db.query(`select * from don where trang_thai in ('da_giao', 'da_hoan_tien')
       and cap_nhat_luc >= ? and cap_nhat_luc < ? order by cap_nhat_luc desc`).all(tu, den) as DongDb[];
-    const ma = [...viec, ...xong].map(h => String(h.ma));
+    const doc = this.docKemDong([...viec, ...xong]);
+    return { conViec: viec.map(doc), xongHomNay: xong.map(doc) };
+  }
+
+  /** Đọc dòng thịt của nhiều đơn bằng một câu; trả hàm dựng DonDayDu cho từng hàng `don`. */
+  private docKemDong(hang: DongDb[]): (h: DongDb) => DonDayDu {
+    const ma = hang.map(h => String(h.ma));
     const dongTheoDon = new Map<string, DongDb[]>(ma.map(m => [m, []]));
     if (ma.length) {
       const tat = this.db.query(`select * from don_dong where ma_don in (${ma.map(() => '?').join(', ')}) order by ma_don, thu_tu`)
         .all(...ma) as DongDb[];
       for (const d of tat) dongTheoDon.get(String(d.ma_don))!.push(d);
     }
-    const doc = (h: DongDb) => this.docDon(h, dongTheoDon.get(String(h.ma)))!;
-    return { conViec: viec.map(doc), xongHomNay: xong.map(doc) };
+    return (h: DongDb) => this.docDon(h, dongTheoDon.get(String(h.ma)))!;
+  }
+
+  /** Chế độ demo: đơn đang chờ khách chuyển khoản, mới nhất trước (màn quầy hiện nút giả lập tiền về). */
+  donChoThanhToan(): DonDayDu[] {
+    const hang = this.db.query("select * from don where trang_thai = 'cho_thanh_toan' order by tao_luc desc limit 50").all() as DongDb[];
+    return hang.map(this.docKemDong(hang));
+  }
+
+  /** Đơn có tiền về giả lập của chế độ demo (id âm, may-chu.ts idTienVeDemo) — màn quầy gắn nhãn DEMO. */
+  donCoTienDemo(): Set<string> {
+    return new Set((this.db.query('select distinct ma_don as m from giao_dich where id_sepay < 0 and ma_don is not null').all() as
+      { m: string }[]).map(r => r.m));
   }
 
   // ---------- Hàng chờ ZNS (gui-zns.ts) ----------

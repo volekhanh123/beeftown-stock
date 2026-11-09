@@ -316,6 +316,15 @@ kiem("trả trước: bắt tên, địa chỉ giao, số điện thoại (mỗi
   ]);
 });
 
+kiem("trả trước: máy chủ ở chế độ demo thì app biết (ghi 'đừng chuyển khoản'); thiếu cờ hay cờ lạ thì không phải demo", () => {
+  const coDemo = docDonTuJson({ ...donMau, thanhToan: { ...thanhToanMau, demo: true } })?.thanhToan;
+  assert.equal(coDemo?.traDuoc && coDemo.demo, true);
+  for (const la of [undefined, "true", 1, false]) {
+    const t = docDonTuJson({ ...donMau, thanhToan: { ...thanhToanMau, demo: la } })?.thanhToan;
+    assert.equal(t?.traDuoc && t.demo, false);
+  }
+});
+
 kiem("trả trước: đọc đơn của máy chủ; thiếu trường, sai kiểu thì null; thanh toán lạ thì tạm lỗi (không hiện mã)", () => {
   assert.equal(docDonTuJson(donMau)?.thanhToan.traDuoc, true);
   assert.equal(docDonTuJson({ ...donMau, daNhan: undefined })?.daNhan, 0);
