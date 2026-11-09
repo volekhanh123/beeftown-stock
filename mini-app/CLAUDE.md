@@ -56,7 +56,7 @@ src/gio-hang.tsx     giỏ hàng trong bộ nhớ; đơn trả trước vừa đ
 src/thong-bao.tsx    thông báo ngắn tự làm
 src/thanh-phan.tsx   đầu trang, nút số khay, thẻ phần thịt, giá, dòng báo giá thử
 src/bieu-tuong.tsx   biểu tượng SVG
-src/trang/           5 màn hình: trang-chu, don-hang, da-gui, thong-tin, tra-tien (chỉ khi có máy chủ đơn)
+src/trang/           6 màn hình: trang-chu, don-hang, da-gui, thong-tin, tra-tien và don-cua-toi (hai màn cuối chỉ khi có máy chủ đơn)
 scripts/kiem-tra-don.ts
 tai-lieu/            biểu tượng 512 × 512, banner 1920 × 1080, 10 ảnh chụp màn hình
 app-config.json      cấu hình Mini App (danh sách file để trống theo mẫu của Zalo, đừng điền tay)
@@ -72,6 +72,7 @@ dua-len-zalo.cmd     cho Khánh bấm đúp trên Windows: cài thư viện, đ�
 - Trả trước (khi có máy chủ đơn, `TRA_TRUOC` của `src/may-chu-don.ts`): `POST /api/don` rồi màn `/tra-tien` hỏi `GET /api/don/<mã>?khoa=` (4 giây khi chờ tiền, 15 giây sau đó, ngay khi khách quay lại app). Mã QR vẽ trong app từ `thanhToan.chuoiQr` (không tải ảnh `qr.svg` của máy chủ: khỏi khai thêm tên miền ảnh, và có PNG để `saveImageToGallery`). Chép bằng `navigator.clipboard` (zmp-sdk 2.53.1 không có lệnh chép). Mất mạng, hết giờ, trả lời lạ: "không rõ" — không bao giờ báo đã ghi hay đã trả; gửi lại cùng mã gửi. `saveImageToGallery` có cần khai quyền ở Mini App Center không: chưa thử trên Zalo thật.
 - Chia sẻ món (Khánh chọn 09/11/2026, ý từ mẫu zaui-fashion của Zalo, mã viết mới): nút "Chia sẻ" trên thẻ phần thịt, chỉ hiện trong Zalo. `openShareSheet({ type: "zmp_deep_link" })` với đường dẫn `/mon/<mã>` (route trong `ung-dung.tsx`, mở trang chủ, cuộn tới và viền đậm phần đó); ảnh xem trước là ảnh chia sẻ của website `https://beeftown.vn/thuong-hieu/chia-se-1200x630.png` (chưa có ảnh từng phần thịt). Bạn bè mở tin có đúng phần thịt không và ảnh có hiện không: chưa thử trên Zalo thật.
 - Quan tâm OA và nút chat (Khánh chọn 09/11/2026, ý từ mẫu zaui-fashion, mã viết mới): màn đặt xong (`da-gui`, `tra-tien` khi đã nhận tiền) hiện khung quan tâm OA do Zalo vẽ (`showOAWidget`, `KhungQuanTamOA` trong `thanh-phan.tsx`); ngoài Zalo hay Zalo báo lỗi thì hiện lại nút "Quan tâm Beeftown trên Zalo" (`followOA`). Nút chat nhỏ (`NutChat`) cạnh "Xem đơn" ở trang chủ và cạnh "Gửi đơn và trả tiền" ở màn đơn hàng, chỉ trong Zalo. Khung OA lấy đúng OA Beeftown không (OA gắn với Mini App): chưa thử trên Zalo thật.
+- Đơn của tôi (Khánh chọn 09/11/2026, ý từ mẫu zaui-fashion, mã viết mới): màn `/don-cua-toi`, lối vào "Đơn của tôi (N)" ở trang chủ khi có đơn. Danh sách nằm trên máy (`localStorage` khóa `beeftown-don-cua-toi`, `docDanhSachDon` / `themVaoDanhSach` trong `tra-truoc.ts`): tối đa 20 đơn, 30 ngày, chỉ mã đơn, khóa xem, số đơn, ngày nhận — không tên, số điện thoại, địa chỉ. Trạng thái hỏi máy chủ mỗi lần mở màn; máy chủ báo không có đơn thì bỏ khỏi danh sách. Bấm "Xem đơn" mở màn trả tiền / trạng thái của đơn đó.
 - Nhận biết đang ở trong Zalo: `/zalo/i.test(navigator.userAgent)`.
 - Router: `ZMPRouter` của zmp-ui đặt basename `/zapps/${window.APP_ID}` ở bản production.
 - Không dùng `Icon` và `Snackbar` của zmp-ui vì chúng tải phông từ h5.zadn.vn. Biểu tượng vẽ SVG, thông báo tự làm.

@@ -17,7 +17,7 @@ const KHI_AN_MS = 30_000;
 export default function TraTien() {
   const navigate = useNavigate();
   const thongBao = useThongBao();
-  const { donDaDat, datDonDaDat, lamMoi } = useGioHang();
+  const { donDaDat, datDonDaDat, lamMoi, boDonKhoiDanhSach } = useGioHang();
   const [don, datDon] = useState<DonTraTruoc | null>(null);
   const [khongThay, datKhongThay] = useState(false);
   const [matKetNoi, datMatKetNoi] = useState(false);
@@ -44,6 +44,7 @@ export default function TraTien() {
         cho = hoiLaiSauMs(kq.don);
       } else if (kq.loai === "khong-thay") {
         datKhongThay(true);
+        boDonKhoiDanhSach(donDaDat!.ma);
         return null;
       } else {
         datMatKetNoi(true);
@@ -64,7 +65,7 @@ export default function TraTien() {
       window.clearTimeout(hen);
       document.removeEventListener("visibilitychange", khiHien);
     };
-  }, [donDaDat, khongThay]);
+  }, [donDaDat, khongThay, boDonKhoiDanhSach]);
 
   const daChuyen = useCallback(async () => {
     datDangKiem(true);
