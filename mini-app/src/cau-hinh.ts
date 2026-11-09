@@ -63,8 +63,8 @@ export const CAU_HINH = {
    * Có địa chỉ: khách gửi đơn lên máy chủ và chuyển khoản ngay trong app (VietQR qua SePay), chỉ giao tận nơi.
    * Để trống: app gửi đơn vào chat OA như trước. Tên miền phải khai ở Mini App Center → Cấu hình API Domains, không
    * thì Zalo chặn và khách không gửi được đơn. Máy chủ chưa có tài khoản nhận tiền hay bảng giá còn là giá thử: app
-   * ghi đơn, không hiện mã QR, báo "Quán chưa mở nhận chuyển khoản trong app" và mời khách chat với quán. Thử trên máy (không cần sửa ở đây):
-   * VITE_DIA_CHI_MAY_CHU_DON (README, "Thử đặt và trả tiền với máy chủ đơn").
+   * ghi đơn, không hiện mã QR, báo "Quán chưa mở nhận chuyển khoản trong app" và mời khách chat với quán.
+   * Thử trên máy (không cần sửa ở đây): VITE_DIA_CHI_MAY_CHU_DON (README, "Thử đặt và trả tiền với máy chủ đơn").
    * Khánh thuê máy chủ BizFly Cloud (TP.HCM) và cài máy chủ đơn ngày 09/11/2026.
    */
   diaChiMayChuDon: "https://don.beeftown.vn",
