@@ -17,7 +17,7 @@
  */
 import { createHash } from 'node:crypto';
 import { SAN_PHAM } from '../../mini-app/src/san-pham.ts';
-import { CAU_HINH, CAU_HINH_GIO } from '../../mini-app/src/cau-hinh.ts';
+import { CAU_HINH, CAU_HINH_GIO_GIAO } from '../../mini-app/src/cau-hinh.ts';
 import { cacGioChon, cacNgayChon, chuanHoaSoDienThoai, type BaoQuan } from '../../mini-app/src/don.ts';
 import { gioVnTuMs, laNgayCoThat } from '../../web/src/lib/gio-vn.ts';
 
@@ -88,9 +88,11 @@ export function dauNoiDungGui(than: unknown): string {
   const gio = Object.entries(khay).filter(([, so]) => so !== 0).sort(([a], [c]) => (a < c ? -1 : a > c ? 1 : 0));
   const so = typeof b.dienThoai === 'string' ? b.dienThoai : '';
   const noiDung = {
-    gio, cachNhan: b.cachNhan ?? null, diaChi: lamSachChu(b.diaChi), ngay: b.ngay ?? null, gioNhan: b.gio ?? null,
-    ten: lamSachChu(b.ten),
+    gio, cachNhan: b.cachNhan ?? null, ngay: b.ngay ?? null, gioNhan: b.gio ?? null, ten: lamSachChu(b.ten),
     dienThoai: chuanHoaSoDienThoai(so) ?? lamSachChu(so), ghiChu: lamSachChu(b.ghiChu),
+    // Thêm ở CUỐI và chỉ khi có: thân không có diaChi (gửi trước 09/11) ra đúng dấu cũ — gửi lại cùng mã gửi sau khi
+    // nâng cấp vẫn trả đơn đã ghi, không 409.
+    ...(b.diaChi !== undefined ? { diaChi: lamSachChu(b.diaChi) } : {}),
   };
   return createHash('sha256').update(JSON.stringify(noiDung)).digest('hex');
 }
@@ -147,8 +149,8 @@ export function kiemDon(than: unknown, ms: number): KetQuaKiem {
     loi.push('Chọn ngày và giờ nhận hàng.');
   } else {
     const bayGio = dongHoVn(ms);
-    const ngayDuocChon = cacNgayChon(bayGio, CAU_HINH_GIO).some(n => n.giaTri === ngay);
-    if (!ngayDuocChon || !cacGioChon(ngay, bayGio, CAU_HINH_GIO).includes(gio)) {
+    const ngayDuocChon = cacNgayChon(bayGio, CAU_HINH_GIO_GIAO).some(n => n.giaTri === ngay);
+    if (!ngayDuocChon || !cacGioChon(ngay, bayGio, CAU_HINH_GIO_GIAO).includes(gio)) {
       loi.push('Giờ nhận này không còn chọn được. Chọn lại giờ nhận.');
     }
   }
