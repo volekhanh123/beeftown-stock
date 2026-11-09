@@ -252,7 +252,7 @@ export function taoXuLy(tc: TuyChonMayChu) {
         }
         return json({
           ok: true, ma: d.ma, soTrongNgay: d.soTrongNgay, trangThai: d.trangThai, nhan: NHAN[d.trangThai].vi,
-          ngayNhan: d.ngayNhan, gioNhan: d.gioNhan, tongTien: d.tongTien, daNhan: tc.so.tienDaNhan(d.ma), giaThu: d.giaThu,
+          ngayNhan: d.ngayNhan, gioNhan: d.gioNhan, cachNhan: d.cachNhan, tongTien: d.tongTien, daNhan: tc.so.tienDaNhan(d.ma), giaThu: d.giaThu,
           dong: d.dong.map(x => ({ ten: x.ten, soKhay: x.soKhay, giaMoiKhay: x.giaMoiKhay })), thanhToan: tt,
         });
       }

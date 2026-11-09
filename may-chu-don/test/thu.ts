@@ -18,7 +18,7 @@ import { SoDon, PHUT_CHO_THANH_TOAN, type DonDayDu } from '../src/so-don.ts';
 import { BUOC_QUAY, NHAN, TRANG_THAI, duocBam } from '../src/trang-thai.ts';
 import { CAU_BAO, CHU, ngayTheoTieng, thoat } from '../src/man-quay.ts';
 import { GioiHan, cungNguon, ipKhach, taoXuLy } from '../src/may-chu.ts';
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { chuoiVietQr, crc16, docTruong, laTaiKhoanNhan, noiDungChuyenKhoan } from '../src/viet-qr.ts';
 import { DA_NHAN, docTinTienVe, kiemChuKy, timMaDon, type TinTienVe } from '../src/sepay.ts';
 import {
@@ -97,6 +97,11 @@ nhom('2 · Kiểm đơn: tên, số điện thoại, chữ có dấu');
   const d = kiemDon(donHopLe({ maGui: 'cung-ma-gui-1', diaChi: '99 Lê Lợi, phường Bến Thành' }), LUC_DAT);
   ok('Dấu nội dung: khác địa chỉ giao → khác dấu (cùng mã gửi mà đổi địa chỉ thì không ghi đè đơn cũ)',
     a.ok && d.ok && a.don.dauNoiDung !== d.don.dauNoiDung);
+  // Thân gửi trước 09/11 (không có diaChi) phải ra đúng dấu của công thức cũ: gửi lại sau khi nâng cấp không bị 409.
+  const thanCu = { maGui: 'ma-gui-cu-0001', khay: { 'la-galbi': 1 }, cachNhan: 'tai-quan', ngay: '2026-11-13', gio: '18:30', ten: ' Khánh ', dienThoai: '0912 345 678', ghiChu: '' };
+  const dauCu = createHash('sha256').update(JSON.stringify({ gio: [['la-galbi', 1]], cachNhan: 'tai-quan', ngay: '2026-11-13', gioNhan: '18:30',
+    ten: 'Khánh', dienThoai: '0912345678', ghiChu: '' })).digest('hex');
+  ok('Dấu nội dung: thân không có diaChi (gửi trước khi nâng cấp) ra đúng dấu của công thức cũ', dauNoiDungGui(thanCu) === dauCu);
 }
 
 nhom('3 · Giờ Việt Nam: 23:50 / 00:10, ngày không có thật, máy chạy UTC hay múi khác');
@@ -121,8 +126,9 @@ nhom('3 · Giờ Việt Nam: 23:50 / 00:10, ngày không có thật, máy chạy
     [{ ngay: '2027-02-31' }, { ngay: '2026-13-01' }, { ngay: '13/11/2026' }].every(t => loi(t).length === 1));
   ok('Trước ngày bắt đầu nhận hàng (12/11) → từ chối', loi({ ngay: '2026-11-12', gio: '18:30' }, msVn('2026-11-01T09:00:00+07:00')).length === 1);
   ok('Giờ ngoài khung (15:00, 21:30, 25:99) → từ chối', ['15:00', '21:30', '25:99'].every(g => loi({ gio: g }).length === 1));
-  ok(`Hôm nay 10:00 giờ VN: 10:30 không còn chọn được (cần ${CAU_HINH.soPhutChuanBi} phút soạn), 11:00 được`,
-    loi({ gio: '10:30' }, msVn('2026-11-13T10:00:00+07:00')).length === 1 && loi({ gio: '11:00' }, msVn('2026-11-13T10:00:00+07:00')).length === 0);
+  ok(`Hôm nay 10:00 giờ VN, đơn giao: 11:00 không còn chọn được (cần ${CAU_HINH.soPhutChuanBi} phút soạn + ${CAU_HINH.soPhutDiDuong} phút đi đường), 11:30 được`,
+    CAU_HINH.soPhutChuanBi + CAU_HINH.soPhutDiDuong === 90
+      && loi({ gio: '11:00' }, msVn('2026-11-13T10:00:00+07:00')).length === 1 && loi({ gio: '11:30' }, msVn('2026-11-13T10:00:00+07:00')).length === 0);
   ok(`Xa hơn ${CAU_HINH.soNgayChoChon} ngày → từ chối`, loi({ ngay: '2026-11-25' }).length === 1);
 }
 
@@ -422,12 +428,12 @@ nhom('12 · Rà soát 29/10: gửi lại sau khi giờ nhận qua, IP sau proxy,
 {
   const so = new SoDon(':memory:');
   const { xuLy, datGio } = taoMay(so);
-  // 09:29 đặt 10:30 (cần 60 phút soạn) được; 09:31 thì 10:30 không còn chọn được.
-  datGio(msVn('2026-11-13T09:29:00+07:00'));
+  // 08:59 đặt giao 10:30 (cần 60 phút soạn + 30 phút đi đường) được; 09:01 thì 10:30 không còn chọn được.
+  datGio(msVn('2026-11-13T08:59:00+07:00'));
   const than = donHopLe({ gio: '10:30' });
   const r1 = await guiDon(xuLy, than);
   const j1 = await r1.json() as { ma: string };
-  datGio(msVn('2026-11-13T09:31:00+07:00'));
+  datGio(msVn('2026-11-13T09:01:00+07:00'));
   const r2 = await guiDon(xuLy, than);
   const j2 = await r2.json() as { ma: string };
   ok('HỒI QUY rà soát: đơn đã ghi, câu trả lời mất, gửi lại sau khi giờ nhận vừa qua → trả đúng đơn cũ, không bắt đặt lại',
@@ -866,6 +872,7 @@ nhom('19 · Giao tận nơi (Khánh 09/11/2026): sổ đơn cũ chưa có cột 
   const { xuLy } = taoMay(so);
   const don = donMoi(so, { diaChi: '88 Đồng Khởi, phường Sài Gòn', ten: 'Người Nhận Thử' });
   const than = await (await goi(xuLy, `/api/don/${don.ma}?khoa=${don.khoaXem}`)).text();
+  ok('GET /api/don/<mã>: trả cách nhận "giao-hang" (để Mini App chọn chữ), không trả dữ liệu cá nhân', JSON.parse(than).cachNhan === 'giao-hang');
   ok('GET /api/don/<mã>: không có địa chỉ giao, tên, số điện thoại trong câu trả lời',
     !than.includes('Đồng Khởi') && !than.includes('Người Nhận Thử') && !than.includes('0912345678') && !/diaChi|dienThoai/.test(than), than.slice(0, 200));
   so.dong();

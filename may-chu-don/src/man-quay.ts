@@ -11,7 +11,7 @@
  */
 import { chuoiSangNgay, dinhDangTien, hienSoDienThoai, ngayDayDu } from '../../mini-app/src/don.ts';
 import type { DonDayDu, TienVeCanXem } from './so-don.ts';
-import { BUOC_QUAY, NHAN, type TrangThai } from './trang-thai.ts';
+import { BUOC_QUAY, NHAN, NHAN_TAI_QUAN, NUT_TAI_QUAN, type TrangThai } from './trang-thai.ts';
 
 export type NgonNgu = 'vi' | 'en';
 
@@ -138,7 +138,8 @@ export function ngayTheoTieng(ngay: string, nn: NgonNgu): string {
   return `${THU_EN[d.getDay()]} ${ngay.slice(8, 10)}/${ngay.slice(5, 7)}`;
 }
 
-const nhanTrangThai = (tt: TrangThai, nn: NgonNgu) => `<span class="qd-nhan ${NHAN[tt].kieu}">${thoat(NHAN[tt][nn])}</span>`;
+const nhanTrangThai = (tt: TrangThai, nn: NgonNgu, taiQuan = false) =>
+  `<span class="qd-nhan ${NHAN[tt].kieu}">${thoat((taiQuan && NHAN_TAI_QUAN[tt]) ? NHAN_TAI_QUAN[tt]![nn] : NHAN[tt][nn])}</span>`;
 
 function theDon(don: DonDayDu, nn: NgonNgu, coNut: boolean, baoHtml = '', daNhan = 0): string {
   const c = (k: keyof typeof CHU) => thoat(CHU[k][nn]);
@@ -147,11 +148,11 @@ function theDon(don: DonDayDu, nn: NgonNgu, coNut: boolean, baoHtml = '', daNhan
     ? `<a class="qd-nut phu" href="/quay/huy?ma=${encodeURIComponent(don.ma)}">${thoat(b[nn])}</a>`
     : `<form method="post" action="/quay/doi">
         <input type="hidden" name="ma" value="${thoat(don.ma)}"><input type="hidden" name="tu" value="${b.tu}"><input type="hidden" name="den" value="${b.den}">
-        <button class="qd-nut ${b.chinh ? 'chinh' : 'phu'}" type="submit">${thoat(b[nn])}</button></form>`).join('');
+        <button class="qd-nut ${b.chinh ? 'chinh' : 'phu'}" type="submit">${thoat((don.cachNhan === 'tai-quan' && NUT_TAI_QUAN[b.den]) ? NUT_TAI_QUAN[b.den]![nn] : b[nn])}</button></form>`).join('');
   const tong = don.trangThai === 'cho_thanh_toan' || don.trangThai === 'het_han' ? c('tongChuaTra') : c('tong');
   return `<article class="qd-the" id="don-${thoat(don.ma)}">
   <div class="qd-the-dau"><span class="qd-so">#${don.soTrongNgay}</span>
-    <span class="qd-gio">${c(don.cachNhan === 'giao-hang' ? 'giao' : 'nhan')} ${thoat(don.gioNhan)}, ${thoat(ngayTheoTieng(don.ngayNhan, nn))}</span>${nhanTrangThai(don.trangThai, nn)}</div>
+    <span class="qd-gio">${c(don.cachNhan === 'giao-hang' ? 'giao' : 'nhan')} ${thoat(don.gioNhan)}, ${thoat(ngayTheoTieng(don.ngayNhan, nn))}</span>${nhanTrangThai(don.trangThai, nn, don.cachNhan === 'tai-quan')}</div>
   <p>${thoat(don.ten)} · <a href="tel:${thoat(don.dienThoai)}">${thoat(hienSoDienThoai(don.dienThoai))}</a></p>
   ${don.cachNhan === 'giao-hang' ? `<p class="qd-dia-chi">${c('diaChiGiao')}: ${thoat(don.diaChi)}</p>` : ''}
   <ul>${dong}</ul>

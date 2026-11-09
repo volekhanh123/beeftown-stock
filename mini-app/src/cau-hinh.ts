@@ -31,6 +31,12 @@ export const CAU_HINH = {
   /** Giờ nhận sớm nhất trong ngày = bây giờ + số phút này (thời gian soạn khay). */
   soPhutChuanBi: 60,
 
+  /**
+   * Đơn giao tận nơi: cộng thêm số phút đi đường vào giờ sớm nhất (CAU_HINH_GIO_GIAO). Claude đề xuất 30 phút
+   * (09/11/2026); Sang chốt số thật cùng khu vực giao.
+   */
+  soPhutDiDuong: 30,
+
   /** Số ngày khách được chọn, tính từ ngày gần nhất còn giờ nhận. */
   soNgayChoChon: 7,
 
@@ -76,4 +82,10 @@ export const CAU_HINH_GIO: CauHinhGio = {
   buocPhut: CAU_HINH.buocPhut,
   soPhutChuanBi: CAU_HINH.soPhutChuanBi,
   soNgayChoChon: CAU_HINH.soNgayChoChon,
+};
+
+/** Giờ chọn được của đơn giao tận nơi: như CAU_HINH_GIO, sớm nhất thêm thời gian đi đường. Máy chủ đơn kiểm bằng đúng bộ này. */
+export const CAU_HINH_GIO_GIAO: CauHinhGio = {
+  ...CAU_HINH_GIO,
+  soPhutChuanBi: CAU_HINH.soPhutChuanBi + CAU_HINH.soPhutDiDuong,
 };

@@ -35,7 +35,7 @@ export default function ThongTin() {
               khay.
             </li>
             <li>
-              <b>Quán giao tận nơi</b> theo giờ bạn chọn. Tài xế gọi số điện thoại bạn để lại khi giao.
+              <b>Quán giao tận nơi</b> tới địa chỉ bạn ghi, theo giờ bạn muốn nhận.
             </li>
           </ol>
         ) : (

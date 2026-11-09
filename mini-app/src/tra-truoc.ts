@@ -47,6 +47,8 @@ export type ThanhToan = ThanhToanCo | { traDuoc: false; lyDo: LyDoChuaTra };
 
 export interface DonTraTruoc {
   ma: string;
+  /** Đơn giao tận nơi (từ 09/11/2026) hay nhận tại quán (đơn thử cũ). Máy chủ không trả: coi là giao tận nơi. */
+  cachNhan: "giao-hang" | "tai-quan";
   soTrongNgay: number;
   trangThai: TrangThaiDon;
   tongTien: number;
@@ -173,6 +175,7 @@ export function docDonTuJson(v: unknown): DonTraTruoc | null {
   const gio = typeof b.gioNhan === "string" && /^\d{2}:\d{2}$/.test(b.gioNhan) ? b.gioNhan : null;
   return {
     ma: b.ma,
+    cachNhan: b.cachNhan === "tai-quan" ? "tai-quan" : "giao-hang",
     soTrongNgay: b.soTrongNgay,
     trangThai: b.trangThai as TrangThaiDon,
     tongTien: b.tongTien,
