@@ -44,6 +44,8 @@ const dichVu = doc('may-chu-don/cai-dat/may-chu-don.service');
 const mau = doc('may-chu-don/cai-dat/may-chu-don.env.mau');
 const sh = doc('may-chu-don/cai-dat/may-chu.sh');
 const main = doc('may-chu-don/src/main.ts');
+// Biến của tin ZNS main.ts đọc qua docCauHinhZns (src/zns.ts: BIEN_ZNS và gt('ZNS_CHE_DO')).
+const zns = doc('may-chu-don/src/zns.ts');
 const mayChu = doc('may-chu-don/src/may-chu.ts');
 
 /** Bỏ chú thích (# tới hết dòng) để không khớp nhầm chữ trong lời giải thích. */
@@ -112,7 +114,11 @@ await nhom('3 · File bí mật mẫu: không biến cố định, đúng dạng
       && shMa.includes('s/^MAT_KHAU_QUAY=$/') && shMa.includes('s/^KHOA_SUC_KHOE=$/'));
   ok('Mọi dòng đang bật đều trống (mẫu không mang bí mật thật)', dong.every(d => d.endsWith('=')), dong.join(' | '));
   const moiTen = [...mau.matchAll(/^#?([A-Z_]{4,})=/gm)].map(m => m[1]);
-  ok('Mọi biến trong mẫu đều được main.ts đọc', moiTen.length >= 8 && moiTen.every(t => main.includes(`env.${t}`)), moiTen.join(', '));
+  ok('Mọi biến trong mẫu đều được main.ts đọc (biến tin ZNS: qua docCauHinhZns của src/zns.ts)',
+    moiTen.length >= 8 && moiTen.every(t => main.includes(`env.${t}`) || zns.includes(`'${t}'`)), moiTen.join(', '));
+  ok('Tin ZNS: năm dòng ZALO_… / ZNS_MAU_… và ZNS_CHE_DO để tắt sẵn (đặt đủ năm hoặc không dòng nào); script điền sẵn ZALO_KHOA ngẫu nhiên vào dòng tắt',
+    ['ZALO_APP_ID', 'ZALO_SECRET_KEY', 'ZALO_KHOA', 'ZNS_MAU_DA_NHAN', 'ZNS_MAU_SOAN_XONG', 'ZNS_CHE_DO'].every(t => new RegExp(`^#${t}=`, 'm').test(mau))
+      && shMa.includes(`-e 's/^#ZALO_KHOA=""$/#ZALO_KHOA='"$(ngau_nhien 40)"'/'`));
   ok('Bốn dòng tài khoản và khóa SePay để tắt sẵn (đặt đủ bốn hoặc không cái nào)',
     ['NGAN_HANG_BIN', 'TEN_NGAN_HANG', 'SO_TAI_KHOAN', 'TEN_TAI_KHOAN', 'SEPAY_KHOA_KY'].every(t => new RegExp(`^#${t}=`, 'm').test(mau)));
 });
@@ -186,9 +192,17 @@ await nhom('5 · Ranh giới quyền: beeftown không sửa được thứ root 
   const dung = thanHam('dung_ban');
   const cai = thanHam('lenh_cai');
   const lenhBeeftown = [...shMa.matchAll(/la_beeftown "([^"]+)" ([^\n]*)/g)].map(m => `${m[1]} ${m[2]}`);
-  ok('beeftown chỉ chạy npm ci và kiểm thử, trong thư mục may-chu-don của bản đang dựng',
-    lenhBeeftown.length === 2 && lenhBeeftown.every(l => l.startsWith('$thu_muc/may-chu-don npm ci') || l.startsWith('$thu_muc/may-chu-don npx bun test/thu.ts')),
+  // Ngoài lúc dựng bản: lệnh zalo-token chạy scripts/dat-token-zalo.ts của bản ĐANG DÙNG bằng beeftown — cùng người
+  // dùng, cùng bun (node_modules của beeftown) với dịch vụ, ghi vào sổ đơn của beeftown. Root không chạy gì của bản đó
+  // (chạy bằng root thì root chạy bun mà beeftown ghi được — đúng thứ ranh giới này chặn).
+  ok('beeftown chỉ chạy npm ci và kiểm thử, trong thư mục may-chu-don của bản đang dựng; và lệnh đặt token Zalo của bản đang dùng',
+    lenhBeeftown.length === 3 && lenhBeeftown.every(l => l.startsWith('$thu_muc/may-chu-don npm ci') || l.startsWith('$thu_muc/may-chu-don npx bun test/thu.ts')
+      || l === '$HIEN_TAI/may-chu-don node_modules/.bin/bun scripts/dat-token-zalo.ts'),
     lenhBeeftown.join(' | '));
+  const datToken = thanHam('lenh_zalo_token');
+  ok('zalo-token: không lệnh nào chạy bun / node_modules bằng root (chỉ qua la_beeftown), khóa đi qua biến môi trường, không qua tham số',
+    !/^\s*(?!la_beeftown)[^\n#]*node_modules\/\.bin/m.test(datToken.replace(/la_beeftown "[^"]+" node_modules[^\n]*/g, ''))
+      && datToken.includes(`export ${'ZALO_KHOA'}="$khoa"`) && !/bun[^\n]*\$khoa/.test(datToken), datToken.slice(0, 300));
   ok('Git (clone, fetch, reset, archive, log) chạy bằng root trên kho của root, không bằng beeftown',
     !/runuser[^\n]*git|la_beeftown[^\n]*git/.test(shMa) && /git clone --quiet --depth 1 --branch "\$NHANH" "\$KHO_MA" "\$KHO"/.test(cai));
   ok('/opt/beeftown và thư mục các bản thuộc root (beeftown không cắm được liên kết vào chỗ root xóa, chép)',

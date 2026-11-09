@@ -45,6 +45,8 @@ export interface TuyChonMayChu {
   khoaSepay?: string;
   /** Cho hiện mã trả tiền khi bảng giá còn là giá thử — chỉ để Khánh thử chuyển khoản thật số nhỏ. */
   choTraGiaThu?: boolean;
+  /** Tin ZNS đang bật (main.ts) — /suc-khoe báo để đèn chỉ xét số tin khi có gửi tin. */
+  znsBat?: boolean;
 }
 
 /** Thông tin trả tiền gửi cho Mini App, hoặc lý do chưa trả được. */
@@ -287,7 +289,7 @@ export function taoXuLy(tc: TuyChonMayChu) {
 
     if (duong === '/suc-khoe' && req.method === 'GET') {
       if (tc.khoaSucKhoe && !bangNhau(url.searchParams.get('khoa') ?? '', tc.khoaSucKhoe)) return loiApi(403, 'Sai khóa.');
-      try { return json({ ok: true, luc: ms, ...tc.so.soLieu(ms) }); }
+      try { return json({ ok: true, luc: ms, znsBat: tc.znsBat ?? false, ...tc.so.soLieu(ms) }); }
       catch (e) { console.error('Đọc số liệu hỏng:', e); return loiApi(500, 'Không đọc được sổ đơn.'); }
     }
 
@@ -343,7 +345,8 @@ export function taoXuLy(tc: TuyChonMayChu) {
         const don = ma ? tc.so.layDon(ma) : null;
         const bao = laCauBao(baoMa) ? { ma: baoMa, maDon: don?.ma ?? '', so: don?.soTrongNgay ?? null, den: laTrangThai(den) ? den : null } : null;
         const daNhan = tc.so.tienDaNhanTheoDon();
-        return html(trangDanhSach(nn, tc.so.danhSachQuay(ms), bao, tc.so.tienVeCanXem(), ma => daNhan.get(ma) ?? 0));
+        return html(trangDanhSach(nn, tc.so.danhSachQuay(ms), bao, tc.so.tienVeCanXem(), ma => daNhan.get(ma) ?? 0,
+          tc.so.donCoTinZnsChuaToi()));
       }
 
       if (duong === '/quay/huy' && req.method === 'GET') {

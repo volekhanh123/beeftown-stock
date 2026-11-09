@@ -8,7 +8,8 @@
     "thu": "bun test/thu.ts",
     "kiem-kieu": "tsc --noEmit -p .",
     "chay": "bun src/main.ts",
-    "don-mau": "bun scripts/don-mau.ts"
+    "don-mau": "bun scripts/don-mau.ts",
+    "dat-token-zalo": "bun scripts/dat-token-zalo.ts"
   },
   "dependencies": {
     "@fontsource/montserrat": "5.2.8",

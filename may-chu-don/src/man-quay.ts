@@ -48,6 +48,10 @@ export const CHU = {
   khongThay: { vi: 'Không thấy đơn này.', en: 'Order not found.' },
   khongHuyDuoc: { vi: 'Đơn này không hủy được ở bước hiện tại.', en: 'This order cannot be cancelled at its current status.' },
   daNhanChuyenKhoan: { vi: 'Đã nhận chuyển khoản', en: 'Bank transfer received' },
+  tinZaloChuaToi: {
+    vi: 'Tin Zalo báo đơn chưa chắc tới được khách (Zalo từ chối, hoặc không rõ). Gọi khách nếu cần báo đơn.',
+    en: 'The Zalo order message may not have reached the customer (rejected by Zalo, or unknown). Call the customer if they need an update.',
+  },
   tienVeCanXem: { vi: 'Tiền về cần xem', en: 'Transfers to check' },
   daXuLy: { vi: 'Đã xử lý xong', en: 'Handled' },
   maThamChieu: { vi: 'Mã giao dịch ngân hàng', en: 'Bank reference' },
@@ -141,7 +145,7 @@ export function ngayTheoTieng(ngay: string, nn: NgonNgu): string {
 const nhanTrangThai = (tt: TrangThai, nn: NgonNgu, taiQuan = false) =>
   `<span class="qd-nhan ${NHAN[tt].kieu}">${thoat((taiQuan && NHAN_TAI_QUAN[tt]) ? NHAN_TAI_QUAN[tt]![nn] : NHAN[tt][nn])}</span>`;
 
-function theDon(don: DonDayDu, nn: NgonNgu, coNut: boolean, baoHtml = '', daNhan = 0): string {
+function theDon(don: DonDayDu, nn: NgonNgu, coNut: boolean, baoHtml = '', daNhan = 0, tinChuaToi = false): string {
   const c = (k: keyof typeof CHU) => thoat(CHU[k][nn]);
   const dong = don.dong.map(d => `<li>${thoat(d.ten)} · ${d.baoQuan === 'dong-lanh' ? c('dongLanh') : c('mat')}, ~${d.soGamKhay} g · <b>${d.soKhay} ${c('khay')}</b></li>`).join('');
   const nut = !coNut ? '' : BUOC_QUAY.filter(b => b.tu === don.trangThai).map(b => b.den === 'can_hoan_tien'
@@ -159,6 +163,7 @@ function theDon(don: DonDayDu, nn: NgonNgu, coNut: boolean, baoHtml = '', daNhan
   <p class="qd-tong">${tong}: ${thoat(dinhDangTien(don.tongTien))}${don.giaThu ? ` <span class="qd-nhan k3">${c('giaThu')}</span>` : ''}</p>
   ${daNhan > 0 ? `<p>${c('daNhanChuyenKhoan')}: ${thoat(dinhDangTien(daNhan))}</p>` : ''}
   ${don.ghiChu ? `<p class="qd-ghi-chu">${c('ghiChu')}: ${thoat(don.ghiChu)}</p>` : ''}
+  ${tinChuaToi ? `<p class="qd-tin-zalo">${c('tinZaloChuaToi')}</p>` : ''}
   ${baoHtml}
   ${nut ? `<div class="qd-hang-nut">${nut}</div>` : ''}
 </article>`;
@@ -193,6 +198,8 @@ export function trangDanhSach(
   bao: { ma: MaCauBao; maDon: string; so: number | null; den: TrangThai | null } | null,
   tienVe: TienVeCanXem[] = [],
   tienDaNhan: (maDon: string) => number = () => 0,
+  /** Đơn có tin ZNS không tới được khách (SoDon.donCoTinZnsChuaToi). */
+  tinChuaToi: ReadonlySet<string> = new Set(),
 ): string {
   const c = (k: keyof typeof CHU) => thoat(CHU[k][nn]);
   const cau = bao ? CAU_BAO[bao.ma] : undefined;
@@ -205,7 +212,7 @@ export function trangDanhSach(
   return khung(nn, `${trongThe ? '' : baoHtml}
 ${tienVe.length ? `<h2 id="tien-ve">${c('tienVeCanXem')} (${tienVe.length})</h2>\n${tienVe.map(t => theTienVe(t, nn)).join('\n')}` : ''}
 <h2>${c('conViec')} (${ds.conViec.length})</h2>
-${ds.conViec.length ? ds.conViec.map(d => theDon(d, nn, true, trongThe && d.ma === bao!.maDon ? baoHtml : '', tienDaNhan(d.ma))).join('\n') : `<p class="qd-trong">${c('khongCoViec')}</p>`}
+${ds.conViec.length ? ds.conViec.map(d => theDon(d, nn, true, trongThe && d.ma === bao!.maDon ? baoHtml : '', tienDaNhan(d.ma), tinChuaToi.has(d.ma))).join('\n') : `<p class="qd-trong">${c('khongCoViec')}</p>`}
 ${ds.xongHomNay.length ? `<details class="qd-xong"><summary>${c('xongHomNay')} (${ds.xongHomNay.length})</summary>
 ${ds.xongHomNay.map(d => theDon(d, nn, false)).join('\n')}</details>` : ''}`, { taiLai: true, coDangXuat: true });
 }

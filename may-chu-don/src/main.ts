@@ -13,12 +13,16 @@
  *                      tài khoản nhận chuyển khoản (VietinBank: BIN 970415). Đặt đủ cả bốn, hoặc không đặt cái nào
  *   SEPAY_KHOA_KY      khóa HMAC-SHA256 của webhook SePay (ít nhất 16 ký tự)
  *   CHO_TRA_GIA_THU=1  cho hiện mã trả tiền khi bảng giá còn là giá thử (chỉ để thử chuyển khoản thật số nhỏ)
+ *   ZALO_APP_ID, ZALO_SECRET_KEY, ZALO_KHOA, ZNS_MAU_DA_NHAN, ZNS_MAU_SOAN_XONG
+ *                      tin ZNS báo khách (src/zns.ts, README "Tin ZNS"). Đặt đủ cả năm, hoặc không đặt cái nào
+ *   ZNS_CHE_DO         thu (mặc định: chỉ quản trị viên OA nhận) hoặc that
  */
 import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { SoDon } from './so-don.ts';
 import { ipKhach, taoXuLy } from './may-chu.ts';
 import { laTaiKhoanNhan } from './viet-qr.ts';
+import { ZNS, docCauHinhZns, taoBoGuiZns } from './zns.ts';
 
 const env = process.env;
 const matKhauQuay = env.MAT_KHAU_QUAY ?? '';
@@ -50,10 +54,17 @@ if (khoaSepay && !coTaiKhoan) {
   process.exit(1);
 }
 
+const zns = await docCauHinhZns(env);
+if (zns.trang === 'loi') { console.error(zns.loi); process.exit(1); }
+
 const so = new SoDon(join(thuMuc, 'don.sqlite'));
+// Lần trước máy chủ tắt giữa lúc gọi Zalo: không biết tin đã tới chưa — không gửi lại (src/zns.ts).
+const dangGuiDo = so.datKhongRoTinDangGui();
+if (dangGuiDo) console.log(`Tin ZNS: ${dangGuiDo} tin đang gửi dở lúc máy chủ tắt — ghi "không rõ", không gửi lại.`);
 const xuLy = taoXuLy({
   so, matKhauQuay, khoaSucKhoe: env.KHOA_SUC_KHOE || undefined, cookieAnToan: env.KHONG_HTTPS !== '1',
   taiKhoan: coTaiKhoan ? taiKhoan : undefined, khoaSepay: khoaSepay || undefined, choTraGiaThu: env.CHO_TRA_GIA_THU === '1',
+  znsBat: zns.trang === 'bat',
 });
 const tinProxy = env.TIN_PROXY === '1';
 
@@ -77,10 +88,27 @@ const hetHan = setInterval(() => {
   catch (e) { console.error('Đặt hết hạn hỏng:', e); }
 }, 60_000);
 
+// Tin ZNS: một lượt mỗi ZNS.moiLuotGiay giây, không bao giờ hai lượt chồng nhau (một lượt chờ Zalo tối đa 15 giây mỗi tin).
+let guiZns: ReturnType<typeof setInterval> | undefined;
+if (zns.trang === 'bat') {
+  const bo = taoBoGuiZns(so, zns.cauHinh);
+  let dangChay = false;
+  const chay = async () => {
+    if (dangChay) return;
+    dangChay = true;
+    try { await bo.luot(); } finally { dangChay = false; }
+  };
+  guiZns = setInterval(chay, ZNS.moiLuotGiay * 1000);
+  void chay();
+}
+
 console.log(`Máy chủ đơn đang nghe http://${diaChi}:${mayChu.port} · sổ đơn ${join(thuMuc, 'don.sqlite')}`);
 console.log(coTaiKhoan ? `Nhận chuyển khoản vào ${taiKhoan.tenNganHang} …${taiKhoan.soTaiKhoan.slice(-4)}` : 'Chưa có tài khoản nhận: đơn chưa có mã trả tiền.');
 console.log(khoaSepay ? 'SePay: đã có khóa ký.' : 'SePay: chưa có khóa ký — /sepay/tien-ve trả 503.');
+console.log(zns.trang === 'bat'
+  ? `Tin ZNS: bật, chế độ ${zns.cauHinh.cheDo === 'thu' ? 'thử (chỉ quản trị viên OA nhận)' : 'thật'}${so.layTokenZalo() ? '' : ' — chưa có refresh token, chạy lệnh đặt token'}.`
+  : 'Tin ZNS: tắt (chưa đặt ZALO_APP_ID…) — khách chỉ thấy trạng thái đơn trong app.');
 
 for (const tin of ['SIGINT', 'SIGTERM'] as const) {
-  process.on(tin, () => { clearInterval(hetHan); mayChu.stop(); so.dong(); process.exit(0); });
+  process.on(tin, () => { clearInterval(hetHan); if (guiZns) clearInterval(guiZns); mayChu.stop(); so.dong(); process.exit(0); });
 }

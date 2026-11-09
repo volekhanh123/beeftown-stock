@@ -102,7 +102,8 @@ export default function ThongTin() {
         {TRA_TRUOC ? (
           <p>
             Khi đặt trong app, tên, số điện thoại, địa chỉ giao và đơn của bạn được gửi tới máy chủ đơn của Beeftown đặt
-            tại Việt Nam, để quầy soạn và giao đúng đơn. Tiền chuyển khoản vào thẳng tài khoản của {p.ten}; máy chủ chỉ ghi số tiền và
+            tại Việt Nam, để quầy soạn và giao đúng đơn. Máy chủ đơn có thể gửi tin Zalo báo đơn (đã nhận đơn, đã soạn xong)
+            tới số điện thoại bạn ghi. Tiền chuyển khoản vào thẳng tài khoản của {p.ten}; máy chủ chỉ ghi số tiền và
             mã giao dịch, không lưu tên hay số tài khoản ngân hàng của bạn.
           </p>
         ) : (
