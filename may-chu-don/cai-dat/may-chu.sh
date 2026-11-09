@@ -5,6 +5,7 @@
 #   sudo bash may-chu.sh cai don.beeftown.vn   lần đầu: cài Node, Caddy (HTTPS), dịch vụ, tường lửa, mật khẩu quầy
 #   sudo bash may-chu.sh cap-nhat              lấy bản mới của main, chạy kiểm thử, rồi mới chuyển máy chủ sang
 #   sudo bash may-chu.sh trang-thai            máy chủ có chạy không, đang ở bản nào, nhật ký gần nhất
+#   sudo bash may-chu.sh zalo-token            dán refresh token Zalo cho tin ZNS (README, "Tin ZNS")
 #
 # Mỗi bản mã nằm trong một thư mục riêng /opt/beeftown/ban/<commit>, cài thư viện và chạy kiểm thử ở ĐÓ. Dịch vụ chạy
 # từ /opt/beeftown/hien-tai — một liên kết tới bản đang dùng. Bản mới chỉ được chuyển sang (đổi liên kết, một bước)
@@ -221,6 +222,7 @@ lenh_cai() {
     bao "Tạo mật khẩu quầy và khóa sức khỏe ngẫu nhiên"
     mat_khau="$(ngau_nhien 12)"
     sed -e "s/^MAT_KHAU_QUAY=$/MAT_KHAU_QUAY=$mat_khau/" -e "s/^KHOA_SUC_KHOE=$/KHOA_SUC_KHOE=$(ngau_nhien 32)/" \
+      -e 's/^#ZALO_KHOA=""$/#ZALO_KHOA='"$(ngau_nhien 40)"'/' \
       "$HIEN_TAI/may-chu-don/cai-dat/may-chu-don.env.mau" >"$BI_MAT"
     moi_tao=1
   fi
@@ -296,6 +298,25 @@ lenh_trang_thai() {
   journalctl -u "$DICH_VU" -n 15 --no-pager -o short-iso || true
 }
 
+# Refresh token Zalo cho tin ZNS: đọc ZALO_KHOA trong file bí mật, chạy scripts/dat-token-zalo.ts của bản đang dùng bằng
+# người dùng beeftown (chủ của sổ đơn). Token gõ vào từ bàn phím, không qua tham số (lịch sử lệnh giữ tham số).
+lenh_zalo_token() {
+  local cm khoa
+  cm="$(ban_dang_chay)"
+  [ -n "$cm" ] || loi "Chưa cài. Chạy trước: sudo bash $0 cai <tên miền>"
+  khoa="$(doc_bi_mat ZALO_KHOA)"
+  # systemd bỏ dấu ngoặc kép quanh giá trị; làm y như vậy để script và dịch vụ dùng cùng một khóa.
+  khoa="${khoa%\"}"; khoa="${khoa#\"}"
+  [ -n "$khoa" ] || loi "Chưa bật tin ZNS: bỏ dấu # năm dòng ZALO_…, ZNS_MAU_… trong $BI_MAT và điền (README, \"Tin ZNS\"), chạy lại dịch vụ, rồi mới đặt token."
+  (
+    export ZALO_KHOA="$khoa" THU_MUC_DU_LIEU="$DU_LIEU"
+    la_beeftown "$HIEN_TAI/may-chu-don" node_modules/.bin/bun scripts/dat-token-zalo.ts
+  )
+  bao "Nhật ký tin ZNS (đợi 20 giây cho lượt gửi kế tiếp)"
+  sleep 20
+  journalctl -u "$DICH_VU" --since "-1min" --no-pager -o cat | grep 'Tin ZNS' | tail -n 5 || echo "Chưa thấy dòng \"Tin ZNS\" — xem: sudo journalctl -u $DICH_VU -n 30"
+}
+
 # Bash đọc file script dần trong lúc chạy: gói phần chạy vào một hàm và gọi hàm cùng "exit" trên MỘT dòng, để file
 # có bị thay giữa chừng (bản cài tải về được ghi đè) thì bash cũng không đọc tiếp phần đã đổi.
 chinh() {
@@ -305,11 +326,13 @@ chinh() {
     cai) can_root cai; lenh_cai "$@" ;;
     cap-nhat) can_root cap-nhat; lenh_cap_nhat ;;
     trang-thai) can_root trang-thai; lenh_trang_thai ;;
+    zalo-token) can_root zalo-token; lenh_zalo_token ;;
     *)
       echo "Cách dùng:"
       echo "  sudo bash $0 cai <tên miền>   cài lần đầu (ví dụ: don.beeftown.vn)"
       echo "  sudo bash $0 cap-nhat         lấy bản mới, kiểm thử, chạy lại"
       echo "  sudo bash $0 trang-thai       xem máy chủ có chạy không"
+      echo "  sudo bash $0 zalo-token       dán refresh token Zalo cho tin ZNS"
       return 1
       ;;
   esac

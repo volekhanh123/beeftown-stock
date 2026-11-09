@@ -3,15 +3,16 @@
  *
  * Ghi thẳng vào sổ đơn, không qua mạng: 5 đơn tên "Khách thử …", số 0900 000 00x, đủ các bước để xem màn hình quầy.
  * Đợt 1 chưa có thanh toán Zalo, nên đây là cách duy nhất có đơn "đã trả tiền" — không đường dẫn nào của máy chủ
- * đánh dấu đã trả. KHÔNG chạy trên máy chủ bán thật: lệnh từ chối khi sổ đã có đơn của khách thật.
+ * đánh dấu đã trả. KHÔNG chạy trên máy chủ bán thật: lệnh từ chối khi sổ đã có đơn của khách thật. Đơn mẫu mang mã gửi
+ * TIEN_TO_DON_MAU: không bao giờ gửi tin ZNS (số 0900 000 00x có thể là số của người lạ).
  */
 import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { CAU_HINH_GIO } from '../../mini-app/src/cau-hinh.ts';
+import { CAU_HINH_GIO_GIAO } from '../../mini-app/src/cau-hinh.ts';
 import { cacGioChon, cacNgayChon } from '../../mini-app/src/don.ts';
 import { dongHoVn, kiemDon } from '../src/tao-don.ts';
-import { SoDon } from '../src/so-don.ts';
+import { SoDon, TIEN_TO_DON_MAU } from '../src/so-don.ts';
 
 const thuMuc = resolve(process.env.THU_MUC_DU_LIEU ?? './du-lieu');
 mkdirSync(thuMuc, { recursive: true });
@@ -24,9 +25,10 @@ if (khachThat > 0) {
 
 const ms = Date.now();
 // Ngày đầu tiên còn ít nhất 5 giờ nhận (chạy lúc chiều tối thì hôm nay có thể chỉ còn vài giờ).
-const ngay = cacNgayChon(dongHoVn(ms), CAU_HINH_GIO).map(n => n.giaTri)
-  .find(n => cacGioChon(n, dongHoVn(ms), CAU_HINH_GIO).length >= 5);
-const gio = ngay ? cacGioChon(ngay, dongHoVn(ms), CAU_HINH_GIO) : [];
+const ngay = cacNgayChon(dongHoVn(ms), CAU_HINH_GIO_GIAO).map(n => n.giaTri)
+  .find(n => cacGioChon(n, dongHoVn(ms), CAU_HINH_GIO_GIAO).length >= 5);
+// Giờ chọn được của đơn giao tận nơi — đúng bộ kiemDon kiểm (sớm nhất thêm thời gian đi đường).
+const gio = ngay ? cacGioChon(ngay, dongHoVn(ms), CAU_HINH_GIO_GIAO) : [];
 if (!ngay) { console.error('Không tìm được ngày nào còn đủ 5 giờ nhận để đặt đơn mẫu.'); process.exit(1); }
 
 const MAU: { khay: Record<string, number>; buoc: ('tra' | 'soan' | 'xong' | 'huy')[]; ghiChu?: string }[] = [
@@ -38,7 +40,7 @@ const MAU: { khay: Record<string, number>; buoc: ('tra' | 'soan' | 'xong' | 'huy
 ];
 MAU.forEach((m, i) => {
   const k = kiemDon({
-    maGui: `don-mau-${randomBytes(6).toString('hex')}`, khay: m.khay, cachNhan: 'giao-hang', diaChi: `${12 + i} Đường Thử, phường Thử, TP.HCM`, ngay, gio: gio[i],
+    maGui: `${TIEN_TO_DON_MAU}${randomBytes(6).toString('hex')}`, khay: m.khay, cachNhan: 'giao-hang', diaChi: `${12 + i} Đường Thử, phường Thử, TP.HCM`, ngay, gio: gio[i],
     ten: `Khách thử ${i + 1}`, dienThoai: `090000000${i + 1}`, ghiChu: m.ghiChu ?? '',
   }, ms);
   if (!k.ok) throw new Error(k.loi.join('; '));

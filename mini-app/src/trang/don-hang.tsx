@@ -292,7 +292,7 @@ export default function DonHang() {
             onChange={(e) => suaNhan({ dienThoai: e.target.value })}
           />
         </label>
-        {TRA_TRUOC && <p className="ghi-chu">Quán liên hệ số này khi cần về đơn và giao hàng.</p>}
+        {TRA_TRUOC && <p className="ghi-chu">Quán liên hệ số này khi cần về đơn và giao hàng, và có thể gửi tin Zalo báo đơn tới số này.</p>}
       </Muc>
 
       <Muc tieuDe="Thanh toán">

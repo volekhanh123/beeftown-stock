@@ -6,13 +6,13 @@ khách chọn khay, trả tiền trong app, đơn hiện ngay trên máy tính b
 Máy chủ phải chạy ở Việt Nam: Zalo bắt dữ liệu khách của Mini App phải xử lý và lưu trong nước. Đợt thử chạy trên
 laptop ở công ty, khi mở bán chuyển lên máy chủ thuê ở Việt Nam (khoảng 95.000–120.000 đ/tháng chưa VAT).
 
-## Đã làm được (đợt 1, 2a)
+## Đã làm được (đợt 1, 2a, 3)
 
 - Nhận đơn từ Mini App: máy chủ tự tính tiền theo bảng giá, kiểm giờ nhận theo giờ Việt Nam, bấm gửi hai lần vẫn
   chỉ ra một đơn. Đơn trả trước chỉ giao tận nơi, giá khay đã gồm phí giao (Khánh 09/11/2026); màn quầy hiện địa
   chỉ giao. Sổ đơn tạo trước ngày đó tự thêm cột địa chỉ khi máy chủ chạy bản mới.
 - Màn hình đơn cho quầy (đăng nhập bằng mật khẩu quầy, tiếng Việt và tiếng Anh): đơn đã trả tiền → Đang soạn →
-  Chờ khách lấy → Khách đã lấy. Hủy đơn đã trả tiền → "Đã hủy, cần hoàn tiền" → người chuyển khoản trả bấm
+  Soạn xong, chờ giao → Đã giao khách. Hủy đơn đã trả tiền → "Đã hủy, cần hoàn tiền" → người chuyển khoản trả bấm
   "Đã hoàn tiền cho khách".
 - Đơn chưa trả tiền quá 30 phút tự hết hạn; quầy không thấy đơn chưa trả tiền.
 - Thu tiền qua SePay: mỗi đơn có mã VietQR đúng số tiền, nội dung "BT" + mã đơn. Khách chuyển khoản → SePay báo máy
@@ -24,9 +24,13 @@ laptop ở công ty, khi mở bán chuyển lên máy chủ thuê ở Việt Nam
   đơn lên đây và trả tiền ngay trong app — mã QR, chép số tài khoản / số tiền / nội dung, app tự cập nhật khi quán nhận
   đủ tiền. Thử trên laptop: `mini-app/README.md`, "Thử đặt và trả tiền với máy chủ đơn".
 
+- Tin ZNS báo khách (đợt 3): "Beeftown đã nhận đơn" khi đủ tiền, "Khay đã soạn xong" khi quầy bấm "Soạn xong, chờ giao".
+  Mỗi đơn mỗi tin đúng một lần; mất mạng thì thử lại, không rõ Zalo đã nhận chưa thì không gửi lại mà màn quầy báo gọi
+  khách. Gửi bằng App Zalo riêng của máy chủ đơn — mục "Tin ZNS". Chưa bật: chờ Khánh tạo App, đăng ký hai mẫu tin.
+
 Bộ cài lên máy chủ thuê ở Việt Nam: mục "Đưa lên máy chủ thuê" (đợt 4a).
 
-Chưa có: tin ZNS (đợt 3), sao lưu, đèn trong `/noi-bo` (đợt 4). Mini App trên Zalo **chưa** gửi đơn lên máy chủ này:
+Chưa có: sao lưu, đèn trong `/noi-bo` (đợt 4). Mini App trên Zalo **chưa** gửi đơn lên máy chủ này:
 địa chỉ còn để trống cho tới khi máy chủ chạy HTTPS — khách vẫn gửi tin vào chat OA.
 
 ## Chạy thử trên laptop
@@ -170,6 +174,14 @@ SePay mà đổi IP thì tin tiền về bị 403 âm thầm: đơn khách đã 
 sức khỏe và đối soát SePay, issue #138) xem my.sepay.vn → Webhooks → nhật ký gửi: có lần 403 là SePay đã thêm IP —
 báo Claude Code sửa danh sách trong `cai-dat/Caddyfile.mau`.
 
+### 6b. Khi hai mẫu tin ZNS đã được duyệt
+
+Làm mục "Tin ZNS" bên dưới tới bước 3 (App riêng, hai mẫu, refresh token đầu tiên). Rồi trên máy thuê:
+`nano /etc/beeftown/may-chu-don.env`, bỏ dấu `#` năm dòng `ZALO_APP_ID`, `ZALO_SECRET_KEY`, `ZALO_KHOA`, `ZNS_MAU_DA_NHAN`,
+`ZNS_MAU_SOAN_XONG` (dòng `ZALO_KHOA` đã có sẵn khóa ngẫu nhiên — giữ nguyên), điền bốn dòng còn lại giữa hai dấu ngoặc kép, lưu,
+`systemctl restart may-chu-don`, rồi `bash may-chu.sh zalo-token` và dán refresh token. Lệnh in vài dòng nhật ký: phải
+có "Tin ZNS: đã làm mới token".
+
 ### 7. Mini App dùng máy chủ
 
 Sau khi PR màn trả tiền (đợt 2b) gộp: điền `diaChiMayChuDon: 'https://don.beeftown.vn'` trong
@@ -183,7 +195,7 @@ Sau khi PR màn trả tiền (đợt 2b) gộp: điền `diaChiMayChuDon: 'https
 | `/opt/beeftown/kho` | Bản tải của repo, chỉ để lấy mã — dịch vụ không chạy từ đây |
 | `/opt/beeftown/nha` | Thư mục nhà của người dùng `beeftown` (bộ đệm thư viện). Mã và cấu hình thuộc root: `beeftown` không sửa được |
 | `/var/lib/beeftown-may-chu-don/don.sqlite` | Sổ đơn — có tên, số điện thoại khách. Không chép ra khỏi máy |
-| `/etc/beeftown/may-chu-don.env` | Bí mật: mật khẩu quầy, khóa sức khỏe, tài khoản, khóa SePay (từ `cai-dat/may-chu-don.env.mau`) |
+| `/etc/beeftown/may-chu-don.env` | Bí mật: mật khẩu quầy, khóa sức khỏe, tài khoản, khóa SePay, App Zalo của tin ZNS (từ `cai-dat/may-chu-don.env.mau`) |
 | `/etc/caddy/Caddyfile` | HTTPS và chặn IP (từ `cai-dat/Caddyfile.mau` — sửa bản trong repo, rồi `cap-nhat`) |
 | dịch vụ `may-chu-don` | `systemctl status may-chu-don`, nhật ký: `journalctl -u may-chu-don -n 50` |
 
@@ -207,9 +219,16 @@ Chưa có (đợt 4, issue #138): sao lưu sổ đơn ra ngoài máy, đèn sứ
 | `TEN_TAI_KHOAN` | khi nhận tiền | Tên chủ tài khoản đúng như ngân hàng in, ví dụ `CONG TY TNHH SLK GROUP` |
 | `SEPAY_KHOA_KY` | khi nhận tiền | Secret Key HMAC-SHA256 của webhook SePay, ít nhất 16 ký tự. Không gửi qua chat |
 | `CHO_TRA_GIA_THU` | không | `1` cho hiện mã trả tiền khi bảng giá còn là giá thử — chỉ để thử chuyển khoản thật số nhỏ |
+| `ZALO_APP_ID` | khi gửi tin ZNS | App ID của App Zalo **riêng** của máy chủ đơn (không phải App của website) |
+| `ZALO_SECRET_KEY` | khi gửi tin ZNS | Secret Key của App đó (developers.zalo.me → App → Cài đặt). Không gửi qua chat |
+| `ZALO_KHOA` | khi gửi tin ZNS | Khóa mã hóa token Zalo trong sổ đơn, ít nhất 32 ký tự. Bộ cài điền sẵn. Đổi khóa = dán lại refresh token |
+| `ZNS_MAU_DA_NHAN` | khi gửi tin ZNS | Mã mẫu (chữ số) của mẫu "Beeftown đã nhận đơn" đã được Zalo duyệt |
+| `ZNS_MAU_SOAN_XONG` | khi gửi tin ZNS | Mã mẫu của mẫu "Khay đã soạn xong" |
+| `ZNS_CHE_DO` | không | `thu` (mặc định: chỉ quản trị viên OA nhận, khách thật không nhận gì) hoặc `that` |
 
 Bốn biến tài khoản phải đặt đủ cả bốn, hoặc không đặt cái nào (máy chủ vẫn nhận đơn nhưng không có mã trả tiền). Thiếu
 một biến, khóa SePay dưới 16 ký tự, hay có khóa SePay mà chưa có tài khoản: máy chủ không chạy và báo rõ biến nào sai.
+Năm biến tin ZNS cũng vậy: đủ cả năm (bật gửi tin), hoặc không cái nào (khách chỉ thấy trạng thái đơn trong app).
 
 ## Đường dẫn
 
@@ -220,7 +239,7 @@ một biến, khóa SePay dưới 16 ký tự, hay có khóa SePay mà chưa có
 | `GET /api/don/<mã>/qr.svg?khoa=` | Mini App | Ảnh mã VietQR cho phần tiền còn thiếu (chỉ khi đơn còn chờ trả tiền) |
 | `POST /sepay/tien-ve` | SePay | Tin có tiền về, ký HMAC-SHA256. Trả `{"success": true}` chỉ khi đã ghi xong |
 | `GET /quay` | Quầy | Màn hình đơn |
-| `GET /suc-khoe` | Đèn sức khỏe (đợt 4) | Số đơn chờ soạn, chờ lâu nhất bao nhiêu phút — không dữ liệu khách |
+| `GET /suc-khoe` | Đèn sức khỏe (đợt 4) | Số đơn chờ soạn, chờ lâu nhất bao nhiêu phút; tin ZNS: có bật không, số tin chờ, số tin không tới khách trong 24 giờ, token Zalo (có / chưa có / bị từ chối) — không dữ liệu khách |
 
 ## Cài SePay (khi đã có tài khoản VietinBank)
 
@@ -245,9 +264,86 @@ công ty không nhận được; cần máy chủ thuê ở Việt Nam có tên 
    danh sách developer.sepay.vn/vi/dia-chi-ip đọc 02/11/2026). SePay đổi IP thì sửa file đó và
    `crm/test/test-may-chu-don-cai-dat.mjs` cùng một PR, rồi `cap-nhat`.
 
+## Tin ZNS
+
+Máy chủ đơn gửi hai tin ZNS cho mỗi đơn trả trước, tới số điện thoại khách ghi:
+
+| Khi nào | Mẫu | Biến mã mẫu |
+|---|---|---|
+| SePay báo đủ tiền (đơn sang "Đã trả tiền, chờ soạn") | "Beeftown đã nhận đơn" | `ZNS_MAU_DA_NHAN` |
+| Quầy bấm "Soạn xong, chờ giao" | "Khay đã soạn xong" | `ZNS_MAU_SOAN_XONG` |
+
+Đơn mẫu (`npm run don-mau`) và đơn nhận tại quán cũ trên sổ thử không bao giờ có tin.
+
+**Vì sao App Zalo riêng.** Website đã gửi tin Zalo bằng App Zalo của nó (`web/README.md`, mục "Zalo"), làm mới token 5
+phút một lần. Refresh token của Zalo chỉ dùng **một lần**: máy chủ đơn mà làm mới cùng App đó thì token của website chết
+(hoặc ngược lại). Nên máy chủ đơn có App riêng, cùng OA Beeftown. Tin gửi từ máy chủ đơn ở Việt Nam, không qua website:
+tin cần số điện thoại khách Mini App, mà dữ liệu đó phải xử lý ở Việt Nam.
+
+> **Giả định, chưa đối chiếu tài liệu chính thức của Zalo (09/11/2026):** mẫu ZNS gắn với cặp OA + App (hướng dẫn của
+> các nhà cung cấp ZNS ghi "chọn OA và App" khi tạo mẫu) — mẫu tạo dưới App của website thì App của máy chủ đơn không
+> gửi được. Địa chỉ, tên trường, bảng mã lỗi dùng chung với website (`web/src/lib/zalo.ts`, đã đối chiếu 23/10/2026).
+> Tham số `tong_tien` gửi dạng số (`600000`), giả định khai kiểu "Tiền tệ" để Zalo tự định dạng; `gio_nhan` gửi dạng
+> chữ `10:30 13/11/2026`. Zalo báo sai dạng (mã -1123, -1124…) thì báo Claude Code sửa `src/zns.ts` (`duLieuTin`).
+
+### Các bước của Khánh (một lần)
+
+1. **App riêng.** developers.zalo.me → Tạo ứng dụng mới, tên ví dụ "Beeftown Máy chủ đơn". Liên kết với OA Beeftown;
+   ở mục Official Account → cấp quyền: đặt *Callback URL* `https://beeftown.vn/`, bật quyền gửi tin ZBS / ZNS. Chép
+   **App ID** và **Secret Key** (Secret Key không gửi qua chat).
+2. **Hai mẫu tin.** Zalo Cloud Account (account.zalo.cloud) → tạo mẫu tin ZBS, loại giao dịch / cập nhật đơn hàng,
+   chọn OA Beeftown và **App vừa tạo ở bước 1**. Tên tham số phải đúng y như dưới đây (trong dấu `< >`). Chờ Zalo
+   duyệt, chép **mã mẫu** (dãy số) của từng mẫu.
+
+   **Mẫu "Beeftown đã nhận đơn"** (`ZNS_MAU_DA_NHAN`)
+   - Tiêu đề: `Beeftown đã nhận đơn của bạn`
+   - Nội dung: `Chào <ten_khach>, Beeftown đã nhận đủ tiền cho đơn #<so_don>. Quầy đang soạn khay để giao theo giờ bạn muốn nhận.`
+   - Bảng: `Mã đơn` — `<ma_don>`; `Giờ muốn nhận` — `<gio_nhan>`; `Tổng tiền` — `<tong_tien>`
+   - Tham số: `ten_khach` tên khách (tối đa 30 ký tự), `so_don` số đơn trong ngày, `ma_don` mã đơn 8 ký tự,
+     `gio_nhan` thời gian (chữ, ví dụ `10:30 13/11/2026`), `tong_tien` tiền tệ (số, ví dụ `600000`)
+
+   **Mẫu "Khay đã soạn xong"** (`ZNS_MAU_SOAN_XONG`)
+   - Tiêu đề: `Khay của bạn đã soạn xong`
+   - Nội dung: `Chào <ten_khach>, khay của đơn #<so_don> đã soạn xong, chờ giao.`
+   - Bảng: `Mã đơn` — `<ma_don>`; `Giờ muốn nhận` — `<gio_nhan>`
+   - Tham số: `ten_khach`, `so_don`, `ma_don`, `gio_nhan` như trên
+
+   Câu chữ khớp với chữ màn Trả tiền của Mini App. Zalo đòi sửa câu thì sửa câu, giữ nguyên tên tham số.
+3. **Refresh token đầu tiên** của App mới — như `web/README.md`, "Lấy refresh token đầu tiên", nhưng dùng App ID và
+   Secret Key **của App mới**: chủ OA mở
+   `https://oauth.zaloapp.com/v4/oa/permission?app_id=<APP_ID mới>&redirect_uri=https://beeftown.vn/` → Cho phép → chép
+   `code` trên thanh địa chỉ → đổi lấy token:
+   ```bash
+   curl -s -X POST https://oauth.zaloapp.com/v4/oa/access_token \
+     -H "secret_key: <SECRET_KEY của App mới>" \
+     -d app_id=<APP_ID mới> -d grant_type=authorization_code -d code=<code>
+   ```
+   Kết quả có `refresh_token`. Đừng dán nó vào màn Cài đặt Zalo của website (đó là App khác).
+4. **Bật trên máy chủ.** Máy thuê: mục 6b ở trên. Laptop thử: thêm năm biến khi chạy máy chủ (PowerShell:
+   `$env:ZALO_APP_ID="<App ID>"; $env:ZALO_SECRET_KEY="<Secret Key>"; $env:ZALO_KHOA="<32 ký tự trở lên, tự đặt>"; $env:ZNS_MAU_DA_NHAN="<mã mẫu>"; $env:ZNS_MAU_SOAN_XONG="<mã mẫu>"`),
+   rồi ở cửa sổ khác, cùng `ZALO_KHOA` và cùng thư mục sổ đơn: `npm run dat-token-zalo` và dán refresh token.
+   Dòng khởi động in "Tin ZNS: bật, chế độ thử"; vài giây sau: "Tin ZNS: đã làm mới token".
+5. **Thử (chưa tốn tiền).** Chế độ thử (mặc định): Zalo chỉ giao tin cho quản trị viên của OA / App. Đặt một đơn bằng
+   **số điện thoại của một quản trị viên OA**, trả đủ tiền (SePay Test mode) → nhận tin "Beeftown đã nhận đơn"; quầy
+   bấm "Bắt đầu soạn", "Soạn xong, chờ giao" → nhận tin thứ hai. Ổn rồi mới đặt `ZNS_CHE_DO=that` và chạy lại máy chủ.
+   Tin ZNS tính phí từng tin vào ví ZBS của OA; mỗi đơn hai tin.
+
+### Khi tin không tới khách
+
+- Thẻ đơn trên màn quầy hiện "! Tin Zalo báo đơn chưa chắc tới được khách … Gọi khách nếu cần báo đơn." khi Zalo từ
+  chối (số không dùng Zalo, mẫu sai) hoặc khi không rõ Zalo đã nhận chưa (hết 15 giây chờ, đứt kết nối giữa chừng,
+  máy chủ tắt giữa lúc gửi). Trường hợp không rõ thì **không gửi lại**: khách có thể đã nhận, gửi lại là nhận hai lần.
+- Mất mạng trước khi tin ra khỏi máy: thử lại 5 phút một lần, tối đa 5 lần. Loại tin Zalo không cho gửi ban đêm
+  (22:00–07:00): gửi lúc 07:00. Tin chỉ đi khi còn đúng: đơn đã hủy, hay đã quá giờ khách muốn nhận một giờ, thì bỏ.
+- Nhật ký: `journalctl -u may-chu-don | grep "Tin ZNS"` — không có số điện thoại, tên khách, token.
+- "Zalo từ chối refresh token": máy chủ ngừng gửi (không có lần thử nào tốn tiền). Lấy refresh token mới (bước 3) và
+  chạy lại lệnh đặt token. Refresh token sống khoảng 3 tháng và được gia hạn mỗi lần làm mới (mỗi ngày một lần khi máy
+  chủ chạy); máy chủ tắt quá 3 tháng thì phải lấy lại.
+
 ## Việc của Khánh trước khi bật cho khách
 
 1. Mở tài khoản VietinBank doanh nghiệp, cài SePay theo mục trên.
-2. Hỏi Sang: giá thật của 6 phần (đang là giá thử — máy chủ không hiện mã trả tiền theo giá thử), cách tính phí
+2. Tạo App Zalo riêng cho máy chủ đơn, đăng ký hai mẫu tin ZNS, lấy refresh token (mục "Tin ZNS").
+3. Hỏi Sang: giá thật của 6 phần (đang là giá thử — máy chủ không hiện mã trả tiền theo giá thử), cách tính phí
    giao hàng.
-3. Hỏi luật sư: Mini App có chức năng đặt hàng và thanh toán có phải thông báo Bộ Công Thương không.
+4. Hỏi luật sư: Mini App có chức năng đặt hàng và thanh toán có phải thông báo Bộ Công Thương không.

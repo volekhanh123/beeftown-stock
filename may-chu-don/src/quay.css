@@ -71,6 +71,9 @@ body {
 .qd-the p { margin: 4px 0; }
 .qd-tong { font-weight: 700; }
 .qd-ghi-chu { border-left: 3px solid var(--vien-o); padding-left: 8px; }
+/* Tin Zalo báo đơn chưa chắc tới khách: việc phải xem (gọi khách) — viền đỏ, có dấu "!", không màu trạng thái. */
+.qd-tin-zalo { border-left: 3px solid var(--do); padding-left: 8px; font-weight: 600; }
+.qd-tin-zalo::before { content: '! '; content: '! ' / ''; color: var(--do); font-weight: 800; }
 .qd-dia-chi { font-weight: 600; }
 .qd-the a { color: var(--than); font-weight: 600; }
 
