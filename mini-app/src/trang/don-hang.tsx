@@ -4,7 +4,7 @@ import { CAU_HINH, CAU_HINH_GIO, CAU_HINH_GIO_GIAO } from "../cau-hinh";
 import { cacGioChon, cacNgayChon, dinhDangTien, kiemTraDon, taoNoiDungDon, tongTienThit } from "../don";
 import { useGioHang } from "../gio-hang";
 import { SAN_PHAM, dongTuGio } from "../san-pham";
-import { DauTrang, GhiChuConHang, GiaKhay, Muc, NhanBaoQuan, SoKhay } from "../thanh-phan";
+import { DauTrang, GhiChuConHang, GiaKhay, Muc, NhanBaoQuan, NutChat, SoKhay } from "../thanh-phan";
 import { trangThaiPhan } from "../con-hang";
 import { useConHang } from "../con-hang-kho";
 import { useThongBao } from "../thong-bao";
@@ -366,15 +366,18 @@ export default function DonHang() {
             ))}
           </ul>
         )}
-        <button type="button" className="nut-chinh rong" onClick={guiDon} disabled={dangGui}>
-          {TRA_TRUOC
-            ? dangGui
-              ? "Đang gửi đơn…"
-              : "Gửi đơn và trả tiền"
-            : dangGui
-              ? "Đang mở Zalo…"
-              : "Gửi đơn qua Zalo"}
-        </button>
+        <div className="hang-nut-duoi">
+          {TRA_TRUOC && <NutChat />}
+          <button type="button" className="nut-chinh rong" onClick={guiDon} disabled={dangGui}>
+            {TRA_TRUOC
+              ? dangGui
+                ? "Đang gửi đơn…"
+                : "Gửi đơn và trả tiền"
+              : dangGui
+                ? "Đang mở Zalo…"
+                : "Gửi đơn qua Zalo"}
+          </button>
+        </div>
       </div>
 
       {tinNgoaiZalo && (

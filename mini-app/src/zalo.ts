@@ -1,6 +1,6 @@
 // Các lệnh của Zalo dùng trong app. Chỉ chạy được bên trong ứng dụng Zalo trên điện thoại.
 
-import { followOA, openChat, openShareSheet, saveImageToGallery } from "zmp-sdk";
+import { followOA, openChat, openShareSheet, saveImageToGallery, showOAWidget } from "zmp-sdk";
 import { CAU_HINH } from "./cau-hinh";
 import type { NoiDungChiaSe } from "./chia-se";
 
@@ -55,5 +55,18 @@ export async function chiaSe(noiDung: NoiDungChiaSe): Promise<KetQuaChiaSe> {
     return kq?.status === 0 ? "huy" : "da-chia-se";
   } catch {
     return "loi";
+  }
+}
+
+/**
+ * Khung quan tâm OA của chính Zalo (tên, ảnh OA, nút Quan tâm / Đã quan tâm) vẽ vào phần tử có `id`. Zalo lấy OA
+ * gắn với Mini App. Lỗi (ngoài Zalo, Zalo cũ, chưa gắn OA): gọi `khiLoi` để app hiện lại nút "Quan tâm" tự làm.
+ */
+export async function hienKhungQuanTamOA(id: string, khiLoi: () => void): Promise<void> {
+  if (!dangTrongZalo()) return khiLoi();
+  try {
+    await showOAWidget({ id, guidingText: "Quan tâm Beeftown trên Zalo để nhận tin của quán.", color: "#f4f4f4", onError: khiLoi });
+  } catch {
+    khiLoi();
   }
 }

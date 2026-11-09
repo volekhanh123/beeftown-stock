@@ -422,6 +422,37 @@ body {
 .thanh-duoi .nut-chinh {
   min-width: 140px;
 }
+/* Nút chat nhỏ cạnh nút đặt (chỉ trong Zalo). Trang chủ: cạnh "Xem đơn"; màn đơn hàng: cạnh "Gửi đơn và trả tiền". */
+.hang-nut-duoi {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.hang-nut-duoi.co-tom-tat {
+  width: auto;
+}
+.hang-nut-duoi .nut-chinh.rong {
+  flex: 1;
+}
+.nut-chat-nho {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--vien);
+  border-radius: 12px;
+  background: var(--trang);
+  color: var(--den);
+  cursor: pointer;
+}
+/* Khung quan tâm OA do Zalo vẽ; giữ chỗ để màn không nhảy khi khung hiện ra. */
+.khung-quan-tam-oa {
+  width: 100%;
+  min-height: 64px;
+}
 .ds-loi {
   width: 100%;
   margin: 0;

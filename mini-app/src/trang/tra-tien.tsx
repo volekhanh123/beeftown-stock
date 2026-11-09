@@ -5,10 +5,10 @@ import { DauTich } from "../bieu-tuong";
 import { dinhDangTien, ngayDayDu } from "../don";
 import { useGioHang } from "../gio-hang";
 import { docDonTrenMayChu } from "../may-chu-don";
-import { DauTrang } from "../thanh-phan";
+import { DauTrang, KhungQuanTamOA } from "../thanh-phan";
 import { useThongBao } from "../thong-bao";
 import { buocTraTien, gioPhutVn, hoiLaiSauMs, type DonTraTruoc, type ThanhToanCo } from "../tra-truoc";
-import { dangTrongZalo, luuAnhVaoMay, moChatVoiQuan, quanTamQuan } from "../zalo";
+import { dangTrongZalo, luuAnhVaoMay, moChatVoiQuan } from "../zalo";
 
 /** Lỗi mạng: hỏi lại sau chừng này. Máy đang ẩn (khách ở app ngân hàng): không hỏi dày hơn 30 giây. */
 const THU_LAI_KHI_LOI_MS = 8_000;
@@ -192,15 +192,7 @@ export default function TraTien() {
             </p>
           )}
           <div className="cot-nut">
-            <button
-              type="button"
-              className="nut-phu rong"
-              onClick={async () => {
-                if (await quanTamQuan()) thongBao("Cảm ơn bạn đã quan tâm Beeftown.", "success");
-              }}
-            >
-              Quan tâm Beeftown trên Zalo
-            </button>
+            <KhungQuanTamOA />
             <button type="button" className="nut-chu" onClick={() => veTrangChu({ lamMoiGio: true })}>
               Làm đơn mới
             </button>

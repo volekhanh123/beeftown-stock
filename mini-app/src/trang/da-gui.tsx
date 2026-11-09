@@ -3,9 +3,9 @@ import { Page, useNavigate } from "zmp-ui";
 import { KhungChat } from "../bieu-tuong";
 import { CAU_HINH } from "../cau-hinh";
 import { useGioHang } from "../gio-hang";
-import { DauTrang } from "../thanh-phan";
+import { DauTrang, KhungQuanTamOA } from "../thanh-phan";
 import { useThongBao } from "../thong-bao";
-import { moChatVoiQuan, quanTamQuan } from "../zalo";
+import { moChatVoiQuan } from "../zalo";
 
 export default function DaGui() {
   const navigate = useNavigate();
@@ -15,11 +15,6 @@ export default function DaGui() {
   async function moLai() {
     const ketQua = await moChatVoiQuan(noiDungDaGui || undefined);
     if (ketQua !== "da-mo") thongBao("Chưa mở được khung chat Zalo.");
-  }
-
-  async function quanTam() {
-    const daQuanTam = await quanTamQuan();
-    if (daQuanTam) thongBao("Cảm ơn bạn đã quan tâm Beeftown.", "success");
   }
 
   return (
@@ -39,9 +34,7 @@ export default function DaGui() {
           <button type="button" className="nut-chinh rong" onClick={moLai}>
             Mở lại chat với Beeftown
           </button>
-          <button type="button" className="nut-phu rong" onClick={quanTam}>
-            Quan tâm Beeftown trên Zalo
-          </button>
+          <KhungQuanTamOA />
           <button
             type="button"
             className="nut-chu"
