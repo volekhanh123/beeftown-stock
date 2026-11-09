@@ -41,6 +41,8 @@ export interface ThanhToanCo {
   /** Chuỗi VietQR máy chủ dựng — app vẽ mã QR từ chuỗi này. */
   chuoiQr: string;
   hetHanLuc: number;
+  /** Máy chủ đang ở chế độ demo (CHE_DO_DEMO=1): tài khoản giả, quán giả lập tiền về — app ghi "đừng chuyển khoản". */
+  demo: boolean;
 }
 export type LyDoChuaTra = "chua_co_tai_khoan" | "gia_thu" | "khong_cho_tra" | "tam_loi";
 export type ThanhToan = ThanhToanCo | { traDuoc: false; lyDo: LyDoChuaTra };
@@ -153,6 +155,7 @@ function docThanhToan(v: unknown): ThanhToan {
         noiDung: t.noiDung,
         chuoiQr: t.chuoiQr,
         hetHanLuc: t.hetHanLuc,
+        demo: t.demo === true,
       };
     }
     return { traDuoc: false, lyDo: "tam_loi" };

@@ -10,6 +10,7 @@
  *   GET  /quay                 Màn hình đơn cho quầy (mật khẩu quầy → phiên 12 giờ).
  *   POST /quay/dang-nhap · /quay/dang-xuat · /quay/doi · /quay/ngon-ngu · /quay/tien-ve/da-xem;
  *        GET /quay/huy?ma= (hỏi lại trước khi hủy)
+ *   POST /quay/demo/tien-ve    Chỉ ở chế độ demo (CHE_DO_DEMO=1): giả lập khách chuyển đủ tiền cho một đơn chờ trả tiền.
  *
  * taoXuLy nhận mọi thứ từ ngoài vào (sổ đơn, mật khẩu, đồng hồ) để kiểm thử gọi thẳng bằng Request, không cần
  * mở cổng. Câu trả lời của /api chỉ nói "đã ghi" khi giao dịch SQLite đã xong; lỗi thì nói rõ đơn CHƯA được ghi
@@ -20,10 +21,11 @@ import { readFileSync } from 'node:fs';
 import CSS_QUAY_FILE from './quay.css' with { type: 'text' };
 import { MAU_MA_GUI, dauNoiDungGui, kiemDon } from './tao-don.ts';
 import { SoDon, PHUT_CHO_THANH_TOAN, type DonDayDu } from './so-don.ts';
-import { DA_NHAN, docTinTienVe, kiemChuKy } from './sepay.ts';
+import { DA_NHAN, docTinTienVe, kiemChuKy, type TinTienVe } from './sepay.ts';
 import { chuoiVietQr, noiDungChuyenKhoan, svgVietQr, type TaiKhoanNhan } from './viet-qr.ts';
 import { NHAN, duocBam, laTrangThai } from './trang-thai.ts';
 import { laCauBao, trangDangNhap, trangDanhSach, trangXacNhanHuy, type NgonNgu } from './man-quay.ts';
+import { gioVnTuMs } from '../../web/src/lib/gio-vn.ts';
 
 const CSS_QUAY = CSS_QUAY_FILE as unknown as string;
 
@@ -45,11 +47,30 @@ export interface TuyChonMayChu {
   khoaSepay?: string;
   /** Cho hiện mã trả tiền khi bảng giá còn là giá thử — chỉ để Khánh thử chuyển khoản thật số nhỏ. */
   choTraGiaThu?: boolean;
+  /**
+   * Chế độ demo (CHE_DO_DEMO=1, Khánh 09/11/2026): mã QR dùng tài khoản giả TAI_KHOAN_DEMO, kể cả khi giá còn là giá
+   * thử; màn quầy có nút giả lập khách chuyển đủ tiền. main.ts không cho bật cùng khóa SePay hay tài khoản thật.
+   */
+  demo?: boolean;
 }
+
+/**
+ * Tài khoản giả của chế độ demo: số toàn 0, tên ghi rõ "đừng chuyển khoản" — app ngân hàng quét mã không ra người
+ * nhận thật. Mini App thấy `demo: true` thì ghi "Bản demo: đừng chuyển khoản".
+ */
+export const TAI_KHOAN_DEMO: TaiKhoanNhan = {
+  bin: '970415', tenNganHang: 'VietinBank', soTaiKhoan: '000000000000', tenTaiKhoan: 'BEEFTOWN DEMO - DUNG CHUYEN KHOAN',
+};
+
+/**
+ * id của lần tiền về giả lập cho một đơn: số âm (SePay chỉ có id dương), cố định theo mã đơn — bấm đúp hay hai máy
+ * tính bảng cùng bấm thì ghiTienVe thấy id đã có, không ghi lần hai.
+ */
+export const idTienVeDemo = (maDon: string) => -parseInt(createHash('sha256').update(`demo:${maDon}`).digest('hex').slice(0, 12), 16);
 
 /** Thông tin trả tiền gửi cho Mini App, hoặc lý do chưa trả được. */
 export type ThanhToan =
-  | { traDuoc: true; nganHang: string; soTaiKhoan: string; tenTaiKhoan: string; soTien: number; noiDung: string; chuoiQr: string; hetHanLuc: number }
+  | { traDuoc: true; nganHang: string; soTaiKhoan: string; tenTaiKhoan: string; soTien: number; noiDung: string; chuoiQr: string; hetHanLuc: number; demo?: true }
   | { traDuoc: false; lyDo: 'chua_co_tai_khoan' | 'gia_thu' | 'khong_cho_tra' | 'tam_loi' };
 
 /**
@@ -184,13 +205,14 @@ export function taoXuLy(tc: TuyChonMayChu) {
   const thanhToanCoTheNem = (d: DonDayDu): ThanhToan => {
     if (d.trangThai !== 'cho_thanh_toan') return { traDuoc: false, lyDo: 'khong_cho_tra' };
     if (!tc.taiKhoan) return { traDuoc: false, lyDo: 'chua_co_tai_khoan' };
-    if (d.giaThu && !tc.choTraGiaThu) return { traDuoc: false, lyDo: 'gia_thu' };
+    if (d.giaThu && !tc.choTraGiaThu && !tc.demo) return { traDuoc: false, lyDo: 'gia_thu' };
     const conThieu = d.tongTien - tc.so.tienDaNhan(d.ma);
     if (conThieu <= 0) return { traDuoc: false, lyDo: 'khong_cho_tra' };
     const noiDung = noiDungChuyenKhoan(d.ma);
     return {
       traDuoc: true, nganHang: tc.taiKhoan.tenNganHang, soTaiKhoan: tc.taiKhoan.soTaiKhoan, tenTaiKhoan: tc.taiKhoan.tenTaiKhoan,
       soTien: conThieu, noiDung, chuoiQr: chuoiVietQr(tc.taiKhoan, conThieu, noiDung), hetHanLuc: d.taoLuc + PHUT_CHO_THANH_TOAN * 60_000,
+      ...(tc.demo ? { demo: true as const } : {}),
     };
   };
   // Đơn đã ghi xong rồi mới dựng phần trả tiền: phần này hỏng (sổ đơn bận) thì vẫn trả đơn — câu "đơn CHƯA được ghi"
@@ -287,7 +309,7 @@ export function taoXuLy(tc: TuyChonMayChu) {
 
     if (duong === '/suc-khoe' && req.method === 'GET') {
       if (tc.khoaSucKhoe && !bangNhau(url.searchParams.get('khoa') ?? '', tc.khoaSucKhoe)) return loiApi(403, 'Sai khóa.');
-      try { return json({ ok: true, luc: ms, ...tc.so.soLieu(ms) }); }
+      try { return json({ ok: true, luc: ms, cheDoDemo: !!tc.demo, ...tc.so.soLieu(ms) }); }
       catch (e) { console.error('Đọc số liệu hỏng:', e); return loiApi(500, 'Không đọc được sổ đơn.'); }
     }
 
@@ -343,7 +365,8 @@ export function taoXuLy(tc: TuyChonMayChu) {
         const don = ma ? tc.so.layDon(ma) : null;
         const bao = laCauBao(baoMa) ? { ma: baoMa, maDon: don?.ma ?? '', so: don?.soTrongNgay ?? null, den: laTrangThai(den) ? den : null } : null;
         const daNhan = tc.so.tienDaNhanTheoDon();
-        return html(trangDanhSach(nn, tc.so.danhSachQuay(ms), bao, tc.so.tienVeCanXem(), ma => daNhan.get(ma) ?? 0));
+        return html(trangDanhSach(nn, tc.so.danhSachQuay(ms), bao, tc.so.tienVeCanXem(), ma => daNhan.get(ma) ?? 0,
+          tc.so.donCoTienDemo(), tc.demo ? tc.so.donChoThanhToan() : undefined));
       }
 
       if (duong === '/quay/huy' && req.method === 'GET') {
@@ -357,6 +380,24 @@ export function taoXuLy(tc: TuyChonMayChu) {
         if (!laTrangThai(tu) || !laTrangThai(den)) return chuyen('/quay?bao=khong_duoc');
         const kq = tc.so.doiTrangThai(ma, tu, den, ms);
         return chuyen(`/quay?bao=${kq}&ma=${encodeURIComponent(ma)}&den=${den}#don-${encodeURIComponent(ma)}`);
+      }
+      // Chế độ demo: giả lập khách chuyển đủ phần còn thiếu — đi cùng đường ghiTienVe như tiền SePay thật (một giao dịch,
+      // đơn sang "đã trả tiền", xếp tin ZNS), id âm cố định theo đơn nên bấm đúp chỉ ghi một lần.
+      if (duong === '/quay/demo/tien-ve' && req.method === 'POST') {
+        if (!tc.demo || !tc.taiKhoan) return html('Not found', 404);
+        const ma = new URLSearchParams((await docThan(req, 1024)) ?? '').get('ma') ?? '';
+        const don = tc.so.layDon(ma);
+        const conThieu = don ? don.tongTien - tc.so.tienDaNhan(don.ma) : 0;
+        if (!don || don.trangThai !== 'cho_thanh_toan' || conThieu <= 0) {
+          return chuyen(`/quay?bao=${don && tc.so.donCoTienDemo().has(don.ma) ? 'demo_da_tra_roi' : 'demo_khong_cho'}${don ? `&ma=${encodeURIComponent(don.ma)}` : ''}`);
+        }
+        const tin: TinTienVe = {
+          idSepay: idTienVeDemo(don.ma), vao: true, soTien: conThieu, soTaiKhoan: tc.taiKhoan.soTaiKhoan, taiKhoanPhu: '',
+          coMaQuan: true, ngayGiaoDich: gioVnTuMs(ms).replace('T', ' '), maThamChieu: 'DEMO', maDon: don.ma,
+        };
+        const kq = tc.so.ghiTienVe(tin, tc.taiKhoan.soTaiKhoan, ms);
+        if (kq.moi) console.log(`Demo: giả lập tiền về đơn ${don.ma} (${kq.ketQua})`);
+        return chuyen(`/quay?bao=${kq.moi ? 'demo_da_tra' : 'demo_da_tra_roi'}&ma=${encodeURIComponent(don.ma)}#don-${encodeURIComponent(don.ma)}`);
       }
       if (duong === '/quay/tien-ve/da-xem' && req.method === 'POST') {
         const id = Number(new URLSearchParams((await docThan(req, 1024)) ?? '').get('id'));

@@ -42,7 +42,7 @@ mạng: dữ liệu đi qua máy chủ Cloudflare.
 | File | Việc |
 |---|---|
 | `src/main.ts` | Khởi động: biến môi trường, sổ đơn, `Bun.serve`, hết hạn mỗi phút |
-| `src/may-chu.ts` | Mọi đường dẫn (`taoXuLy` — kiểm thử gọi thẳng bằng `Request`), giới hạn lượt, phiên quầy, phông |
+| `src/may-chu.ts` | Mọi đường dẫn (`taoXuLy` — kiểm thử gọi thẳng bằng `Request`), giới hạn lượt, phiên quầy, phông; chế độ demo (`TAI_KHOAN_DEMO`, `idTienVeDemo`, `/quay/demo/tien-ve`) |
 | `src/tao-don.ts` | `kiemDon`: kiểm đơn khách gửi, tự tính tiền; `dongHoVn` (giờ VN cho hàm giờ của Mini App) |
 | `src/so-don.ts` | `SoDon`: bảng SQLite, tạo đơn theo `maGui`, đổi trạng thái có kiểm trạng thái cũ, nhật ký; `ghiTienVe` (bảng `giao_dich`) |
 | `src/viet-qr.ts` | Chuỗi VietQR chuẩn NAPAS (CRC16), ảnh SVG, nội dung chuyển khoản "BT" + mã đơn |
@@ -69,12 +69,16 @@ giờ nhận và số điện thoại `mini-app/src/don.ts`, giờ Việt Nam `w
 - Câu trả lời của `/api` chỉ nói đã ghi khi giao dịch đã xong; lỗi thì "đơn CHƯA được ghi". Không chữ "thành công".
 - Chỉ một đường đánh dấu "đã trả tiền": `POST /sepay/tien-ve`, sau khi chữ ký HMAC-SHA256 của SePay đúng, tiền vào
   đúng tài khoản của quán (chính hoặc VA) và tổng tiền đã về đủ tổng đơn (`SoDon.ghiTienVe`). Đơn mẫu chỉ ghi qua
-  `scripts/don-mau.ts` (từ chối khi sổ có đơn của khách thật).
+  `scripts/don-mau.ts` (từ chối khi sổ có đơn của khách thật). Ngoại lệ duy nhất: chế độ demo (`CHE_DO_DEMO=1`, Khánh
+  09/11/2026, README "Chế độ demo") — nút quầy `POST /quay/demo/tien-ve` gọi cùng `ghiTienVe` với id âm cố định theo đơn
+  (`idTienVeDemo`) và tài khoản giả `TAI_KHOAN_DEMO`; `main.ts` không cho bật cùng tài khoản nhận thật hay
+  `SEPAY_KHOA_KY` (`test/thu.ts` nhóm 21).
 - Mỗi id SePay ghi đúng một lần, cùng giao dịch với việc đổi đơn. Khoản tiền nào mang mã của quán mà không tự khớp được
   (thiếu, dư, gõ sai mã, sai tài khoản) phải hiện ở "Tiền về cần xem" — không bao giờ lặng lẽ bỏ qua.
 - Không giữ `content` / `description` của SePay (có thể có tên, số tài khoản người chuyển).
 - ZNS: tin xếp cùng giao dịch với bước làm ra nó (`xepTinZns` trong `ghiTienVe` và `doiTrongGiaoDich`), mỗi đơn mỗi
-  loại một dòng; chỉ tiền thật qua SePay mới có tin (đơn mẫu, `ghiDaThanhToan` không). Gửi thẳng từ máy chủ đơn, không
+  loại một dòng; chỉ tiền về qua `ghiTienVe` mới có tin (SePay, hay nút giả lập của chế độ demo; đơn mẫu,
+  `ghiDaThanhToan` không). Gửi thẳng từ máy chủ đơn, không
   qua website (số điện thoại khách Mini App không rời Việt Nam). Refresh token mới lưu vào sổ đơn TRƯỚC khi gửi; tin
   đang gửi dở khi máy chủ tắt thành `khong_ro`, không gửi lại. Nhật ký, cột `loi`: qua `xoaBiMatZalo` — không số điện
   thoại, không token. Chữ của mẫu tin nằm trên Zalo (Khánh tạo và duyệt), máy chủ chỉ gửi tham số.

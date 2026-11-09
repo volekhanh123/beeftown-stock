@@ -309,6 +309,11 @@ function ChoTra({
         </p>
       )}
       <section className="muc the-tra-tien" aria-label="Chuyển khoản">
+        {thanhToan.demo && (
+          <p className="bao-trang-thai" role="note">
+            Bản demo: đừng chuyển khoản. Mã QR dùng tài khoản giả; quán bấm giả lập tiền về trên màn quầy để thử tiếp.
+          </p>
+        )}
         <h2 className="tieu-de-tra">Chuyển khoản {tien}</h2>
         <div className="khung-qr">
           {anhQr ? (

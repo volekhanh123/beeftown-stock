@@ -217,6 +217,7 @@ Chưa có (đợt 4, issue #138): sao lưu sổ đơn ra ngoài máy, đèn sứ
 | `TEN_TAI_KHOAN` | khi nhận tiền | Tên chủ tài khoản đúng như ngân hàng in, ví dụ `CONG TY TNHH SLK GROUP` |
 | `SEPAY_KHOA_KY` | khi nhận tiền | Secret Key HMAC-SHA256 của webhook SePay, ít nhất 16 ký tự. Không gửi qua chat |
 | `CHO_TRA_GIA_THU` | không | `1` cho hiện mã trả tiền khi bảng giá còn là giá thử — chỉ để thử chuyển khoản thật số nhỏ |
+| `CHE_DO_DEMO` | không | `1` bật chế độ demo (mục "Chế độ demo"): mã QR dùng tài khoản giả, quầy có nút giả lập tiền về. Không chạy cùng tài khoản nhận thật hay `SEPAY_KHOA_KY` |
 | `ZALO_APP_ID` | khi gửi ZNS | App ID của App Zalo **riêng** cho máy chủ đơn (mục "Cài ZNS") |
 | `ZALO_SECRET_KEY` | khi gửi ZNS | Secret key của App đó. Không gửi qua chat |
 | `ZNS_MAU_DA_NHAN` | khi gửi ZNS | Mã mẫu (template ID) tin "Beeftown đã nhận đơn", Zalo đã duyệt |
@@ -237,7 +238,39 @@ Bốn biến ZNS đầu cũng vậy: đủ cả bốn, hoặc không cái nào (
 | `GET /api/don/<mã>/qr.svg?khoa=` | Mini App | Ảnh mã VietQR cho phần tiền còn thiếu (chỉ khi đơn còn chờ trả tiền) |
 | `POST /sepay/tien-ve` | SePay | Tin có tiền về, ký HMAC-SHA256. Trả `{"success": true}` chỉ khi đã ghi xong |
 | `GET /quay` | Quầy | Màn hình đơn |
+| `POST /quay/demo/tien-ve` | Quầy, chỉ khi `CHE_DO_DEMO=1` | Giả lập khách chuyển đủ tiền cho một đơn chờ trả tiền (mục "Chế độ demo"); tắt demo thì 404 |
 | `GET /suc-khoe` | Đèn sức khỏe (đợt 4) | Số đơn chờ soạn, chờ lâu nhất bao nhiêu phút, tin ZNS chờ / hỏng, trạng thái token Zalo — không dữ liệu khách |
+
+## Chế độ demo (thử trọn luồng khi chưa có tài khoản ngân hàng)
+
+Khánh 09/11/2026: thử từ lúc khách đặt tới lúc giao trên Mini App và màn quầy thật, khi chưa có tài khoản VietinBank và
+SePay. Bật `CHE_DO_DEMO=1` thì:
+
+- Mini App hiện mã QR như thật nhưng theo **tài khoản giả** (số toàn 0, tên "BEEFTOWN DEMO - DUNG CHUYEN KHOAN"), kèm
+  dòng "Bản demo: đừng chuyển khoản". Mã hiện cả khi bảng giá còn là giá thử.
+- Màn quầy có dòng cảnh báo đầu trang và mục **"Đơn chờ khách chuyển khoản (demo)"**. Bấm **"Giả lập khách đã chuyển
+  khoản"** thì máy chủ ghi một lần tiền về giả (mã tham chiếu `DEMO`) đi đúng đường của tiền SePay thật: đơn sang "Đã
+  trả tiền, chờ soạn", Mini App của khách tự chuyển sang "Quán đã nhận đủ tiền", tin ZNS "đã nhận đơn" được xếp (đã cài
+  ZNS ở chế độ thử thì quản trị viên OA nhận). Bấm đúp vẫn chỉ một lần. Đơn có tiền giả mang nhãn "Tiền giả lập (demo)".
+- Máy chủ **không chạy** nếu file bí mật có cả `CHE_DO_DEMO=1` lẫn bốn dòng tài khoản thật hay `SEPAY_KHOA_KY` — không
+  bao giờ lẫn tiền giả với tiền thật.
+
+Bật trên máy BizFly (sau khi PR có chế độ demo đã gộp):
+
+```
+bash /opt/beeftown/hien-tai/may-chu-don/cai-dat/may-chu.sh cap-nhat
+nano /etc/beeftown/may-chu-don.env      # thêm một dòng: CHE_DO_DEMO=1 — lưu: Ctrl + O, Enter, Ctrl + X
+systemctl restart may-chu-don
+journalctl -u may-chu-don -n 5          # thấy dòng "CHẾ ĐỘ DEMO" là đã bật
+```
+
+Thử: đặt một đơn trên Mini App bản thử → màn trả tiền có dòng "Bản demo" → trên máy tính bảng mở
+`https://don.beeftown.vn/quay`, bấm "Giả lập khách đã chuyển khoản" → Mini App đổi sang "Quán đã nhận đủ tiền" →
+ở quầy bấm "Bắt đầu soạn", "Soạn xong, chờ giao", "Đã giao".
+
+**Tắt trước khi mở bán:** xóa dòng `CHE_DO_DEMO=1` (hoặc thêm `#` ở đầu), `systemctl restart may-chu-don`. Đơn demo
+còn trong sổ: ở màn quầy bấm cho xong ("Đã giao") hoặc "Hủy đơn, cần hoàn tiền" rồi "Đã hoàn tiền cho khách" (tiền giả,
+không phải hoàn gì) — để khi mở bán, mục "Còn phải làm" chỉ còn đơn thật.
 
 ## Cài SePay (khi đã có tài khoản VietinBank)
 
