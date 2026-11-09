@@ -12,11 +12,17 @@
  *   · đổi trạng thái: câu update chỉ chạy khi trạng thái đang đúng là `tu`. Hai máy tính bảng cùng bấm, hay một
  *     người bấm đúp: lần sau thấy đơn đã ở bước mới, không đi hai bước.
  * Mỗi lần ghi là một giao dịch BEGIN IMMEDIATE — SQLite xếp hàng các lần ghi, số thứ tự trong ngày không trùng.
+ *
+ * Tin ZNS (đợt 3, zns.ts, gui-zns.ts): bảng zns_tin, mỗi đơn mỗi loại tin đúng một dòng (khóa chính). Tin xếp cùng
+ * giao dịch với bước làm ra nó — tiền về đủ (ghiTienVe) xếp "da_nhan", quầy bấm "Soạn xong, chờ giao" xếp "dang_giao"
+ * — nên không có bước nào thiếu tin hay có tin mà không có bước. Đơn mẫu, đơn đánh dấu đã trả bằng tay
+ * (ghiDaThanhToan) không có tin nào: chỉ tiền thật qua SePay mới báo khách.
  */
 import { Database } from 'bun:sqlite';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { congNgay, homNayVn } from '../../web/src/lib/gio-vn.ts';
 import type { TinTienVe } from './sepay.ts';
+import type { LoaiTin } from './zns.ts';
 import type { DonMoi, DongMoi } from './tao-don.ts';
 import { CON_VIEC, duocBam, laTrangThai, type TrangThai } from './trang-thai.ts';
 
@@ -142,7 +148,50 @@ create table if not exists giao_dich (
 );
 create index if not exists giao_dich_don on giao_dich (ma_don);
 create index if not exists giao_dich_can_xem on giao_dich (can_xem, xem_xong_luc);
+create table if not exists zns_tin (
+  ma_don text not null references don (ma),
+  loai text not null check (loai in ('da_nhan', 'dang_giao')),
+  trang_thai text not null check (trang_thai in ('cho', 'dang_gui', 'da_gui', 'that_bai', 'bo_qua', 'khong_ro')),
+  so_lan integer not null default 0,
+  gui_sau integer not null,
+  tao_luc integer not null,
+  cap_nhat_luc integer not null,
+  msg_id text,
+  loi text,
+  primary key (ma_don, loai)
+);
+create index if not exists zns_tin_cho on zns_tin (trang_thai, gui_sau);
+create table if not exists zalo_token (
+  id integer primary key check (id = 1),
+  refresh_ma text,
+  access_ma text,
+  het_han_luc integer,
+  dau_gieo text,
+  trang_thai text not null,
+  loi text,
+  cap_nhat_luc integer not null
+);
 `;
+
+/**
+ * Một tin ZNS trong hàng chờ. cho → dang_gui (đang gọi Zalo) → da_gui · that_bai (lỗi không thử lại, hay quá
+ * SO_LAN_ZNS_TOI_DA lần) · bo_qua (quá cũ, đơn đã sang bước khác) · khong_ro (máy chủ tắt giữa lúc gọi Zalo — không
+ * gửi lại, kẻo khách nhận hai lần).
+ */
+export type TrangThaiZns = 'cho' | 'dang_gui' | 'da_gui' | 'that_bai' | 'bo_qua' | 'khong_ro';
+export interface TinZns { maDon: string; loai: LoaiTin; soLan: number }
+export const SO_LAN_ZNS_TOI_DA = 6;
+/** Tin quá cũ không gửi nữa: "đã nhận đơn" sau 24 giờ, "đang giao" sau 6 giờ. */
+export const GIU_TIN_ZNS_MS: Readonly<Record<LoaiTin, number>> = { da_nhan: 24 * 3600_000, dang_giao: 6 * 3600_000 };
+
+/** Token Zalo của máy chủ đơn, đã mã hóa (zns.ts, maHoaToken). trangThai: 'tot' · 'bi_tu_choi' · 'khong_giai_ma'. */
+export interface TokenZalo {
+  refreshMa: string | null;
+  accessMa: string | null;
+  hetHanLuc: number | null;
+  trangThai: string;
+  loi: string | null;
+}
 
 type DongDb = Record<string, string | number>;
 
@@ -228,11 +277,23 @@ export class SoDon {
     this.db.query('insert into nhat_ky (ma_don, tu, den, ai, luc) values (?, ?, ?, ?, ?)').run(ma, tu, den, ai, ms);
   }
 
+  /** Xếp một tin ZNS — gọi bên trong giao dịch của bước làm ra tin. Đã có thì thôi (mỗi đơn mỗi loại một tin). */
+  private xepTinZns(ma: string, loai: LoaiTin, ms: number) {
+    this.db.query(`insert or ignore into zns_tin (ma_don, loai, trang_thai, gui_sau, tao_luc, cap_nhat_luc)
+      values (?, ?, 'cho', ?, ?, ?)`).run(ma, loai, ms, ms, ms);
+  }
+
   /** Đổi một bước, chỉ khi đơn đang ở `tu` — gọi bên trong một giao dịch đã mở. */
   private doiTrongGiaoDich(ma: string, tu: TrangThai, den: TrangThai, ai: string, ms: number): KetQuaDoi {
     const r = this.db.query('update don set trang_thai = ?, cap_nhat_luc = ? where ma = ? and trang_thai = ?')
       .run(den, ms, ma, tu);
-    if (r.changes === 1) { this.ghiNhatKy(ma, tu, den, ai, ms); return 'da_doi'; }
+    if (r.changes === 1) {
+      this.ghiNhatKy(ma, tu, den, ai, ms);
+      // "Soạn xong, chờ giao" của đơn giao tận nơi đã báo khách "đã nhận đơn" (tiền thật) → báo "đang giao".
+      if (den === 'cho_lay' && this.db.query(`select 1 from don d join zns_tin z on z.ma_don = d.ma and z.loai = 'da_nhan'
+        where d.ma = ? and d.cach_nhan = 'giao-hang'`).get(ma)) this.xepTinZns(ma, 'dang_giao', ms);
+      return 'da_doi';
+    }
     const hienTai = this.db.query('select trang_thai from don where ma = ?').get(ma) as { trang_thai: string } | null;
     if (!hienTai) return 'khong_co';
     return hienTai.trang_thai === den ? 'da_o_buoc_moi' : 'lech';
@@ -297,7 +358,9 @@ export class SoDon {
       this.db.query(`insert into giao_dich (id_sepay, ma_don, so_tien, ngay_giao_dich, ma_tham_chieu, ket_qua, can_xem, nhan_luc)
         values (?, ?, ?, ?, ?, ?, ?, ?)`).run(tin.idSepay, maDon, tin.soTien, tin.ngayGiaoDich, tin.maThamChieu, ketQua, canXem, ms);
       if (maDon && (ketQua === 'du' || ketQua === 'thua') && !DA_CO_TIEN.includes(don!.trang_thai)) {
-        this.daThanhToanTrongGiaoDich(maDon, 'sepay', ms);
+        // Tin "đã nhận đơn" ghi "Giao tới <địa chỉ>": chỉ đơn giao tận nơi (đơn nhận tại quán cũ của sổ thử không có địa chỉ).
+        if (this.daThanhToanTrongGiaoDich(maDon, 'sepay', ms) === 'da_doi'
+          && this.db.query("select 1 from don where ma = ? and cach_nhan = 'giao-hang'").get(maDon)) this.xepTinZns(maDon, 'da_nhan', ms);
         // Đơn vừa đủ tiền: các lần "thiếu" trước của đơn này không còn phải xem.
         this.db.query("update giao_dich set can_xem = 0 where ma_don = ? and ket_qua = 'thieu'").run(maDon);
       }
@@ -374,6 +437,110 @@ export class SoDon {
     return { conViec: viec.map(doc), xongHomNay: xong.map(doc) };
   }
 
+  // ---------- Hàng chờ ZNS (gui-zns.ts) ----------
+
+  /**
+   * Bỏ tin không còn nên gửi: quá GIU_TIN_ZNS_MS; "đã nhận đơn" của đơn đã hủy; "đang giao" của đơn không còn ở bước
+   * "Soạn xong, chờ giao" (đã giao, đã hủy). Trả về số tin vừa bỏ.
+   */
+  boQuaTinZnsCu(ms: number): number {
+    return this.db.transaction(() => this.db.query(`update zns_tin set trang_thai = 'bo_qua', cap_nhat_luc = ?1,
+        loi = 'Quá cũ hoặc đơn đã sang bước khác'
+      where trang_thai = 'cho' and (
+        (loai = 'da_nhan' and (tao_luc < ?2 or ma_don in (select ma from don where trang_thai in ('can_hoan_tien', 'da_hoan_tien'))))
+        or (loai = 'dang_giao' and (tao_luc < ?3 or ma_don in (select ma from don where trang_thai <> 'cho_lay'))))`)
+      .run(ms, ms - GIU_TIN_ZNS_MS.da_nhan, ms - GIU_TIN_ZNS_MS.dang_giao).changes).immediate();
+  }
+
+  /** Tin đến hạn gửi, cũ trước. */
+  tinZnsDenHan(ms: number, gioiHan: number): TinZns[] {
+    return (this.db.query(`select ma_don, loai, so_lan from zns_tin where trang_thai = 'cho' and gui_sau <= ?
+      order by gui_sau, tao_luc limit ?`).all(ms, gioiHan) as { ma_don: string; loai: LoaiTin; so_lan: number }[])
+      .map(h => ({ maDon: h.ma_don, loai: h.loai, soLan: h.so_lan }));
+  }
+
+  /** cho → dang_gui ngay trước khi gọi Zalo. false: tin đã bị lượt khác lấy hay đã bỏ — không gửi. */
+  batDauGuiZns(ma: string, loai: LoaiTin, ms: number): boolean {
+    return this.db.transaction(() => this.db.query(`update zns_tin set trang_thai = 'dang_gui', so_lan = so_lan + 1,
+      cap_nhat_luc = ? where ma_don = ? and loai = ? and trang_thai = 'cho'`).run(ms, ma, loai).changes === 1).immediate();
+  }
+
+  /**
+   * Kết quả một lần gọi Zalo (tin đang 'dang_gui'). thuLaiSauMs: null = không thử lại (that_bai); có số = về 'cho',
+   * gửi lại sau chừng đó — trừ khi đã gọi SO_LAN_ZNS_TOI_DA lần (that_bai). `loi` đã xóa số điện thoại, token.
+   */
+  ghiKetQuaZns(ma: string, loai: LoaiTin, kq: { daGui: true; msgId: string | null } | { daGui: false; loi: string; thuLaiSauMs: number | null },
+    ms: number): TrangThaiZns {
+    return this.db.transaction((): TrangThaiZns => {
+      const h = this.db.query("select so_lan from zns_tin where ma_don = ? and loai = ? and trang_thai = 'dang_gui'")
+        .get(ma, loai) as { so_lan: number } | null;
+      if (!h) return 'khong_ro';
+      const den: TrangThaiZns = kq.daGui ? 'da_gui'
+        : kq.thuLaiSauMs === null || h.so_lan >= SO_LAN_ZNS_TOI_DA ? 'that_bai' : 'cho';
+      this.db.query(`update zns_tin set trang_thai = ?, cap_nhat_luc = ?, gui_sau = ?, msg_id = ?, loi = ?
+        where ma_don = ? and loai = ?`).run(den, ms, ms + (!kq.daGui && kq.thuLaiSauMs ? kq.thuLaiSauMs : 0),
+        kq.daGui ? kq.msgId : null, kq.daGui ? null : kq.loi.slice(0, 300), ma, loai);
+      return den;
+    }).immediate();
+  }
+
+  /** Tin chưa gửi đi được vì lý do không phải của riêng tin (chưa có token, hết quota…): về 'cho', không tính lần. */
+  traTinZnsVeHang(ma: string, loai: LoaiTin, guiSau: number, ms: number): void {
+    this.db.query(`update zns_tin set trang_thai = 'cho', so_lan = max(so_lan - 1, 0), gui_sau = ?, cap_nhat_luc = ?
+      where ma_don = ? and loai = ? and trang_thai = 'dang_gui'`).run(guiSau, ms, ma, loai);
+  }
+
+  /**
+   * Khi máy chủ khởi động: tin còn 'dang_gui' là lúc máy chủ tắt giữa chừng gọi Zalo — Zalo có thể đã nhận. Không gửi
+   * lại (khách nhận hai lần còn tệ hơn thiếu một tin): đánh dấu 'khong_ro', đếm ở số liệu sức khỏe.
+   */
+  datKhongRoTinZnsDangGui(ms: number): number {
+    return this.db.query(`update zns_tin set trang_thai = 'khong_ro', cap_nhat_luc = ?, loi = 'Máy chủ tắt giữa lúc gọi Zalo'
+      where trang_thai = 'dang_gui'`).run(ms).changes;
+  }
+
+  trangThaiTinZns(ma: string, loai: LoaiTin): { trangThai: TrangThaiZns; soLan: number; msgId: string | null; loi: string | null } | null {
+    const h = this.db.query('select trang_thai, so_lan, msg_id, loi from zns_tin where ma_don = ? and loai = ?').get(ma, loai) as
+      { trang_thai: TrangThaiZns; so_lan: number; msg_id: string | null; loi: string | null } | null;
+    return h ? { trangThai: h.trang_thai, soLan: h.so_lan, msgId: h.msg_id, loi: h.loi } : null;
+  }
+
+  docTokenZalo(): TokenZalo | null {
+    const h = this.db.query('select * from zalo_token where id = 1').get() as Record<string, string | number | null> | null;
+    return h ? {
+      refreshMa: (h.refresh_ma as string | null) ?? null, accessMa: (h.access_ma as string | null) ?? null,
+      hetHanLuc: (h.het_han_luc as number | null) ?? null, trangThai: String(h.trang_thai), loi: (h.loi as string | null) ?? null,
+    } : null;
+  }
+
+  /**
+   * Gieo refresh token Khánh dán vào ZALO_REFRESH_TOKEN_MOI — mỗi token một lần (dấu `dau`): khởi động lại máy chủ
+   * với dòng cũ còn trong file bí mật không đè chuỗi token đã làm mới. true: vừa gieo.
+   */
+  gieoTokenZalo(refreshMa: string, dau: string, ms: number): boolean {
+    return this.db.transaction(() => {
+      const cu = this.db.query('select dau_gieo from zalo_token where id = 1').get() as { dau_gieo: string | null } | null;
+      if (cu?.dau_gieo === dau) return false;
+      this.db.query(`insert into zalo_token (id, refresh_ma, access_ma, het_han_luc, dau_gieo, trang_thai, loi, cap_nhat_luc)
+        values (1, ?, null, null, ?, 'tot', null, ?) on conflict (id) do update set refresh_ma = excluded.refresh_ma,
+        access_ma = null, het_han_luc = null, dau_gieo = excluded.dau_gieo, trang_thai = 'tot', loi = null,
+        cap_nhat_luc = excluded.cap_nhat_luc`).run(refreshMa, dau, ms);
+      return true;
+    }).immediate();
+  }
+
+  /** Lưu cặp token vừa làm mới — TRƯỚC khi dùng access token (refresh token cũ đã chết ngay khi Zalo trả cái mới). */
+  luuTokenZalo(o: { refreshMa: string | null; accessMa: string; hetHanLuc: number }, ms: number): void {
+    this.db.query(`update zalo_token set refresh_ma = coalesce(?, refresh_ma), access_ma = ?, het_han_luc = ?,
+      trang_thai = 'tot', loi = null, cap_nhat_luc = ? where id = 1`).run(o.refreshMa, o.accessMa, o.hetHanLuc, ms);
+  }
+
+  /** Token hỏng (Zalo từ chối refresh token, hay không giải mã được): ghi để số liệu sức khỏe và nhật ký báo. */
+  ghiLoiTokenZalo(trangThai: 'bi_tu_choi' | 'khong_giai_ma', loi: string, ms: number): void {
+    this.db.query('update zalo_token set trang_thai = ?, loi = ?, access_ma = null, cap_nhat_luc = ? where id = 1')
+      .run(trangThai, loi.slice(0, 300), ms);
+  }
+
   /** Số liệu cho đèn sức khỏe — chỉ số đếm và mốc giờ, không tên, không số điện thoại. */
   soLieu(ms: number) {
     const soTheoTrangThai = new Map((this.db.query('select trang_thai as t, count(*) as n from don group by trang_thai').all() as
@@ -394,6 +561,21 @@ export class SoDon {
       lanGhiCuoi: cuoi.luc,
       lanTienVeCuoi: tienVe.luc,
       soTienVeCanXem: tienVe.can ?? 0,
+      ...this.soLieuZns(ms),
+    };
+  }
+
+  private soLieuZns(ms: number) {
+    const z = this.db.query(`select sum(case when trang_thai in ('cho', 'dang_gui') then 1 else 0 end) as cho,
+        sum(case when trang_thai in ('that_bai', 'khong_ro') and cap_nhat_luc >= ? then 1 else 0 end) as hong,
+        max(case when trang_thai = 'da_gui' then cap_nhat_luc end) as cuoi from zns_tin`).get(ms - 24 * 3600_000) as
+      { cho: number | null; hong: number | null; cuoi: number | null };
+    const t = this.db.query('select trang_thai from zalo_token where id = 1').get() as { trang_thai: string } | null;
+    return {
+      soTinZnsCho: z.cho ?? 0,
+      soTinZnsHong24Gio: z.hong ?? 0,
+      lanGuiZnsCuoi: z.cuoi,
+      tokenZalo: t ? t.trang_thai : 'chua_co',
     };
   }
 }

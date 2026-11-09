@@ -13,12 +13,18 @@
  *                      tài khoản nhận chuyển khoản (VietinBank: BIN 970415). Đặt đủ cả bốn, hoặc không đặt cái nào
  *   SEPAY_KHOA_KY      khóa HMAC-SHA256 của webhook SePay (ít nhất 16 ký tự)
  *   CHO_TRA_GIA_THU=1  cho hiện mã trả tiền khi bảng giá còn là giá thử (chỉ để thử chuyển khoản thật số nhỏ)
+ *   ZALO_APP_ID, ZALO_SECRET_KEY, ZNS_MAU_DA_NHAN, ZNS_MAU_DANG_GIAO
+ *                      tin ZNS báo khách (đợt 3). Đặt đủ cả bốn, hoặc không đặt cái nào (chưa gửi ZNS)
+ *   ZALO_CHE_DO        "thu" (mặc định: chỉ quản trị viên OA nhận) hoặc "that"
+ *   ZALO_REFRESH_TOKEN_MOI  refresh token Zalo mới — máy chủ dùng một lần rồi tự làm mới (README, "Cài ZNS")
  */
 import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { SoDon } from './so-don.ts';
 import { ipKhach, taoXuLy } from './may-chu.ts';
 import { laTaiKhoanNhan } from './viet-qr.ts';
+import { dauToken, docCauHinhZns, maHoaToken } from './zns.ts';
+import { guiZnsMotLuot } from './gui-zns.ts';
 
 const env = process.env;
 const matKhauQuay = env.MAT_KHAU_QUAY ?? '';
@@ -50,7 +56,24 @@ if (khoaSepay && !coTaiKhoan) {
   process.exit(1);
 }
 
+const zns = docCauHinhZns({
+  ZALO_APP_ID: env.ZALO_APP_ID, ZALO_SECRET_KEY: env.ZALO_SECRET_KEY, ZNS_MAU_DA_NHAN: env.ZNS_MAU_DA_NHAN,
+  ZNS_MAU_DANG_GIAO: env.ZNS_MAU_DANG_GIAO, ZALO_CHE_DO: env.ZALO_CHE_DO,
+});
+if (!zns.ok) { console.error(zns.loi); process.exit(1); }
+const tokenMoi = (env.ZALO_REFRESH_TOKEN_MOI ?? '').trim();
+if (tokenMoi && !zns.cauHinh) {
+  console.error('Đã đặt ZALO_REFRESH_TOKEN_MOI mà chưa đặt ZALO_APP_ID, ZALO_SECRET_KEY, ZNS_MAU_DA_NHAN, ZNS_MAU_DANG_GIAO.');
+  process.exit(1);
+}
+
 const so = new SoDon(join(thuMuc, 'don.sqlite'));
+// Tin đang gửi dở khi máy chủ tắt: Zalo có thể đã nhận — không gửi lại (SoDon.datKhongRoTinZnsDangGui).
+const khongRo = so.datKhongRoTinZnsDangGui(Date.now());
+if (khongRo) console.log(`ZNS: ${khongRo} tin đang gửi dở khi máy chủ tắt — không gửi lại.`);
+if (zns.cauHinh && tokenMoi && so.gieoTokenZalo(maHoaToken(tokenMoi, zns.cauHinh.secretKey), dauToken(tokenMoi), Date.now())) {
+  console.log('ZNS: đã nhận refresh token mới từ ZALO_REFRESH_TOKEN_MOI (máy chủ tự làm mới từ giờ).');
+}
 const xuLy = taoXuLy({
   so, matKhauQuay, khoaSucKhoe: env.KHOA_SUC_KHOE || undefined, cookieAnToan: env.KHONG_HTTPS !== '1',
   taiKhoan: coTaiKhoan ? taiKhoan : undefined, khoaSepay: khoaSepay || undefined, choTraGiaThu: env.CHO_TRA_GIA_THU === '1',
@@ -71,6 +94,16 @@ const mayChu = Bun.serve({
   },
 });
 
+// Tin ZNS mỗi phút; lượt trước chưa xong thì bỏ lượt này (không hai lượt chồng nhau).
+let dangGuiZns = false;
+const guiZns = zns.cauHinh ? setInterval(async () => {
+  if (dangGuiZns) return;
+  dangGuiZns = true;
+  try { await guiZnsMotLuot({ so, cauHinh: zns.cauHinh!, hamFetch: (url, init) => fetch(url, init), bayGio: Date.now }); }
+  catch (e) { console.error('ZNS: lượt gửi hỏng:', e instanceof Error ? e.message : e); }
+  finally { dangGuiZns = false; }
+}, 60_000) : undefined;
+
 // Đơn chờ trả tiền quá 30 phút → hết hạn. Lỗi một lượt thì ghi nhật ký, lượt sau chạy lại.
 const hetHan = setInterval(() => {
   try { const n = so.datHetHan(Date.now()); if (n) console.log(`Hết hạn ${n} đơn chưa trả tiền.`); }
@@ -80,7 +113,9 @@ const hetHan = setInterval(() => {
 console.log(`Máy chủ đơn đang nghe http://${diaChi}:${mayChu.port} · sổ đơn ${join(thuMuc, 'don.sqlite')}`);
 console.log(coTaiKhoan ? `Nhận chuyển khoản vào ${taiKhoan.tenNganHang} …${taiKhoan.soTaiKhoan.slice(-4)}` : 'Chưa có tài khoản nhận: đơn chưa có mã trả tiền.');
 console.log(khoaSepay ? 'SePay: đã có khóa ký.' : 'SePay: chưa có khóa ký — /sepay/tien-ve trả 503.');
+console.log(!zns.cauHinh ? 'ZNS: chưa cấu hình — không gửi tin Zalo.'
+  : `ZNS: chế độ ${zns.cauHinh.cheDo === 'thu' ? 'thử (chỉ quản trị viên OA nhận)' : 'thật'}, token ${so.docTokenZalo()?.refreshMa ? 'đã có' : 'CHƯA có — đặt ZALO_REFRESH_TOKEN_MOI'}.`);
 
 for (const tin of ['SIGINT', 'SIGTERM'] as const) {
-  process.on(tin, () => { clearInterval(hetHan); mayChu.stop(); so.dong(); process.exit(0); });
+  process.on(tin, () => { clearInterval(hetHan); clearInterval(guiZns); mayChu.stop(); so.dong(); process.exit(0); });
 }

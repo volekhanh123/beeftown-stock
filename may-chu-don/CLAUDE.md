@@ -28,8 +28,8 @@ mạng: dữ liệu đi qua máy chủ Cloudflare.
 |---|---|---|
 | 1 | Nhận đơn (`POST /api/don`), xem đơn, màn hình quầy, hết hạn 30 phút, số liệu sức khỏe | đã gộp (PR #137) |
 | 2a | SePay: mã VietQR cho từng đơn (`viet-qr.ts`), nhận tin tiền về có ký HMAC (`sepay.ts`, `POST /sepay/tien-ve`), sổ `giao_dich` đúng một lần mỗi id, đủ / thiếu / dư / không khớp, mục "Tiền về cần xem" ở màn quầy | đã gộp (PR #143) |
-| 2b | Mini App gửi đơn lên máy chủ thay vì mở chat khi `diaChiMayChuDon` có địa chỉ, màn trả tiền (mã QR vẽ trong app, chép số tài khoản / số tiền / nội dung, lưu ảnh mã), hỏi lại trạng thái đến khi đã nhận tiền (`mini-app/src/tra-truoc.ts`, kiểm với máy chủ thật ở `test/thu.ts` nhóm 18) | PR #146 |
-| 3 | ZNS: "đã nhận đơn", "khay đã sẵn sàng" | chờ mẫu tin được duyệt |
+| 2b | Mini App gửi đơn lên máy chủ thay vì mở chat khi `diaChiMayChuDon` có địa chỉ, màn trả tiền (mã QR vẽ trong app, chép số tài khoản / số tiền / nội dung, lưu ảnh mã), hỏi lại trạng thái đến khi đã nhận tiền (`mini-app/src/tra-truoc.ts`, kiểm với máy chủ thật ở `test/thu.ts` nhóm 18) | đã gộp (PR #146) |
+| 3 | ZNS gửi thẳng từ máy chủ đơn: "Beeftown đã nhận đơn" (tiền về đủ), "đang giao" (quầy bấm "Soạn xong, chờ giao"); hàng chờ `zns_tin`, token riêng mã hóa trong `zalo_token`, vòng gửi mỗi phút (`zns.ts`, `gui-zns.ts`, `test/thu.ts` nhóm 20). Chạy khi Khánh cài App Zalo riêng, hai mẫu được duyệt, refresh token (README, "Cài ZNS") | PR này |
 | 4a | Bộ cài máy chủ thuê (`cai-dat/`): Ubuntu 24.04, Caddy HTTPS, systemd, tường lửa, `/sepay` chỉ IP SePay, `cap-nhat` chạy kiểm thử rồi mới chạy lại; laptop dư (tự tắt ngủ, README mục 1b) | PR #155 |
 | 4 | Máy chủ thuê ở Việt Nam, HTTPS, sao lưu sổ đơn ở Việt Nam, xóa dữ liệu khách quá hạn, đèn sức khỏe trong `/noi-bo`, báo số khay sang kho | chờ thuê máy |
 
@@ -43,6 +43,8 @@ mạng: dữ liệu đi qua máy chủ Cloudflare.
 | `src/so-don.ts` | `SoDon`: bảng SQLite, tạo đơn theo `maGui`, đổi trạng thái có kiểm trạng thái cũ, nhật ký; `ghiTienVe` (bảng `giao_dich`) |
 | `src/viet-qr.ts` | Chuỗi VietQR chuẩn NAPAS (CRC16), ảnh SVG, nội dung chuyển khoản "BT" + mã đơn |
 | `src/sepay.ts` | Kiểm chữ ký HMAC-SHA256 của SePay, đọc tin tiền về, tìm mã đơn trong nội dung |
+| `src/zns.ts` | ZNS phần thuần: cấu hình từ biến môi trường (đủ bốn hoặc không), `duLieuTin` (tên tham số của mẫu Zalo), mã hóa token |
+| `src/gui-zns.ts` | Một lượt gửi ZNS: làm mới token (lưu trước khi gửi), gửi, xử lý mã lỗi theo `XU_LY_LOI` của `web/src/lib/zalo.ts` |
 | `src/trang-thai.ts` | Trạng thái, bước quầy được bấm, nhãn vi / en và kiểu vẽ K1–K7 |
 | `src/man-quay.ts`, `src/quay.css` | Màn hình quầy dựng ở máy chủ, không JavaScript; chữ vi / en |
 | `scripts/don-mau.ts` | Đơn mẫu cho laptop thử (`npm run don-mau`) |
@@ -52,7 +54,8 @@ mạng: dữ liệu đi qua máy chủ Cloudflare.
 
 Mã dùng chung: giá và phần thịt `mini-app/src/san-pham.ts`, giờ nhận và số khay tối đa `mini-app/src/cau-hinh.ts`,
 giờ nhận và số điện thoại `mini-app/src/don.ts`, giờ Việt Nam `web/src/lib/gio-vn.ts`, chữ cấm
-`web/src/lib/chuoi-cam.js` — sửa ở đó là sửa cả máy chủ đơn (CI "Kiểm thử" chạy `test/thu.ts`).
+`web/src/lib/chuoi-cam.js`, API Zalo (địa chỉ, trường, mã lỗi) `web/src/lib/zalo.ts` — sửa ở đó là sửa cả máy chủ
+đơn (CI "Kiểm thử" chạy `test/thu.ts`).
 
 ## Quy tắc
 
@@ -66,6 +69,11 @@ giờ nhận và số điện thoại `mini-app/src/don.ts`, giờ Việt Nam `w
 - Mỗi id SePay ghi đúng một lần, cùng giao dịch với việc đổi đơn. Khoản tiền nào mang mã của quán mà không tự khớp được
   (thiếu, dư, gõ sai mã, sai tài khoản) phải hiện ở "Tiền về cần xem" — không bao giờ lặng lẽ bỏ qua.
 - Không giữ `content` / `description` của SePay (có thể có tên, số tài khoản người chuyển).
+- ZNS: tin xếp cùng giao dịch với bước làm ra nó (`xepTinZns` trong `ghiTienVe` và `doiTrongGiaoDich`), mỗi đơn mỗi
+  loại một dòng; chỉ tiền thật qua SePay mới có tin (đơn mẫu, `ghiDaThanhToan` không). Gửi thẳng từ máy chủ đơn, không
+  qua website (số điện thoại khách Mini App không rời Việt Nam). Refresh token mới lưu vào sổ đơn TRƯỚC khi gửi; tin
+  đang gửi dở khi máy chủ tắt thành `khong_ro`, không gửi lại. Nhật ký, cột `loi`: qua `xoaBiMatZalo` — không số điện
+  thoại, không token. Chữ của mẫu tin nằm trên Zalo (Khánh tạo và duyệt), máy chủ chỉ gửi tham số.
 - Màn hình quầy: không màu trạng thái (bảy kiểu K1–K7 của nội bộ, skill `thiet-ke-beeftown`); chữ đủ vi / en.
 - Thư mục du-lieu (sổ đơn `don.sqlite`) không bao giờ vào git — `.gitignore` chặn, `crm/test/test-quy-trinh.mjs` kiểm.
 
