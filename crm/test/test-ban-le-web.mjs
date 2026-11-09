@@ -44,7 +44,7 @@ const VIET = /[ạảãàáâậầấẩẫăắằẳẵặẹẻẽèéêệ�
 // MỘT câu cho mỗi trạng thái giá cân, ở mọi nơi (thẻ danh sách, trang sửa, câu sau khi lưu, đối chiếu FABi).
 // Beeftown Cân bỏ qua dòng và cân GIỮ dòng cũ — câu phải đúng cả khi mã đã có trên cân lẫn khi chưa có.
 const CAU_CHUA_GIA = ma => `Mặt hàng kho chưa có giá mỗi kg: Beeftown Cân không gửi mã ${ma} xuống cân — nếu mã này đã có trên cân thì cân vẫn in giá cũ.`;
-const CAU_QUA_CAN = ma => `Cân quầy chỉ nhận tối đa 999.999 đ/kg: Beeftown Cân không gửi giá này xuống cân — nếu mã ${ma} đã có trên cân thì cân vẫn in giá cũ.`;
+const CAU_QUA_CAN = ma => `Cân quầy để giá theo kg chỉ nhận tối đa 999.999 đ/kg: Beeftown Cân không gửi giá này xuống cân — nếu mã ${ma} đã có trên cân thì cân vẫn in giá cũ. Đặt giá trên cân theo 100 g (Beeftown Cân, Cân & thông số → Đơn vị của đơn giá) thì gửi được tới 9.999.990 đ/kg.`;
 const CAU_SUA = 'Chỉ chủ và quản lý được sửa menu bán lẻ.';
 // now() của PGlite chỉ tới mili giây: hai lần ghi liền nhau có thể cùng updated_at (xem test-ban-le.mjs).
 const nghi = () => new Promise(xong => setTimeout(xong, 3));

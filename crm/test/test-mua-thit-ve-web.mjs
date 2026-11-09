@@ -5,8 +5,7 @@
  *     node test/test-mua-thit-ve-web.mjs
  *
  * Database của trang Mua thịt về (mua_thit_ve_cong_khai, migration 0101) kiểm ở test-mua-thit-ve.mjs; trang và
- * component ở test-cong-khai-mua-thit-ve.mjs; đích đặt hàng (link Zalo OA, dich-dat-hang.ts) ở
- * test-cong-khai-mua-thit-dieu-huong.mjs. File này kiểm hai thư viện nằm giữa: đọc menu (mua-thit-ve.ts, chỉ chạy
+ * component ở test-cong-khai-mua-thit-ve.mjs; trang mở hay chưa (muaThitVeMo) ở test-cong-khai-mua-thit-dieu-huong.mjs. File này kiểm hai thư viện nằm giữa: đọc menu (mua-thit-ve.ts, chỉ chạy
  * ở máy chủ) và soạn đơn (don-mua-thit.ts, chạy cả ở máy chủ lẫn trong trình duyệt). Bất biến, theo 9 mục "xong":
  *
  *   1. mat-mang: docMuaThitVe() không bao giờ ném. Chưa nối database → menu rỗng 'chua_noi', không log. Database
@@ -17,24 +16,21 @@
  *      tên (ten hoặc ten_vi) dính chữ cấm hay ngoặc vuông → bỏ cả sản phẩm; mô tả, cách dùng dính → null; gói
  *      trùng → giữ một; gom ba nhóm Thịt mát / Thịt đông lạnh / Kim chi.
  *   3. chu-va-so: "400.000 đ" (dấu cách thường) ở mọi thứ tiếng, đúng như toLocaleString('vi-VN'); số gam in không
- *      dấu ngăn ("1000 g"); "Gói khoảng 200 g" (quyết định 2 của Khánh, 26/10/2026); ô số gói trên địa chỉ trang
- *      chỉ nhận 0–10 viết đúng kiểu ("1.000", "1,5", "01" bị bỏ — không thành 1000 gói hay 1 gói); khóa gói ASCII.
- *   4. cau-chu: tin đơn luôn tiếng Việt, tên tiếng Việt, đúng phép nhân; nói "tạm tính theo giá trên web" và nhờ
- *      quán xác nhận tổng tiền (giá trên trang là giá quán đã công bố, quyết định 1) — không "thành công", không
- *      "đã đặt", không mã đơn, không số điện thoại; bỏ số tiền ra thì không dính chữ cấm nào.
- *   5. bam-hai-lan: cùng giỏ, cùng giờ soạn → hai tin giống hệt từng chữ, để nhân viên trực Zalo OA nhận ra khách
- *      gửi hai lần (PR này bỏ mã đơn).
- *   6. gio-vn: dòng "Soạn lúc" theo giờ Việt Nam qua gioVnTuMs (23:50 và 00:10 giờ VN, giao thừa); don-mua-thit.ts
- *      không đọc đồng hồ — giờ soạn là tham số.
+ *      dấu ngăn ("1000 g"); "Gói khoảng 200 g" (quyết định 2 của Khánh, 26/10/2026); ô số gói chỉ nhận 0–10 viết đúng
+ *      kiểu ("1.000", "1,5", "01" bị bỏ — không thành 1000 gói hay 1 gói); khóa gói ASCII; giỏ lên địa chỉ trang
+ *      (gioThanhDiaChi, khi database từ chối đơn) chỉ có khóa gói và số gói.
+ *   4. bam-hai-lan: cùng giỏ → cùng đơn, theo thứ tự menu (database chống ghi hai lần theo ma_gui — test-mua-thit-
+ *      dat-hang.mjs; trang chặn bấm đúp — test-cong-khai-mua-thit-ve.mjs).
+ *   5. gio-vn: không áp dụng — don-mua-thit.ts không đọc đồng hồ (kiểm ở nhóm 9).
  *   7. CHU_DON (chữ có số, máy chủ và script của trang dùng chung) đủ vi / en / ko, không chữ cấm, không
- *      "thành công", không "báo giá", bản en / ko không lẫn chữ Việt; đúng chữ của bản thiết kế.
- *   8. Một trạng thái trang: chua_mo / loi / het_quay / mo (bản thiết kế, mục 2.5); coGiaoHang.
- *   9. Nạp: hai file không kéo thư viện nội bộ hay đích đặt hàng; don-mua-thit.ts chỉ import type và gioVnTuMs nên
- *      chạy được trong trình duyệt mà không kéo supabase-js; rutGonMenu bỏ mô tả, cách dùng.
+ *      "thành công", không "báo giá", bản en / ko không lẫn chữ Việt.
+ *   8. Một trạng thái trang: chua_mo / loi / het_quay / mo.
+ *   9. Nạp: hai file không kéo thư viện nội bộ hay thư viện gửi đơn; don-mua-thit.ts chỉ import type nên chạy được
+ *      trong trình duyệt mà không kéo supabase-js; rutGonMenu bỏ mô tả, cách dùng.
  *
  * Không áp dụng ở file này: quyen (thư viện chỉ gọi một hàm anon — quyền ở test-mua-thit-ve.mjs,
- * test-an-toan.mjs, test-hop-dong-web.mjs), ton-kho (website không ghi kho), migration, dich-vu-ngoai Zalo
- * (dich-dat-hang.ts).
+ * test-an-toan.mjs, test-hop-dong-web.mjs), ton-kho (website không ghi kho), migration. Gửi đơn (lib/dat-hang-mua-thit.ts)
+ * kiểm ở test-mua-thit-dat-hang-web.mjs.
  *
  * Cần web/node_modules (cd web && npm ci) — như test-cong-khai-mat-mang.mjs.
  */
@@ -44,7 +40,6 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { taoBoDem } from './kho-chung.mjs';
-import { datGio, traGio } from './dong-ho-gia.mjs';
 
 const GOC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const LIB = join(GOC, 'web', 'src', 'lib');
@@ -103,36 +98,13 @@ const TEN_DICH = {
 };
 const dongCua = nn => DONG_THU.map(d => ({ ...d, ten: TEN_DICH[nn]?.[d.san_pham_ma] ?? d.ten }));
 const MENU = MTV.nhomMuaThitVe(DONG_THU);
-const MENU_EN = MTV.nhomMuaThitVe(dongCua('en'));
-const MENU_KO = MTV.nhomMuaThitVe(dongCua('ko'));
 
 /** Giỏ đọc từ địa chỉ trang (hoặc FormData của script) → đơn, đúng đường máy chủ và trình duyệt cùng đi. */
-function donTu(thamSo, menu = MENU, choGiao = false) {
-  const { gio, cachNhan, boTamHet } = DON.docGio(thamSo, menu, choGiao);
-  return DON.tinhDon(gio, cachNhan, menu, boTamHet);
+function donTu(thamSo, menu = MENU) {
+  const { gio, boTamHet } = DON.docGio(thamSo, menu);
+  return DON.tinhDon(gio, menu, boTamHet);
 }
 const GIO_MAU = [['ribeye-cap_200', '2'], ['la-galbi_400', '1'], ['kim-chi-cai-thao_500', '1']];
-const MS_2350 = Date.parse('2026-11-13T16:50:00Z');   // 23:50 ngày 13/11/2026 giờ VN
-
-// Tin mẫu của bản thiết kế (mục 2.2), từng chữ.
-const TIN_VI_QUAY = [
-  'MUA THỊT VỀ – BEEFTOWN · beeftown.vn',
-  'Soạn lúc 23:50 ngày 13/11/2026 (giờ Việt Nam)',
-  '• Ribeye with Cap, gói khoảng 200 g: 2 × 400.000 đ = 800.000 đ',
-  '• LA Galbi, gói khoảng 400 g (đông lạnh): 1 × 360.000 đ = 360.000 đ',
-  '• Kim chi cải thảo, hộp 500 g: 1 × 90.000 đ = 90.000 đ',
-  'Tạm tính theo giá trên web: 1.250.000 đ.',
-  'Nhận: tại quầy Beeftown.',
-  'Nhờ quán liên hệ lại xác nhận tổng tiền và giờ nhận giúp mình.',
-];
-const TIN_VI_GIAO = [
-  ...TIN_VI_QUAY.slice(0, 5),
-  'Tạm tính theo giá trên web: 1.250.000 đ, chưa gồm phí giao.',
-  'Nhận: giao tận nơi (mình gửi địa chỉ trong tin tiếp theo).',
-  'Nhờ quán liên hệ lại xác nhận tổng tiền, phí giao và giờ giao giúp mình.',
-];
-/** Chèn dòng "Khách đọc trang …" trước dòng cuối, như tin của trang en / ko. */
-const voiDongTieng = (dongTin, cau) => [...dongTin.slice(0, -1), cau, dongTin.at(-1)];
 
 /** Menu đã đọc (MenuMuaThit) từ một client giả trả đúng các dòng này. */
 const menuTu = async (dongs, nn = 'vi') => MTV.docMuaThitVe(nn, { rpc: async () => ({ data: dongs, error: null }) });
@@ -341,7 +313,7 @@ await nhom('2 · LỚP CHẶN THỨ HAI (nhomMuaThitVe)', async () => {
 await nhom('3 · TIỀN, SỐ GAM VÀ GIỎ (chu-va-so)', async () => {
   const cuaRepo = n => Math.round(n).toLocaleString('vi-VN') + ' đ';
   const SO = [1000, 9000, 45000, 90000, 180000, 400000, 999999, 1250000, 15000000, 99000000];
-  const sai = SO.filter(n => DON.dinhDangTien(n) !== cuaRepo(n) || DON.dinhDangTien(n).includes(' ') || !/^\d{1,3}(\.\d{3})+ đ$/.test(DON.dinhDangTien(n)));
+  const sai = SO.filter(n => DON.dinhDangTien(n) !== cuaRepo(n) || DON.dinhDangTien(n).includes('\u00a0') || !/^\d{1,3}(\.\d{3})+ đ$/.test(DON.dinhDangTien(n)));
   ok('dinhDangTien(n) = Math.round(n).toLocaleString(\'vi-VN\') + \' đ\' với 1.000 → 99.000.000; dấu cách là U+0020; cùng một kiểu ở vi, en, ko (hàm không nhận thứ tiếng)',
      sai.length === 0 && DON.dinhDangTien.length === 1, sai.map(n => `${n} → "${DON.dinhDangTien(n)}"`).join(' | '));
   ok('dinhDangSo: 1250000 → "1.250.000", 999 → "999", 400000.4 → "400.000" (không phụ thuộc Intl)',
@@ -358,28 +330,27 @@ await nhom('3 · TIỀN, SỐ GAM VÀ GIỎ (chu-va-so)', async () => {
      nhanSai.length === 0, nhanSai.map(nn => `${nn}: ${DON.nhanGoi('goi', 200, nn)} · ${DON.nhanGoi('hop', 500, nn)}`).join(' | '));
 
   const SAI_KIEU = ['1.000', '1,5', '-1', '11', '01', 'abc', '', ' 2', '2 ', '1e1', '0x2', '２', '2.0', '+2', '10.000'];
-  const loLot = SAI_KIEU.filter(v => DON.docGio([['ribeye-cap_200', v]], MENU, false).gio.size !== 0);
+  const loLot = SAI_KIEU.filter(v => DON.docGio([['ribeye-cap_200', v]], MENU).gio.size !== 0);
   ok('docGio: "1.000", "1,5", "-1", "11", "01", "abc" bị bỏ — không thành 1000 gói hay 1 gói', loLot.length === 0, loLot.join(' | '));
   ok('docGio: "0" không vào giỏ; "1" → 1; "10" (SO_GOI_TOI_DA) → 10',
-     DON.SO_GOI_TOI_DA === 10 && DON.docGio([['ribeye-cap_200', '0']], MENU, false).gio.size === 0
-     && DON.docGio([['ribeye-cap_200', '1']], MENU, false).gio.get('ribeye-cap_200') === 1
-     && DON.docGio([['ribeye-cap_200', '10']], MENU, false).gio.get('ribeye-cap_200') === 10);
+     DON.SO_GOI_TOI_DA === 10 && DON.docGio([['ribeye-cap_200', '0']], MENU).gio.size === 0
+     && DON.docGio([['ribeye-cap_200', '1']], MENU).gio.get('ribeye-cap_200') === 1
+     && DON.docGio([['ribeye-cap_200', '10']], MENU).gio.get('ribeye-cap_200') === 10);
   ok('docGio: khóa lặp lại → lấy lần đầu',
-     DON.docGio([['ribeye-cap_200', '2'], ['ribeye-cap_200', '9']], MENU, false).gio.get('ribeye-cap_200') === 2);
+     DON.docGio([['ribeye-cap_200', '2'], ['ribeye-cap_200', '9']], MENU).gio.get('ribeye-cap_200') === 2);
 
-  const la = DON.docGio([['khong-co_200', '2'], ['ribeye-cap_300', '1'], ['ribeye-cap', '1'], ['RIBEYE-CAP_200', '1'], ['ribeye-cap_200 ', '1']], MENU, false);
-  const tamHet = DON.docGio([['ba-chi-bo-my_400', '2'], ['ba-chi-bo-my_200', '1'], ['ribeye-cap_400', '0']], MENU, false);
+  const la = DON.docGio([['khong-co_200', '2'], ['ribeye-cap_300', '1'], ['ribeye-cap', '1'], ['RIBEYE-CAP_200', '1'], ['ribeye-cap_200 ', '1']], MENU);
+  const tamHet = DON.docGio([['ba-chi-bo-my_400', '2'], ['ba-chi-bo-my_200', '1'], ['ribeye-cap_400', '0']], MENU);
   ok('docGio: khóa không có trong menu bị bỏ; gói tạm hết bị bỏ và đếm vào boTamHet',
      la.gio.size === 0 && la.boTamHet === 0
      && JSON.stringify([...tamHet.gio]) === JSON.stringify([['ba-chi-bo-my_200', 1]]) && tamHet.boTamHet === 1,
      `${JSON.stringify([...la.gio])}; ${JSON.stringify([...tamHet.gio])} boTamHet=${tamHet.boTamHet}`);
   ok('docGio nhận cả FormData của trình duyệt (cặp [tên, giá trị]) — giá trị không phải chữ bị bỏ',
-     DON.docGio([['ribeye-cap_200', 2], ['ribeye-cap_400', null]], MENU, false).gio.size === 0);
-
-  const nhan = (ts, choGiao) => DON.docGio(ts, MENU, choGiao).cachNhan;
-  ok('docGio: chưa nhận giao → nhan=giao thành quay; nhận giao → nhan=giao là giao; thiếu hay lạ → quay',
-     nhan([['nhan', 'giao']], false) === 'quay' && nhan([['nhan', 'giao']], true) === 'giao' && nhan([], true) === 'quay'
-     && nhan([['nhan', 'GIAO']], true) === 'quay' && nhan([['nhan', 'quay']], true) === 'quay' && nhan([['nhan', 'giao ']], true) === 'quay');
+     DON.docGio([['ribeye-cap_200', 2], ['ribeye-cap_400', null]], MENU).gio.size === 0);
+  const oKhac = DON.docGio([['ho_ten', 'Nguyễn Thị Hoa'], ['sdt', '0912345678'], ['gia_ribeye-cap_200', '400000'],
+                            ['ma_gui', '00000000-0000-4000-8000-000000000001'], ['nhan', 'giao'], ['ribeye-cap_200', '1']], MENU);
+  ok('docGio bỏ qua ô khác của form (họ tên, số điện thoại, giá đã thấy, mã chống gửi hai lần, "nhan" cũ)',
+     JSON.stringify([...oKhac.gio]) === JSON.stringify([['ribeye-cap_200', 1]]) && !('cachNhan' in oKhac), JSON.stringify(oKhac));
 
   const don = donTu([...GIO_MAU].reverse());
   ok('tinhDon: mỗi dòng số gói × giá = thành tiền; tạm tính = tổng các dòng',
@@ -387,8 +358,9 @@ await nhom('3 · TIỀN, SỐ GAM VÀ GIỎ (chu-va-so)', async () => {
      && don.tamTinh === don.dong.reduce((t, d) => t + d.thanhTien, 0) && don.tamTinh === 1250000, JSON.stringify(don.dong.map(d => d.thanhTien)));
   ok('tinhDon: dòng đơn theo thứ tự menu, không theo thứ tự chọn',
      don.dong.map(d => d.goi.khoa).join(',') === 'ribeye-cap_200,la-galbi_400,kim-chi-cai-thao_500');
-  ok('tinhDon: giỏ rỗng → không dòng, tạm tính 0', (() => { const r = DON.tinhDon(new Map(), 'quay', MENU); return r.dong.length === 0 && r.tamTinh === 0 && r.soGoi === 0 && r.soHop === 0; })());
-  const tinhTay = DON.tinhDon(new Map([['ba-chi-bo-my_400', 2], ['ribeye-cap_200', 11], ['ribeye-cap_400', 2.5], ['la-galbi_400', 0], ['kim-chi-cai-thao_500', 1]]), 'quay', MENU);
+  ok('tinhDon: giỏ rỗng → không dòng, tạm tính 0; không còn cách nhận (chỉ giao tận nơi)',
+     (() => { const r = DON.tinhDon(new Map(), MENU); return r.dong.length === 0 && r.tamTinh === 0 && r.soGoi === 0 && r.soHop === 0 && !('cachNhan' in r); })());
+  const tinhTay = DON.tinhDon(new Map([['ba-chi-bo-my_400', 2], ['ribeye-cap_200', 11], ['ribeye-cap_400', 2.5], ['la-galbi_400', 0], ['kim-chi-cai-thao_500', 1]]), MENU);
   ok('tinhDon (giỏ không qua docGio): gói tạm hết bị bỏ và đếm; số ngoài 1–10 hay số lẻ bị bỏ',
      tinhTay.dong.map(d => d.goi.khoa).join(',') === 'kim-chi-cai-thao_500' && tinhTay.boTamHet === 1, JSON.stringify(tinhTay.dong.map(d => d.goi.khoa)));
 
@@ -405,110 +377,31 @@ await nhom('3 · TIỀN, SỐ GAM VÀ GIỎ (chu-va-so)', async () => {
      DON.khoaGoi('ribeye-cap', 200) === 'ribeye-cap_200'
      && khoa.every(([sp, g]) => /^[a-z0-9_-]+$/.test(g.khoa) && g.khoa === DON.khoaGoi(sp.ma, g.soGam))
      && khoa.some(([sp]) => sp.tenVi === 'Ba chỉ bò Mỹ'), khoa.map(([, g]) => g.khoa).join(','));
+
+  // gioThanhDiaChi: database từ chối đơn → khách về trang kèm giỏ trên địa chỉ (lib/xu-ly-form.ts luotDatHang).
+  const gio = DON.docGio(GIO_MAU, MENU).gio;
+  ok('gioThanhDiaChi: "ribeye-cap_200=2&la-galbi_400=1&kim-chi-cai-thao_500=1"; đọc lại bằng docGio ra đúng giỏ',
+     DON.gioThanhDiaChi(gio) === 'ribeye-cap_200=2&la-galbi_400=1&kim-chi-cai-thao_500=1'
+     && JSON.stringify([...DON.docGio([...new URLSearchParams(DON.gioThanhDiaChi(gio))], MENU).gio]) === JSON.stringify([...gio]),
+     DON.gioThanhDiaChi(gio));
+  ok('gioThanhDiaChi bỏ khóa không phải khóa gói (ho_ten, sdt, chữ có dấu) và số ngoài 1–10 — địa chỉ trang không bao giờ mang họ tên, số điện thoại',
+     DON.gioThanhDiaChi(new Map([['ho_ten', 1], ['sdt', 2], ['bò_200', 1], ['ribeye-cap_200', 11], ['ribeye-cap_400', 0], ['la-galbi_400', 3]])) === 'la-galbi_400=3'
+     && DON.gioThanhDiaChi(new Map()) === '');
 });
 
 // ===========================================================================
-await nhom('4 · TIN ĐƠN (cau-chu)', async () => {
-  const tinQuay = DON.taoTinDon(donTu(GIO_MAU), 'vi', MS_2350);
-  const dongTin = tinQuay.split('\n');
-  ok('Tin trang tiếng Việt, nhận tại quầy: đúng từng chữ tin mẫu của bản thiết kế', tinQuay === TIN_VI_QUAY.join('\n'), `\n${tinQuay}`);
-  ok('Dòng đầu là "MUA THỊT VỀ – BEEFTOWN · beeftown.vn" — không mở đầu bằng chữ "đặt", không mã đơn',
-     dongTin[0] === 'MUA THỊT VỀ – BEEFTOWN · beeftown.vn' && !/^\s*đặt/i.test(tinQuay) && !/mã đơn|order code|#[A-Z0-9]{4,}/i.test(tinQuay));
-  ok('Dòng hai là "Soạn lúc HH:MM ngày DD/MM/YYYY (giờ Việt Nam)"', /^Soạn lúc \d{2}:\d{2} ngày \d{2}\/\d{2}\/\d{4} \(giờ Việt Nam\)$/.test(dongTin[1]), dongTin[1]);
-
-  const so = s => Number(s.replace(/\D/g, ''));
-  const dongGoi = [...tinQuay.matchAll(/^• (.+), (gói khoảng|hộp) (\d+) g( \(đông lạnh\))?: (\d+) × (\d{1,3}(?:\.\d{3})* đ) = (\d{1,3}(?:\.\d{3})* đ)$/gm)];
-  ok('Mỗi dòng "• tên, gói khoảng 200 g: 2 × 400.000 đ = 800.000 đ" đúng phép nhân; đông lạnh có "(đông lạnh)"',
-     dongGoi.length === 3 && dongGoi.every(m => Number(m[5]) * so(m[6]) === so(m[7]))
-     && dongGoi.filter(m => m[4]).map(m => m[1]).join(',') === 'LA Galbi', dongGoi.map(m => m[0]).join(' | '));
-
-  for (const [nn, menu, cau] of [['en', MENU_EN, 'Khách đọc trang tiếng Anh.'], ['ko', MENU_KO, 'Khách đọc trang tiếng Hàn.']]) {
-    const tin = DON.taoTinDon(donTu(GIO_MAU, menu), nn, MS_2350);
-    ok(`[${nn}] Tin soạn từ trang ${nn} vẫn ghi "gói khoảng 200 g", "hộp 500 g" — không "Pack of about", không "약"`,
-       tin.includes('gói khoảng 200 g') && tin.includes('hộp 500 g') && !/Pack of|about|box|약|팩|통/.test(tin), tin);
-    ok(`[${nn}] Tên trong tin là ten_vi; đúng tin tiếng Việt kèm đúng một dòng "${cau}" trước dòng cuối`,
-       tin === voiDongTieng(TIN_VI_QUAY, cau).join('\n') && !tin.includes(TEN_DICH[nn]['kim-chi-cai-thao']), `\n${tin}`);
-  }
-  ok('Tên trong tin là ten_vi ở cả trang en và ko; trang en / ko có đúng một dòng thứ tiếng khách đọc, trang vi không có',
-     !/Khách đọc trang/.test(tinQuay)
-     && (DON.taoTinDon(donTu(GIO_MAU, MENU_EN), 'en', MS_2350).match(/Khách đọc trang/g) ?? []).length === 1
-     && (DON.taoTinDon(donTu(GIO_MAU, MENU_KO), 'ko', MS_2350).match(/Khách đọc trang/g) ?? []).length === 1);
-
-  ok('Nhận tại quầy: "Tạm tính theo giá trên web: X." và dòng cuối nhắc tổng tiền, giờ nhận',
-     dongTin.includes('Tạm tính theo giá trên web: 1.250.000 đ.') && dongTin.includes('Nhận: tại quầy Beeftown.')
-     && dongTin.at(-1) === 'Nhờ quán liên hệ lại xác nhận tổng tiền và giờ nhận giúp mình.');
-  const tinGiao = DON.taoTinDon(donTu([...GIO_MAU, ['nhan', 'giao']], MENU, true), 'vi', MS_2350);
-  ok('Giao tận nơi: "…, chưa gồm phí giao.", dòng nhận giao, dòng cuối nhắc phí giao', tinGiao === TIN_VI_GIAO.join('\n'), `\n${tinGiao}`);
-  ok('Chưa nhận giao mà địa chỉ có nhan=giao → tin vẫn là nhận tại quầy',
-     DON.taoTinDon(donTu([...GIO_MAU, ['nhan', 'giao']], MENU, false), 'vi', MS_2350) === tinQuay);
-
-  const moiTin = [tinQuay, tinGiao, ...['en', 'ko'].map(nn => DON.taoTinDon(donTu([...GIO_MAU, ['nhan', 'giao']], nn === 'en' ? MENU_EN : MENU_KO, true), nn, MS_2350))];
-  const xau = moiTin.filter(t => /thành công|đã đặt|đã xác nhận|success|confirmed/i.test(t)
-    || /(?:^|[\s(])mã(?=[\s.,:)]|$)/imu.test(t) || /(?:\+84|\b0)\d{8,10}\b/.test(t.replace(/\./g, '')));
-  ok('Tin không có "thành công", "đã đặt", "đã xác nhận", "mã", số điện thoại', xau.length === 0, xau.join('\n---\n'));
-
-  const boTien = t => t.replace(/\d{1,3}(?:\.\d{3})+ đ/g, ' ');
-  const conCam = moiTin.flatMap(t => timChuoiCam(boTien(t)));
-  ok('Bỏ số tiền dạng "400.000 đ" thì tin không dính chữ cấm nào', conCam.length === 0, conCam.map(c => c.tim_thay).join(' | '));
-  ok('… và trước khi bỏ, chỉ luật "giá tiền" của chuoi-cam.js bắt (bộ quét miễn đúng số tiền trong data-tien)',
-     !!MAU_GIA && timChuoiCam(tinQuay).every(c => c.vi_sao === MAU_GIA.vi_sao) && timChuoiCam(tinQuay).length === 1);
-
-  // 10 dòng gói: mười sản phẩm, mỗi sản phẩm một gói 400 g × 2.
-  const TEN_MUOI = ['Ribeye with Cap', 'Thăn ngoại bò Úc', 'Ba chỉ bò Mỹ', 'LA Galbi', 'Nạc vai bò Úc', 'Lõi vai bò Mỹ',
-    'Bắp hoa bò Úc', 'Thăn nội bò Úc', 'Sườn non bò Mỹ', 'Gầu bò Mỹ'];
-  const menuMuoi = MTV.nhomMuaThitVe(TEN_MUOI.map((t, i) => dong({ san_pham_ma: `sp-${i}`, ten: t, ten_vi: t, so_gam: 400, gia: 800000 })));
-  const tinMuoi = DON.taoTinDon(donTu(menuMuoi.map(sp => [sp.goi[0].khoa, '2']), menuMuoi), 'en', MS_2350);
-  ok('Xuống dòng bằng \\n; tin 10 dòng gói dưới 1.000 ký tự; giỏ rỗng → chuỗi rỗng',
-     !tinQuay.includes('\r') && (tinMuoi.match(/^• /gm) ?? []).length === 10 && tinMuoi.length < 1000
-     && DON.taoTinDon(DON.tinhDon(new Map(), 'quay', MENU), 'vi', MS_2350) === '', `${tinMuoi.length} ký tự`);
-  ok('TIEU_DE_TIN là dòng đầu của tin (một nguồn cho mọi nơi nhắc tới nó)', DON.TIEU_DE_TIN === dongTin[0]);
-});
-
-// ===========================================================================
-await nhom('5 · GỬI HAI LẦN (bam-hai-lan)', async () => {
-  const a = DON.taoTinDon(donTu(GIO_MAU), 'vi', MS_2350);
-  const b = DON.taoTinDon(donTu(GIO_MAU), 'vi', MS_2350);
-  ok('Cùng giỏ, cùng cách nhận, cùng mốc giờ → hai tin giống hệt từng chữ', a === b && a.length > 0);
-  const sauMotPhut = DON.taoTinDon(donTu(GIO_MAU), 'vi', MS_2350 + 60_000).split('\n');
-  const khac = a.split('\n').map((d, i) => d === sauMotPhut[i] ? null : i).filter(i => i !== null);
-  ok('Cùng giỏ, khác phút → chỉ dòng "Soạn lúc" khác', JSON.stringify(khac) === '[1]' && sauMotPhut[1] === 'Soạn lúc 23:51 ngày 13/11/2026 (giờ Việt Nam)',
-     JSON.stringify(khac));
-  const nguoc = DON.taoTinDon(donTu([...GIO_MAU].reverse()), 'vi', MS_2350);
-  const doiSo = DON.taoTinDon(donTu([['ribeye-cap_200', '3'], ...GIO_MAU.slice(1)]), 'vi', MS_2350);
-  const quay = DON.taoTinDon(donTu([...GIO_MAU, ['nhan', 'quay']], MENU, true), 'vi', MS_2350);
-  const giao = DON.taoTinDon(donTu([...GIO_MAU, ['nhan', 'giao']], MENU, true), 'vi', MS_2350);
-  ok('Chọn theo thứ tự khác → cùng tin; đổi số gói hay cách nhận → khác tin', nguoc === a && doiSo !== a && quay === a && giao !== a);
-});
-
-// ===========================================================================
-await nhom('6 · GIỜ VIỆT NAM (gio-vn)', async () => {
-  const CA = [
-    ['2026-11-13T16:50:00Z', '23:50 ngày 13/11/2026'],
-    ['2026-11-13T17:10:00Z', '00:10 ngày 14/11/2026'],
-    ['2026-12-31T17:00:00Z', '00:00 ngày 01/01/2027'],
-  ];
-  for (const [utc, vn] of CA) {
-    ok(`gioSoanVn(${utc.slice(0, 16)}Z) = "${vn}"${utc.startsWith('2026-11-13T17') ? ' (UTC còn 13/11)' : ''}`,
-       DON.gioSoanVn(Date.parse(utc)) === vn, DON.gioSoanVn(Date.parse(utc)));
-  }
-  const tinNaN = DON.taoTinDon(donTu(GIO_MAU), 'vi', NaN);
-  ok('gioSoanVn(NaN) = "" và tin không có dòng "Soạn lúc"',
-     DON.gioSoanVn(NaN) === '' && DON.gioSoanVn(Infinity) === '' && !tinNaN.includes('Soạn lúc')
-     && tinNaN === [TIN_VI_QUAY[0], ...TIN_VI_QUAY.slice(2)].join('\n'), tinNaN);
-
-  // Comment có thể nhắc chuyện đồng hồ — chỉ đọc phần mã.
-  const ma = docNguon('don-mua-thit.ts').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"])\/\/.*$/gm, '$1');
-  ok('don-mua-thit.ts không đọc đồng hồ (không new Date, Date.now): giờ soạn là tham số', !/\bDate\b/.test(ma) && !/performance\.now/.test(ma),
-     (ma.match(/.*\bDate\b.*/g) ?? []).join(' | '));
-  datGio('2030-01-01T05:00:00Z');
-  let tinDongHo;
-  try { tinDongHo = DON.taoTinDon(donTu(GIO_MAU), 'vi', MS_2350); } finally { traGio(); }
-  ok('Đồng hồ máy chỉ năm 2030 mà giờ soạn là 23:50 13/11/2026 → tin ghi giờ soạn', tinDongHo === TIN_VI_QUAY.join('\n'), tinDongHo);
+await nhom('4 · GỬI HAI LẦN (bam-hai-lan)', async () => {
+  const a = donTu(GIO_MAU);
+  const b = donTu([...GIO_MAU].reverse());
+  ok('Cùng giỏ (chọn theo thứ tự khác) → cùng đơn, cùng tạm tính',
+     JSON.stringify(a.dong.map(d => [d.goi.khoa, d.soLuong])) === JSON.stringify(b.dong.map(d => [d.goi.khoa, d.soLuong])) && a.tamTinh === b.tamTinh);
+  const c = donTu([['ribeye-cap_200', '3'], ...GIO_MAU.slice(1)]);
+  ok('Đổi số gói → khác đơn', c.tamTinh !== a.tamTinh);
 });
 
 // ===========================================================================
 await nhom('7 · CHỮ CỦA KHỐI ĐƠN (CHU_DON)', async () => {
-  const KHOA = ['goiChu', 'dem', 'dongDau', 'tamTinh', 'donTrong', 'vuaDoi'];
+  const KHOA = ['goiChu', 'dem', 'dongDau', 'daChon', 'tamTinh', 'donTrong', 'vuaDoi'];
   const C = DON.CHU_DON;
   const thieu = KHOA.filter(k => !C[k] || NGON_NGU.some(nn => C[k][nn] === undefined || typeof C[k][nn] !== typeof C[k].vi));
   ok('Mọi khóa đủ vi, en, ko', thieu.length === 0 && Object.keys(C).sort().join() === [...KHOA].sort().join(),
@@ -521,6 +414,7 @@ await nhom('7 · CHỮ CỦA KHỐI ĐƠN (CHU_DON)', async () => {
     ...[[1, 0], [2, 1], [0, 2], [3, 3], [1, 1]].map(([a, b]) => C.dem[nn](a, b)),
     C.dongDau[nn](TEN[nn], DON.nhanGoi('goi', 200, nn), 2), C.tamTinh[nn], C.donTrong[nn],
     C.vuaDoi[nn](TEN[nn], DON.nhanGoi('goi', 400, nn), 3),
+    ...[[1, 0], [2, 0], [0, 1], [0, 3]].map(([a, b]) => C.daChon[nn](a, b)),
   ];
   const moiCau = NGON_NGU.flatMap(nn => cauCua(nn).map(c => [nn, c]));
   const xau = moiCau.filter(([, c]) => typeof c !== 'string' || timChuoiCam(c).length > 0 || /thành công|success|성공|[[\]]|báo giá|quote|견적/i.test(c));
@@ -528,23 +422,26 @@ await nhom('7 · CHỮ CỦA KHỐI ĐƠN (CHU_DON)', async () => {
   const lan = moiCau.filter(([nn, c]) => nn !== 'vi' && VIET.test(c));
   ok('Bản en, ko không lẫn chữ Việt', lan.length === 0, lan.map(([nn, c]) => `${nn}: ${c}`).join(' | '));
 
-  // Đúng chữ của bản thiết kế (mục 3.4).
   const CHU = {
-    vi: ['Tạm tính', 'Chọn gói để soạn đơn', 'Ribeye with Cap · Gói khoảng 200 g × 2 = ', 'Ribeye with Cap, Gói khoảng 200 g: 2.'],
-    en: ['Subtotal', 'Choose packs to start your order', 'Ribeye with Cap · Pack of about 200 g × 2 = ', 'Ribeye with Cap, Pack of about 200 g: 2.'],
-    ko: ['소계', '팩을 고르면 주문이 만들어져요', 'Ribeye with Cap · 약 200 g 팩 × 2 = ', 'Ribeye with Cap 약 200 g 팩: 2개.'],
+    vi: ['Tạm tính', 'Bạn chưa chọn gói nào', 'Ribeye with Cap · Gói khoảng 200 g × 2 = ', 'Ribeye with Cap, Gói khoảng 200 g: 2.'],
+    en: ['Subtotal', 'You have not chosen any packs yet', 'Ribeye with Cap · Pack of about 200 g × 2 = ', 'Ribeye with Cap, Pack of about 200 g: 2.'],
+    ko: ['소계', '아직 고른 팩이 없어요', 'Ribeye with Cap · 약 200 g 팩 × 2 = ', 'Ribeye with Cap 약 200 g 팩: 2개.'],
   };
   const lech = NGON_NGU.filter(nn => JSON.stringify([C.tamTinh[nn], C.donTrong[nn],
     C.dongDau[nn]('Ribeye with Cap', DON.nhanGoi('goi', 200, nn), 2), C.vuaDoi[nn]('Ribeye with Cap', DON.nhanGoi('goi', 200, nn), 2)]) !== JSON.stringify(CHU[nn]));
-  ok('Đúng chữ của bản thiết kế: Tạm tính / Subtotal / 소계; câu giỏ rỗng; dòng đơn kết bằng "= " (số tiền ghép sau, trong data-tien); câu vừa đổi',
+  ok('Đúng chữ: Tạm tính / Subtotal / 소계; câu giỏ rỗng; dòng đơn kết bằng "= " (số tiền ghép sau, trong data-tien); câu vừa đổi',
      lech.length === 0, lech.map(nn => `${nn}: ${JSON.stringify([C.tamTinh[nn], C.donTrong[nn], C.dongDau[nn]('Ribeye with Cap', DON.nhanGoi('goi', 200, nn), 2), C.vuaDoi[nn]('Ribeye with Cap', DON.nhanGoi('goi', 200, nn), 2)])}`).join(' | '));
+  const DA_CHON = { vi: ['Đã chọn: 1 gói', 'Đã chọn: 2 hộp'], en: ['Chosen: 1 pack', 'Chosen: 2 boxes'], ko: ['고른 수량: 1팩', '고른 수량: 2통'] };
+  const lechDaChon = NGON_NGU.filter(nn => JSON.stringify([C.daChon[nn](1, 0), C.daChon[nn](0, 2)]) !== JSON.stringify(DA_CHON[nn]));
+  ok('Đúng chữ "Đã chọn: 1 gói" / "Chosen: 2 boxes" / "고른 수량: 1팩" (thẻ sản phẩm và chân hộp chọn gói; số ít / số nhiều tiếng Anh)',
+     lechDaChon.length === 0, lechDaChon.map(nn => `${nn}: ${C.daChon[nn](1, 0)} · ${C.daChon[nn](0, 2)}`).join(' | '));
   ok('Không câu nào của CHU_DON chứa số tiền (số tiền luôn ở phần tử data-tien riêng)',
      moiCau.every(([, c]) => !/\d{1,3}(\.\d{3})+\s?đ/.test(c)));
 });
 
 // ===========================================================================
 await nhom('8 · TRẠNG THÁI TRANG', async () => {
-  const { trangThaiMuaThit: tt, coGoiDatDuoc, coGiaoHang, MENU_RONG } = MTV;
+  const { trangThaiMuaThit: tt, coGoiDatDuoc, MENU_RONG } = MTV;
   const coDu = await menuTu(DONG_THU);
   const coRong = await menuTu([]);
   const hetHet = await menuTu(DONG_THU.map(d => ({ ...d, tam_het: true })));
@@ -558,29 +455,26 @@ await nhom('8 · TRẠNG THÁI TRANG', async () => {
   ok('mo, ≥ 1 gói đặt được → mo', tt(true, coDu) === 'mo' && coGoiDatDuoc(coDu) === true && coGoiDatDuoc(MENU_RONG) === false);
   const chiMotGoi = await menuTu([dong({ ...BA_CHI, so_gam: 400, gia: 360000, tam_het: true }), dong({ ...BA_CHI, so_gam: 200, gia: 180000 })]);
   ok('… một gói còn đặt được giữa các gói tạm hết → mo', tt(true, chiMotGoi) === 'mo');
-
-  ok('coGiaoHang: null, "", "   " → false; có chữ → true',
-     [{ mua_thit_giao_hang: null }, { mua_thit_giao_hang: '' }, { mua_thit_giao_hang: '   ' }, {}, null, undefined].every(nd => coGiaoHang(nd) === false)
-     && coGiaoHang({ mua_thit_giao_hang: 'Giao trong Quận 1 và Quận 3, phí giao quán báo khi xác nhận đơn.' }) === true);
+  ok('Không còn coGiaoHang: chỉ giao tận nơi (Khánh 03/11/2026)', !('coGiaoHang' in MTV));
 });
 
 // ===========================================================================
 await nhom('9 · NẠP', async () => {
-  const CAM_NAP = /ban-le-noi-bo|\/kho\/|cau-noi-bo|dich-dat-hang/;
+  const CAM_NAP = /ban-le-noi-bo|\/kho\/|cau-noi-bo|dat-hang-mua-thit|xu-ly-form/;
   /** Mọi đường nạp tĩnh, động và export … from. */
   const duongNap = nguon => [...nguon.matchAll(/(?:import|export)\s+(?:[^'"`;]*?\s+from\s+)?['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g)].map(m => m[1] ?? m[2]);
   const lac = ['mua-thit-ve.ts', 'don-mua-thit.ts'].flatMap(f => duongNap(docNguon(f)).filter(d => CAM_NAP.test(d)).map(d => `${f}: ${d}`));
-  ok('mua-thit-ve.ts và don-mua-thit.ts không nạp ban-le-noi-bo.ts, lib/kho, cau-noi-bo.ts, dich-dat-hang.ts', lac.length === 0, lac.join(' | '));
+  ok('mua-thit-ve.ts và don-mua-thit.ts không nạp ban-le-noi-bo.ts, lib/kho, cau-noi-bo.ts, thư viện gửi đơn', lac.length === 0, lac.join(' | '));
 
   const nguon = docNguon('don-mua-thit.ts');
-  // Câu nạp: import … from '…', export … from '…', import '…' (không bắt export type X = 'a').
   const cauNap = [...nguon.matchAll(/^\s*(?:import|export)\b[^;]*?\bfrom\s+['"][^'"]+['"]\s*;?|^\s*import\s+['"][^'"]+['"]\s*;?/gm)]
     .map(m => m[0].trim().replace(/\s+/g, ' '));
-  const khongPhaiKieu = cauNap.filter(c => !/^import type /.test(c));
-  ok('don-mua-thit.ts chỉ có import type và gioVnTuMs của gio-vn.ts (chạy được trong trình duyệt, không kéo supabase-js)',
-     JSON.stringify(khongPhaiKieu) === JSON.stringify(["import { gioVnTuMs } from './gio-vn.ts';"]) && !/import\(/.test(nguon)
-     && cauNap.filter(c => /^import type /.test(c)).every(c => /from '\.\/noi-dung\.ts'/.test(c)), cauNap.join(' | '));
-  ok('gio-vn.ts (file duy nhất don-mua-thit.ts nạp thật) không nạp gì', duongNap(docNguon('gio-vn.ts')).length === 0);
+  ok('don-mua-thit.ts chỉ có import type (chạy được trong trình duyệt, không kéo supabase-js)',
+     cauNap.length > 0 && cauNap.every(c => /^import type /.test(c) && /from '\.\/noi-dung\.ts'/.test(c)) && !/import\(/.test(nguon), cauNap.join(' | '));
+  // Comment có thể nhắc chuyện đồng hồ — chỉ đọc phần mã.
+  const ma = nguon.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"])\/\/.*$/gm, '$1');
+  ok('don-mua-thit.ts không đọc đồng hồ, không DOM, không mạng (gio-vn: không áp dụng)',
+     !/\bDate\b|performance\.now|document\.|window\.|fetch\(/.test(ma), (ma.match(/.*\b(Date|document|window|fetch)\b.*/g) ?? []).join(' | '));
 
   const gon = DON.rutGonMenu(MENU);
   ok('rutGonMenu bỏ moTa, cachDung; giữ ma, donVi, baoQuan, ten, tenVi, goi',
@@ -588,8 +482,8 @@ await nhom('9 · NẠP', async () => {
        && ['ma', 'loai', 'donVi', 'baoQuan', 'ten', 'tenVi'].every(k => sp[k] === MENU[i][k]) && JSON.stringify(sp.goi) === JSON.stringify(MENU[i].goi))
      && MENU[0].moTa !== null, JSON.stringify(gon[0]));
   ok('rutGonMenu không sửa menu gốc (máy chủ còn dùng mô tả để dựng thẻ)', MENU[0].moTa === 'Thớ mỡ đều, mềm.' && MENU[0].cachDung !== null);
-  ok('data-menu (JSON của rutGonMenu) đọc lại ra đúng đơn như menu đầy đủ',
-     DON.taoTinDon(donTu(GIO_MAU, JSON.parse(JSON.stringify(gon))), 'vi', MS_2350) === TIN_VI_QUAY.join('\n'));
+  const tuJson = donTu(GIO_MAU, JSON.parse(JSON.stringify(gon)));
+  ok('data-menu (JSON của rutGonMenu) đọc lại ra đúng đơn như menu đầy đủ', tuJson.tamTinh === donTu(GIO_MAU).tamTinh && tuJson.dong.length === 3);
 });
 
 process.exit(ketThuc('MUA THỊT VỀ (THƯ VIỆN WEB)'));

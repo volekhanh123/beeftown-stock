@@ -388,6 +388,8 @@ await nhom('5 · WEB KHÔNG GỌI HÀM NGOÀI DANH SÁCH CHO PHÉP', async () =>
     'mini_app_con_hang',
     // 0101: trang Mua thịt về (lib/mua-thit-ve.ts) — gói đang bán có giá chủ đã chốt, không mã nội bộ, không số tồn.
     'mua_thit_ve_cong_khai',
+    // 0113: trang Mua thịt về ghi đơn giao tận nơi (lib/dat-hang-mua-thit.ts) — chỉ trả mã đơn vừa tạo.
+    'tao_don_mua_thit',
   ];
 
   for (const g of goiRpc.filter(laAnon)) {

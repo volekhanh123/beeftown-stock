@@ -127,13 +127,11 @@ tệ hơn không có nút".
 - Công tắc so `=== true` (`null` là chưa duyệt): `nd.hien_thuc_don === true`.
 - Kênh liên hệ luôn qua `lienHe(nd)` (`web/src/lib/trang-cong-khai.ts`) — mỗi trường `string | null`,
   link không an toàn bị bỏ. Dựng `{lh.facebook && (<a …>)}`; cả khối không có gì để hiện thì ẩn cả
-  khối. Trừ đích gửi đơn mua thịt: `dichDatHang(nd)` (chỉ `https://zalo.me/…` — `lienHe(nd).zalo` nhận mọi
-  link http(s), đủ cho link liên hệ thường nhưng không cho chỗ khách gửi đơn và nhận mã QR chuyển khoản).
+  khối.
 - Quyết định suy ra để ở `trang-cong-khai.ts`, không rải trong component: `formHoiBanMo`,
   `coKenhHoiBan`, `nutMoDau` (thứ bậc hai nút màn đầu), `dieuHuong` (bốn mục; năm khi trang Mua thịt về
-  mở), `moTaTrangMuaThit`. Trang Mua thịt về thêm `muaThitVeMo`, `dichDatHang`, `linkGuiDon`
-  (`web/src/lib/dich-dat-hang.ts` — đích đặt hàng ở một chỗ: PR đổi sang Mini App Zalo chỉ sửa file đó) và
-  `trangThaiMuaThit`, `coGiaoHang` (`web/src/lib/mua-thit-ve.ts`).
+  mở), `moTaTrangMuaThit`. Trang Mua thịt về thêm `muaThitVeMo` (`web/src/lib/dich-dat-hang.ts`) và
+  `trangThaiMuaThit` (`web/src/lib/mua-thit-ve.ts`); gửi đơn ở `web/src/lib/dat-hang-mua-thit.ts`.
 - Giá: chỉ render phần tử giá khi `gia !== null` — không ô trống, không "liên hệ". Trang Mua thịt về in
   giá gói **chủ đã chốt** qua `dinhDangTien` trong phần tử `data-tien` (bộ quét miễn đúng chỗ đó); gói
   không có giá chốt thì không hiện gói — không "liên hệ", không "quán báo giá".
@@ -162,8 +160,8 @@ theo ngày — `web/THIET-KE.md` mục 10.
 | `LenTang3` | `ngonNgu`, `noiDung`, `gon?`, `capTieuDe?`, `anHieu?`, `tieuDe?`, `khongLinkDuongDen?` | "Tầng 3" và đường lên; bản gọn cho trang Hỏi bàn. In địa chỉ và câu chỉ đường `t.loiLen` (lối vào riêng ngay cạnh GS25, thang máy lên tầng 3) — không viết lại câu đó trong component khác |
 | `CauHoi` | `ngonNgu`, `noiDung` | Hỏi đáp bằng `<details>` — chỉ dữ kiện đã xác nhận. Mỗi `<summary>` có hai biểu tượng `cong` (`.bt-mo`) và `tru` (`.bt-dong`); hàng cao 56px, bấm được trên toàn chiều rộng |
 | `TrangVanBan` | `hieu`, `tieuDe` + `<slot>` | Trang pháp lý |
-| `TrangMuaThitVe` | `ngonNgu`, `noiDung`, `menu`, `trangThai` (`chua_mo` / `loi` / `mo` / `het_quay`), `thamSo`, `duongDan` | Trang Mua thịt về: form GET chọn gói (chỉ ở `mo`), khối "Xem lại đơn" có tin đơn và nút gửi lấy từ `dichDatHang` / `linkGuiDon` / `CHU_DICH`, hỏi đáp. Trạng thái do file vỏ tính: `trangThaiMuaThit(muaThitVeMo(noiDung), menu)`. Chưa mở: chỉ h1, một câu, link Xem thực đơn — không câu mời nhắn, không nút kênh |
-| `MuaThitThe` | `sanPham`, `ngonNgu`, `noiDung`, `gio`, `coOChon` | Thẻ một sản phẩm của Mua thịt về: `KhungAnh loai="khay"`, tên, nhãn bảo quản bằng chữ, mỗi gói một hàng nhãn gói + giá (`data-tien`) + ô chọn số 0–10 với nút −/+ (nút ra trang với `hidden`); gói tạm hết: chữ "Tạm hết ở quầy", giá vẫn hiện, không ô chọn |
+| `TrangMuaThitVe` | `ngonNgu`, `noiDung`, `menu`, `trangThai` (`chua_mo` / `loi` / `mo` / `het_quay`), `ketQua` (đã nhận / không chắc / chưa ghi của lượt đặt), `thamSo`, `duongDan` | Trang Mua thịt về (khách đặt trên website, giao tận nơi — 0113): một form POST gồm lưới gói, khối Giao hàng (họ tên, số điện thoại, địa chỉ, ghi chú) và "Đơn của bạn" với nút Đặt hàng; thanh giỏ dính đáy. Trạng thái do file vỏ tính: `trangThaiMuaThit(muaThitVeMo(noiDung), menu)`. Chưa mở: chỉ h1, một câu, link Xem thực đơn |
+| `MuaThitThe` | `sanPham`, `ngonNgu`, `gio`, `coOChon` | Thẻ gọn một sản phẩm của Mua thịt về (kiểu El Gaucho, Khánh 03/11/2026): `KhungAnh loai="khay"`, tên, nhãn bảo quản bằng chữ, giá "Từ …" (`data-tien`) và một nút viền "Chọn gói" mở hộp chọn `<div popover>` (chạy không cần JavaScript): mỗi gói một hàng nhãn gói + giá + ô chọn số 0–10 với nút −/+ (nút ra trang với `hidden`), chân hộp "Đã chọn" + nút chính Xong; gói tạm hết: "Tạm hết ở quầy", giá vẫn hiện, không ô chọn; sản phẩm hết mọi gói: "Tạm hết ở quầy" thay nút |
 | `ThucDonNhom` | `nhom`, `ngonNgu`, `ghiChu?`, `khongGia?` | Một nhóm món dạng danh sách (bò tại quầy, đồ uống chưa có ảnh) |
 | `ThucDonNhomAnh` | `nhom`, `ngonNgu`, `kieu?` (`dan-dau` / `deu`), `ghiChu?`, `tieuDeNho?`, `nenKhung?`, `khongGia?` | Một nhóm món kiểu cuốn menu bản sáng: tên nhóm chữ hoa `--co-nhom`, câu của nhóm (`CAU_NHOM`), món dẫn đầu chữ trái – ảnh phải từ 768px, lưới thẻ ảnh trên chữ dưới (2 / 3 cột) từ 600px; dưới 600px món đứng sau món dẫn đầu là hàng gọn `tdn-gon` (ảnh 128px trái, chữ phải) — nhóm không có món dẫn đầu giữ thẻ to; `deu` cho ba ly signature (luôn là thẻ); `tieuDeNho` trong dải đen Bò tại quầy |
 | `ThucDonMon` | `mon`, `ngonNgu`, `lon?`, `khongGia?` | Chữ của một món: tên (chữ thường đậm 700), giá chỉ khi `gia !== null`, mô tả, nhãn Món sống / Có cồn, câu cảnh báo món sống |

@@ -5,12 +5,17 @@ import { docNoiDung } from '../../lib/noi-dung';
 import { docMuaThitVe, trangThaiMuaThit } from '../../lib/mua-thit-ve';
 import { muaThitVeMo } from '../../lib/dich-dat-hang';
 import { moTaTrangMuaThit } from '../../lib/trang-cong-khai';
+import { xuLyDatHang, ketQuaDatHang } from '../../lib/xu-ly-form';
+
+const chuyenHuong = await xuLyDatHang(Astro, '/en/buy-meat', 'en');
+if (chuyenHuong) return chuyenHuong;
 
 const [noiDung, menu] = await Promise.all([docNoiDung('en'), docMuaThitVe('en')]);
 const trangThai = trangThaiMuaThit(muaThitVeMo(noiDung), menu);
+const ketQua = ketQuaDatHang(Astro, 'en');
 ---
 <Trang ngonNgu="en" noiDung={noiDung} duongDan="/en/buy-meat" tieuDe="Beef to take home — Beeftown"
        moTa={moTaTrangMuaThit('en', trangThai === 'mo' || trangThai === 'het_quay')}>
-  <TrangMuaThitVe ngonNgu="en" noiDung={noiDung} menu={menu} trangThai={trangThai}
+  <TrangMuaThitVe ngonNgu="en" noiDung={noiDung} menu={menu} trangThai={trangThai} ketQua={ketQua}
                   thamSo={[...Astro.url.searchParams]} duongDan="/en/buy-meat" />
 </Trang>

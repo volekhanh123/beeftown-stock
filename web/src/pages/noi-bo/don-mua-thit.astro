@@ -1,0 +1,220 @@
+---
+/**
+ * HỘP THƯ ĐƠN MUA THỊT VỀ — /noi-bo/don-mua-thit (0113)
+ *
+ * Khách đặt trên trang Mua thịt về (chỉ giao tận nơi, website không thu tiền). Một đơn ở đây CHƯA phải đơn đã chốt:
+ * nhân viên gọi khách, báo tổng tiền, phí giao, hẹn giờ giao, rồi mới bấm "Đã gọi xác nhận". Tên nút mô tả việc đã
+ * xảy ra ngoài đời, như hộp thư Đặt bàn.
+ *
+ * Đọc và đổi trạng thái chỉ qua hai hàm definer (don_mua_thit_danh_sach, don_mua_thit_chuyen): bảng don_mua_thit khóa
+ * kín. Chủ, quản lý, thu ngân đang làm; theo chi nhánh của mình. Database kiểm vai và bước chuyển — CHUYEN_DUOC ở
+ * đây chỉ để dựng nút và chặn sớm tham số tự chế (crm/test/test-noi-bo-don-mua-thit.mjs so hai bên).
+ *
+ * Bấm nút xong thì chuyển hướng 303 về chính trang này (lib/gui-noi-bo.ts) — F5 không gửi lại lệnh cũ. Bấm đúp:
+ * database trả "da_o_san" → báo "đơn đã ở …", không báo "người khác đã xử lý".
+ */
+import NoiBo from '../../layouts/NoiBo.astro';
+import { dichNB, nhanNB, nnCua, type HaiThuTieng } from '../../lib/ngon-ngu-noi-bo';
+import { dichCau } from '../../lib/cau-noi-bo';
+import { CAU_DOC_FORM_HONG, chuyenHuongNoiBo, docBaoNoiBo, docFormNoiBo, type BaoNoiBo } from '../../lib/gui-noi-bo';
+import { dinhDangTien, nhanGoi } from '../../lib/don-mua-thit';
+import { gioVnTuMs } from '../../lib/gio-vn';
+
+const phien = Astro.locals.phien!;
+const { client, nhanSu } = phien;
+const nn = nnCua(Astro);
+
+/** Vai xem và xử lý đơn — như don_mua_thit_duoc_xem() (0113) và mục don_mua_thit của lib/dieu-huong-noi-bo.ts. */
+const VAI_DON_MUA_THIT = ['chu_so_huu', 'quan_ly', 'thu_ngan'];
+
+const CHUYEN_DUOC: Record<string, { nhan: HaiThuTieng; toi: string; phu?: boolean }[]> = {
+  cho_xac_nhan: [
+    { nhan: { vi: 'Đã gọi xác nhận', en: 'Called and confirmed' }, toi: 'da_xac_nhan' },
+    { nhan: { vi: 'Khách hủy', en: 'Customer cancelled' }, toi: 'da_huy', phu: true },
+  ],
+  da_xac_nhan: [
+    { nhan: { vi: 'Đã giao', en: 'Delivered' }, toi: 'da_giao' },
+    { nhan: { vi: 'Khách hủy', en: 'Customer cancelled' }, toi: 'da_huy', phu: true },
+  ],
+};
+
+const TEN_TRANG_THAI: Record<string, HaiThuTieng> = {
+  cho_xac_nhan: { vi: 'Chờ gọi xác nhận', en: 'Waiting for a confirmation call' },
+  da_xac_nhan:  { vi: 'Đã xác nhận, chờ giao', en: 'Confirmed, to deliver' },
+  da_giao:      { vi: 'Đã giao', en: 'Delivered' },
+  da_huy:       { vi: 'Đã hủy', en: 'Cancelled' },
+};
+
+const t = dichNB(nn, {
+  tieuDe:   { vi: 'Đơn mua thịt', en: 'Take-home orders' },
+  h1:       { vi: 'Đơn mua thịt về', en: 'Take-home orders' },
+  dan1:     { vi: 'Khách đặt trên website, chỉ giao tận nơi. Một đơn ở đây ', en: 'Customers order on the website, delivery only. An order here ' },
+  dan2:     { vi: 'chưa phải đơn đã chốt', en: 'is not settled yet' },
+  dan3:     { vi: ': gọi khách báo tổng tiền, phí giao, hẹn giờ giao rồi mới bấm "Đã gọi xác nhận". Tiền tính lại theo FABi.',
+              en: ': call the customer with the total, the delivery fee and a delivery time, then tap "Called and confirmed". Recalculate the money in FABi.' },
+  khongQuyen: { vi: 'Chỉ chủ, quản lý và thu ngân xem được đơn mua thịt.', en: 'Only the owner, managers and cashiers can see take-home orders.' },
+  sai:      { vi: 'Bước chuyển không hợp lệ.', en: 'That status change is not allowed.' },
+  daXuLy:   { vi: 'Đơn đã được người khác xử lý. Tải lại trang để xem trạng thái mới.',
+              en: 'Someone else already handled this order. Reload the page to see its new status.' },
+  daChuyen: { vi: (ten: string) => `Đã chuyển sang "${ten}".`, en: (ten: string) => `Moved to "${ten}".` },
+  daO:      { vi: (ten: string) => `Đơn đã ở "${ten}".`, en: (ten: string) => `This order is already at "${ten}".` },
+  khongDoc: { vi: 'Không đọc được danh sách.', en: 'Could not read the list.' },
+  locCho:   { vi: 'Chờ gọi', en: 'To call' },
+  locDang:  { vi: 'Chờ giao', en: 'To deliver' },
+  locXong:  { vi: 'Đã xong', en: 'Done' },
+  locTatCa: { vi: 'Tất cả', en: 'All' },
+  rongCho:  { vi: 'Không có đơn nào đang chờ gọi.', en: 'No orders waiting for a call.' },
+  rong:     { vi: 'Không có đơn nào trong mục này.', en: 'No orders in this view.' },
+  rongPhu:  { vi: 'Trống cũng có thể nghĩa là trang Mua thịt về chưa mở. Bật ở màn ', en: 'Empty can also mean the Take home page is not open. Turn it on in ' },
+  noiDung:  { vi: 'Nội dung website', en: 'Website content' },
+  dienThoai: { vi: 'Điện thoại', en: 'Phone' },
+  diaChi:   { vi: 'Giao tới', en: 'Deliver to' },
+  datLuc:   { vi: 'Đặt lúc', en: 'Ordered at' },
+  goi:      { vi: 'Gói', en: 'Packs' },
+  tamTinh:  { vi: 'Tạm tính trên web (chưa gồm phí giao)', en: 'Website subtotal (no delivery fee)' },
+  ghiChu:   { vi: 'Ghi chú', en: 'Note' },
+  thuTieng: { vi: 'Khách đọc trang', en: 'Customer read the page in' },
+  xuLy:     { vi: 'Người xử lý', en: 'Handled by' },
+  ma:       { vi: 'Mã đơn', en: 'Order code' },
+  dongLanh: { vi: 'đông lạnh', en: 'frozen' },
+});
+const TEN_THU_TIENG: Record<string, HaiThuTieng> = {
+  en: { vi: 'tiếng Anh', en: 'English' },
+  ko: { vi: 'tiếng Hàn', en: 'Korean' },
+};
+
+const duocXem = VAI_DON_MUA_THIT.includes(nhanSu.vai_tro);
+let bao: BaoNoiBo | null = docBaoNoiBo(Astro.cookies, Astro.url.pathname);
+
+if (duocXem && Astro.request.method === 'POST') {
+  const form = await docFormNoiBo(Astro.request);
+  const id = String(form?.get('id') ?? '');
+  const tu = String(form?.get('tu') ?? '');
+  const toi = String(form?.get('toi') ?? '');
+  const hopLe = CHUYEN_DUOC[tu]?.some(b => b.toi === toi);
+  if (!form) {
+    bao = { ok: false, cau: CAU_DOC_FORM_HONG[nn] };
+  } else if (!id || !hopLe) {
+    bao = { ok: false, cau: t.sai };
+  } else {
+    // Ghi và câu báo là cùng một await: lỗi mạng / database không bao giờ thành "Đã chuyển".
+    const { data, error } = await client.rpc('don_mua_thit_chuyen', { p_id: id, p_tu: tu, p_toi: toi });
+    const ten = nhanNB(TEN_TRANG_THAI, toi, nn);
+    if (!error && data === 'da_chuyen') return chuyenHuongNoiBo(Astro, { ok: true, cau: t.daChuyen(ten) });
+    if (!error && data === 'da_o_san') return chuyenHuongNoiBo(Astro, { ok: true, cau: t.daO(ten) });
+    bao = !error && data === 'nguoi_khac' ? { ok: false, cau: t.daXuLy } : { ok: false, cau: dichCau(nn, error?.message ?? t.khongDoc) };
+  }
+}
+
+const LOC = ['cho', 'dang', 'xong', 'tat_ca'] as const;
+const locVao = String(Astro.url.searchParams.get('loc') ?? 'cho');
+const loc = (LOC as readonly string[]).includes(locVao) ? locVao : 'cho';
+
+interface DongDon { khoa: string; ten_vi: string; don_vi: 'goi' | 'hop'; bao_quan: string; so_gam: number; so_luong: number; gia: number; thanh_tien: number }
+interface Don {
+  id: string; ma_don: string; created_at: string; ho_ten: string; sdt: string; dia_chi: string; ghi_chu: string | null;
+  dong: DongDon[]; tam_tinh: number; ngon_ngu: string; trang_thai: string; nguoi_xu_ly: string | null;
+}
+let dsLoi: string | null = null;
+let ds: Don[] = [];
+if (duocXem) {
+  try {
+    const { data, error } = await client.rpc('don_mua_thit_danh_sach', { p_loc: loc });
+    if (error) dsLoi = dichCau(nn, error.message);
+    else ds = Array.isArray(data) ? (data as Don[]) : [];
+  } catch (e) {
+    dsLoi = e instanceof Error ? dichCau(nn, e.message) : t.khongDoc;
+  }
+}
+
+/** "14:05 03/11/2026" theo giờ Việt Nam (gioVnTuMs — không tự cộng giờ). */
+function gioDat(iso: string): string {
+  const s = gioVnTuMs(Date.parse(iso));
+  return s ? `${s.slice(11, 16)} ${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)}` : iso;
+}
+
+const BO_LOC = [
+  { ma: 'cho', ten: t.locCho },
+  { ma: 'dang', ten: t.locDang },
+  { ma: 'xong', ten: t.locXong },
+  { ma: 'tat_ca', ten: t.locTatCa },
+];
+---
+<NoiBo tieuDe={t.tieuDe} nhanSu={nhanSu}>
+  <h1>{t.h1}</h1>
+  {!duocXem ? (
+    <div class="nb-bao loi"><p>{t.khongQuyen}</p></div>
+  ) : (
+    <>
+      <p class="nb-dan">{t.dan1}<strong>{t.dan2}</strong>{t.dan3}</p>
+
+      {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>}
+      {dsLoi && <div class="nb-bao loi"><p>{dsLoi}</p></div>}
+
+      <div class="nb-dong-nut" style="margin-bottom:1.25rem">
+        {BO_LOC.map(b => (
+          <a href={`/noi-bo/don-mua-thit?loc=${b.ma}`}
+             class={`nb-nut ${loc === b.ma ? '' : 'phu'}`}
+             aria-current={loc === b.ma ? 'page' : undefined}
+             style="font-size:.85rem;padding:.55rem .85rem;min-height:42px">{b.ten}</a>
+        ))}
+      </div>
+
+      {ds.length === 0 && !dsLoi && (
+        <div class="nb-rong">
+          <p style="margin:0">{loc === 'cho' ? t.rongCho : t.rong}</p>
+          {['chu_so_huu', 'quan_ly'].includes(nhanSu.vai_tro) && (
+            <p style="margin:.5rem 0 0;font-size:.85rem">{t.rongPhu}<a href="/noi-bo/noi-dung">{t.noiDung}</a>.</p>
+          )}
+        </div>
+      )}
+
+      {ds.map(d => {
+        const buoc = CHUYEN_DUOC[d.trang_thai] ?? [];
+        return (
+          <div class="nb-dong">
+            <div class="nb-dong-dau">
+              <strong>{d.ho_ten}</strong>
+              <span class={`nb-nhan ${d.trang_thai === 'cho_xac_nhan' ? 'cho' : d.trang_thai === 'da_xac_nhan' ? 'song' : 'tat'}`}>
+                {nhanNB(TEN_TRANG_THAI, d.trang_thai, nn)}
+              </span>
+            </div>
+            <dl>
+              <dt>{t.dienThoai}</dt>
+              <dd><a href={`tel:${d.sdt}`}>{d.sdt}</a></dd>
+              <dt>{t.diaChi}</dt>
+              <dd>{d.dia_chi}</dd>
+              <dt>{t.goi}</dt>
+              <dd>
+                <ul style="margin:0;padding-left:1.1rem">
+                  {(d.dong ?? []).map(g => (
+                    <li>{g.ten_vi}, {nn === 'vi' ? nhanGoi(g.don_vi, g.so_gam, 'vi').toLowerCase() : nhanGoi(g.don_vi, g.so_gam, nn)}{g.bao_quan === 'dong_lanh' ? ` (${t.dongLanh})` : ''}: {g.so_luong} × {dinhDangTien(g.gia)} = {dinhDangTien(g.thanh_tien)}</li>
+                  ))}
+                </ul>
+              </dd>
+              <dt>{t.tamTinh}</dt>
+              <dd><strong>{dinhDangTien(Number(d.tam_tinh))}</strong></dd>
+              {d.ghi_chu && <><dt>{t.ghiChu}</dt><dd style="white-space:pre-line">{d.ghi_chu}</dd></>}
+              {TEN_THU_TIENG[d.ngon_ngu] && <><dt>{t.thuTieng}</dt><dd>{TEN_THU_TIENG[d.ngon_ngu][nn]}</dd></>}
+              <dt>{t.datLuc}</dt>
+              <dd>{gioDat(d.created_at)}</dd>
+              {d.nguoi_xu_ly && <><dt>{t.xuLy}</dt><dd>{d.nguoi_xu_ly}</dd></>}
+              <dt>{t.ma}</dt>
+              <dd><code>{d.ma_don}</code></dd>
+            </dl>
+
+            {buoc.length > 0 && (
+              <form method="POST" class="nb-dong-nut">
+                <input type="hidden" name="id" value={d.id} />
+                <input type="hidden" name="tu" value={d.trang_thai} />
+                {buoc.map(b => (
+                  <button type="submit" name="toi" value={b.toi} class={`nb-nut ${b.phu ? 'phu' : ''}`}>{b.nhan[nn]}</button>
+                ))}
+              </form>
+            )}
+          </div>
+        );
+      })}
+    </>
+  )}
+</NoiBo>

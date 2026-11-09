@@ -10,6 +10,9 @@ chuyển lên máy chủ thuê ở Việt Nam** khi mở bán, khách được b
 dư; tiền về đủ sau khi đơn quá hạn 30 phút vẫn tính là đã trả. Claude đề xuất, Khánh chưa chốt: đơn trả trước đợt đầu
 chỉ nhận tại quán (phí giao chưa chốt), hoàn tiền do người làm tay.
 
+Khánh 02/11/2026: tên miền máy chủ đơn là **`don.beeftown.vn`**; thử trước trên một **laptop dư cài Ubuntu** (xóa
+Windows), mở ra internet qua router nhà — cùng bộ cài `cai-dat/` như máy thuê; mở bán thật thì chuyển sang máy thuê.
+
 ## Vì sao là một máy chủ riêng
 
 Dữ liệu khách của Mini App phải xử lý và lưu ở Việt Nam (thỏa thuận nhà phát triển Zalo Mini App, Điều 5.3.3b, 7.5 —
@@ -24,8 +27,9 @@ mạng: dữ liệu đi qua máy chủ Cloudflare.
 |---|---|---|
 | 1 | Nhận đơn (`POST /api/don`), xem đơn, màn hình quầy, hết hạn 30 phút, số liệu sức khỏe | đã gộp (PR #137) |
 | 2a | SePay: mã VietQR cho từng đơn (`viet-qr.ts`), nhận tin tiền về có ký HMAC (`sepay.ts`, `POST /sepay/tien-ve`), sổ `giao_dich` đúng một lần mỗi id, đủ / thiếu / dư / không khớp, mục "Tiền về cần xem" ở màn quầy | đã gộp (PR #143) |
-| 2b | Mini App gửi đơn lên máy chủ thay vì mở chat khi `diaChiMayChuDon` có địa chỉ, màn trả tiền (mã QR vẽ trong app, chép số tài khoản / số tiền / nội dung, lưu ảnh mã), hỏi lại trạng thái đến khi đã nhận tiền (`mini-app/src/tra-truoc.ts`, kiểm với máy chủ thật ở `test/thu.ts` nhóm 18) | PR này |
+| 2b | Mini App gửi đơn lên máy chủ thay vì mở chat khi `diaChiMayChuDon` có địa chỉ, màn trả tiền (mã QR vẽ trong app, chép số tài khoản / số tiền / nội dung, lưu ảnh mã), hỏi lại trạng thái đến khi đã nhận tiền (`mini-app/src/tra-truoc.ts`, kiểm với máy chủ thật ở `test/thu.ts` nhóm 18) | PR #146 |
 | 3 | ZNS: "đã nhận đơn", "khay đã sẵn sàng" | chờ mẫu tin được duyệt |
+| 4a | Bộ cài máy chủ thuê (`cai-dat/`): Ubuntu 24.04, Caddy HTTPS, systemd, tường lửa, `/sepay` chỉ IP SePay, `cap-nhat` chạy kiểm thử rồi mới chạy lại; laptop dư (tự tắt ngủ, README mục 1b) | PR #155 |
 | 4 | Máy chủ thuê ở Việt Nam, HTTPS, sao lưu sổ đơn ở Việt Nam, xóa dữ liệu khách quá hạn, đèn sức khỏe trong `/noi-bo`, báo số khay sang kho | chờ thuê máy |
 
 ## File
@@ -42,6 +46,8 @@ mạng: dữ liệu đi qua máy chủ Cloudflare.
 | `src/man-quay.ts`, `src/quay.css` | Màn hình quầy dựng ở máy chủ, không JavaScript; chữ vi / en |
 | `scripts/don-mau.ts` | Đơn mẫu cho laptop thử (`npm run don-mau`) |
 | `test/thu.ts` | Kiểm thử (`npx bun test/thu.ts`) |
+| `cai-dat/may-chu.sh` | Bộ cài lên máy chủ thuê: `cai <tên miền>`, `cap-nhat`, `trang-thai` (README, "Đưa lên máy chủ thuê") |
+| `cai-dat/may-chu-don.service`, `Caddyfile.mau`, `may-chu-don.env.mau` | systemd, HTTPS + chặn IP, mẫu bí mật. Kiểm ở `crm/test/test-may-chu-don-cai-dat.mjs` (đổi đường dẫn, cổng, biến, IP SePay thì sửa cả đó) |
 
 Mã dùng chung: giá và phần thịt `mini-app/src/san-pham.ts`, giờ nhận và số khay tối đa `mini-app/src/cau-hinh.ts`,
 giờ nhận và số điện thoại `mini-app/src/don.ts`, giờ Việt Nam `web/src/lib/gio-vn.ts`, chữ cấm

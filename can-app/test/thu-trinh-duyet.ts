@@ -27,6 +27,8 @@ import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import { moGiaoDienGia } from './xem-giao-dien.ts';
 import { MUC_CUA_THE, MUC_GAP, NAM_THE } from './thu-giao-dien-gon.ts';
+import { MAU_BEEFTOWN } from '../src/tem.ts';
+import type { UngDung } from '../src/nghiep-vu.ts';
 
 type Ok = (ten: string, dieuKien: boolean, chiTiet?: string) => void;
 
@@ -36,10 +38,12 @@ interface PhanHoiPw { json(): Promise<unknown> }
 interface DuongPw { fetch(): Promise<PhanHoiPw>; fulfill(tuy: { response?: PhanHoiPw; json?: unknown }): Promise<void> }
 interface TrangPw {
   goto(url: string): Promise<unknown>;
+  reload(): Promise<unknown>;
   /** Đồng hồ giả của trang: install trước goto; runFor chạy nhanh các hẹn giờ (setInterval mỗi phút) trong ms đó. */
   clock: { install(): Promise<void>; runFor(ms: number): Promise<void> };
   route(khop: (url: URL) => boolean, xuLy: (d: DuongPw) => Promise<void>): Promise<void>;
   fill(chon: string, giaTri: string): Promise<void>;
+  setInputFiles(chon: string, tep: { name: string; mimeType: string; buffer: Buffer }): Promise<void>;
   on(suKien: 'console', f: (m: TinConsole) => void): void;
   on(suKien: 'pageerror', f: (e: Error) => void): void;
   waitForFunction<A>(f: (a: A) => unknown, a: A, tuy?: { timeout?: number }): Promise<unknown>;
@@ -178,7 +182,7 @@ async function thuMotVai(ok: Ok, trinhDuyet: TrinhDuyetPw, kb: KichBan): Promise
     ok(`${kb.ten}: bấm từng thẻ đúng các mục; mở từng mục gập — nội dung tải xong`, hong.length === 0, hong.join(' | '));
 
     if (kb.vai !== null && !kb.chuaCoGoc) await thuTangO(ok, trang, kb);
-    if (kb.vai === 'quan_ly' && !kb.chuaCoGoc) await thuPhimTem(ok, trang);
+    if (kb.vai === 'quan_ly' && !kb.chuaCoGoc) { await thuPhimTem(ok, trang); await thuMauTem(ok, trang, g.ud); }
     await trang.waitForTimeout(300);
     ok(`${kb.ten}: không lỗi JavaScript, không dòng lỗi nào ở console`, loi.length === 0, loi.slice(0, 5).join(' | '));
   } catch (e) {
@@ -409,6 +413,152 @@ async function thuPhimTem(ok: Ok, trang: TrangPw): Promise<void> {
   const theKhac = await viTri();
   ok('Quản lý: phím mũi tên dời ô tem khi mục Mẫu tem mở; mục gập hay đang ở thẻ Quầy thì không dời',
     chonDuoc && truoc !== null && mo !== truoc && gap === mo && theKhac === mo, JSON.stringify({ chonDuoc, truoc, mo, gap, theKhac }));
+}
+
+/**
+ * 2.12 — Mẫu tem Beeftown: bấm "Xếp tem theo mẫu Beeftown" → sơ đồ đổi theo mẫu, chưa gửi (thay cả ô vừa dời bằng phím mũi tên);
+ * Gửi tem xuống cân → cân giả hai chiều nhận và đọc lại khớp; thẻ đọc lại tem: đã đúng mẫu, không còn nút.
+ * 2.16: cân giả in đơn vị sau số (185–187 = 1, như trình cài đặt của hãng cho Việt Nam) → gửi tem theo mẫu xong thì tự tắt; tem đã
+ * đúng mẫu mà cân còn in đơn vị (bật lại bằng đường thông số) → khung nói không cần gửi lại tem, nút "Tắt đơn vị in sau số".
+ */
+async function thuMauTem(ok: Ok, trang: TrangPw, ud: UngDung): Promise<void> {
+  await trang.click('#thanh-tab button:text-is("Thiết lập cân")');
+  if (!(await dangMo(trang, 'tem'))) await trang.click('#the-tem > summary');
+  await trang.waitForSelector('#nut-mau-beeftown', { state: 'visible', timeout: 15000 });
+  // 2.14: nạp file mẫu (mẫu Beeftown viết thành file) → sơ đồ đổi, câu "Đã nạp mẫu … chưa gửi"; Bỏ thay đổi → về như cũ.
+  await trang.setInputFiles('#tep-mau-tem', { name: 'mau-tem-beeftown.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(MAU_BEEFTOWN)) });
+  let napDuoc = true;
+  try { await trang.waitForFunction(() => /Đã nạp mẫu/.test(document.getElementById('tem-file-bao')?.textContent ?? ''), null, { timeout: 10000 }); }
+  catch { napDuoc = false; }
+  const sauNap = await trang.evaluate(() => ({ bao: document.getElementById('tem-file-bao')?.textContent ?? '', dem: document.getElementById('tem-dem')?.textContent ?? '',
+    logo: !!document.querySelector('#giay .el img.logo-tem') }), null);
+  await trang.click('#nut-bo-tem');
+  const sauBo = await trang.evaluate(() => ({ bao: document.getElementById('tem-file-bao')?.textContent ?? '', dem: document.getElementById('tem-dem')?.textContent ?? '',
+    logo: !!document.querySelector('#giay .el img.logo-tem') }), null);
+  ok('Quản lý: nạp mẫu tem từ file → sơ đồ có logo, câu "Đã nạp mẫu … chưa gửi", có thay đổi chưa gửi; Bỏ thay đổi → về như cũ, hết câu',
+    napDuoc && /Mẫu tem Beeftown/.test(sauNap.bao) && /chưa gửi/.test(sauNap.bao) && sauNap.logo && /thay đổi chưa gửi/.test(sauNap.dem)
+    && sauBo.bao === '' && !sauBo.logo && /Chưa có thay đổi/.test(sauBo.dem), JSON.stringify({ sauNap, sauBo }));
+  await trang.click('#nut-mau-beeftown');
+  const sauBam = await trang.evaluate(() => ({
+    dem: document.getElementById('tem-dem')?.textContent ?? '',
+    chu: [...document.querySelectorAll('#giay .el')].map(x => (x.textContent ?? '').trim()).filter(Boolean),
+    guiDuoc: !(document.getElementById('nut-gui-tem') as HTMLButtonElement).disabled,
+    baoDaXep: /đã xếp theo mẫu/.test(document.getElementById('tem-mau')?.textContent ?? ''),
+    baoTuTat: /Gửi tem xuống cân xong, chương trình tự tắt "kg", "VND\/kg", "VND"/.test(document.getElementById('tem-mau')?.textContent ?? ''),
+  }), null);
+  const canCo = ['Ngày đóng gói', 'Hạn sử dụng', 'Thành tiền (đ)', 'Khối lượng (kg)', 'Đơn giá (đ/kg)', 'CÔNG TY TNHH SLK GROUP'];
+  // 2.13: logo vẽ trên sơ đồ (ảnh 184 × 26 có chấm đen), không còn chữ BEEFTOWN hay dòng địa chỉ.
+  const logo = await trang.evaluate(() => {
+    const a = document.querySelector<HTMLImageElement>('#giay .el img.logo-tem');
+    if (!a || !a.complete || !a.naturalWidth) return null;
+    const c = document.createElement('canvas'); c.width = a.naturalWidth; c.height = a.naturalHeight;
+    const g = c.getContext('2d')!; g.drawImage(a, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height).data;
+    let den = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 0) den++;
+    return { w: c.width, h: c.height, den };
+  }, null);
+  ok('Quản lý: bấm "Xếp tem theo mẫu Beeftown" — sơ đồ có logo (ảnh 184 × 26, có chấm đen), nhãn tiếng Việt, tên công ty; không còn chữ '
+    + 'BEEFTOWN, dòng địa chỉ; chưa gửi, nút Gửi bật',
+    canCo.every(c => sauBam.chu.includes(c)) && !sauBam.chu.includes('BEEFTOWN') && !sauBam.chu.some(c => /Hồ Tùng Mậu/.test(c))
+    && logo !== null && logo.w === 184 && logo.h === 26 && logo.den > 1000
+    && /thay đổi chưa gửi/.test(sauBam.dem) && sauBam.guiDuoc && sauBam.baoDaXep, JSON.stringify({ sauBam, logo }));
+  ok('2.16 Quản lý: cân in đơn vị sau số — khung mẫu Beeftown nói gửi tem xong chương trình tự tắt "kg", "VND/kg", "VND"', sauBam.baoTuTat,
+    JSON.stringify(sauBam));
+  await trang.click('#nut-gui-tem');
+  let nhan = true;
+  try {
+    await trang.waitForFunction(() => /Cân đã nhận mẫu tem/.test(document.getElementById('bao-chung')?.textContent ?? '')
+      && /Cân đã thôi in/.test(document.getElementById('bao-chung')?.textContent ?? ''), null, { timeout: 20000 });
+    await trang.waitForFunction(() => /đúng mẫu tem Beeftown/.test(document.getElementById('tem-mau')?.textContent ?? ''), null, { timeout: 15000 });
+  } catch { nhan = false; }
+  const sauGui = await trang.evaluate(() => ({ bao: (document.getElementById('bao-chung')?.textContent ?? '').slice(0, 600),
+    loaiBao: document.querySelector('#bao-chung .bao')?.className ?? '',
+    mau: document.getElementById('tem-mau')?.textContent ?? '', nut: !!document.getElementById('nut-mau-beeftown'),
+    nutTat: !!document.getElementById('nut-tat-don-vi') }), null);
+  ok('Quản lý: gửi tem theo mẫu — cân giả nhận, đọc lại thấy đúng; câu báo nói logo không kiểm được (in thử); mở lại thẻ: tem đã đúng mẫu, '
+    + 'không còn nút', nhan && !sauGui.nut && /không kiểm được logo/.test(sauGui.bao), JSON.stringify(sauGui));
+  ok('2.16 Quản lý: gửi tem theo mẫu xong thì tự tắt đơn vị — câu "Cân đã thôi in "kg", "VND/kg", "VND" sau số (thông số 185, 186, 187, '
+    + 'đọc lại thấy đúng)" trong khung xanh; cân giả hết in đơn vị; mở lại mục: không còn nút tắt',
+    nhan && /Cân đã thôi in "kg", "VND\/kg", "VND" sau số \(thông số 185, 186, 187, đọc lại thấy đúng\)/.test(sauGui.bao)
+    && /\bxong\b/.test(sauGui.loaiBao) && !sauGui.nutTat && /Tem đang dùng đúng mẫu tem Beeftown\./.test(sauGui.mau)
+    && JSON.stringify(ud.tem().donViSauSo) === '[]', JSON.stringify({ sauGui, donVi: ud.tem().donViSauSo }));
+
+  // 2.16: tem đã đúng mẫu mà cân còn in đơn vị (ví dụ nạp file mẫu bằng bản 2.14, hay ai đó bật lại ở Cân & thông số).
+  await ud.suaThongSo({ thay: { 185: 1, 186: 1, 187: 1 } });
+  await trang.reload();
+  await trang.waitForFunction(() => { const o = document.getElementById('o-kho'); return !!o && o.textContent !== '…'; }, null, { timeout: 15000 });
+  await trang.click('#thanh-tab button:text-is("Thiết lập cân")');
+  if (!(await dangMo(trang, 'tem'))) await trang.click('#the-tem > summary');
+  let coNut = true;
+  try { await trang.waitForSelector('#nut-tat-don-vi', { state: 'visible', timeout: 15000 }); } catch { coNut = false; }
+  const truocTat = await trang.evaluate(() => ({ mau: document.getElementById('tem-mau')?.textContent ?? '',
+    guiTem: !(document.getElementById('nut-gui-tem') as HTMLButtonElement).disabled, nutMau: !!document.getElementById('nut-mau-beeftown') }), null);
+  ok('2.16 Quản lý: tem đã đúng mẫu, cân còn in đơn vị — khung nói không cần gửi lại tem (Gửi tem xuống cân tắt vì không có thay đổi), '
+    + 'nêu "kg", "VND/kg", "VND", có nút "Tắt đơn vị in sau số"',
+    coNut && /không cần gửi lại tem/.test(truocTat.mau) && /"kg", "VND\/kg", "VND"/.test(truocTat.mau) && !truocTat.guiTem && !truocTat.nutMau,
+    JSON.stringify(truocTat));
+  // Rà soát 2.16: đơn vị vừa tắt ở chỗ khác (mục Cân & thông số) trong lúc trang còn số cũ → đọc lại trước khi gửi, không báo lỗi giả.
+  await ud.suaThongSo({ thay: { 185: 0, 186: 0, 187: 0 } });
+  let khongGui = true;
+  try {
+    await trang.click('#nut-tat-don-vi');
+    await trang.waitForFunction(() => /Cân đã không in đơn vị sau số/.test(document.getElementById('bao-chung')?.textContent ?? '')
+      && !document.getElementById('nut-tat-don-vi'), null, { timeout: 20000 });
+  } catch { khongGui = false; }
+  const sauCu = await trang.evaluate(() => ({ bao: (document.getElementById('bao-chung')?.textContent ?? '').slice(0, 300),
+    loaiBao: document.querySelector('#bao-chung .bao')?.className ?? '' }), null);
+  ok('2.16 HỒI QUY rà soát: đơn vị đã tắt ở mục khác trong lúc trang còn số cũ — bấm "Tắt đơn vị in sau số" đọc lại, báo "Cân đã không in '
+    + 'đơn vị sau số" (xanh, không gửi), không báo lỗi', khongGui && /\bxong\b/.test(sauCu.loaiBao) && !/Chưa tắt|chưa có gì thay đổi/.test(sauCu.bao),
+    JSON.stringify(sauCu));
+  await ud.suaThongSo({ thay: { 185: 1, 186: 1, 187: 1 } });
+  await trang.reload();
+  await trang.waitForFunction(() => { const o = document.getElementById('o-kho'); return !!o && o.textContent !== '…'; }, null, { timeout: 15000 });
+  await trang.click('#thanh-tab button:text-is("Thiết lập cân")');
+  if (!(await dangMo(trang, 'tem'))) await trang.click('#the-tem > summary');
+  await trang.waitForSelector('#nut-tat-don-vi', { state: 'visible', timeout: 15000 });
+  let tatDuoc = true;
+  try {
+    await trang.click('#nut-tat-don-vi');
+    await trang.waitForFunction(() => /Cân đã nhận lệnh thôi in "kg", "VND\/kg", "VND" sau số/.test(document.getElementById('bao-chung')?.textContent ?? ''),
+      null, { timeout: 20000 });
+    await trang.waitForFunction(() => !document.getElementById('nut-tat-don-vi')
+      && /Tem đang dùng đúng mẫu tem Beeftown\./.test(document.getElementById('tem-mau')?.textContent ?? ''), null, { timeout: 15000 });
+  } catch { tatDuoc = false; }
+  const sauTat = await trang.evaluate(() => ({ bao: (document.getElementById('bao-chung')?.textContent ?? '').slice(0, 400),
+    mau: document.getElementById('tem-mau')?.textContent ?? '' }), null);
+  ok('2.16 Quản lý: bấm "Tắt đơn vị in sau số" — cân giả nhận, đọc lại thấy đúng ("Cân đã nhận lệnh thôi in …"); mục đọc lại: hết nút',
+    tatDuoc && JSON.stringify(ud.tem().donViSauSo) === '[]', JSON.stringify({ sauTat, donVi: ud.tem().donViSauSo }));
+
+  // 2.16 mất mạng: tem gửi được, lệnh tắt đơn vị hỏng (máy chủ nhỏ không trả lời) → khung đỏ nói đúng phần nào chưa xong, không báo
+  // "đã thôi in"; mục đọc lại còn nút tắt riêng.
+  await ud.suaThongSo({ thay: { 185: 1, 186: 1, 187: 1 } });
+  const t0 = ud.tem();
+  const oLogo = t0.tem!.o.find(o => o.bat && o.loai === '6')!;
+  await ud.guiTem({ tat: [oLogo.khoa], dau: t0.dau });   // tem lệch mẫu: nút Xếp tem theo mẫu hiện lại
+  let hongTs = true;
+  await trang.route(u => u.pathname === '/api/thong-so/gui', async d => {
+    if (hongTs) { hongTs = false; await d.fulfill({ json: { ok: false, loi: 'Không nối được máy chủ nhỏ (giả lập mất mạng).' } }); return; }
+    await d.fulfill({ response: await d.fetch() });
+  });
+  await trang.reload();
+  await trang.waitForFunction(() => { const o = document.getElementById('o-kho'); return !!o && o.textContent !== '…'; }, null, { timeout: 15000 });
+  await trang.click('#thanh-tab button:text-is("Thiết lập cân")');
+  if (!(await dangMo(trang, 'tem'))) await trang.click('#the-tem > summary');
+  await trang.waitForSelector('#nut-mau-beeftown', { state: 'visible', timeout: 15000 });
+  await trang.click('#nut-mau-beeftown');
+  await trang.click('#nut-gui-tem');
+  let baoHong = true;
+  try {
+    await trang.waitForFunction(() => /Chưa tắt được/.test(document.getElementById('bao-chung')?.textContent ?? ''), null, { timeout: 20000 });
+    await trang.waitForSelector('#nut-tat-don-vi', { state: 'visible', timeout: 15000 });
+  } catch { baoHong = false; }
+  const sauHong = await trang.evaluate(() => ({ bao: (document.getElementById('bao-chung')?.textContent ?? '').slice(0, 600),
+    loaiBao: document.querySelector('#bao-chung .bao')?.className ?? '' }), null);
+  ok('2.16 Quản lý: gửi tem theo mẫu được nhưng lệnh tắt đơn vị hỏng (mất mạng) — khung đỏ: tem đã nhận, "Chưa tắt được "kg", "VND/kg", "VND" '
+    + 'in sau số" kèm lỗi; không câu "đã thôi in"; cân giả vẫn in đơn vị; mục đọc lại có nút tắt riêng',
+    baoHong && /\bloi\b/.test(sauHong.loaiBao) && /Cân đã nhận mẫu tem/.test(sauHong.bao)
+    && /Chưa tắt được "kg", "VND\/kg", "VND" in sau số: Không nối được máy chủ nhỏ/.test(sauHong.bao) && !/đã thôi in/.test(sauHong.bao)
+    && JSON.stringify(ud.tem().donViSauSo) === '[185,186,187]', JSON.stringify({ sauHong, donVi: ud.tem().donViSauSo }));
 }
 
 if (import.meta.main) {

@@ -230,8 +230,8 @@ const VI = {
   // ở trạng thái đó không có form, không có nút kênh. Câu mở nhắc gửi đơn qua Zalo — đích đặt hàng TẠM
   // (lib/dich-dat-hang.ts): PR đổi sang Mini App xem lại câu này.
   moTaMuaThit:
-    'Thịt bò của quầy Beeftown chia gói để mang về. Chọn gói trên web, gửi đơn qua Zalo; ' +
-    'quán xác nhận tổng tiền và giờ nhận.',
+    'Thịt bò của quầy Beeftown chia gói, giao tận nơi. Chọn gói và đặt hàng trên web; ' +
+    'quán gọi lại xác nhận tổng tiền, phí giao và giờ giao.',
   moTaMuaThitChuaMo: 'Beeftown chưa mở mua thịt về qua website.',
 
   // --- Trang không có (404, pages/404.astro) --------------------------------
@@ -346,8 +346,8 @@ const EN: Bo = {
     'table requests online yet. To ask about a table, message Beeftown on Facebook.',
 
   moTaMuaThit:
-    'Beef from the Beeftown counter in packs to take home. Choose your packs here and send the order on Zalo; ' +
-    'we confirm the total and the time.',
+    'Beef from the Beeftown counter in packs, delivered to you. Choose your packs and order here; ' +
+    'we call you back to confirm the total, the delivery fee and the time.',
   moTaMuaThitChuaMo: 'Take-home orders on the Beeftown website are not open yet.',
 
   khongCoTieuDeTrang: 'Page not found — Beeftown',
@@ -452,8 +452,8 @@ const KO: Bo = {
     '테이블 문의는 Facebook으로 Beeftown에 메시지를 보내 주세요.',
 
   moTaMuaThit:
-    'Beeftown 매장의 소고기를 팩으로 포장해 가세요. 여기서 팩을 고르고 Zalo로 주문을 보내 주시면 ' +
-    '총액과 받으실 시간을 확인해 드려요.',
+    'Beeftown 매장의 소고기를 팩으로 배달해 드려요. 여기서 팩을 고르고 주문해 주시면 ' +
+    '전화로 총액, 배달비, 배달 시간을 확인해 드려요.',
   moTaMuaThitChuaMo: 'Beeftown 웹사이트의 포장 구매는 아직 열리지 않았어요.',
 
   khongCoTieuDeTrang: '페이지를 찾을 수 없어요 — Beeftown',
@@ -624,6 +624,72 @@ const LOI_DATABASE: ReadonlyArray<readonly [RegExp, Readonly<Record<'en' | 'ko',
   [/^Vị trí này đã hết hạn nhận hồ sơ/, {
     en: 'This role is no longer accepting applications.',
     ko: '이 포지션은 지원이 마감되었어요.',
+  }],
+  // tao_dat_ban() — 0004; tao_don_mua_thit() — 0113
+  [/^Không tìm thấy chi nhánh/, {
+    en: 'The restaurant branch could not be found.',
+    ko: '매장 정보를 찾을 수 없어요.',
+  }],
+  // tao_don_mua_thit() — 0113: đơn mua thịt về đặt trên website
+  [/^Mua thịt về qua website đang tạm đóng/, {
+    en: 'Take-home orders on the website are paused for now.',
+    ko: '웹사이트 포장 주문이 잠시 중단되었어요.',
+  }],
+  [/^Thiếu mã chống gửi hai lần/, {
+    en: 'Please reload the page and place your order again.',
+    ko: '페이지를 새로 고친 뒤 다시 주문해 주세요.',
+  }],
+  [/^Chưa điền họ tên/, {
+    en: 'Please enter your full name.',
+    ko: '이름을 입력해 주세요.',
+  }],
+  [/^Họ tên dài quá 120 ký tự/, {
+    en: 'Your name can be up to 120 characters.',
+    ko: '이름은 120자까지 입력할 수 있어요.',
+  }],
+  [/^Địa chỉ giao hàng quá ngắn/, {
+    en: 'The delivery address is too short. Please include the house number, street and area.',
+    ko: '배달 주소가 너무 짧아요. 번지, 거리 이름, 지역까지 적어 주세요.',
+  }],
+  [/^Địa chỉ giao hàng dài quá 300 ký tự/, {
+    en: 'The delivery address can be up to 300 characters.',
+    ko: '배달 주소는 300자까지 입력할 수 있어요.',
+  }],
+  [/^Ghi chú dài quá 500 ký tự/, {
+    en: 'The note can be up to 500 characters.',
+    ko: '메모는 500자까지 입력할 수 있어요.',
+  }],
+  [/^Đơn chưa có gói nào/, {
+    en: 'Your order has no packs yet.',
+    ko: '주문에 아직 팩이 없어요.',
+  }],
+  [/^Số gói mỗi loại phải từ 0 đến 10/, {
+    en: 'You can choose 0 to 10 of each pack.',
+    ko: '팩마다 0개에서 10개까지 고를 수 있어요.',
+  }],
+  [/^Có gói trong đơn vừa tạm hết/, {
+    en: 'A pack in your order has just sold out. Please reload the page and choose again.',
+    ko: '주문하신 팩 중 방금 품절된 팩이 있어요. 페이지를 새로 고친 뒤 다시 골라 주세요.',
+  }],
+  [/^Có gói trong đơn không còn bán/, {
+    en: 'A pack in your order is no longer for sale. Please reload the page and choose again.',
+    ko: '주문하신 팩 중 더 이상 판매하지 않는 팩이 있어요. 페이지를 새로 고친 뒤 다시 골라 주세요.',
+  }],
+  [/^Giá vừa đổi/, {
+    en: 'Prices have just changed. Please reload the page to see the new prices.',
+    ko: '가격이 방금 바뀌었어요. 페이지를 새로 고쳐 새 가격을 확인해 주세요.',
+  }],
+  [/^Số điện thoại này đã có nhiều đơn đang chờ/, {
+    en: 'This phone number already has several orders waiting for our call. Please call us.',
+    ko: '이 전화번호로 확인 전화를 기다리는 주문이 이미 여러 건 있어요. 매장에 전화해 주세요.',
+  }],
+  [/^Mạng bạn đang dùng đã gửi quá nhiều đơn/, {
+    en: 'Too many orders have been sent from your network. Please try again later or call us.',
+    ko: '사용 중인 네트워크에서 주문이 너무 많이 들어왔어요. 잠시 후 다시 시도하시거나 매장에 전화해 주세요.',
+  }],
+  [/^Hệ thống đang nhận quá nhiều đơn/, {
+    en: 'We are receiving too many orders right now. Please try again later or call us.',
+    ko: '지금 주문이 너무 많이 들어오고 있어요. 잠시 후 다시 시도하시거나 매장에 전화해 주세요.',
   }],
 ];
 

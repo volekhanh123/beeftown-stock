@@ -79,8 +79,9 @@ import {
   LoiFileCan, type DongKeHoach, type DongPlu, type FileCan, type HangKho, type KeHoach, type LoaiDong,
 } from '../../web/src/lib/kho/can-tma.ts';
 import {
-  CANH_CHU, CAU_DOI, CO_CHU, DIEU_KIEN_IN, LoiTem, O_THEM_DUOC, XOAY, dauTem, docTem, dongMauTemDangDung, goiYHsd, suaTem, xemTem,
-  type DaTat, type MauTem, type TemXem, type ThayDoiTem,
+  CANH_CHU, CAU_DOI, CAU_LOGO, CO_CHU, DIEU_KIEN_IN, LOGO_TREN_SO_DO, LoiTem, O_THEM_DUOC, XOAY, dauTem, docTem, dongMauTemDangDung, goiYHsd, kemLogo,
+  khoiLogo, mauBeeftown, suaTem, temDungLogo, xemTem, apMauTem, docMauTemFile, xuatMauTem,
+  type DaTat, type KetQuaApMau, type MauBeeftown, type MauTem, type TemXem, type ThayDoiTem,
 } from './tem.ts';
 import {
   CONG_HAI_CHIEU, LoiGiaoThuc, docFileTuKetNoi, ghepFileUsb, khoiTim, khoiXoaVaNapPlu, laThongSoMang, moKetNoi,
@@ -93,7 +94,8 @@ import {
   tuyChonTuThongSo, type DongBanCan, type KetQuaNhatKy, type SuKienCan, type TomTatNhatKy,
 } from './bao-cao-can.ts';
 import {
-  CHU_CHUNG, CHU_MANG, LoiThongSo, NHAN_PHIM, NHOM_CHU_CHUNG, NHOM_THONG_SO, PHIM_CHU_TOI_DA, THONG_SO, docChuChung, docPhim, docThongSo, fileNho,
+  CHU_CHUNG, CHU_MANG, LoiThongSo, NHAN_PHIM, NHOM_CHU_CHUNG, NHOM_THONG_SO, PHIM_CHU_TOI_DA, THONG_SO, docChuChung, docPhim, docThongSo,
+  donViDangIn, fileNho,
   suaChuChung as suaChuChungTrongFile, suaPhim as suaPhimTrongFile, suaThongSo as suaThongSoTrongFile,
   type MucChuChung, type MucThongSo, type PhimXem,
 } from './thong-so.ts';
@@ -2635,18 +2637,21 @@ export class UngDung {
     // 2.9.3: dòng của lần gửi chưa xác nhận (cho-xac-nhan.tsv) mà số PLU không thuộc file gốc, tren-can.tsv hay kế hoạch theo kho
     // (hàng kho còn muốn đã hiện ở dòng "Chưa lên cân" / "Khác kho"): có thể đang nằm trên cân.
     const tren = this.docTrenCan(), cho = this.docChoXacNhan();
+    // Giá ghi trong file (tren-can.tsv, cho-xac-nhan.tsv không giữ đơn vị) → đồng/kg như DongPlu.gia: cân để giá theo 100 g thì
+    // dòng Beeftown Cân gửi là đơn vị 8, giá 100 g (2.17, can-tma.ts) — nhân 10. Dòng trống giá 0 nên không lệch.
+    const giaHien = (tho: string): number | null => { const g = giaTuFile(tho, goc.soLeGia); return g !== null && goc.giaTheo100g ? g * 10 : g; };
     const choRieng = new Set<number>();
     for (const [so, h] of cho) if (!tren.has(so) && !soKeHoach.has(so) && !trongFile.has(so)) { tren.set(so, h); choRieng.add(so); }
     for (const h of tren.values()) {
       if (trongFile.has(h.so)) continue;
       if (laPluTrong(h)) {
-        hang.push({ so: h.so, phim: null, maCan: h.ma, maFabi: '', ten: h.ten, gia: giaTuFile(h.gia, goc.soLeGia),
+        hang.push({ so: h.so, phim: null, maCan: h.ma, maFabi: '', ten: h.ten, gia: giaHien(h.gia),
           theoGoi: false, tinhTrang: 'trong', ghiChu: 'PLU trống — đã gỡ hàng bằng ghi đè qua WiFi. Hàng mới sẽ dùng lại số PLU này.' });
         continue;
       }
       // Chưa đọc được kho: dòng chờ xác nhận không biết kho còn muốn không — "trên cân" (chưa đối chiếu), không "còn nằm lại".
       const cho1 = choRieng.has(h.so);
-      hang.push({ so: h.so, phim: null, maCan: h.ma, maFabi: fabi(h.ma), ten: h.ten, gia: giaTuFile(h.gia, goc.soLeGia),
+      hang.push({ so: h.so, phim: null, maCan: h.ma, maFabi: fabi(h.ma), ten: h.ten, gia: giaHien(h.gia),
         theoGoi: false, tinhTrang: cho1 && !dm ? 'tren_can' : 'con_lai', ghiChu: !cho1
           ? 'Đã bỏ khỏi danh sách nhưng gửi qua WiFi không xoá được — gỡ khỏi cân qua WiFi (ghi đè) hoặc nạp USB.'
           : dm ? 'Đã gửi xuống cân nhưng cân chưa xác nhận, rồi kho bỏ — có thể còn nằm trên cân: gỡ khỏi cân qua WiFi (ghi đè) hoặc nạp USB.'
@@ -2661,26 +2666,36 @@ export class UngDung {
 
   /**
    * Mẫu tem cân đang dùng, một hàng trên cân để vẽ tem mẫu, và (2.2) danh mục để sửa tem (ô thêm được, cỡ chữ,
-   * điều kiện in, canh, xoay), các ô nên đổi sang "chỉ in khi có HSD" (goiYHsd), kiểu ngày in (Spec104).
+   * điều kiện in, canh, xoay), các ô nên đổi sang "chỉ in khi có HSD" (goiYHsd), kiểu ngày in (Spec104), (2.12) thay đổi để
+   * xếp tem theo mẫu Beeftown (mauBeeftown — trang đổ vào sơ đồ, người dùng xem rồi mới gửi), (2.16) đơn vị cân đang in sau số.
    */
   tem(): {
     tem: TemXem | null;
     hangMau: { so: number; ten: string; gia: number | null; theoGoi: boolean; hsd: number | null; maCan: string } | null;
-    danhMuc: { oThem: typeof O_THEM_DUOC; coChu: typeof CO_CHU; dieuKienIn: typeof DIEU_KIEN_IN; canhChu: typeof CANH_CHU; xoay: typeof XOAY };
+    danhMuc: { oThem: typeof O_THEM_DUOC; coChu: typeof CO_CHU; dieuKienIn: typeof DIEU_KIEN_IN; canhChu: typeof CANH_CHU; xoay: typeof XOAY;
+      logo: typeof LOGO_TREN_SO_DO };
     goiYHsd: string[];
+    mauBeeftown: MauBeeftown;
+    /** 2.16 — thông số in đơn vị sau số (185–187) cân đang bật: mục Mẫu tem tự tắt khi gửi tem theo mẫu Beeftown, hay có nút tắt riêng. */
+    donViSauSo: number[];
     kieuNgay: number;
     /** Dấu mẫu tem (dauTem) — trang gửi lại kèm thay đổi; mẫu tem đã đổi từ lúc mở thẻ thì không áp thay đổi cũ. */
     dau: string;
   } {
-    const goc = docFileCan(this.docGoc());
+    const du = this.docGoc();
+    const goc = docFileCan(du);
     const daTat = this.docDaTat();
     const p = goc.plu.filter(x => x.ten).sort((a, b) => a.so - b.so)[0];
     const k = Number(docThongSo(goc).get(104));
     return {
       tem: xemTem(goc, daTat),
-      hangMau: p ? { so: p.so, ten: p.ten, gia: p.gia, theoGoi: p.cachBan === '2', hsd: p.hsd, maCan: p.ma } : null,
-      danhMuc: { oThem: O_THEM_DUOC, coChu: CO_CHU, dieuKienIn: DIEU_KIEN_IN, canhChu: CANH_CHU, xoay: XOAY },
+      // 2.17: cân để giá theo 100 g → tem in giá 100 g (DongPlu.gia của hàng cân ký là giá/kg).
+      hangMau: p ? { so: p.so, ten: p.ten, gia: p.gia !== null && goc.giaTheo100g && p.cachBan !== '2' ? p.gia / 10 : p.gia,
+        theoGoi: p.cachBan === '2', hsd: p.hsd, maCan: p.ma } : null,
+      danhMuc: { oThem: O_THEM_DUOC, coChu: CO_CHU, dieuKienIn: DIEU_KIEN_IN, canhChu: CANH_CHU, xoay: XOAY, logo: LOGO_TREN_SO_DO },
       goiYHsd: goiYHsd(goc, daTat),
+      mauBeeftown: mauBeeftown(du, daTat, goc),
+      donViSauSo: donViDangIn(goc),
       kieuNgay: Number.isInteger(k) ? k : 0,
       dau: dauTem(goc, daTat),
     };
@@ -2694,11 +2709,13 @@ export class UngDung {
   private dungTem(thay: ThayDoiTem): { du: Uint8Array; daTat: DaTat; canhBao: string[] } {
     const goc = this.docGoc(), daTat = this.docDaTat();
     if (typeof thay.dau !== 'string' || thay.dau === '' || thay.dau !== dauTem(docFileCan(goc), daTat)) throw new LoiCan(CAU_DOI);
-    let kq;
-    try { kq = suaTem(goc, daTat, thay); }
+    let kq, du;
+    // 2.13: tem có ô logo → file mang kèm phần BMP (file nạp USB, đường lui 33571 gửi cả file).
+    try { kq = suaTem(goc, daTat, thay); du = kemLogo(kq.du); }
     catch (e) { if (e instanceof LoiTem) throw new LoiCan(e.message); throw e; }
     if (!kq.coDoi) throw new LoiCan('Tem chưa có gì thay đổi.');
-    return { du: ghiFileCan(docFileCan(kq.du), KHONG_DOI, { giuGioCan: true, boPhanChiDoc: true }), daTat: kq.daTat, canhBao: kq.canhBao };
+    const canhBao = temDungLogo(docFileCan(du)) ? [...kq.canhBao, CAU_LOGO] : kq.canhBao;
+    return { du: ghiFileCan(docFileCan(du), KHONG_DOI, { giuGioCan: true, boPhanChiDoc: true }), daTat: kq.daTat, canhBao };
   }
 
   /**
@@ -2711,13 +2728,35 @@ export class UngDung {
     return this.motLuc(async () => {
       const { du, daTat, canhBao } = this.dungTem(thay);
       let khoi: string[];
-      try { khoi = ['DWL\tLAB\t', ...dongMauTemDangDung(docFileCan(du)), 'END\tLAB\t']; }
+      // 2.13: logo (khối BMP) đi trước mẫu tem — cân có hình rồi mới nhận ô trỏ tới nó. Đọc lại chỉ kiểm phần LAB.
+      try { const f = docFileCan(du); khoi = [...khoiLogo(f), 'DWL\tLAB\t', ...dongMauTemDangDung(f), 'END\tLAB\t']; }
       catch (e) { if (e instanceof LoiTem) throw new LoiCan(e.message); throw e; }
       const gui = await this.guiCaiDat('LAB', khoi, du, 'mẫu tem');
       this.luuGoc(du);
       ghiJson(this.fileDaTat, daTat, this.phu.vietByte);
       return { ok: true as const, canhBao, ...gui };
     });
+  }
+
+  /**
+   * 2.14 — "Nạp mẫu tem từ file": đọc file mẫu (chữ JSON, tem.ts docMauTemFile) và tính thay đổi đưa tem đang dùng về đúng
+   * mẫu (apMauTem) — trang đổ vào sơ đồ, người dùng xem rồi bấm Gửi tem xuống cân như mọi lần sửa tem. Không ghi gì, không
+   * nói gì với cân. Trả kèm dấu mẫu tem: trang so với dấu lúc mở mục — khác thì tem vừa đổi, khoá "o:i" không còn đúng.
+   */
+  napMauTem(noiDung: unknown): KetQuaApMau & { ten: string; dau: string } {
+    let mau;
+    try { mau = docMauTemFile(noiDung); } catch (e) { if (e instanceof LoiTem) throw new LoiCan(e.message); throw e; }
+    const du = this.docGoc(), daTat = this.docDaTat(), file = docFileCan(du);
+    return { ...apMauTem(du, daTat, mau, file), ten: mau.ten, dau: dauTem(file, daTat) };
+  }
+
+  /** 2.14 — "Tải mẫu tem đang dùng": tem trong file gốc (thứ cân đang có — chưa tính thay đổi chưa gửi trên trang) thành file mẫu. */
+  xuatMauTem(): { mau: ReturnType<typeof xuatMauTem>; tenFile: string } {
+    const file = docFileCan(this.docGoc());
+    try {
+      const mau = xuatMauTem(file);
+      return { mau, tenFile: `mau-tem-so-${docTem(file).dangDung!.id}.json` };
+    } catch (e) { if (e instanceof LoiTem) throw new LoiCan(e.message); throw e; }
   }
 
   async taoFileUsbTem(thay: ThayDoiTem): Promise<{ duongDan: string; soHang: number; canhBao: string[] }> {

@@ -80,6 +80,7 @@
   .giay .el.trong { outline: 1px dashed #b9b9b9; outline-offset: -1px; }
   .giay .el.sang { background: rgba(242,169,0,.4); }
   .giay .vach { width: 100%; height: 100%; }
+  .giay .logo-tem { width: 100%; height: 100%; display: block; image-rendering: pixelated; pointer-events: none; }
   .o-tem { border: 1px solid var(--vach); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; background: #fff; }
   .o-tem.tat { background: var(--kem); }
   .o-tem.tat .ten-o { color: #8A7C62; text-decoration: line-through; }
@@ -270,6 +271,16 @@
       Bấm vào một ô trên sơ đồ để dời chỗ, đổi cỡ, cỡ chữ, khi nào in; thêm ô ở dưới danh sách.</p>
       <p><b>Lần đầu đổi tem:</b> sau khi gửi, cân thử một món rồi in một tem xem đã đổi chưa. Nếu tem chưa đổi: bấm <b>Lưu file nạp USB</b> ở đây (không cần sửa lại — file đã có tem vừa gửi) rồi nạp USB.
         Dời ô, đổi cỡ chữ, thêm ô: <b>chưa thử trên cân thật</b> — in thử một tem trước khi bán.</p></div>
+    <div id="tem-mau"></div>
+    <div id="tem-file">
+      <div class="nut" style="margin-top:0">
+        <button type="button" id="nut-nap-mau">Nạp mẫu tem từ file…</button>
+        <input type="file" id="tep-mau-tem" accept=".json,application/json" class="an">
+        <button type="button" id="nut-xuat-mau">Tải mẫu tem đang dùng (.json)</button>
+        <span class="phu">File mẫu tem: thiết kế ngoài chương trình (hay nhờ Claude) rồi nạp vào — nạp xong vẫn chưa gửi.</span>
+      </div>
+      <div id="tem-file-bao"></div>
+    </div>
     <div id="tem-goi-y"></div>
     <div class="tem-luoi">
       <div><div class="giay" id="giay"></div>
@@ -1125,7 +1136,10 @@
   // temSua: chữ cố định (chu: cột LAB → chữ), tắt / bật (bat: khoá → có in), sửa ô đang in (sua: khoá → trường đổi),
   // ô mới (them: như O_THEM_DUOC của tem.ts). chonO: khoá ô đang chọn trên sơ đồ ("o:i" ô của tem, "m:j" ô mới).
   // dangGuiTem: đang gửi tem — mọi nút và chỗ sửa tem khoá lại (bấm lần hai, sửa giữa chừng sẽ gửi lại thay đổi cũ).
-  let temDL = null, temSua = moiTemSua(), chonO = null, keo = null, dangGuiTem = false;
+  // mauDaXep (2.12): thay đổi chưa gửi lúc vừa bấm "Xếp tem theo mẫu Beeftown" (JSON của temSua; false: chưa bấm) — còn đúng
+  // như vậy thì sơ đồ đang là mẫu, sửa tay thêm thì khung thôi nói "đã xếp theo mẫu".
+  // fileDaNap (2.14): mẫu vừa nạp từ file { ten, trangThai (JSON của temSua lúc nạp), canhBao } — cùng cách như mauDaXep.
+  let temDL = null, temSua = moiTemSua(), chonO = null, keo = null, dangGuiTem = false, mauDaXep = false, fileDaNap = null;
   function moiTemSua() { return { chu: {}, bat: {}, sua: {}, them: [] }; }
   const p2 = (n) => String(n).padStart(2, '0');
   const CHAM = 8;   // máy in của cân 203 dpi = 8 chấm mỗi mm
@@ -1140,9 +1154,9 @@
     $('tem-o').innerHTML = '<p class="dang-lam">Đang đọc mẫu tem…</p>';
     try {
       temDL = await goi('/api/tem');
-      temSua = moiTemSua(); chonO = null; keo = null;
+      temSua = moiTemSua(); chonO = null; keo = null; mauDaXep = false; fileDaNap = null; $('tem-file-bao').innerHTML = '';
       if (!temDL.tem) {
-        for (const id of ['tem-o', 'giay', 'tem-sua-o', 'tem-goi-y', 'tem-canh-bao']) $(id).innerHTML = '';
+        for (const id of ['tem-o', 'giay', 'tem-sua-o', 'tem-mau', 'tem-goi-y', 'tem-canh-bao']) $(id).innerHTML = '';
         $('tem-them').classList.add('an');
         $('tem-mo-ta').textContent = 'File của cân không có mẫu tem.'; capNutTem(); return;
       }
@@ -1153,7 +1167,7 @@
       veTemHet();
     } catch (err) { if (temDL === cho) temDL = null; bao($('tem-o'), 'loi', e(err.message)); }
   }
-  function veTemHet() { veGoiYHsd(); veDanhSachO(); veTem(); veSuaO(); veThemO(); capNutTem(); }
+  function veTemHet() { veMauBeeftown(); veGoiYHsd(); veDanhSachO(); veTem(); veSuaO(); veThemO(); capNutTem(); }
 
   const oBat = (o) => (o.moi ? true : o.khoa in temSua.bat ? temSua.bat[o.khoa] : o.bat);
   const chuO = (col) => (col in temSua.chu ? temSua.chu[col] : temDL.tem.chu[col] ?? '');
@@ -1204,8 +1218,9 @@
     // Lưu file nạp USB được cả khi chưa sửa gì: file lấy từ file gốc — đã có tem vừa gửi (gửi WiFi mà tem chưa đổi thì nạp USB).
     $('nut-usb-tem').disabled = dangGuiTem || !(temDL && temDL.tem);
     // Đang gửi: khoá sơ đồ, danh sách ô, khung sửa, thêm ô (inert: không bấm, không gõ, không Tab vào được).
-    for (const id of ['giay', 'tem-o', 'tem-sua-o', 'tem-them', 'tem-goi-y', 'tem-xem-voi']) $(id).inert = dangGuiTem;
+    for (const id of ['giay', 'tem-o', 'tem-sua-o', 'tem-them', 'tem-mau', 'tem-file', 'tem-goi-y', 'tem-xem-voi']) $(id).inert = dangGuiTem;
     $('tem-dem').textContent = dangGuiTem ? 'Đang gửi…' : n ? `${n} thay đổi chưa gửi` : 'Chưa có thay đổi';
+    veTemFile();   // 2.14: mỗi lần sơ đồ đổi — sửa tay sau khi nạp file thì câu "Đã nạp mẫu…" thôi hiện
   }
 
   function viTriO(o, t) {
@@ -1278,6 +1293,21 @@
     return d;
   }
 
+  /**
+   * 2.13 — logo Beeftown (danhMuc.logo: mỗi hàng chấm là hex, bit cao bên trái, 1 = đen — đúng thứ gửi xuống cân) thành ảnh để
+   * vẽ ô Hình trên sơ đồ. Vẽ một lần, giữ lại.
+   */
+  let anhLogoDaVe = null;
+  function anhLogo() {
+    const lg = temDL && temDL.danhMuc && temDL.danhMuc.logo;
+    if (!lg) return null;
+    if (anhLogoDaVe) return anhLogoDaVe;
+    const c = document.createElement('canvas'); c.width = lg.rong; c.height = lg.cao;
+    const g = c.getContext('2d'); g.fillStyle = '#111';
+    lg.hang.forEach((h, y) => { for (let x = 0; x < lg.rong; x++) if (parseInt(h.substr((x >> 3) * 2, 2), 16) & (0x80 >> (x & 7))) g.fillRect(x, y, 1, 1); });
+    return (anhLogoDaVe = c.toDataURL('image/png'));
+  }
+
   /** Hàng mẫu để vẽ tem, theo ô "Xem tem với" (cân ký / theo gói, có / không hạn dùng). */
   function hangXem() {
     const hm = temDL.hangMau || { so: 1, ten: 'Hàng mẫu', gia: 845000, theoGoi: false, hsd: null, maCan: '10001' };
@@ -1335,6 +1365,7 @@
       if (xoay) el.style.transform = `rotate(${xoay * 90}deg)`;   // quanh góc (x, y) như cân (transform-origin 0 0)
       let chu = null;
       if (o.loai === '0') el.append(vachMa());
+      else if (o.loai === '6' && anhLogo() && o.chu === temDL.danhMuc.logo.id) { const a = document.createElement('img'); a.className = 'logo-tem'; a.alt = 'Logo Beeftown'; a.draggable = false; a.src = anhLogo(); el.append(a); }
       else if (o.loai === '3') { chu = o.moi ? o.chuMoi : chuO(o.cot); if (!o.moi) el.dataset.cot = o.cot; }
       else if (o.loai === '1') {
         chu = { 0: hm.ten, 1: hm.theoGoi ? '1' : kg.toFixed(3), 4: so(hm.gia), 6: String(hm.so), 10: hm.maCan || '', 15: hsd, 24: hm.theoGoi ? 'cái' : 'kg' }[o.duLieu] ?? null;
@@ -1343,7 +1374,7 @@
         chu = { 0: 'Tên quán', 3: ngay, 4: `${p2(bay.gio)}:${p2(bay.phut)}`, 16: 'đ', 27: so(thanhTien) }[o.chu] ?? null;
         if (o.chu === 27) el.classList.add('dam');
       }
-      if (o.loai !== '0') {
+      if (o.loai !== '0' && !el.querySelector('.logo-tem')) {
         if (!chu) el.classList.add('trong');
         else {
           // Cỡ chữ của cân: rộng một chữ Latin × cao dòng (chấm). Chữ vẽ cao ~82% dòng, rồi kéo ngang cho đúng bề rộng chữ.
@@ -1441,6 +1472,119 @@
     };
   }
 
+  /**
+   * 2.12 — Mẫu tem Beeftown (tem.ts mauBeeftown): bấm nút = đổ thay đổi của mẫu vào sơ đồ, thay mọi thay đổi chưa gửi.
+   * Chưa gửi gì: người dùng xem sơ đồ rồi bấm Gửi tem xuống cân như mọi lần sửa tem.
+   */
+  function veMauBeeftown() {
+    const noi = $('tem-mau'), mb = temDL.mauBeeftown, dv = temDL.donViSauSo || [];
+    if (!mb) { noi.innerHTML = ''; return; }
+    if (!mb.thay && mb.lyDo) { noi.innerHTML = `<p class="phu">Mẫu tem Beeftown: ${e(mb.lyDo)}</p>`; return; }
+    if (!mb.thay) {
+      // 2.16: tem đã đúng mẫu (gửi rồi, hay nạp file mẫu) — không còn gì để gửi ở phần tem. Cân còn in đơn vị sau số: nút tắt riêng.
+      noi.innerHTML = !dv.length ? '<p class="phu">Tem đang dùng đúng mẫu tem Beeftown.</p>'
+        : '<div class="bao luu-y"><p><b>Tem trên cân đã đúng mẫu tem Beeftown</b> — không cần gửi lại tem (nút Gửi tem xuống cân chỉ sáng khi '
+          + `sơ đồ có thay đổi). Cân còn in ${CAU_DON_VI(dv)} liền sau số, trùng với nhãn.</p>`
+          + '<div class="nut"><button type="button" class="chinh" id="nut-tat-don-vi">Tắt đơn vị in sau số</button>'
+          + '<span class="phu">gửi ngay xuống cân rồi đọc lại để kiểm</span></div></div>';
+      if (dv.length) $('nut-tat-don-vi').onclick = tatDonViSauSo;
+      return;
+    }
+    noi.innerHTML = '<div class="bao luu-y"><p><b>Mẫu tem Beeftown:</b> mã vạch và logo Beeftown trên cùng; tên hàng; Khối lượng · Đơn giá · '
+      + 'Thành tiền, rồi Ngày đóng gói · Hạn sử dụng — năm số to, thẳng cột; tên công ty dưới cùng. '
+      + (dv.length ? `Nhãn đã ghi đơn vị: gửi tem bằng nút Gửi tem xuống cân xong, chương trình tự tắt ${CAU_DON_VI(dv)} cân in liền sau số `
+        + '(nạp USB thì không — tắt ở mục Cân &amp; thông số → In tem). ' : '')
+      + 'Logo gửi kèm tem; cân không cho đọc lại hình — '
+      + 'in thử xem có logo chưa. Cân không in logo: bật lại chữ "BEEFTOWN" ở danh sách ô, bỏ chọn ô Logo Beeftown.</p>'
+      + '<p>Bấm nút: sơ đồ đổi theo mẫu nhưng <b>chưa gửi</b> — xem lại rồi bấm <b>Gửi tem xuống cân</b>. Muốn giữ tem cũ: bấm <b>Lưu file nạp USB</b> '
+      + 'trước khi bấm nút này. Số PLU và chữ cũ không có trong mẫu được tắt, bật lại được ở danh sách ô. Ngày kiểu 02/11/26: mục Cân &amp; thông số → Kiểu ngày in. '
+      + 'Chưa thử trên cân thật — in thử một tem, quét thử mã vạch trước khi bán.</p>'
+      + '<div class="nut"><button type="button" id="nut-mau-beeftown">Xếp tem theo mẫu Beeftown</button>'
+      + `<span class="phu">${mauDaXep && JSON.stringify(temSua) === mauDaXep ? 'Sơ đồ đã xếp theo mẫu — chưa gửi xuống cân.' : 'Thay mọi thay đổi chưa gửi.'}</span></div></div>`;
+    $('nut-mau-beeftown').onclick = () => { apThayMau(mb.thay); mauDaXep = JSON.stringify(temSua); fileDaNap = null; veTemHet(); };
+  }
+
+  /** 2.16 — đơn vị cân in liền sau số (thông số 185 "kg", 186 "VND/kg", 187 "VND" — thong-so.ts DON_VI_SAU_SO), thành chữ cho câu báo. */
+  const CHU_DON_VI = { 185: '"kg"', 186: '"VND/kg"', 187: '"VND"' };
+  const CAU_DON_VI = (dv) => dv.map(id => CHU_DON_VI[id] || `thông số ${id}`).join(', ');
+
+  /**
+   * 2.16 — cho cân thôi in đơn vị sau số: gửi các thông số 185–187 đang bật = 0 qua đường gửi thông số có sẵn (đọc lại để kiểm).
+   * Trả câu trả lời của máy chủ; lỗi thì ném (người gọi báo).
+   */
+  const guiTatDonVi = (dv) => goi('/api/thong-so/gui', { thay: Object.fromEntries(dv.map(id => [id, 0])) });
+  /**
+   * Đọc lại đơn vị cân đang in ngay trước khi gửi (temDL có thể cũ: mục Cân &amp; thông số vừa đổi 185–187) rồi tắt các mục còn bật.
+   * Trả { dv, k }: dv rỗng = cân đã không in đơn vị, không gửi gì (k null).
+   */
+  async function tatDonViConBat() {
+    const dv = (await goi('/api/tem')).donViSauSo || [];
+    return { dv, k: dv.length ? await guiTatDonVi(dv) : null };
+  }
+
+  /** 2.16 — nút "Tắt đơn vị in sau số" (tem đã đúng mẫu Beeftown mà cân còn in đơn vị). */
+  async function tatDonViSauSo() {
+    const dv = (temDL && temDL.donViSauSo) || [];
+    if (dangGuiTem || !dv.length) return;
+    dangGuiTem = true; $('nut-tat-don-vi').textContent = 'Đang gửi…'; capNutTem();
+    try {
+      const { dv: conBat, k } = await tatDonViConBat();
+      if (!k) baoChung('xong', '<p><b>Cân đã không in đơn vị sau số</b> (thông số 185, 186, 187 đều là Không in) — không gửi gì.</p>');
+      else baoCaiDat(`lệnh thôi in ${CAU_DON_VI(conBat)} sau số (thông số ${conBat.join(', ')})`, k,
+        'Cân thử một món rồi in một tem: số không còn đơn vị phía sau.',
+        'thẻ Thiết lập cân → Cân &amp; thông số → <b>Lưu file nạp USB</b> (file có sẵn thay đổi vừa gửi) rồi nạp USB.');
+      await taiTrangThai();
+    } catch (err) { baoChung('loi', e(err.message)); }
+    finally { dangGuiTem = false; if ($('nut-tat-don-vi')) $('nut-tat-don-vi').textContent = 'Tắt đơn vị in sau số'; capNutTem(); }
+  }
+
+  /** Đổ thay đổi của một mẫu (tem.ts apMauTem: tắt / sửa / thêm ô) vào sơ đồ, thay mọi thay đổi chưa gửi. */
+  function apThayMau(thay) {
+    temSua = moiTemSua();
+    for (const k of thay.tat) temSua.bat[k] = false;
+    for (const { khoa, ...truong } of thay.sua) for (const [t, v] of Object.entries(truong)) datO(khoa, t, v);
+    temSua.them = thay.them.map(x => ({ ...x }));
+    chonO = null;
+  }
+
+  /** 2.14 — câu dưới hai nút file mẫu: mẫu vừa nạp (còn đúng như lúc nạp) kèm cảnh báo; sửa tay thêm thì thôi nói. */
+  function veTemFile() {
+    const noi = $('tem-file-bao');
+    if (!fileDaNap || JSON.stringify(temSua) !== fileDaNap.trangThai) { if (fileDaNap) { fileDaNap = null; noi.innerHTML = ''; } return; }
+    noi.innerHTML = `<div class="bao luu-y"><p>Đã nạp mẫu <b>"${e(fileDaNap.ten)}"</b> lên sơ đồ — <b>chưa gửi</b>. Xem lại rồi bấm `
+      + '<b>Gửi tem xuống cân</b>; bấm <b>Bỏ thay đổi</b> để về như cũ. Ô của tem không có trong mẫu được tắt, bật lại được ở danh sách ô.</p>'
+      + (fileDaNap.canhBao.length ? `<p>${fileDaNap.canhBao.map(e).join('<br>')}</p>` : '') + '</div>';
+  }
+  $('nut-nap-mau').onclick = () => { if (!dangGuiTem && temDL && temDL.tem) $('tep-mau-tem').click(); };
+  $('tep-mau-tem').onchange = async () => {
+    const tep = $('tep-mau-tem').files[0];
+    $('tep-mau-tem').value = '';
+    if (!tep || !temDL || !temDL.tem) return;
+    const noi = $('tem-file-bao');
+    try {
+      if (tep.size > 200000) throw new Error('File quá lớn — không phải file mẫu tem (.json).');
+      const k = await goi('/api/tem/nap-mau', { noiDung: await tep.text() });
+      if (k.dau !== temDL.dau) { bao(noi, 'loi', 'Tem trên máy vừa đổi (vừa gửi, hay thẻ khác vừa sửa). Mở lại mục Mẫu tem rồi nạp lại file.'); return; }
+      if (!k.thay) { bao(noi, k.lyDo ? 'loi' : 'xong', e(k.lyDo || `Tem đang đúng như mẫu "${k.ten}" — không có gì đổi.`)); return; }
+      apThayMau(k.thay);
+      mauDaXep = false;
+      fileDaNap = { ten: k.ten, trangThai: JSON.stringify(temSua), canhBao: k.canhBao || [] };
+      veTemHet();
+    } catch (err) { bao(noi, 'loi', e(err.message)); }
+  };
+  $('nut-xuat-mau').onclick = async () => {
+    if (dangGuiTem) return;
+    try {
+      const k = await goi('/api/tem/xuat-mau');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(k.mau, null, 2) + '\n'], { type: 'application/json;charset=utf-8' }));
+      a.download = k.tenFile; document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      bao($('tem-file-bao'), 'xong', `Đã tải <b>${e(k.tenFile)}</b> — tem đang có trên cân (chưa tính thay đổi chưa gửi trên sơ đồ).`
+        + (k.mau.khongXuatDuoc ? ` Không ghi được vào file: ${e(k.mau.khongXuatDuoc.join(', '))}.` : ''));
+    } catch (err) { bao($('tem-file-bao'), 'loi', e(err.message)); }
+  };
+
   /** Gợi ý "Chỉ in HSD khi hàng có hạn dùng" (tem.ts goiYHsd): ô Hạn dùng / chữ "HSD" đang "Luôn in". */
   function veGoiYHsd() {
     const noi = $('tem-goi-y'), t = temDL.tem;
@@ -1506,6 +1650,8 @@
   async function guiTem() {
     if (dangGuiTem) return;
     const nut = $('nut-gui-tem');
+    // 2.16: sơ đồ xếp bằng nút mẫu Beeftown (chưa bỏ thay đổi) và cân còn in đơn vị sau số → gửi tem xong thì tắt luôn đơn vị.
+    const dv = mauDaXep && temDL && temDL.donViSauSo ? temDL.donViSauSo : [];
     dangGuiTem = true; nut.textContent = 'Đang gửi…'; capNutTem();
     try {
       const k = await goi('/api/tem/gui', thayDoiTem());
@@ -1513,6 +1659,21 @@
         'bấm <b>Lưu file nạp USB</b> ở mục Mẫu tem (thẻ Thiết lập cân; không cần sửa lại — file đã có tem vừa gửi) rồi nạp USB; nạp USB thì cân nhận chắc chắn.');
       if (k.canhBao && k.canhBao.length) document.querySelector('#bao-chung .bao')?.insertAdjacentHTML('beforeend', `<p>${k.canhBao.map(e).join('<br>')}</p>`);
       $('khung-usb-tem').innerHTML = '';
+      if (dv.length) {
+        // Tem đã gửi xong (câu trên đúng); câu về đơn vị đi theo đúng lần gửi thông số này, khung đổi màu theo kết quả xấu nhất.
+        const khung = document.querySelector('#bao-chung .bao');
+        const them = (loai, html) => { if (!khung) return; khung.insertAdjacentHTML('beforeend', html); if (loai) khung.className = `bao ${loai}`; };
+        try {
+          const { dv: conBat, k: ts } = await tatDonViConBat();
+          if (!ts) them(null, '<p>Cân đã không in đơn vị sau số (thông số 185, 186, 187 đều là Không in).</p>');
+          else if (ts.xacNhan) them(null, `<p><b>Cân đã thôi in ${CAU_DON_VI(conBat)} sau số</b> (thông số ${conBat.join(', ')}, đọc lại thấy đúng).</p>`);
+          else them(khung && khung.classList.contains('loi') ? null : 'luu-y', `<p><b>Đã gửi lệnh thôi in ${CAU_DON_VI(conBat)} sau số, nhưng chưa kiểm được `
+            + `cân đã nhận chưa:</b> ${e(ts.cauXacNhan || '')} In thử một tem xem số còn đơn vị không.</p>`);
+        } catch (err) {
+          them('loi', `<p><b>Chưa tắt được ${CAU_DON_VI(dv)} in sau số:</b> ${e(err.message)} Tem đã gửi như câu trên — bấm <b>Tắt đơn vị in sau số</b> `
+            + 'ở mục Mẫu tem để thử lại.</p>');
+        }
+      }
       await taiTrangThai();
     } catch (err) { baoChung('loi', e(err.message)); }
     finally { dangGuiTem = false; nut.textContent = 'Gửi tem xuống cân'; capNutTem(); }
@@ -1528,7 +1689,7 @@
       if (k.canhBao && k.canhBao.length) $('khung-usb-tem').insertAdjacentHTML('afterbegin', `<div class="bao luu-y"><p>${k.canhBao.map(e).join('<br>')}</p></div>`);
     } catch (err) { bao($('khung-usb-tem'), 'loi', e(err.message)); }
   };
-  $('nut-bo-tem').onclick = () => { temSua = moiTemSua(); chonO = null; veTemHet(); };
+  $('nut-bo-tem').onclick = () => { temSua = moiTemSua(); chonO = null; mauDaXep = false; fileDaNap = null; $('tem-file-bao').innerHTML = ''; veTemHet(); };
 
   // =====================================================================
   // MÁY QUẦY (0054)

@@ -23,8 +23,10 @@ laptop ở công ty, khi mở bán chuyển lên máy chủ thuê ở Việt Nam
   đơn lên đây và trả tiền ngay trong app — mã QR, chép số tài khoản / số tiền / nội dung, app tự cập nhật khi quán nhận
   đủ tiền. Thử trên laptop: `mini-app/README.md`, "Thử đặt và trả tiền với máy chủ đơn".
 
-Chưa có: tin ZNS (đợt 3), máy chủ thuê, sao lưu, đèn trong `/noi-bo` (đợt 4). Mini App trên Zalo **chưa** gửi đơn lên
-máy chủ này: địa chỉ còn để trống cho tới khi có máy chủ thuê HTTPS — khách vẫn gửi tin vào chat OA.
+Bộ cài lên máy chủ thuê ở Việt Nam: mục "Đưa lên máy chủ thuê" (đợt 4a).
+
+Chưa có: tin ZNS (đợt 3), sao lưu, đèn trong `/noi-bo` (đợt 4). Mini App trên Zalo **chưa** gửi đơn lên máy chủ này:
+địa chỉ còn để trống cho tới khi máy chủ chạy HTTPS — khách vẫn gửi tin vào chat OA.
 
 ## Chạy thử trên laptop
 
@@ -61,6 +63,131 @@ Laptop Windows, macOS hay Linux đều được. Cần **Node.js 24** (bản LTS
 
 Tắt máy chủ: bấm Ctrl + C trong cửa sổ dòng lệnh. Sổ đơn nằm ở `may-chu-don/du-lieu/don.sqlite`, không bao giờ lên
 GitHub. Xóa thư mục `du-lieu` là xóa sạch đơn thử.
+
+## Đưa lên máy chủ thuê
+
+Để Mini App gửi đơn thẳng lên máy chủ (không qua chat OA) và SePay báo được tiền về, máy chủ đơn phải chạy trên một máy
+**có địa chỉ HTTPS công khai, đặt ở Việt Nam**. Laptop ở công ty không làm được việc này. Bộ cài trong `cai-dat/` dựng mọi
+thứ bằng một lệnh: Node 24, Caddy (tự lấy chứng chỉ HTTPS), dịch vụ tự chạy lại khi hỏng, tường lửa, mật khẩu quầy.
+
+### 1. Thuê máy (một lần)
+
+- Hệ điều hành **Ubuntu 24.04 LTS**, trung tâm dữ liệu **ở Việt Nam** (Hà Nội hoặc TP.HCM — hỏi nhà cung cấp cho chắc).
+- 1 vCPU, 1 GB RAM, 20 GB SSD, một IPv4 riêng là đủ (khoảng 95.000–120.000 đ/tháng chưa VAT).
+- Nhà cung cấp gửi lại: **địa chỉ IP** và **mật khẩu root** (hoặc tài khoản `ubuntu` có sudo).
+- Trang quản lý của nhà cung cấp có tường lửa riêng thì mở cổng 22, 80, 443.
+
+### 1b. Hoặc dùng laptop dư (thử trước khi thuê máy)
+
+Laptop đặt ở Việt Nam thì giữ đúng quy tắc dữ liệu khách. Bộ cài như máy thuê; khác ở bốn chỗ dưới đây. Khi mở bán thật
+nên chuyển sang máy thuê: laptop ở nhà có điện, mạng, IP thay đổi, không ai trực.
+
+1. **Cài Ubuntu (xóa sạch Windows).** Chép dữ liệu cần giữ ra trước.
+   - Tải **Ubuntu Server 24.04 LTS** ở ubuntu.com/download/server.
+   - Ghi ra USB (từ 4 GB) bằng **Rufus** (rufus.ie) trên một máy Windows khác.
+   - Cắm USB vào laptop, bật máy, bấm phím chọn ổ khởi động (thường F12, F9 hoặc Esc — tùy hãng), chọn USB.
+   - Khi cài:
+     - chọn dùng cả ổ đĩa;
+     - đặt tên người dùng, ví dụ `beeftown-admin`, và một mật khẩu mạnh;
+     - **đánh dấu "Install OpenSSH server"**;
+     - không chọn thêm gói nào.
+   - Cắm dây mạng LAN thì ổn định hơn WiFi.
+2. **Giữ laptop luôn bật.**
+   - Cắm sạc.
+   - Bộ cài tự nhận ra laptop: gập máy không ngủ, tắt chế độ ngủ.
+   - Nếu BIOS có mục "Power on after AC loss" / "AC Recovery" thì bật, để mất điện có lại tự khởi động.
+3. **Kiểm nhà mạng có cấp IP công khai không.**
+   - Đăng nhập trang quản lý router (thường `192.168.1.1`, mật khẩu dán dưới đáy router), xem **địa chỉ WAN**.
+   - Trên laptop sau khi cài, chạy `curl -4 https://api.ipify.org`.
+   - Hai số **trùng nhau** là được.
+   - Khác nhau, hoặc WAN bắt đầu bằng `100.64`–`100.127`, `10.` hay `172.16`–`172.31`, là nhà mạng dùng IP chung (CGNAT): từ ngoài không vào được laptop. Gọi tổng đài (FPT, Viettel, VNPT) xin **"IP public"** (thường miễn phí hoặc thu thêm), hoặc thuê máy.
+4. **Mở cổng trên router.** Mục **NAT / Port Forwarding / Virtual Server**:
+   - chuyển cổng **80 TCP** và **443 TCP** (thêm 443 UDP nếu có) về IP trong mạng nhà của laptop (`ip -4 addr` trên laptop, dạng `192.168.1.x`);
+   - ở mục DHCP, **giữ cố định IP đó cho laptop** (DHCP reservation / static lease), kẻo khởi động lại là đổi.
+   - Router có mạng khách (guest) mà đặt được laptop vào thì tốt hơn: laptop mở ra internet, đừng để nó chung mạng với máy cá nhân.
+
+IP nhà mạng của gói gia đình có thể đổi (sau khi mất điện, khởi động lại modem). Đổi thì `don.beeftown.vn` trỏ sai và
+Mini App không gửi được đơn. Trong lúc thử: thấy `https://don.beeftown.vn/quay` không mở được thì chạy lại
+`curl -4 https://api.ipify.org` trên laptop và sửa IP ở bản ghi Cloudflare (bước 2).
+
+Rồi làm tiếp bước 2–7 như máy thuê. Đăng nhập laptop từ máy khác trong nhà bằng `ssh beeftown-admin@192.168.1.x`, hoặc
+gõ thẳng trên laptop. Tài khoản này không phải root, nên lệnh ở bước 3 thêm `sudo` trước `bash`.
+
+### 2. Trỏ tên miền về máy (một lần, trước bước 3)
+
+Ở Cloudflare → `beeftown.vn` → **DNS** → **Records** → **Add record**:
+
+| Ô | Điền |
+|---|---|
+| Type | `A` |
+| Name | `don` (thành `don.beeftown.vn`) |
+| IPv4 address | IP của máy thuê |
+| Proxy status | **tắt — DNS only (đám mây xám)**. Đám mây cam là đơn của khách đi qua máy chủ Cloudflare |
+| TTL | Auto |
+
+### 3. Cài (một lần, khoảng 5 phút)
+
+Trên máy Windows mở PowerShell, đăng nhập vào máy thuê (lần đầu gõ `yes`, rồi mật khẩu root):
+
+```
+ssh root@<IP của máy thuê>
+```
+
+Trong cửa sổ đó, chạy hai lệnh (đăng nhập bằng `ubuntu` thì thêm `sudo` trước `bash`):
+
+```
+curl -fsSLo may-chu.sh https://raw.githubusercontent.com/volekhanh123/beeftown-stock/main/may-chu-don/cai-dat/may-chu.sh
+bash may-chu.sh cai don.beeftown.vn
+```
+
+Lệnh chạy cả kiểm thử của máy chủ đơn ngay trên máy thuê; hỏng thì dừng, không bật máy chủ. Xong thì in
+**MẬT KHẨU MÀN HÌNH QUẦY** — ghi lại ngay, chỉ in một lần. Chạy lại `cai` không mất gì: không đổi mật khẩu, không xóa đơn.
+
+### 4. Kiểm
+
+- Trên điện thoại mở `https://don.beeftown.vn/quay`: thấy trang đăng nhập quầy, có ổ khóa HTTPS. Chưa được thì đợi
+  5 phút (tên miền mới cần thời gian), rồi trên máy thuê chạy
+  `bash /opt/beeftown/hien-tai/may-chu-don/cai-dat/may-chu.sh trang-thai`.
+- Máy tính bảng ở quầy: mở cùng địa chỉ, đăng nhập bằng mật khẩu quầy, thêm vào màn hình chính.
+
+### 5. Cập nhật khi main có bản mới
+
+```
+bash /opt/beeftown/hien-tai/may-chu-don/cai-dat/may-chu.sh cap-nhat
+```
+
+Lấy bản mới của main vào một thư mục riêng, cài thư viện và chạy kiểm thử ở đó; đạt mới chuyển máy chủ sang (ngừng vài
+giây). Hỏng ở bước nào thì bản đang chạy vẫn chạy, không bị đụng tới; bản mới không trả lời thì tự quay về bản cũ. **Đổi giá** ở Mini App (`mini-app/src/san-pham.ts`) thì phải cập nhật máy chủ: máy chủ tự
+tính tiền theo bảng giá của nó.
+
+### 6. Khi đã có tài khoản VietinBank và SePay
+
+Trên máy thuê: `nano /etc/beeftown/may-chu-don.env`, bỏ dấu `#` ở bốn dòng tài khoản và dòng `SEPAY_KHOA_KY`, điền giá
+trị, lưu (Ctrl + O, Enter, Ctrl + X), rồi `systemctl restart may-chu-don`. Webhook SePay (mục "Cài SePay"):
+`https://don.beeftown.vn/sepay/tien-ve`. Caddy chỉ cho các IP của SePay gọi đường này; IP khác nhận 403.
+SePay mà đổi IP thì tin tiền về bị 403 âm thầm: đơn khách đã chuyển khoản vẫn tự hết hạn. Mỗi tuần (tới khi có đèn
+sức khỏe và đối soát SePay, issue #138) xem my.sepay.vn → Webhooks → nhật ký gửi: có lần 403 là SePay đã thêm IP —
+báo Claude Code sửa danh sách trong `cai-dat/Caddyfile.mau`.
+
+### 7. Mini App dùng máy chủ
+
+Sau khi PR màn trả tiền (đợt 2b) gộp: điền `diaChiMayChuDon: 'https://don.beeftown.vn'` trong
+`mini-app/src/cau-hinh.ts`; ở Mini App Center → **Cấu hình API Domains** thêm `https://don.beeftown.vn`; đưa bản thử lên.
+
+### Trên máy thuê có gì
+
+| Chỗ | Là gì |
+|---|---|
+| `/opt/beeftown/hien-tai` | Liên kết tới bản mã đang chạy, trong `/opt/beeftown/ban/<commit>` (giữ 3 bản gần nhất). Đừng sửa ở đây |
+| `/opt/beeftown/kho` | Bản tải của repo, chỉ để lấy mã — dịch vụ không chạy từ đây |
+| `/opt/beeftown/nha` | Thư mục nhà của người dùng `beeftown` (bộ đệm thư viện). Mã và cấu hình thuộc root: `beeftown` không sửa được |
+| `/var/lib/beeftown-may-chu-don/don.sqlite` | Sổ đơn — có tên, số điện thoại khách. Không chép ra khỏi máy |
+| `/etc/beeftown/may-chu-don.env` | Bí mật: mật khẩu quầy, khóa sức khỏe, tài khoản, khóa SePay (từ `cai-dat/may-chu-don.env.mau`) |
+| `/etc/caddy/Caddyfile` | HTTPS và chặn IP (từ `cai-dat/Caddyfile.mau` — sửa bản trong repo, rồi `cap-nhat`) |
+| dịch vụ `may-chu-don` | `systemctl status may-chu-don`, nhật ký: `journalctl -u may-chu-don -n 50` |
+
+Chưa có (đợt 4, issue #138): sao lưu sổ đơn ra ngoài máy, đèn sức khỏe trong `/noi-bo`, xóa dữ liệu khách quá hạn,
+đối soát SePay bằng API.
 
 ## Biến môi trường
 
@@ -113,8 +240,9 @@ công ty không nhận được; cần máy chủ thuê ở Việt Nam có tên 
    tiền vào với nội dung `BT<mã đơn>` và đúng số tiền của đơn — đơn phải sang "Đã trả tiền, chờ soạn" trên màn quầy.
    Mô phỏng thêm một lần chuyển thiếu: phải hiện ở "Tiền về cần xem". Thử thật sau cùng: chuyển cho một đơn một khay
    (giá thử rẻ nhất 115.000 đ), rồi hủy đơn và hoàn tiền.
-6. Tường lửa (khi có máy chủ thuê): chỉ cho các IP của SePay gọi `/sepay/tien-ve` — danh sách ở
-   developer.sepay.vn/vi/dia-chi-ip.
+6. Tường lửa: trên máy chủ thuê, Caddy chỉ cho các IP của SePay gọi `/sepay/tien-ve` (`cai-dat/Caddyfile.mau`,
+   danh sách developer.sepay.vn/vi/dia-chi-ip đọc 02/11/2026). SePay đổi IP thì sửa file đó và
+   `crm/test/test-may-chu-don-cai-dat.mjs` cùng một PR, rồi `cap-nhat`.
 
 ## Việc của Khánh trước khi bật cho khách
 

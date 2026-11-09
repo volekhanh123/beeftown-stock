@@ -96,11 +96,15 @@ const soLe = (so: number): LuaChon[] => [0, 1, 2, 3, 4, 5].map(n => ({
 })).slice(0, so + 1);
 
 /**
- * Sửa được (7 mục trong thiết kế + 22):
+ * Sửa được (7 mục trong thiết kế + 22 + 185–187 + 211):
  *   104, 265, 266 — cách viết ngày trên tem / màn hình.
  *   105, 106      — HSD chung (Beeftown Cân quản HSD từng hàng qua cột PLU, nên khuyên 105 = 0).
  *   250           — cách in tem mỗi lần cân.
  *   283           — ghi lần cân chưa in tem vào nhật ký.
+ *   185–187       — (2.15) in đơn vị sau trọng lượng / đơn giá / thành tiền ("0.14kg", "600.000VND/kg", "84.000VND"). Mẫu tem
+ *                   Beeftown ghi đơn vị ở nhãn, nên tắt cho gọn và số to hơn (Khánh 02/11/2026). Chỉ đổi chữ in sau số.
+ *   211           — (2.17) đơn vị của đơn giá: kg hay 100 g (Khánh 02/11/2026: giá trên 999.999 đ/kg). Đổi thì phải gửi lại
+ *                   giá: can-tma.ts ghi dòng hàng đơn vị 8, giá 100 g khi file của cân có 211 = 8.
  *   22 (thêm)     — độ đậm khi in trên giấy tem. Lý do cho sửa: chỉ đổi độ đậm của đầu in nhiệt, đổi lại được
  *                   ngay, không đụng giá, dữ liệu hàng hay nhật ký; tem mờ / mã vạch khó quét là việc quán hay
  *                   gặp. Khoảng 0–15 theo Tm.xml của hãng.
@@ -185,6 +189,21 @@ export const THONG_SO: MucThongSo[] = [
       + 'Tem mờ, mã vạch khó quét thì tăng 1–2 nấc; chữ nhoè thì giảm.',
     canhBao: `${CHUA_THU} Đậm quá làm đầu in mau mòn và mã vạch nhoè, khó quét. Mỗi lần chỉ đổi 1–2 nấc rồi in thử.`,
   },
+  // 2.15 — đơn vị in liền sau số trên tem. Trình cài đặt của hãng cho Việt Nam bật cả ba (dac-ta/spec-wizard.md).
+  ...([
+    [185, 'In "kg" sau khối lượng', 'khối lượng', '0.14kg', '0.14', 'Khối lượng (kg)'],
+    [186, 'In đơn vị sau đơn giá', 'đơn giá', '600.000VND/kg', '600.000', 'Đơn giá (đ/kg)'],
+    [187, 'In đơn vị sau thành tiền', 'thành tiền', '84.000VND', '84.000', 'Thành tiền (đ)'],
+  ] as const).map(([id, ten, so, coDonVi, khongDonVi, nhan]): MucThongSo => ({
+    id, ten, nhom: 'In tem', kieu: 'chon',
+    moTa: `Cân in đơn vị liền sau số ${so} trên tem (${coDonVi}). Mẫu tem Beeftown đã ghi đơn vị ở nhãn "${nhan}", nên để `
+      + `Không in: tem gọn, số không lặp đơn vị (${khongDonVi}).` + (id === 186 || id === 187 ? ' Chữ "VND" là Chữ sau số tiền ở phần 6.' : ''),
+    luaChon: [
+      { gt: '0', ten: `Không in (${khongDonVi}) — mẫu tem Beeftown` },
+      { gt: '1', ten: `In (${coDonVi})`, canhBao: 'Mẫu tem Beeftown đã có đơn vị ở nhãn — in thêm là lặp đơn vị, số dài ra.' },
+    ],
+    canhBao: `${CHUA_THU} Đổi là đổi mọi tem (cả màn hình cân có thể đổi theo). Gửi xong cân thử một món, in một tem để xem.`,
+  })),
   {
     id: 0, ten: 'Mẫu tem mặc định', nhom: 'In tem', kieu: 'so', toiThieu: 0, toiDa: 99, chiXem: true,
     moTa: 'Số mẫu tem cân dùng để in tem hàng khi mặt hàng không chọn mẫu riêng. 0 = không in tem.',
@@ -252,6 +271,21 @@ export const THONG_SO: MucThongSo[] = [
     moTa: 'Ô đơn giá trên màn hình cân có mấy chữ số (0 = tự động). Với 6 chữ số và 3 số lẻ, giá cao nhất là 999.999 '
       + '= 999.999 đ/kg — giá cao hơn không đưa lên cân được.',
     canhBao: 'Chỉ xem: màn hình cân có thể chỉ có 6 ô số; đổi có thể làm giá hiện sai.',
+  },
+  // 2.17 — giá theo 100 g (web/src/lib/kho/can-tma.ts DON_VI_100G, TS_DON_VI_GIA).
+  {
+    id: 211, ten: 'Đơn vị của đơn giá', nhom: 'Giá và số lẻ', kieu: 'chon',
+    moTa: 'Đơn giá trên màn hình cân và trên tem là giá của 1 kg hay của 100 g. Theo 100 g thì giá/kg đưa lên cân được tới '
+      + '9.999.990 đ (theo kg chỉ tới 999.999 đ — ô đơn giá có 6 chữ số). Kho, FABi, trang web vẫn giữ giá/kg; mã vạch trên tem vẫn '
+      + 'mang khối lượng nên máy quầy, FABi tính tiền như cũ. Đổi xong: thẻ Cân → Gửi giá xuống cân (gửi lại mọi giá theo đơn vị '
+      + 'mới), rồi mục Mẫu tem → Xếp tem theo mẫu Beeftown (nhãn "Đơn giá (đ/100g)") → Gửi tem xuống cân.',
+    luaChon: [
+      { gt: '0', ten: 'Theo kg (mặc định của cân)' },
+      { gt: '8', ten: 'Theo 100 g — giá/kg tới 9.999.990 đ',
+        canhBao: 'Sau khi gửi: Gửi giá xuống cân ngay (cân hiểu giá cũ là giá/kg, tự chia 10 khi hiện), rồi xếp lại tem theo mẫu Beeftown.' },
+    ],
+    canhBao: `${CHUA_THU} Gửi xong, gửi giá, rồi cân thử một món: màn hình cân và tem phải hiện giá 100 g (1/10 giá/kg), `
+      + 'thành tiền đúng như trước. Sai thì chọn lại Theo kg, gửi, rồi gửi giá.',
   },
 
   // ---- Mã vạch -------------------------------------------------------------------
@@ -420,6 +454,18 @@ export function docThongSo(f: FileCan): Map<number, string> {
 }
 
 const chuanGiaTri = (v: string) => (/^\s*-?\d{1,10}\s*$/.test(v) ? String(parseInt(v, 10)) : v);
+
+/** 2.16 — ba thông số in đơn vị liền sau số trên tem: 185 khối lượng ("kg"), 186 đơn giá ("VND/kg"), 187 thành tiền ("VND"). */
+export const DON_VI_SAU_SO = [185, 186, 187] as const;
+
+/**
+ * 2.16 — thông số nào trong DON_VI_SAU_SO cân đang bật (khác 0): mẫu tem Beeftown ghi đơn vị ở nhãn nên để cả ba bằng 0.
+ * File không có dòng của thông số đó thì theo mặc định của hãng (0, không in — dac-ta/spec-wizard.md).
+ */
+export function donViDangIn(f: FileCan): number[] {
+  const gt = docThongSo(f);
+  return DON_VI_SAU_SO.filter(id => { const v = (gt.get(id) ?? '').trim(); return v !== '' && chuanGiaTri(v) !== '0'; });
+}
 
 /**
  * Sửa thông số trong file gốc.

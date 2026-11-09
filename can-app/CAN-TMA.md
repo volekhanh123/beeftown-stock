@@ -302,7 +302,7 @@ Phần này **rỗng** trên cân quán (thông số 135 = 0: không đăng nh�
 | Phần | Dòng | Vì sao không gửi |
 |---|---|---|
 | `FNT` | `FNT⇥<phông mã hoá nửa byte>⇥` (một dòng ~2,5 MB) | Sai phông là hỏng chữ Việt trên màn và tem. `CLR⇥FNT⇥` xoá phông. |
-| `BMP` | `BMP⇥<số>⇥<đầu 96 byte + ảnh 1 bit>⇥` | Hình (logo). Không cần; không đọc lại được từ cân. |
+| `BMP` | `BMP⇥<số>⇥<đầu 96 byte + ảnh 1 bit>⇥` | Hình (logo). Không đọc lại được từ cân. **Từ 2.13 có gửi — chỉ logo của tem** (hình số 1, `tem.ts` `khoiLogo`, Khánh muốn in logo 02/11/2026): mỗi lần gửi tem có ô Logo, khối BMP đi trước khối LAB; `giao-thuc.ts` `kiemDongBmp` kiểm dạng từng dòng; không bao giờ `CLR⇥BMP⇥`. Chưa thử trên cân thật. |
 | `VER` | `VER⇥<firmware mã hoá nửa byte>⇥` | **Nạp firmware**. Phần mềm hãng không kiểm gì — file sai là hỏng cân. |
 | `PAS` | `PAS⇥<0 quản trị, 1 bán, 2 cài đặt, 3 báo cáo, 4 ngăn kéo, 5 sửa giá nhanh>⇥<mật khẩu>⇥` | Đặt mật khẩu cân → khoá người dùng. |
 | `MAC` | `MAC⇥0⇥35⇥240⇥255⇥x⇥y⇥` | Đổi địa chỉ MAC → nhật ký tách thành máy khác. Không có cách đổi lại. |
@@ -356,8 +356,8 @@ Thứ tự này giống hệt ở mọi đường của hãng (file, RS-232, m�
 | 1 | PLUID | Số PLU (số gõ trên cân để gọi hàng) | nguyên | — | Người dùng 1–9.999.990; từ 9.999.981 trở lên là PLU hệ thống hoặc bị nhật ký coi là thanh toán (§9.3) → giữ dưới 9.999.981. Chương trình dùng 1–9.999 |
 | 2 | Remark | **Mã hàng** = mã cân = mã FABi; in trong mã vạch | nguyên | 0 | 0–99.999.999; mã vạch 28 lấy 5 chữ số. Mất số 0 đầu. Nên ≥ 1 (mã 0 có nghĩa riêng, §6.4). Không bắt buộc duy nhất. |
 | 3 | Index | Mã vạch ngoài (EAN quét để gọi hàng) | chữ nguyên văn | rỗng | ≤ 255 |
-| 4 | UnitID | Đơn vị | nguyên | 1 | 1 = cân theo đơn vị cân mặc định (kg) · 2 = cái · 3 = kg · 4 = g · 5 = tấn · 6 = lb · 7 = 500 g · 8 = 100 g (· 9 = ¼ lb, chỉ phần mềm). Đơn giá tính theo đơn vị này. Quán dùng 1 (cân ký) và 2 (theo cái). |
-| 5 | Price | Đơn giá | thập phân | `0,0` | Quán: nghìn đồng, 3 số lẻ → tối đa `999.999` trên màn (thông số 188 = 6) = 999.999 đ/kg (`GIA_TOI_DA`). |
+| 4 | UnitID | Đơn vị | nguyên | 1 | 1 = cân theo đơn vị cân mặc định (kg) · 2 = cái · 3 = kg · 4 = g · 5 = tấn · 6 = lb · 7 = 500 g · 8 = 100 g (· 9 = ¼ lb, chỉ phần mềm). Đơn giá tính theo đơn vị này. Quán dùng 1 (cân ký) và 2 (theo cái); 2.17: cân để giá theo 100 g (thông số 211 = 8) thì hàng cân ký từ kho ghi 8. |
+| 5 | Price | Đơn giá | thập phân | `0,0` | Quán: nghìn đồng, 3 số lẻ → tối đa `999.999` trên màn (thông số 188 = 6) = 999.999 đ/kg (`GIA_TOI_DA`). 2.17: đơn vị 8 thì là giá 100 g (giá/kg ÷ 10) → giá/kg tới 9.999.990 đ (`GIA_KG_TOI_DA_100G`); đọc file nhân lại 10 (`DongPlu.gia` luôn là đồng / kg). |
 | 6 | Cost | Giá vốn | thập phân | `0,0` | |
 | 7 | Tare | Bì đặt sẵn (kg); hàng cân có cờ 2 → trọng lượng cố định | thập phân | `0,0` | 0–9.999 |
 | 8 | LabelID1 | Mẫu tem hoá đơn 1 | nguyên | 0 | 0 = theo thông số 0 (tem một hàng) / 5 (tem cộng dồn), §5.9 |
@@ -702,6 +702,62 @@ xuống dòng = `\v`, NFC; giữ cột 22 và bit cao của cột 7; luôn có `
 của hãng từ chối ô có khung thật ra ngoài tem hoặc rộng / cao < 1 — kiểm khi sửa, nhưng không từ chối file khi
 đọc (mẫu gốc của hãng có ô chạm y = −1). Dòng `LAS` không sửa giữ y nguyên byte.
 
+### 5.12 Mẫu tem Beeftown (2.12; bản 2 từ 2.13; bản 3 từ 2.15)
+
+Bản 3 (2.15, theo tem Khánh in thử 02/11/2026): Khối lượng · Đơn giá · Thành tiền một hàng, Ngày đóng gói · Hạn sử dụng hàng dưới,
+năm số cỡ 4; bỏ đường kẻ. Nhãn ghi đơn vị nên cân để 185 / 186 / 187 = 0 (không in "kg", "VND/kg", "VND" sau số) — §8. Số đo:
+`MAU_BEEFTOWN` trong `tem.ts`. Bản 2 và bản 1 ở dưới để biết lịch sử.
+
+Nút "Xếp tem theo mẫu Beeftown" (`mauBeeftown` trong `tem.ts`) đưa tem 28 về bố cục Khánh duyệt 02/11/2026: mã vạch +
+chữ BEEFTOWN (cỡ 5) trên cùng, tên hàng cỡ 2 rộng hết tem, bảng ba cột (nhãn cỡ 0 trên, số cỡ 1 dưới; thành tiền cỡ 4), đường
+kẻ bằng 40 dấu `-`, tên công ty, địa chỉ quán. Cỡ chữ chỉ dùng 0 / 1 / 2 và bản cao gấp đôi 4 / 5, khung cao đúng dòng chữ
+(18 / 26 / 34 / 52 / 68 chấm) như mẫu gốc 11000 của hãng (§5.5). Nhãn hàng cân ký và hàng đếm cái chung một khung với điều
+kiện in 2 / 3 — như mẫu tiếng Việt gốc 90000 ("số kg" / "Count"). Không dùng Khung viền (loại 4, cân in thế nào [chưa
+biết]); đường kẻ bằng chữ cố định như phiếu gốc của cân (dac-ta, "dashed separator rows"). Chỉ áp cho tem 58 × 40 mm, mẫu
+không có Phân vùng. **Chưa thử trên cân thật.**
+
+Bản 2 (2.13, Khánh chọn 02/11/2026): logo phụ thay chữ BEEFTOWN (ô Hình loại 6, hình số 1, 184 × 26 chấm, canh mép phải 448,
+giữa theo chiều cao mã vạch), bỏ dòng địa chỉ quán, hai ô ngày cỡ 4 cao bằng thành tiền. Logo: `src/logo-tem.ts`, do
+`scripts/tao-logo-tem.ts` tạo từ `web/public/thuong-hieu/chu-beeftown-den.svg` (Chromium vẽ đúng cỡ, sáng < 128 là đen); dòng BMP
+theo §3.9 / dac-ta label-format mục 5 (`dongBmp`: đầu 96 byte — số hình 4 byte, rộng 2, cao 2, byte thấp trước — rồi hàng chấm,
+mỗi byte hai chữ `@`…`O`). File (nạp USB, đường lui 33571) mang phần BMP trước phần LAB (`kemLogo`). Cân không cho đọc lại
+hình: gửi xong chỉ kiểm được phần LAB, câu báo nói phải in thử.
+
+
+### 5.13 File mẫu tem (2.14)
+
+Một bố cục tem viết bằng JSON — nạp ở mục Mẫu tem ("Nạp mẫu tem từ file…"), tải tem đang dùng ra ("Tải mẫu tem đang dùng").
+Đọc: `tem.ts` `docMauTemFile` (kiểm chặt); áp: `apMauTem` (chung với nút mẫu Beeftown — `MAU_BEEFTOWN` là một file mẫu); tải
+ra: `xuatMauTem`.
+
+```json
+{
+  "loai": "beeftown-mau-tem", "phienBan": 1, "ten": "Tem siêu thị", "rong": 58, "cao": 40,
+  "o": [
+    { "loai": "ma-vach", "x": 4, "y": 10, "w": 257, "h": 74 },
+    { "loai": "logo", "x": 264, "y": 34, "w": 184, "h": 26 },
+    { "loai": "ten-hang", "x": 4, "y": 92, "w": 456, "h": 34, "coChu": 2, "canh": 4 },
+    { "loai": "chu", "chu": "Ngày đóng gói", "x": 4, "y": 136, "w": 154, "h": 18, "coChu": 0, "canh": 4 },
+    { "loai": "ngay-in", "x": 4, "y": 154, "w": 154, "h": 52, "coChu": 4, "canh": 4, "khiNaoIn": 1 }
+  ]
+}
+```
+
+| Trường | Nghĩa |
+|---|---|
+| `loai`, `phienBan` | Luôn `"beeftown-mau-tem"`, `1`. Bản khác → không nạp, báo cập nhật chương trình. |
+| `ten` | Tên mẫu, hiện trên trang và câu báo (≤ 80 ký tự). |
+| `rong`, `cao` | Cỡ tem, mm — phải đúng cỡ tem cân đang dùng (tem 28: 58 × 40), không thì không nạp. |
+| `o[].loai` | Khoá của `O_THEM_DUOC`: `ten-hang`, `so-plu`, `ma-hang`, `trong-luong`, `don-gia`, `don-vi-tinh`, `thanh-tien`, `don-vi-tien`, `ngay-in`, `gio-in`, `hsd`, `chu-hsd`, `chu`, `ten-quan`, `ghi-chu-1`…`ghi-chu-8`, `ma-vach`, `logo`. Không có tên / mật khẩu WiFi. |
+| `o[].x`, `y`, `w`, `h` | Chấm (8 chấm = 1 mm), gốc góc trên trái. `w`, `h` bỏ trống: cỡ mặc định của loại ô. |
+| `o[].coChu`, `canh`, `khiNaoIn`, `xoay` | Mã của §5.5, §5.6, §5.4 và góc 0–3. Bỏ trống: ô đang có giữ nguyên, ô mới lấy mặc định; `xoay` bỏ trống là 0. |
+| `o[].chu` | Ô `chu` / `chu-hsd`: chữ in ra, ≤ 40 ký tự, có dấu (NFC). `chu-hsd` bỏ trống là `"HSD"`. |
+| `ghiChu`, `khongXuatDuoc` | Chỉ có ở file tải ra — giải thích mã, ô không ghi được. Nạp lại thì bỏ qua. |
+
+Cách áp: ô của mẫu khớp ô đang in đầu tiên cùng loại (ô chữ: cùng chữ; ô dữ liệu hàng: dòng hàng đang in) → sửa; không có → thêm
+(số thứ tự lớn nhất + 1); ô đang in còn lại → tắt. Chạy thử `suaTem` trước khi trả: lỗi thành câu, không bao giờ trả thay đổi mà gửi
+mới hỏng. Cảnh báo (không chặn): ô ra ngoài mép (§5.11), chữ dài hơn ô hay ô thấp hơn dòng chữ theo `CO_CHU`. Trả kèm dấu mẫu tem —
+trang so với dấu lúc mở mục, khác thì bắt mở lại. Chưa thử trên cân thật (cùng đường gửi tem như mọi lần sửa).
 ---
 
 ## 6. Mã vạch — `BAR` và chuỗi mẫu `TChar`
@@ -889,8 +945,9 @@ Danh mục của hãng ghi phạm vi không phải lúc nào cũng đúng (ví d
 | 166–169 | Cổng 33581 / 33582 / 33583 / 33584 | | 33581… | **không bao giờ sửa** |
 | 150–165, 430–441 | Địa chỉ IP, cổng mạng, mặt nạ (chính / phụ) | 153 = 0 là tự cấp | | **không sửa** (như 43) — sai là cân rời mạng tới khi sửa tay |
 | 180 / 181 | Dấu thập phân / dấu nghìn khi in | | 0 / 0 | giữ 0: dấu chấm đọc như dấu nghìn kiểu Việt |
-| 185–187 | In đơn vị sau trọng lượng / đơn giá / tiền | 0 / 1 | 1 / 1 / 1 | |
+| 185 / 186 / 187 | In đơn vị sau khối lượng / đơn giá / thành tiền ("0.14kg", "600.000VND/kg", "84.000VND" — đã thấy trên tem in thử 02/11/2026) | 0 không, 1 in | 1 / 1 / 1 (trình cài đặt hãng cho VN) | Mẫu tem Beeftown bản 3: để 0 — nhãn đã ghi đơn vị. Sửa được từ 2.15 (`thong-so.ts`); 2.16: gửi tem theo mẫu Beeftown thì tự gửi 0, tem đã đúng mẫu mà còn bật thì mục Mẫu tem có nút "Tắt đơn vị in sau số" (`donViDangIn`) |
 | 188 / 189 | Số chữ số đơn giá / thành tiền trên màn | 0 tự, 1–7 | 6 / 7 | → đơn giá tối đa 999.999 đ/kg; 188 = 7 có dùng được không [chưa biết] |
+| 211 | Đơn vị của đơn giá (System U.Price Unit) | 0 mặc định, 3 kg, 4 g, 7 500 g, 8 100 g | 0 | Sửa được từ 2.17 (0 / 8). 8 = giá theo 100 g: Beeftown Cân ghi dòng hàng cân ký đơn vị 8, giá 100 g (`can-tma.ts` `DON_VI_100G`), mẫu tem Beeftown nhãn "Giá (đ/100g)". Theo sách hãng cân đổi giá về đơn vị hiện (Pack) — 211 = 8 để hiện / in đúng giá 100 g [suy ra, chưa thử] (`dac-ta/spec-wizard.md` mục Spec210–212) |
 | 196 / 208 / 209 | Số lẻ số cái / trọng lượng / tiền trong mã vạch | 0–5 | 3 / 3 / 2 | chỉ xem (§6) |
 | 201 | Số lẻ trọng lượng | | 3 | |
 | **202 / 203** | **Số lẻ đơn giá / thành tiền** | 0–5 | **3 / 3** | chỉ xem — đổi là sai hết giá |

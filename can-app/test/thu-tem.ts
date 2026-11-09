@@ -7,11 +7,16 @@
  * thật (mẫu tem 28, 58×40 mm, 14 ô: vị trí, cỡ chữ, số thứ tự ô như trên cân của
  * quán), chữ trên tem là chữ giả, không có tên hàng thật.
  */
-import { docFileCan } from '../../web/src/lib/kho/can-tma.ts';
+import { docFileCan, tuChuoiByte } from '../../web/src/lib/kho/can-tma.ts';
 import {
-  CANH_CHU, CO_CHU, DIEU_KIEN_IN, LOAI_O, LoiTem, O_THEM_DUOC, TRUONG_BAN, TRUONG_HANG, XOAY,
-  docTem, goiYHsd, khungThat, suaTem, xemTem, type DaTat, type SuaO, type ThayDoiTem,
+  CANH_CHU, CAU_PHAN_VUNG, CO_CHU, DIEU_KIEN_IN, DONG_LOGO, ID_LOGO, LOAI_O, LoiTem, MAU_BEEFTOWN_CO, O_MAU_BEEFTOWN, O_THEM_DUOC,
+  TEN_CONG_TY_TREN_TEM, TRUONG_BAN, TRUONG_HANG, XOAY,
+  docTem, dongBmp, goiYHsd, kemLogo, khoiLogo, khungThat, mauBeeftown, suaTem, temDungLogo, xemTem, type DaTat, type SuaO, type ThayDoiTem,
+  LOAI_FILE_MAU, MAU_BEEFTOWN, apMauTem, docMauTemFile, xuatMauTem, NHAN_DON_GIA_100G, NHAN_DON_GIA_KG, mauBeeftownTheoCan,
 } from '../src/tem.ts';
+import { LOGO_TEM } from '../src/logo-tem.ts';
+import { kiemDongBmp, kiemKhoiGhi } from '../src/giao-thuc.ts';
+import { createHash } from 'node:crypto';
 
 export type Ok = (ten: string, dieuKien: boolean, chiTiet?: string) => void;
 
@@ -51,10 +56,10 @@ const mau28 = (o: readonly DongO[] = O_28, chu = CHU_28) => [dongLab('28', 'QUAN
 // Một mẫu khác đứng trước (như mẫu 1–11 trong file cân thật): không bao giờ bị đụng.
 const MAU_1 = [dongLab('1', 'PF-1', { 6: 'Price' }, { rong: 54, cao: 37 }), las([0, 1, 0, 0, 1, 0, 5, 2, 0, 0, 362, 34]), las([12, 0, 0, 0, 1, 0, 5, 1, 0, 88, 281, 113]), 'LAE\t'];
 
-function fileCan(labs: string[], mauDung = '28', bom = false): Uint8Array {
+function fileCan(labs: string[], mauDung = '28', bom = false, themTms: string[] = []): Uint8Array {
   const L = ['ECS\tVER\tV3.14E8\t', '', 'DWL\tPLU\t', 'PLU\t1\t10001\t\t1\t100,0\t0,0\t0,0\t0\t0\t0\t0\t0\t0\t9\tHàng thử\t', 'END\tPLU\t', '',
     'DWL\tLAB\t', ...labs, 'END\tLAB\t', '',
-    'DWL\tTMS\t', `TMS\t0\t${mauDung}\t`, 'TMS\t202\t3\t', 'END\tTMS\t', '',
+    'DWL\tTMS\t', `TMS\t0\t${mauDung}\t`, 'TMS\t202\t3\t', ...themTms, 'END\tTMS\t', '',
     'DWL\tTIM\t', 'TIM\t26\t9\t29\t8\t0\t0\t', 'END\tTIM\t', '', 'END\tECS\t', ''];
   const u = new TextEncoder().encode(L.join('\r\n'));
   const dau = bom ? 3 : 0;
@@ -261,7 +266,310 @@ export async function thuTem(ok: Ok): Promise<void> {
   ok('Không đổi gì → coDoi false (thẻ Tem báo "chưa có gì thay đổi")', !sua({}).coDoi && !sua({ sua: [], them: [] }).coDoi && bang(sua({}).du, goc));
   ok('Lỗi cũ giữ nguyên chữ: ô không có, chữ quá 40, cột chữ không có', /Mở lại thẻ Tem/.test(loiCua(() => sua({ tat: ['o:99'] })))
     && /dài quá 40/.test(loiCua(() => sua({ chu: { 23: 'x'.repeat(41) } }))) && /không có trên tem/.test(loiCua(() => sua({ chu: { 11: 'lạ' } }))));
+
+  // ===========================================================================
+  console.log('T7 · Mẫu tem Beeftown (2.12; bản 2 từ 2.13): xếp tem 28 theo mẫu tem thịt siêu thị');
+  await thuMauBeeftown(ok);
+
+  // ===========================================================================
+  console.log('T8 · Logo trên tem (2.13): hình đen trắng, dòng BMP, file và khối gửi kèm logo');
+  await thuLogo(ok);
+
+  // ===========================================================================
+  console.log('T9 · File mẫu tem (2.14): đọc, kiểm, áp lên tem, tải tem đang dùng ra');
+  thuFileMau(ok);
+
+  // ===========================================================================
+  console.log('T10 · Giá theo 100 g (2.17): nhãn đơn giá của mẫu Beeftown theo thông số 211');
+  thuGia100g(ok);
 }
+
+/** T10 — cân để giá theo 100 g (thông số 211 = 8): mẫu Beeftown ghi "Giá (đ/100g)" thay "Đơn giá (đ/kg)". */
+function thuGia100g(ok: Ok): void {
+  ok('Nhãn: theo kg "Đơn giá (đ/kg)" (đúng ô của MAU_BEEFTOWN), theo 100 g "Giá (đ/100g)" — vừa ô 154 chấm ở cỡ chữ 0',
+    NHAN_DON_GIA_KG === 'Đơn giá (đ/kg)' && MAU_BEEFTOWN.o.some(o => o.chu === NHAN_DON_GIA_KG) && NHAN_DON_GIA_100G === 'Giá (đ/100g)'
+    && [...NHAN_DON_GIA_100G].length * CO_CHU[0].rong <= 154);
+  ok('mauBeeftownTheoCan: cân theo kg → đúng MAU_BEEFTOWN; theo 100 g → chỉ đổi nhãn đơn giá, mọi ô khác như cũ',
+    mauBeeftownTheoCan({ giaTheo100g: false }) === MAU_BEEFTOWN && (() => {
+      const m = mauBeeftownTheoCan({ giaTheo100g: true });
+      return m.o.length === MAU_BEEFTOWN.o.length && m.o.filter((o, i) => JSON.stringify(o) !== JSON.stringify(MAU_BEEFTOWN.o[i])).length === 1
+        && m.o.some(o => o.chu === NHAN_DON_GIA_100G) && !m.o.some(o => o.chu === NHAN_DON_GIA_KG);
+    })());
+  const TS100 = ['TMS\t211\t8\t'];
+  const f100 = fileCan([...MAU_1, ...mau28()], '28', false, TS100);
+  const mb = mauBeeftown(f100, {});
+  const daAp = suaTem(f100, {}, mb.thay!);
+  const t100 = xemTem(docFileCan(daAp.du), daAp.daTat)!;
+  const nhan = t100.o.filter(o => o.bat && o.cot !== undefined).map(o => t100.chu[o.cot!]);
+  ok('Cân 211 = 8: xếp theo mẫu Beeftown → ô chữ đang in có "Giá (đ/100g)", không có "Đơn giá (đ/kg)"; xếp lần hai không còn gì đổi',
+    nhan.includes(NHAN_DON_GIA_100G) && !nhan.includes(NHAN_DON_GIA_KG)
+    && mauBeeftown(daAp.du, daAp.daTat).thay === null && mauBeeftown(daAp.du, daAp.daTat).lyDo === null, JSON.stringify(nhan));
+  // Tem đã xếp theo mẫu khi cân còn giá theo kg, rồi đổi 211 = 8: nút mẫu Beeftown hiện lại (đổi nhãn).
+  const kgDaAp = suaTem(file28(), {}, mauBeeftown(file28(), {}).thay!);
+  const sang100 = tuChuoiByte(docFileCan(kgDaAp.du).dong.join('\r\n').replace('TMS\t202\t3\t', 'TMS\t202\t3\t\r\nTMS\t211\t8\t'));
+  const lai = mauBeeftown(sang100, kgDaAp.daTat);
+  ok('Tem theo mẫu (giá theo kg) rồi đổi 211 = 8: mẫu Beeftown có thay đổi — thêm nhãn "Giá (đ/100g)", tắt nhãn "Đơn giá (đ/kg)"',
+    mauBeeftown(kgDaAp.du, kgDaAp.daTat).thay === null && lai.thay !== null && lai.thay.them.some(o => o.chu === NHAN_DON_GIA_100G)
+    && lai.thay.tat.length === 1, JSON.stringify(lai.thay));
+}
+
+function thuFileMau(ok: Ok): void {
+  const goc = file28();
+  const f0 = docFileCan(goc);
+  const loiDoc = (v: unknown) => loiCua(() => docMauTemFile(typeof v === 'string' ? v : JSON.stringify(v)));
+  const coBan = { loai: LOAI_FILE_MAU, phienBan: 1, ten: 'Thử', rong: 58, cao: 40 };
+
+  // Mẫu Beeftown là một file mẫu: viết ra JSON rồi đọc lại → áp ra đúng như nút "Xếp tem theo mẫu Beeftown".
+  const tuFile = docMauTemFile(JSON.stringify(MAU_BEEFTOWN));
+  const ap1 = apMauTem(goc, {}, tuFile, f0);
+  ok('Mẫu Beeftown viết thành file rồi nạp lại: ra đúng thay đổi như nút mẫu Beeftown', JSON.stringify(ap1.thay) === JSON.stringify(mauBeeftown(goc, {}).thay)
+    && ap1.lyDo === null && ap1.canhBao.length === 0, JSON.stringify(ap1.canhBao));
+  ok('File có BOM và trường lạ (ghiChu): vẫn đọc được', docMauTemFile('\uFEFF' + JSON.stringify({ ...MAU_BEEFTOWN, ghiChu: { x: 1 }, khongXuatDuoc: ['a'] })).o.length === MAU_BEEFTOWN.o.length);
+
+  // Tải tem đang dùng ra rồi nạp lại: không có gì đổi (đúng từng ô).
+  const xuat = xuatMauTem(f0);
+  const lai = apMauTem(goc, {}, docMauTemFile(JSON.stringify(xuat)), f0);
+  ok('Tải tem 28 ra file rồi nạp lại ngay: tem đã đúng mẫu, không có gì đổi', lai.thay === null && lai.lyDo === null && xuat.o.length === 14
+    && !xuat.khongXuatDuoc, JSON.stringify(lai.thay));
+  ok('File tải ra tự giải thích: loại, bản, cỡ tem, ghi chú đơn vị và các mã (cỡ chữ, canh, khi nào in, loại ô)', xuat.loai === LOAI_FILE_MAU && xuat.phienBan === 1
+    && xuat.rong === 58 && xuat.cao === 40 && /8 chấm = 1 mm/.test(String(xuat.ghiChu.cachDoc))
+    && ['coChu', 'canh', 'khiNaoIn', 'loaiO', 'xoay'].every(k => k in xuat.ghiChu) && (xuat.ghiChu.loaiO as Record<string, string>)['logo'] === 'Logo Beeftown');
+  ok('File tải ra ghi chữ của ô chữ (có dấu, đúng như tem) và không có tên / mật khẩu WiFi', xuat.o.some(o => o.loai === 'chu' && o.chu === 'Ngày đóng gói')
+    && xuat.o.some(o => o.loai === 'hsd') && !JSON.stringify(xuat).includes('WiFi'));
+
+  // Đổi qua lại: áp mẫu Beeftown, rồi nạp file tem cũ → về đúng bố cục cũ (cùng tập ô, cùng khung).
+  const daAp = suaTem(goc, {}, mauBeeftown(goc, {}).thay!);
+  const veCu = apMauTem(daAp.du, daAp.daTat, docMauTemFile(JSON.stringify(xuat)));
+  const sauVe = suaTem(daAp.du, daAp.daTat, veCu.thay!);
+  const tap = (fx: Uint8Array) => xuatMauTem(docFileCan(fx)).o.map(o => JSON.stringify(o)).sort().join('\n');
+  ok('Áp mẫu Beeftown rồi nạp file tem cũ: tem về đúng bố cục cũ (cùng ô, cùng khung, cỡ chữ, canh, khi nào in)', veCu.lyDo === null && tap(sauVe.du) === tap(goc));
+
+  // Ô không viết được bằng file mẫu: liệt kê, không bỏ lặng.
+  const coLa = file28([...O_28, [40, 6, 2, 0, 1, 0, 5, 0, 0, 300, 40, 10], [41, 1, 3, 0, 1, 0, 5, 0, 50, 300, 40, 10]]);
+  const xLa = xuatMauTem(docFileCan(coLa));
+  ok('Tem có hình số 2, dòng hàng cộng dồn: file tải ra liệt kê ở khongXuatDuoc, không ghi vào "o"', xLa.o.length === 14
+    && JSON.stringify(xLa.khongXuatDuoc) === JSON.stringify(['Hình số 2', 'Tên hàng (hàng thứ 3)']), JSON.stringify(xLa.khongXuatDuoc));
+
+  // Đọc file: sai thì nói đúng ô nào, sai gì.
+  const ca: [string, unknown, RegExp][] = [
+    ['không phải JSON', 'abc', /không phải JSON/],
+    ['trống', '  ', /trống/],
+    ['thiếu loai', { phienBan: 1, rong: 58, cao: 40, o: [] }, /không phải mẫu tem của Beeftown Cân/],
+    ['bản 2', { ...coBan, phienBan: 2, o: [] }, /bản 2 — chương trình này đọc bản 1/],
+    ['cỡ tem lạ', { ...coBan, rong: 5, o: [{ loai: 'ten-hang', x: 0, y: 0 }] }, /rộng tem/],
+    ['không có ô', { ...coBan, o: [] }, /không có ô nào/],
+    ['quá 100 ô', { ...coBan, o: Array.from({ length: 101 }, () => ({ loai: 'chu', chu: 'a', x: 0, y: 0 })) }, /tối đa 100 ô/],
+    ['loại ô lạ (WiFi)', { ...coBan, o: [{ loai: 'mat-khau-wifi', x: 0, y: 0 }] }, /Ô thứ 1: loại ô "mat-khau-wifi" không có/],
+    ['x âm', { ...coBan, o: [{ loai: 'ten-hang', x: -1, y: 0 }] }, /Ô thứ 1 \(Tên hàng\): vị trí ngang \("x"\)/],
+    ['cỡ chữ 10', { ...coBan, o: [{ loai: 'ten-hang', x: 0, y: 0 }, { loai: 'don-gia', x: 0, y: 0, coChu: 10 }] }, /Ô thứ 2 \(Đơn giá\): cỡ chữ/],
+    ['khi nào in lạ', { ...coBan, o: [{ loai: 'ten-hang', x: 0, y: 0, khiNaoIn: 50 }] }, /không có trong danh sách/],
+    ['ô chữ thiếu chữ', { ...coBan, o: [{ loai: 'chu', x: 0, y: 0 }] }, /thiếu chữ in ra/],
+    ['chữ quá 40', { ...coBan, o: [{ loai: 'chu', chu: 'x'.repeat(41), x: 0, y: 0 }] }, /dài quá 40/],
+    ['số lẻ', { ...coBan, o: [{ loai: 'ten-hang', x: 1.5, y: 0 }] }, /số nguyên/],
+  ];
+  const hong = ca.filter(([, v, re]) => !re.test(loiDoc(v)));
+  ok('File sai bị từ chối, câu nói đúng ô và chỗ sai: không phải JSON, thiếu loại, bản khác, cỡ tem, 0 / 101 ô, loại ô lạ, số sai, chữ thiếu / dài',
+    hong.length === 0, hong.map(([t, v]) => `${t}: ${loiDoc(v)}`).join(' | '));
+  const hsd = docMauTemFile(JSON.stringify({ ...coBan, o: [{ loai: 'chu-hsd', x: 1, y: 2 }, { loai: 'ten-hang', x: 0, y: 40 }] }));
+  ok('Ô "chu-hsd" không ghi chữ → chữ "HSD"; bỏ trống rộng / cao → cỡ mặc định, bỏ trống cỡ chữ / canh / khi nào in → để trống',
+    hsd.o[0].loai === 'chu-hsd' && hsd.o[0].chu === 'HSD' && hsd.o[0].khiNaoIn === undefined && hsd.o[1].w === 400 && hsd.o[1].coChu === undefined);
+  const apHsd = apMauTem(goc, {}, hsd, f0);
+  const sauHsd = oSauKhiAp(suaTem(goc, {}, apHsd.thay!).du);
+  ok('Bỏ trống thì ô đang có giữ nguyên (chữ "HSD" của tem vẫn "Luôn in", tên hàng vẫn cỡ 5); ô khác của tem bị tắt',
+    sauHsd.length === 2 && sauHsd.some(x => x.chuIn === 'HSD' && x.inKhi === 1 && x.x === 1 && x.y === 2)
+    && sauHsd.some(x => x.ten === 'Tên hàng' && x.font === 5 && x.y === 40 && x.w === 400), JSON.stringify(sauHsd.map(x => [x.ten, x.inKhi, x.font])));
+
+  // Áp: khác cỡ tem không áp; chữ dài hơn ô, ô ra ngoài mép: cảnh báo, không chặn.
+  const lech = apMauTem(goc, {}, docMauTemFile(JSON.stringify({ ...coBan, rong: 60, o: [{ loai: 'ten-hang', x: 0, y: 0 }] })), f0);
+  ok('File mẫu cỡ 60×40 mm, tem cân 58×40 mm: không áp, nói tên mẫu và hai cỡ', lech.thay === null && /Mẫu "Thử" làm cho tem 60×40 mm; tem cân đang dùng là 58×40 mm/.test(lech.lyDo ?? ''), String(lech.lyDo));
+  const hep = apMauTem(goc, {}, docMauTemFile(JSON.stringify({ ...coBan, o: [{ loai: 'chu', chu: 'Thịt bò tươi mỗi ngày', x: 4, y: 4, w: 60, h: 18, coChu: 0 },
+    { loai: 'ten-hang', x: 300, y: 300, w: 400, h: 34, coChu: 2 }] })), f0);
+  ok('Chữ dài hơn ô, ô ra ngoài mép tem: vẫn áp được, kèm cảnh báo', hep.thay !== null && hep.canhBao.some(c => /Thịt bò tươi mỗi ngày.*có thể bị cắt/.test(c))
+    && hep.canhBao.some(c => /ngoài tem/.test(c)), JSON.stringify(hep.canhBao));
+}
+
+/** Ô đang in của mẫu đang dùng sau khi áp: chữ (ô chữ cố định) hoặc tên ô, kèm khung, cỡ, canh, khi nào in. */
+function oSauKhiAp(du: Uint8Array) {
+  const f = docFileCan(du), m = docTem(f).dangDung!;
+  const tem = xemTem(f, {})!;
+  return m.o.map((o, i) => ({ ...o, canh4: o.canh & 0x0F, ten: tem.o[i].ten, chuIn: o.loai === '3' ? tem.chu[tem.o[i].cot!] : null }));
+}
+
+async function thuMauBeeftown(ok: Ok): Promise<void> {
+  const goc = file28();
+  const ap = (du: Uint8Array, daTat: DaTat = {}) => {
+    const mb = mauBeeftown(du, daTat);
+    return { mb, kq: mb.thay ? suaTem(du, daTat, mb.thay) : null };
+  };
+  const { mb, kq } = ap(goc);
+  ok('Tem 28 của quán: áp được, không có lý do chặn', mb.thay !== null && mb.lyDo === null && kq !== null && kq.coDoi && kq.canhBao.length === 0, JSON.stringify(mb.lyDo ?? kq?.canhBao));
+  const o = oSauKhiAp(kq!.du);
+  ok('Sau khi áp: 16 ô đang in (8 ô dữ liệu gồm logo + 8 ô chữ)', o.length === 16, String(o.length));
+
+  // Từng ô của mẫu có mặt đúng khung, cỡ chữ, canh, khi nào in.
+  const thieu = O_MAU_BEEFTOWN.filter(({ ten, k }) => !o.some(x => (x.chuIn !== null ? `Chữ "${x.chuIn}"` : x.ten) === ten
+    && x.x === k.x && x.y === k.y && x.w === k.w && x.h === k.h && x.inKhi === k.inKhi && x.xoay === 0
+    && (k.font === undefined || x.font === k.font) && (k.canh === undefined || x.canh4 === k.canh)));
+  ok('Mỗi ô của mẫu có trên tem: đúng khung, cỡ chữ, canh, khi nào in', thieu.length === 0, thieu.map(t => t.ten).join(' | '));
+  ok('Ô dữ liệu dùng lại ô cũ (số thứ tự giữ nguyên): tên hàng 0, đơn giá 15, thành tiền 16, mã vạch 17, ngày in 26, hạn dùng 27',
+    [[0, 'Tên hàng'], [15, 'Đơn giá'], [16, 'Thành tiền'], [17, 'Mã vạch'], [26, 'Ngày in'], [27, 'Hạn dùng'], [12, 'Trọng lượng / số lượng']]
+      .every(([so, ten]) => o.some(x => x.subId === so && x.ten === ten)));
+  ok('Ô chữ trùng chữ dùng lại ô cũ: "Ngày đóng gói" (số 20), "Đơn giá" (số 10, thành nhãn của hàng theo gói)',
+    o.some(x => x.subId === 20 && x.chuIn === 'Ngày đóng gói') && o.some(x => x.subId === 10 && x.chuIn === 'Đơn giá' && x.inKhi === 3));
+  const tat = kq!.daTat['28'].map(x => docO2(x.tho));
+  ok('Ô không có trong mẫu được tắt và nhớ (bật lại được): số PLU, chữ "Thành tiền", "Trọng lượng", "HSD", tên quán cũ',
+    tat.length === 5 && [1, 4, 5, 28, 29].every(so => tat.some(x => x.subId === so)), tat.map(x => x.subId).join());
+  ok('Ô mới số 30 trở đi (logo + 6 ô chữ), chữ mới vào ô chữ trống (không đè chữ cũ của ô đã tắt)', o.filter(x => x.subId >= 30).length === 7
+    && new Set(o.filter(x => x.loai === '3').map(x => x.chu)).size === 8 && !o.some(x => x.loai === '3' && [1, 3, 12, 16].includes(x.chu) && x.chuIn !== 'Đơn giá'));
+  ok('Ô logo: hình số 1, đúng cỡ logo, góc trên phải (mép phải 448), giữa theo chiều cao mã vạch', o.some(x => x.loai === '6' && x.chu === ID_LOGO
+    && x.ten === 'Logo Beeftown' && x.w === LOGO_TEM.rong && x.h === LOGO_TEM.cao && x.x + x.w === 448 && x.y + x.h / 2 === 6 + 74 / 2));
+  ok('Bản 3: khối lượng, đơn giá, thành tiền cỡ 4 cùng một hàng; ngày đóng gói, hạn sử dụng cỡ 4 hàng dưới; không còn đường kẻ',
+    ['Trọng lượng / số lượng', 'Đơn giá', 'Thành tiền'].every(t => o.some(x => x.ten === t && x.font === 4 && x.y === 140 && x.h === 52))
+    && ['Ngày in', 'Hạn dùng'].every(t => o.some(x => x.ten === t && x.font === 4 && x.y === 216 && x.h === 52))
+    && !o.some(x => /^-+$/.test(x.chuIn ?? '')));
+
+  // Hình học: trong tem, không chồng nhau (trừ cặp nhãn cân ký / theo gói cùng một chỗ), cao đúng dòng chữ, chữ dài nhất vẫn vừa.
+  const R = MAU_BEEFTOWN_CO.rong * 8, C = MAU_BEEFTOWN_CO.cao * 8;
+  ok('Mọi ô trong tem 58×40 mm, cách mép dưới ít nhất 2 mm', o.every(x => x.x >= 0 && x.y >= 0 && x.x + x.w <= R && x.y + x.h <= C - 16));
+  const chong: string[] = [];
+  for (let i = 0; i < o.length; i++) for (let j = i + 1; j < o.length; j++) {
+    const [a, b] = [o[i], o[j]];
+    const cap = (a.inKhi === 2 && b.inKhi === 3) || (a.inKhi === 3 && b.inKhi === 2);
+    if (!cap && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) chong.push(`${a.ten}/${b.ten}`);
+  }
+  ok('Không ô nào chồng ô nào (trừ "Khối lượng (kg)"/"Số lượng", "Đơn giá (đ/kg)"/"Đơn giá")', chong.length === 0, chong.join(' | '));
+  const MAU_DAI: Record<string, string> = { 'Tên hàng': 'Thăn ngoại cắt lát #0142', 'Ngày in': '2026.11.02', 'Hạn dùng': '2026.11.05',
+    'Trọng lượng / số lượng': '99.999', 'Đơn giá': '1.250.000', 'Thành tiền': '9.999.999' };
+  const khongVua = o.filter(x => x.loai !== '0' && x.loai !== '6').filter(x => {
+    const t = x.chuIn ?? MAU_DAI[x.ten];
+    return t === undefined || [...t].length * CO_CHU[x.font].rong > x.w || x.h !== CO_CHU[x.font].cao;
+  });
+  ok('Chữ dài nhất vừa ô (tên 24 ký tự, ngày 2026.11.02, thành tiền 9.999.999) và cao ô = dòng chữ của cỡ chữ', khongVua.length === 0,
+    khongVua.map(x => x.ten).join(' | '));
+  ok('Bốn mép cột thẳng hàng: mép trái 4 / 162 / 320, mép phải 460 (trừ dòng thương hiệu)',
+    o.filter(x => x.inKhi !== 0 && x.canh4 === 4).every(x => [4, 162, 320].includes(x.x)) && o.filter(x => x.w === 456 || x.x === 320).every(x => x.x + x.w === 460));
+
+  // Phần khác của file giữ nguyên.
+  const truoc = docFileCan(goc), sau = docFileCan(kq!.du);
+  const ngoaiLab = (f: typeof truoc) => f.dong.filter((_, i) => !f.phan.LAB || i < f.phan.LAB.dau || i > f.phan.LAB.cuoi);
+  ok('Phần khác của file (PLU, TMS, TIM) và mẫu tem 1 giữ từng byte', JSON.stringify(ngoaiLab(truoc)) === JSON.stringify(ngoaiLab(sau))
+    && JSON.stringify(sau.dong.slice(sau.phan.LAB!.dau, sau.phan.LAB!.dau + 1 + MAU_1.length)) === JSON.stringify(truoc.dong.slice(truoc.phan.LAB!.dau, truoc.phan.LAB!.dau + 1 + MAU_1.length)));
+
+  // Áp lần hai: không có gì đổi (bấm hai lần, hay mở lại thẻ sau khi gửi).
+  const lan2 = mauBeeftown(kq!.du, kq!.daTat);
+  ok('Áp lần hai trên tem đã đúng mẫu: không có gì đổi, không lý do', lan2.thay === null && lan2.lyDo === null, JSON.stringify(lan2));
+  ok('Tem đã đúng mẫu: không còn gợi ý HSD (nhãn "Hạn sử dụng" và ô hạn dùng đã "chỉ khi có hạn dùng")', goiYHsd(docFileCan(kq!.du), kq!.daTat).length === 0);
+
+  // Tem đã xếp theo bản 2.12 (chữ BEEFTOWN góc trên phải, dòng địa chỉ cuối tem): bấm lại → hai ô đó tắt, nhớ để bật lại
+  // (cân không in được logo thì bật lại chữ BEEFTOWN, bỏ chọn ô logo).
+  const { kq: kqB } = ap(file28([...O_28, [30, 3, 5, 0, 1, 0, 5, 0, 4, 282, 456, 18]], { ...CHU_28, 18: 'BEEFTOWN', 11: 'Tầng 3, 63 Hồ Tùng Mậu' }));
+  const tatB = kqB!.daTat['28'].map(x => docO2(x.tho).subId);
+  ok('Tem bản 2.12 (chữ BEEFTOWN, dòng địa chỉ): bấm lại thì hai ô đó tắt và được nhớ; tem có ô logo',
+    tatB.includes(29) && tatB.includes(30) && !oSauKhiAp(kqB!.du).some(x => x.chuIn === 'BEEFTOWN' || x.chuIn === 'Tầng 3, 63 Hồ Tùng Mậu')
+    && temDungLogo(docFileCan(kqB!.du)), tatB.join());
+
+  // Tem thiếu ô: thêm theo O_THEM_DUOC; ô xoay được xoay về 0.
+  const { kq: kqThieu } = ap(file28(bien({ 0: [0, 1, 0, 0, 1, 1, 5, 5, 400, 0, 408, 43] }, [8, 11])));
+  const oThieu = oSauKhiAp(kqThieu!.du);
+  ok('Tem không có mã vạch, hạn dùng: thêm ô mới đúng chỗ; tên hàng đang xoay 90° về 0°',
+    oThieu.some(x => x.ten === 'Mã vạch' && x.subId >= 30 && x.x === 4 && x.y === 6) && oThieu.some(x => x.ten === 'Hạn dùng' && x.subId >= 30 && x.inKhi === 9)
+    && oThieu.some(x => x.ten === 'Tên hàng' && x.subId === 0 && x.xoay === 0 && x.x === 4) && oThieu.length === 16);
+
+  // Không áp được: lý do rõ, không bao giờ trả thay đổi hỏng.
+  const khac40 = mauBeeftown(fileCan([...MAU_1, dongLab('28', 'THU', CHU_28, { rong: 40, cao: 30 }), ...O_28.map(las), 'LAE\t']), {});
+  ok('Tem 40×30 mm: không áp, nói cỡ tem', khac40.thay === null && /58×40 mm/.test(khac40.lyDo ?? '') && /40×30 mm/.test(khac40.lyDo ?? ''), String(khac40.lyDo));
+  const MAU_27 = [dongLab('27', 'CONG DON', { 6: 'Hàng' }, { rong: 58, cao: 40 }), las([0, 2, 0, 0, 1, 0, 0, 5, 0, 0, 384, 26]),
+    las([1, 5, 0, 0, 1, 0, 0, 0, 20, 26, 200, 50]), 'LAE\t'];
+  const pv = mauBeeftown(fileCan([...MAU_1, ...MAU_27], '27'), {});
+  ok('Mẫu có Phân vùng: không áp, câu Phân vùng như mục Mẫu tem', pv.thay === null && pv.lyDo === CAU_PHAN_VUNG);
+  const gan99 = mauBeeftown(file28(bien({ 13: [95, ...O_28[13].slice(1)] })), {});
+  ok('Số thứ tự ô gần 99 (ô mới không đủ số): không áp, nói lý do của suaTem', gan99.thay === null && /số thứ tự ô 99/.test(gan99.lyDo ?? ''), String(gan99.lyDo));
+  ok('Không có mẫu tem: không áp', mauBeeftown(fileCan([]), {}).thay === null);
+
+  // Tên công ty trên tem khớp chữ pháp lý của website (web/src/lib/chu.ts).
+  const chuTs = await Bun.file(new URL('../../web/src/lib/chu.ts', import.meta.url)).text();
+  ok('Tên công ty = PHAP_NHAN.ten của web/src/lib/chu.ts; tem không còn dòng địa chỉ (bỏ từ 2.13)',
+    chuTs.includes(`ten: '${TEN_CONG_TY_TREN_TEM}'`) && !o.some(x => /Hồ Tùng Mậu/.test(x.chuIn ?? '')));
+}
+
+/** Giải dữ liệu của dòng BMP (hai chữ '@'…'O' mỗi byte) — để kiểm thử đọc lại đúng thứ đã mã hoá. */
+function giaiBmp(d: string): { id: number; du: number[] } {
+  const f = d.split('\t');
+  const du: number[] = [];
+  for (let i = 0; i < f[2].length; i += 2) du.push(((f[2].charCodeAt(i) - 64) << 4) | (f[2].charCodeAt(i + 1) - 64));
+  return { id: Number(f[1]), du };
+}
+
+async function thuLogo(ok: Ok): Promise<void> {
+  // Logo đen trắng tạo từ SVG của bộ nhận diện (scripts/tao-logo-tem.ts): đúng nguồn, đúng cỡ, có chấm đen.
+  const svg = await Bun.file(new URL('../../' + LOGO_TEM.nguon, import.meta.url)).text();
+  ok('Logo tạo từ đúng SVG hiện tại (sha256 khớp — SVG đổi thì chạy lại scripts/tao-logo-tem.ts)',
+    LOGO_TEM.nguon === 'web/public/thuong-hieu/chu-beeftown-den.svg' && createHash('sha256').update(svg).digest('hex') === LOGO_TEM.sha256Nguon);
+  const den = LOGO_TEM.hang.join('').split('').reduce((n, c) => n + (parseInt(c, 16).toString(2).match(/1/g)?.length ?? 0), 0);
+  ok('Logo 184 × 26 chấm (23 × 3,25 mm), mỗi hàng 23 byte, có chấm đen và chấm trắng', LOGO_TEM.rong === 184 && LOGO_TEM.cao === 26
+    && LOGO_TEM.hang.length === 26 && LOGO_TEM.hang.every(h => /^[0-9a-f]{46}$/.test(h)) && den > 1000 && den < 184 * 26 - 1000, String(den));
+
+  // Dòng BMP: đầu 96 byte (số hình, rộng, cao — byte thấp trước — rồi 88 byte 0), các hàng chấm, mỗi byte hai chữ '@'…'O'.
+  const { id, du } = giaiBmp(DONG_LOGO);
+  ok('Dòng BMP của logo: "BMP⇥1⇥…⇥", toàn chữ @…O, đầu 96 byte đúng số hình / rộng / cao, sau đó đúng từng byte của logo',
+    /^BMP\t1\t[@-O]+\t$/.test(DONG_LOGO) && id === 1 && du.length === 96 + 23 * 26
+    && du[0] === 1 && du[1] === 0 && du[2] === 0 && du[3] === 0 && du[4] === 184 && du[5] === 0 && du[6] === 26 && du[7] === 0
+    && du.slice(8, 96).every(b => b === 0)
+    && du.slice(96).map(b => b.toString(16).padStart(2, '0')).join('') === LOGO_TEM.hang.join(''));
+  const le = giaiBmp(dongBmp(7, { rong: 10, cao: 2, hang: ['ffff', '8040'] })).du.slice(96);
+  ok('Hình rộng không chia hết cho 8: bit thừa cuối hàng ghi 0 (trắng); số hình 7 vào đầu', JSON.stringify(le) === JSON.stringify([0xFF, 0xC0, 0x80, 0x40])
+    && giaiBmp(dongBmp(7, { rong: 10, cao: 2, hang: ['ffff', '8040'] })).du[0] === 7);
+  ok('Hình sai bị từ chối: số hình 0 / 256, hàng thiếu byte, sai số hàng, quá 432 chấm',
+    [() => dongBmp(0, LOGO_TEM), () => dongBmp(256, LOGO_TEM), () => dongBmp(1, { rong: 16, cao: 1, hang: ['ff'] }),
+      () => dongBmp(1, { rong: 8, cao: 2, hang: ['ff'] }), () => dongBmp(1, { rong: 440, cao: 1, hang: ['00'.repeat(55)] })]
+      .every(f => /Số hình|Hình không đúng cỡ/.test(loiCua(f))));
+
+  // Cổng ghi (giao-thuc.ts kiemKhoiGhi): nhận khối BMP đúng dạng, chặn dòng hỏng trước khi gửi byte nào.
+  const loiGhi = (k: string[]) => { try { kiemKhoiGhi(k); return ''; } catch (e) { return (e as Error).message; } };
+  ok('Cổng ghi nhận khối logo đi trước khối mẫu tem', kiemDongBmp(DONG_LOGO) === null
+    && loiGhi(['DWL\tBMP\t', DONG_LOGO, 'END\tBMP\t', 'DWL\tLAB\t', ...mau28().map(d => Buffer.from(d, 'utf8').toString('latin1')), 'END\tLAB\t']) === '');
+  const sai = [
+    DONG_LOGO.replace('BMP\t1\t', 'BMP\t2\t'),                       // số hình ở cột 2 khác số trong đầu
+    DONG_LOGO.slice(0, -3) + '\t',                                     // thiếu một chữ
+    DONG_LOGO.slice(0, -2) + 'Z\t',                                    // chữ ngoài @…O
+    DONG_LOGO.replace('BMP\t1\t', 'BMP\t300\t'),                     // số hình quá 255
+    'BMP\t1\t' + 'A'.repeat(100) + '\t',                              // thiếu đầu 96 byte
+  ];
+  ok('Cổng ghi chặn dòng BMP hỏng: sai số hình, thiếu / thừa dữ liệu, chữ lạ, số hình quá 255, thiếu đầu',
+    sai.every(d => kiemDongBmp(d) !== null && /hình|BMP/.test(loiGhi(['DWL\tBMP\t', d, 'END\tBMP\t']))), sai.map(d => kiemDongBmp(d)).join(' | '));
+  ok('Cổng ghi vẫn chặn phần khác: FNT, VER, CLR BMP', /FNT/.test(loiGhi(['DWL\tFNT\t', 'FNT\tAA\t', 'END\tFNT\t']))
+    && /VER/.test(loiGhi(['DWL\tVER\t', 'VER\tAA\t', 'END\tVER\t'])) && /BMP/.test(loiGhi(['CLR\tBMP\t', 'CLR\tEND\t'])));
+
+  // File và khối gửi: tem có ô logo → kèm logo; không có → nguyên như cũ.
+  const goc = file28();
+  const mb = mauBeeftown(goc, {});
+  const daAp = suaTem(goc, {}, mb.thay!).du;
+  const coLogo = kemLogo(daAp);
+  const dong = docFileCan(coLogo).dong;
+  const iBmp = dong.indexOf('DWL\tBMP\t'), iLab = dong.indexOf('DWL\tLAB\t');
+  ok('Tem có ô logo: file thêm phần BMP (DWL BMP, dòng logo, END BMP, dòng trống) ngay trước phần LAB; phần khác giữ nguyên',
+    iBmp >= 0 && iBmp < iLab && dong[iBmp + 1] === DONG_LOGO && dong[iBmp + 2] === 'END\tBMP\t' && dong[iBmp + 3] === ''
+    && JSON.stringify(dong.filter((_, i) => i < iBmp || i > iBmp + 3)) === JSON.stringify(docFileCan(daAp).dong));
+  ok('Kèm logo lần hai: file y nguyên (không thêm phần BMP thứ hai)', bang(kemLogo(coLogo), coLogo));
+  ok('Tem không có ô logo: file y nguyên, không khối gửi logo', bang(kemLogo(goc), goc) && khoiLogo(docFileCan(goc)).length === 0);
+  ok('Tem có ô logo: khối gửi là DWL BMP, dòng logo, END BMP', JSON.stringify(khoiLogo(docFileCan(coLogo))) === JSON.stringify(['DWL\tBMP\t', DONG_LOGO, 'END\tBMP\t']));
+  // Phần BMP có sẵn: hình khác số thì thêm logo vào cùng phần; hình số 1 khác thì thay; thiếu END thì báo, không đoán.
+  const voiBmp = (bmp: string[]) => {
+    const L = docFileCan(daAp).dong.slice(); L.splice(L.indexOf('DWL\tLAB\t'), 0, 'DWL\tBMP\t', ...bmp, '');
+    return new TextEncoder().encode(L.join('\r\n'));
+  };
+  const hinh2 = dongBmp(2, { rong: 8, cao: 1, hang: ['ff'] });
+  const d2 = docFileCan(kemLogo(voiBmp([hinh2, 'END\tBMP\t']))).dong;
+  ok('Phần BMP đã có hình số 2: thêm logo vào cùng phần, giữ hình số 2', d2.filter(d => d === 'DWL\tBMP\t').length === 1
+    && d2.includes(hinh2) && d2.includes(DONG_LOGO));
+  const cu1 = dongBmp(1, { rong: 8, cao: 1, hang: ['0f'] });
+  const d1 = docFileCan(kemLogo(voiBmp([cu1, 'END\tBMP\t']))).dong;
+  ok('Hình số 1 khác (logo cũ): thay bằng logo Beeftown', d1.includes(DONG_LOGO) && !d1.includes(cu1));
+  ok('Phần BMP thiếu END: báo lỗi, không đoán', /thiếu dòng kết thúc/.test(loiCua(() => kemLogo(voiBmp([hinh2])))));
+}
+
+/** Đọc một dòng LAS (dòng ô đã tắt trong tem-da-tat.json). */
+const docO2 = (tho: string) => ({ subId: Number(tho.split('\t')[1]) });
 
 // Chạy riêng: npx bun test/thu-tem.ts
 if (import.meta.main) {

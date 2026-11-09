@@ -1,0 +1,31 @@
+# Caddy — proxy HTTPS đứng trước máy chủ đơn trên máy chủ thuê ở Việt Nam.
+# may-chu.sh chép file này thành /etc/caddy/Caddyfile, thay TEN_MIEN_MAY_CHU bằng tên miền (ví dụ don.beeftown.vn).
+# Đừng sửa thẳng /etc/caddy/Caddyfile: lần "cap-nhat" sau sẽ ghi đè. Sửa file này trong repo (một PR), rồi cập nhật.
+#
+# Caddy tự lấy và tự gia hạn chứng chỉ HTTPS (Let's Encrypt) — cần cổng 80 và 443 mở, tên miền trỏ thẳng IP máy này.
+# Tên miền ở Cloudflare thì để "DNS only" (đám mây xám): bật proxy (đám mây cam) là đơn của khách đi qua máy chủ
+# Cloudflare, trái quy tắc dữ liệu khách Mini App xử lý ở Việt Nam (may-chu-don/CLAUDE.md, "Vì sao là một máy chủ riêng").
+#
+# Không ghi nhật ký truy cập (không có mục log): đường xem đơn mang khóa xem (?khoa=) trong địa chỉ.
+
+TEN_MIEN_MAY_CHU {
+	encode gzip
+
+	# Tin tiền về chỉ nhận từ máy của SePay. IP khác → 403, không tới máy chủ đơn (máy chủ vẫn kiểm chữ ký HMAC; đây là
+	# lớp chặn thứ hai). Danh sách: developer.sepay.vn/vi/dia-chi-ip, đọc 02/11/2026. SePay đổi IP thì sửa danh sách
+	# ở đây và trong crm/test/test-may-chu-don-cai-dat.mjs (IP_SEPAY), rồi chạy "cap-nhat".
+	@khong_phai_sepay {
+		path /sepay /sepay/*
+		not remote_ip 172.236.138.20 172.233.83.68 171.244.35.2 151.158.108.68 151.158.109.79 103.255.238.139 45.57.137.67 2400:8905::2000:8cff:fe98:45cd 2600:3c15::2000:8aff:fedd:874b
+	}
+	respond @khong_phai_sepay "Chỉ SePay được gọi đường này." 403
+
+	# Máy chủ đơn chỉ nghe trong máy (127.0.0.1:8787, TIN_PROXY=1): IP khách lấy từ mục cuối X-Forwarded-For mà Caddy đặt.
+	reverse_proxy 127.0.0.1:8787
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		-Server
+	}
+}

@@ -68,6 +68,21 @@
 import type { HaiThuTieng, NgonNguNB } from './chung.ts';
 
 export const GIA_TOI_DA = 999999;      // cửa sổ đơn giá trên cân có 6 chữ số
+
+/**
+ * GIÁ THEO 100 G (Beeftown Cân 2.17) — chưa thử trên cân thật. Thông số 211 của cân ("System U.Price Unit", đơn vị của
+ * đơn giá trên màn và tem) = 8 thì cân hiện, in đơn giá cho 100 g. Khi đó mọi dòng hàng cân ký từ kho ghi đơn vị 8
+ * (cột 4: "100 g" trong danh mục đơn vị của hãng) và giá cho 100 g (= giá/kg ÷ 10, làm tròn tới đồng) — ô đơn giá 6 chữ
+ * số nên giá/kg đưa lên được tới 9.999.990 đ. Thông số 211 khác 8 (mặc định): như cũ — đơn vị 1, giá/kg, tối đa 999.999 đ.
+ * Kho, FABi, trang web vẫn giữ giá/kg; mã vạch trên tem mang khối lượng (kg) nên không đổi. Đọc file: dòng đơn vị 8 có
+ * DongPlu.gia đã nhân 10 (đồng / kg) để so với kho như mọi dòng khác. Nguồn: dac-ta/spec-wizard.md (Spec210–212, Pack của
+ * đơn vị; "test before use"), dac-ta/plu-hsd.md (UnitID 8 → giá theo 100 g).
+ */
+export const DON_VI_100G = '8';
+/** Số thông số "đơn vị của đơn giá" trên cân (giá trị 8 = 100 g). */
+export const TS_DON_VI_GIA = 211;
+/** Giá/kg cao nhất đưa lên cân khi giá theo 100 g: ô đơn giá 6 chữ số, giá 100 g × 10. */
+export const GIA_KG_TOI_DA_100G = GIA_TOI_DA * 10;
 export const TEN_TOI_DA = 40;          // dài hơn thì cắt bớt khi đưa lên cân
 export const TEN_DAI = 24;             // dài hơn dễ bị cắt khi in trên tem
 export const CO_FILE_TOI_DA = 5_000_000;
@@ -251,7 +266,8 @@ export interface DongPlu {
   so: number;
   ma: string;            // đã chuẩn hoá, "" nếu không có
   cachBan: string;
-  gia: number | null;    // đồng
+  /** Đồng; dòng đơn vị 100 g (DON_VI_100G) đã nhân 10 — đồng / kg như dòng cân ký đơn vị 1. Giá ghi trong file: giaTuFile(cot[5]). */
+  gia: number | null;
   ten: string;           // đã đổi sang chữ để hiện
   hsd: number | null;    // hạn dùng đang ghi (dongHsd): số ngày, null = không in
 }
@@ -264,6 +280,8 @@ export interface FileCan {
   soLeGia: number;
   phienBan: string;
   plu: DongPlu[];
+  /** Thông số 211 = 8: cân để đơn giá theo 100 g — dòng hàng từ kho ghi đơn vị 8, giá 100 g (xem DON_VI_100G). */
+  giaTheo100g: boolean;
 }
 
 export function docFileCan(u8: Uint8Array): FileCan {
@@ -315,22 +333,25 @@ export function docFileCan(u8: Uint8Array): FileCan {
   }
   const soLe = (v: string | undefined) => (v !== undefined && /^\d$/.test(v) ? parseInt(v, 10) : null);
   const soLeGia = soLe(spec[202]) ?? soLe(spec[203]) ?? 3;
+  const giaTheo100g = /^\s*0*8\s*$/.test(spec[TS_DON_VI_GIA] ?? '');
 
   const plu: DongPlu[] = [];
   for (let i = phan.PLU.dau + 1; i < phan.PLU.cuoi; i++) {
     if (!dong[i].startsWith('PLU\t')) continue;
     const cot = dong[i].split('\t');
+    const cachBan = cot[COT.CACH_BAN] ?? '1';
+    const gia = giaTuFile(cot[COT.GIA], soLeGia);
     plu.push({
       dong: i, tho: dong[i], cot,
       so: parseInt(cot[COT.SO], 10) || 0,
       ma: chuanMa(cot[COT.MA]),
-      cachBan: cot[COT.CACH_BAN] ?? '1',
-      gia: giaTuFile(cot[COT.GIA], soLeGia),
+      cachBan,
+      gia: gia !== null && cachBan === DON_VI_100G ? gia * 10 : gia,
       ten: docChu(cot[COT.TEN]),
       hsd: dongHsd(cot),
     });
   }
-  return { coBom, xuongDong, dong, phan, soLeGia, phienBan: dau[2] ?? '', plu };
+  return { coBom, xuongDong, dong, phan, soLeGia, phienBan: dau[2] ?? '', plu, giaTheo100g };
 }
 
 /**
@@ -452,7 +473,7 @@ function kiemHsd(h: HangKho, nn: NgonNguNB): { hsd?: number | null; canhBao?: st
                                               en: `The use-by "${n}" is not valid — the label will not print a use-by date.` })) };
 }
 
-function kiemHang(h: HangKho, soChuSo: number, nn: NgonNguNB): { ok: true; v: HangHopLe } | { ok: false; lyDo: string } {
+function kiemHang(h: HangKho, soChuSo: number, nn: NgonNguNB, theo100g = false): { ok: true; v: HangHopLe } | { ok: false; lyDo: string } {
   const c = (x: HaiThuTieng) => x[nn];
   const ma = chuanMa(h.ma_can);
   if (MA_CAN_DANH_RIENG.has(ma)) {
@@ -465,9 +486,14 @@ function kiemHang(h: HangKho, soChuSo: number, nn: NgonNguNB): { ok: true; v: Ha
   }
   if (h.gia_ban_kg === null || h.gia_ban_kg === undefined) return { ok: false, lyDo: c({ vi: 'Chưa có giá bán/kg.', en: 'No sale price/kg yet.' }) };
   if (!(h.gia_ban_kg > 0)) return { ok: false, lyDo: c({ vi: 'Giá bán/kg đang là 0 đ.', en: 'The sale price/kg is 0 ₫.' }) };
-  if (h.gia_ban_kg > GIA_TOI_DA) {
-    return { ok: false, lyDo: c({ vi: `Giá ${h.gia_ban_kg.toLocaleString('vi-VN')} đ/kg vượt mức cân hiện được (999.999 đ).`,
-                                   en: `The price ${h.gia_ban_kg.toLocaleString('en-US')} ₫/kg is more than the scale can show (999,999 ₫).` }) };
+  if (theo100g && h.gia_ban_kg > GIA_KG_TOI_DA_100G) {
+    return { ok: false, lyDo: c({ vi: `Giá ${h.gia_ban_kg.toLocaleString('vi-VN')} đ/kg vượt mức cân hiện được kể cả khi giá theo 100 g (9.999.990 đ/kg).`,
+                                   en: `The price ${h.gia_ban_kg.toLocaleString('en-US')} ₫/kg is more than the scale can show even with prices per 100 g (9,999,990 ₫/kg).` }) };
+  }
+  if (!theo100g && h.gia_ban_kg > GIA_TOI_DA) {
+    return { ok: false, lyDo: c({
+      vi: `Giá ${h.gia_ban_kg.toLocaleString('vi-VN')} đ/kg vượt mức cân hiện được (999.999 đ). Đặt giá trên cân theo 100 g (Beeftown Cân, mục Cân & thông số → Đơn vị của đơn giá) thì đưa được tới 9.999.990 đ/kg.`,
+      en: `The price ${h.gia_ban_kg.toLocaleString('en-US')} ₫/kg is more than the scale can show (999,999 ₫). Set the scale to prices per 100 g (Beeftown Scale, Scale & settings → Unit of the unit price) to send up to 9,999,990 ₫/kg.` }) };
   }
   let ten = sachTen(h.ten);
   let canhBao: string | undefined;
@@ -480,7 +506,15 @@ function kiemHang(h: HangKho, soChuSo: number, nn: NgonNguNB): { ok: true; v: Ha
   }
   const hsd = kiemHsd(h, nn);
   if (hsd.canhBao) canhBao = canhBao ? `${canhBao} ${hsd.canhBao}` : hsd.canhBao;
-  const v: HangHopLe = { hang: h, ma, ten, gia: Math.round(h.gia_ban_kg), canhBao };
+  // Giá theo 100 g: cân giữ giá 100 g tới đồng — giá/kg trên cân là bội của 10 (so với cân không lệch vì làm tròn).
+  let gia = Math.round(h.gia_ban_kg);
+  if (theo100g && gia % 10 !== 0) {
+    gia = Math.round(gia / 10) * 10;
+    const lam = c({ vi: `Giá theo 100 g làm tròn: ${(gia / 10).toLocaleString('vi-VN')} đ/100 g (${gia.toLocaleString('vi-VN')} đ/kg) — tem tính theo giá này.`,
+                    en: `Price per 100 g rounded: ${(gia / 10).toLocaleString('en-US')} ₫/100 g (${gia.toLocaleString('en-US')} ₫/kg) — the label uses this price.` });
+    canhBao = canhBao ? `${canhBao} ${lam}` : lam;
+  }
+  const v: HangHopLe = { hang: h, ma, ten, gia, canhBao };
   if (hsd.hsd !== undefined) {
     v.hsd = hsd.hsd;
     if (hsd.nguon) v.hsdNguon = hsd.nguon;
@@ -508,7 +542,7 @@ export function lapKeHoach(file: FileCan, danhMuc: HangKho[], tuy: TuyChonDongBo
     if (!h.dang_dung) continue;
     const ma = chuanMa(h.ma_can);
     if (!ma) continue;
-    const kq = kiemHang(h, tuy.soChuSoMa, nn);
+    const kq = kiemHang(h, tuy.soChuSoMa, nn, file.giaTheo100g);
     if (kq.ok) hopLe.set(ma, kq.v); else loiTheoMa.set(ma, { hang: h, lyDo: kq.lyDo });
   }
 
@@ -524,7 +558,7 @@ export function lapKeHoach(file: FileCan, danhMuc: HangKho[], tuy: TuyChonDongBo
       soDaDung.add(p.so);
       // Dòng thiếu cột 32 (không gặp ở firmware thật) thì không ghi được HSD — coi như không quản.
       const quanHsd = hang.hsd !== undefined && coCotHsd(p.cot);
-      const doi = p.ten !== hang.ten || p.gia !== hang.gia || p.cachBan !== '1' || (quanHsd && p.hsd !== hang.hsd);
+      const doi = p.ten !== hang.ten || p.gia !== hang.gia || p.cachBan !== donViCanKy(file) || (quanHsd && p.hsd !== hang.hsd);
       const d: DongKeHoach = { loai: doi ? 'sua' : 'giu', so: p.so, maCan: p.ma, ten: hang.ten, gia: hang.gia, maKho: hang.hang.ma,
         tenCu: p.ten, giaCu: p.gia, canhBao: hang.canhBao, goc: p };
       if (quanHsd) {
@@ -622,6 +656,11 @@ export function dongPluRieng(file: FileCan, h: { so: number; ma: string; ten: st
   return c.join('\t');
 }
 
+/** Đơn vị (cột 4) của dòng hàng cân ký từ kho: 8 (100 g) khi cân để giá theo 100 g, không thì 1 (cân ký, giá/kg). */
+function donViCanKy(file: FileCan): string {
+  return file.giaTheo100g ? DON_VI_100G : '1';
+}
+
 function dongPlu(d: DongKeHoach, file: FileCan): string | null {
   if (d.loai === 'xoa' || d.loai === 'bo_qua') return null;
   if ((d.loai === 'giu' || d.loai === 'ngoai_kho') && d.goc) return d.goc.tho;
@@ -629,8 +668,13 @@ function dongPlu(d: DongKeHoach, file: FileCan): string | null {
   const c = goc ? goc.cot.slice() : cotMoi(file);
   c[COT.SO] = String(d.so);
   if (!goc || goc.ma !== d.maCan) c[COT.MA] = d.maCan;
-  c[COT.CACH_BAN] = '1';
-  if (!goc || goc.gia !== d.gia) c[COT.GIA] = giaVaoFile(d.gia ?? 0, file.soLeGia);
+  const donVi = donViCanKy(file);
+  c[COT.CACH_BAN] = donVi;
+  // Đổi đơn vị thì luôn ghi lại giá: giá cũ để nguyên dưới đơn vị mới là sai gấp 10 (hay chia 10).
+  if (!goc || goc.gia !== d.gia || goc.cachBan !== donVi) {
+    const gia = d.gia ?? 0;
+    c[COT.GIA] = giaVaoFile(donVi === DON_VI_100G ? gia / 10 : gia, file.soLeGia);
+  }
   if (!goc || goc.ten !== d.ten) {
     c[COT.TEN] = ghiChu(d.ten);
     if (c.length > COT.TIM_KIEM) c[COT.TIM_KIEM] = maTimKiem(d.ten);

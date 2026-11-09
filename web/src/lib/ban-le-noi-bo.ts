@@ -41,7 +41,7 @@ import { dichNB, type HaiThuTieng, type NgonNguNB } from './ngon-ngu-noi-bo.ts';
 import { dichCau } from './cau-noi-bo.ts';
 import { CAU_MAT_MANG_GHI, laLoiMang } from './qua-tai.ts';
 import { boDau, dinhDangKg, dinhDangTien, docSoNguyen, docTien, laUuid } from './kho/chung.ts';
-import { GIA_TOI_DA } from './kho/can-tma.ts';
+import { GIA_KG_TOI_DA_100G, GIA_TOI_DA } from './kho/can-tma.ts';
 import { timChuoiCam } from './chuoi-cam.js';
 
 /** Vai xem menu — đúng bộ bốn của policy ban_le_san_pham_doc (test-noi-bo-ban-le.mjs so với pg_policy). */
@@ -372,8 +372,9 @@ export const CANH_BAO_BAN_LE: Record<string, { cau: HaiThuTieng<CauCanhBao>; nan
     vi: (ma: string) => `Mặt hàng kho chưa có giá mỗi kg: Beeftown Cân không gửi mã ${ma} xuống cân — nếu mã này đã có trên cân thì cân vẫn in giá cũ.`,
     en: (ma: string) => `The stock item has no price per kg: Beeftown Scale does not send code ${ma} to the scale — if the code is already on the scale, it still prints the old price.` } },
   gia_qua_can: { nang: true, cau: {
-    vi: (ma: string) => `Cân quầy chỉ nhận tối đa ${dinhDangTien(GIA_TOI_DA, 'vi')}/kg: Beeftown Cân không gửi giá này xuống cân — nếu mã ${ma} đã có trên cân thì cân vẫn in giá cũ.`,
-    en: (ma: string) => `The counter scale accepts at most ${dinhDangTien(GIA_TOI_DA, 'en')}/kg: Beeftown Scale does not send this price to the scale — if code ${ma} is already on the scale, it still prints the old price.` } },
+    // Beeftown Cân 2.17: cân để giá theo 100 g (thông số 211) thì nhận tới GIA_KG_TOI_DA_100G — web không biết cân đang để kiểu nào.
+    vi: (ma: string) => `Cân quầy để giá theo kg chỉ nhận tối đa ${dinhDangTien(GIA_TOI_DA, 'vi')}/kg: Beeftown Cân không gửi giá này xuống cân — nếu mã ${ma} đã có trên cân thì cân vẫn in giá cũ. Đặt giá trên cân theo 100 g (Beeftown Cân, Cân & thông số → Đơn vị của đơn giá) thì gửi được tới ${dinhDangTien(GIA_KG_TOI_DA_100G, 'vi')}/kg.`,
+    en: (ma: string) => `With prices per kg the counter scale accepts at most ${dinhDangTien(GIA_TOI_DA, 'en')}/kg: Beeftown Scale does not send this price to the scale — if code ${ma} is already on the scale, it still prints the old price. Set the scale to prices per 100 g (Beeftown Scale, Scale & settings → Unit of the unit price) to send up to ${dinhDangTien(GIA_KG_TOI_DA_100G, 'en')}/kg.` } },
   thieu_gia: { nang: false, cau: {
     vi: 'Đang bán mà chưa gói nào có giá.', en: 'On sale, but no pack has a price yet.' } },
   khay_nguyen: { nang: true,

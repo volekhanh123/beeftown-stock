@@ -109,6 +109,11 @@
 !/may-chu-don/src/*.css
 !/may-chu-don/test/*.ts
 !/may-chu-don/scripts/*.ts
+# cai-dat/: bộ cài lên máy chủ thuê (README, "Đưa lên máy chủ thuê"). Chỉ file mẫu — bí mật thật nằm ở /etc/beeftown trên máy chủ.
+!/may-chu-don/cai-dat/may-chu.sh
+!/may-chu-don/cai-dat/may-chu-don.service
+!/may-chu-don/cai-dat/may-chu-don.env.mau
+!/may-chu-don/cai-dat/Caddyfile.mau
 
 # --- ĐƯỢC PHÉP: Mở rộng FABi (extension Chrome: món mới của kho → "Thêm món từ file" của FABi CMS) ---
 # Mở từng file, không mở cả thư mục. Không ảnh, không file khóa: extension không cần bí mật nào.

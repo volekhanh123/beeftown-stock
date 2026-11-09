@@ -398,8 +398,9 @@ await nhom('1 · QUYỀN', async () => {
   const rCu = await menu();
   const hCu = await hien();
   const go = await thuHoi('zalo_oa_url');
-  ok('Dòng zalo_oa_url không hợp lệ có từ trước 0101 (chèn khi tạm tắt trigger) vẫn gỡ được, và kênh không mở',
-     k.mo === false && rCu.loi === null && rCu.rows.length === 0 && hCu === false
+  // 0113: kênh mở chỉ cần công tắc — link Zalo hỏng không còn đóng trang (đơn ghi thẳng vào database).
+  ok('Dòng zalo_oa_url không hợp lệ có từ trước 0101 (chèn khi tạm tắt trigger) vẫn gỡ được; kênh vẫn mở (0113)',
+     k.mo === true && rCu.loi === null && rCu.rows.length > 0 && hCu === true
      && go.loi === null && go.kq === true && (await dangSong('zalo_oa_url')) === null,
      `kênh mở: ${k.mo} · menu: ${vi(rCu)} · hien: ${hCu} · gỡ: ${vi(go)}`);
   await congBoPhai('zalo_oa_url', LINK_OA);
@@ -520,7 +521,8 @@ await nhom('5 · LUẬT GIÁ — quyết định 1 của Khánh (26/10/2026): tr
   await congBoPhai('hien_mua_thit_ve', true);
   await thuHoi('zalo_oa_url');
   r = await menu();
-  ok('Công tắc bật, chưa công bố zalo_oa_url → không dòng nào', r.loi === null && r.rows.length === 0, vi(r));
+  // 0113: link Zalo không còn là điều kiện mở trang (đơn ghi thẳng vào database, test-mua-thit-dat-hang.mjs).
+  ok('Công tắc bật, chưa công bố zalo_oa_url → menu VẪN có dòng (0113)', r.loi === null && r.rows.length > 0, vi(r));
   await ghiKhop('chưa công bố zalo_oa_url');
   await congBoPhai('zalo_oa_url', LINK_OA);
   await ghiKhop('đủ ba điều kiện');
@@ -805,7 +807,7 @@ await nhom('8 · CÔNG TẮC HIỆU LỰC — noi_dung_cong_khai().hien_mua_thit
   const h2 = await hien();
   await ghiKhop('nhóm 8: chưa có zalo_oa_url');
   await congBoPhai('zalo_oa_url', LINK_OA);
-  ok('Công bố true, chưa có zalo_oa_url → false', h2 === false, String(h2));
+  ok('Công bố true, chưa có zalo_oa_url → true (0113: kênh mở chỉ cần công tắc)', h2 === true, String(h2));
 
   const { rows: daChot } = await db.query(`select id, gia_chot from ban_le_san_pham where gia_chot is not null`);
   await db.query(`update ban_le_san_pham set gia_chot = null`);
@@ -964,9 +966,10 @@ await nhom('10 · CÂU CHỮ VÀ KHÓA', async () => {
      `thiếu câu dặn: ${khongDan.join(', ')}`);
 
   const hienMo = cua('hien_mua_thit_ve')?.mo_ta ?? '';
-  ok('Mô tả hien_mua_thit_ve nêu ba điều kiện mở trang, giá đã chốt, FABi và ý kiến luật sư (vi và en)',
-     ['zalo_oa_url', 'chốt giá', 'FABi', 'luật sư', 'ba điều kiện'].every(t => hienMo.includes(t))
-     && ['zalo_oa_url', 'FABi', 'lawyer', 'all three'].every(t => (MO_TA_KHOA_EN.hien_mua_thit_ve ?? '').includes(t)), hienMo);
+  // 0113: đặt thẳng trên website — mô tả nói hai điều kiện mở trang (không còn link Zalo), giá đã chốt, hộp thư, luật sư.
+  ok('Mô tả hien_mua_thit_ve nêu điều kiện mở trang, giá đã chốt, hộp thư đơn và ý kiến luật sư (vi và en)',
+     ['chốt giá', 'Đơn mua thịt', 'luật sư', 'Chỉ giao tận nơi'].every(t => hienMo.includes(t)) && !hienMo.includes('zalo_oa_url')
+     && ['Take-home orders', 'lawyer', 'Delivery only'].every(t => (MO_TA_KHOA_EN.hien_mua_thit_ve ?? '').includes(t)), hienMo);
 
   const dinh = [];
   for (const k of tatCa) {

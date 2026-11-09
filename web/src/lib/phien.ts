@@ -223,6 +223,8 @@ export interface KetQua {
   loi?: string;
   /** Không nghe được trả lời: KHÔNG CHẮC database đã ghi hay chưa (xu-ly-form.ts). */
   khongChac?: boolean;
+  /** Form nào ghi kết quả này. Đơn mua thịt (0113) ghi 'dat_hang' — trang Mua thịt về bỏ qua kết quả của form khác. */
+  loai?: 'dat_hang';
 }
 
 export function ghiKetQua(cookies: AstroCookies, kq: KetQua) {

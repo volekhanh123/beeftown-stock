@@ -12,20 +12,20 @@ const nd = await docNoiDung('en');
       <h2>What we collect</h2>
       <p>When you send a table request or a job application, Beeftown stores your
         name, phone number, whatever else you choose to enter, and <strong>the IP
-        address that request came from</strong>. The IP address is used to block
+        address that request came from</strong>. When you order beef to take
+        home, Beeftown stores your order: see the section below. The IP address is used to block
         spam and as evidence that you ticked the consent box; it is erased at the
         same time as the rest. If you attach a CV, the file is kept in a private
         store that only the owner and managers can open.</p>
       <p>The data is held in Supabase, a database service Beeftown rents. Apart
         from Supabase, nobody else reads it — except that messages you send us on
-        Messenger go through Meta, and order messages you send us on Zalo go
-        through Zalo (see the sections below).</p>
+        Messenger go through Meta (see the section below).</p>
 
       <h2>When you browse this website</h2>
       <p>Beeftown uses Meta Pixel, a measurement tool from Meta (the company that
         owns Facebook and Instagram). When you open a page, Meta Pixel sends Meta
         the page you are viewing, the buttons you tap (calling, opening Zalo,
-        opening Messenger, viewing a take-home order, sending a table request),
+        opening Messenger, placing a take-home order, sending a table request),
         your IP address, your browser type and a cookie ID. Beeftown uses these
         numbers to see how many people our Facebook and Instagram ads bring to the
         website, and to show Beeftown ads to people who have visited it.</p>
@@ -56,20 +56,23 @@ const nd = await docNoiDung('en');
         Messenger to send advertising.</p>
       <p>How to delete your data: see the <a href="/en/data-deletion">data deletion instructions</a>.</p>
 
-      <h2>When you send a take-home order on Zalo</h2>
-      <p>The Take home page <strong>does not store orders</strong> and does not
-        ask for your name, phone number or address. When you tap to view your
-        order, the packs you chose are sent to the page's server through the page
-        address so it can write the order message; that address carries no
-        personal information, and Beeftown does not store your order.</p>
-      <p>You paste the message into the Beeftown chat on Zalo and tap Send
-        yourself; that message goes through Zalo, and Zalo handles it under
-        Zalo's own privacy policy. Beeftown reads the message in our Zalo OA
-        inbox to confirm the order with you.</p>
+      <h2>When you order beef to take home</h2>
+      <p>When you tap Place order on the Take home page, Beeftown stores
+        your <strong>name, phone number, delivery address, note</strong> and the packs
+        you chose, with their prices at the time. Only the owner, managers and
+        cashiers of the branch can read orders. The website does not take
+        payment and stores no payment details.</p>
+      <p>The IP address of the order is only used to block too many orders and
+        is not stored with the order. If sending the order fails, your browser
+        keeps your name, phone number and address in the open tab for 15 minutes
+        so you do not have to type them again; that data does not leave your
+        device.</p>
 
       <h2>What we use it for</h2>
-      <p>Booking details are used so the restaurant can call to confirm. Job
-        applications are used to arrange a meeting. We only send news about dishes
+      <p>Booking details are used so the restaurant can call to confirm.
+        Take-home orders are used to call you about the total, the delivery fee
+        and the delivery time, and to deliver your order. Job applications are
+        used to arrange a meeting. We only send news about dishes
         or events if you <strong>tick the box yourself</strong> — that box is never
         pre-ticked, and leaving it unticked does not affect your booking.</p>
 
@@ -80,7 +83,8 @@ const nd = await docNoiDung('en');
         form that no longer identifies you, so the restaurant knows how many
         people applied in each round.</p>
       <p>Booking details are kept so the restaurant can see your history with us.
-        You can ask us to delete them at any time.</p>
+        Take-home orders are kept so we can check orders we delivered. You can
+        ask us to delete them at any time.</p>
 
       <h2>Your rights</h2>
       <p>You can ask to see, correct or delete your information, and you can opt out
