@@ -60,12 +60,14 @@ export const CAU_HINH = {
 
   /**
    * Máy chủ đơn của Beeftown (thư mục may-chu-don/ của repo, đặt ở Việt Nam), dạng "https://ten-mien" không có "/" cuối.
-   * Có địa chỉ: khách gửi đơn lên máy chủ và chuyển khoản ngay trong app (VietQR qua SePay), chỉ nhận tại quán.
-   * Để trống: app gửi đơn vào chat OA như trước. Chỉ điền khi máy chủ đã chạy HTTPS và tên miền đã khai ở Mini App
-   * Center → Cấu hình API Domains. Thử trên máy (không cần sửa ở đây): VITE_DIA_CHI_MAY_CHU_DON (README, "Thử đặt
-   * và trả tiền với máy chủ đơn").
+   * Có địa chỉ: khách gửi đơn lên máy chủ và chuyển khoản ngay trong app (VietQR qua SePay), chỉ giao tận nơi.
+   * Để trống: app gửi đơn vào chat OA như trước. Tên miền phải khai ở Mini App Center → Cấu hình API Domains, không
+   * thì Zalo chặn và khách không gửi được đơn. Máy chủ chưa có tài khoản nhận tiền hay bảng giá còn là giá thử: app
+   * ghi đơn, không hiện mã QR, báo "Quán chưa mở nhận chuyển khoản trong app" và mời khách chat với quán. Thử trên máy (không cần sửa ở đây):
+   * VITE_DIA_CHI_MAY_CHU_DON (README, "Thử đặt và trả tiền với máy chủ đơn").
+   * Khánh thuê máy chủ BizFly Cloud (TP.HCM) và cài máy chủ đơn ngày 09/11/2026.
    */
-  diaChiMayChuDon: "",
+  diaChiMayChuDon: "https://don.beeftown.vn",
 
   /** Thông tin người bán, ghi đúng giấy chứng nhận đăng ký địa điểm kinh doanh (thay đổi lần 2, 20/10/2026). */
   phapNhan: {

@@ -13,6 +13,10 @@ nơi, giá khay đã gồm phí giao** ("giao tận nơi tạm thời là bao g�
 
 Khánh 02/11/2026: tên miền máy chủ đơn là **`don.beeftown.vn`**; thử trước trên một **laptop dư cài Ubuntu** (xóa
 Windows), mở ra internet qua router nhà — cùng bộ cài `cai-dat/` như máy thuê; mở bán thật thì chuyển sang máy thuê.
+Khánh 09/11/2026: bỏ bước laptop, **thuê luôn BizFly Cloud** (vùng Hồ Chí Minh, Basic 1 vCPU / 1 GB / 20 GB, 134.000
+đ/tháng) và chạy `cai don.beeftown.vn` trên đó; Cloudflare trỏ `don` về máy này (DNS only). Mật khẩu root và mật khẩu
+quầy chỉ Khánh giữ. Phiên Claude trên đám mây không SSH được vào máy (mạng chặn): việc trên máy do Khánh gõ, Claude
+chỉ từng lệnh.
 
 ## Vì sao là một máy chủ riêng
 
@@ -29,9 +33,9 @@ mạng: dữ liệu đi qua máy chủ Cloudflare.
 | 1 | Nhận đơn (`POST /api/don`), xem đơn, màn hình quầy, hết hạn 30 phút, số liệu sức khỏe | đã gộp (PR #137) |
 | 2a | SePay: mã VietQR cho từng đơn (`viet-qr.ts`), nhận tin tiền về có ký HMAC (`sepay.ts`, `POST /sepay/tien-ve`), sổ `giao_dich` đúng một lần mỗi id, đủ / thiếu / dư / không khớp, mục "Tiền về cần xem" ở màn quầy | đã gộp (PR #143) |
 | 2b | Mini App gửi đơn lên máy chủ thay vì mở chat khi `diaChiMayChuDon` có địa chỉ, màn trả tiền (mã QR vẽ trong app, chép số tài khoản / số tiền / nội dung, lưu ảnh mã), hỏi lại trạng thái đến khi đã nhận tiền (`mini-app/src/tra-truoc.ts`, kiểm với máy chủ thật ở `test/thu.ts` nhóm 18) | đã gộp (PR #146) |
-| 3 | ZNS gửi thẳng từ máy chủ đơn: "Beeftown đã nhận đơn" (tiền về đủ), "đang giao" (quầy bấm "Soạn xong, chờ giao"); hàng chờ `zns_tin`, token riêng mã hóa trong `zalo_token`, vòng gửi mỗi phút (`zns.ts`, `gui-zns.ts`, `test/thu.ts` nhóm 20). Chạy khi Khánh cài App Zalo riêng, hai mẫu được duyệt, refresh token (README, "Cài ZNS") | PR này |
-| 4a | Bộ cài máy chủ thuê (`cai-dat/`): Ubuntu 24.04, Caddy HTTPS, systemd, tường lửa, `/sepay` chỉ IP SePay, `cap-nhat` chạy kiểm thử rồi mới chạy lại; laptop dư (tự tắt ngủ, README mục 1b) | PR #155 |
-| 4 | Máy chủ thuê ở Việt Nam, HTTPS, sao lưu sổ đơn ở Việt Nam, xóa dữ liệu khách quá hạn, đèn sức khỏe trong `/noi-bo`, báo số khay sang kho | chờ thuê máy |
+| 3 | ZNS gửi thẳng từ máy chủ đơn: "Beeftown đã nhận đơn" (tiền về đủ), "đang giao" (quầy bấm "Soạn xong, chờ giao"); hàng chờ `zns_tin`, token riêng mã hóa trong `zalo_token`, vòng gửi mỗi phút (`zns.ts`, `gui-zns.ts`, `test/thu.ts` nhóm 20). Chạy khi Khánh cài App Zalo riêng, hai mẫu được duyệt, refresh token (README, "Cài ZNS") | đã gộp (PR #163) |
+| 4a | Bộ cài máy chủ thuê (`cai-dat/`): Ubuntu 24.04, Caddy HTTPS, systemd, tường lửa, `/sepay` chỉ IP SePay, `cap-nhat` chạy kiểm thử rồi mới chạy lại; laptop dư (tự tắt ngủ, README mục 1b) | đã gộp (PR #155) |
+| 4 | Máy chủ thuê ở Việt Nam, HTTPS (xong 09/11/2026: BizFly Cloud TP.HCM, `https://don.beeftown.vn`, Mini App điền địa chỉ), sao lưu sổ đơn ở Việt Nam, xóa dữ liệu khách quá hạn, đèn sức khỏe trong `/noi-bo`, báo số khay sang kho | đang làm (#138) |
 
 ## File
 
