@@ -420,25 +420,110 @@ export function xoaDonDaDat(kho: KhoLuu | null): void {
 
 export function docDonDaDat(kho: KhoLuu | null, bayGio: number): DonDaDat | null {
   try {
-    const v = JSON.parse(kho?.getItem(KHOA_LUU) ?? "null") as Record<string, unknown> | null;
-    if (
-      !v ||
-      typeof v.ma !== "string" ||
-      !/^[A-Z0-9]{8}$/.test(v.ma) ||
-      typeof v.khoa !== "string" ||
-      !/^[0-9a-f]{32}$/.test(v.khoa) ||
-      !laSoNguyen(v.soTrongNgay, 1) ||
-      !laSoNguyen(v.luc, 1) ||
-      typeof v.ngayNhan !== "string" ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(v.ngayNhan) ||
-      v.ngayNhan > ngayVn(v.luc + NGAY_NHAN_XA_NHAT_MS) ||
-      v.luc > bayGio + 60_000 ||
-      (bayGio - v.luc > GIU_DON_MS && ngayVn(bayGio) > v.ngayNhan)
-    ) {
-      return null;
-    }
-    return { ma: v.ma, khoa: v.khoa, soTrongNgay: v.soTrongNgay, ngayNhan: v.ngayNhan, luc: v.luc };
+    return docMotDon(JSON.parse(kho?.getItem(KHOA_LUU) ?? "null"), bayGio, GIU_DON_MS);
   } catch {
     return null;
+  }
+}
+
+/**
+ * Một đơn đã lưu, hoặc null khi thiếu trường, sai dạng, hay đã quá hạn giữ: quá `giuMs` kể từ lúc đặt VÀ đã qua ngày
+ * nhận. Không bao giờ ném lỗi.
+ */
+function docMotDon(goc: unknown, bayGio: number, giuMs: number): DonDaDat | null {
+  const v = goc && typeof goc === "object" && !Array.isArray(goc) ? (goc as Record<string, unknown>) : null;
+  if (
+    !v ||
+    typeof v.ma !== "string" ||
+    !/^[A-Z0-9]{8}$/.test(v.ma) ||
+    typeof v.khoa !== "string" ||
+    !/^[0-9a-f]{32}$/.test(v.khoa) ||
+    !laSoNguyen(v.soTrongNgay, 1) ||
+    !laSoNguyen(v.luc, 1) ||
+    typeof v.ngayNhan !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(v.ngayNhan) ||
+    v.ngayNhan > ngayVn(v.luc + NGAY_NHAN_XA_NHAT_MS) ||
+    v.luc > bayGio + 60_000 ||
+    (bayGio - v.luc > giuMs && ngayVn(bayGio) > v.ngayNhan)
+  ) {
+    return null;
+  }
+  return { ma: v.ma, khoa: v.khoa, soTrongNgay: v.soTrongNgay, ngayNhan: v.ngayNhan, luc: v.luc };
+}
+
+// ---------- Đơn của tôi: các đơn đã đặt trên máy này ----------
+// Khánh chọn 09/11/2026 (ý từ mẫu zaui-fashion: "Theo dõi đơn hàng", "Lịch sử mua hàng"). Chỉ mã đơn, khóa xem, số
+// đơn, ngày nhận — không tên, không số điện thoại, không địa chỉ. Trạng thái luôn hỏi lại máy chủ khi mở màn.
+
+export const KHOA_LUU_DS = "beeftown-don-cua-toi";
+/** Giữ mỗi đơn 30 ngày kể từ lúc đặt (và tới hết ngày nhận), tối đa 20 đơn mới nhất. */
+export const GIU_DS_MS = 30 * 24 * 60 * 60 * 1000;
+export const SO_DON_TOI_DA = 20;
+
+/** Các đơn đã lưu, mới nhất trước; bỏ đơn hỏng, quá hạn, trùng mã. Hỏng bộ nhớ thì []. */
+export function docDanhSachDon(kho: KhoLuu | null, bayGio: number): DonDaDat[] {
+  let goc: unknown = [];
+  try {
+    goc = JSON.parse(kho?.getItem(KHOA_LUU_DS) ?? "[]");
+  } catch {
+    goc = [];
+  }
+  const ds: DonDaDat[] = [];
+  const daCo = new Set<string>();
+  // Đơn vừa đặt của bản cũ (chỉ giữ một đơn) cũng vào danh sách.
+  const cu = docDonDaDat(kho, bayGio);
+  for (const v of [...(Array.isArray(goc) ? goc : []), ...(cu ? [cu] : [])]) {
+    const d = docMotDon(v, bayGio, GIU_DS_MS);
+    if (d && !daCo.has(d.ma)) {
+      daCo.add(d.ma);
+      ds.push(d);
+    }
+  }
+  return ds.sort((a, b) => b.luc - a.luc).slice(0, SO_DON_TOI_DA);
+}
+
+function luuDanhSach(kho: KhoLuu | null, ds: DonDaDat[]): void {
+  try {
+    kho?.setItem(KHOA_LUU_DS, JSON.stringify(ds));
+  } catch {
+    /* bộ nhớ đầy hay bị chặn: đơn vẫn đặt được, chỉ không có trong "Đơn của tôi" */
+  }
+}
+
+/** Thêm (hay cập nhật) một đơn vào danh sách; trả danh sách mới. */
+export function themVaoDanhSach(kho: KhoLuu | null, don: DonDaDat, bayGio: number): DonDaDat[] {
+  const ds = [don, ...docDanhSachDon(kho, bayGio).filter((d) => d.ma !== don.ma)]
+    .sort((a, b) => b.luc - a.luc)
+    .slice(0, SO_DON_TOI_DA);
+  luuDanhSach(kho, ds);
+  return ds;
+}
+
+/** Bỏ một đơn khỏi danh sách (máy chủ báo không còn đơn này); trả danh sách mới. */
+export function boKhoiDanhSach(kho: KhoLuu | null, ma: string, bayGio: number): DonDaDat[] {
+  const ds = docDanhSachDon(kho, bayGio).filter((d) => d.ma !== ma);
+  luuDanhSach(kho, ds);
+  return ds;
+}
+
+/** Chữ ngắn cho trạng thái đơn trên màn "Đơn của tôi". */
+export function nhanTrangThaiDon(tt: TrangThaiDon, cachNhan: "giao-hang" | "tai-quan"): string {
+  switch (tt) {
+    case "cho_thanh_toan":
+      return "Chờ chuyển khoản";
+    case "het_han":
+      return "Đã tự hủy (chưa đủ tiền)";
+    case "da_thanh_toan":
+      return "Quán đã nhận tiền";
+    case "dang_soan":
+      return "Quầy đang soạn";
+    case "cho_lay":
+      return cachNhan === "tai-quan" ? "Chờ bạn ghé lấy" : "Soạn xong, chờ giao";
+    case "da_giao":
+      return cachNhan === "tai-quan" ? "Bạn đã lấy" : "Đã giao";
+    case "can_hoan_tien":
+      return "Đã hủy, quán hoàn tiền";
+    case "da_hoan_tien":
+      return "Đã hoàn tiền";
   }
 }

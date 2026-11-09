@@ -909,3 +909,55 @@ body {
   margin-top: 12px;
   font-weight: 600;
 }
+
+/* Đơn của tôi */
+.nut-don-cua-toi {
+  display: block;
+  margin: 12px 16px 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--do);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.ds-don-cua-toi {
+  list-style: none;
+  margin: 0;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+.the-don-cua-toi {
+  background: var(--trang);
+  border: 1px solid var(--vien);
+  border-radius: var(--bo-goc);
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+}
+.the-don-cua-toi .dong-dau {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.the-don-cua-toi .dong-dau b {
+  font-size: 16px;
+  font-weight: 800;
+}
+.the-don-cua-toi .nhan-trang-thai {
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+}
+.the-don-cua-toi .ghi-chu {
+  margin: 0;
+}
+.the-don-cua-toi .nut-phu {
+  justify-self: start;
+}

@@ -11,7 +11,7 @@ import { monTuDuong } from "../chia-se";
 
 export default function TrangChu() {
   const navigate = useNavigate();
-  const { soKhay, tongKhay, soPhan, donDaDat } = useGioHang();
+  const { soKhay, tongKhay, soPhan, donDaDat, danhSachDon } = useGioHang();
   const tongTien = tongTienThit(dongTuGio(soKhay));
   // Mở từ tin bạn bè chia sẻ ("/mon/<mã>"): cuộn tới đúng phần thịt đó.
   const { pathname, search } = useLocation();
@@ -45,6 +45,12 @@ export default function TrangChu() {
             : "Chọn số khay, gửi đơn qua Zalo. Giá tính theo khay, thấy tổng tiền trước khi gửi đơn."}
         </p>
       </header>
+
+      {TRA_TRUOC && danhSachDon.length > 0 && (
+        <button type="button" className="nut-don-cua-toi" onClick={() => navigate("/don-cua-toi")}>
+          Đơn của tôi ({danhSachDon.length})
+        </button>
+      )}
 
       {TRA_TRUOC && donDaDat && (
         <div className="don-vua-dat">

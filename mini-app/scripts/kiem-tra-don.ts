@@ -22,7 +22,16 @@ import {
   taoMaGui,
   taoThanDon,
   type HamFetchApi,
+  type DonDaDat,
   type KhoLuu,
+  type TrangThaiDon,
+  boKhoiDanhSach,
+  docDanhSachDon,
+  GIU_DS_MS,
+  KHOA_LUU_DS,
+  nhanTrangThaiDon,
+  SO_DON_TOI_DA,
+  themVaoDanhSach,
 } from "../src/tra-truoc.ts";
 import {
   cacGioChon,
@@ -535,6 +544,85 @@ kiem("chia sẻ món: tin có tên phần thịt, câu mô tả, ảnh công kha
     assert.equal(n.path, duongMon(sp.ma));
   }
   assert.match(ANH_CHIA_SE, /^https:\/\/beeftown\.vn\/.+\.png$/);
+});
+
+kiem("đơn của tôi: thêm đơn mới lên đầu, trùng mã thì thay, tối đa 20 đơn, giữ 30 ngày; không tên, không số", () => {
+  const bo = new Map<string, string>();
+  const kho: KhoLuu = {
+    getItem: (k) => bo.get(k) ?? null,
+    setItem: (k, v) => void bo.set(k, v),
+    removeItem: (k) => void bo.delete(k),
+  };
+  const luc = Date.UTC(2026, 10, 13, 2, 0);
+  const ma = (i: number) => `K7QX4M${"ACDEFGHJKMNPQRTUVWXY34679"[Math.floor(i / 25) % 25]}${"ACDEFGHJKMNPQRTUVWXY34679"[i % 25]}`;
+  const don = (i: number, them: Partial<DonDaDat> = {}): DonDaDat => ({
+    ma: ma(i), khoa: KHOA, soTrongNgay: i + 1, ngayNhan: "2026-11-13", luc: luc + i * 60_000, ...them,
+  });
+  assert.deepEqual(docDanhSachDon(kho, luc), []);
+  themVaoDanhSach(kho, don(0), luc);
+  const ds = themVaoDanhSach(kho, don(1), luc + 60_000);
+  assert.deepEqual(ds.map((d) => d.ma), [ma(1), ma(0)]);
+  assert.deepEqual(docDanhSachDon(kho, luc + 60_000), ds);
+  for (const d of JSON.parse(bo.get(KHOA_LUU_DS)!)) {
+    assert.deepEqual(Object.keys(d).sort(), ["khoa", "luc", "ma", "ngayNhan", "soTrongNgay"]);
+  }
+  // Cùng mã (gửi lại): một dòng, bản mới.
+  const lai = themVaoDanhSach(kho, don(0, { luc: luc + 5 * 60_000 }), luc + 5 * 60_000);
+  assert.deepEqual(lai.map((d) => d.ma), [ma(0), ma(1)]);
+  // Tối đa 20 đơn mới nhất.
+  for (let i = 2; i < 30; i++) themVaoDanhSach(kho, don(i), luc + i * 60_000);
+  const nhieu = docDanhSachDon(kho, luc + 30 * 60_000);
+  assert.equal(nhieu.length, SO_DON_TOI_DA);
+  assert.equal(nhieu[0].ma, ma(29));
+  // 30 ngày sau lúc đặt (đã qua ngày nhận) thì thôi giữ.
+  assert.deepEqual(docDanhSachDon(kho, luc + 29 * 60_000 + GIU_DS_MS + 1).map((d) => d.ma), []);
+  // Máy chủ không còn đơn: bỏ khỏi danh sách.
+  assert.ok(!boKhoiDanhSach(kho, ma(29), luc + 30 * 60_000).some((d) => d.ma === ma(29)));
+});
+
+kiem("đơn của tôi: đơn vừa đặt của bản cũ vào danh sách; dòng hỏng bị bỏ; bộ nhớ hỏng không làm hỏng app", () => {
+  const bo = new Map<string, string>();
+  const kho: KhoLuu = {
+    getItem: (k) => bo.get(k) ?? null,
+    setItem: (k, v) => void bo.set(k, v),
+    removeItem: (k) => void bo.delete(k),
+  };
+  const luc = Date.UTC(2026, 10, 13, 2, 0);
+  const cu = { ma: "K7QX4M9A", khoa: KHOA, soTrongNgay: 12, ngayNhan: "2026-11-13", luc };
+  luuDonDaDat(kho, cu);
+  assert.deepEqual(docDanhSachDon(kho, luc), [cu]);
+  bo.set(KHOA_LUU_DS, JSON.stringify([{ ...cu, ma: "x" }, null, 5, { ...cu, khoa: "y" }, cu]));
+  assert.deepEqual(docDanhSachDon(kho, luc), [cu]);
+  bo.set(KHOA_LUU_DS, "{hỏng");
+  assert.deepEqual(docDanhSachDon(kho, luc), [cu]);
+  bo.set(KHOA_LUU_DS, JSON.stringify({ khong: "phai mang" }));
+  assert.deepEqual(docDanhSachDon(kho, luc), [cu]);
+  const hong: KhoLuu = {
+    getItem: () => {
+      throw new Error("SecurityError");
+    },
+    setItem: () => {
+      throw new Error("QuotaExceededError");
+    },
+    removeItem: () => {
+      throw new Error("SecurityError");
+    },
+  };
+  assert.deepEqual(docDanhSachDon(hong, luc), []);
+  assert.deepEqual(themVaoDanhSach(hong, cu, luc), [cu]);
+  assert.deepEqual(docDanhSachDon(null, luc), []);
+});
+
+kiem("đơn của tôi: chữ trạng thái đủ cho mọi trạng thái, đúng cách nhận; không chữ 'thành công'", () => {
+  const tat: TrangThaiDon[] = ["cho_thanh_toan", "het_han", "da_thanh_toan", "dang_soan", "cho_lay", "da_giao", "can_hoan_tien", "da_hoan_tien"];
+  for (const tt of tat) {
+    for (const cach of ["giao-hang", "tai-quan"] as const) {
+      const chu = nhanTrangThaiDon(tt, cach);
+      assert.ok(chu && !/thành công/i.test(chu), `${tt} ${cach}: ${chu}`);
+    }
+  }
+  assert.equal(nhanTrangThaiDon("cho_lay", "giao-hang"), "Soạn xong, chờ giao");
+  assert.equal(nhanTrangThaiDon("cho_lay", "tai-quan"), "Chờ bạn ghé lấy");
 });
 
 console.log(`Đạt ${dat}/${dat} kiểm tra.`);
