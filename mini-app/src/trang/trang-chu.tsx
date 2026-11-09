@@ -5,7 +5,7 @@ import logo from "../assets/logo-chinh-trang.png";
 import { useGioHang } from "../gio-hang";
 import { SAN_PHAM, dongTuGio } from "../san-pham";
 import { dinhDangTien, tongTienThit } from "../don";
-import { BaoGiaThu, TheThit } from "../thanh-phan";
+import { BaoGiaThu, NutChat, TheThit } from "../thanh-phan";
 import { TRA_TRUOC } from "../may-chu-don";
 import { monTuDuong } from "../chia-se";
 
@@ -89,9 +89,12 @@ export default function TrangChu() {
             <b>{tongTien === null ? `${tongKhay} khay` : dinhDangTien(tongTien)}</b>
             <span>{tongTien === null ? `${soPhan} phần thịt` : `${tongKhay} khay · ${soPhan} phần thịt`}</span>
           </div>
-          <button type="button" className="nut-chinh" onClick={() => navigate("/don-hang")}>
-            Xem đơn
-          </button>
+          <div className="hang-nut-duoi co-tom-tat">
+            <NutChat />
+            <button type="button" className="nut-chinh" onClick={() => navigate("/don-hang")}>
+              Xem đơn
+            </button>
+          </div>
         </div>
       )}
     </Page>

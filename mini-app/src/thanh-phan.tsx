@@ -1,8 +1,8 @@
 // Thành phần dùng chung: đầu trang, nút chọn số khay, giá khay, thẻ phần thịt.
 
-import React, { ReactNode } from "react";
+import React, { ReactNode, useEffect, useState } from "react";
 import { useNavigate } from "zmp-ui";
-import { ChiaSe, MuiTenTrai } from "./bieu-tuong";
+import { ChiaSe, KhungChat, MuiTenTrai } from "./bieu-tuong";
 import { CAU_HINH } from "./cau-hinh";
 import { noiDungChiaSe } from "./chia-se";
 import { trangThaiPhan, type TrangThaiKho } from "./con-hang";
@@ -11,7 +11,7 @@ import { dinhDangTien } from "./don";
 import { useGioHang } from "./gio-hang";
 import type { SanPham } from "./san-pham";
 import { useThongBao } from "./thong-bao";
-import { chiaSe, dangTrongZalo } from "./zalo";
+import { chiaSe, dangTrongZalo, hienKhungQuanTamOA, moChatVoiQuan, quanTamQuan } from "./zalo";
 
 export function DauTrang({ tieuDe, quayLai = true }: { tieuDe: string; quayLai?: boolean }) {
   const navigate = useNavigate();
@@ -172,4 +172,47 @@ export function Muc({ tieuDe, children }: { tieuDe: string; children: ReactNode 
       {children}
     </section>
   );
+}
+
+/** Nút chat nhỏ với quán, đặt cạnh nút đặt đơn (ý từ mẫu zaui-fashion). Chỉ hiện trong Zalo. */
+export function NutChat() {
+  const thongBao = useThongBao();
+  if (!dangTrongZalo()) return null;
+  async function bam() {
+    if ((await moChatVoiQuan()) !== "da-mo") thongBao("Chưa mở được khung chat Zalo. Bạn thử lại giúp mình.");
+  }
+  return (
+    <button type="button" className="nut-chat-nho" aria-label="Chat với Beeftown" onClick={bam}>
+      <KhungChat size={24} />
+    </button>
+  );
+}
+
+const ID_KHUNG_OA = "khung-quan-tam-oa";
+
+/**
+ * Khung quan tâm OA của Zalo trên màn đặt xong (ý từ mẫu zaui-fashion). Zalo không vẽ được (ngoài Zalo, lỗi): hiện
+ * nút "Quan tâm Beeftown trên Zalo" như trước.
+ */
+export function KhungQuanTamOA() {
+  const thongBao = useThongBao();
+  const [dungNut, datDungNut] = useState(!dangTrongZalo());
+  useEffect(() => {
+    if (dungNut) return;
+    void hienKhungQuanTamOA(ID_KHUNG_OA, () => datDungNut(true));
+  }, [dungNut]);
+  if (dungNut) {
+    return (
+      <button
+        type="button"
+        className="nut-phu rong"
+        onClick={async () => {
+          if (await quanTamQuan()) thongBao("Cảm ơn bạn đã quan tâm Beeftown.", "success");
+        }}
+      >
+        Quan tâm Beeftown trên Zalo
+      </button>
+    );
+  }
+  return <div id={ID_KHUNG_OA} className="khung-quan-tam-oa" />;
 }
