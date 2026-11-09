@@ -6,8 +6,10 @@ PR) ở `CLAUDE.md` gốc. Hướng dẫn cho người (chạy trên laptop, bi�
 Khánh quyết 29/10/2026: bỏ gửi đơn qua tin nhắn chat OA, đặt hàng tự động hoàn toàn — khách **trả trước**, thu tiền
 online qua **SePay** (chuyển khoản VietQR vào tài khoản VietinBank của SLK Group — Khánh mở tài khoản sau; Khánh đổi
 từ Checkout SDK của Zalo sang SePay cùng ngày), quầy xem đơn trên **màn hình đơn riêng**, máy chủ **chạy thử trên laptop ở công ty rồi
-chuyển lên máy chủ thuê ở Việt Nam** khi mở bán, khách được báo **trong app và bằng ZNS**. Claude đề xuất, Khánh
-chưa chốt: đơn trả trước đợt đầu chỉ nhận tại quán (phí giao chưa chốt), hoàn tiền do người làm tay.
+chuyển lên máy chủ thuê ở Việt Nam** khi mở bán, khách được báo **trong app và bằng ZNS**. Khánh chốt 30/10/2026: khách chuyển dư thì đơn vẫn soạn, người làm hoàn phần
+dư; tiền về đủ sau khi đơn quá hạn 30 phút vẫn tính là đã trả. Khánh chốt 09/11/2026: đơn trả trước **chỉ giao tận
+nơi, giá khay đã gồm phí giao** ("giao tận nơi tạm thời là bao gồm giá giao") — tổng tiền là tổng tiền khay, đơn có
+địa chỉ giao (cột `dia_chi`, chỉ màn quầy thấy; API của khách không trả); hoàn tiền do người làm tay.
 
 Khánh 02/11/2026: tên miền máy chủ đơn là **`don.beeftown.vn`**; thử trước trên một **laptop dư cài Ubuntu** (xóa
 Windows), mở ra internet qua router nhà — cùng bộ cài `cai-dat/` như máy thuê; mở bán thật thì chuyển sang máy thuê.
@@ -26,7 +28,7 @@ mạng: dữ liệu đi qua máy chủ Cloudflare.
 |---|---|---|
 | 1 | Nhận đơn (`POST /api/don`), xem đơn, màn hình quầy, hết hạn 30 phút, số liệu sức khỏe | đã gộp (PR #137) |
 | 2a | SePay: mã VietQR cho từng đơn (`viet-qr.ts`), nhận tin tiền về có ký HMAC (`sepay.ts`, `POST /sepay/tien-ve`), sổ `giao_dich` đúng một lần mỗi id, đủ / thiếu / dư / không khớp, mục "Tiền về cần xem" ở màn quầy | đã gộp (PR #143) |
-| 2b | Mini App gửi đơn lên máy chủ thay vì mở chat, màn trả tiền (mã QR, chép số tài khoản / số tiền / nội dung), hỏi lại trạng thái đến khi đã nhận tiền (chỉ bản thử) | PR #146 (nháp) |
+| 2b | Mini App gửi đơn lên máy chủ thay vì mở chat khi `diaChiMayChuDon` có địa chỉ, màn trả tiền (mã QR vẽ trong app, chép số tài khoản / số tiền / nội dung, lưu ảnh mã), hỏi lại trạng thái đến khi đã nhận tiền (`mini-app/src/tra-truoc.ts`, kiểm với máy chủ thật ở `test/thu.ts` nhóm 18) | PR #146 |
 | 3 | ZNS: "đã nhận đơn", "khay đã sẵn sàng" | chờ mẫu tin được duyệt |
 | 4a | Bộ cài máy chủ thuê (`cai-dat/`): Ubuntu 24.04, Caddy HTTPS, systemd, tường lửa, `/sepay` chỉ IP SePay, `cap-nhat` chạy kiểm thử rồi mới chạy lại; laptop dư (tự tắt ngủ, README mục 1b) | PR #155 |
 | 4 | Máy chủ thuê ở Việt Nam, HTTPS, sao lưu sổ đơn ở Việt Nam, xóa dữ liệu khách quá hạn, đèn sức khỏe trong `/noi-bo`, báo số khay sang kho | chờ thuê máy |

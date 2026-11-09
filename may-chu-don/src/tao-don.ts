@@ -7,9 +7,9 @@
  * nhận, số khay tối đa, số điện thoại kiểm bằng đúng hàm của Mini App (mini-app/src/don.ts, cau-hinh.ts), nên
  * app cho chọn giờ nào thì máy chủ nhận giờ đó.
  *
- * Đợt đầu (Claude đề xuất 29/10/2026, Khánh chưa chốt): đơn trả trước chỉ nhận tại quán — phí giao chưa chốt nên
- * chưa tính được đủ tiền trước khi khách trả. Tên và số điện thoại bắt buộc: quầy gọi tên khi khách tới lấy,
- * đợt 3 gửi ZNS theo số.
+ * Khánh 09/11/2026: đơn trả trước trong app CHỈ GIAO TẬN NƠI, giá khay đã gồm phí giao ("giao tận nơi tạm thời là
+ * bao gồm giá giao") — tổng tiền là tổng tiền khay, không dòng phí giao. Không còn nhận tại quán (bản 29/10 của
+ * Claude). Tên, số điện thoại, địa chỉ giao bắt buộc: quán giao theo địa chỉ, gọi số khi giao, đợt 3 gửi ZNS theo số.
  *
  * Giờ Việt Nam: cacGioChon / cacNgayChon của Mini App đọc giờ "địa phương" của Date (getHours, getDate…). Máy
  * chủ thuê thường chạy UTC, nên dongHoVn dựng một Date có giờ địa phương đúng bằng giờ Việt Nam lúc `ms`, lấy từ
@@ -34,7 +34,9 @@ export interface DonMoi {
   maGui: string;
   dong: DongMoi[];
   tongTien: number;
-  cachNhan: 'tai-quan';
+  cachNhan: 'giao-hang';
+  /** Địa chỉ giao, đã làm sạch (DIA_CHI_TOI_THIEU…DIA_CHI_TOI_DA ký tự). */
+  diaChi: string;
   /** yyyy-mm-dd, giờ Việt Nam */
   ngayNhan: string;
   /** HH:mm */
@@ -55,6 +57,9 @@ export const MAU_MA_GUI = /^[A-Za-z0-9_-]{8,64}$/;
 export const TEN_TOI_THIEU = 2;
 export const TEN_TOI_DA = 60;
 export const GHI_CHU_TOI_DA = 300;
+/** Như ô địa chỉ của trang Mua thịt về trên website (tao_don_mua_thit, 0113): số nhà, tên đường, khu vực. */
+export const DIA_CHI_TOI_THIEU = 8;
+export const DIA_CHI_TOI_DA = 300;
 
 /** Date có giờ địa phương bằng giờ Việt Nam lúc `ms`, để đưa vào hàm giờ của Mini App. */
 export function dongHoVn(ms: number): Date {
@@ -73,7 +78,7 @@ export function lamSachChu(v: unknown): string {
 }
 
 /**
- * Băm thứ khách gửi lên — giỏ, giờ nhận, tên, số, ghi chú — đã làm sạch, KHÔNG gồm giá hay kết quả kiểm. Gửi lại
+ * Băm thứ khách gửi lên — giỏ, giờ nhận, địa chỉ giao, tên, số, ghi chú — đã làm sạch, KHÔNG gồm giá hay kết quả kiểm. Gửi lại
  * cùng maGui sau khi giờ nhận vừa qua hay bảng giá vừa đổi vẫn ra cùng dấu: máy chủ trả lại đơn đã ghi, không bắt
  * khách đặt lại thành đơn thứ hai (may-chu.ts tra maGui trước khi gọi kiemDon).
  */
@@ -83,7 +88,8 @@ export function dauNoiDungGui(than: unknown): string {
   const gio = Object.entries(khay).filter(([, so]) => so !== 0).sort(([a], [c]) => (a < c ? -1 : a > c ? 1 : 0));
   const so = typeof b.dienThoai === 'string' ? b.dienThoai : '';
   const noiDung = {
-    gio, cachNhan: b.cachNhan ?? null, ngay: b.ngay ?? null, gioNhan: b.gio ?? null, ten: lamSachChu(b.ten),
+    gio, cachNhan: b.cachNhan ?? null, diaChi: lamSachChu(b.diaChi), ngay: b.ngay ?? null, gioNhan: b.gio ?? null,
+    ten: lamSachChu(b.ten),
     dienThoai: chuanHoaSoDienThoai(so) ?? lamSachChu(so), ghiChu: lamSachChu(b.ghiChu),
   };
   return createHash('sha256').update(JSON.stringify(noiDung)).digest('hex');
@@ -91,8 +97,8 @@ export function dauNoiDungGui(than: unknown): string {
 
 /**
  * Kiểm thân yêu cầu POST /api/don.
- * Dạng: { maGui, khay: { "<mã phần thịt>": số khay }, cachNhan: "tai-quan", ngay: "yyyy-mm-dd", gio: "HH:mm",
- *         ten, dienThoai, ghiChu? }
+ * Dạng: { maGui, khay: { "<mã phần thịt>": số khay }, cachNhan: "giao-hang", diaChi, ngay: "yyyy-mm-dd",
+ *         gio: "HH:mm", ten, dienThoai, ghiChu? }
  */
 export function kiemDon(than: unknown, ms: number): KetQuaKiem {
   const b = (than && typeof than === 'object' && !Array.isArray(than) ? than : {}) as Record<string, unknown>;
@@ -125,7 +131,12 @@ export function kiemDon(than: unknown, ms: number): KetQuaKiem {
   // Thứ tự dòng theo SAN_PHAM, như tin đơn của Mini App.
   dong.sort((a, c) => SAN_PHAM.findIndex(s => s.ma === a.maPhan) - SAN_PHAM.findIndex(s => s.ma === c.maPhan));
 
-  if (b.cachNhan !== 'tai-quan') loi.push('Đơn trả trước hiện chỉ nhận tại quán.');
+  if (b.cachNhan !== 'giao-hang') loi.push('Đơn trả trước trong app hiện chỉ giao tận nơi.');
+  const diaChi = lamSachChu(b.diaChi);
+  if (b.cachNhan === 'giao-hang') {
+    if (diaChi.length < DIA_CHI_TOI_THIEU) loi.push('Nhập địa chỉ giao hàng (số nhà, đường, phường).');
+    else if (diaChi.length > DIA_CHI_TOI_DA) loi.push(`Địa chỉ giao dài quá ${DIA_CHI_TOI_DA} ký tự.`);
+  }
 
   // Ngày giờ nhận: đúng dạng, có thật trên lịch, và nằm trong danh sách Mini App đang cho chọn lúc này.
   const ngay = typeof b.ngay === 'string' ? b.ngay : '';
@@ -143,7 +154,7 @@ export function kiemDon(than: unknown, ms: number): KetQuaKiem {
   }
 
   const ten = lamSachChu(b.ten);
-  if (ten.length < TEN_TOI_THIEU) loi.push('Nhập tên người nhận để quầy gọi khi bạn tới lấy.');
+  if (ten.length < TEN_TOI_THIEU) loi.push('Nhập tên người nhận để quán giao đúng người.');
   else if (ten.length > TEN_TOI_DA) loi.push(`Tên người nhận dài quá ${TEN_TOI_DA} ký tự.`);
 
   const dienThoai = chuanHoaSoDienThoai(typeof b.dienThoai === 'string' ? b.dienThoai : '');
@@ -159,7 +170,7 @@ export function kiemDon(than: unknown, ms: number): KetQuaKiem {
   return {
     ok: true,
     don: {
-      maGui, dong, tongTien, cachNhan: 'tai-quan', ngayNhan: ngay, gioNhan: gio, ten, dienThoai: dienThoai!, ghiChu,
+      maGui, dong, tongTien, cachNhan: 'giao-hang', diaChi, ngayNhan: ngay, gioNhan: gio, ten, dienThoai: dienThoai!, ghiChu,
       giaThu: CAU_HINH.giaThu, dauNoiDung,
     },
   };

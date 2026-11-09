@@ -150,7 +150,8 @@ export function kiemTraDon(dong: DongDon[], nhan: ThongTinNhan): string[] {
   const loi: string[] = [];
   if (tongSoKhay(dong) === 0) loi.push("Bạn chưa chọn khay thịt nào.");
   if (!nhan.ngay || !nhan.gio) loi.push("Chọn ngày và giờ nhận hàng.");
-  if (nhan.cachNhan === "giao-hang" && nhan.diaChi.trim().length < 8) {
+  // Gộp khoảng trắng như máy chủ đơn (lamSachChu): "12   Hu" không qua app rồi mới bị máy chủ từ chối.
+  if (nhan.cachNhan === "giao-hang" && nhan.diaChi.trim().replace(/\s+/g, " ").length < 8) {
     loi.push("Nhập địa chỉ giao hàng (số nhà, đường, phường).");
   }
   const coSo = nhan.dienThoai.trim().length > 0;

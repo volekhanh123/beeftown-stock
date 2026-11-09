@@ -71,6 +71,7 @@ body {
 .qd-the p { margin: 4px 0; }
 .qd-tong { font-weight: 700; }
 .qd-ghi-chu { border-left: 3px solid var(--vien-o); padding-left: 8px; }
+.qd-dia-chi { font-weight: 600; }
 .qd-the a { color: var(--than); font-weight: 600; }
 
 .qd-hang-nut { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }

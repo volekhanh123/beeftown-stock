@@ -9,7 +9,8 @@ laptop ở công ty, khi mở bán chuyển lên máy chủ thuê ở Việt Nam
 ## Đã làm được (đợt 1, 2a)
 
 - Nhận đơn từ Mini App: máy chủ tự tính tiền theo bảng giá, kiểm giờ nhận theo giờ Việt Nam, bấm gửi hai lần vẫn
-  chỉ ra một đơn. Đơn trả trước đợt đầu chỉ nhận tại quán.
+  chỉ ra một đơn. Đơn trả trước chỉ giao tận nơi, giá khay đã gồm phí giao (Khánh 09/11/2026); màn quầy hiện địa
+  chỉ giao. Sổ đơn tạo trước ngày đó tự thêm cột địa chỉ khi máy chủ chạy bản mới.
 - Màn hình đơn cho quầy (đăng nhập bằng mật khẩu quầy, tiếng Việt và tiếng Anh): đơn đã trả tiền → Đang soạn →
   Chờ khách lấy → Khách đã lấy. Hủy đơn đã trả tiền → "Đã hủy, cần hoàn tiền" → người chuyển khoản trả bấm
   "Đã hoàn tiền cho khách".
@@ -19,10 +20,14 @@ laptop ở công ty, khi mở bán chuyển lên máy chủ thuê ở Việt Nam
   hiện ở mục "Tiền về cần xem" trên màn quầy, người xử lý xong bấm "Đã xử lý xong". Máy chủ không giữ tên hay số tài
   khoản của người chuyển.
 
+- Mini App (đợt 2b): khi khai địa chỉ máy chủ này (`diaChiMayChuDon` trong `mini-app/src/cau-hinh.ts`), khách gửi
+  đơn lên đây và trả tiền ngay trong app — mã QR, chép số tài khoản / số tiền / nội dung, app tự cập nhật khi quán nhận
+  đủ tiền. Thử trên laptop: `mini-app/README.md`, "Thử đặt và trả tiền với máy chủ đơn".
+
 Bộ cài lên máy chủ thuê ở Việt Nam: mục "Đưa lên máy chủ thuê" (đợt 4a).
 
-Chưa có: màn trả tiền trong Mini App (đợt 2b), tin ZNS (đợt 3), sao lưu, đèn trong `/noi-bo` (đợt 4).
-Mini App trên Zalo **chưa** gửi đơn lên máy chủ này — vẫn gửi tin vào chat OA cho tới đợt 2b.
+Chưa có: tin ZNS (đợt 3), sao lưu, đèn trong `/noi-bo` (đợt 4). Mini App trên Zalo **chưa** gửi đơn lên máy chủ này:
+địa chỉ còn để trống cho tới khi máy chủ chạy HTTPS — khách vẫn gửi tin vào chat OA.
 
 ## Chạy thử trên laptop
 

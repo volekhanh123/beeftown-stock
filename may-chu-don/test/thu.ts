@@ -21,6 +21,9 @@ import { GioiHan, cungNguon, ipKhach, taoXuLy } from '../src/may-chu.ts';
 import { createHmac } from 'node:crypto';
 import { chuoiVietQr, crc16, docTruong, laTaiKhoanNhan, noiDungChuyenKhoan } from '../src/viet-qr.ts';
 import { DA_NHAN, docTinTienVe, kiemChuKy, timMaDon, type TinTienVe } from '../src/sepay.ts';
+import {
+  buocTraTien, docDonTuMayChu, guiDonLenMayChu, taoMaGui, taoThanDon, type HamFetchApi,
+} from '../../mini-app/src/tra-truoc.ts';
 
 let dat = 0, hong = 0;
 const ok = (ten: string, dieuKien: boolean, chiTiet = '') => {
@@ -35,13 +38,13 @@ let soGui = 0;
 const donHopLe = (them: Record<string, unknown> = {}) => ({
   maGui: `thu-ma-gui-${String(++soGui).padStart(4, '0')}`,
   khay: { 'ribeye-with-cap': 2, 'la-galbi': 1 },
-  cachNhan: 'tai-quan', ngay: '2026-11-13', gio: '18:30',
+  cachNhan: 'giao-hang', diaChi: '12 Nguyễn Huệ, phường Sài Gòn', ngay: '2026-11-13', gio: '18:30',
   ten: 'Khánh', dienThoai: '0912 345 678', ghiChu: '',
   ...them,
 });
 
 // =====================================================================================================
-nhom('1 · Kiểm đơn: giá do máy chủ tính, chỉ nhận tại quán');
+nhom('1 · Kiểm đơn: giá do máy chủ tính, chỉ giao tận nơi');
 {
   const k = kiemDon(donHopLe({ tongTien: 1, gia: { 'ribeye-with-cap': 1 } }), LUC_DAT);
   ok('Đơn hợp lệ được nhận', k.ok, JSON.stringify(k));
@@ -59,7 +62,17 @@ nhom('1 · Kiểm đơn: giá do máy chủ tính, chỉ nhận tại quán');
   ok('Số khay 0 bỏ qua; đơn toàn 0 → "chưa chọn khay"', loi(donHopLe({ khay: { 'ribeye-with-cap': 0 } })).some(l => l.includes('chưa chọn')));
   ok(`Số khay ${CAU_HINH.soKhayToiDa + 1}, 1,5, "2", -1 → từ chối`,
     [CAU_HINH.soKhayToiDa + 1, 1.5, '2', -1].every(so => loi(donHopLe({ khay: { 'ribeye-with-cap': so } })).some(l => l.includes('Số khay'))));
-  ok('Giao tận nơi → từ chối (đợt đầu đơn trả trước chỉ nhận tại quán)', loi(donHopLe({ cachNhan: 'giao-hang' })).some(l => l.includes('tại quán')));
+  ok('Nhận tại quán, cách nhận lạ, thiếu cách nhận → từ chối (Khánh 09/11/2026: đơn trả trước chỉ giao tận nơi)',
+    [{ cachNhan: 'tai-quan' }, { cachNhan: 'bay' }, { cachNhan: undefined }].every(t => loi(donHopLe(t)).some(l => l.includes('chỉ giao tận nơi'))));
+  const kDiaChi = kiemDon(donHopLe({ diaChi: '  12  Nguyễn\u0007 Huệ,\n phường   Sài Gòn ' }), LUC_DAT);
+  ok('Địa chỉ giao: làm sạch (gộp khoảng trắng, bỏ ký tự điều khiển), ghi vào đơn; tổng tiền chỉ là tiền khay (giá đã gồm phí giao)',
+    kDiaChi.ok && kDiaChi.don.cachNhan === 'giao-hang' && kDiaChi.don.diaChi === '12 Nguyễn Huệ, phường Sài Gòn'
+      && kDiaChi.don.tongTien === kDiaChi.don.dong.reduce((t, d) => t + d.soKhay * d.giaMoiKhay, 0),
+    kDiaChi.ok ? JSON.stringify(kDiaChi.don.diaChi) : JSON.stringify(kDiaChi));
+  ok('Địa chỉ giao trống, dưới 8 ký tự (sau khi làm sạch), quá 300 ký tự → từ chối với câu riêng',
+    loi(donHopLe({ diaChi: '' })).includes('Nhập địa chỉ giao hàng (số nhà, đường, phường).') && loi(donHopLe({ diaChi: '  12   Hu ' })).some(l => l.includes('Nhập địa chỉ giao'))
+      && loi(donHopLe({ diaChi: 'x'.repeat(301) })).some(l => l.includes('dài quá 300'))
+      && kiemDon(donHopLe({ diaChi: '12 Lý Tự' }), LUC_DAT).ok && kiemDon(donHopLe({ diaChi: 'x'.repeat(300) }), LUC_DAT).ok);
   ok('Thiếu mã gửi / mã gửi lạ → từ chối', loi(donHopLe({ maGui: 'x' })).length === 1 && loi(donHopLe({ maGui: 'a b c d e f g h' })).length === 1);
   ok('Thân không phải đối tượng → từ chối, không ném lỗi', !kiemDon(null, LUC_DAT).ok && !kiemDon([1], LUC_DAT).ok && !kiemDon('x', LUC_DAT).ok);
 }
@@ -81,6 +94,9 @@ nhom('2 · Kiểm đơn: tên, số điện thoại, chữ có dấu');
   const c = kiemDon(donHopLe({ maGui: 'cung-ma-gui-1', ghiChu: 'gọi trước' }), LUC_DAT);
   ok('Dấu nội dung: cùng đơn → cùng dấu; khác ghi chú → khác dấu',
     a.ok && b.ok && c.ok && a.don.dauNoiDung === b.don.dauNoiDung && a.don.dauNoiDung !== c.don.dauNoiDung);
+  const d = kiemDon(donHopLe({ maGui: 'cung-ma-gui-1', diaChi: '99 Lê Lợi, phường Bến Thành' }), LUC_DAT);
+  ok('Dấu nội dung: khác địa chỉ giao → khác dấu (cùng mã gửi mà đổi địa chỉ thì không ghi đè đơn cũ)',
+    a.ok && d.ok && a.don.dauNoiDung !== d.don.dauNoiDung);
 }
 
 nhom('3 · Giờ Việt Nam: 23:50 / 00:10, ngày không có thật, máy chạy UTC hay múi khác');
@@ -276,7 +292,7 @@ nhom('9 · Màn hình quầy: đăng nhập, quyền, đổi trạng thái');
 {
   const so = new SoDon(':memory:');
   const { xuLy, datGio } = taoMay(so);
-  const daTra = donMoi(so, { ten: '<script>alert(1)</script> Lan', ghiChu: 'Lấy "2" túi' });
+  const daTra = donMoi(so, { ten: '<script>alert(1)</script> Lan', ghiChu: 'Lấy "2" túi', diaChi: '7 <b>Hàm</b> Nghi, phường "Sài Gòn"' });
   so.ghiDaThanhToan(daTra.ma, LUC_DAT);
   const chuaTra = donMoi(so, { ten: 'Chưa Trả Tiền', gio: '19:00' });
 
@@ -310,6 +326,8 @@ nhom('9 · Màn hình quầy: đăng nhập, quyền, đổi trạng thái');
     ds.includes(`#${daTra.soTrongNgay}`) && ds.includes('&lt;script&gt;alert(1)&lt;/script&gt; Lan') && !ds.includes('<script>')
     && ds.includes('href="tel:0912345678"') && ds.includes('0912 345 678') && ds.includes(`${(2 * GIA('ribeye-with-cap') + GIA('la-galbi')).toLocaleString('vi-VN')} đ`));
   ok('Danh sách: ghi chú thoát dấu nháy', ds.includes('Lấy &quot;2&quot; túi'));
+  ok('Danh sách: đơn giao ghi "Giao <giờ>" và dòng "Giao tới: <địa chỉ>" đã thoát HTML',
+    ds.includes('Giao 18:30') && ds.includes('Giao tới: 7 &lt;b&gt;Hàm&lt;/b&gt; Nghi, phường &quot;Sài Gòn&quot;') && !ds.includes('<b>Hàm</b>'));
   ok('Danh sách: không thấy đơn chưa trả tiền', !ds.includes('Chưa Trả Tiền'));
   ok('Danh sách: nhãn "Đã trả tiền, chờ soạn" kiểu K1, nút chính "Bắt đầu soạn"', ds.includes('qd-nhan k1') && ds.includes('Bắt đầu soạn'));
   ok('Danh sách tự tải lại 20 giây, về /quay trơn (câu báo cũ không hiện lại mãi)', ds.includes('http-equiv="refresh" content="20; url=/quay"'));
@@ -611,6 +629,10 @@ nhom('16 · Đường /sepay/tien-ve và thông tin trả tiền trong /api/don'
   ok('Ảnh mã QR: SVG, không cache, có CORS cho Mini App', qr.status === 200 && qr.headers.get('content-type') === 'image/svg+xml'
     && (await qr.text()).startsWith('<svg') && qr.headers.get('cache-control') === 'no-store' && qr.headers.get('access-control-allow-origin') === '*');
   ok('Ảnh mã QR sai khóa → 404', (await goi(xuLy, `/api/don/${j.ma}/qr.svg?khoa=${'0'.repeat(32)}`)).status === 404);
+  const khongCo = await goi(xuLy, `/api/don/${j.ma}?khoa=${'0'.repeat(32)}`), duongLa = await goi(xuLy, '/api/khong-co-duong');
+  ok('Không có đơn → 404 kèm lyDo "khong_thay_don"; sai đường → 404 không có lyDo đó (Mini App không xóa đơn đã giữ)',
+    khongCo.status === 404 && (await khongCo.json() as { lyDo?: string }).lyDo === 'khong_thay_don'
+    && duongLa.status === 404 && (await duongLa.json() as { lyDo?: string }).lyDo === undefined);
 
   const gui = (than: unknown, them: Record<string, string> = {}, giay = Math.floor(LUC_DAT / 1000)) => {
     const chu = typeof than === 'string' ? than : JSON.stringify(than);
@@ -735,6 +757,118 @@ nhom('17 · Chạy src/main.ts thật');
   p.kill('SIGTERM');
   ok('SIGTERM → tắt gọn', await Promise.race([p.exited.then(c => c === 0), Bun.sleep(5000).then(() => false)]));
   fs.rmSync(tam, { recursive: true, force: true });
+}
+
+// =====================================================================================================
+nhom('18 · Mini App gọi máy chủ thật (mini-app/src/tra-truoc.ts): đặt, trả thiếu, trả nốt');
+{
+  const so = new SoDon(':memory:');
+  const { xuLy } = taoMay(so, { taiKhoan: TK, khoaSepay: KHOA_SEPAY, choTraGiaThu: true });
+  const GOC_MAY = 'http://don.beeftown.test';
+  // fetch của Mini App đi thẳng vào taoXuLy: cùng Request, cùng thân, cùng mã trả lời như qua mạng.
+  const quaMayChu: HamFetchApi = async (url, init) => {
+    const tra = await xuLy(new Request(url, { method: init.method, headers: init.headers, body: init.body }), '10.0.0.9');
+    return { status: tra.status, json: () => tra.json() };
+  };
+  const nhan = { cachNhan: 'giao-hang' as const, ngay: '2026-11-13', gio: '18:30', ten: ' Khánh ', dienThoai: '0912 345 678',
+    diaChi: '12 Nguyễn Huệ, phường Sài Gòn', cachTra: 'chuyen-khoan' as const, ghiChu: '' };
+  const than = taoThanDon(taoMaGui(), { 'ribeye-with-cap': 2, 'la-galbi': 1 }, nhan);
+  const g1 = await guiDonLenMayChu(GOC_MAY, than, quaMayChu);
+  ok('Thân đơn Mini App soạn được máy chủ nhận: đơn ghi, có khóa xem, có mã trả tiền đúng tổng tiền máy chủ tính',
+    g1.loai === 'da-ghi' && g1.don.thanhToan.traDuoc && g1.don.thanhToan.soTien === g1.don.tongTien
+    && g1.don.tongTien === so.layDon(g1.don.ma)!.tongTien, JSON.stringify(g1));
+  const g2 = await guiDonLenMayChu(GOC_MAY, than, quaMayChu);
+  ok('Mini App gửi lại cùng mã gửi (mất câu trả lời) → cùng đơn, không ra đơn thứ hai',
+    g1.loai === 'da-ghi' && g2.loai === 'da-ghi' && g2.don.ma === g1.don.ma
+    && (so.db.query('select count(*) as n from don').get() as { n: number }).n === 1);
+  if (g1.loai === 'da-ghi') {
+    const { ma } = g1.don, khoa = g1.khoa;
+    const doc = () => docDonTuMayChu(GOC_MAY, ma, khoa, quaMayChu);
+    const d0 = await doc();
+    ok('Mini App đọc đơn: chờ trả tiền, hiện mã QR', d0.loai === 'co' && buocTraTien(d0.don).buoc === 'cho-tra'
+      && d0.don.ngayNhan === '2026-11-13' && d0.don.gioNhan === '18:30');
+    const tienVe = (id: number, soTien: number) => {
+      const chu = JSON.stringify({ id, gateway: 'VietinBank', transactionDate: '2026-11-13 09:02:00', accountNumber: TK.soTaiKhoan,
+        subAccount: '', code: null, content: `BT${ma} chuyen tien`, transferType: 'in', description: '', transferAmount: soTien,
+        accumulated: 0, referenceCode: `FT${id}` });
+      const giay = Math.floor(LUC_DAT / 1000);
+      return goi(xuLy, '/sepay/tien-ve', { method: 'POST', body: chu, headers: { 'content-type': 'application/json',
+        'x-sepay-signature': kyThu(chu, giay), 'x-sepay-timestamp': String(giay) } });
+    };
+    await tienVe(7001, 100_000);
+    const d1 = await doc();
+    const b1 = d1.loai === 'co' ? buocTraTien(d1.don) : null;
+    ok('Chuyển thiếu → Mini App vẫn hiện mã, đúng phần còn thiếu, ghi đã nhận 100.000 đ',
+      b1?.buoc === 'cho-tra' && b1.daNhan === 100_000 && b1.thanhToan.soTien === g1.don.tongTien - 100_000, JSON.stringify(b1));
+    await tienVe(7002, g1.don.tongTien - 100_000);
+    const d2 = await doc();
+    const b2 = d2.loai === 'co' ? buocTraTien(d2.don) : null;
+    ok('Chuyển nốt → Mini App hiện "đã nhận đủ" chỉ khi máy chủ đã ghi đơn sang đã trả tiền',
+      b2?.buoc === 'da-nhan-du' && b2.thua === 0 && so.layDon(ma)!.trangThai === 'da_thanh_toan', JSON.stringify(b2));
+    ok('Sai khóa xem → Mini App báo không thấy đơn',
+      (await docDonTuMayChu(GOC_MAY, ma, '0'.repeat(32), quaMayChu)).loai === 'khong-thay');
+    ok('Mini App sai đường (sai địa chỉ máy chủ) → "không rõ", không phải "không thấy đơn"',
+      (await docDonTuMayChu(`${GOC_MAY}/sai`, ma, khoa, quaMayChu)).loai === 'khong-ro');
+    let bi429 = 0;
+    for (let i = 0; i < 160; i++) if ((await goi(xuLy, `/api/don/${ma}?khoa=${khoa}`, {}, '10.0.0.77')).status === 429) bi429++;
+    ok('10 khách sau một IP nhà mạng hỏi 4 giây một lần (150 lượt / phút) → không ai bị 429', bi429 === 0, String(bi429));
+  }
+  const loiGio = await guiDonLenMayChu(GOC_MAY, taoThanDon(taoMaGui(), { 'la-galbi': 1 }, { ...nhan, gio: '03:00' }), quaMayChu);
+  ok('Máy chủ từ chối (giờ nhận không chọn được) → Mini App hiện đúng câu của máy chủ, đơn chưa ghi',
+    loiGio.loai === 'chua-ghi' && loiGio.loi.includes('Giờ nhận này không còn chọn được. Chọn lại giờ nhận.'), JSON.stringify(loiGio));
+  const hong = Object.create(so) as SoDon;
+  hong.taoDon = () => { throw new Error('database is locked'); };
+  hong.layTheoMaGui = () => null;
+  const { xuLy: xuLyHong } = taoMay(hong, { taiKhoan: TK, khoaSepay: KHOA_SEPAY, choTraGiaThu: true });
+  const quaMayHong: HamFetchApi = async (url, init) => {
+    const tra = await xuLyHong(new Request(url, { method: init.method, headers: init.headers, body: init.body }), '10.0.0.9');
+    return { status: tra.status, json: () => tra.json() };
+  };
+  const gHong = await guiDonLenMayChu(GOC_MAY, taoThanDon(taoMaGui(), { 'la-galbi': 1 }, nhan), quaMayHong);
+  ok('Sổ đơn hỏng lúc ghi → Mini App nhận "chưa ghi" kèm câu "đơn CHƯA được ghi", không bao giờ "đã ghi"',
+    gHong.loai === 'chua-ghi' && gHong.loi.some(l => l.includes('CHƯA được ghi')), JSON.stringify(gHong));
+  so.dong();
+}
+
+nhom('19 · Giao tận nơi (Khánh 09/11/2026): sổ đơn cũ chưa có cột địa chỉ, API của khách không trả địa chỉ');
+{
+  // Sổ đơn tạo trước 09/11 trên laptop thử: bảng don chưa có cột dia_chi, đơn 'tai-quan'. Mở bằng bản mới: tự thêm
+  // cột, đơn cũ vẫn đọc được (địa chỉ trống), đơn mới ghi được địa chỉ.
+  const thuMuc = fs.mkdtempSync(path.join(os.tmpdir(), 'may-chu-don-cu-'));
+  const tep = path.join(thuMuc, 'don.sqlite');
+  // Lược đồ bảng don đúng như trước 09/11/2026 (không cột dia_chi); các bảng khác bản mới tự tạo.
+  const { Database } = await import('bun:sqlite');
+  const cu = new Database(tep, { create: true, strict: true });
+  cu.exec(`create table don (
+    ma text primary key, khoa_xem text not null, ma_gui text not null unique, dau_noi_dung text not null,
+    so_trong_ngay integer not null, ngay_tao text not null, trang_thai text not null, cach_nhan text not null,
+    ngay_nhan text not null, gio_nhan text not null, ten text not null, dien_thoai text not null, ghi_chu text not null,
+    tong_tien integer not null check (tong_tien >= 0), gia_thu integer not null, tao_luc integer not null,
+    cap_nhat_luc integer not null, unique (ngay_tao, so_trong_ngay));
+    insert into don values ('CUCUCUCU', 'khoa', 'ma-gui-cu-01', 'dau', 1, '2026-11-08', 'da_giao', 'tai-quan', '2026-11-08',
+      '10:30', 'Khách Cũ', '0912345678', '', 120000, 1, 1, 1);`);
+  const truoc = (cu.query("select name from pragma_table_info('don')").all() as { name: string }[]).map(c => c.name);
+  cu.close();
+  const moi = new SoDon(tep);
+  const sau = (moi.db.query("select name from pragma_table_info('don')").all() as { name: string }[]).map(c => c.name);
+  const donCu = moi.layDon('CUCUCUCU');
+  const donGiao = donMoi(moi, { diaChi: '45 Pasteur, phường Sài Gòn' });
+  ok('Sổ cũ chưa có cột dia_chi → mở bằng bản mới tự thêm cột; đơn cũ đọc được (nhận tại quán, địa chỉ trống)',
+    !truoc.includes('dia_chi') && sau.includes('dia_chi') && donCu?.cachNhan === 'tai-quan' && donCu.diaChi === '', JSON.stringify(donCu));
+  ok('Sổ cũ: đơn mới ghi và đọc lại đúng địa chỉ giao', moi.layDon(donGiao.ma)?.diaChi === '45 Pasteur, phường Sài Gòn' && moi.layDon(donGiao.ma)?.cachNhan === 'giao-hang');
+  moi.dong();
+  new SoDon(tep).dong();
+  ok('Mở sổ lần nữa (cột đã có) → không lỗi, không thêm cột trùng', true);
+  fs.rmSync(thuMuc, { recursive: true, force: true });
+
+  // API khách xem đơn: không trả tên, số điện thoại, địa chỉ (khách đã biết; ai cầm khóa xem cũng không đọc được).
+  const so = new SoDon(':memory:');
+  const { xuLy } = taoMay(so);
+  const don = donMoi(so, { diaChi: '88 Đồng Khởi, phường Sài Gòn', ten: 'Người Nhận Thử' });
+  const than = await (await goi(xuLy, `/api/don/${don.ma}?khoa=${don.khoaXem}`)).text();
+  ok('GET /api/don/<mã>: không có địa chỉ giao, tên, số điện thoại trong câu trả lời',
+    !than.includes('Đồng Khởi') && !than.includes('Người Nhận Thử') && !than.includes('0912345678') && !/diaChi|dienThoai/.test(than), than.slice(0, 200));
+  so.dong();
 }
 
 console.log(hong === 0 ? `\nTẤT CẢ ${dat} KIỂM TRA MÁY CHỦ ĐƠN ĐỀU ĐẠT` : `\n${hong} KIỂM TRA HỎNG / ${dat + hong}`);
