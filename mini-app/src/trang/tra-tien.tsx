@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Page, useNavigate } from "zmp-ui";
 import { veMaQr } from "../anh-qr";
 import { DauTich } from "../bieu-tuong";
-import { CAU_HINH } from "../cau-hinh";
 import { dinhDangTien, ngayDayDu } from "../don";
 import { useGioHang } from "../gio-hang";
 import { docDonTrenMayChu } from "../may-chu-don";
@@ -118,7 +117,7 @@ export default function TraTien() {
       {don && (
         <div className="tom-tat-don">
           <b>Đơn #{so}</b>
-          {lucNhan && <span>Nhận tại quán lúc {lucNhan}</span>}
+          {lucNhan && <span>Giao tận nơi lúc {lucNhan}</span>}
           <span>Tổng tiền {dinhDangTien(don.tongTien)}</span>
         </div>
       )}
@@ -175,17 +174,17 @@ export default function TraTien() {
           <h2>Quán đã nhận đủ tiền</h2>
           <p>
             {buoc.trangThai === "da_thanh_toan" &&
-              `Đơn #${so} đang chờ quầy soạn.${lucNhan ? ` Bạn ghé lấy lúc ${lucNhan}.` : ""}`}
+              `Đơn #${so} đang chờ quầy soạn.${lucNhan ? ` Quán giao tới bạn lúc ${lucNhan}.` : ""}`}
             {buoc.trangThai === "dang_soan" && `Quầy đang soạn khay cho đơn #${so}.`}
-            {buoc.trangThai === "cho_lay" && `Khay của đơn #${so} đã sẵn sàng. Mời bạn ghé quán lấy.`}
-            {buoc.trangThai === "da_giao" && `Bạn đã lấy khay của đơn #${so}. Cảm ơn bạn đã mua ở Beeftown.`}
+            {buoc.trangThai === "cho_lay" && `Khay của đơn #${so} đã soạn xong, quán đang giao tới bạn.`}
+            {buoc.trangThai === "da_giao" && `Đơn #${so} đã giao tới bạn. Cảm ơn bạn đã mua ở Beeftown.`}
           </p>
           {buoc.thua > 0 && (
             <p className="bao-them">Bạn chuyển dư {dinhDangTien(buoc.thua)}. Quán sẽ hoàn phần dư cho bạn.</p>
           )}
           {buoc.trangThai !== "da_giao" && (
             <p className="ghi-chu">
-              {CAU_HINH.diaChi}. {CAU_HINH.chiDuong} Tới quầy, bạn đọc tên người nhận hoặc số đơn #{so}.
+              Tài xế gọi số điện thoại bạn để lại khi giao. Cần đổi giờ hay địa chỉ giao, bạn chat với Beeftown.
             </p>
           )}
           <div className="cot-nut">

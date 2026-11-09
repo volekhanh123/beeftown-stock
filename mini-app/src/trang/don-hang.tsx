@@ -35,9 +35,9 @@ export default function DonHang() {
     if (nhan.gio && !cacGio.includes(nhan.gio)) suaNhan({ gio: "" });
   }, [cacGio, nhan.gio, suaNhan]);
 
-  // Đơn trả trước đợt đầu chỉ nhận tại quán (phí giao chưa chốt nên chưa tính đủ tiền trước được).
+  // Khánh 09/11/2026: đơn trả trước chỉ giao tận nơi, giá khay đã gồm phí giao — tổng tiền trước khi trả là đủ.
   useEffect(() => {
-    if (TRA_TRUOC && nhan.cachNhan !== "tai-quan") suaNhan({ cachNhan: "tai-quan" });
+    if (TRA_TRUOC && nhan.cachNhan !== "giao-hang") suaNhan({ cachNhan: "giao-hang" });
   }, [nhan.cachNhan, suaNhan]);
 
   // Khách sửa đơn thì câu lỗi của lần gửi trước không còn đúng.
@@ -141,6 +141,21 @@ export default function DonHang() {
     );
   }
 
+  // Ô địa chỉ giao: chung cho đơn trả trước (luôn giao tận nơi) và đơn gửi qua chat chọn "Giao tận nơi".
+  const oDiaChi = (
+    <label className="o-nhap">
+      <span>Địa chỉ giao hàng</span>
+      <textarea
+        rows={2}
+        maxLength={200}
+        placeholder="Số nhà, đường, phường"
+        autoComplete="street-address"
+        value={nhan.diaChi}
+        onChange={(e) => suaNhan({ diaChi: e.target.value })}
+      />
+    </label>
+  );
+
   return (
     <Page className="trang don-hang" hideScrollbar>
       <DauTrang tieuDe="Đơn hàng" />
@@ -171,7 +186,11 @@ export default function DonHang() {
           <span>Tổng tiền thịt</span>
           <b>{tongTien === null ? "Quán báo khi xác nhận" : dinhDangTien(tongTien)}</b>
         </p>
-        {nhan.cachNhan === "giao-hang" && <p className="ghi-chu">Chưa gồm phí giao, quán báo khi xác nhận đơn.</p>}
+        {nhan.cachNhan === "giao-hang" && (
+          <p className="ghi-chu">
+            {TRA_TRUOC ? "Giá đã gồm phí giao tận nơi." : "Chưa gồm phí giao, quán báo khi xác nhận đơn."}
+          </p>
+        )}
         <button type="button" className="nut-chu" onClick={() => navigate(-1)}>
           + Chọn thêm phần khác
         </button>
@@ -181,11 +200,10 @@ export default function DonHang() {
         {TRA_TRUOC ? (
           <>
             <p>
-              <b>Nhận tại quán</b>
+              <b>Giao tận nơi</b>
             </p>
-            <p className="ghi-chu">
-              {CAU_HINH.diaChi}. {CAU_HINH.chiDuong} Đơn trả trước trong app hiện chỉ nhận tại quán.
-            </p>
+            {oDiaChi}
+            <p className="ghi-chu">Đơn trả trước trong app hiện chỉ giao tận nơi.</p>
           </>
         ) : (
           <>
@@ -215,16 +233,7 @@ export default function DonHang() {
               </p>
             ) : (
               <>
-                <label className="o-nhap">
-                  <span>Địa chỉ giao hàng</span>
-                  <textarea
-                    rows={2}
-                    maxLength={200}
-                    placeholder="Số nhà, đường, phường"
-                    value={nhan.diaChi}
-                    onChange={(e) => suaNhan({ diaChi: e.target.value })}
-                  />
-                </label>
+                {oDiaChi}
                 <p className="ghi-chu">Quán gọi xe giao. Phí giao quán báo khi xác nhận đơn.</p>
               </>
             )}
@@ -281,7 +290,7 @@ export default function DonHang() {
             onChange={(e) => suaNhan({ dienThoai: e.target.value })}
           />
         </label>
-        {TRA_TRUOC && <p className="ghi-chu">Quầy gọi tên người nhận khi bạn tới lấy khay.</p>}
+        {TRA_TRUOC && <p className="ghi-chu">Tài xế gọi số này khi giao.</p>}
       </Muc>
 
       <Muc tieuDe="Thanh toán">
@@ -336,8 +345,8 @@ export default function DonHang() {
 
       {TRA_TRUOC ? (
         <p className="ghi-chu ghi-chu-trang">
-          Bấm “Gửi đơn và trả tiền” để gửi đơn tới Beeftown. Tên, số điện thoại và đơn của bạn được lưu trên máy chủ đơn
-          của Beeftown đặt tại Việt Nam, để quầy soạn và giao đúng đơn.
+          Bấm “Gửi đơn và trả tiền” để gửi đơn tới Beeftown. Tên, số điện thoại, địa chỉ giao và đơn của bạn được lưu
+          trên máy chủ đơn của Beeftown đặt tại Việt Nam, để quầy soạn và giao đúng đơn.
         </p>
       ) : (
         <p className="ghi-chu ghi-chu-trang">

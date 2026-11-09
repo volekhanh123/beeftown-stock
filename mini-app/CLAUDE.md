@@ -1,6 +1,6 @@
 # Beeftown Mini App: đọc trước khi làm
 
-Zalo Mini App bán 6 phần thịt mang về của nhà hàng Beeftown (63 Hồ Tùng Mậu, phường Sài Gòn, TP.HCM). Khách chọn số khay (bán theo khay, giá cố định), app mở chat với Zalo OA của quán và điền sẵn tin đơn có tổng tiền; khách tự bấm Gửi. Không máy chủ, không lưu dữ liệu khách, không thu tiền trong app — cho tới khi khai máy chủ đơn (`diaChiMayChuDon` trong `src/cau-hinh.ts`, đợt 2b): khi đó khách gửi đơn lên máy chủ đơn của repo (`may-chu-don/`, đặt ở Việt Nam) và chuyển khoản VietQR ngay trong app, chỉ nhận tại quán.
+Zalo Mini App bán 6 phần thịt mang về của nhà hàng Beeftown (63 Hồ Tùng Mậu, phường Sài Gòn, TP.HCM). Khách chọn số khay (bán theo khay, giá cố định), app mở chat với Zalo OA của quán và điền sẵn tin đơn có tổng tiền; khách tự bấm Gửi. Không máy chủ, không lưu dữ liệu khách, không thu tiền trong app — cho tới khi khai máy chủ đơn (`diaChiMayChuDon` trong `src/cau-hinh.ts`, đợt 2b): khi đó khách gửi đơn lên máy chủ đơn của repo (`may-chu-don/`, đặt ở Việt Nam) và chuyển khoản VietQR ngay trong app, chỉ giao tận nơi, giá khay đã gồm phí giao (Khánh 09/11/2026).
 
 - Người giao việc: Khánh (Võ Lê Khánh), CMO và partner của Beeftown. Pháp nhân bán hàng: Công ty TNHH SLK Group, mã số doanh nghiệp 0319712805.
 - Bản 1.0 do Claude dựng ngày 22/10/2026 trong dự án "FnB Investment" trên claude.ai, rồi chuyển sang Claude Code cùng ngày lúc 13:00. Ghi chú đầy đủ của dự án: tài liệu `claude/zalo-oa-beeftown.md` trong project "FnB Investment".

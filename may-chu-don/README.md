@@ -9,7 +9,8 @@ laptop ở công ty, khi mở bán chuyển lên máy chủ thuê ở Việt Nam
 ## Đã làm được (đợt 1, 2a)
 
 - Nhận đơn từ Mini App: máy chủ tự tính tiền theo bảng giá, kiểm giờ nhận theo giờ Việt Nam, bấm gửi hai lần vẫn
-  chỉ ra một đơn. Đơn trả trước đợt đầu chỉ nhận tại quán.
+  chỉ ra một đơn. Đơn trả trước chỉ giao tận nơi, giá khay đã gồm phí giao (Khánh 09/11/2026); màn quầy hiện địa
+  chỉ giao. Sổ đơn tạo trước ngày đó tự thêm cột địa chỉ khi máy chủ chạy bản mới.
 - Màn hình đơn cho quầy (đăng nhập bằng mật khẩu quầy, tiếng Việt và tiếng Anh): đơn đã trả tiền → Đang soạn →
   Chờ khách lấy → Khách đã lấy. Hủy đơn đã trả tiền → "Đã hủy, cần hoàn tiền" → người chuyển khoản trả bấm
   "Đã hoàn tiền cho khách".

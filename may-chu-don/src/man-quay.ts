@@ -29,6 +29,8 @@ export const CHU = {
   khongCoViec: { vi: 'Chưa có đơn nào phải làm.', en: 'No orders to do.' },
   xongHomNay: { vi: 'Đã xong hôm nay', en: 'Done today' },
   nhan: { vi: 'Nhận', en: 'Pickup' },
+  giao: { vi: 'Giao', en: 'Deliver' },
+  diaChiGiao: { vi: 'Giao tới', en: 'Deliver to' },
   khay: { vi: 'khay', en: 'tray(s)' },
   dongLanh: { vi: 'đông lạnh', en: 'frozen' },
   mat: { vi: 'thịt mát', en: 'chilled' },
@@ -149,8 +151,9 @@ function theDon(don: DonDayDu, nn: NgonNgu, coNut: boolean, baoHtml = '', daNhan
   const tong = don.trangThai === 'cho_thanh_toan' || don.trangThai === 'het_han' ? c('tongChuaTra') : c('tong');
   return `<article class="qd-the" id="don-${thoat(don.ma)}">
   <div class="qd-the-dau"><span class="qd-so">#${don.soTrongNgay}</span>
-    <span class="qd-gio">${c('nhan')} ${thoat(don.gioNhan)}, ${thoat(ngayTheoTieng(don.ngayNhan, nn))}</span>${nhanTrangThai(don.trangThai, nn)}</div>
+    <span class="qd-gio">${c(don.cachNhan === 'giao-hang' ? 'giao' : 'nhan')} ${thoat(don.gioNhan)}, ${thoat(ngayTheoTieng(don.ngayNhan, nn))}</span>${nhanTrangThai(don.trangThai, nn)}</div>
   <p>${thoat(don.ten)} · <a href="tel:${thoat(don.dienThoai)}">${thoat(hienSoDienThoai(don.dienThoai))}</a></p>
+  ${don.cachNhan === 'giao-hang' ? `<p class="qd-dia-chi">${c('diaChiGiao')}: ${thoat(don.diaChi)}</p>` : ''}
   <ul>${dong}</ul>
   <p class="qd-tong">${tong}: ${thoat(dinhDangTien(don.tongTien))}${don.giaThu ? ` <span class="qd-nhan k3">${c('giaThu')}</span>` : ''}</p>
   ${daNhan > 0 ? `<p>${c('daNhanChuyenKhoan')}: ${thoat(dinhDangTien(daNhan))}</p>` : ''}

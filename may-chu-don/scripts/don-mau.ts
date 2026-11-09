@@ -38,7 +38,7 @@ const MAU: { khay: Record<string, number>; buoc: ('tra' | 'soan' | 'xong' | 'huy
 ];
 MAU.forEach((m, i) => {
   const k = kiemDon({
-    maGui: `don-mau-${randomBytes(6).toString('hex')}`, khay: m.khay, cachNhan: 'tai-quan', ngay, gio: gio[i],
+    maGui: `don-mau-${randomBytes(6).toString('hex')}`, khay: m.khay, cachNhan: 'giao-hang', diaChi: `${12 + i} Đường Thử, phường Thử, TP.HCM`, ngay, gio: gio[i],
     ten: `Khách thử ${i + 1}`, dienThoai: `090000000${i + 1}`, ghiChu: m.ghiChu ?? '',
   }, ms);
   if (!k.ok) throw new Error(k.loi.join('; '));

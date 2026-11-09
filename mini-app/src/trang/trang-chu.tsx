@@ -30,7 +30,7 @@ export default function TrangChu() {
         <p className="tieu-de">Thịt bò mang về</p>
         <p className="dong-phu">
           {TRA_TRUOC
-            ? "Chọn số khay, chuyển khoản ngay trong app, ghé quán lấy. Giá tính theo khay, thấy tổng tiền trước khi trả."
+            ? "Chọn số khay, chuyển khoản ngay trong app, quán giao tận nơi. Giá tính theo khay, đã gồm phí giao, thấy tổng tiền trước khi trả."
             : "Chọn số khay, gửi đơn qua Zalo. Giá tính theo khay, thấy tổng tiền trước khi gửi đơn."}
         </p>
       </header>
@@ -57,7 +57,7 @@ export default function TrangChu() {
         </li>
         <li>
           <b>3</b>
-          {TRA_TRUOC ? "Ghé quán lấy" : "Quán xác nhận đơn"}
+          {TRA_TRUOC ? "Quán giao tận nơi" : "Quán xác nhận đơn"}
         </li>
       </ol>
 

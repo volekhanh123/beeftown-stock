@@ -7,8 +7,9 @@ Khánh quyết 29/10/2026: bỏ gửi đơn qua tin nhắn chat OA, đặt hàng
 online qua **SePay** (chuyển khoản VietQR vào tài khoản VietinBank của SLK Group — Khánh mở tài khoản sau; Khánh đổi
 từ Checkout SDK của Zalo sang SePay cùng ngày), quầy xem đơn trên **màn hình đơn riêng**, máy chủ **chạy thử trên laptop ở công ty rồi
 chuyển lên máy chủ thuê ở Việt Nam** khi mở bán, khách được báo **trong app và bằng ZNS**. Khánh chốt 30/10/2026: khách chuyển dư thì đơn vẫn soạn, người làm hoàn phần
-dư; tiền về đủ sau khi đơn quá hạn 30 phút vẫn tính là đã trả. Claude đề xuất, Khánh chưa chốt: đơn trả trước đợt đầu
-chỉ nhận tại quán (phí giao chưa chốt), hoàn tiền do người làm tay.
+dư; tiền về đủ sau khi đơn quá hạn 30 phút vẫn tính là đã trả. Khánh chốt 09/11/2026: đơn trả trước **chỉ giao tận
+nơi, giá khay đã gồm phí giao** ("giao tận nơi tạm thời là bao gồm giá giao") — tổng tiền là tổng tiền khay, đơn có
+địa chỉ giao (cột `dia_chi`, chỉ màn quầy thấy; API của khách không trả); hoàn tiền do người làm tay.
 
 Khánh 02/11/2026: tên miền máy chủ đơn là **`don.beeftown.vn`**; thử trước trên một **laptop dư cài Ubuntu** (xóa
 Windows), mở ra internet qua router nhà — cùng bộ cài `cai-dat/` như máy thuê; mở bán thật thì chuyển sang máy thuê.

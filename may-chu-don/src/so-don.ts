@@ -30,7 +30,10 @@ export interface DonDayDu {
   /** Ngày tạo đơn theo giờ Việt Nam, yyyy-mm-dd */
   ngayTao: string;
   trangThai: TrangThai;
-  cachNhan: 'tai-quan';
+  /** Từ 09/11/2026 đơn mới luôn 'giao-hang'. 'tai-quan': đơn ghi trước đó trên sổ thử (laptop), địa chỉ trống. */
+  cachNhan: 'tai-quan' | 'giao-hang';
+  /** Địa chỉ giao (đơn 'giao-hang'); '' với đơn 'tai-quan' cũ. Dữ liệu khách: chỉ quầy thấy, API của khách không trả. */
+  diaChi: string;
   ngayNhan: string;
   gioNhan: string;
   ten: string;
@@ -93,6 +96,7 @@ create table if not exists don (
   ngay_tao text not null,
   trang_thai text not null,
   cach_nhan text not null,
+  dia_chi text not null default '',
   ngay_nhan text not null,
   gio_nhan text not null,
   ten text not null,
@@ -150,6 +154,9 @@ export class SoDon {
     this.db = new Database(duongDan, { create: true, strict: true });
     this.db.exec('pragma journal_mode = wal; pragma foreign_keys = on; pragma busy_timeout = 5000;');
     this.db.exec(LUOC_DO);
+    // Sổ tạo trước 09/11/2026 (laptop thử) chưa có cột dia_chi: thêm, đơn cũ để trống.
+    const cot = this.db.query("select name from pragma_table_info('don')").all() as { name: string }[];
+    if (!cot.some(c => c.name === 'dia_chi')) this.db.exec("alter table don add column dia_chi text not null default ''");
   }
 
   dong(): void { this.db.close(); }
@@ -162,7 +169,8 @@ export class SoDon {
     if (!laTrangThai(trangThai)) throw new Error(`Đơn ${h.ma} có trạng thái lạ: ${trangThai}`);
     return {
       ma: String(h.ma), khoaXem: String(h.khoa_xem), soTrongNgay: Number(h.so_trong_ngay), ngayTao: String(h.ngay_tao),
-      trangThai, cachNhan: 'tai-quan', ngayNhan: String(h.ngay_nhan), gioNhan: String(h.gio_nhan),
+      trangThai, cachNhan: h.cach_nhan === 'giao-hang' ? 'giao-hang' : 'tai-quan', diaChi: String(h.dia_chi ?? ''),
+      ngayNhan: String(h.ngay_nhan), gioNhan: String(h.gio_nhan),
       ten: String(h.ten), dienThoai: String(h.dien_thoai), ghiChu: String(h.ghi_chu), tongTien: Number(h.tong_tien),
       giaThu: Number(h.gia_thu) === 1, taoLuc: Number(h.tao_luc), capNhatLuc: Number(h.cap_nhat_luc),
       dong: dong.map(d => ({
@@ -204,10 +212,10 @@ export class SoDon {
       let ma = taoMa();
       while (this.db.query('select 1 from don where ma = ?').get(ma)) ma = taoMa();
       this.db.query(`insert into don (ma, khoa_xem, ma_gui, dau_noi_dung, so_trong_ngay, ngay_tao, trang_thai, cach_nhan,
-          ngay_nhan, gio_nhan, ten, dien_thoai, ghi_chu, tong_tien, gia_thu, tao_luc, cap_nhat_luc)
-        values (?, ?, ?, ?, ?, ?, 'cho_thanh_toan', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-        .run(ma, randomBytes(16).toString('hex'), don.maGui, don.dauNoiDung, so, ngayTao, don.cachNhan, don.ngayNhan,
-          don.gioNhan, don.ten, don.dienThoai, don.ghiChu, don.tongTien, don.giaThu ? 1 : 0, ms, ms);
+          dia_chi, ngay_nhan, gio_nhan, ten, dien_thoai, ghi_chu, tong_tien, gia_thu, tao_luc, cap_nhat_luc)
+        values (?, ?, ?, ?, ?, ?, 'cho_thanh_toan', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(ma, randomBytes(16).toString('hex'), don.maGui, don.dauNoiDung, so, ngayTao, don.cachNhan, don.diaChi,
+          don.ngayNhan, don.gioNhan, don.ten, don.dienThoai, don.ghiChu, don.tongTien, don.giaThu ? 1 : 0, ms, ms);
       const themDong = this.db.query(`insert into don_dong (ma_don, thu_tu, ma_phan, ten, bao_quan, so_gam_khay, so_khay,
         gia_moi_khay) values (?, ?, ?, ?, ?, ?, ?, ?)`);
       don.dong.forEach((d, i) => themDong.run(ma, i + 1, d.maPhan, d.ten, d.baoQuan, d.soGamKhay, d.soKhay, d.giaMoiKhay));

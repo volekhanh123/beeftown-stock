@@ -35,7 +35,7 @@ export default function ThongTin() {
               khay.
             </li>
             <li>
-              <b>Ghé quán lấy khay</b> theo giờ bạn chọn. Quầy gọi tên người nhận.
+              <b>Quán giao tận nơi</b> theo giờ bạn chọn. Tài xế gọi số điện thoại bạn để lại khi giao.
             </li>
           </ol>
         ) : (
@@ -62,7 +62,7 @@ export default function ThongTin() {
           Giá tính theo khay, không đổi theo số gam thật của từng khay. Tiền thịt = số khay × giá một khay; app tính sẵn
           tổng trong đơn.
           {TRA_TRUOC
-            ? " Đơn trả trước trong app hiện chỉ nhận tại quán."
+            ? " Giá khay đã gồm phí giao tận nơi; đơn trả trước trong app hiện chỉ giao tận nơi."
             : " Đơn giao tận nơi cộng phí giao, quán báo khi xác nhận."}
           {CAU_HINH.giaThu && " Giá và số gam trong app hiện là số thử, chưa phải giá bán của quán."}
         </p>
@@ -101,8 +101,8 @@ export default function ThongTin() {
       <Muc tieuDe="Thông tin của bạn">
         {TRA_TRUOC ? (
           <p>
-            Khi đặt trong app, tên, số điện thoại và đơn của bạn được gửi tới máy chủ đơn của Beeftown đặt tại Việt Nam,
-            để quầy soạn và giao đúng đơn. Tiền chuyển khoản vào thẳng tài khoản của {p.ten}; máy chủ chỉ ghi số tiền và
+            Khi đặt trong app, tên, số điện thoại, địa chỉ giao và đơn của bạn được gửi tới máy chủ đơn của Beeftown đặt
+            tại Việt Nam, để quầy soạn và giao đúng đơn. Tiền chuyển khoản vào thẳng tài khoản của {p.ten}; máy chủ chỉ ghi số tiền và
             mã giao dịch, không lưu tên hay số tài khoản ngân hàng của bạn.
           </p>
         ) : (

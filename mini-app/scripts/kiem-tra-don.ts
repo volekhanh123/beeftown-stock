@@ -226,12 +226,12 @@ await kiemAsync("còn hàng: tạm ngưng trong cau-hinh thắng kho; kho không
 const MAY_CHU = "https://don.beeftown.vn";
 const KHOA = "0123456789abcdef0123456789abcdef";
 const nhanTra: ThongTinNhan = {
-  cachNhan: "tai-quan",
+  cachNhan: "giao-hang",
   ngay: "2026-11-13",
   gio: "10:30",
   ten: " Khánh ",
   dienThoai: "0912 345 678",
-  diaChi: "",
+  diaChi: " 12 Nguyễn Huệ, phường Sài Gòn ",
   cachTra: "chuyen-khoan",
   ghiChu: " gọi trước ",
 };
@@ -262,19 +262,21 @@ const mayChuGia = (status: number, json: unknown, ghi: CuocGoi[] = []): HamFetch
   return { status, json: async () => json };
 };
 
-kiem("trả trước: thân đơn chỉ có mã phần thịt và số khay, không giá; chữ đã cắt khoảng trắng", () => {
+kiem("trả trước: thân đơn chỉ có mã phần thịt và số khay, không giá; giao tận nơi kèm địa chỉ; chữ đã cắt khoảng trắng", () => {
   const than = taoThanDon("ma-gui-0123456789", { "la-galbi": 2, chadolbagi: 0 }, nhanTra);
   assert.deepEqual(than, {
     maGui: "ma-gui-0123456789",
     khay: { "la-galbi": 2 },
-    cachNhan: "tai-quan",
+    cachNhan: "giao-hang",
+    diaChi: "12 Nguyễn Huệ, phường Sài Gòn",
     ngay: "2026-11-13",
     gio: "10:30",
     ten: "Khánh",
     dienThoai: "0912 345 678",
     ghiChu: "gọi trước",
   });
-  assert.ok(!JSON.stringify(than).includes("gia"));
+  // Không trường nào mang giá hay tiền: máy chủ tự tính (chữ "giao-hang" có "gia" nên so theo tên trường).
+  assert.ok(!Object.keys(than).some((k) => /gia|tien/i.test(k)), Object.keys(than).join(","));
 });
 
 kiem("trả trước: mã gửi 24 ký tự chữ số, đúng dạng máy chủ nhận; nội dung đổi thì dấu đổi", () => {
@@ -285,16 +287,21 @@ kiem("trả trước: mã gửi 24 ký tự chữ số, đúng dạng máy chủ
   assert.equal(dauNoiDung({ "la-galbi": 2 }, nhanTra), dauNoiDung({ "la-galbi": 2 }, { ...nhanTra }));
   assert.notEqual(dauNoiDung({ "la-galbi": 2 }, nhanTra), dauNoiDung({ "la-galbi": 3 }, nhanTra));
   assert.notEqual(dauNoiDung({ "la-galbi": 2 }, nhanTra), dauNoiDung({ "la-galbi": 2 }, { ...nhanTra, gio: "11:00" }));
+  // Đổi địa chỉ giao là đổi đơn: mã gửi mới (máy chủ từ chối cùng mã gửi khác nội dung).
+  assert.notEqual(dauNoiDung({ "la-galbi": 2 }, nhanTra), dauNoiDung({ "la-galbi": 2 }, { ...nhanTra, diaChi: "99 Lê Lợi, phường Bến Thành" }));
 });
 
-kiem("trả trước: bắt tên, số điện thoại; phần vừa hết, phần chưa giá không đặt được", () => {
+kiem("trả trước: bắt tên, địa chỉ giao, số điện thoại (mỗi câu một lần); phần vừa hết, phần chưa giá không đặt được", () => {
   assert.deepEqual(kiemTraTraTruoc(nhanTra, [], []), []);
-  const loi = kiemTraTraTruoc({ ...nhanTra, ten: " K ", dienThoai: " " }, ["LA Galbi"], ["Chadolbagi"]);
+  // "12   Hu  " dài 8 ký tự nhưng gộp khoảng trắng còn 5: app chặn như máy chủ.
+  const sai = { ...nhanTra, ten: " K ", dienThoai: " ", diaChi: "12   Hu  " };
+  const loi = [...kiemTraDon(dong, sai), ...kiemTraTraTruoc(sai, ["LA Galbi"], ["Chadolbagi"])];
   assert.deepEqual(loi, [
+    "Nhập địa chỉ giao hàng (số nhà, đường, phường).",
+    "Nhập số điện thoại để tài xế gọi khi giao.",
     "LA Galbi vừa hết ở quầy. Bớt phần này rồi gửi lại.",
     "Chadolbagi chưa có giá, chưa đặt trả trước được.",
-    "Nhập tên người nhận để quầy gọi khi bạn tới lấy.",
-    "Nhập số điện thoại để quán liên hệ khi cần.",
+    "Nhập tên người nhận để quán giao đúng người.",
   ]);
 });
 

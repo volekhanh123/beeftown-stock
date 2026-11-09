@@ -2,7 +2,8 @@
  * TRẠNG THÁI CỦA MỘT ĐƠN — một chỗ duy nhất
  * =========================================
  *
- * Đơn trả trước trong app (Khánh chốt 29/10/2026): khách trả tiền trong Mini App rồi quầy mới soạn.
+ * Đơn trả trước trong app (Khánh chốt 29/10/2026): khách trả tiền trong Mini App rồi quầy mới soạn. Khánh 09/11/2026:
+ * chỉ giao tận nơi — cho_lay là "soạn xong, chờ giao", da_giao là "đã giao tới khách" (mã trạng thái giữ tên cũ).
  *
  *   cho_thanh_toan ──(SePay báo đủ tiền)──▶ da_thanh_toan ──▶ dang_soan ──▶ cho_lay ──▶ da_giao
  *        │                                            │               │            │
@@ -33,8 +34,8 @@ export const NHAN: Readonly<Record<TrangThai, { vi: string; en: string; kieu: Ki
   het_han: { vi: 'Hết hạn trả tiền', en: 'Payment expired', kieu: 'k6' },
   da_thanh_toan: { vi: 'Đã trả tiền, chờ soạn', en: 'Paid, to prepare', kieu: 'k1' },
   dang_soan: { vi: 'Đang soạn', en: 'Preparing', kieu: 'k3' },
-  cho_lay: { vi: 'Chờ khách lấy', en: 'Ready for pickup', kieu: 'k5' },
-  da_giao: { vi: 'Đã giao khách', en: 'Picked up', kieu: 'k4' },
+  cho_lay: { vi: 'Soạn xong, chờ giao', en: 'Ready for delivery', kieu: 'k5' },
+  da_giao: { vi: 'Đã giao khách', en: 'Delivered', kieu: 'k4' },
   can_hoan_tien: { vi: 'Đã hủy, cần hoàn tiền', en: 'Cancelled, refund due', kieu: 'k1' },
   da_hoan_tien: { vi: 'Đã hoàn tiền', en: 'Refunded', kieu: 'k6' },
 };
@@ -42,8 +43,8 @@ export const NHAN: Readonly<Record<TrangThai, { vi: string; en: string; kieu: Ki
 /** Bước quầy được bấm: từ trạng thái nào sang trạng thái nào, kèm chữ của nút. */
 export const BUOC_QUAY: ReadonlyArray<{ tu: TrangThai; den: TrangThai; vi: string; en: string; chinh: boolean }> = [
   { tu: 'da_thanh_toan', den: 'dang_soan', vi: 'Bắt đầu soạn', en: 'Start preparing', chinh: true },
-  { tu: 'dang_soan', den: 'cho_lay', vi: 'Soạn xong, chờ khách lấy', en: 'Ready for pickup', chinh: true },
-  { tu: 'cho_lay', den: 'da_giao', vi: 'Khách đã lấy', en: 'Picked up', chinh: true },
+  { tu: 'dang_soan', den: 'cho_lay', vi: 'Soạn xong, chờ giao', en: 'Ready for delivery', chinh: true },
+  { tu: 'cho_lay', den: 'da_giao', vi: 'Đã giao tới khách', en: 'Delivered', chinh: true },
   { tu: 'da_thanh_toan', den: 'can_hoan_tien', vi: 'Hủy đơn, cần hoàn tiền', en: 'Cancel, refund due', chinh: false },
   { tu: 'dang_soan', den: 'can_hoan_tien', vi: 'Hủy đơn, cần hoàn tiền', en: 'Cancel, refund due', chinh: false },
   { tu: 'cho_lay', den: 'can_hoan_tien', vi: 'Hủy đơn, cần hoàn tiền', en: 'Cancel, refund due', chinh: false },

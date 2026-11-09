@@ -63,7 +63,9 @@ export interface DonTraTruoc {
 export interface ThanDon {
   maGui: string;
   khay: Record<string, number>;
-  cachNhan: "tai-quan";
+  /** Khánh 09/11/2026: đơn trả trước chỉ giao tận nơi, giá khay đã gồm phí giao. */
+  cachNhan: "giao-hang";
+  diaChi: string;
   ngay: string;
   gio: string;
   ten: string;
@@ -78,7 +80,8 @@ export function taoThanDon(maGui: string, soKhay: Record<string, number>, nhan: 
   return {
     maGui,
     khay,
-    cachNhan: "tai-quan",
+    cachNhan: "giao-hang",
+    diaChi: nhan.diaChi.trim(),
     ngay: nhan.ngay,
     gio: nhan.gio,
     ten: nhan.ten.trim(),
@@ -104,13 +107,16 @@ export function taoMaGui(
   return Array.from(ngauNhien(24), (b) => CHU_MA_GUI[b % CHU_MA_GUI.length]).join("");
 }
 
-/** Kiểm thêm của đơn trả trước (kiemTraDon của don.ts đã kiểm giỏ, giờ nhận, dạng số điện thoại). */
+/**
+ * Kiểm thêm của đơn trả trước. kiemTraDon của don.ts đã kiểm giỏ, giờ nhận, địa chỉ giao và số điện thoại (đơn
+ * trả trước luôn là "giao-hang": địa chỉ, số bắt buộc) — ở đây không lặp lại câu của nó.
+ */
 export function kiemTraTraTruoc(nhan: ThongTinNhan, phanVuaHet: string[], phanChuaGia: string[]): string[] {
   const loi: string[] = [];
   for (const ten of phanVuaHet) loi.push(`${ten} vừa hết ở quầy. Bớt phần này rồi gửi lại.`);
   for (const ten of phanChuaGia) loi.push(`${ten} chưa có giá, chưa đặt trả trước được.`);
-  if (nhan.ten.trim().length < 2) loi.push("Nhập tên người nhận để quầy gọi khi bạn tới lấy.");
-  if (!nhan.dienThoai.trim()) loi.push("Nhập số điện thoại để quán liên hệ khi cần.");
+  if (nhan.ten.trim().length < 2) loi.push("Nhập tên người nhận để quán giao đúng người.");
+  if (nhan.cachNhan !== "giao-hang" && !nhan.dienThoai.trim()) loi.push("Nhập số điện thoại để quán liên hệ khi cần.");
   return loi;
 }
 

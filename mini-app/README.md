@@ -83,7 +83,8 @@ Phát hành cho khách (sau khi chốt các mục ở phần dưới):
 Khánh quyết 29/10/2026: đặt hàng tự động hoàn toàn, khách trả trước trong app, thu tiền qua SePay. Máy chủ đơn nằm ở
 thư mục `may-chu-don/` của repo (chạy ở Việt Nam). Khi `diaChiMayChuDon` trong `src/cau-hinh.ts` có địa chỉ:
 
-- Đơn hàng: chỉ nhận tại quán; tên và số điện thoại bắt buộc; nút "Gửi đơn và trả tiền" gửi đơn lên máy chủ. Máy chủ
+- Đơn hàng: chỉ giao tận nơi, giá khay đã gồm phí giao (Khánh 09/11/2026); địa chỉ giao, tên và số điện thoại bắt
+  buộc; nút "Gửi đơn và trả tiền" gửi đơn lên máy chủ. Máy chủ
   tự tính tiền theo bảng giá, app chỉ gửi mã phần thịt và số khay. Bấm hai lần, mạng chập chờn rồi gửi lại: vẫn một đơn.
 - Trả tiền: mã QR vẽ ngay trong app từ chuỗi VietQR máy chủ gửi; nút "Lưu ảnh mã QR" (trong Zalo) để khách trả bằng
   app ngân hàng trên chính điện thoại đó; chép số tài khoản, số tiền, nội dung "BT" + mã đơn. App hỏi máy chủ 4 giây một
