@@ -1,7 +1,8 @@
 // Các lệnh của Zalo dùng trong app. Chỉ chạy được bên trong ứng dụng Zalo trên điện thoại.
 
-import { followOA, openChat, saveImageToGallery } from "zmp-sdk";
+import { followOA, openChat, openShareSheet, saveImageToGallery } from "zmp-sdk";
 import { CAU_HINH } from "./cau-hinh";
+import type { NoiDungChiaSe } from "./chia-se";
 
 /** Cùng cách zmp-sdk tự nhận biết: trình duyệt bên trong Zalo có chữ "zalo" trong user agent. */
 export function dangTrongZalo(): boolean {
@@ -39,6 +40,19 @@ export async function luuAnhVaoMay(anhBase64: string): Promise<"da-luu" | "ngoai
   try {
     await saveImageToGallery({ imageBase64Data: anhBase64 });
     return "da-luu";
+  } catch {
+    return "loi";
+  }
+}
+
+export type KetQuaChiaSe = "da-chia-se" | "huy" | "ngoai-zalo" | "loi";
+
+/** Mở khung chia sẻ của Zalo với đường dẫn mở thẳng một phần thịt (zmp_deep_link, có từ API 2.25.7). */
+export async function chiaSe(noiDung: NoiDungChiaSe): Promise<KetQuaChiaSe> {
+  if (!dangTrongZalo()) return "ngoai-zalo";
+  try {
+    const kq = await openShareSheet({ type: "zmp_deep_link", data: noiDung });
+    return kq?.status === 0 ? "huy" : "da-chia-se";
   } catch {
     return "loi";
   }

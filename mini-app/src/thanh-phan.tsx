@@ -2,13 +2,16 @@
 
 import React, { ReactNode } from "react";
 import { useNavigate } from "zmp-ui";
-import { MuiTenTrai } from "./bieu-tuong";
+import { ChiaSe, MuiTenTrai } from "./bieu-tuong";
 import { CAU_HINH } from "./cau-hinh";
+import { noiDungChiaSe } from "./chia-se";
 import { trangThaiPhan, type TrangThaiKho } from "./con-hang";
 import { useConHang } from "./con-hang-kho";
 import { dinhDangTien } from "./don";
 import { useGioHang } from "./gio-hang";
 import type { SanPham } from "./san-pham";
+import { useThongBao } from "./thong-bao";
+import { chiaSe, dangTrongZalo } from "./zalo";
 
 export function DauTrang({ tieuDe, quayLai = true }: { tieuDe: string; quayLai?: boolean }) {
   const navigate = useNavigate();
@@ -114,15 +117,33 @@ export function GhiChuConHang({ trangThai, daChon }: { trangThai: TrangThaiKho; 
   return null;
 }
 
-export function TheThit({ sp }: { sp: SanPham }) {
+/** Nút chia sẻ một phần thịt cho bạn bè trên Zalo — chỉ hiện trong Zalo (ngoài Zalo không có khung chia sẻ). */
+export function NutChiaSe({ sp }: { sp: SanPham }) {
+  const thongBao = useThongBao();
+  if (!dangTrongZalo()) return null;
+  async function bam() {
+    const kq = await chiaSe(noiDungChiaSe(sp));
+    if (kq === "loi") thongBao("Chưa mở được khung chia sẻ của Zalo. Thử lại sau ít phút.");
+  }
+  return (
+    <button type="button" className="nut-chia-se" aria-label={`Chia sẻ ${sp.ten} cho bạn bè trên Zalo`} onClick={bam}>
+      <ChiaSe />
+      <span>Chia sẻ</span>
+    </button>
+  );
+}
+
+/** noiBat: phần thịt bạn bè vừa chia sẻ (mở Mini App từ tin chia sẻ) — trang chủ cuộn tới và viền rõ thẻ này. */
+export function TheThit({ sp, noiBat = false }: { sp: SanPham; noiBat?: boolean }) {
   const { soKhay, datSoKhay } = useGioHang();
   const so = soKhay[sp.ma] ?? 0;
   const trangThai = trangThaiPhan(sp.conHang, useConHang()[sp.ma]);
   return (
-    <article className={`the-thit ${sp.baoQuan}${so > 0 ? " da-chon" : ""}`}>
+    <article id={`mon-${sp.ma}`} className={`the-thit ${sp.baoQuan}${so > 0 ? " da-chon" : ""}${noiBat ? " noi-bat" : ""}`}>
       <div className="the-thit-dau">
         <h2>{sp.ten}</h2>
         <NhanBaoQuan baoQuan={sp.baoQuan} />
+        <NutChiaSe sp={sp} />
       </div>
       {sp.goiY && <p className="goi-y">{sp.goiY}</p>}
       <p className="mo-ta">{sp.moTa}</p>

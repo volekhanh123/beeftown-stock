@@ -166,9 +166,30 @@ body {
 }
 .the-thit h2 {
   margin: 0;
+  flex: 1;
   font-size: 18px;
   line-height: 1.25;
   font-weight: 800;
+}
+/* Mở từ tin bạn bè chia sẻ: viền đen dày quanh đúng phần thịt đó (không thêm màu mới). */
+.the-thit.noi-bat {
+  box-shadow: 0 0 0 3px var(--den);
+}
+.nut-chia-se {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1.5px solid var(--vien);
+  border-radius: 999px;
+  background: var(--trang);
+  color: var(--den);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
 }
 .nhan-bao-quan {
   flex: none;
