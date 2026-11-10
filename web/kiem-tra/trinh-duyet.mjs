@@ -959,9 +959,10 @@ try {
     const KHUNG_MONG = {
       'hero-vi-gas': ['4x5', '4x3'], 'bo-van-mo-can': ['1x1', '4x5'], 'bo-cat-lat': ['3x2', '3x2'], 'sot-cham': ['4x3', '4x3'],
       'mon-an-chia-se': ['4x3', '3x2'], 'bua-an-cung-ban': ['4x3', '3x2'], 'uong-khong-con-ba-ly': ['3x2', '3x2'],
+      'quay-chon-bo': ['4x3', '4x3'],
     };
     for (const [rong, cao] of [[390, 844], [768, 1024], [1440, 900]]) {
-      for (const duong of ['/', '/ko', '/thuc-don']) {
+      for (const duong of ['/', '/ko', '/thuc-don', '/den-beeftown']) {
         const ctx = await trinhDuyet.newContext({ viewport: { width: rong, height: cao } });
         const page = await ctx.newPage();
         const nhan = `${duong} · ${rong}px`;

@@ -284,12 +284,16 @@ khối: [tham-khao/trang-cong-khai.md](tham-khao/trang-cong-khai.md) (công khai
   `web/cong-cu/anh/tao-co-anh.py` (mục `tach_nen` của `danh-sach.json`) chừa dải trống 12–14 % ở đáy khung
   và nhãn nằm giữa đáy — ngay dưới món, không đè lên món; ảnh nhỏ 128px của hàng món gọn có khung riêng
   (dải đáy 20 %, nhãn đệm hẹp, một dòng). Phép đo `anh` đếm điểm ảnh đặc dưới nhãn của ảnh tách nền
-  (canvas) — phải là 0. Ảnh tách nền nén AVIF 40 / WebP 60; `public/anh` giữ dưới 6,8 MB, chừa chỗ cho ảnh
-  chụp thật (ngân sách: `web/THIET-KE.md` mục 7). Khánh quyết ngày 11/10/2026: ảnh AI được lên trang; **bàn tay người
+  (canvas) — phải là 0. Ảnh tách nền nén AVIF 40 / WebP 60; `public/anh` giữ dưới 7 MB (bốn ảnh tạm
+  10/11/2026 thêm 0,6 MB — có ảnh chụp thật thì thay chúng), chừa chỗ cho ảnh chụp thật (ngân sách:
+  `web/THIET-KE.md` mục 7). Khánh quyết ngày 11/10/2026: ảnh AI được lên trang; **bàn tay người
   thì được, mặt người thì không**; hai ảnh bữa ăn có món phụ (`mon-an-chia-se`, `bua-an-cung-ban`) là
-  hình minh họa — câu chữ và alt không kể tên, không hứa món phụ nào. **Quầy, khay skin-pack, không
-  gian quán, lối vào, thang máy, mặt người: chỉ ảnh chụp thật** (cho tới khi có: `<KhungAnh>`). Không
-  ảnh kho (Unsplash…). Không than, củi, khói giả trong ảnh.
+  hình minh họa — câu chữ và alt không kể tên, không hứa món phụ nào. **Không gian quán, lối vào,
+  thang máy, mặt người: chỉ ảnh chụp thật** (cho tới khi có: `<KhungAnh>`). **Ngoại lệ tạm, Khánh quyết
+  10/11/2026**: quầy (bước 3 trang Đến Beeftown, `quay-chon-bo`) và ảnh sản phẩm trang Mua thịt về
+  (`mua-thit-mat`, `mua-thit-dong-lanh`, `mua-kim-chi`, chọn theo loại) là ảnh AI tạm có nhãn, tới khi có
+  ảnh chụp thật — không thêm ảnh AI cho quầy, khay ở chỗ nào khác. Không ảnh kho (Unsplash…). Không
+  than, củi, khói giả trong ảnh.
 - **Trên ảnh không đặt gì khác**: không logo, không chữ chồng lên; khung
   ảnh bo 6px, không bóng đổ, không viền. Ảnh nào đã dựng cỡ thì phải có chỗ dùng — không để file ảnh
   chết trong `web/public/anh/`. Bảng từng ảnh và cách dựng: `web/THIET-KE.md`, mục 7.
@@ -389,8 +393,9 @@ Danh sách tự rà:
       chính.
 - [ ] Montserrat, đúng độ đậm; không chữ < 13px (trừ dòng hoa nhỏ 12px); ô nhập 16px.
 - [ ] Nút, link, biểu tượng, ảnh dùng component có sẵn; không emoji; không `<img>` trỏ file chưa có.
-- [ ] Ảnh AI có nhãn "Ảnh minh họa", không cho thấy quầy, khay, không gian, lối vào, thang máy, mặt
-      người; không logo hay chữ đặt lên ảnh; alt tả đúng thứ nhìn thấy, đủ vi / en / ko.
+- [ ] Ảnh AI có nhãn "Ảnh minh họa", không cho thấy không gian, lối vào, thang máy, mặt người (quầy,
+      khay: chỉ bốn ảnh tạm 10/11/2026 ở đúng chỗ của chúng); không logo hay chữ đặt lên ảnh; alt tả
+      đúng thứ nhìn thấy, đủ vi / en / ko.
 - [ ] Không tràn ngang ở 360px; vùng chạm ≥ 48px; focus thấy rõ trên mọi bề mặt.
 - [ ] Câu chữ đúng sự thật, đủ thứ tiếng, không chữ cấm, không claim chưa xác nhận; địa điểm chỉ là
       Tầng 3, 63 Hồ Tùng Mậu, lối vào riêng ngay cạnh GS25, thang máy — không phường, quận, không gì thêm.

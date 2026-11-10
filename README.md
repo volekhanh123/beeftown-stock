@@ -153,7 +153,7 @@ Mục 1, 2 và 4 nói về **bản nháp cũ** `Beeftown_Website/index.html` (kh
 
 5. **Không dùng emoji làm biểu tượng** — dùng SVG nét mảnh 1.5px cho thống nhất.
 
-6. **Ảnh trong bản nháp cũ là ảnh kho Unsplash** — không bao giờ đưa lên web thật. Website `web/` chỉ dùng ảnh minh họa món và bữa ăn tạo bằng AI (trang luôn ghi "Ảnh minh họa"; bàn tay người thì được, mặt người thì không — Khánh quyết 11/10/2026) và khung đồ họa cho quầy, khay, không gian, lối vào, thang máy cho tới khi có ảnh chụp thật — brief chụp ở `web/THIET-KE.md`, mục 8.
+6. **Ảnh trong bản nháp cũ là ảnh kho Unsplash** — không bao giờ đưa lên web thật. Website `web/` chỉ dùng ảnh minh họa món và bữa ăn tạo bằng AI (trang luôn ghi "Ảnh minh họa"; bàn tay người thì được, mặt người thì không — Khánh quyết 11/10/2026) và khung đồ họa cho không gian, lối vào, thang máy cho tới khi có ảnh chụp thật — brief chụp ở `web/THIET-KE.md`, mục 8. Quầy và khay cũng chờ ảnh thật; trong lúc chờ là bốn ảnh AI tạm có nhãn (Khánh quyết 10/11/2026: quầy ở trang Đến Beeftown, ảnh sản phẩm trang Mua thịt về).
 
 ---
 
@@ -358,7 +358,7 @@ Kiểm thử: `crm/test/test-sao-luu.mjs` (chính hai script, với `supabase` v
 
 - [ ] Mỗi câu trên trang, Khánh nói được nó lấy từ đâu. Câu nào không nói được thì xóa.
 - [ ] Tìm trong trang: giá, ngày, giờ, số điện thoại, và các từ *phòng riêng, Wagyu, than, rẻ, số một, duy nhất*. **Có một kết quả là fail.** Làm cả ở `/en` và `/ko` — bản dịch máy đã qua bộ lọc chữ cấm, nhưng mắt người vẫn là lần kiểm cuối.
-- [ ] Không ảnh nào là ảnh kho. Ảnh chụp thì Khánh nói được ai chụp và chụp khi nào; ảnh tạo bằng AI thì có nhãn "Ảnh minh họa" ngay trên ảnh và không cho thấy quầy, khay, không gian quán, lối vào, thang máy hay mặt người.
+- [ ] Không ảnh nào là ảnh kho. Ảnh chụp thì Khánh nói được ai chụp và chụp khi nào; ảnh tạo bằng AI thì có nhãn "Ảnh minh họa" ngay trên ảnh và không cho thấy quầy, khay, không gian quán, lối vào, thang máy hay mặt người — trừ bốn ảnh tạm 10/11/2026 (quầy, ảnh sản phẩm Mua thịt về), thay ngay khi có ảnh chụp thật.
 
 **Trước khi bật form đặt bàn**
 

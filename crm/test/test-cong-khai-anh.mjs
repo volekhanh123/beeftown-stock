@@ -10,7 +10,10 @@
  *   3. Dùng cả hai ảnh bữa ăn có món phụ và bàn tay người (mon-an-chia-se, bua-an-cung-ban).
  *      Bàn tay thì được, mặt người thì không.
  *   4. Giữ nguyên câu chính của trang chủ.
- * Vẫn như cũ: ảnh AI không dùng cho quầy, khay, không gian, lối vào, thang máy — đó là KhungAnh.
+ * Vẫn như cũ: ảnh AI không dùng cho không gian, lối vào, thang máy — đó là KhungAnh.
+ * Ngoại lệ tạm, Khánh quyết ngày 10/11/2026 (ba ngày trước khai trương): quầy (bước 3 trang Đến Beeftown) và ảnh
+ * sản phẩm trang Mua thịt về dùng ảnh AI tạm ChatGPT tạo cùng ngày qua cầu nối Codex — bốn id ANH_TAM —, có nhãn
+ * "Ảnh minh họa", tới khi có ảnh chụp thật. Lối vào, thang máy vẫn là KhungAnh (ảnh AI làm khách đi tìm dễ lạc).
  *
  * File này đọc MÃ NGUỒN (không cần trình duyệt). Số đo trên trang đã dựng nằm ở
  * web/kiem-tra/do-giao-dien.mjs (phép đo anh, nhanKhay, trangChu, thucDon). Bất biến:
@@ -28,7 +31,8 @@
  *      <img> trỏ vào /anh/.
  *   5. Bốn quyết định của Khánh: hai dải tối còn nguyên; câu chính đúng từng chữ ở ba thứ tiếng;
  *      trang chủ đủ bảy khối theo thứ tự (khối thứ tám là chân trang của layout); hai ảnh bữa ăn ở
- *      đúng khối; chỗ của ảnh chụp thật vẫn là KhungAnh.
+ *      đúng khối; lối vào, thang máy vẫn là KhungAnh; quầy và thẻ Mua thịt về chỉ dùng ảnh tạm của ANH_TAM
+ *      (thẻ chọn ảnh theo loại sản phẩm).
  *   6. Thẻ "Cách đọc nhãn khay": năm trường theo thứ tự, chỉ tên trường — không giá trị mẫu, không
  *      mã vạch giả; không nghiêng, không bóng đổ, không mã màu viết thẳng (nền lấy từ bảng màu).
  *   7. Ảnh món của trang Thực đơn (cuốn menu bản sáng Khánh chốt 11/10/2026, 26 ảnh): đều là ảnh minh
@@ -84,7 +88,9 @@ const ANH_MON = [
 ];
 // Ảnh tách nền: mọi ảnh món trừ hai ảnh tartare (ảnh có nền bàn gỗ, cắt như ảnh cũ).
 const TACH_NEN = ANH_MON.filter(id => !['mon-tartare-bo-hoa-tuyet', 'mon-com-tron-tartare-bo-cay'].includes(id));
-const ANH_AI = [...ANH_CHATGPT, ...ANH_MON];
+// Bốn ảnh tạm ChatGPT tạo ngày 10/11/2026 (qua cầu nối Codex): quầy và ba ảnh sản phẩm trang Mua thịt về.
+const ANH_TAM = ['quay-chon-bo', 'mua-thit-mat', 'mua-thit-dong-lanh', 'mua-kim-chi'];
+const ANH_AI = [...ANH_CHATGPT, ...ANH_MON, ...ANH_TAM];
 const ANH_THAT = [];
 // Ảnh đang đặt trên trang và khung của từng ảnh; bo-xeo-vi là ảnh dự phòng, chưa đặt ở đâu nên không dựng.
 const ANH_DA_DAT = {
@@ -98,6 +104,9 @@ const ANH_DA_DAT = {
   // (thêm 4:5 cắt sát đáy cho hàng gọn), ba ly 4:5, ảnh ba ly không cồn của phần Đồ uống 3:2.
   ...Object.fromEntries(ANH_MON.map(id => [id, id.startsWith('mon-tartare') || id === 'mon-com-tron-tartare-bo-cay' ? ['1x1', '4x5']
     : id === 'uong-khong-con-ba-ly' ? ['3x2'] : id.startsWith('uong-') ? ['4x5'] : ['4x3', '1x1']])),
+  // Ảnh tạm 10/11/2026: quầy 4:3 (bước 3 Đến Beeftown); ảnh sản phẩm 4:3 từ 600px, 1:1 (128px) trên điện thoại.
+  'quay-chon-bo': ['4x3'],
+  'mua-thit-mat': ['4x3', '1x1'], 'mua-thit-dong-lanh': ['4x3', '1x1'], 'mua-kim-chi': ['4x3', '1x1'],
 };
 // Cỡ thật của các file gốc (để ngoài repo) — chép tay từ file. Tám PNG của ChatGPT; 26 file của cuốn menu bản sáng.
 const CO_GOC = {
@@ -113,10 +122,13 @@ const CO_GOC = {
   'mon-salad-nam.webp': [1000, 863], 'mon-set-4-sot.webp': [1000, 610], 'mon-tartare-bo-hoa-tuyet.jpg': [1024, 1656],
   'mon-trung-hap-nui-lua.webp': [760, 752], 'uong-berry-rouge-highball.webp': [479, 756], 'uong-khong-con-ba-ly.png': [1200, 758],
   'uong-milky-cloud-makgeolli.webp': [524, 754], 'uong-strawberry-crush.webp': [449, 920],
+  // Bốn PNG của ChatGPT ngày 10/11/2026.
+  'quay-chon-bo-4x3.png': [1448, 1086], 'mua-thit-mat-4x3.png': [1448, 1086], 'mua-thit-dong-lanh-4x3.png': [1448, 1086],
+  'mua-kim-chi-4x3.png': [1448, 1086],
 };
 
 // ===========================================================================
-await nhom('1 · DANH MỤC ẢNH: ĐÚNG 33 ID, CỜ MINH HỌA, ALT BA THỨ TIẾNG TẢ ĐÚNG ẢNH', async () => {
+await nhom('1 · DANH MỤC ẢNH: ĐÚNG 37 ID, CỜ MINH HỌA, ALT BA THỨ TIẾNG TẢ ĐÚNG ẢNH', async () => {
   const idKhai = (doc(SRC, 'lib', 'anh.ts').match(/export\s+type\s+IdAnh\s*=\s*([^;]+);/)?.[1].match(/'([^']+)'/g) ?? []).map(s => s.slice(1, -1));
   const mong = [...ANH_AI, ...ANH_THAT].sort();
   ok(`IdAnh khai đúng ${mong.length} id: ${mong.join(', ')}`, JSON.stringify([...idKhai].sort()) === JSON.stringify(mong), idKhai.join(', '));
@@ -152,7 +164,9 @@ await nhom('1 · DANH MỤC ẢNH: ĐÚNG 33 ID, CỜ MINH HỌA, ALT BA THỨ T
       ok(`${ten}: không còn chữ của bộ ảnh cũ (vỉ gang, hương thảo, muối hạt, đĩa đá, bốn chén sốt)`, !CHU_ANH_CU.test(a), a.match(CHU_ANH_CU)?.[0]);
       ok(`${ten}: không chữ cấm`, timChuoiCam(a).length === 0, timChuoiCam(a).map(c => c.tim_thay).join(' | '));
       ok(`${ten}: tả món — không nói đây là ảnh của quán`, !NOI_LA_CUA_QUAN.test(a), a.match(NOI_LA_CUA_QUAN)?.[0]);
-      ok(`${ten}: không kể tên món phụ nào (trang không hứa món phụ)`, !TEN_MON_PHU.test(a), a.match(TEN_MON_PHU)?.[0]);
+      // mua-kim-chi: kim chi là CHÍNH sản phẩm khách đặt ở trang Mua thịt về, không phải món phụ — alt phải gọi tên nó.
+      if (id === 'mua-kim-chi') ok(`${ten}: ảnh sản phẩm kim chi — alt gọi đúng tên hàng khách đặt`, TEN_MON_PHU.test(a), a);
+      else ok(`${ten}: không kể tên món phụ nào (trang không hứa món phụ)`, !TEN_MON_PHU.test(a), a.match(TEN_MON_PHU)?.[0]);
       ok(`${ten}: không chữ về than, lửa, khói`, !THAN_LUA_KHOI[nn].test(a), a.match(THAN_LUA_KHOI[nn])?.[0]);
       ok(`${ten}: không ghi số lượng món (ba chén, bốn lát…) — món và set sốt thật chưa chốt số loại`, !SO_LUONG[nn].test(a), a.match(SO_LUONG[nn])?.[0]);
     }
@@ -193,7 +207,11 @@ await nhom('2 · danh-sach.json: NGUỒN ĐÚNG SỰ THẬT, KHÔNG PHÓNG TO �
      nguyenVan.match(/higgsfield|nano_banana|ung_vien|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0]);
   for (const [id, mt] of [...Object.entries(danhSach.anh ?? {}), ...Object.entries(danhSach.du_phong ?? {})]) {
     const nguon = `${mt.nguon?.tu ?? ''} · ${mt.nguon?.cong_cu ?? ''}`;
-    if (!ANH_MON.includes(id)) {
+    if (ANH_TAM.includes(id)) {
+      ok(`${id}: nguồn ghi ChatGPT (qua Codex), tạo ngày 10/11/2026; mô tả nói rõ đây là ảnh tạm`,
+         /ChatGPT/.test(mt.nguon?.cong_cu ?? '') && /Codex/.test(mt.nguon?.cong_cu ?? '') && /10\/11\/2026/.test(mt.nguon?.cong_cu ?? '')
+           && typeof mt.mo_ta === 'string' && /ảnh tạm/.test(mt.mo_ta), JSON.stringify(mt.nguon));
+    } else if (!ANH_MON.includes(id)) {
       ok(`${id}: nguồn ghi ChatGPT (qua Codex), tạo ngày 11/10/2026; có mô tả`,
          /ChatGPT/.test(mt.nguon?.cong_cu ?? '') && /Codex/.test(mt.nguon?.cong_cu ?? '') && /11\/10\/2026/.test(mt.nguon?.cong_cu ?? '')
            && typeof mt.mo_ta === 'string' && mt.mo_ta.length > 20, JSON.stringify(mt.nguon));
@@ -406,14 +424,35 @@ await nhom('5 · BỐN QUYẾT ĐỊNH CỦA KHÁNH (11/10/2026): DẢI TỐI, C
      o('hero-vi-gas', 'KhoiMoDau.astro') && o('bo-van-mo-can', 'QuayChonBo.astro') && o('bo-cat-lat', 'TrangThucDon.astro') && o('sot-cham', 'TrangThucDon.astro')
        && o('uong-khong-con-ba-ly', 'TrangThucDon.astro'));
 
-  // Ảnh AI không bao giờ thay cho ảnh chụp thật: đường đến, thang máy, quầy vẫn là khung đồ họa.
+  // Lối vào và thang máy vẫn là khung đồ họa: ảnh AI vẽ một cánh cửa, một thang máy không giống thật thì khách đi
+  // tìm dễ lạc. Quầy (bước 3) là ảnh tạm quay-chon-bo — Khánh quyết 10/11/2026, tới khi có ảnh quầy chụp thật.
   const den = mauCua(doc(SRC, 'components', 'TrangDenBeeftown.astro'));
-  ok('Đến Beeftown: lối vào, thang máy, quầy vẫn là <KhungAnh> — không ảnh AI nào ở đó',
-     ['loi-vao', 'thang-may', 'quay'].every(l => new RegExp(`<KhungAnh\\b[^>]*loai="${l}"`).test(den)) && !/<Anh\b/.test(den));
-  const ngoaiHaiTrang = goiAnh.filter(g => !['KhoiMoDau', 'QuayChonBo', 'BuaAnCungNhau', 'DiCungNhom', 'TrangThucDon', 'ThucDonNhomAnh'].some(c => g.file === `components/${c}.astro`));
-  ok('Ảnh AI chỉ nằm ở trang chủ và trang Thực đơn', ngoaiHaiTrang.length === 0, ngoaiHaiTrang.map(g => `${g.file}: ${g.id}`).join(' | '));
-  ok('Chỗ của ảnh AI khi chưa dựng cỡ không bao giờ là hình quầy, lối vào hay thang máy (thayBang chỉ khay / ban-nuong)',
-     goiAnh.every(g => [null, 'khay', 'ban-nuong'].includes(g.thayBang)), goiAnh.map(g => g.thayBang).join(', '));
+  const anhDen = goiAnh.filter(g => g.file === 'components/TrangDenBeeftown.astro');
+  ok('Đến Beeftown: lối vào, thang máy vẫn là <KhungAnh>; không còn KhungAnh quầy',
+     ['loi-vao', 'thang-may'].every(l => new RegExp(`<KhungAnh\\b[^>]*loai="${l}"`).test(den)) && !/<KhungAnh\b[^>]*loai="quay"/.test(den));
+  ok('Đến Beeftown: ảnh duy nhất là ảnh tạm quay-chon-bo 4:3 trên dải đen, hình thay là quầy',
+     anhDen.length === 1 && anhDen[0].id === 'quay-chon-bo' && anhDen[0].khung === '4x3' && anhDen[0].thayBang === 'quay'
+       && /<Anh\b[^>]*id="quay-chon-bo"[^>]*nenKhung="toi"/.test(den), anhDen.map(g => `${g.id} ${g.khung} ${g.thayBang}`).join(' | '));
+  // Thẻ Mua thịt về: ba ảnh tạm theo loại sản phẩm — kim chi, thịt đông lạnh, còn lại thịt mát; hình thay là khay.
+  const the = mauCua(doc(SRC, 'components', 'MuaThitThe.astro'));
+  const anhThe = goiAnh.filter(g => g.file === 'components/MuaThitThe.astro');
+  ok('MuaThitThe.astro: ba ảnh tạm mua-kim-chi, mua-thit-dong-lanh, mua-thit-mat — khung 4:3, ảnh nhỏ 1:1, hình thay là khay',
+     JSON.stringify(anhThe.map(g => g.id)) === JSON.stringify(['mua-kim-chi', 'mua-thit-dong-lanh', 'mua-thit-mat'])
+       && anhThe.every(g => g.khung === '4x3' && g.khungNho === '1x1' && g.thayBang === 'khay') && !/<KhungAnh\b/.test(the),
+     anhThe.map(g => `${g.id} ${g.khung}/${g.khungNho} ${g.thayBang}`).join(' | '));
+  ok('MuaThitThe.astro: chọn ảnh theo loại — laKimChi → mua-kim-chi; baoQuan đông lạnh → mua-thit-dong-lanh; còn lại → mua-thit-mat',
+     /\{laKimChi \? \(\s*<Anh id="mua-kim-chi"[^>]*\/>\s*\) : sanPham\.baoQuan === 'dong_lanh' \? \(\s*<Anh id="mua-thit-dong-lanh"[^>]*\/>\s*\) : \(\s*<Anh id="mua-thit-mat"[^>]*\/>\s*\)\}/.test(the)
+       && /const laKimChi = sanPham\.loai === 'kim_chi';/.test(doc(SRC, 'components', 'MuaThitThe.astro')));
+  const NOI_DUOC = { 'components/TrangDenBeeftown.astro': ['quay-chon-bo'], 'components/MuaThitThe.astro': ['mua-kim-chi', 'mua-thit-dong-lanh', 'mua-thit-mat'] };
+  const ngoaiHaiTrang = goiAnh.filter(g => !['KhoiMoDau', 'QuayChonBo', 'BuaAnCungNhau', 'DiCungNhom', 'TrangThucDon', 'ThucDonNhomAnh'].some(c => g.file === `components/${c}.astro`)
+    && !NOI_DUOC[g.file]?.includes(g.id));
+  ok('Ảnh AI chỉ nằm ở trang chủ, trang Thực đơn và bốn chỗ ảnh tạm (quầy của Đến Beeftown, thẻ Mua thịt về)', ngoaiHaiTrang.length === 0,
+     ngoaiHaiTrang.map(g => `${g.file}: ${g.id}`).join(' | '));
+  ok('Ảnh tạm chỉ ở đúng chỗ của nó: quay-chon-bo chỉ ở Đến Beeftown, mua-… chỉ ở thẻ Mua thịt về',
+     goiAnh.filter(g => ANH_TAM.includes(g.id)).every(g => NOI_DUOC[g.file]?.includes(g.id)));
+  ok('Chỗ của ảnh AI khi chưa dựng cỡ không bao giờ là hình lối vào hay thang máy (thayBang chỉ khay / ban-nuong; quầy chỉ cho quay-chon-bo)',
+     goiAnh.every(g => [null, 'khay', 'ban-nuong'].includes(g.thayBang) || (g.thayBang === 'quay' && g.id === 'quay-chon-bo')),
+     goiAnh.map(g => g.thayBang).join(', '));
 });
 
 // ===========================================================================

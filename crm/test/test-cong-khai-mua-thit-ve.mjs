@@ -255,8 +255,11 @@ await nhom('5 · Ô GIAO HÀNG, QUYỀN RIÊNG TƯ, KHÔNG <img>, VÙNG THÔNG B
      /\{c\.dongY\} <a href=\{duongQuyenRiengTu\}>\{c\.quyenRiengTu\}<\/a>/.test(TRANG.khuon)
        && /duongDanTuongUng\('\/quyen-rieng-tu', nn\)/.test(TRANG.dau)
        && ['vi', 'en', 'ko'].every(nn => (cauCua('dongY')?.[nn]?.[0] ?? '').length > 20));
-  ok('Không <img>; ảnh chỉ qua KhungAnh loai="khay"',
-     HAI.every(([, f]) => !/<img\b|<Anh\b/.test(f.khuon)) && /<KhungAnh loai="khay" tiLe="4 \/ 3" tiLeNho="1 \/ 1" \/>/.test(THE.khuon));
+  // Ảnh tạm 10/11/2026 (Khánh quyết; ảnh, nhãn "Ảnh minh họa", chỗ dùng: test-cong-khai-anh.mjs nhóm 5): thẻ chọn
+  // một trong ba ảnh theo loại sản phẩm qua <Anh>, hình thay khi chưa dựng cỡ vẫn là khay; trang không tự đặt ảnh.
+  ok('Không <img>; ảnh của thẻ chỉ qua <Anh> (ba ảnh tạm mua-…, khung 4:3 / 1:1, hình thay là khay); trang không đặt ảnh',
+     HAI.every(([, f]) => !/<img\b/.test(f.khuon)) && !/<Anh\b|<KhungAnh\b/.test(TRANG.khuon) && !/<KhungAnh\b/.test(THE.khuon)
+       && (THE.khuon.match(/<Anh id="mua-[a-z-]+" ngonNgu=\{ngonNgu\} khung="4x3" khungNho="1x1" thayBang="khay" sizes=\{SIZES_ANH\} \/>/g) ?? []).length === 3);
   const live = HAI.reduce((s, [, f]) => s + dem(f.nguon, /aria-live/), 0);
   ok('Đúng một aria-live (tạm tính, có mẩu ẩn đọc sau mỗi lần −/+) và một role="status" (câu giỏ rỗng)',
      live === 1 && /aria-live="polite"/.test(theMo(TRANG.khuon, 'data-mtv-tam-tinh')) && /data-mtv-vua-doi/.test(TRANG.khuon)

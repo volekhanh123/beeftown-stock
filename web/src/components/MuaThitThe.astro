@@ -6,7 +6,12 @@
  * tên, nhãn bảo quản bằng chữ, giá "Từ …" (gói rẻ nhất còn đặt được — một gói thì nhãn gói và giá) và MỘT nút
  * "Chọn gói". Bấm nút mở hộp chọn (popover) của sản phẩm: mô tả, rồi từng gói một hàng — nhãn gói ("Gói khoảng
  * 200 g", quyết định 2 của Khánh 26/10/2026), giá gói đã công bố (giá chủ đã chốt, quyết định 1), ô chọn số gói —
- * và nút Xong. Không giá theo cân hay theo trăm gam (quyết định 3). Chưa có ảnh chụp thật của khay: KhungAnh.
+ * và nút Xong. Không giá theo cân hay theo trăm gam (quyết định 3).
+ *
+ *  · Ảnh: chưa có ảnh chụp thật của khay, nên thẻ dùng ảnh AI TẠM theo loại sản phẩm (Khánh quyết 10/11/2026, có
+ *    nhãn "Ảnh minh họa"): kim chi → mua-kim-chi; thịt đông lạnh → mua-thit-dong-lanh; còn lại (thịt mát) →
+ *    mua-thit-mat. Ảnh tả chung loại hàng, không phải đúng phần thịt của sản phẩm. Khung 4:3 từ 600px, 1:1 (128px)
+ *    trên điện thoại. Có ảnh chụp thật thì thay ở đây và bỏ ngoại lệ ở đầu src/lib/anh.ts.
  *
  *  · Hộp chọn là <div popover> mở bằng popovertarget: chạy không cần JavaScript. Trình duyệt chưa biết popover thì
  *    hộp hiện thẳng trong thẻ (như thẻ cũ) — script của trang ẩn hai nút mở / đóng vô dụng ở đó. Hộp nằm TRONG form:
@@ -25,8 +30,8 @@
 import { dich } from '../lib/chu';
 import type { NgonNgu } from '../lib/noi-dung';
 import { CHU_DON, SO_GOI_TOI_DA, dinhDangTien, nhanGoi, type SanPhamMua } from '../lib/don-mua-thit';
+import Anh from './Anh.astro';
 import BieuTuong from './BieuTuong.astro';
-import KhungAnh from './KhungAnh.astro';
 
 interface Props {
   sanPham: SanPhamMua;
@@ -65,6 +70,8 @@ const c = dich(ngonNgu, {
 });
 
 const laKimChi = sanPham.loai === 'kim_chi';
+// Bề rộng ảnh: ba cột từ 1024px (thẻ ~388px, đệm 24px), hai cột từ 600px, ảnh nhỏ 128px trên điện thoại.
+const SIZES_ANH = '(min-width: 1280px) 340px, (min-width: 1024px) 28vw, (min-width: 600px) calc(50vw - 76px), 128px';
 const nhanBaoQuan = sanPham.baoQuan === 'dong_lanh' ? c.bqDong : sanPham.baoQuan === 'giu_lanh' ? c.bqGiu : c.bqMat;
 const SO_CHON = Array.from({ length: SO_GOI_TOI_DA + 1 }, (_, i) => i);
 
@@ -82,7 +89,13 @@ const langTen = ngonNgu !== 'vi' && sanPham.ten === sanPham.tenVi ? 'vi' : undef
 ---
 <article class:list={['the', 'mtv-the', { 'mtv-the-kim-chi': laKimChi }]} data-mtv-the={sanPham.ma}>
   <div class="mtv-anh">
-    <KhungAnh loai="khay" tiLe="4 / 3" tiLeNho="1 / 1" />
+    {laKimChi ? (
+      <Anh id="mua-kim-chi" ngonNgu={ngonNgu} khung="4x3" khungNho="1x1" thayBang="khay" sizes={SIZES_ANH} />
+    ) : sanPham.baoQuan === 'dong_lanh' ? (
+      <Anh id="mua-thit-dong-lanh" ngonNgu={ngonNgu} khung="4x3" khungNho="1x1" thayBang="khay" sizes={SIZES_ANH} />
+    ) : (
+      <Anh id="mua-thit-mat" ngonNgu={ngonNgu} khung="4x3" khungNho="1x1" thayBang="khay" sizes={SIZES_ANH} />
+    )}
   </div>
   <div class="mtv-the-chu">
     <h3 lang={langTen}>{sanPham.ten}</h3>
@@ -157,9 +170,10 @@ const langTen = ngonNgu !== 'vi' && sanPham.ten === sanPham.tenVi ? 'vi' : undef
      không đặt lớp của body phía trước: Astro gắn phạm vi cho mọi bộ chọn, body không mang dấu phạm vi đó. */
   [hidden] { display: none !important; }
 
-  /* Thẻ shop kiểu El Gaucho. Điện thoại: tên bên trái, ảnh vuông 96px bên phải, giá và nút dòng dưới. Từ 600px:
-     ảnh trên, tên, rồi giá và nút ở đáy thẻ (thẻ cùng hàng cao bằng nhau, nút thẳng hàng). */
-  .mtv-the { display: grid; gap: var(--k-4); grid-template-columns: minmax(0, 1fr) 96px; align-content: start; }
+  /* Thẻ shop kiểu El Gaucho. Điện thoại: tên bên trái, ảnh vuông 128px (--k-10, cùng cỡ ảnh nhỏ của hàng món gọn
+     trang Thực đơn) bên phải, giá và nút dòng dưới — 96px như lúc còn khung vẽ thì nhãn "Ảnh minh họa" (13px) tràn
+     ra ngoài ảnh. Từ 600px: ảnh trên, tên, rồi giá và nút ở đáy thẻ (thẻ cùng hàng cao bằng nhau, nút thẳng hàng). */
+  .mtv-the { display: grid; gap: var(--k-4); grid-template-columns: minmax(0, 1fr) var(--k-10); align-content: start; }
   .mtv-anh { grid-column: 2; grid-row: 1; }
   .mtv-the-chu { grid-column: 1; grid-row: 1; min-width: 0; }
   .mtv-the-chan { grid-column: 1 / -1; }
@@ -169,6 +183,15 @@ const langTen = ngonNgu !== 'vi' && sanPham.ten === sanPham.tenVi ? 'vi' : undef
     .mtv-the-chan { align-self: end; }
   }
   .mtv-the h3 { margin: 0 0 var(--k-2); overflow-wrap: anywhere; }
+  /* Nhãn "Ảnh minh họa" của ảnh nhỏ: giữa, cách đáy 6px, đệm hẹp, xuống dòng được nhưng không ra ngoài khung
+     (như ảnh nhỏ của ThucDonNhomAnh). */
+  @media (max-width: 599px) {
+    .mtv-the .mtv-anh :global(.chu-thich-anh) {
+      left: 50%; right: auto; bottom: 6px; transform: translateX(-50%);
+      width: max-content; max-width: calc(100% - 8px); padding: 2px 4px; letter-spacing: 0;
+      white-space: normal; text-align: center;
+    }
+  }
   .mtv-bao-quan { margin: 0; }
 
   /* Giá "Từ …" trái, nút phải; hẹp quá thì nút xuống dòng. */
@@ -184,7 +207,7 @@ const langTen = ngonNgu !== 'vi' && sanPham.ten === sanPham.tenVi ? 'vi' : undef
      Mọi quy tắc vị trí nằm dưới :popover-open: trình duyệt chưa biết popover bỏ cả quy tắc, hộp đứng thẳng trong
      thẻ. Điện thoại: tấm trượt từ đáy, rộng hết màn. Từ 600px: giữa màn, rộng tối đa 560px. */
   /* grid-column: trình duyệt chưa biết popover dựng hộp thẳng trong lưới của thẻ — trải hết bề ngang (điện thoại:
-     không rơi vào cột ảnh 96px). Hộp đang mở nằm ở lớp trên cùng, quy tắc này không còn tác dụng. */
+     không rơi vào cột ảnh 128px). Hộp đang mở nằm ở lớp trên cùng, quy tắc này không còn tác dụng. */
   .mtv-hop { color: var(--chu-chinh); grid-column: 1 / -1; }
   /* Chưa biết popover, kể cả khi tắt JavaScript: nút mở / đóng (và nút chính Xong của mỗi hộp) vô dụng — ẩn bằng CSS. */
   @supports not selector(:popover-open) {
