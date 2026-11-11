@@ -133,7 +133,7 @@ export const ANH_TAO_SAN: Readonly<Record<string, Readonly<Record<string, CoAnh>
     '3x2': { rong: 800, cao: 533, cac: [480, 800], mau: '#EED098' },
   },
   'quay-chon-bo': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#925E45' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#8C5942' },
   },
   'mua-thit-mat': {
     '4x3': { rong: 800, cao: 600, cac: [400, 800], mau: '#B18057' },
