@@ -43,7 +43,7 @@ mạng: dữ liệu đi qua máy chủ Cloudflare.
 | 3 | ZNS gửi thẳng từ máy chủ đơn: "Beeftown đã nhận đơn" (tiền về đủ), "đang giao" (quầy bấm "Soạn xong, chờ giao"); hàng chờ `zns_tin`, token riêng mã hóa trong `zalo_token`, vòng gửi mỗi phút (`zns.ts`, `gui-zns.ts`, `test/thu.ts` nhóm 20). Chạy khi Khánh cài App Zalo riêng, hai mẫu được duyệt, refresh token (README, "Cài ZNS") | đã gộp (PR #163) |
 | 4a | Bộ cài máy chủ thuê (`cai-dat/`): Ubuntu 24.04, Caddy HTTPS, systemd, tường lửa, `/sepay` chỉ IP SePay, `cap-nhat` chạy kiểm thử rồi mới chạy lại; laptop dư (tự tắt ngủ, README mục 1b) | đã gộp (PR #155) |
 | VNPay 1 | VNPay qua Checkout SDK (`checkout-zalo.ts`): tham số createOrder ký MAC ở máy chủ, callback `POST /zalo/thanh-toan` kiểm mac + overallMac + Mini App ID, sổ `thanh_toan_zalo` đúng một lần mỗi orderId, đủ / thiếu / dư / không khớp / thất bại / sai phương thức, "Tiền về cần xem" có tiền VNPay, nhãn tiền thử sandbox ở màn quầy, Mini App nút "Trả … qua VNPay" (`CheckoutSDK.createOrder`, `PaymentDone`), `test/thu.ts` nhóm 22 | PR này |
-| VNPay 2 | `getOrderStatus` cho đơn quá 20 phút chưa có callback, hoàn tiền qua `createRefund`, mã thật khi mở bán, bỏ hay giữ SePay | việc tiếp |
+| VNPay 2 | `getOrderStatus` cho đơn quá 20 phút chưa có callback, hoàn tiền qua `createRefund`, mã thật khi mở bán, bỏ hay giữ SePay, VNPay cho website (mã SLKGTE11) | việc tiếp (#171) |
 | 4 | Máy chủ thuê ở Việt Nam, HTTPS (xong 09/11/2026: BizFly Cloud TP.HCM, `https://don.beeftown.vn`, Mini App điền địa chỉ), sao lưu sổ đơn ở Việt Nam, xóa dữ liệu khách quá hạn, đèn sức khỏe trong `/noi-bo`, báo số khay sang kho | đang làm (#138) |
 
 ## File
