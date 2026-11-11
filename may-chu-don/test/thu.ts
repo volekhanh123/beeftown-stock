@@ -1364,6 +1364,8 @@ nhom('22 · VNPay qua Checkout SDK của Zalo (Khánh 11/11/2026): MAC tạo đ�
     const k2 = docCallback(kyCallback(khongMethod), CH_THU);
     ok('Callback không có method lẫn paymentChannel → phương thức là phương thức máy chủ đang ký (không bị coi là lệch)',
       k2.ok && k2.tin.phuongThuc === 'VNPAY_SANDBOX');
+    const k3 = docCallback(kyCallback(duLieu(d2.ma, 1, { method: JSON.stringify({ id: 'VNPAY', isCustom: false }) })), CH_THU);
+    ok('Callback mang method dạng chuỗi JSON của createOrder → đọc đúng mã phương thức (VNPAY)', k3.ok && k3.tin.phuongThuc === 'VNPAY');
   }
   const sucKhoeTuChoi = (await (await goi(xuLy, '/suc-khoe')).json() as { vnpay: { soCallbackBiTuChoi: number } }).vnpay.soCallbackBiTuChoi;
   ok('/suc-khoe đếm callback bị từ chối (sai MAC, sai Mini App, sai dạng)', sucKhoeTuChoi >= 6, String(sucKhoeTuChoi));

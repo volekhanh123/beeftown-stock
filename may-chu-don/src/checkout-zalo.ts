@@ -185,8 +185,13 @@ export function docCallback(than: unknown, ch: CauHinhCheckout):
   if (String(d.appId) !== ch.maMiniApp) return { ok: false, lyDo: 'sai_mini_app' };
   // Không có method lẫn paymentChannel: giao dịch vẫn là của createOrder máy chủ đã ký (overallMac đúng) — phương thức
   // là phương thức máy chủ đang ký, không phải "lệch phương thức".
-  const phuongThuc = typeof d.method === 'string' && d.method ? d.method
-    : typeof d.paymentChannel === 'string' && d.paymentChannel ? d.paymentChannel : ch.phuongThuc;
+  // Zalo có thể gửi lại đúng chuỗi JSON createOrder nhận ({"id":"VNPAY_SANDBOX","isCustom":false}) thay vì mã trơn.
+  const maPhuongThuc = (v: unknown) => {
+    if (typeof v !== 'string' || !v) return '';
+    try { const id = (JSON.parse(v) as { id?: unknown } | null)?.id; if (typeof id === 'string') return id; } catch { /* mã trơn */ }
+    return v;
+  };
+  const phuongThuc = maPhuongThuc(d.method) || maPhuongThuc(d.paymentChannel) || ch.phuongThuc;
   const luc = typeof d.transTime === 'number' ? d.transTime : typeof d.transTime === 'string' && /^\d{10,16}$/.test(d.transTime) ? Number(d.transTime) : null;
   return {
     ok: true,
