@@ -4,11 +4,19 @@ import { veMaQr } from "../anh-qr";
 import { DauTich } from "../bieu-tuong";
 import { dinhDangTien, ngayDayDu } from "../don";
 import { useGioHang } from "../gio-hang";
-import { docDonTrenMayChu } from "../may-chu-don";
+import { baoMoVnpay, docDonTrenMayChu } from "../may-chu-don";
 import { DauTrang, KhungQuanTamOA } from "../thanh-phan";
 import { useThongBao } from "../thong-bao";
-import { buocTraTien, gioPhutVn, hoiLaiSauMs, type DonTraTruoc, type ThanhToanCo } from "../tra-truoc";
-import { dangTrongZalo, luuAnhVaoMay, moChatVoiQuan } from "../zalo";
+import {
+  buocTraTien,
+  gioPhutVn,
+  hoiLaiSauMs,
+  type DonTraTruoc,
+  type KetQuaZalo,
+  type ThanhToanCo,
+  type ThanhToanVnpay,
+} from "../tra-truoc";
+import { dangTrongZalo, luuAnhVaoMay, moChatVoiQuan, moTrangVnpay, ngheThanhToanXong } from "../zalo";
 
 /** Lỗi mạng: hỏi lại sau chừng này. Máy đang ẩn (khách ở app ngân hàng): không hỏi dày hơn 30 giây. */
 const THU_LAI_KHI_LOI_MS = 8_000;
@@ -66,6 +74,11 @@ export default function TraTien() {
       document.removeEventListener("visibilitychange", khiHien);
     };
   }, [donDaDat, khongThay, boDonKhoiDanhSach]);
+
+  // Hàm ổn định: màn VNPay nghe sự kiện thanh toán xong một lần, không gỡ rồi nghe lại mỗi lần vẽ.
+  const kiemLai = useCallback(() => {
+    void kiemNgay.current();
+  }, []);
 
   const daChuyen = useCallback(async () => {
     datDangKiem(true);
@@ -131,7 +144,19 @@ export default function TraTien() {
         </div>
       )}
 
-      {buoc?.buoc === "cho-tra" && (
+      {buoc?.buoc === "cho-tra" && buoc.thanhToan.kieu === "vnpay" && (
+        <ChoTraVnpay
+          thanhToan={buoc.thanhToan}
+          daNhan={buoc.daNhan}
+          so={so}
+          maDon={donDaDat.ma}
+          khoa={donDaDat.khoa}
+          kiemLai={kiemLai}
+          chat={chat}
+        />
+      )}
+
+      {buoc?.buoc === "cho-tra" && buoc.thanhToan.kieu === "viet_qr" && (
         <ChoTra
           thanhToan={buoc.thanhToan}
           daNhan={buoc.daNhan}
@@ -154,8 +179,8 @@ export default function TraTien() {
           <h2>Chưa trả tiền được trong app</h2>
           <p>
             {buoc.lyDo === "gia_thu"
-              ? "Giá trong app đang là giá thử, quán chưa nhận chuyển khoản theo giá này."
-              : "Quán chưa mở nhận chuyển khoản trong app."}{" "}
+              ? "Giá trong app đang là giá thử, quán chưa nhận tiền theo giá này."
+              : "Quán chưa mở trả tiền trong app."}{" "}
             Đơn #{so} sẽ tự hủy sau 30 phút. Bạn chat với Beeftown để đặt giúp mình.
           </p>
           <div className="cot-nut">
@@ -208,7 +233,7 @@ export default function TraTien() {
           <p className="bao-them">
             {buoc.daNhan > 0
               ? `Quán đã nhận ${dinhDangTien(buoc.daNhan)} cho đơn này và sẽ liên hệ bạn để hoàn tiền.`
-              : "Nếu bạn vừa chuyển khoản, đợi trong giây lát: app vẫn kiểm tra và tự cập nhật khi quán nhận được tiền."}
+              : "Nếu bạn vừa trả tiền, đợi trong giây lát: app vẫn kiểm tra và tự cập nhật khi quán nhận được tiền."}
           </p>
           <div className="cot-nut">
             <button type="button" className="nut-chinh rong" onClick={() => veTrangChu({ xoaDon: true })}>
@@ -379,6 +404,103 @@ function ChoTra({
           <button type="button" className="nut-chinh rong" onClick={daChuyen} disabled={dangKiem}>
             {dangKiem ? "Đang kiểm tra…" : "Tôi đã chuyển khoản"}
           </button>
+          <button type="button" className="nut-chu" onClick={chat}>
+            Chat với Beeftown
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** Câu cho khách sau khi đóng trang VNPay — theo điều Zalo báo trên máy; "quán đã nhận" chỉ khi máy chủ báo. */
+const CAU_SAU_VNPAY: Partial<Record<KetQuaZalo | "loi-mo" | "ngoai-zalo", string>> = {
+  "zalo-bao-da-tra": "Zalo báo bạn đã trả xong. App đang chờ quán ghi nhận tiền, thường trong vài giây.",
+  "dang-xu-ly": "Giao dịch đang được xử lý. App tự cập nhật khi quán nhận được tiền.",
+  "chua-tra": "Lần thanh toán vừa rồi chưa xong. Bạn bấm trả lại, hoặc chat với Beeftown.",
+  "khong-ro": "App chưa đọc được kết quả từ Zalo. App vẫn kiểm tra với quán và tự cập nhật.",
+  "loi-mo": "Chưa mở được trang thanh toán. Bạn thử lại sau ít giây, hoặc chat với Beeftown.",
+  "ngoai-zalo": "Mở Mini App Beeftown trong Zalo để trả tiền.",
+};
+
+function ChoTraVnpay({
+  thanhToan,
+  daNhan,
+  so,
+  maDon,
+  khoa,
+  kiemLai,
+  chat,
+}: {
+  thanhToan: ThanhToanVnpay;
+  daNhan: number;
+  so: number;
+  maDon: string;
+  khoa: string;
+  kiemLai: () => void;
+  chat: () => void;
+}) {
+  const [dangMo, datDangMo] = useState(false);
+  const [bao, datBao] = useState<KetQuaZalo | "loi-mo" | "ngoai-zalo" | null>(null);
+
+  // Khách đóng trang VNPay: hỏi Zalo kết quả để nói đang chờ gì, và hỏi lại máy chủ ngay.
+  useEffect(
+    () =>
+      ngheThanhToanXong((kq) => {
+        if (kq !== "thoat") datBao(kq);
+        kiemLai();
+      }),
+    [kiemLai],
+  );
+
+  async function tra() {
+    datDangMo(true);
+    datBao(null);
+    const kq = await moTrangVnpay(thanhToan.taoDon);
+    datDangMo(false);
+    if (kq.loai === "da-mo") void baoMoVnpay(maDon, khoa, kq.maZalo);
+    else datBao(kq.loai === "ngoai-zalo" ? "ngoai-zalo" : "loi-mo");
+  }
+
+  const tien = dinhDangTien(thanhToan.soTien);
+  // Zalo đã báo trả xong hay đang xử lý: không mời trả lần nữa (trả hai lần thì quán phải hoàn một lần).
+  const choQuan = bao === "zalo-bao-da-tra" || bao === "dang-xu-ly";
+  return (
+    <>
+      {daNhan > 0 && (
+        <p className="bao-trang-thai" role="status">
+          Quán đã nhận {dinhDangTien(daNhan)}. Bạn trả thêm {tien} để đủ đơn.
+        </p>
+      )}
+      <section className="muc the-tra-tien" aria-label="Trả tiền qua VNPay">
+        {thanhToan.thuNghiem && (
+          <p className="bao-trang-thai" role="note">
+            Bản thử: VNPay đang ở môi trường thử, không trừ tiền thật. Quán không giao đơn trả bằng tiền thử.
+          </p>
+        )}
+        <h2 className="tieu-de-tra">Trả {tien} qua VNPay</h2>
+        <p className="ghi-chu">
+          Bấm nút bên dưới, Zalo mở trang thanh toán của VNPay. Bạn trả bằng app ngân hàng hoặc thẻ ngân hàng theo hướng
+          dẫn trên trang đó, rồi quay lại đây.
+        </p>
+        <div className="cot-nut">
+          <button type="button" className="nut-chinh rong" onClick={tra} disabled={dangMo || choQuan}>
+            {dangMo ? "Đang mở trang thanh toán…" : choQuan ? "Đang chờ quán ghi nhận tiền…" : `Trả ${tien} qua VNPay`}
+          </button>
+        </div>
+        {bao && CAU_SAU_VNPAY[bao] && (
+          <p className="bao-trang-thai" role="status">
+            {CAU_SAU_VNPAY[bao]}
+          </p>
+        )}
+        <p className="ghi-chu">
+          Đơn #{so} giữ tới {gioPhutVn(thanhToan.hetHanLuc)}; quá giờ này quán chưa nhận được tiền thì đơn tự hủy.
+        </p>
+      </section>
+
+      <div className="cho-tien-ve">
+        <p className="ghi-chu">App tự cập nhật khi quán nhận được tiền. Trả xong mà vài phút chưa thấy cập nhật, bạn chat với Beeftown.</p>
+        <div className="cot-nut">
           <button type="button" className="nut-chu" onClick={chat}>
             Chat với Beeftown
           </button>

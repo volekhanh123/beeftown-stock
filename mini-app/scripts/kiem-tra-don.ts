@@ -32,6 +32,8 @@ import {
   nhanTrangThaiDon,
   SO_DON_TOI_DA,
   themVaoDanhSach,
+  baoMoVnpayLenMayChu,
+  docKetQuaZalo,
 } from "../src/tra-truoc.ts";
 import {
   cacGioChon,
@@ -623,6 +625,86 @@ kiem("đơn của tôi: chữ trạng thái đủ cho mọi trạng thái, đún
   }
   assert.equal(nhanTrangThaiDon("cho_lay", "giao-hang"), "Soạn xong, chờ giao");
   assert.equal(nhanTrangThaiDon("cho_lay", "tai-quan"), "Chờ bạn ghé lấy");
+});
+
+// ---------- VNPay qua Checkout SDK (Khánh 11/11/2026) ----------
+const taoDonMau = {
+  amount: 750000,
+  desc: "Beeftown don K7QX4M9A",
+  item: [
+    { id: "ribeye-with-cap", amount: 500000 },
+    { id: "la-galbi", amount: 250000 },
+  ],
+  extradata: '{"maDon":"K7QX4M9A"}',
+  method: '{"id":"VNPAY_SANDBOX","isCustom":false}',
+  mac: "a".repeat(64),
+};
+const vnpayMau = { traDuoc: true, kieu: "vnpay", soTien: 750000, hetHanLuc: Date.UTC(2026, 10, 13, 2, 5), thuNghiem: true, taoDon: taoDonMau };
+
+kiem("VNPay: đọc tham số createOrder máy chủ ký, giữ nguyên từng chữ (sửa một chữ là MAC sai); màn chờ trả hiện nút VNPay", () => {
+  const t = docDonTuJson({ ...donMau, thanhToan: vnpayMau })?.thanhToan;
+  assert.ok(t?.traDuoc && t.kieu === "vnpay");
+  if (t?.traDuoc && t.kieu === "vnpay") {
+    assert.deepEqual(t.taoDon, taoDonMau);
+    assert.equal(JSON.stringify(t.taoDon.item), JSON.stringify(taoDonMau.item));
+    assert.equal(t.thuNghiem, true);
+    assert.equal(t.soTien, 750000);
+  }
+  const buoc = buocTraTien(docDonTuJson({ ...donMau, thanhToan: vnpayMau })!);
+  assert.equal(buoc.buoc === "cho-tra" && buoc.thanhToan.kieu, "vnpay");
+  // Máy chủ cũ (không gửi kieu) vẫn là VietQR.
+  const cu = docDonTuJson(donMau)?.thanhToan;
+  assert.equal(cu?.traDuoc && cu.kieu, "viet_qr");
+  // Cờ thử nghiệm thiếu hay lạ: không phải thử nghiệm (app không ghi "không trừ tiền thật" khi không chắc).
+  for (const la of [undefined, "true", 1]) {
+    const x = docDonTuJson({ ...donMau, thanhToan: { ...vnpayMau, thuNghiem: la } })?.thanhToan;
+    assert.equal(x?.traDuoc && x.kieu === "vnpay" && x.thuNghiem, false);
+  }
+});
+
+kiem("VNPay: tham số lạ (số tiền lệch, MAC sai dạng, thiếu món, món sai kiểu) → tạm lỗi, app không gọi Zalo", () => {
+  for (const hong of [
+    { ...taoDonMau, amount: 1 },
+    { ...taoDonMau, mac: "khong-phai-hex" },
+    { ...taoDonMau, mac: "A".repeat(64) },
+    { ...taoDonMau, item: [] },
+    { ...taoDonMau, item: [{ id: "", amount: 1 }] },
+    { ...taoDonMau, item: [{ id: "x", amount: -1 }] },
+    { ...taoDonMau, item: "[]" },
+    { ...taoDonMau, extradata: { maDon: "K7QX4M9A" } },
+    { ...taoDonMau, method: "" },
+    { ...taoDonMau, desc: "x".repeat(201) },
+    null,
+  ]) {
+    assert.deepEqual(docDonTuJson({ ...donMau, thanhToan: { ...vnpayMau, taoDon: hong } })?.thanhToan, { traDuoc: false, lyDo: "tam_loi" }, JSON.stringify(hong));
+  }
+  assert.deepEqual(docDonTuJson({ ...donMau, thanhToan: { ...vnpayMau, soTien: 0 } })?.thanhToan, { traDuoc: false, lyDo: "tam_loi" });
+  assert.deepEqual(docDonTuJson({ ...donMau, thanhToan: { ...vnpayMau, hetHanLuc: "x" } })?.thanhToan, { traDuoc: false, lyDo: "tam_loi" });
+});
+
+kiem("VNPay: kết quả Zalo báo trên máy chỉ là lời nhắn (1 · 0 · -1 · -2), mã lạ là không rõ — không bao giờ là 'quán đã nhận'", () => {
+  assert.equal(docKetQuaZalo({ resultCode: 1 }), "zalo-bao-da-tra");
+  assert.equal(docKetQuaZalo({ resultCode: 0 }), "dang-xu-ly");
+  assert.equal(docKetQuaZalo({ resultCode: -1 }), "chua-tra");
+  assert.equal(docKetQuaZalo({ resultCode: -2 }), "thoat");
+  for (const la of [null, undefined, {}, { resultCode: "1" }, { resultCode: 2 }, "x"]) assert.equal(docKetQuaZalo(la), "khong-ro");
+  // Zalo báo đã trả mà máy chủ chưa ghi: màn vẫn là "chờ trả" — chỉ máy chủ đổi được bước.
+  assert.equal(buocTraTien(docDonTuJson({ ...donMau, thanhToan: vnpayMau })!).buoc, "cho-tra");
+});
+
+await kiemAsync("VNPay: báo máy chủ đã mở trang (orderId của Zalo); mất mạng, hết giờ, 404 → false, không ném lỗi", async () => {
+  const ghi: CuocGoi[] = [];
+  assert.equal(await baoMoVnpayLenMayChu("https://don.beeftown.vn", "K7QX4M9A", "ab".repeat(16), "zmp-123", mayChuGia(200, { ok: true }, ghi)), true);
+  assert.equal(ghi[0].url, "https://don.beeftown.vn/api/don/K7QX4M9A/vnpay");
+  assert.equal(ghi[0].method, "POST");
+  assert.deepEqual(JSON.parse(ghi[0].body ?? "{}"), { khoa: "ab".repeat(16), maZalo: "zmp-123" });
+  assert.equal(await baoMoVnpayLenMayChu("https://x", "K7QX4M9A", "k", "z", mayChuGia(404, { ok: false })), false);
+  assert.equal(await baoMoVnpayLenMayChu("https://x", "K7QX4M9A", "k", "z", async () => { throw new Error("mất mạng"); }), false);
+  assert.equal(await baoMoVnpayLenMayChu("https://x", "K7QX4M9A", "k", "z", () => new Promise(() => {}), 20), false);
+});
+
+kiem("VNPay: chữ trạng thái chờ là 'Chờ trả tiền' (đúng cho cả chuyển khoản lẫn VNPay)", () => {
+  assert.equal(nhanTrangThaiDon("cho_thanh_toan", "giao-hang"), "Chờ trả tiền");
 });
 
 console.log(`Đạt ${dat}/${dat} kiểm tra.`);

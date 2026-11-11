@@ -29,8 +29,10 @@ const TRANG_THAI = new Set<string>([
   "da_hoan_tien",
 ]);
 
+/** Chuyển khoản VietQR (SePay). Máy chủ cũ không gửi `kieu`: coi là VietQR. */
 export interface ThanhToanCo {
   traDuoc: true;
+  kieu: "viet_qr";
   nganHang: string;
   soTaiKhoan: string;
   tenTaiKhoan: string;
@@ -44,8 +46,30 @@ export interface ThanhToanCo {
   /** Máy chủ đang ở chế độ demo (CHE_DO_DEMO=1): tài khoản giả, quán giả lập tiền về — app ghi "đừng chuyển khoản". */
   demo: boolean;
 }
+/** Đúng các tham số CheckoutSDK.createOrder máy chủ đã ký MAC (may-chu-don/src/checkout-zalo.ts) — app không sửa gì. */
+export interface ThamSoTaoDonZalo {
+  amount: number;
+  desc: string;
+  item: { id: string; amount: number }[];
+  extradata: string;
+  method: string;
+  mac: string;
+}
+
+/** VNPay qua Checkout SDK của Zalo (Khánh 11/11/2026). */
+export interface ThanhToanVnpay {
+  traDuoc: true;
+  kieu: "vnpay";
+  /** Số tiền còn phải trả (đồng). */
+  soTien: number;
+  hetHanLuc: number;
+  /** Máy chủ ở môi trường thử của VNPay (VNPAY_SANDBOX): app ghi "không trừ tiền thật". */
+  thuNghiem: boolean;
+  taoDon: ThamSoTaoDonZalo;
+}
+
 export type LyDoChuaTra = "chua_co_tai_khoan" | "gia_thu" | "khong_cho_tra" | "tam_loi";
-export type ThanhToan = ThanhToanCo | { traDuoc: false; lyDo: LyDoChuaTra };
+export type ThanhToan = ThanhToanCo | ThanhToanVnpay | { traDuoc: false; lyDo: LyDoChuaTra };
 
 export interface DonTraTruoc {
   ma: string;
@@ -131,8 +155,46 @@ const laSoNguyen = (v: unknown, nhoNhat: number): v is number =>
 const laChu = (v: unknown, toiDa: number): v is string => typeof v === "string" && v.length > 0 && v.length <= toiDa;
 const LY_DO = new Set<string>(["chua_co_tai_khoan", "gia_thu", "khong_cho_tra", "tam_loi"]);
 
+/** Tham số createOrder máy chủ gửi; sai dạng thì null (app không gọi Zalo với dữ liệu lạ). */
+function docTaoDon(v: unknown, soTien: number): ThamSoTaoDonZalo | null {
+  const t = (v && typeof v === "object" && !Array.isArray(v) ? v : {}) as Record<string, unknown>;
+  const item = Array.isArray(t.item) ? t.item : null;
+  if (
+    t.amount !== soTien ||
+    !laChu(t.desc, 200) ||
+    !item ||
+    item.length < 1 ||
+    item.length > 20 ||
+    !item.every(
+      (m) => m && typeof m === "object" && laChu((m as { id?: unknown }).id, 60) && laSoNguyen((m as { amount?: unknown }).amount, 0),
+    ) ||
+    !laChu(t.extradata, 500) ||
+    !laChu(t.method, 200) ||
+    typeof t.mac !== "string" ||
+    !/^[0-9a-f]{64}$/.test(t.mac)
+  ) {
+    return null;
+  }
+  return {
+    amount: t.amount,
+    desc: t.desc,
+    // Giữ nguyên thứ tự khóa như máy chủ gửi: MAC ký trên JSON của item.
+    item: item.map((m) => ({ id: (m as { id: string }).id, amount: (m as { amount: number }).amount })),
+    extradata: t.extradata,
+    method: t.method,
+    mac: t.mac,
+  };
+}
+
 function docThanhToan(v: unknown): ThanhToan {
   const t = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
+  if (t.traDuoc === true && t.kieu === "vnpay") {
+    const taoDon = laSoNguyen(t.soTien, 1) ? docTaoDon(t.taoDon, t.soTien) : null;
+    if (taoDon && laSoNguyen(t.hetHanLuc, 1)) {
+      return { traDuoc: true, kieu: "vnpay", soTien: taoDon.amount, hetHanLuc: t.hetHanLuc, thuNghiem: t.thuNghiem === true, taoDon };
+    }
+    return { traDuoc: false, lyDo: "tam_loi" };
+  }
   if (t.traDuoc === true) {
     if (
       laChu(t.nganHang, 60) &&
@@ -148,6 +210,7 @@ function docThanhToan(v: unknown): ThanhToan {
     ) {
       return {
         traDuoc: true,
+        kieu: "viet_qr",
         nganHang: t.nganHang,
         soTaiKhoan: t.soTaiKhoan,
         tenTaiKhoan: t.tenTaiKhoan,
@@ -298,11 +361,59 @@ export async function docDonTuMayChu(
   }
 }
 
+/**
+ * Báo máy chủ khách vừa mở trang VNPay (orderId của CheckoutSDK.createOrder) — để quán thấy đơn nào chờ Zalo báo kết
+ * quả quá lâu. Không đổi gì ở đơn; hỏng thì thôi (true: máy chủ đã ghi hay đã có từ trước).
+ */
+export async function baoMoVnpayLenMayChu(
+  diaChi: string,
+  ma: string,
+  khoa: string,
+  maZalo: string,
+  hamFetch: HamFetchApi,
+  msHetGio = 10_000,
+): Promise<boolean> {
+  try {
+    const { status, than } = await goi(
+      hamFetch,
+      `${diaChi}/api/don/${encodeURIComponent(ma)}/vnpay`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ khoa, maZalo }) },
+      msHetGio,
+    );
+    return status === 200 && (than as { ok?: unknown } | null)?.ok === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Kết quả Zalo báo trên máy khách sau khi đóng trang thanh toán (CheckoutSDK.checkTransaction, resultCode: 1 thành
+ * công · 0 đang xử lý · -1 thất bại · -2 khách thoát không chọn phương thức). Chỉ để nói với khách đang chờ gì —
+ * "quán đã nhận tiền" chỉ khi máy chủ đơn báo (Zalo gọi máy chủ, máy chủ kiểm MAC).
+ */
+export type KetQuaZalo = "zalo-bao-da-tra" | "dang-xu-ly" | "chua-tra" | "thoat" | "khong-ro";
+
+export function docKetQuaZalo(v: unknown): KetQuaZalo {
+  const ma = (v && typeof v === "object" ? (v as { resultCode?: unknown }).resultCode : undefined) as unknown;
+  switch (ma) {
+    case 1:
+      return "zalo-bao-da-tra";
+    case 0:
+      return "dang-xu-ly";
+    case -1:
+      return "chua-tra";
+    case -2:
+      return "thoat";
+    default:
+      return "khong-ro";
+  }
+}
+
 // ---------- Màn trả tiền ----------
 
 export type BuocTraTien =
-  /** Còn chờ tiền: hiện mã QR. daNhan > 0 là khách đã chuyển thiếu, mã mới cho đúng phần còn thiếu. */
-  | { buoc: "cho-tra"; thanhToan: ThanhToanCo; daNhan: number }
+  /** Còn chờ tiền: mã QR (VietQR) hay nút trả qua VNPay. daNhan > 0 là khách đã trả thiếu, phần còn lại cho đúng số còn thiếu. */
+  | { buoc: "cho-tra"; thanhToan: ThanhToanCo | ThanhToanVnpay; daNhan: number }
   /** Quán chưa nhận chuyển khoản trong app (chưa khai tài khoản, hay bảng giá còn là giá thử). */
   | { buoc: "chua-mo-tra"; lyDo: "chua_co_tai_khoan" | "gia_thu" }
   /** Còn chờ tiền mà máy chủ chưa đưa được mã (tạm lỗi): hỏi lại. */
@@ -510,7 +621,7 @@ export function boKhoiDanhSach(kho: KhoLuu | null, ma: string, bayGio: number): 
 export function nhanTrangThaiDon(tt: TrangThaiDon, cachNhan: "giao-hang" | "tai-quan"): string {
   switch (tt) {
     case "cho_thanh_toan":
-      return "Chờ chuyển khoản";
+      return "Chờ trả tiền";
     case "het_han":
       return "Đã tự hủy (chưa đủ tiền)";
     case "da_thanh_toan":

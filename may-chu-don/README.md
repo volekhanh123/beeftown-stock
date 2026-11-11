@@ -6,7 +6,7 @@ khách chọn khay, trả tiền trong app, đơn hiện ngay trên máy tính b
 Máy chủ phải chạy ở Việt Nam: Zalo bắt dữ liệu khách của Mini App phải xử lý và lưu trong nước. Đợt thử chạy trên
 laptop ở công ty, khi mở bán chuyển lên máy chủ thuê ở Việt Nam (khoảng 95.000–120.000 đ/tháng chưa VAT).
 
-## Đã làm được (đợt 1, 2a, 2b, 3)
+## Đã làm được (đợt 1, 2a, 2b, 3, VNPay 1)
 
 - Nhận đơn từ Mini App: máy chủ tự tính tiền theo bảng giá, kiểm giờ nhận theo giờ Việt Nam, bấm gửi hai lần vẫn
   chỉ ra một đơn. Đơn trả trước chỉ giao tận nơi, giá khay đã gồm phí giao (Khánh 09/11/2026); màn quầy hiện địa
@@ -23,6 +23,11 @@ laptop ở công ty, khi mở bán chuyển lên máy chủ thuê ở Việt Nam
 - Mini App (đợt 2b): khi khai địa chỉ máy chủ này (`diaChiMayChuDon` trong `mini-app/src/cau-hinh.ts`), khách gửi
   đơn lên đây và trả tiền ngay trong app — mã QR, chép số tài khoản / số tiền / nội dung, app tự cập nhật khi quán nhận
   đủ tiền. Thử trên laptop: `mini-app/README.md`, "Thử đặt và trả tiền với máy chủ đơn".
+- Trả qua VNPay (Khánh 11/11/2026, mục "Cài VNPay qua Checkout SDK"): Zalo bắt Mini App có thanh toán phải dùng
+  Checkout SDK, nên VNPay nối qua Zalo. Khách bấm "Trả … qua VNPay", Zalo mở trang VNPay; trả xong, Zalo báo máy chủ
+  (có chữ ký), đơn tự sang "Đã trả tiền, chờ soạn". Khách trả hai lần, hay tiền không ra đơn nào: hiện ở "Tiền về cần
+  xem". Môi trường thử (sandbox): màn quầy có dòng cảnh báo, đơn trả bằng tiền thử mang nhãn "Tiền thử VNPay". Có
+  cấu hình VNPay thì app không hiện mã VietQR nữa.
 - Tin Zalo (ZNS, đợt 3): tiền về đủ → khách nhận tin "Beeftown đã nhận đơn"; quầy bấm "Soạn xong, chờ giao" → khách
   nhận tin "đang giao". Mỗi đơn mỗi tin đúng một lần; mất mạng thì máy chủ tự gửi lại. Chỉ chạy khi đã cài ZNS (mục
   "Cài ZNS"); chưa cài thì máy chủ vẫn chạy như cũ.
@@ -31,8 +36,9 @@ Bộ cài lên máy chủ thuê ở Việt Nam: mục "Đưa lên máy chủ thu
 
 Đang chạy từ 09/11/2026 trên máy chủ BizFly Cloud ở TP.HCM (Basic, 1 vCPU, 1 GB RAM, 20 GB, 134.000 đ/tháng gồm sao
 lưu ổ đĩa của BizFly), địa chỉ `https://don.beeftown.vn`. Mini App điền địa chỉ này từ cùng ngày; bản trên Zalo gửi đơn
-lên đây từ lần đưa bản thử kế tiếp. Chưa có tài khoản VietinBank và SePay nên khách chưa trả tiền được trong app: app
-ghi đơn, báo "Quán chưa mở nhận chuyển khoản trong app" và mời khách chat với quán.
+lên đây từ lần đưa bản thử kế tiếp. Chưa cài VNPay (hay VietinBank và SePay) thì khách chưa trả tiền được trong app:
+app ghi đơn, báo "Quán chưa mở trả tiền trong app" và mời khách chat với quán. 11/11/2026 VNPay đã cấp mã môi trường
+thử (TEST): cài theo mục "Cài VNPay qua Checkout SDK".
 
 Chưa có: sao lưu sổ đơn ra ngoài máy, đèn trong `/noi-bo` (đợt 4).
 
@@ -224,10 +230,14 @@ Chưa có (đợt 4, issue #138): sao lưu sổ đơn ra ngoài máy, đèn sứ
 | `ZNS_MAU_DANG_GIAO` | khi gửi ZNS | Mã mẫu tin "đang giao", Zalo đã duyệt |
 | `ZALO_CHE_DO` | không | `thu` (mặc định: chỉ quản trị viên của OA nhận tin, không tính phí) hoặc `that` |
 | `ZALO_REFRESH_TOKEN_MOI` | lần đầu | Refresh token Zalo. Máy chủ dùng một lần, lưu mã hóa, tự làm mới; dán lại khi nhật ký báo token bị từ chối |
+| `ZALO_MINI_APP_ID` | khi trả qua VNPay | Mini App ID của Beeftown: `2858300068641327950` |
+| `ZALO_CHECKOUT_KHOA_RIENG` | khi trả qua VNPay | **Private key** của Checkout SDK (Mini App Center → Checkout SDK → Cấu hình chung), ít nhất 16 ký tự. Không phải Secret Key của VNPay. Không gửi qua chat |
+| `ZALO_CHECKOUT_PHUONG_THUC` | khi trả qua VNPay | `VNPAY_SANDBOX` (môi trường thử, tiền thử) hoặc `VNPAY` (tiền thật) |
 
 Bốn biến tài khoản phải đặt đủ cả bốn, hoặc không đặt cái nào (máy chủ vẫn nhận đơn nhưng không có mã trả tiền). Thiếu
 một biến, khóa SePay dưới 16 ký tự, hay có khóa SePay mà chưa có tài khoản: máy chủ không chạy và báo rõ biến nào sai.
-Bốn biến ZNS đầu cũng vậy: đủ cả bốn, hoặc không cái nào (không gửi tin Zalo).
+Bốn biến ZNS đầu cũng vậy: đủ cả bốn, hoặc không cái nào (không gửi tin Zalo). Ba biến VNPay cũng vậy; có ba biến
+VNPay thì app trả qua VNPay (thắng VietQR); `CHE_DO_DEMO=1` cùng ba biến VNPay thì máy chủ không chạy.
 
 ## Đường dẫn
 
@@ -236,10 +246,13 @@ Bốn biến ZNS đầu cũng vậy: đủ cả bốn, hoặc không cái nào (
 | `POST /api/don` | Mini App | Gửi đơn. Trả mã đơn và khóa xem; gửi lại cùng mã gửi thì trả đơn cũ |
 | `GET /api/don/<mã>?khoa=` | Mini App | Trạng thái đơn, tiền đã nhận, thông tin trả tiền khi còn chờ (không trả tên, số điện thoại) |
 | `GET /api/don/<mã>/qr.svg?khoa=` | Mini App | Ảnh mã VietQR cho phần tiền còn thiếu (chỉ khi đơn còn chờ trả tiền) |
+| `POST /api/don/<mã>/vnpay` | Mini App | Báo vừa mở trang VNPay (mã thanh toán của Zalo) — chỉ để biết đơn nào chờ Zalo báo kết quả quá lâu |
 | `POST /sepay/tien-ve` | SePay | Tin có tiền về, ký HMAC-SHA256. Trả `{"success": true}` chỉ khi đã ghi xong |
+| `POST /zalo/thanh-toan` | Checkout SDK của Zalo (Callback URL) | Kết quả VNPay, ký `mac` và `overallMac` bằng Private key. Trả `{"returnCode": 1}` chỉ khi đã ghi xong, `2` khi đã ghi từ trước. Caddy chỉ cho IP của Zalo |
+| `POST /zalo/vnpay-ipn` | Checkout SDK của Zalo (sandbox) | Zalo chuyển tiếp IPN của VNPay để làm hồ sơ kiểm thử — chỉ ghi nhật ký, không đổi đơn |
 | `GET /quay` | Quầy | Màn hình đơn |
 | `POST /quay/demo/tien-ve` | Quầy, chỉ khi `CHE_DO_DEMO=1` | Giả lập khách chuyển đủ tiền cho một đơn chờ trả tiền (mục "Chế độ demo"); tắt demo thì 404 |
-| `GET /suc-khoe` | Đèn sức khỏe (đợt 4) | Số đơn chờ soạn, chờ lâu nhất bao nhiêu phút, tin ZNS chờ / hỏng, trạng thái token Zalo — không dữ liệu khách |
+| `GET /suc-khoe` | Đèn sức khỏe (đợt 4) | Số đơn chờ soạn, chờ lâu nhất bao nhiêu phút, tin ZNS chờ / hỏng, trạng thái token Zalo; VNPay: phương thức, lần trả cuối, số lần thất bại 24 giờ, số đơn mở trang VNPay quá 20 phút chưa có kết quả, số tin Zalo bị từ chối — không dữ liệu khách |
 
 ## Chế độ demo (thử trọn luồng khi chưa có tài khoản ngân hàng)
 
@@ -295,6 +308,79 @@ công ty không nhận được; cần máy chủ thuê ở Việt Nam có tên 
    danh sách developer.sepay.vn/vi/dia-chi-ip đọc 02/11/2026). SePay đổi IP thì sửa file đó và
    `crm/test/test-may-chu-don-cai-dat.mjs` cùng một PR, rồi `cap-nhat`.
 
+## Cài VNPay qua Checkout SDK (Khánh 11/11/2026)
+
+**Vì sao qua Zalo:** tài liệu Checkout SDK (docs.zaloplatforms.com/docs/MA/checkoutSdk/intro, đọc 11/11/2026) ghi
+Zalo "yêu cầu tất cả các đối tác … có tính năng thanh toán phải tích hợp Checkout SDK", và Checkout SDK đã nối sẵn
+VNPay. Quán nhập mã VNPay ở trang quản lý Mini App; VNPay báo kết quả cho Zalo; Zalo báo máy chủ đơn. Máy chủ đơn chỉ
+giữ **Private key của Checkout SDK** — không giữ Secret Key của VNPay.
+
+**Hai mã VNPay, hai kênh.** Mỗi mã (Terminal) VNPay chỉ gửi kết quả về được một địa chỉ IPN:
+- `SLKGTE22` (email có tệp khóa `VNPAY-QR_PGW_SLKGTE22_TEST_Key.zip`): dùng cho **Mini App**, IPN về Zalo.
+- `SLKGTE11` (email ghi website `https://beeftown.vn`): để cho **website**, chưa dùng (website hiện không thu tiền).
+Chưa chắc VNPay cấp `SLKGTE22` cho ứng dụng nào: hỏi lại VNPay (kythuatctt@vnpay.vn) khi gửi địa chỉ IPN ở bước 3.
+
+Thứ tự (sai thứ tự thì khách thấy "Đang lấy mã trả tiền…" mãi):
+
+1. **Gộp PR, cập nhật máy chủ, đưa Mini App bản thử mới lên** (bản mới đọc được thông tin VNPay):
+   ```
+   bash /opt/beeftown/hien-tai/may-chu-don/cai-dat/may-chu.sh cap-nhat
+   ```
+   rồi trên máy Windows bấm đúp `mini-app\dua-len-zalo.cmd`.
+2. **Mini App Center** (miniapp.zaloplatforms.com → Mini App Beeftown → **Checkout SDK** → **Cấu hình chung**):
+   - Thông tin chung: **Callback URL** `https://don.beeftown.vn/zalo/thanh-toan`. Chép **Private key** (bước 4 dán
+     vào máy chủ). Security Method để `HmacSHA256`, App Status `ACTIVE`.
+   - **Thêm thanh toán mới** → loại hình **Tích hợp toàn diện** → **VNPay**, bản **Sandbox**:
+     - Terminal ID (vnp_TmnCode): `SLKGTE22`.
+     - Version (vnp_Version): `2.1.0`.
+     - Secret Key (vnp_HashSecret): trong tệp `VNPAY-QR_PGW_SLKGTE22_TEST_Key.zip` (mật khẩu VNPay gửi riêng cho đầu
+       mối kỹ thuật). Gõ thẳng vào ô này — không gửi qua chat, không đặt lên máy chủ đơn.
+     - Redirect Path: `/tra-tien`.
+     - IPN Processing Notification Url (chỉ sandbox, không bắt buộc): `https://don.beeftown.vn/zalo/vnpay-ipn` — để
+       có số liệu làm hồ sơ kiểm thử của VNPay (bước 6).
+3. **Gửi VNPay địa chỉ IPN** (email kythuatctt@vnpay.vn, nhắc mã `SLKGTE22`):
+   `https://payment-mini.zalo.me/api/transaction/2858300068641327950/vnp-ipn` — đây là địa chỉ của Zalo, không phải của
+   máy chủ đơn. Dòng khởi động của máy chủ (bước 4) cũng in địa chỉ này.
+4. **Máy chủ đơn** (SSH vào máy BizFly):
+   ```
+   nano /etc/beeftown/may-chu-don.env
+   ```
+   Bỏ dấu `#` ở ba dòng VNPay, dán Private key sau `ZALO_CHECKOUT_KHOA_RIENG=`, giữ `ZALO_CHECKOUT_PHUONG_THUC=VNPAY_SANDBOX`.
+   Có dòng `CHE_DO_DEMO=1` thì xóa (máy chủ không chạy cả hai). Lưu: Ctrl + O, Enter, Ctrl + X.
+   ```
+   systemctl restart may-chu-don
+   journalctl -u may-chu-don -n 8
+   ```
+   Thấy dòng "VNPay qua Checkout SDK: MÔI TRƯỜNG THỬ (VNPAY_SANDBOX)" là đã bật.
+5. **Thử** — phương thức sandbox chỉ hiện với tài khoản Zalo là Admin, Developer hay người thử của Mini App:
+   - Mở Mini App bản thử, đặt một đơn → màn trả tiền có dòng "Bản thử: VNPay đang ở môi trường thử" → bấm "Trả … qua
+     VNPay" → trang VNPay sandbox → trả bằng **thẻ thử NCB trong email VNPay ngày 11/11/2026** (số thẻ, tên, ngày phát
+     hành, OTP ở email đó; không chép vào repo).
+   - Quay lại app: trong vài giây app chuyển sang "Quán đã nhận đủ tiền". Màn quầy (`https://don.beeftown.vn/quay`):
+     dòng cảnh báo sandbox đầu trang, đơn mang nhãn "Tiền thử VNPay (sandbox)".
+   - Thử thêm: bấm hủy trên trang VNPay → app ghi "Lần thanh toán vừa rồi chưa xong", đơn vẫn chờ trả tiền.
+   - Không chuyển sang "Quán đã nhận đủ tiền": `journalctl -u may-chu-don -n 30`. "từ chối callback (sai_mac)" là
+     Private key trên máy chủ khác Mini App Center; không có dòng "VNPay …" nào là Zalo chưa gọi được Callback URL.
+     `https://don.beeftown.vn/suc-khoe?khoa=<KHOA_SUC_KHOE>` ô `soDonVnpayChoKetQua` đếm đơn đã mở trang VNPay quá 20
+     phút mà chưa có kết quả.
+6. **Kiểm thử của VNPay (SIT)** ở `https://sandbox.vnpayment.vn/vsm-sit-client/` (tài khoản trong email VNPay): Zalo
+   xử lý IPN thay quán; câu Zalo trả VNPay cho từng giao dịch nằm trong nhật ký:
+   ```
+   journalctl -u may-chu-don | grep "VNPay IPN"
+   ```
+7. **Mở bán** (khi VNPay cấp mã thật, Sang chốt giá thật): thêm VNPay bản **thật** ở Mini App Center với mã thật,
+   gửi VNPay địa chỉ IPN cho mã thật, đổi `ZALO_CHECKOUT_PHUONG_THUC=VNPAY`, `systemctl restart may-chu-don`. Bảng
+   giá còn là giá thử thì máy chủ không cho trả tiền thật (trừ `CHO_TRA_GIA_THU=1` để thử số nhỏ).
+
+**Hoàn tiền** (khách trả hai lần, quầy hủy đơn đã trả): làm tay ở trang quản lý giao dịch của VNPay (merchant view
+trong email), tra theo "Mã giao dịch VNPay" trên thẻ "Tiền về cần xem", rồi bấm "Đã xử lý xong" / "Đã hoàn tiền cho
+khách". Máy chủ chưa gọi API hoàn tiền của Checkout SDK (việc tiếp).
+
+**Chưa thử được với Zalo thật** (kiểm thử trong repo dùng Zalo giả theo đúng tài liệu): kiểu dữ liệu từng trường của
+callback, Zalo có gửi lại khi máy chủ trả lỗi không (tài liệu: không), IP của webhook IPN sandbox. Zalo không gọi lại
+sau 20 phút thì tài liệu bảo tra `getOrderStatus` — chưa làm (việc tiếp); trong lúc chờ, ô `soDonVnpayChoKetQua` của
+`/suc-khoe` cho biết đơn nào cần tra tay ở Mini App Center.
+
 ## Cài ZNS (tin Zalo báo khách)
 
 Máy chủ đơn gửi thẳng tới Zalo, không qua website: số điện thoại khách Mini App không rời máy chủ ở Việt Nam. Chi tiết
@@ -347,7 +433,8 @@ tin nào. Nhật ký chỉ ghi mã đơn và mã lỗi — không tên, không s
 
 ## Việc của Khánh trước khi bật cho khách
 
-1. Mở tài khoản VietinBank doanh nghiệp, cài SePay theo mục trên.
+1. Cài VNPay qua Checkout SDK theo mục trên (môi trường thử trước). SePay và VietinBank chỉ cần khi muốn nhận thêm
+   chuyển khoản VietQR — có VNPay thì app không hiện mã VietQR.
 2. Hỏi Sang: giá thật của 6 phần (đang là giá thử — máy chủ không hiện mã trả tiền theo giá thử), cách tính phí
    giao hàng.
 3. Hỏi luật sư: Mini App có chức năng đặt hàng và thanh toán có phải thông báo Bộ Công Thương không.

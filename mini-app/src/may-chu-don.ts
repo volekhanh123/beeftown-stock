@@ -2,6 +2,7 @@
 
 import { CAU_HINH } from "./cau-hinh";
 import {
+  baoMoVnpayLenMayChu,
   docDonTuMayChu,
   guiDonLenMayChu,
   type HamFetchApi,
@@ -30,6 +31,10 @@ export function guiDonDenMayChu(than: ThanDon): Promise<KetQuaGui> {
 
 export function docDonTrenMayChu(ma: string, khoa: string): Promise<KetQuaDoc> {
   return docDonTuMayChu(DIA_CHI_MAY_CHU_DON, ma, khoa, fetchThat);
+}
+
+export function baoMoVnpay(ma: string, khoa: string, maZalo: string): Promise<boolean> {
+  return baoMoVnpayLenMayChu(DIA_CHI_MAY_CHU_DON, ma, khoa, maZalo, fetchThat);
 }
 
 /** localStorage, hoặc null khi máy chặn (chế độ riêng tư, Zalo tắt bộ nhớ). */
