@@ -5,7 +5,11 @@
  *   POST /api/don              Mini App gửi đơn (kiemDon → SoDon.taoDon). 201 đơn mới, 200 đơn cũ cùng maGui.
  *   GET  /api/don/:ma?khoa=    Khách xem trạng thái đơn của mình (sai khóa = 404, như không có đơn).
  *   GET  /api/don/:ma/qr.svg?khoa=  Ảnh mã VietQR để khách chuyển khoản (chỉ khi đơn đang chờ trả tiền).
+ *   POST /api/don/:ma/vnpay    Mini App báo vừa mở trang VNPay (orderId của Checkout SDK) — chỉ để số liệu sức khỏe.
  *   POST /sepay/tien-ve        SePay báo có tiền về (kiểm HMAC → SoDon.ghiTienVe). Trả {"success": true} khi đã ghi.
+ *   POST /zalo/thanh-toan      Checkout SDK của Zalo báo kết quả VNPay (kiểm mac, overallMac → SoDon.ghiThanhToanZalo).
+ *                              Trả {"returnCode": 1} chỉ khi đã ghi; 2 khi đã ghi từ trước.
+ *   POST /zalo/vnpay-ipn       Zalo chuyển tiếp IPN của VNPay sandbox (hồ sơ kiểm thử SIT): chỉ ghi nhật ký.
  *   GET  /suc-khoe             Số đếm cho đèn sức khỏe — không dữ liệu cá nhân.
  *   GET  /quay                 Màn hình đơn cho quầy (mật khẩu quầy → phiên 12 giờ).
  *   POST /quay/dang-nhap · /quay/dang-xuat · /quay/doi · /quay/ngon-ngu · /quay/tien-ve/da-xem;
@@ -24,6 +28,7 @@ import { SoDon, PHUT_CHO_THANH_TOAN, type DonDayDu } from './so-don.ts';
 import { DA_NHAN, docTinTienVe, kiemChuKy, type TinTienVe } from './sepay.ts';
 import { chuoiVietQr, noiDungChuyenKhoan, svgVietQr, type TaiKhoanNhan } from './viet-qr.ts';
 import { NHAN, duocBam, laTrangThai } from './trang-thai.ts';
+import { docCallback, dongNhatKyIpnVnpay, laThuNghiem, thamSoTaoDon, traCheckout, type CauHinhCheckout, type ThamSoTaoDon } from './checkout-zalo.ts';
 import { laCauBao, trangDangNhap, trangDanhSach, trangXacNhanHuy, type NgonNgu } from './man-quay.ts';
 import { gioVnTuMs } from '../../web/src/lib/gio-vn.ts';
 
@@ -52,6 +57,11 @@ export interface TuyChonMayChu {
    * thử; màn quầy có nút giả lập khách chuyển đủ tiền. main.ts không cho bật cùng khóa SePay hay tài khoản thật.
    */
   demo?: boolean;
+  /**
+   * VNPay qua Checkout SDK của Zalo (checkout-zalo.ts). Có thì đơn chờ trả tiền mang tham số createOrder đã ký thay
+   * cho mã VietQR. main.ts không cho bật cùng chế độ demo.
+   */
+  checkout?: CauHinhCheckout;
 }
 
 /**
@@ -70,7 +80,9 @@ export const idTienVeDemo = (maDon: string) => -parseInt(createHash('sha256').up
 
 /** Thông tin trả tiền gửi cho Mini App, hoặc lý do chưa trả được. */
 export type ThanhToan =
-  | { traDuoc: true; nganHang: string; soTaiKhoan: string; tenTaiKhoan: string; soTien: number; noiDung: string; chuoiQr: string; hetHanLuc: number; demo?: true }
+  | { traDuoc: true; kieu: 'viet_qr'; nganHang: string; soTaiKhoan: string; tenTaiKhoan: string; soTien: number; noiDung: string; chuoiQr: string; hetHanLuc: number; demo?: true }
+  /** thuNghiem: VNPAY_SANDBOX — tiền thử, Mini App ghi rõ "không trừ tiền thật". taoDon: truyền nguyên vào createOrder. */
+  | { traDuoc: true; kieu: 'vnpay'; soTien: number; hetHanLuc: number; thuNghiem: boolean; taoDon: ThamSoTaoDon }
   | { traDuoc: false; lyDo: 'chua_co_tai_khoan' | 'gia_thu' | 'khong_cho_tra' | 'tam_loi' };
 
 /**
@@ -189,6 +201,8 @@ export function taoXuLy(tc: TuyChonMayChu) {
   // dòng theo khóa chính, khóa xem 128 bit — giới hạn chỉ để chặn gửi dồn, không phải để chống đoán khóa.
   const gioiHanXem = new GioiHan(600, 60_000);
   const saiMatKhau = new GioiHan(5, 10 * 60_000);
+  /** Callback Checkout SDK bị từ chối (sai MAC, sai Mini App, sai dạng) từ lúc máy chủ chạy — số liệu sức khỏe báo. */
+  let soCallbackBiTuChoi = 0;
 
   const coPhien = (req: Request, ms: number) => {
     const t = docCookie(req, 'phien_quay');
@@ -201,16 +215,30 @@ export function taoXuLy(tc: TuyChonMayChu) {
   const cookie = (ten: string, gt: string, giay: number, them = '') =>
     `${ten}=${gt}; Path=/quay; HttpOnly; SameSite=Strict; Max-Age=${giay}${tc.cookieAnToan ? '; Secure' : ''}${them}`;
 
-  /** Đơn còn chờ trả tiền thì có mã VietQR cho đúng số tiền còn thiếu; đơn đã có tiền, hết hạn: không. */
+  /**
+   * Đơn còn chờ trả tiền thì có cách trả cho đúng số tiền còn thiếu: VNPay qua Checkout SDK khi đã cấu hình (thắng
+   * VietQR), không thì mã VietQR. Đơn đã có tiền, hết hạn: không.
+   */
   const thanhToanCoTheNem = (d: DonDayDu): ThanhToan => {
     if (d.trangThai !== 'cho_thanh_toan') return { traDuoc: false, lyDo: 'khong_cho_tra' };
+    if (tc.checkout) {
+      // Sandbox là tiền thử của VNPay: thử được cả khi bảng giá còn là giá thử. VNPAY thật: như chuyển khoản thật.
+      const thuNghiem = laThuNghiem(tc.checkout.phuongThuc);
+      if (d.giaThu && !tc.choTraGiaThu && !thuNghiem) return { traDuoc: false, lyDo: 'gia_thu' };
+      const conThieu = d.tongTien - tc.so.tienDaNhan(d.ma);
+      if (conThieu <= 0) return { traDuoc: false, lyDo: 'khong_cho_tra' };
+      return {
+        traDuoc: true, kieu: 'vnpay', soTien: conThieu, hetHanLuc: d.taoLuc + PHUT_CHO_THANH_TOAN * 60_000, thuNghiem,
+        taoDon: thamSoTaoDon(d, conThieu, tc.checkout),
+      };
+    }
     if (!tc.taiKhoan) return { traDuoc: false, lyDo: 'chua_co_tai_khoan' };
     if (d.giaThu && !tc.choTraGiaThu && !tc.demo) return { traDuoc: false, lyDo: 'gia_thu' };
     const conThieu = d.tongTien - tc.so.tienDaNhan(d.ma);
     if (conThieu <= 0) return { traDuoc: false, lyDo: 'khong_cho_tra' };
     const noiDung = noiDungChuyenKhoan(d.ma);
     return {
-      traDuoc: true, nganHang: tc.taiKhoan.tenNganHang, soTaiKhoan: tc.taiKhoan.soTaiKhoan, tenTaiKhoan: tc.taiKhoan.tenTaiKhoan,
+      traDuoc: true, kieu: 'viet_qr', nganHang: tc.taiKhoan.tenNganHang, soTaiKhoan: tc.taiKhoan.soTaiKhoan, tenTaiKhoan: tc.taiKhoan.tenTaiKhoan,
       soTien: conThieu, noiDung, chuoiQr: chuoiVietQr(tc.taiKhoan, conThieu, noiDung), hetHanLuc: d.taoLuc + PHUT_CHO_THANH_TOAN * 60_000,
       ...(tc.demo ? { demo: true as const } : {}),
     };
@@ -267,6 +295,7 @@ export function taoXuLy(tc: TuyChonMayChu) {
         const tt = thanhToan(d);
         if (m[2]) {
           if (!tt.traDuoc) return loiApi(404, 'Đơn này không còn chờ trả tiền.');
+          if (tt.kieu !== 'viet_qr') return loiApi(404, 'Đơn này trả qua VNPay, không có mã chuyển khoản.');
           return new Response(await svgVietQr(tt.chuoiQr), { headers: {
             'Content-Type': 'image/svg+xml', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
             'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'", ...CORS,
@@ -278,7 +307,58 @@ export function taoXuLy(tc: TuyChonMayChu) {
           dong: d.dong.map(x => ({ ten: x.ten, soKhay: x.soKhay, giaMoiKhay: x.giaMoiKhay })), thanhToan: tt,
         });
       }
+      // Mini App báo khách vừa mở trang VNPay: orderId của Checkout SDK. Chỉ ghi để biết đơn nào đang chờ Zalo báo kết
+      // quả (số liệu sức khỏe) — không đổi đơn, không tính tiền: chỉ callback có MAC mới ghi tiền.
+      const mv = duong.match(/^\/api\/don\/([A-Z0-9]{8})\/vnpay$/);
+      if (mv && req.method === 'POST') {
+        if (!gioiHanXem.thu(ip, ms)) return loiApi(429, 'Hỏi nhiều lần quá. Chờ một phút rồi thử lại.');
+        const chu = await docThan(req, 1024);
+        let b: { khoa?: unknown; maZalo?: unknown } | null = null;
+        try { b = chu === null ? null : JSON.parse(chu); } catch { b = null; }
+        const d = typeof b?.khoa === 'string' ? tc.so.layTheoKhoa(mv[1], b.khoa) : null;
+        if (!d) return json({ ok: false, lyDo: 'khong_thay_don', loi: ['Không thấy đơn này.'] }, 404);
+        const maZalo = typeof b?.maZalo === 'string' || typeof b?.maZalo === 'number' ? String(b.maZalo) : '';
+        if (!tc.checkout) return loiApi(404, 'Quán chưa mở trả tiền qua VNPay.');
+        if (!/^[A-Za-z0-9_.:-]{1,64}$/.test(maZalo)) return loiApi(400, 'Mã thanh toán của Zalo không đọc được.');
+        try { return json({ ok: true, ketQua: tc.so.ghiMoThanhToanZalo(d.ma, maZalo, ms) }); }
+        catch (e) { console.error('Ghi lần mở VNPay hỏng:', e); return loiApi(500, 'Máy chủ đang lỗi, chưa ghi được.'); }
+      }
       return loiApi(404, 'Không có đường này.');
+    }
+
+    // ---------- Checkout SDK của Zalo báo kết quả VNPay ----------
+    if (duong === '/zalo/thanh-toan' && req.method === 'POST') {
+      const tra = (status: number, ma: number, chu: string) =>
+        new Response(traCheckout(ma, chu), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } });
+      if (!tc.checkout) return tra(503, 0, 'Checkout SDK not configured');
+      const thanGoc = await docThan(req, 16 * 1024);
+      if (thanGoc === null) return tra(413, 0, 'Too large');
+      let than: unknown;
+      try { than = JSON.parse(thanGoc); } catch { soCallbackBiTuChoi++; return tra(400, 0, 'Not JSON'); }
+      const kq = docCallback(than, tc.checkout);
+      if (!kq.ok) {
+        soCallbackBiTuChoi++;
+        console.warn(`Checkout SDK: từ chối callback (${kq.lyDo}) từ ${ip}`);
+        return tra(kq.lyDo === 'sai_dang' ? 400 : 401, 0, kq.lyDo === 'sai_dang' ? 'Invalid body' : 'Invalid mac');
+      }
+      try {
+        const r = tc.so.ghiThanhToanZalo(kq.tin, tc.checkout.phuongThuc, ms);
+        if (r.moi) console.log(`VNPay ${kq.tin.maZalo}: ${r.ketQua}${r.maDon ? ` đơn ${r.maDon}` : ''}`);
+        return tra(200, r.moi ? 1 : 2, r.moi ? 'Recorded' : 'Already recorded');
+      } catch (e) {
+        // Chưa ghi được: không bao giờ trả 1. Zalo không gửi lại — đơn hiện ở soDonVnpayChoKetQua của /suc-khoe.
+        console.error('Ghi kết quả VNPay hỏng:', e);
+        return tra(500, 0, 'Not recorded');
+      }
+    }
+    if (duong === '/zalo/vnpay-ipn' && req.method === 'POST') {
+      if (!tc.checkout) return new Response('Not found', { status: 404 });
+      const thanGoc = await docThan(req, 16 * 1024);
+      let than: unknown = null;
+      try { than = thanGoc === null ? null : JSON.parse(thanGoc); } catch { than = null; }
+      const dong = dongNhatKyIpnVnpay(than);
+      console.log(dong ?? 'VNPay IPN (sandbox): thân không đọc được');
+      return new Response(traCheckout(1, 'Logged'), { status: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' } });
     }
 
     // ---------- SePay báo tiền về ----------
@@ -309,7 +389,10 @@ export function taoXuLy(tc: TuyChonMayChu) {
 
     if (duong === '/suc-khoe' && req.method === 'GET') {
       if (tc.khoaSucKhoe && !bangNhau(url.searchParams.get('khoa') ?? '', tc.khoaSucKhoe)) return loiApi(403, 'Sai khóa.');
-      try { return json({ ok: true, luc: ms, cheDoDemo: !!tc.demo, ...tc.so.soLieu(ms) }); }
+      try {
+        return json({ ok: true, luc: ms, cheDoDemo: !!tc.demo, ...tc.so.soLieu(ms),
+          vnpay: tc.checkout ? { phuongThuc: tc.checkout.phuongThuc, soCallbackBiTuChoi } : null });
+      }
       catch (e) { console.error('Đọc số liệu hỏng:', e); return loiApi(500, 'Không đọc được sổ đơn.'); }
     }
 
@@ -366,7 +449,8 @@ export function taoXuLy(tc: TuyChonMayChu) {
         const bao = laCauBao(baoMa) ? { ma: baoMa, maDon: don?.ma ?? '', so: don?.soTrongNgay ?? null, den: laTrangThai(den) ? den : null } : null;
         const daNhan = tc.so.tienDaNhanTheoDon();
         return html(trangDanhSach(nn, tc.so.danhSachQuay(ms), bao, tc.so.tienVeCanXem(), ma => daNhan.get(ma) ?? 0,
-          tc.so.donCoTienDemo(), tc.demo ? tc.so.donChoThanhToan() : undefined));
+          tc.so.donCoTienDemo(), tc.demo ? tc.so.donChoThanhToan() : undefined,
+          { donTienThu: tc.so.donCoTienThuVnpay(), dangThuNghiem: !!tc.checkout && laThuNghiem(tc.checkout.phuongThuc) }));
       }
 
       if (duong === '/quay/huy' && req.method === 'GET') {
@@ -400,8 +484,9 @@ export function taoXuLy(tc: TuyChonMayChu) {
         return chuyen(`/quay?bao=${kq.moi ? 'demo_da_tra' : 'demo_da_tra_roi'}&ma=${encodeURIComponent(don.ma)}#don-${encodeURIComponent(don.ma)}`);
       }
       if (duong === '/quay/tien-ve/da-xem' && req.method === 'POST') {
-        const id = Number(new URLSearchParams((await docThan(req, 1024)) ?? '').get('id'));
-        const kq = Number.isSafeInteger(id) && id > 0 ? tc.so.danhDauDaXem(id, ms) : 'khong_co';
+        const f = new URLSearchParams((await docThan(req, 1024)) ?? '');
+        const id = Number(f.get('id')), maZalo = f.get('zalo') ?? '';
+        const kq = maZalo ? tc.so.danhDauDaXemZalo(maZalo, ms) : Number.isSafeInteger(id) && id > 0 ? tc.so.danhDauDaXem(id, ms) : 'khong_co';
         return chuyen(`/quay?bao=${kq === 'da_doi' ? 'tien_ve_da_xem' : kq === 'da_o_buoc_moi' ? 'tien_ve_xem_roi' : 'tien_ve_khong_co'}#tien-ve`);
       }
       return html('Not found', 404);

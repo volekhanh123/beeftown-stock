@@ -17,11 +17,18 @@
  * giao dịch với bước làm ra nó — tiền về đủ (ghiTienVe) xếp "da_nhan", quầy bấm "Soạn xong, chờ giao" xếp "dang_giao"
  * — nên không có bước nào thiếu tin hay có tin mà không có bước. Đơn mẫu, đơn đánh dấu đã trả bằng tay
  * (ghiDaThanhToan) không có tin nào: chỉ tiền thật qua SePay mới báo khách.
+ *
+ * VNPay qua Checkout SDK của Zalo (Khánh 11/11/2026, checkout-zalo.ts): bảng thanh_toan_zalo, mỗi orderId của Zalo
+ * đúng một dòng (khóa chính) — Zalo gửi lại, hai máy chủ Zalo cùng gọi: lần sau thấy đã có. Ghi tiền và đổi đơn sang
+ * "đã trả tiền" trong cùng một giao dịch, như ghiTienVe. Tiền đã nhận của một đơn là tổng của cả hai bảng.
+ * Bảng mo_thanh_toan_zalo: Mini App báo orderId ngay khi mở trang VNPay — đơn đã mở trang mà quá 20 phút chưa có kết
+ * quả hiện ở số liệu sức khỏe (callback có thể đã lạc: Zalo không gửi lại).
  */
 import { Database } from 'bun:sqlite';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { congNgay, homNayVn } from '../../web/src/lib/gio-vn.ts';
+import { congNgay, gioVnTuMs, homNayVn } from '../../web/src/lib/gio-vn.ts';
 import type { TinTienVe } from './sepay.ts';
+import { laThuNghiem, type TinCheckout } from './checkout-zalo.ts';
 import type { LoaiTin } from './zns.ts';
 import type { DonMoi, DongMoi } from './tao-don.ts';
 import { CON_VIEC, duocBam, laTrangThai, type TrangThai } from './trang-thai.ts';
@@ -67,8 +74,25 @@ export type KetQuaDoi = 'da_doi' | 'da_o_buoc_moi' | 'lech' | 'khong_co' | 'khon
  */
 export type KetQuaTienVe = 'du' | 'thieu' | 'thua' | 'khong_khop' | 'khong_ma' | 'sai_tai_khoan' | 'tien_ra';
 
+/**
+ * Một kết quả VNPay (qua Checkout SDK) đối với đơn: du · thieu · thua như tiền SePay (thua: đơn đã trả từ trước — khách
+ * trả hai lần — phải hoàn) · khong_khop (extradata không ra đơn nào) · that_bai (Zalo báo không trừ được tiền: chỉ ghi
+ * lại) · sai_phuong_thuc (tiền sandbox khi máy chủ nhận tiền thật, hay ngược lại: không tính cho đơn).
+ */
+export type KetQuaThanhToanZalo = 'du' | 'thieu' | 'thua' | 'khong_khop' | 'that_bai' | 'sai_phuong_thuc';
+
+/** Đơn đã mở trang VNPay mà quá chừng này chưa có kết quả: số liệu sức khỏe báo (tài liệu callback: 20 phút). */
+export const PHUT_CHO_KET_QUA_ZALO = 20;
+/** Mỗi đơn giữ tối đa chừng này lần mở trang VNPay (Mini App báo; khách bấm lại nhiều lần thì thôi ghi). */
+export const SO_LAN_MO_ZALO_TOI_DA = 5;
+
 export interface TienVeCanXem {
+  /** 'sepay': chuyển khoản (idSepay). 'vnpay': VNPay qua Checkout SDK (maZalo). */
+  nguon: 'sepay' | 'vnpay';
+  /** id SePay; 0 với tiền VNPay. */
   idSepay: number;
+  /** orderId của Checkout SDK; null với tiền SePay. */
+  maZalo: string | null;
   maDon: string | null;
   soTrongNgay: number | null;
   soTien: number;
@@ -77,7 +101,7 @@ export interface TienVeCanXem {
   tongDaNhan: number | null;
   ngayGiaoDich: string;
   maThamChieu: string;
-  ketQua: KetQuaTienVe;
+  ketQua: KetQuaTienVe | KetQuaThanhToanZalo;
 }
 
 /** Trạng thái đơn đã có tiền (tiền về thêm thì là tiền dư). */
@@ -148,6 +172,26 @@ create table if not exists giao_dich (
 );
 create index if not exists giao_dich_don on giao_dich (ma_don);
 create index if not exists giao_dich_can_xem on giao_dich (can_xem, xem_xong_luc);
+create table if not exists thanh_toan_zalo (
+  ma_zalo text primary key,
+  ma_don text references don (ma),
+  ma_giao_dich text not null,
+  phuong_thuc text not null,
+  so_tien integer not null check (so_tien >= 0),
+  ngay_giao_dich text not null,
+  ket_qua text not null,
+  can_xem integer not null,
+  nhan_luc integer not null,
+  xem_xong_luc integer
+);
+create index if not exists thanh_toan_zalo_don on thanh_toan_zalo (ma_don);
+create index if not exists thanh_toan_zalo_can_xem on thanh_toan_zalo (can_xem, xem_xong_luc);
+create table if not exists mo_thanh_toan_zalo (
+  ma_zalo text primary key,
+  ma_don text not null references don (ma),
+  luc integer not null
+);
+create index if not exists mo_thanh_toan_zalo_don on mo_thanh_toan_zalo (ma_don);
 create table if not exists zns_tin (
   ma_don text not null references don (ma),
   loai text not null check (loai in ('da_nhan', 'dang_giao')),
@@ -370,27 +414,40 @@ export class SoDon {
 
   /** Tiền đã về của mọi đơn có tiền — một câu cho cả màn quầy (tự tải lại 20 giây một lần). */
   tienDaNhanTheoDon(): Map<string, number> {
-    return new Map((this.db.query(`select ma_don as m, sum(so_tien) as n from giao_dich where ma_don is not null
-      and ket_qua in ('du', 'thieu', 'thua') group by ma_don`).all() as { m: string; n: number }[]).map(r => [r.m, r.n]));
+    return new Map((this.db.query(`select m, sum(n) as n from (
+        select ma_don as m, so_tien as n from giao_dich where ma_don is not null and ket_qua in ('du', 'thieu', 'thua')
+        union all
+        select ma_don, so_tien from thanh_toan_zalo where ma_don is not null and ket_qua in ('du', 'thieu', 'thua')
+      ) group by m`).all() as { m: string; n: number }[]).map(r => [r.m, r.n]));
   }
 
-  /** Tổng tiền đã về cho một đơn (mọi lần khớp đơn). */
+  /** Tổng tiền đã về cho một đơn (mọi lần khớp đơn): chuyển khoản SePay và VNPay. */
   tienDaNhan(ma: string): number {
-    return (this.db.query(`select coalesce(sum(so_tien), 0) as n from giao_dich where ma_don = ?
-      and ket_qua in ('du', 'thieu', 'thua')`).get(ma) as { n: number }).n;
+    return (this.db.query(`select (select coalesce(sum(so_tien), 0) from giao_dich where ma_don = ?1
+        and ket_qua in ('du', 'thieu', 'thua'))
+      + (select coalesce(sum(so_tien), 0) from thanh_toan_zalo where ma_don = ?1 and ket_qua in ('du', 'thieu', 'thua')) as n`)
+      .get(ma) as { n: number }).n;
   }
 
   /** Tiền về quầy / kế toán phải xem (thiếu, dư, không khớp đơn) mà chưa ai bấm "Đã xử lý". */
   tienVeCanXem(): TienVeCanXem[] {
-    const hang = this.db.query(`select g.*, d.so_trong_ngay, d.tong_tien from giao_dich g left join don d on d.ma = g.ma_don
-      where g.can_xem = 1 and g.xem_xong_luc is null order by g.nhan_luc`).all() as DongDb[];
+    const hang = this.db.query(`select 'sepay' as nguon, g.id_sepay, null as ma_zalo, g.ma_don, g.so_tien, g.ngay_giao_dich,
+        g.ma_tham_chieu, g.ket_qua, g.nhan_luc, d.so_trong_ngay, d.tong_tien from giao_dich g left join don d on d.ma = g.ma_don
+      where g.can_xem = 1 and g.xem_xong_luc is null
+      union all
+      select 'vnpay', 0, z.ma_zalo, z.ma_don, z.so_tien, z.ngay_giao_dich, z.ma_giao_dich, z.ket_qua, z.nhan_luc,
+        d.so_trong_ngay, d.tong_tien from thanh_toan_zalo z left join don d on d.ma = z.ma_don
+      where z.can_xem = 1 and z.xem_xong_luc is null
+      order by nhan_luc`).all() as DongDb[];
     const daNhan = this.tienDaNhanTheoDon();
     return hang.map(h => ({
-      idSepay: Number(h.id_sepay), maDon: h.ma_don === null ? null : String(h.ma_don),
+      nguon: h.nguon === 'vnpay' ? 'vnpay' as const : 'sepay' as const, idSepay: Number(h.id_sepay),
+      maZalo: h.ma_zalo === null ? null : String(h.ma_zalo), maDon: h.ma_don === null ? null : String(h.ma_don),
       soTrongNgay: h.so_trong_ngay === null ? null : Number(h.so_trong_ngay), soTien: Number(h.so_tien),
       tongTienDon: h.tong_tien === null ? null : Number(h.tong_tien),
       tongDaNhan: h.ma_don === null ? null : daNhan.get(String(h.ma_don)) ?? 0,
-      ngayGiaoDich: String(h.ngay_giao_dich), maThamChieu: String(h.ma_tham_chieu), ketQua: String(h.ket_qua) as KetQuaTienVe,
+      ngayGiaoDich: String(h.ngay_giao_dich), maThamChieu: String(h.ma_tham_chieu),
+      ketQua: String(h.ket_qua) as KetQuaTienVe | KetQuaThanhToanZalo,
     }));
   }
 
@@ -402,6 +459,76 @@ export class SoDon {
       if (r.changes === 1) return 'da_doi' as const;
       return this.db.query('select 1 from giao_dich where id_sepay = ? and can_xem = 1').get(idSepay) ? 'da_o_buoc_moi' as const : 'khong_co' as const;
     }).immediate();
+  }
+
+  /**
+   * Ghi một kết quả VNPay Zalo báo (đã kiểm MAC) — đúng một lần cho mỗi orderId của Checkout SDK. Cùng một giao dịch
+   * BEGIN IMMEDIATE: ghi tiền và đổi đơn sang "đã trả tiền" hoặc cùng xong, hoặc cùng không có. Lần trước Zalo báo thất
+   * bại mà lần này báo đã trừ tiền (cùng orderId): ghi lại theo lần này — tiền khách không bị bỏ quên.
+   * `phuongThucQuan`: phương thức máy chủ đang ký (VNPAY_SANDBOX / VNPAY) — tiền của phương thức khác không tính cho đơn.
+   */
+  ghiThanhToanZalo(tin: TinCheckout, phuongThucQuan: string, ms: number): { moi: boolean; ketQua: KetQuaThanhToanZalo; maDon: string | null } {
+    return this.db.transaction(() => {
+      const cu = this.db.query('select ket_qua, ma_don from thanh_toan_zalo where ma_zalo = ?').get(tin.maZalo) as
+        { ket_qua: KetQuaThanhToanZalo; ma_don: string | null } | null;
+      if (cu && !(cu.ket_qua === 'that_bai' && tin.thanhCong)) return { moi: false, ketQua: cu.ket_qua, maDon: cu.ma_don };
+      const don = tin.maDon ? this.db.query('select ma, trang_thai, tong_tien, cach_nhan from don where ma = ?').get(tin.maDon) as
+        { ma: string; trang_thai: TrangThai; tong_tien: number; cach_nhan: string } | null : null;
+      let ketQua: KetQuaThanhToanZalo;
+      if (!tin.thanhCong) ketQua = 'that_bai';
+      else if (tin.phuongThuc !== phuongThucQuan) ketQua = 'sai_phuong_thuc';
+      else if (!don) ketQua = 'khong_khop';
+      else if (DA_CO_TIEN.includes(don.trang_thai)) ketQua = 'thua';
+      else {
+        const tong = this.tienDaNhan(don.ma) + tin.soTien;
+        ketQua = tong < don.tong_tien ? 'thieu' : tong === don.tong_tien ? 'du' : 'thua';
+      }
+      // Phải có người xem: thiếu, dư (khách trả hai lần), không ra đơn, hay tiền THẬT đi nhầm phương thức (máy chủ đang ở
+      // sandbox). Thất bại, tiền thử của sandbox khi máy chủ nhận tiền thật: không — không có tiền thật nào để xử lý.
+      const canXem = ketQua === 'thieu' || ketQua === 'thua' || ketQua === 'khong_khop'
+        || (ketQua === 'sai_phuong_thuc' && !laThuNghiem(tin.phuongThuc)) ? 1 : 0;
+      const ngay = gioVnTuMs(tin.luc ?? ms).replace('T', ' ');
+      this.db.query(`insert or replace into thanh_toan_zalo (ma_zalo, ma_don, ma_giao_dich, phuong_thuc, so_tien, ngay_giao_dich,
+          ket_qua, can_xem, nhan_luc) values (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(tin.maZalo, don?.ma ?? null, tin.maGiaoDich, tin.phuongThuc, tin.soTien, ngay, ketQua, canXem, ms);
+      if (don && (ketQua === 'du' || ketQua === 'thua') && !DA_CO_TIEN.includes(don.trang_thai)) {
+        if (this.daThanhToanTrongGiaoDich(don.ma, 'vnpay', ms) === 'da_doi' && don.cach_nhan === 'giao-hang') this.xepTinZns(don.ma, 'da_nhan', ms);
+        // Đơn vừa đủ tiền: các lần "thiếu" trước của đơn này không còn phải xem.
+        this.db.query("update giao_dich set can_xem = 0 where ma_don = ? and ket_qua = 'thieu'").run(don.ma);
+        this.db.query("update thanh_toan_zalo set can_xem = 0 where ma_don = ? and ket_qua = 'thieu'").run(don.ma);
+      }
+      return { moi: true, ketQua, maDon: don?.ma ?? null };
+    }).immediate();
+  }
+
+  /**
+   * Mini App báo khách vừa mở trang VNPay (orderId do CheckoutSDK.createOrder trả). Chỉ để biết đơn nào đang chờ kết
+   * quả của Zalo — không đổi đơn, không tính tiền. da_co: orderId đã ghi. qua_nhieu: đơn đã có SO_LAN_MO_ZALO_TOI_DA lần.
+   */
+  ghiMoThanhToanZalo(maDon: string, maZalo: string, ms: number): 'da_ghi' | 'da_co' | 'qua_nhieu' {
+    return this.db.transaction(() => {
+      if (this.db.query('select 1 from mo_thanh_toan_zalo where ma_zalo = ?').get(maZalo)) return 'da_co' as const;
+      const { n } = this.db.query('select count(*) as n from mo_thanh_toan_zalo where ma_don = ?').get(maDon) as { n: number };
+      if (n >= SO_LAN_MO_ZALO_TOI_DA) return 'qua_nhieu' as const;
+      this.db.query('insert into mo_thanh_toan_zalo (ma_zalo, ma_don, luc) values (?, ?, ?)').run(maZalo, maDon, ms);
+      return 'da_ghi' as const;
+    }).immediate();
+  }
+
+  /** Quầy bấm "Đã xử lý" cho một kết quả VNPay cần xem. Bấm đúp → da_o_buoc_moi. */
+  danhDauDaXemZalo(maZalo: string, ms: number): 'da_doi' | 'da_o_buoc_moi' | 'khong_co' {
+    return this.db.transaction(() => {
+      const r = this.db.query('update thanh_toan_zalo set xem_xong_luc = ? where ma_zalo = ? and can_xem = 1 and xem_xong_luc is null')
+        .run(ms, maZalo);
+      if (r.changes === 1) return 'da_doi' as const;
+      return this.db.query('select 1 from thanh_toan_zalo where ma_zalo = ? and can_xem = 1').get(maZalo) ? 'da_o_buoc_moi' as const : 'khong_co' as const;
+    }).immediate();
+  }
+
+  /** Đơn có tiền thử VNPay sandbox — màn quầy gắn nhãn, kẻo quầy soạn khay thật cho tiền không có thật. */
+  donCoTienThuVnpay(): Set<string> {
+    return new Set((this.db.query(`select distinct ma_don as m from thanh_toan_zalo where ma_don is not null
+      and phuong_thuc glob '*_SANDBOX' and ket_qua in ('du', 'thieu', 'thua')`).all() as { m: string }[]).map(r => r.m));
   }
 
   /** Đơn chờ trả tiền quá PHUT_CHO_THANH_TOAN phút → hết hạn. Trả về số đơn vừa đổi. */
@@ -567,7 +694,8 @@ export class SoDon {
       .get() as { luc: number | null };
     const cuoi = this.db.query('select max(luc) as luc from nhat_ky').get() as { luc: number | null };
     const tienVe = this.db.query(`select max(nhan_luc) as luc, sum(case when can_xem = 1 and xem_xong_luc is null then 1 else 0 end) as can
-      from giao_dich`).get() as { luc: number | null; can: number | null };
+      from (select nhan_luc, can_xem, xem_xong_luc from giao_dich union all select nhan_luc, can_xem, xem_xong_luc from thanh_toan_zalo)`)
+      .get() as { luc: number | null; can: number | null };
     return {
       soChoSoan: dem('da_thanh_toan'),
       soDangSoan: dem('dang_soan'),
@@ -579,7 +707,20 @@ export class SoDon {
       lanTienVeCuoi: tienVe.luc,
       soTienVeCanXem: tienVe.can ?? 0,
       ...this.soLieuZns(ms),
+      ...this.soLieuVnpay(ms),
     };
+  }
+
+  private soLieuVnpay(ms: number) {
+    const v = this.db.query(`select max(case when ket_qua in ('du', 'thieu', 'thua') then nhan_luc end) as cuoi,
+        sum(case when ket_qua = 'that_bai' and nhan_luc >= ? then 1 else 0 end) as that_bai from thanh_toan_zalo`)
+      .get(ms - 24 * 3600_000) as { cuoi: number | null; that_bai: number | null };
+    // Đơn đã mở trang VNPay quá PHUT_CHO_KET_QUA_ZALO phút mà Zalo chưa báo kết quả nào, đơn vẫn chưa có tiền.
+    const cho = this.db.query(`select count(distinct m.ma_don) as n from mo_thanh_toan_zalo m join don d on d.ma = m.ma_don
+      where m.luc < ? and m.luc >= ? and d.trang_thai in ('cho_thanh_toan', 'het_han')
+        and not exists (select 1 from thanh_toan_zalo z where z.ma_zalo = m.ma_zalo)`)
+      .get(ms - PHUT_CHO_KET_QUA_ZALO * 60_000, ms - 48 * 3600_000) as { n: number };
+    return { lanVnpayCuoi: v.cuoi, soVnpayThatBai24Gio: v.that_bai ?? 0, soDonVnpayChoKetQua: cho.n };
   }
 
   private soLieuZns(ms: number) {

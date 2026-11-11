@@ -19,6 +19,9 @@
  *                      tin ZNS báo khách (đợt 3). Đặt đủ cả bốn, hoặc không đặt cái nào (chưa gửi ZNS)
  *   ZALO_CHE_DO        "thu" (mặc định: chỉ quản trị viên OA nhận) hoặc "that"
  *   ZALO_REFRESH_TOKEN_MOI  refresh token Zalo mới — máy chủ dùng một lần rồi tự làm mới (README, "Cài ZNS")
+ *   ZALO_MINI_APP_ID, ZALO_CHECKOUT_KHOA_RIENG, ZALO_CHECKOUT_PHUONG_THUC
+ *                      khách trả qua VNPay bằng Checkout SDK của Zalo (README, "Cài VNPay qua Checkout SDK"). Đặt đủ cả
+ *                      ba, hoặc không đặt cái nào. Phương thức: VNPAY_SANDBOX (thử) hoặc VNPAY (tiền thật)
  */
 import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -27,6 +30,7 @@ import { TAI_KHOAN_DEMO, ipKhach, taoXuLy } from './may-chu.ts';
 import { laTaiKhoanNhan } from './viet-qr.ts';
 import { dauToken, docCauHinhZns, maHoaToken } from './zns.ts';
 import { guiZnsMotLuot } from './gui-zns.ts';
+import { diaChiIpnVnpay, docCauHinhCheckout, laThuNghiem } from './checkout-zalo.ts';
 
 const env = process.env;
 const matKhauQuay = env.MAT_KHAU_QUAY ?? '';
@@ -72,6 +76,19 @@ if (demo && (coTaiKhoan || khoaSepay)) {
   process.exit(1);
 }
 
+// VNPay qua Checkout SDK: đủ ba biến hoặc không. Không chạy cùng chế độ demo — demo giả lập tiền về, còn VNPay (kể cả
+// sandbox) là Zalo báo thật; trộn hai thứ thì quầy không biết đơn nào có tiền thật.
+const checkout = docCauHinhCheckout({
+  ZALO_MINI_APP_ID: env.ZALO_MINI_APP_ID, ZALO_CHECKOUT_KHOA_RIENG: env.ZALO_CHECKOUT_KHOA_RIENG,
+  ZALO_CHECKOUT_PHUONG_THUC: env.ZALO_CHECKOUT_PHUONG_THUC,
+});
+if (!checkout.ok) { console.error(checkout.loi); process.exit(1); }
+if (demo && checkout.cauHinh) {
+  console.error('CHE_DO_DEMO=1 không chạy cùng VNPay (ZALO_MINI_APP_ID, ZALO_CHECKOUT_KHOA_RIENG, ZALO_CHECKOUT_PHUONG_THUC). '
+    + 'Thử VNPay thì dùng ZALO_CHECKOUT_PHUONG_THUC=VNPAY_SANDBOX và xóa dòng CHE_DO_DEMO.');
+  process.exit(1);
+}
+
 const zns = docCauHinhZns({
   ZALO_APP_ID: env.ZALO_APP_ID, ZALO_SECRET_KEY: env.ZALO_SECRET_KEY, ZNS_MAU_DA_NHAN: env.ZNS_MAU_DA_NHAN,
   ZNS_MAU_DANG_GIAO: env.ZNS_MAU_DANG_GIAO, ZALO_CHE_DO: env.ZALO_CHE_DO,
@@ -93,7 +110,7 @@ if (zns.cauHinh && tokenMoi && so.gieoTokenZalo(maHoaToken(tokenMoi, zns.cauHinh
 const xuLy = taoXuLy({
   so, matKhauQuay, khoaSucKhoe: env.KHOA_SUC_KHOE || undefined, cookieAnToan: env.KHONG_HTTPS !== '1',
   taiKhoan: demo ? TAI_KHOAN_DEMO : coTaiKhoan ? taiKhoan : undefined, khoaSepay: khoaSepay || undefined,
-  choTraGiaThu: env.CHO_TRA_GIA_THU === '1', demo,
+  choTraGiaThu: env.CHO_TRA_GIA_THU === '1', demo, checkout: checkout.cauHinh ?? undefined,
 });
 const tinProxy = env.TIN_PROXY === '1';
 
@@ -131,6 +148,9 @@ console.log(`Máy chủ đơn đang nghe http://${diaChi}:${mayChu.port} · sổ
 console.log(demo ? 'CHẾ ĐỘ DEMO: mã QR dùng tài khoản giả, quầy có nút giả lập tiền về — không có tiền thật. Tắt trước khi mở bán.'
   : coTaiKhoan ? `Nhận chuyển khoản vào ${taiKhoan.tenNganHang} …${taiKhoan.soTaiKhoan.slice(-4)}` : 'Chưa có tài khoản nhận: đơn chưa có mã trả tiền.');
 console.log(khoaSepay ? 'SePay: đã có khóa ký.' : 'SePay: chưa có khóa ký — /sepay/tien-ve trả 503.');
+console.log(!checkout.cauHinh ? 'VNPay: chưa cấu hình Checkout SDK — đơn trả bằng VietQR (nếu có tài khoản nhận).'
+  : `VNPay qua Checkout SDK: ${laThuNghiem(checkout.cauHinh.phuongThuc) ? 'MÔI TRƯỜNG THỬ (VNPAY_SANDBOX) — tiền thử, không phải tiền thật' : 'tiền thật (VNPAY)'}`
+    + `, Mini App ${checkout.cauHinh.maMiniApp}. IPN khai với VNPay: ${diaChiIpnVnpay(checkout.cauHinh.maMiniApp)}`);
 console.log(!zns.cauHinh ? 'ZNS: chưa cấu hình — không gửi tin Zalo.'
   : `ZNS: chế độ ${zns.cauHinh.cheDo === 'thu' ? 'thử (chỉ quản trị viên OA nhận)' : 'thật'}, token ${so.docTokenZalo()?.refreshMa ? 'đã có' : 'CHƯA có — đặt ZALO_REFRESH_TOKEN_MOI'}.`);
 

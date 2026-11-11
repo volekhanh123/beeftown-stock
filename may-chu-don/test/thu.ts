@@ -25,8 +25,13 @@ import { dauToken, docCauHinhZns, duLieuTin, giaiMaToken, maHoaToken, type CauHi
 import { guiZnsMotLuot, type HamFetchZalo } from '../src/gui-zns.ts';
 import { SO_LAN_ZNS_TOI_DA } from '../src/so-don.ts';
 import {
-  buocTraTien, docDonTuMayChu, guiDonLenMayChu, taoMaGui, taoThanDon, type HamFetchApi,
+  baoMoVnpayLenMayChu, buocTraTien, docDonTuMayChu, guiDonLenMayChu, taoMaGui, taoThanDon, type HamFetchApi,
 } from '../../mini-app/src/tra-truoc.ts';
+import {
+  IP_CHECKOUT_ZALO, chuoiKyTaoDon, diaChiIpnVnpay, docCallback, docCauHinhCheckout, dongNhatKyIpnVnpay, thamSoTaoDon,
+  type CauHinhCheckout,
+} from '../src/checkout-zalo.ts';
+import { PHUT_CHO_KET_QUA_ZALO, SO_LAN_MO_ZALO_TOI_DA } from '../src/so-don.ts';
 
 let dat = 0, hong = 0;
 const ok = (ten: string, dieuKien: boolean, chiTiet = '') => {
@@ -722,7 +727,7 @@ nhom('16 · Đường /sepay/tien-ve và thông tin trả tiền trong /api/don'
   ok('Màn quầy: mục "Tiền về cần xem" có lần chuyển dư 30.000 đ, giờ kiểu "09:05, 13/11/2026", mã giao dịch, câu "Hoàn phần dư"',
     trang.includes('Tiền về cần xem (1)') && trang.includes('30.000 đ') && trang.includes('09:05, 13/11/2026') && trang.includes('FT26001')
     && trang.includes('Hoàn phần dư'));
-  ok('Thẻ đơn ghi số tiền đã nhận chuyển khoản', trang.includes(`Đã nhận chuyển khoản: ${(j.tongTien + 30_000).toLocaleString('vi-VN')} đ`));
+  ok('Thẻ đơn ghi số tiền đã nhận (chuyển khoản hay VNPay: "Đã nhận tiền")', trang.includes(`Đã nhận tiền: ${(j.tongTien + 30_000).toLocaleString('vi-VN')} đ`));
   const daXem = await goi(xuLy, '/quay/tien-ve/da-xem', { method: 'POST', body: 'id=5004',
     headers: { cookie: phien, 'content-type': 'application/x-www-form-urlencoded', 'sec-fetch-site': 'same-origin' } });
   ok('Bấm "Đã xử lý xong" → mục đó biến mất, có câu báo', daXem.status === 303 && (daXem.headers.get('location') ?? '').includes('tien_ve_da_xem')
@@ -1145,7 +1150,8 @@ nhom('21 · Chế độ demo (Khánh 09/11/2026): QR tài khoản giả, quầy 
   const xemMini = await docDonTuMayChu('http://don.beeftown.test', j.ma, j.khoa,
     ((url: string, init?: RequestInit) => goi(xuLy, url.replace('http://don.beeftown.test', ''), init)) as unknown as HamFetchApi);
   ok('Mini App đọc đơn của máy chủ demo: thanhToan.demo = true (app ghi "đừng chuyển khoản")',
-    xemMini.loai === 'co' && xemMini.don.thanhToan.traDuoc && xemMini.don.thanhToan.demo === true, JSON.stringify(xemMini).slice(0, 200));
+    xemMini.loai === 'co' && xemMini.don.thanhToan.traDuoc && xemMini.don.thanhToan.kieu === 'viet_qr'
+    && xemMini.don.thanhToan.demo === true, JSON.stringify(xemMini).slice(0, 200));
 
   // Quyền: chưa đăng nhập, khác nguồn → không ghi gì.
   const khongPhien = await goi(xuLy, '/quay/demo/tien-ve', { method: 'POST', body: `ma=${j.ma}`, headers: form });
@@ -1223,6 +1229,311 @@ nhom('21 · Chế độ demo (Khánh 09/11/2026): QR tài khoản giả, quầy 
   p.kill('SIGTERM');
   const ra = await new Response(p.stdout).text();
   ok('main.ts: nhật ký khởi động nói rõ CHẾ ĐỘ DEMO, không có tiền thật', ra.includes('CHẾ ĐỘ DEMO'), ra.slice(0, 300));
+  fs.rmSync(tam, { recursive: true, force: true });
+}
+
+// =====================================================================================================
+nhom('22 · VNPay qua Checkout SDK của Zalo (Khánh 11/11/2026): MAC tạo đơn, callback một lần, không tin gì chưa ký');
+{
+  const KHOA_ZALO = 'khoa-rieng-checkout-thu-0123456789abcdef';
+  const MINI_APP = '2858300068641327950';
+  const CH_THU: CauHinhCheckout = { maMiniApp: MINI_APP, khoaRieng: KHOA_ZALO, phuongThuc: 'VNPAY_SANDBOX' };
+  const CH_THAT: CauHinhCheckout = { ...CH_THU, phuongThuc: 'VNPAY' };
+  // Ký độc lập theo đúng chữ tài liệu Zalo (webhooks/callback) — không dùng lại hàm của máy chủ.
+  const hm = (k: string, chu: string) => createHmac('sha256', k).update(chu).digest('hex');
+  const kyCallback = (data: Record<string, unknown>, khoa = KHOA_ZALO) => ({
+    data,
+    mac: hm(khoa, `appId=${data.appId}&amount=${data.amount}&description=${data.description}&orderId=${data.orderId}`
+      + `&message=${data.message}&resultCode=${data.resultCode}&transId=${data.transId}`),
+    overallMac: hm(khoa, Object.keys(data).sort().map(k => `${k}=${data[k]}`).join('&')),
+  });
+  let soZalo = 0;
+  const duLieu = (maDon: string, soTien: number, them: Record<string, unknown> = {}) => ({
+    appId: MINI_APP, orderId: `ZMP${1000 + ++soZalo}`, transId: `1483${soZalo}`, method: 'VNPAY_SANDBOX',
+    transTime: msVn('2026-11-13T09:05:00+07:00'), merchantTransId: `MT${soZalo}`, amount: soTien,
+    description: `Beeftown don ${maDon}`, resultCode: 1, message: 'Payment_successful',
+    extradata: encodeURIComponent(JSON.stringify({ maDon })), ...them,
+  });
+  const goiZalo = (xuLy: ReturnType<typeof taoXuLy>, than: unknown, duong = '/zalo/thanh-toan') =>
+    goi(xuLy, duong, { method: 'POST', body: typeof than === 'string' ? than : JSON.stringify(than), headers: { 'content-type': 'application/json' } }, IP_CHECKOUT_ZALO[0]);
+  const docTra = async (r: Response) => ({ status: r.status, ...(await r.json() as { returnCode: number; returnMessage: string }) });
+  const soDong = (so: SoDon) => (so.db.query('select count(*) as n from thanh_toan_zalo').get() as { n: number }).n;
+
+  // --- cấu hình ---
+  ok('Cấu hình: không biến nào → chưa trả qua VNPay (null)', (() => { const c = docCauHinhCheckout({}); return c.ok && c.cauHinh === null; })());
+  const thieu = docCauHinhCheckout({ ZALO_MINI_APP_ID: MINI_APP, ZALO_CHECKOUT_KHOA_RIENG: KHOA_ZALO });
+  ok('Cấu hình: thiếu một trong ba biến → lỗi nói đủ ba tên', !thieu.ok && thieu.loi.includes('ZALO_CHECKOUT_PHUONG_THUC'));
+  ok('Cấu hình: Mini App ID không phải số, Private key ngắn hay có dấu cách, phương thức lạ → lỗi',
+    [{ ZALO_MINI_APP_ID: 'beeftown' }, { ZALO_CHECKOUT_KHOA_RIENG: 'ngan' }, { ZALO_CHECKOUT_KHOA_RIENG: 'khoa co dau cach 0123456789' },
+      { ZALO_CHECKOUT_PHUONG_THUC: 'VNPAY_TEST' }, { ZALO_CHECKOUT_PHUONG_THUC: 'vnpay' }]
+      .every(sai => !docCauHinhCheckout({ ZALO_MINI_APP_ID: MINI_APP, ZALO_CHECKOUT_KHOA_RIENG: KHOA_ZALO, ZALO_CHECKOUT_PHUONG_THUC: 'VNPAY_SANDBOX', ...sai }).ok));
+  const du = docCauHinhCheckout({ ZALO_MINI_APP_ID: ` ${MINI_APP} `, ZALO_CHECKOUT_KHOA_RIENG: KHOA_ZALO, ZALO_CHECKOUT_PHUONG_THUC: 'VNPAY' });
+  ok('Cấu hình: đủ ba biến (cắt khoảng trắng) → đúng Mini App, đúng phương thức', du.ok && du.cauHinh?.maMiniApp === MINI_APP && du.cauHinh.phuongThuc === 'VNPAY');
+  ok('Địa chỉ IPN khai với VNPay là địa chỉ của Zalo theo Mini App ID (tài liệu cấu hình VNPay)',
+    diaChiIpnVnpay(MINI_APP) === 'https://payment-mini.zalo.me/api/transaction/2858300068641327950/vnp-ipn');
+
+  // --- ký createOrder ---
+  const donMau = { ma: 'K7QX4M9A', tongTien: 750_000, dong: [{ maPhan: 'ribeye-with-cap', soKhay: 2, giaMoiKhay: 250_000 }, { maPhan: 'la-galbi', soKhay: 1, giaMoiKhay: 250_000 }] };
+  const ts = thamSoTaoDon(donMau, 750_000, CH_THU);
+  const chuoiTaiLieu = 'amount=750000&desc=Beeftown don K7QX4M9A&extradata={"maDon":"K7QX4M9A"}'
+    + '&item=[{"id":"ribeye-with-cap","amount":500000},{"id":"la-galbi","amount":250000}]&method={"id":"VNPAY_SANDBOX","isCustom":false}';
+  ok('MAC createOrder: chuỗi ký đúng dạng tài liệu (khóa a→z, extradata / method chuỗi JSON, item JSON)', chuoiKyTaoDon(ts) === chuoiTaiLieu, chuoiKyTaoDon(ts));
+  ok('MAC createOrder = HMAC-SHA256(Private key, chuỗi ký) — tự tính độc lập ra cùng số', ts.mac === hm(KHOA_ZALO, chuoiTaiLieu));
+  ok('Tham số: tổng món = số tiền, extradata mang mã đơn, phương thức ép VNPay sandbox (khách không chọn được cách khác)',
+    ts.item.reduce((a, m) => a + m.amount, 0) === ts.amount && JSON.parse(ts.extradata).maDon === 'K7QX4M9A'
+    && JSON.parse(ts.method).id === 'VNPAY_SANDBOX' && JSON.parse(ts.method).isCustom === false);
+  ok('Mô tả không dấu, không ký tự đặc biệt (Zalo chuyển sang VNPay làm nội dung thanh toán)', /^[A-Za-z0-9 ]+$/.test(ts.desc), ts.desc);
+  const conThieu = thamSoTaoDon(donMau, 250_000, CH_THU);
+  ok('Còn thiếu một phần: một món "con-thieu" đúng bằng số tiền còn thiếu', conThieu.amount === 250_000
+    && conThieu.item.length === 1 && conThieu.item[0].id === 'con-thieu' && conThieu.item[0].amount === 250_000);
+  let nem = false; try { thamSoTaoDon(donMau, 0, CH_THU); } catch { nem = true; }
+  ok('Số tiền 0 → không ký (ném lỗi)', nem);
+  ok('Đổi một chữ của tham số là MAC khác (Zalo từ chối)', thamSoTaoDon({ ...donMau, ma: 'K7QX4M9C' }, 750_000, CH_THU).mac !== ts.mac
+    && hm('khoa-khac-0123456789abcdef', chuoiTaiLieu) !== ts.mac);
+
+  // --- API cho Mini App ---
+  {
+    const so = new SoDon(':memory:');
+    const { xuLy } = taoMay(so, { checkout: CH_THU, taiKhoan: TK, khoaSepay: KHOA_SEPAY });
+    const j = await (await guiDon(xuLy, donHopLe())).json() as { ma: string; khoa: string; tongTien: number; thanhToan: Record<string, unknown> };
+    const tt = j.thanhToan as { traDuoc: boolean; kieu: string; soTien: number; thuNghiem: boolean; taoDon: { mac: string; amount: number } & Record<string, unknown> };
+    ok('Đơn mới có thanhToan kiểu vnpay: đúng tổng tiền, cờ thử nghiệm, MAC tự tính độc lập khớp',
+      tt.traDuoc && tt.kieu === 'vnpay' && tt.soTien === j.tongTien && tt.thuNghiem === true && tt.taoDon.amount === j.tongTien
+      && tt.taoDon.mac === hm(KHOA_ZALO, chuoiKyTaoDon(tt.taoDon as never)), JSON.stringify(tt).slice(0, 300));
+    ok('Có VNPay thì không còn mã VietQR (không lộ số tài khoản, không có chuoiQr), qr.svg → 404',
+      !('soTaiKhoan' in tt) && !('chuoiQr' in tt) && (await goi(xuLy, `/api/don/${j.ma}/qr.svg?khoa=${j.khoa}`)).status === 404);
+    ok('Private key không bao giờ có trong câu trả lời cho Mini App', !JSON.stringify(j).includes(KHOA_ZALO));
+    const tGiaThu = (await (await guiDon(taoMay(so, { checkout: CH_THAT }).xuLy, donHopLe())).json() as { thanhToan: { traDuoc: boolean; lyDo?: string } }).thanhToan;
+    ok('VNPay tiền thật mà bảng giá còn là giá thử → chưa cho trả (như chuyển khoản thật); sandbox thì vẫn thử được',
+      !CAU_HINH.giaThu || (!tGiaThu.traDuoc && tGiaThu.lyDo === 'gia_thu'));
+    const tCho = (await (await guiDon(taoMay(so, { checkout: CH_THAT, choTraGiaThu: true }).xuLy, donHopLe())).json() as { thanhToan: { kieu?: string } }).thanhToan;
+    ok('VNPay tiền thật + CHO_TRA_GIA_THU=1 → cho trả (thử số nhỏ)', tCho.kieu === 'vnpay');
+    so.dong();
+  }
+
+  // --- callback ---
+  const so = new SoDon(':memory:');
+  const { xuLy, datGio } = taoMay(so, { checkout: CH_THU });
+  ok('Chưa cấu hình Checkout SDK → 503, returnCode 0 (không bao giờ 1)',
+    await (async () => { const r = await docTra(await goiZalo(taoMay(new SoDon(':memory:')).xuLy, kyCallback(duLieu('K7QX4M9A', 1)))); return r.status === 503 && r.returnCode === 0; })());
+  const d1 = await (await guiDon(xuLy, donHopLe())).json() as { ma: string; khoa: string; tongTien: number };
+  const cb1 = duLieu(d1.ma, d1.tongTien);
+  const r1 = await docTra(await goiZalo(xuLy, kyCallback(cb1)));
+  ok('Callback đúng chữ ký, đủ tiền → returnCode 1, đơn "đã trả tiền", tiền đã nhận = tổng đơn',
+    r1.status === 200 && r1.returnCode === 1 && so.layDon(d1.ma)!.trangThai === 'da_thanh_toan' && so.tienDaNhan(d1.ma) === d1.tongTien, JSON.stringify(r1));
+  ok('Nhật ký đơn ghi bước do "vnpay"; tin ZNS "đã nhận đơn" được xếp (đơn giao tận nơi)',
+    !!so.db.query("select 1 from nhat_ky where ma_don = ? and den = 'da_thanh_toan' and ai = 'vnpay'").get(d1.ma)
+    && so.trangThaiTinZns(d1.ma, 'da_nhan')?.trangThai === 'cho');
+  const r1b = await docTra(await goiZalo(xuLy, kyCallback(cb1)));
+  ok('Zalo gửi lại cùng orderId → returnCode 2 (đã ghi từ trước), vẫn một dòng, tiền không cộng hai lần',
+    r1b.returnCode === 2 && soDong(so) === 1 && so.tienDaNhan(d1.ma) === d1.tongTien);
+  const kq2 = await Promise.all([goiZalo(xuLy, kyCallback(duLieu(d1.ma, 5, { orderId: 'ZMP-CUNG' }))), goiZalo(xuLy, kyCallback(duLieu(d1.ma, 5, { orderId: 'ZMP-CUNG' })))]);
+  const ma2 = (await Promise.all(kq2.map(docTra))).map(x => x.returnCode).sort().join(',');
+  ok('Hai lần gọi cùng lúc cùng orderId → một lần 1, một lần 2; một dòng', ma2 === '1,2'
+    && (so.db.query("select count(*) as n from thanh_toan_zalo where ma_zalo = 'ZMP-CUNG'").get() as { n: number }).n === 1, ma2);
+
+  const d2 = await (await guiDon(xuLy, donHopLe())).json() as { ma: string; tongTien: number };
+  const truocDem = soDong(so);
+  const suaTien = { ...kyCallback(duLieu(d2.ma, d2.tongTien)) }; suaTien.data = { ...suaTien.data, amount: 1 };
+  const rSai = await docTra(await goiZalo(xuLy, suaTien));
+  ok('Thân bị sửa số tiền sau khi ký → 401, returnCode 0, không ghi gì', rSai.status === 401 && rSai.returnCode === 0 && soDong(so) === truocDem);
+  // mac không phủ extradata: đổi mã đơn trong extradata mà giữ mac → chỉ overallMac bắt được.
+  const goc = kyCallback(duLieu(d2.ma, d2.tongTien));
+  const doiDon = { ...goc, data: { ...goc.data, extradata: encodeURIComponent(JSON.stringify({ maDon: d1.ma })) } };
+  const rDoi = await docTra(await goiZalo(xuLy, doiDon));
+  ok('Đổi mã đơn trong extradata, giữ nguyên mac (mac không phủ extradata) → overallMac bắt, 401, không ghi', rDoi.status === 401 && soDong(so) === truocDem);
+  ok('Ký bằng khóa khác → 401', (await goiZalo(xuLy, kyCallback(duLieu(d2.ma, d2.tongTien), 'khoa-cua-nguoi-khac-0123456789'))).status === 401 && soDong(so) === truocDem);
+  ok('Ký đúng khóa mà của Mini App khác → 401 (sai_mini_app), không ghi',
+    (await goiZalo(xuLy, kyCallback(duLieu(d2.ma, d2.tongTien, { appId: '1111111111111111111' })))).status === 401 && soDong(so) === truocDem);
+  ok('Không phải JSON, thiếu data, thiếu mac → 400 / 401, returnCode 0',
+    (await docTra(await goiZalo(xuLy, 'khong-phai-json'))).returnCode === 0 && (await goiZalo(xuLy, { mac: 'x' })).status === 400
+    && (await goiZalo(xuLy, { data: duLieu(d2.ma, 1) })).status === 401 && soDong(so) === truocDem);
+  ok('Số tiền, resultCode dạng chuỗi chữ số (Zalo đổi kiểu) vẫn đọc được — chữ ký trên đúng giá trị nhận',
+    (() => { const k = docCallback(kyCallback(duLieu(d2.ma, String(d2.tongTien) as unknown as number, { resultCode: '1' })), CH_THU); return k.ok && k.tin.soTien === d2.tongTien && k.tin.thanhCong; })());
+  ok('Thân quá 16 KB → 413', (await goiZalo(xuLy, 'x'.repeat(17 * 1024))).status === 413);
+  const sucKhoeTuChoi = (await (await goi(xuLy, '/suc-khoe')).json() as { vnpay: { soCallbackBiTuChoi: number } }).vnpay.soCallbackBiTuChoi;
+  ok('/suc-khoe đếm callback bị từ chối (sai MAC, sai Mini App, sai dạng)', sucKhoeTuChoi >= 6, String(sucKhoeTuChoi));
+
+  // Thất bại rồi thành công cùng orderId (Zalo báo lại).
+  const cbHong = duLieu(d2.ma, d2.tongTien, { resultCode: -1, message: 'Payment_failed', transId: '' });
+  const rHong = await docTra(await goiZalo(xuLy, kyCallback(cbHong)));
+  ok('resultCode -1 → returnCode 1 (đã nhận tin), ghi "that_bai", đơn vẫn chờ trả tiền, không tính tiền',
+    rHong.returnCode === 1 && so.layDon(d2.ma)!.trangThai === 'cho_thanh_toan' && so.tienDaNhan(d2.ma) === 0
+    && (so.db.query('select ket_qua from thanh_toan_zalo where ma_zalo = ?').get(cbHong.orderId) as { ket_qua: string }).ket_qua === 'that_bai');
+  const rLai = await docTra(await goiZalo(xuLy, kyCallback({ ...cbHong, resultCode: 1, message: 'Payment_successful', transId: '99' })));
+  ok('Cùng orderId sau đó báo đã trừ tiền → ghi lại theo lần này, đơn "đã trả tiền" (tiền khách không bị bỏ quên)',
+    rLai.returnCode === 1 && so.layDon(d2.ma)!.trangThai === 'da_thanh_toan' && so.tienDaNhan(d2.ma) === d2.tongTien);
+
+  // Khách trả hai lần (mở trang VNPay hai lần) → lần sau là tiền dư, phải hoàn.
+  const rHai = await docTra(await goiZalo(xuLy, kyCallback(duLieu(d2.ma, d2.tongTien))));
+  const canXem = so.tienVeCanXem();
+  const cxHai = canXem.find(t => t.nguon === 'vnpay' && t.maDon === d2.ma && t.ketQua === 'thua');
+  ok('Trả lần hai cho đơn đã trả → returnCode 1, ghi "thua", hiện ở "Tiền về cần xem" (nguồn vnpay, có mã Zalo, mã VNPay)',
+    rHai.returnCode === 1 && !!cxHai && !!cxHai.maZalo && !!cxHai.maThamChieu && cxHai.tongDaNhan === 2 * d2.tongTien, JSON.stringify(canXem));
+  const phien = ((await goi(xuLy, '/quay/dang-nhap', { method: 'POST', body: `mat_khau=${MK}`,
+    headers: { 'content-type': 'application/x-www-form-urlencoded', 'sec-fetch-site': 'same-origin' } })).headers.get('set-cookie') ?? '').split(';')[0];
+  const trang = await (await goi(xuLy, '/quay', { headers: { cookie: phien } })).text();
+  ok('Màn quầy: thẻ tiền VNPay cần xem ghi mã giao dịch VNPay, mã thanh toán Zalo, nút "Đã xử lý xong" theo mã Zalo',
+    trang.includes(CHU.maGiaoDichVnpay.vi) && trang.includes(CHU.maThanhToanZalo.vi) && trang.includes(`name="zalo" value="${thoat(cxHai!.maZalo!)}"`));
+  const xem = (ma: string) => goi(xuLy, '/quay/tien-ve/da-xem', { method: 'POST', body: `zalo=${encodeURIComponent(ma)}`,
+    headers: { 'content-type': 'application/x-www-form-urlencoded', 'sec-fetch-site': 'same-origin', cookie: phien } });
+  const x1 = await xem(cxHai!.maZalo!), x2 = await xem(cxHai!.maZalo!), x3 = await xem('KHONG-CO');
+  ok('Bấm "Đã xử lý xong" → khỏi danh sách; bấm đúp → "đã xử lý từ trước"; mã lạ → "không có"',
+    (x1.headers.get('location') ?? '').includes('tien_ve_da_xem') && (x2.headers.get('location') ?? '').includes('tien_ve_xem_roi')
+    && (x3.headers.get('location') ?? '').includes('tien_ve_khong_co') && !so.tienVeCanXem().some(t => t.maZalo === cxHai!.maZalo));
+  const xKhac = await goi(xuLy, '/quay/tien-ve/da-xem', { method: 'POST', body: `zalo=${encodeURIComponent(cxHai!.maZalo!)}`,
+    headers: { 'content-type': 'application/x-www-form-urlencoded', 'sec-fetch-site': 'cross-site', cookie: phien } });
+  ok('"Đã xử lý xong" gửi từ trang khác → 403', xKhac.status === 403);
+
+  // Không ra đơn, phương thức lệch.
+  const rKhongDon = await docTra(await goiZalo(xuLy, kyCallback(duLieu('ZZZZZZZZ', 100_000))));
+  const rHongExtra = await docTra(await goiZalo(xuLy, kyCallback(duLieu(d1.ma, 100_000, { extradata: '%E0%A4%A' }))));
+  const kxs = so.tienVeCanXem().filter(t => t.nguon === 'vnpay' && t.ketQua === 'khong_khop');
+  ok('extradata không ra đơn nào (mã lạ, chuỗi hỏng) → returnCode 1, "khong_khop", phải xem; câu VNPay riêng trên màn quầy',
+    rKhongDon.returnCode === 1 && rHongExtra.returnCode === 1 && kxs.length === 2
+    && (await (await goi(xuLy, '/quay', { headers: { cookie: phien } })).text()).includes(thoat(CHU.tienVeKhongKhopVnpay.vi)));
+  const d3 = await (await guiDon(xuLy, donHopLe())).json() as { ma: string; tongTien: number };
+  const rThat = await docTra(await goiZalo(xuLy, kyCallback(duLieu(d3.ma, d3.tongTien, { method: 'VNPAY' }))));
+  ok('Tiền THẬT (VNPAY) tới khi máy chủ đang ở sandbox → không tính cho đơn, "sai_phuong_thuc", PHẢI xem',
+    rThat.returnCode === 1 && so.layDon(d3.ma)!.trangThai === 'cho_thanh_toan'
+    && so.tienVeCanXem().some(t => t.maDon === d3.ma && t.ketQua === 'sai_phuong_thuc'));
+  {
+    const soThat = new SoDon(':memory:');
+    const { xuLy: mayThat } = taoMay(soThat, { checkout: CH_THAT, choTraGiaThu: true });
+    const d = await (await guiDon(mayThat, donHopLe())).json() as { ma: string; tongTien: number };
+    const r = await docTra(await goiZalo(mayThat, kyCallback(duLieu(d.ma, d.tongTien, { method: 'VNPAY_SANDBOX' }))));
+    ok('Tiền thử (VNPAY_SANDBOX) tới khi máy chủ nhận tiền thật → không tính cho đơn, không phải xem (không có tiền thật)',
+      r.returnCode === 1 && soThat.layDon(d.ma)!.trangThai === 'cho_thanh_toan' && soThat.tienVeCanXem().length === 0);
+    const r2 = await docTra(await goiZalo(mayThat, kyCallback(duLieu(d.ma, d.tongTien, { method: 'VNPAY' }))));
+    ok('Máy chủ tiền thật: VNPAY đủ tiền → "đã trả tiền"', r2.returnCode === 1 && soThat.layDon(d.ma)!.trangThai === 'da_thanh_toan');
+    const pThat = ((await goi(mayThat, '/quay/dang-nhap', { method: 'POST', body: `mat_khau=${MK}`,
+      headers: { 'content-type': 'application/x-www-form-urlencoded', 'sec-fetch-site': 'same-origin' } })).headers.get('set-cookie') ?? '').split(';')[0];
+    const tThat = await (await goi(mayThat, '/quay', { headers: { cookie: pThat } })).text();
+    ok('Màn quầy tiền thật: không dòng cảnh báo sandbox, đơn trả tiền thật không mang nhãn "Tiền thử VNPay"',
+      !tThat.includes(thoat(CHU.vnpayThuNghiemDauTrang.vi)) && !tThat.includes(CHU.vnpayTienThu.vi));
+    soThat.dong();
+  }
+  const trangThu = await (await goi(xuLy, '/quay', { headers: { cookie: phien } })).text();
+  ok('Màn quầy sandbox: dòng cảnh báo "môi trường thử" đầu trang; đơn trả bằng tiền thử mang nhãn "Tiền thử VNPay (sandbox)"',
+    trangThu.includes(thoat(CHU.vnpayThuNghiemDauTrang.vi)) && trangThu.includes(CHU.vnpayTienThu.vi)
+    && so.donCoTienThuVnpay().has(d1.ma) && !so.donCoTienThuVnpay().has(d3.ma));
+
+  // Hết hạn rồi tiền mới về (Khánh chốt 30/10/2026): vẫn tính là đã trả.
+  const d4 = await (await guiDon(xuLy, donHopLe())).json() as { ma: string; tongTien: number };
+  datGio(LUC_DAT + (PHUT_CHO_THANH_TOAN + 5) * 60_000);
+  so.datHetHan(LUC_DAT + (PHUT_CHO_THANH_TOAN + 5) * 60_000);
+  const rHetHan = await docTra(await goiZalo(xuLy, kyCallback(duLieu(d4.ma, d4.tongTien))));
+  ok('Đơn đã hết hạn 30 phút, Zalo báo đã trừ tiền → "đã trả tiền" (không bỏ quên tiền khách)',
+    rHetHan.returnCode === 1 && so.layDon(d4.ma)!.trangThai === 'da_thanh_toan');
+
+  // Giờ Việt Nam của giao dịch: 23:50 và 00:10 giờ VN.
+  for (const [iso, ngay] of [['2026-11-13T23:50:00+07:00', '2026-11-13 23:50:00'], ['2026-11-14T00:10:00+07:00', '2026-11-14 00:10:00']]) {
+    const dg = await (await guiDon(xuLy, donHopLe())).json() as { ma: string; tongTien: number };
+    const c = duLieu(dg.ma, dg.tongTien + 1, { transTime: msVn(iso) });
+    await goiZalo(xuLy, kyCallback(c));
+    const h = so.db.query('select ngay_giao_dich from thanh_toan_zalo where ma_zalo = ?').get(c.orderId) as { ngay_giao_dich: string };
+    ok(`Giờ giao dịch ${iso.slice(11, 16)} giờ VN ghi đúng ngày giờ VN (${ngay}) — máy chạy UTC hay múi khác`, h?.ngay_giao_dich === ngay, h?.ngay_giao_dich);
+  }
+
+  // Sổ đơn hỏng giữa chừng: không bao giờ trả 1.
+  {
+    const soHong = new SoDon(':memory:');
+    const { xuLy: mayHong } = taoMay(soHong, { checkout: CH_THU });
+    const d = await (await guiDon(mayHong, donHopLe())).json() as { ma: string; tongTien: number };
+    soHong.db.exec('drop table thanh_toan_zalo');
+    const r = await docTra(await goiZalo(mayHong, kyCallback(duLieu(d.ma, d.tongTien))));
+    ok('Sổ đơn lỗi khi ghi → 500, returnCode 0 (Zalo biết chưa ghi), đơn vẫn chờ trả tiền',
+      r.status === 500 && r.returnCode === 0 && soHong.layDon(d.ma)!.trangThai === 'cho_thanh_toan');
+    soHong.dong();
+  }
+
+  // --- Mini App báo đã mở trang VNPay; đèn đơn chờ kết quả quá lâu ---
+  {
+    const soMo = new SoDon(':memory:');
+    const { xuLy: may, datGio: datGioMo } = taoMay(soMo, { checkout: CH_THU });
+    const d = await (await guiDon(may, donHopLe())).json() as { ma: string; khoa: string; tongTien: number };
+    const bao = (than: unknown, ma = d.ma) => goi(may, `/api/don/${ma}/vnpay`, { method: 'POST', body: JSON.stringify(than), headers: { 'content-type': 'application/json' } });
+    ok('Báo mở VNPay: sai khóa xem → 404 như không có đơn', (await bao({ khoa: 'f'.repeat(32), maZalo: 'ZMP1' })).status === 404);
+    ok('Báo mở VNPay: mã Zalo lạ → 400', (await bao({ khoa: d.khoa, maZalo: '<script>' })).status === 400);
+    ok('Báo mở VNPay: máy chủ chưa cấu hình VNPay → 404',
+      (await goi(taoMay(soMo).xuLy, `/api/don/${d.ma}/vnpay`, { method: 'POST', body: JSON.stringify({ khoa: d.khoa, maZalo: 'ZMP1' }) })).status === 404);
+    const lan = [];
+    for (let i = 0; i <= SO_LAN_MO_ZALO_TOI_DA; i++) lan.push((await (await bao({ khoa: d.khoa, maZalo: `ZMP-MO-${i}` })).json() as { ketQua: string }).ketQua);
+    const lai = (await (await bao({ khoa: d.khoa, maZalo: 'ZMP-MO-0' })).json() as { ketQua: string }).ketQua;
+    ok(`Báo mở VNPay: ghi tối đa ${SO_LAN_MO_ZALO_TOI_DA} lần mỗi đơn, báo lại cùng mã → "da_co"; đơn không đổi`,
+      lan.slice(0, SO_LAN_MO_ZALO_TOI_DA).every(x => x === 'da_ghi') && lan[SO_LAN_MO_ZALO_TOI_DA] === 'qua_nhieu' && lai === 'da_co'
+      && soMo.layDon(d.ma)!.trangThai === 'cho_thanh_toan' && soMo.tienDaNhan(d.ma) === 0, lan.join(','));
+    const sk = async () => (await (await goi(may, '/suc-khoe')).json() as { soDonVnpayChoKetQua: number; vnpay: { phuongThuc: string } });
+    ok('/suc-khoe: mới mở trang VNPay → chưa báo đơn chờ kết quả', (await sk()).soDonVnpayChoKetQua === 0);
+    datGioMo(LUC_DAT + (PHUT_CHO_KET_QUA_ZALO + 1) * 60_000);
+    ok(`/suc-khoe: quá ${PHUT_CHO_KET_QUA_ZALO} phút chưa có kết quả → 1 đơn chờ (callback có thể đã lạc), phương thức VNPAY_SANDBOX`,
+      (await sk()).soDonVnpayChoKetQua === 1 && (await sk()).vnpay.phuongThuc === 'VNPAY_SANDBOX');
+    await goiZalo(may, kyCallback(duLieu(d.ma, d.tongTien, { orderId: 'ZMP-MO-3' })));
+    ok('/suc-khoe: Zalo báo kết quả cho một lần mở → hết chờ', (await sk()).soDonVnpayChoKetQua === 0 && soMo.layDon(d.ma)!.trangThai === 'da_thanh_toan');
+    // Mini App (mini-app/src/tra-truoc.ts) gọi máy chủ thật.
+    const quaMay: HamFetchApi = async (url, init) => {
+      const tra = await may(new Request(url, { method: init.method, headers: init.headers, body: init.body }), '10.0.0.9');
+      return { status: tra.status, json: () => tra.json() };
+    };
+    const d5 = await (await guiDon(may, donHopLe())).json() as { ma: string; khoa: string; tongTien: number };
+    const xem = await docDonTuMayChu('http://don.beeftown.test', d5.ma, d5.khoa, quaMay);
+    const tt = xem.loai === 'co' && xem.don.thanhToan.traDuoc && xem.don.thanhToan.kieu === 'vnpay' ? xem.don.thanhToan : null;
+    ok('Mini App đọc đơn của máy chủ: kiểu vnpay, tham số qua JSON vẫn ra đúng MAC (Zalo nhận)',
+      !!tt && tt.taoDon.mac === hm(KHOA_ZALO, chuoiKyTaoDon(tt.taoDon)) && tt.thuNghiem && buocTraTien(xem.loai === 'co' ? xem.don : null!).buoc === 'cho-tra');
+    ok('Mini App báo mở trang VNPay qua baoMoVnpayLenMayChu → máy chủ ghi', await baoMoVnpayLenMayChu('http://don.beeftown.test', d5.ma, d5.khoa, 'ZMP-APP-1', quaMay)
+      && !!soMo.db.query("select 1 from mo_thanh_toan_zalo where ma_zalo = 'ZMP-APP-1'").get());
+    await goiZalo(may, kyCallback(duLieu(d5.ma, d5.tongTien, { orderId: 'ZMP-APP-1' })));
+    const sau = await docDonTuMayChu('http://don.beeftown.test', d5.ma, d5.khoa, quaMay);
+    ok('Sau callback: Mini App thấy "Quán đã nhận đủ tiền"', sau.loai === 'co' && buocTraTien(sau.don).buoc === 'da-nhan-du');
+    soMo.dong();
+  }
+
+  // --- IPN sandbox chuyển tiếp: chỉ nhật ký ---
+  {
+    const tin = { ipnResponseData: { Message: 'Confirm Success', RspCode: '00' }, ipnRequestIP: '203.205.17.226',
+      ipnReceivedData: { vnp_BankCode: 'NCB', vnp_PayDate: '20261113090500', vnp_TransactionNo: '14831393', vnp_TmnCode: 'SLKGTE22',
+        vnp_SecureHash: 'ab'.repeat(64), vnp_OrderInfo: 'Beeftown don K7QX4M9A', vnp_TxnRef: '261113_0905', vnp_Amount: '75000000',
+        vnp_CardType: 'ATM', vnp_TransactionStatus: '00', vnp_ResponseCode: '00' } };
+    const dong = dongNhatKyIpnVnpay(tin) ?? '';
+    ok('IPN sandbox: dòng nhật ký có RspCode, mã giao dịch, số tiền, mã phản hồi, IP — không checksum, không nội dung đơn',
+      dong.includes('RspCode=00') && dong.includes('vnp_TxnRef=261113_0905') && dong.includes('vnp_Amount=75000000')
+      && dong.includes('ip=203.205.17.226') && !dong.includes('ab'.repeat(8)) && !dong.includes('Beeftown don'), dong);
+    ok('IPN sandbox: chữ lạ trong trường bị bỏ (không chèn được xuống dòng, ký tự điều khiển vào nhật ký)',
+      !(dongNhatKyIpnVnpay({ ipnResponseData: { RspCode: '00\nGIA' }, ipnReceivedData: {} }) ?? '\n').includes('\n'));
+    const truoc = so.tienVeCanXem().length, trangThai = so.layDon(d3.ma)!.trangThai;
+    const r = await docTra(await goiZalo(xuLy, tin, '/zalo/vnpay-ipn'));
+    ok('IPN sandbox: trả returnCode 1, KHÔNG đổi đơn nào, không ghi tiền (webhook này không có MAC)',
+      r.returnCode === 1 && so.tienVeCanXem().length === truoc && so.layDon(d3.ma)!.trangThai === trangThai);
+    ok('IPN sandbox khi chưa cấu hình VNPay → 404', (await goiZalo(taoMay(new SoDon(':memory:')).xuLy, tin, '/zalo/vnpay-ipn')).status === 404);
+  }
+
+  // --- chữ ---
+  const khoaMoi = ['maGiaoDichVnpay', 'maThanhToanZalo', 'tienVeKhongKhopVnpay', 'tienVeSaiPhuongThuc', 'vnpayTienThu', 'vnpayThuNghiemDauTrang'] as const;
+  ok('Chữ mới của màn quầy đủ vi / en, không chữ cấm, không "thành công"',
+    khoaMoi.every(k => CHU[k].vi && CHU[k].en && !timChuoiCam(CHU[k].vi).length && !timChuoiCam(CHU[k].en).length && !/thành công/i.test(CHU[k].vi)));
+  so.dong();
+
+  // --- main.ts ---
+  const chay = (them: Record<string, string>) => Bun.spawnSync(['bun', 'src/main.ts'], { cwd: path.join(import.meta.dir, '..'),
+    env: { ...process.env, MAT_KHAU_QUAY: MK, CONG: '1', THU_MUC_DU_LIEU: path.join(os.tmpdir(), 'may-chu-don-khong-mo'), ...them } });
+  const thieuBien = chay({ ZALO_MINI_APP_ID: MINI_APP, ZALO_CHECKOUT_KHOA_RIENG: KHOA_ZALO });
+  ok('main.ts: thiếu một biến VNPay → không mở máy chủ, nói đủ ba tên', thieuBien.exitCode === 1 && thieuBien.stderr.toString().includes('ZALO_CHECKOUT_PHUONG_THUC'));
+  const demoVnpay = chay({ CHE_DO_DEMO: '1', ZALO_MINI_APP_ID: MINI_APP, ZALO_CHECKOUT_KHOA_RIENG: KHOA_ZALO, ZALO_CHECKOUT_PHUONG_THUC: 'VNPAY_SANDBOX' });
+  ok('main.ts: CHE_DO_DEMO=1 cùng VNPay → không mở máy chủ (quầy không phân biệt được tiền giả lập và tiền Zalo báo)',
+    demoVnpay.exitCode === 1 && demoVnpay.stderr.toString().includes('CHE_DO_DEMO'));
+  const tam = fs.mkdtempSync(path.join(os.tmpdir(), 'may-chu-don-vnpay-'));
+  const cong = 20000 + Math.floor(Math.random() * 20000);
+  const p = Bun.spawn(['bun', 'src/main.ts'], { cwd: path.join(import.meta.dir, '..'), stdout: 'pipe', stderr: 'pipe',
+    env: { ...process.env, MAT_KHAU_QUAY: MK, CONG: String(cong), THU_MUC_DU_LIEU: tam,
+      ZALO_MINI_APP_ID: MINI_APP, ZALO_CHECKOUT_KHOA_RIENG: KHOA_ZALO, ZALO_CHECKOUT_PHUONG_THUC: 'VNPAY_SANDBOX' } });
+  let sk: Response | null = null;
+  for (let i = 0; i < 50 && !sk; i++) { await Bun.sleep(100); sk = await fetch(`http://127.0.0.1:${cong}/suc-khoe`).catch(() => null); }
+  ok('main.ts: đủ ba biến → máy chủ chạy, /suc-khoe báo phương thức VNPAY_SANDBOX',
+    sk?.status === 200 && (await sk.json() as { vnpay: { phuongThuc: string } }).vnpay?.phuongThuc === 'VNPAY_SANDBOX');
+  p.kill('SIGTERM');
+  const ra = await new Response(p.stdout).text();
+  ok('main.ts: nhật ký khởi động nói rõ MÔI TRƯỜNG THỬ và địa chỉ IPN khai với VNPay; không in Private key',
+    ra.includes('MÔI TRƯỜNG THỬ') && ra.includes(diaChiIpnVnpay(MINI_APP)) && !ra.includes(KHOA_ZALO), ra.slice(0, 400));
   fs.rmSync(tam, { recursive: true, force: true });
 }
 

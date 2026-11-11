@@ -21,6 +21,8 @@
  *      thư mục nhà; không thì một thư viện bị chèn mã sửa file dịch vụ mà root sắp cài (User=root) và lên root.
  *
  * SePay đổi IP (developer.sepay.vn/vi/dia-chi-ip): sửa IP_SEPAY dưới đây và Caddyfile.mau cùng một PR.
+ * Zalo đổi IP của Checkout SDK (tài liệu webhooks/callback): sửa IP_CHECKOUT_ZALO dưới đây, Caddyfile.mau và
+ * may-chu-don/src/checkout-zalo.ts cùng một PR.
  */
 
 import { readFileSync } from 'node:fs';
@@ -39,7 +41,11 @@ const IP_SEPAY = [
   '2400:8905::2000:8cff:fe98:45cd', '2600:3c15::2000:8aff:fedd:874b',
 ];
 
+// docs.zaloplatforms.com/docs/MA/checkoutSdk/webhooks/callback, đọc 11/11/2026: "Đối tác cần whitelist".
+const IP_CHECKOUT_ZALO = ['118.102.2.29', '49.213.78.2'];
+
 const caddy = doc('may-chu-don/cai-dat/Caddyfile.mau');
+const checkoutZalo = doc('may-chu-don/src/checkout-zalo.ts');
 const dichVu = doc('may-chu-don/cai-dat/may-chu-don.service');
 const mau = doc('may-chu-don/cai-dat/may-chu-don.env.mau');
 const sh = doc('may-chu-don/cai-dat/may-chu.sh');
@@ -69,6 +75,17 @@ await nhom('1 · Caddy: HTTPS, tin tiền về chỉ từ SePay, không nhật k
   ok('IP khác gọi /sepay… → 403, không tới máy chủ đơn', /respond @khong_phai_sepay .* 403/.test(caddyMa));
   ok('Đường /sepay/tien-ve của máy chủ đơn vẫn nằm dưới /sepay/ (đổi đường thì đổi cả matcher)',
     mayChu.includes("duong === '/sepay/tien-ve'"));
+  const khoiZalo = caddyMa.match(/@khong_phai_zalo \{([\s\S]*?)\}/)?.[1] ?? '';
+  const ipZalo = (khoiZalo.match(/not remote_ip (.*)/)?.[1] ?? '').trim().split(/\s+/).filter(Boolean);
+  ok('Kết quả VNPay (/zalo…) chỉ nhận IP Checkout SDK của Zalo — đúng danh sách tài liệu Zalo (không thiếu, không thừa)',
+    ipZalo.length === IP_CHECKOUT_ZALO.length && IP_CHECKOUT_ZALO.every(x => ipZalo.includes(x)), `Caddyfile: ${ipZalo.join(' ')}`);
+  ok('Matcher bao /zalo và mọi đường dưới /zalo/, chặn theo remote_ip, IP khác → 403',
+    /path \/zalo \/zalo\/\*/.test(khoiZalo) && /not remote_ip /.test(khoiZalo) && /respond @khong_phai_zalo .* 403/.test(caddyMa));
+  ok('Đường kết quả VNPay của máy chủ đơn nằm dưới /zalo/ (đổi đường thì đổi cả matcher)',
+    mayChu.includes("duong === '/zalo/thanh-toan'") && mayChu.includes("duong === '/zalo/vnpay-ipn'"));
+  ok('Danh sách IP Zalo trong mã máy chủ đơn (IP_CHECKOUT_ZALO) giống hệt Caddyfile',
+    IP_CHECKOUT_ZALO.every(x => checkoutZalo.includes(`'${x}'`))
+      && (checkoutZalo.match(/IP_CHECKOUT_ZALO = \[([^\]]*)\]/)?.[1].match(/'/g)?.length ?? 0) === IP_CHECKOUT_ZALO.length * 2);
   const proxy = [...caddyMa.matchAll(/reverse_proxy (.*)/g)].map(m => m[1].trim());
   ok('Chỉ một reverse_proxy, tới 127.0.0.1 đúng cổng của dịch vụ', proxy.length === 1 && proxy[0] === `127.0.0.1:${bienExec.CONG}`,
     proxy.join(', '));
@@ -115,6 +132,9 @@ await nhom('3 · File bí mật mẫu: không biến cố định, đúng dạng
   ok('Mọi biến trong mẫu đều được main.ts đọc', moiTen.length >= 8 && moiTen.every(t => main.includes(`env.${t}`)), moiTen.join(', '));
   ok('Bốn dòng tài khoản và khóa SePay để tắt sẵn (đặt đủ bốn hoặc không cái nào)',
     ['NGAN_HANG_BIN', 'TEN_NGAN_HANG', 'SO_TAI_KHOAN', 'TEN_TAI_KHOAN', 'SEPAY_KHOA_KY'].every(t => new RegExp(`^#${t}=`, 'm').test(mau)));
+  ok('Ba dòng VNPay (Checkout SDK) để tắt sẵn, Private key trống, phương thức mặc định là môi trường thử',
+    /^#ZALO_MINI_APP_ID=2858300068641327950$/m.test(mau) && /^#ZALO_CHECKOUT_KHOA_RIENG=$/m.test(mau)
+      && /^#ZALO_CHECKOUT_PHUONG_THUC=VNPAY_SANDBOX$/m.test(mau));
 });
 
 await nhom('4 · Script: cú pháp, kiểm thử trước khi chạy lại, quay về bản cũ, tường lửa', async () => {

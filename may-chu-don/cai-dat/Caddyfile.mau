@@ -20,6 +20,15 @@ TEN_MIEN_MAY_CHU {
 	}
 	respond @khong_phai_sepay "Chỉ SePay được gọi đường này." 403
 
+	# Kết quả VNPay chỉ nhận từ máy chủ Checkout SDK của Zalo (máy chủ đơn vẫn kiểm mac / overallMac; đây là lớp chặn thứ
+	# hai). Danh sách: docs.zaloplatforms.com/docs/MA/checkoutSdk/webhooks/callback, đọc 11/11/2026. Zalo đổi IP thì sửa
+	# ở đây, trong crm/test/test-may-chu-don-cai-dat.mjs (IP_CHECKOUT_ZALO) và may-chu-don/src/checkout-zalo.ts, rồi "cap-nhat".
+	@khong_phai_zalo {
+		path /zalo /zalo/*
+		not remote_ip 118.102.2.29 49.213.78.2
+	}
+	respond @khong_phai_zalo "Chỉ Checkout SDK của Zalo được gọi đường này." 403
+
 	# Máy chủ đơn chỉ nghe trong máy (127.0.0.1:8787, TIN_PROXY=1): IP khách lấy từ mục cuối X-Forwarded-For mà Caddy đặt.
 	reverse_proxy 127.0.0.1:8787
 

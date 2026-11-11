@@ -1,8 +1,9 @@
 // Các lệnh của Zalo dùng trong app. Chỉ chạy được bên trong ứng dụng Zalo trên điện thoại.
 
-import { followOA, openChat, openShareSheet, saveImageToGallery, showOAWidget } from "zmp-sdk";
+import { CheckoutSDK, EventName, events, followOA, openChat, openShareSheet, saveImageToGallery, showOAWidget } from "zmp-sdk";
 import { CAU_HINH } from "./cau-hinh";
 import type { NoiDungChiaSe } from "./chia-se";
+import { docKetQuaZalo, type KetQuaZalo, type ThamSoTaoDonZalo } from "./tra-truoc";
 
 /** Cùng cách zmp-sdk tự nhận biết: trình duyệt bên trong Zalo có chữ "zalo" trong user agent. */
 export function dangTrongZalo(): boolean {
@@ -69,4 +70,47 @@ export async function hienKhungQuanTamOA(id: string, khiLoi: () => void): Promis
   } catch {
     khiLoi();
   }
+}
+
+export type KetQuaMoVnpay = { loai: "da-mo"; maZalo: string } | { loai: "ngoai-zalo" } | { loai: "loi" };
+
+/**
+ * Mở trang thanh toán VNPay của Checkout SDK với đúng tham số máy chủ đã ký (amount, desc, item, extradata, method,
+ * mac). Zalo trả orderId khi đã tạo yêu cầu thanh toán và chuyển khách sang VNPay.
+ */
+export async function moTrangVnpay(t: ThamSoTaoDonZalo): Promise<KetQuaMoVnpay> {
+  if (!dangTrongZalo()) return { loai: "ngoai-zalo" };
+  try {
+    const kq = await CheckoutSDK.createOrder({
+      amount: t.amount,
+      desc: t.desc,
+      item: t.item,
+      extradata: t.extradata,
+      method: t.method,
+      mac: t.mac,
+    });
+    return typeof kq?.orderId === "string" || typeof kq?.orderId === "number"
+      ? { loai: "da-mo", maZalo: String(kq.orderId) }
+      : { loai: "loi" };
+  } catch {
+    return { loai: "loi" };
+  }
+}
+
+/**
+ * Nghe sự kiện PaymentDone của Checkout SDK (khách xong hay hủy trang thanh toán, ZMP SDK từ 2.45.0), rồi hỏi Zalo kết
+ * quả bằng checkTransaction. Trả hàm thôi nghe.
+ */
+export function ngheThanhToanXong(khi: (kq: KetQuaZalo) => void): () => void {
+  const nghe = async (data: unknown) => {
+    try {
+      khi(docKetQuaZalo(await CheckoutSDK.checkTransaction({ data: data as Record<string, string> })));
+    } catch {
+      khi("khong-ro");
+    }
+  };
+  events.on(EventName.PaymentDone, nghe);
+  return () => {
+    events.off(EventName.PaymentDone, nghe);
+  };
 }
