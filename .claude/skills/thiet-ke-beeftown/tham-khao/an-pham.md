@@ -68,7 +68,7 @@ phần nội dung của file đó đã cũ, xem dưới).
 
 Guideline (`THUONG-HIEU.md` mục 2):
 
-- **Nên có:** khay bò đóng sẵn có nhãn (khay đen như khay thật của quán — Khánh xác nhận 11/11/2026), vỉ gas với hơi nhẹ, bàn tay và đĩa ăn chung, nền kem và gỗ sáng
+- **Nên có:** khay bò đóng sẵn có nhãn (skin-pack trên khay đen phẳng như quán đóng — Khánh xác nhận 11/11/2026), vỉ gas với hơi nhẹ, bàn tay và đĩa ăn chung, nền kem và gỗ sáng
   (đồ vật trong ảnh: giấy lót, đĩa sứ màu kem; gỗ sáng — không phải màu nền thiết kế).
 - **Không có:** than, lửa, khói dày, đá đen, gang, thớt gỗ thô, rau thơm đặt trên thịt sống, vân mỡ
   đẹp hơn thịt quán bán. Đá đen, gang, thớt gỗ thô là luật cho nền và mặt đặt thịt bò, vỉ và bàn nướng

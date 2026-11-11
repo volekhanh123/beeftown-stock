@@ -448,11 +448,17 @@ await nhom('5 · BỐN QUYẾT ĐỊNH CỦA KHÁNH (11/10/2026): DẢI TỐI, C
     && !NOI_DUOC[g.file]?.includes(g.id));
   ok('Ảnh AI chỉ nằm ở trang chủ, trang Thực đơn và bốn chỗ ảnh tạm (quầy của Đến Beeftown, thẻ Mua thịt về)', ngoaiHaiTrang.length === 0,
      ngoaiHaiTrang.map(g => `${g.file}: ${g.id}`).join(' | '));
-  // Khay thật của quán màu đen (Khánh xác nhận 11/11/2026): hai ảnh tạm có khay vẽ khay đen, alt nói đúng như thế.
-  const KHAY_DEN = { vi: /khay đen/u, en: /\bblack\b[^.]*\btray/i, ko: /검은[^.]*트레이/u };
-  ok('Ảnh có khay (quay-chon-bo, mua-thit-mat): alt ba thứ tiếng nói khay đen — khay thật của quán màu đen (Khánh, 11/11/2026)',
-     ['quay-chon-bo', 'mua-thit-mat'].every(id => NGON_NGU.every(nn => KHAY_DEN[nn].test(DANH_MUC_ANH[id]?.alt?.[nn] ?? ''))),
-     ['quay-chon-bo', 'mua-thit-mat'].flatMap(id => NGON_NGU.filter(nn => !KHAY_DEN[nn].test(DANH_MUC_ANH[id]?.alt?.[nn] ?? '')).map(nn => `${id} [${nn}]`)).join(', '));
+  // Quán đóng thịt bằng skin-pack trên khay đen (Khánh xác nhận 11/11/2026): ba ảnh tạm có thịt vẽ đúng như thế, alt
+  // ba thứ tiếng nói skin-pack và khay đen — không còn "túi hút chân không" hay khay nhựa trong.
+  const ANH_CO_THIT = ['quay-chon-bo', 'mua-thit-mat', 'mua-thit-dong-lanh'];
+  const SKIN_PACK_KHAY_DEN = {
+    vi: a => /skin-pack/.test(a) && /khay đen/u.test(a) && !/túi/u.test(a),
+    en: a => /skin-pack/i.test(a) && /\bblack\b[^.]*\btray/i.test(a) && !/\bbag\b/i.test(a),
+    ko: a => /스킨팩/u.test(a) && /검은[^.]*트레이/u.test(a) && !/봉지/u.test(a),
+  };
+  const sai = ANH_CO_THIT.flatMap(id => NGON_NGU.filter(nn => !SKIN_PACK_KHAY_DEN[nn](DANH_MUC_ANH[id]?.alt?.[nn] ?? '')).map(nn => `${id} [${nn}]`));
+  ok('Ảnh có thịt (quay-chon-bo, mua-thit-mat, mua-thit-dong-lanh): alt ba thứ tiếng nói skin-pack trên khay đen — như quán đóng (Khánh, 11/11/2026)',
+     sai.length === 0, sai.join(', '));
   ok('Ảnh tạm chỉ ở đúng chỗ của nó: quay-chon-bo chỉ ở Đến Beeftown, mua-… chỉ ở thẻ Mua thịt về',
      goiAnh.filter(g => ANH_TAM.includes(g.id)).every(g => NOI_DUOC[g.file]?.includes(g.id)));
   ok('Chỗ của ảnh AI khi chưa dựng cỡ không bao giờ là hình lối vào hay thang máy (thayBang chỉ khay / ban-nuong; quầy chỉ cho quay-chon-bo)',
