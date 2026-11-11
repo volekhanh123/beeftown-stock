@@ -333,12 +333,12 @@ Tám ảnh do **ChatGPT tạo ngày 11/10/2026**, gọi qua Codex CLI bằng gó
 
 | Id | Ảnh | Vị trí dùng | Khung (bề rộng đã dựng) | Điều kiện thay |
 |---|---|---|---|---|
-| `quay-chon-bo` | Tủ kính mát bày các phần bò trong khay hút chân không, mỗi khay một nhãn trắng. Bản hai: sửa từ bản một cùng bố cục, chỉ hạ vân mỡ (bản một vân mỡ dày kiểu wagyu, đã bỏ) | Đến Beeftown, bước 3 (`TrangDenBeeftown`), dải đen | 4:3 (480 / 800) | Ảnh quầy thật (mục 8, cảnh 2) |
+| `quay-chon-bo` | Tủ kính mát bày các phần bò trong khay đen hút chân không, mỗi khay một nhãn trắng. Bản ba (11/11/2026): sửa từ bản hai cùng bố cục, chỉ đổi khay nhựa trong thành khay đen như khay thật của quán. Bản hai: sửa từ bản một, chỉ hạ vân mỡ (bản một vân mỡ dày kiểu wagyu, đã bỏ) | Đến Beeftown, bước 3 (`TrangDenBeeftown`), dải đen | 4:3 (480 / 800) | Ảnh quầy thật (mục 8, cảnh 2) |
 | `mua-thit-mat` | Một miếng bò sống kiểu ribeye trong khay đen hút chân không, cạnh khăn vải kem | Thẻ sản phẩm thịt mát (và mọi sản phẩm không phải kim chi, không đông lạnh) — `MuaThitThe` | 4:3 (400 / 800) – 1:1 (200 / 320) | Ảnh khay thật của từng sản phẩm |
 | `mua-thit-dong-lanh` | Những cuộn bò thái mỏng đông lạnh trong túi hút chân không phủ sương giá | Thẻ sản phẩm đông lạnh | 4:3 (400 / 800) – 1:1 (200 / 320) | Như trên |
 | `mua-kim-chi` | Kim chi cải thảo trong hộp nhựa trong, nắp đặt bên cạnh, đĩa nhỏ và đôi đũa inox | Thẻ kim chi | 4:3 (400 / 800) – 1:1 (200 / 320) | Ảnh hộp kim chi thật của quán |
 
-Ảnh sản phẩm tả **chung loại hàng**, không phải đúng phần thịt của sản phẩm (Ribeye, Ba chỉ… dùng chung một ảnh theo loại). Alt của `mua-kim-chi` gọi tên kim chi — đó là chính hàng khách đặt, không phải món phụ trang hứa (`test-cong-khai-anh.mjs` miễn riêng ảnh này khỏi luật "không kể tên món phụ"). **Điểm cần người xem lại bằng mắt:** khay trong ảnh quầy là khay nhựa trong, ảnh thịt mát là khay đen — khay thật của quán màu gì thì Khánh xem; cuộn bò đông lạnh có giống hàng quán bán không (Sang xem).
+Ảnh sản phẩm tả **chung loại hàng**, không phải đúng phần thịt của sản phẩm (Ribeye, Ba chỉ… dùng chung một ảnh theo loại). Alt của `mua-kim-chi` gọi tên kim chi — đó là chính hàng khách đặt, không phải món phụ trang hứa (`test-cong-khai-anh.mjs` miễn riêng ảnh này khỏi luật "không kể tên món phụ"). **Khay thật của quán màu đen** (Khánh xác nhận 11/11/2026): ảnh quầy và ảnh thịt mát đều vẽ khay đen; ảnh AI nào có khay sau này cũng vậy. **Điểm cần người xem lại bằng mắt:** cuộn bò đông lạnh có giống hàng quán bán không (Sang xem).
 
 **Ảnh món của trang Thực đơn — cuốn menu bản sáng** (26 ảnh, lấy từ artifact "Beeftown — Menu", Cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026; file gốc nằm **ngoài repo**). Vẫn là **ảnh minh họa**, trang vẫn ghi "Ảnh minh họa":
 

@@ -130,13 +130,14 @@ export const DANH_MUC_ANH: Readonly<Record<IdAnh, MoTaAnh>> = {
 
   // --- Ảnh tạm 10/11/2026 (ngoại lệ ở đầu file): quầy và ảnh sản phẩm Mua thịt về -------------------
   // ChatGPT tạo qua cầu nối Codex; vân mỡ vừa phải như bò Úc nuôi hạt (luật "vân mỡ không đẹp hơn thịt quán
-  // bán"), nhãn trên khay để trắng (không chữ, không giá). Có ảnh chụp thật thì thay, rồi bỏ ngoại lệ.
+  // bán"), khay đen như khay thật của quán (Khánh xác nhận 11/11/2026), nhãn trên khay để trắng (không chữ, không giá).
+  // Có ảnh chụp thật thì thay, rồi bỏ ngoại lệ.
   'quay-chon-bo': {
     minhHoa: true,
     alt: {
-      vi: 'Tủ kính mát bày các phần bò sống trong khay hút chân không, xếp thành hàng, mỗi khay có một nhãn trắng nhỏ.',
-      en: 'A chilled glass display case of raw beef cuts in vacuum skin-packed trays, laid out in rows, each with a small white label.',
-      ko: '냉장 유리 진열대에 진공 포장한 생 소고기 트레이들이 줄지어 놓여 있고, 트레이마다 작은 흰 라벨이 붙어 있어요.',
+      vi: 'Tủ kính mát bày các phần bò sống trong khay đen hút chân không, xếp thành hàng, mỗi khay có một nhãn trắng nhỏ.',
+      en: 'A chilled glass display case of raw beef cuts in black vacuum skin-packed trays, laid out in rows, each with a small white label.',
+      ko: '냉장 유리 진열대에 진공 포장한 생 소고기 검은 트레이들이 줄지어 놓여 있고, 트레이마다 작은 흰 라벨이 붙어 있어요.',
     },
   },
   // Ba ảnh sản phẩm: thẻ Mua thịt về chọn theo loại — kim chi, thịt đông lạnh, còn lại là thịt mát (MuaThitThe.astro).

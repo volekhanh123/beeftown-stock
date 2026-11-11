@@ -456,10 +456,10 @@
       }
     },
     "quay-chon-bo": {
-      "mo_ta": "Tủ kính mát bày các phần bò sống trong khay hút chân không, mỗi khay một nhãn trắng không chữ — ảnh tạm cho bước 3 'Ghé quầy chọn bò' của trang Đến Beeftown (TrangDenBeeftown), tới khi có ảnh quầy chụp thật",
+      "mo_ta": "Tủ kính mát bày các phần bò sống trong khay đen hút chân không (khay thật của quán màu đen), mỗi khay một nhãn trắng không chữ — ảnh tạm cho bước 3 'Ghé quầy chọn bò' của trang Đến Beeftown (TrangDenBeeftown), tới khi có ảnh quầy chụp thật",
       "nguon": {
-        "cong_cu": "ChatGPT · gọi qua Codex CLI · 10/11/2026",
-        "da_chon": "bản hai: sửa từ bản một (cùng bố cục), chỉ đổi vân mỡ cho vừa như bò Úc nuôi hạt — bản một vân mỡ dày kiểu wagyu, đẹp hơn thịt quán bán, đã bỏ"
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 10/11/2026 (sửa khay đen 11/11/2026)",
+        "da_chon": "bản ba (11/11/2026): sửa từ bản hai (cùng bố cục), chỉ đổi khay nhựa trong thành khay đen — Khánh xác nhận khay thật của quán màu đen. Bản hai: sửa từ bản một, chỉ đổi vân mỡ cho vừa như bò Úc nuôi hạt — bản một vân mỡ dày kiểu wagyu, đẹp hơn thịt quán bán, đã bỏ"
       },
       "goc": "quay-chon-bo-4x3.png",
       "khung": {
