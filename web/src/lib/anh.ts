@@ -11,8 +11,13 @@
  *      - Hai ảnh bữa ăn (mon-an-chia-se, bua-an-cung-ban) có kim chi và nhiều chén món
  *        phụ: đó là hình minh họa Khánh cho dùng, KHÔNG phải lời hứa quán dọn đúng các
  *        món đó — câu chữ và alt không kể tên, không hứa món phụ nào.
- *      - Không bao giờ dùng ảnh AI cho quầy, khay skin-pack, không gian quán, lối vào,
- *        thang máy hay mặt người — những chỗ đó dùng KhungAnh cho tới khi có ảnh chụp thật.
+ *      - Không bao giờ dùng ảnh AI cho không gian quán, lối vào, thang máy hay mặt người —
+ *        những chỗ đó dùng KhungAnh cho tới khi có ảnh chụp thật.
+ *      - NGOẠI LỆ TẠM (Khánh quyết 10/11/2026, ba ngày trước khai trương): quầy và ảnh sản
+ *        phẩm của trang Mua thịt về dùng ảnh AI tạm (bốn id quay-chon-bo, mua-…, ChatGPT tạo
+ *        qua cầu nối Codex cùng ngày), vẫn có nhãn "Ảnh minh họa", cho tới khi có ảnh chụp
+ *        thật. Lối vào và thang máy vẫn là KhungAnh: ảnh AI vẽ một cánh cửa, một thang máy
+ *        không giống thật thì khách đi tìm dễ lạc.
  *  · ẢNH THẬT (minhHoa: false) — ảnh chụp tại Beeftown. Chưa có tấm nào.
  *
  * ẢNH MÓN CỦA TRANG THỰC ĐƠN (26 id mon-…, uong-…) — lấy từ cuốn menu in "bản sáng"
@@ -44,7 +49,8 @@ export type IdAnh = 'hero-vi-gas' | 'bo-van-mo-can' | 'bo-cat-lat' | 'sot-cham' 
   | 'mon-canh-kim-chi' | 'mon-dau-phu-ham' | 'mon-canh-tuong-dau'
   | 'mon-com-kim-chi-bo' | 'mon-com-tron-han' | 'mon-com-tron-trung-ca'
   | 'mon-mi-lanh-cay' | 'mon-mi-toowoomba' | 'mon-mi-carbonara' | 'mon-mi-bo-sot-ca'
-  | 'uong-milky-cloud-makgeolli' | 'uong-strawberry-crush' | 'uong-berry-rouge-highball' | 'uong-khong-con-ba-ly';
+  | 'uong-milky-cloud-makgeolli' | 'uong-strawberry-crush' | 'uong-berry-rouge-highball' | 'uong-khong-con-ba-ly'
+  | 'quay-chon-bo' | 'mua-thit-mat' | 'mua-thit-dong-lanh' | 'mua-kim-chi';
 
 export interface MoTaAnh {
   /** Ảnh tạo bằng AI — trang phải ghi "Ảnh minh họa" ngay trên ảnh. */
@@ -119,6 +125,44 @@ export const DANH_MUC_ANH: Readonly<Record<IdAnh, MoTaAnh>> = {
       vi: 'Những lát bò đang chín trên vỉ gas tròn viền thép, mặt thịt vàng nâu và một làn hơi nóng.',
       en: 'Slices of beef cooking on a round steel-rimmed gas grill, browned on top, with a wisp of steam.',
       ko: '둥근 가스 그릴 위에서 노릇하게 익어 가는 소고기, 김이 살짝 피어올라요.',
+    },
+  },
+
+  // --- Ảnh tạm 10/11/2026 (ngoại lệ ở đầu file): quầy và ảnh sản phẩm Mua thịt về -------------------
+  // ChatGPT tạo qua cầu nối Codex; vân mỡ vừa phải như bò Úc nuôi hạt (luật "vân mỡ không đẹp hơn thịt quán
+  // bán"), nhãn trên khay để trắng (không chữ, không giá). Có ảnh chụp thật thì thay, rồi bỏ ngoại lệ.
+  'quay-chon-bo': {
+    minhHoa: true,
+    alt: {
+      vi: 'Tủ kính mát bày các phần bò sống trong khay hút chân không, xếp thành hàng, mỗi khay có một nhãn trắng nhỏ.',
+      en: 'A chilled glass display case of raw beef cuts in vacuum skin-packed trays, laid out in rows, each with a small white label.',
+      ko: '냉장 유리 진열대에 진공 포장한 생 소고기 트레이들이 줄지어 놓여 있고, 트레이마다 작은 흰 라벨이 붙어 있어요.',
+    },
+  },
+  // Ba ảnh sản phẩm: thẻ Mua thịt về chọn theo loại — kim chi, thịt đông lạnh, còn lại là thịt mát (MuaThitThe.astro).
+  'mua-thit-mat': {
+    minhHoa: true,
+    alt: {
+      vi: 'Một miếng bò sống trong khay đen hút chân không, lớp màng trong ôm sát thớ thịt, đặt trên bàn gỗ sáng cạnh khăn vải màu kem.',
+      en: 'A raw beef steak in a black vacuum skin-pack tray, the clear film hugging the meat, on a light wood table beside a cream napkin.',
+      ko: '밝은 나무 테이블 위 크림색 냅킨 옆에, 투명 필름이 고기에 밀착된 검은 진공 트레이 속 생 소고기가 놓여 있어요.',
+    },
+  },
+  'mua-thit-dong-lanh': {
+    minhHoa: true,
+    alt: {
+      vi: 'Những cuộn bò thái mỏng đông lạnh xếp trong túi hút chân không phủ một lớp sương giá, đặt trên bàn gỗ sáng.',
+      en: 'Rolls of thinly sliced frozen beef packed in a frosted vacuum-sealed bag on a light wood table.',
+      ko: '밝은 나무 테이블 위, 성에가 살짝 낀 진공 포장 봉지에 얇게 썬 냉동 소고기 롤이 가지런히 담겨 있어요.',
+    },
+  },
+  // Kim chi ở đây là chính sản phẩm khách đặt, không phải món phụ trang hứa — alt được gọi tên.
+  'mua-kim-chi': {
+    minhHoa: true,
+    alt: {
+      vi: 'Kim chi cải thảo đỏ màu ớt trong hộp nhựa trong, nắp đặt bên cạnh; phía trước là đĩa sứ màu kem có vài miếng kim chi và đôi đũa inox.',
+      en: 'Red napa cabbage kimchi in a clear container with the lid set aside, next to a cream ceramic dish of cut kimchi and stainless steel chopsticks.',
+      ko: '투명 용기에 빨간 배추김치가 담겨 있고 뚜껑은 옆에 놓여 있어요. 크림색 접시에 썬 김치와 스테인리스 젓가락도 있어요.',
     },
   },
 

@@ -449,7 +449,7 @@ export function doGiaoDien() {
   // --- 11. Ảnh và nhãn "Ảnh minh họa" -------------------------------------------------------------
   // Mọi ảnh của trang công khai đi qua component <Anh>: <figure class="anh"> chứa <picture> và, với ảnh AI,
   // <figcaption class="chu-thich-anh">. Bảy id đầu là ảnh ChatGPT tạo ngày 11/10/2026; 26 id sau là ảnh món của
-  // cuốn menu bản sáng (11/10/2026, đều gắn nhãn minh họa) — chép tay, KHÔNG đọc danh mục của trang: gỡ cờ
+  // cuốn menu bản sáng (11/10/2026, đều gắn nhãn minh họa); bốn id cuối là ảnh tạm 10/11/2026 — chép tay, KHÔNG đọc danh mục của trang: gỡ cờ
   // minhHoa của một ảnh thì nhãn biến mất và phép đo này đỏ.
   kq.anh = [];
   const ANH_AI = new RegExp('/anh/(?:' + [
@@ -459,6 +459,8 @@ export function doGiaoDien() {
     'mon-banh-gao-chien-pho-mai', 'mon-canh-kim-chi', 'mon-dau-phu-ham', 'mon-canh-tuong-dau', 'mon-com-kim-chi-bo', 'mon-com-tron-han',
     'mon-com-tron-trung-ca', 'mon-mi-lanh-cay', 'mon-mi-toowoomba', 'mon-mi-carbonara', 'mon-mi-bo-sot-ca',
     'uong-milky-cloud-makgeolli', 'uong-strawberry-crush', 'uong-berry-rouge-highball', 'uong-khong-con-ba-ly',
+    // Bốn ảnh tạm ChatGPT tạo ngày 10/11/2026: quầy (Đến Beeftown) và ảnh sản phẩm Mua thịt về.
+    'quay-chon-bo', 'mua-thit-mat', 'mua-thit-dong-lanh', 'mua-kim-chi',
   ].join('|') + ')-\\d+x\\d+-\\d+\\.(?:avif|webp)(?:$|[?#])');
   const NHAN_ANH = { vi: 'Ảnh minh họa', en: 'Illustrative image', ko: '연출 이미지' };
   const cuonDau = scrollY;
@@ -518,6 +520,8 @@ export function doGiaoDien() {
     if (Math.abs(ka.width - kf.width) > 1 || Math.abs(ka.height - kf.height) > 1) kq.anh.push(`${ten}: ảnh ${ka.width.toFixed(0)} × ${ka.height.toFixed(0)}px không lấp đúng khung ${kf.width.toFixed(0)} × ${kf.height.toFixed(0)}px`);
     // Không logo, chữ hay phần tử nào đè lên ảnh: đưa ảnh vào giữa màn hình rồi hỏi trình duyệt phần tử trên
     // cùng ở năm điểm — phải là chính ảnh hoặc nhãn của nó. (Đầu trang dính che phần trên: lấy điểm trong vùng nhìn thấy.)
+    // Hộp đang mở ở lớp trên cùng (popover, dialog — vd. hộp chọn gói của Mua thịt về) cố ý che cả trang phía sau:
+    // điểm rơi vào hộp đó không tính. Ảnh của thẻ dưới hộp vẫn được đo lúc hộp đóng (thu-day-du.mjs đo cả hai lượt).
     veCho(scrollY + kf.top + kf.height / 2 - innerHeight / 2);
     const k2 = f.getBoundingClientRect();
     const cheTren = (document.querySelector('header.dau-trang')?.getBoundingClientRect().bottom ?? 0) + (document.querySelector('.td-thanh')?.getBoundingClientRect().height ?? 0) + 2;
@@ -525,7 +529,7 @@ export function doGiaoDien() {
     if (duoi2 - tren2 > 40) {
       for (const [tx, ty] of [[0.5, 0.5], [0.12, 0.12], [0.88, 0.12], [0.12, 0.88], [0.88, 0.88]]) {
         const tc = document.elementFromPoint(k2.left + k2.width * tx, tren2 + (duoi2 - tren2) * ty);
-        if (tc && !f.contains(tc)) { kq.anh.push(`${ten}: ${moTa(tc).slice(0, 50)} đè lên ảnh`); break; }
+        if (tc && !f.contains(tc) && !tc.closest(':popover-open, dialog[open]')) { kq.anh.push(`${ten}: ${moTa(tc).slice(0, 50)} đè lên ảnh`); break; }
       }
     }
   }

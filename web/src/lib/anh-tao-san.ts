@@ -132,4 +132,19 @@ export const ANH_TAO_SAN: Readonly<Record<string, Readonly<Record<string, CoAnh>
   'uong-khong-con-ba-ly': {
     '3x2': { rong: 800, cao: 533, cac: [480, 800], mau: '#EED098' },
   },
+  'quay-chon-bo': {
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#925E45' },
+  },
+  'mua-thit-mat': {
+    '4x3': { rong: 800, cao: 600, cac: [400, 800], mau: '#B18057' },
+    '1x1': { rong: 320, cao: 320, cac: [200, 320], mau: '#A6754F' },
+  },
+  'mua-thit-dong-lanh': {
+    '4x3': { rong: 800, cao: 600, cac: [400, 800], mau: '#C79166' },
+    '1x1': { rong: 320, cao: 320, cac: [200, 320], mau: '#C58D66' },
+  },
+  'mua-kim-chi': {
+    '4x3': { rong: 800, cao: 600, cac: [400, 800], mau: '#CB9266' },
+    '1x1': { rong: 320, cao: 320, cac: [200, 320], mau: '#C78B5E' },
+  },
 };

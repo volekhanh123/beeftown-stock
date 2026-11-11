@@ -18,6 +18,10 @@
     "nguon, đợt 2 (26 ảnh mon-…, uong-… của trang Thực đơn): lấy từ artifact 'Beeftown — Menu' (cuốn menu in bản sáng, Cuốn C nền sáng, Version 45,",
     "Khánh chốt 11/10/2026). Ảnh món ăn và ảnh ba ly không cồn là ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026 rồi tách nền; ba ly signature và",
     "hai món tartare lấy từ menu chuẩn 29/09/2026 của quán (ghi chú dự án gọi là 'ảnh đã duyệt', CHƯA rõ ảnh chụp thật hay ảnh dựng). File gốc nằm NGOÀI repo.",
+    "nguon, đợt 3 (bốn ảnh tạm quay-chon-bo, mua-thit-mat, mua-thit-dong-lanh, mua-kim-chi): ChatGPT tạo ngày 10/11/2026, gọi qua Codex CLI bằng",
+    "tài khoản ChatGPT của Khánh (Codex chạy trong phiên Claude Code trên cloud, Khánh đăng nhập bằng mã thiết bị); ảnh mẫu phong cách là bo-cat-lat.",
+    "Khánh quyết cùng ngày: quầy và ảnh sản phẩm Mua thịt về dùng ảnh AI tạm tới khi có ảnh chụp thật; lối vào, thang máy vẫn là khung đồ họa.",
+    "File PNG gốc nằm NGOÀI repo (thư mục tạm của phiên; bản gửi Khánh kèm PR).",
     "Toàn bộ là ẢNH MINH HỌA: trang luôn ghi 'Ảnh minh họa' (DANH_MUC_ANH.minhHoa = true). Danh sách tài sản: web/THIET-KE.md, mục 7."
   ],
   "anh": {
@@ -449,6 +453,53 @@
       "tach_nen": { "le": 0.03, "duoi": 0.14 },
       "khung": {
         "3x2": { "rong": [480, 800] }
+      }
+    },
+    "quay-chon-bo": {
+      "mo_ta": "Tủ kính mát bày các phần bò sống trong khay hút chân không, mỗi khay một nhãn trắng không chữ — ảnh tạm cho bước 3 'Ghé quầy chọn bò' của trang Đến Beeftown (TrangDenBeeftown), tới khi có ảnh quầy chụp thật",
+      "nguon": {
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 10/11/2026",
+        "da_chon": "bản hai: sửa từ bản một (cùng bố cục), chỉ đổi vân mỡ cho vừa như bò Úc nuôi hạt — bản một vân mỡ dày kiểu wagyu, đẹp hơn thịt quán bán, đã bỏ"
+      },
+      "goc": "quay-chon-bo-4x3.png",
+      "khung": {
+        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [480, 800] }
+      }
+    },
+    "mua-thit-mat": {
+      "mo_ta": "Một miếng bò sống (kiểu ribeye, vân mỡ vừa) trong khay đen hút chân không, nhãn trắng không chữ, trên bàn gỗ sáng cạnh khăn vải kem — ảnh tạm của thẻ sản phẩm thịt mát trang Mua thịt về (MuaThitThe)",
+      "nguon": {
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 10/11/2026",
+        "da_chon": "lần tạo duy nhất"
+      },
+      "goc": "mua-thit-mat-4x3.png",
+      "khung": {
+        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [400, 800] },
+        "1x1": { "fx": 0.49, "fy": 0.5, "rong": [200, 320] }
+      }
+    },
+    "mua-thit-dong-lanh": {
+      "mo_ta": "Những cuộn bò thái mỏng đông lạnh trong túi hút chân không phủ sương giá, nhãn trắng không chữ, trên bàn gỗ sáng — ảnh tạm của thẻ sản phẩm thịt đông lạnh trang Mua thịt về (MuaThitThe)",
+      "nguon": {
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 10/11/2026",
+        "da_chon": "lần tạo duy nhất"
+      },
+      "goc": "mua-thit-dong-lanh-4x3.png",
+      "khung": {
+        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [400, 800] },
+        "1x1": { "fx": 0.48, "fy": 0.5, "rong": [200, 320] }
+      }
+    },
+    "mua-kim-chi": {
+      "mo_ta": "Kim chi cải thảo trong hộp nhựa trong, nắp đặt bên cạnh, đĩa sứ kem có vài miếng kim chi và đôi đũa inox, trên bàn gỗ sáng — ảnh tạm của thẻ kim chi trang Mua thịt về (MuaThitThe)",
+      "nguon": {
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 10/11/2026",
+        "da_chon": "lần tạo duy nhất"
+      },
+      "goc": "mua-kim-chi-4x3.png",
+      "khung": {
+        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [400, 800] },
+        "1x1": { "fx": 0.5, "fy": 0.5, "rong": [200, 320] }
       }
     }
   },

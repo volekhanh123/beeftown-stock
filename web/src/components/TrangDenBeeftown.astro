@@ -8,9 +8,11 @@
  *
  * Ba bước chỉ nói những gì đã xác nhận: tới 63 Hồ Tùng Mậu → lối vào riêng cạnh
  * GS25, thang máy lên tầng 3 → quầy bò. KHÔNG bịa chi tiết lối đi (cửa nào, rẽ trái
- * hay phải, mấy bước, mấy phút): chưa ai đi lại để ghi. Ảnh lối vào, thang máy và
- * quầy là KhungAnh cho tới khi có ảnh chụp thật (web/THIET-KE.md, brief chụp) —
- * không ảnh AI cho những chỗ này.
+ * hay phải, mấy bước, mấy phút): chưa ai đi lại để ghi. Ảnh lối vào và thang máy là
+ * KhungAnh cho tới khi có ảnh chụp thật (web/THIET-KE.md, brief chụp) — không ảnh AI cho
+ * hai chỗ này: ảnh AI vẽ một cánh cửa, một thang máy không giống thật thì khách đi tìm dễ
+ * lạc. Bước 3 (quầy) là ảnh AI TẠM quay-chon-bo, có nhãn "Ảnh minh họa" — Khánh quyết
+ * 10/11/2026, tới khi có ảnh quầy chụp thật (src/lib/anh.ts, ngoại lệ ở đầu file).
  *
  * Không có: giờ mở cửa, chỗ gửi xe, lối cho xe lăn (chưa xác nhận), bản đồ nhúng.
  * "Chỉ đường" chỉ hiện khi link Google Maps đã công bố (LenTang3); liên hệ chỉ hiện
@@ -19,6 +21,7 @@
 import { chu, dich, duongDanTuongUng } from '../lib/chu';
 import { coKenhHoiBan, cumDiaChi, diaChi, lienHe } from '../lib/trang-cong-khai';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+import Anh from './Anh.astro';
 import BieuTuong from './BieuTuong.astro';
 import KhungAnh from './KhungAnh.astro';
 import LenTang3 from './LenTang3.astro';
@@ -132,7 +135,8 @@ const c = dich(ngonNgu, {
         </div>
       </li>
       <li class="db-muc">
-        <KhungAnh loai="quay" tiLe="4 / 3" nen="toi" />
+        <Anh id="quay-chon-bo" ngonNgu={ngonNgu} khung="4x3" thayBang="quay" nenKhung="toi"
+             sizes="(min-width: 1280px) 380px, (min-width: 900px) 30vw, (min-width: 600px) 42vw, calc(100vw - 40px)" />
         <div class="db-chu">
           <span class="db-so" aria-hidden="true">3</span>
           <div>
