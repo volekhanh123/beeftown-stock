@@ -28,7 +28,7 @@ import {
   baoMoVnpayLenMayChu, buocTraTien, docDonTuMayChu, guiDonLenMayChu, taoMaGui, taoThanDon, type HamFetchApi,
 } from '../../mini-app/src/tra-truoc.ts';
 import {
-  IP_CHECKOUT_ZALO, chuoiKyTaoDon, diaChiIpnVnpay, docCallback, docCauHinhCheckout, dongNhatKyIpnVnpay, thamSoTaoDon,
+  IP_CHECKOUT_ZALO, chuoiKyTaoDon, diaChiIpnVnpay, docCallback, docCauHinhCheckout, docThanCallback, dongNhatKyIpnVnpay, thamSoTaoDon,
   type CauHinhCheckout,
 } from '../src/checkout-zalo.ts';
 import { PHUT_CHO_KET_QUA_ZALO, SO_LAN_MO_ZALO_TOI_DA } from '../src/so-don.ts';
@@ -1351,6 +1351,20 @@ nhom('22 · VNPay qua Checkout SDK của Zalo (Khánh 11/11/2026): MAC tạo đ�
   ok('Số tiền, resultCode dạng chuỗi chữ số (Zalo đổi kiểu) vẫn đọc được — chữ ký trên đúng giá trị nhận',
     (() => { const k = docCallback(kyCallback(duLieu(d2.ma, String(d2.tongTien) as unknown as number, { resultCode: '1' })), CH_THU); return k.ok && k.tin.soTien === d2.tongTien && k.tin.thanhCong; })());
   ok('Thân quá 16 KB → 413', (await goiZalo(xuLy, 'x'.repeat(17 * 1024))).status === 413);
+  {
+    // Mini App ID 19 chữ số gửi dạng số JSON: chuỗi ký của Zalo mang đúng 19 chữ số đó.
+    const d = duLieu(d2.ma, 1);
+    const chuoiMac = `appId=${MINI_APP}&amount=1&description=${d.description}&orderId=${d.orderId}&message=${d.message}&resultCode=1&transId=${d.transId}`;
+    const chuoiToan = Object.keys(d).sort().map(k => `${k}=${(d as Record<string, unknown>)[k]}`).join('&');
+    const than = JSON.stringify({ data: d, mac: hm(KHOA_ZALO, chuoiMac), overallMac: hm(KHOA_ZALO, chuoiToan) })
+      .replace(`"appId":"${MINI_APP}"`, `"appId":${MINI_APP}`);
+    const k = docCallback(docThanCallback(than), CH_THU);
+    ok('appId 19 chữ số gửi dạng số (quá số nguyên an toàn) vẫn khớp chữ ký, đúng Mini App', k.ok, JSON.stringify(k));
+    const khongMethod: Record<string, unknown> = { ...duLieu(d2.ma, 1) }; delete khongMethod.method;
+    const k2 = docCallback(kyCallback(khongMethod), CH_THU);
+    ok('Callback không có method lẫn paymentChannel → phương thức là phương thức máy chủ đang ký (không bị coi là lệch)',
+      k2.ok && k2.tin.phuongThuc === 'VNPAY_SANDBOX');
+  }
   const sucKhoeTuChoi = (await (await goi(xuLy, '/suc-khoe')).json() as { vnpay: { soCallbackBiTuChoi: number } }).vnpay.soCallbackBiTuChoi;
   ok('/suc-khoe đếm callback bị từ chối (sai MAC, sai Mini App, sai dạng)', sucKhoeTuChoi >= 6, String(sucKhoeTuChoi));
 
@@ -1504,6 +1518,9 @@ nhom('22 · VNPay qua Checkout SDK của Zalo (Khánh 11/11/2026): MAC tạo đ�
     const r = await docTra(await goiZalo(xuLy, tin, '/zalo/vnpay-ipn'));
     ok('IPN sandbox: trả returnCode 1, KHÔNG đổi đơn nào, không ghi tiền (webhook này không có MAC)',
       r.returnCode === 1 && so.tienVeCanXem().length === truoc && so.layDon(d3.ma)!.trangThai === trangThai);
+    const lanIpn = [];
+    for (let i = 0; i < 61; i++) lanIpn.push((await goiZalo(xuLy, tin, '/zalo/vnpay-ipn')).status);
+    ok('IPN sandbox: quá 60 lần một phút từ một IP → 429 (không ghi nhật ký dồn)', lanIpn.includes(429));
     ok('IPN sandbox khi chưa cấu hình VNPay → 404', (await goiZalo(taoMay(new SoDon(':memory:')).xuLy, tin, '/zalo/vnpay-ipn')).status === 404);
   }
 

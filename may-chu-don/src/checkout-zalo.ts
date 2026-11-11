@@ -183,7 +183,10 @@ export function docCallback(than: unknown, ch: CauHinhCheckout):
     return { ok: false, lyDo: 'sai_mac' };
   }
   if (String(d.appId) !== ch.maMiniApp) return { ok: false, lyDo: 'sai_mini_app' };
-  const phuongThuc = typeof d.method === 'string' ? d.method : typeof d.paymentChannel === 'string' ? d.paymentChannel : '';
+  // Không có method lẫn paymentChannel: giao dịch vẫn là của createOrder máy chủ đã ký (overallMac đúng) — phương thức
+  // là phương thức máy chủ đang ký, không phải "lệch phương thức".
+  const phuongThuc = typeof d.method === 'string' && d.method ? d.method
+    : typeof d.paymentChannel === 'string' && d.paymentChannel ? d.paymentChannel : ch.phuongThuc;
   const luc = typeof d.transTime === 'number' ? d.transTime : typeof d.transTime === 'string' && /^\d{10,16}$/.test(d.transTime) ? Number(d.transTime) : null;
   return {
     ok: true,
@@ -193,6 +196,15 @@ export function docCallback(than: unknown, ch: CauHinhCheckout):
       luc: luc !== null && Number.isSafeInteger(luc) && luc > 0 ? luc : null,
     },
   };
+}
+
+/**
+ * Đọc thân callback mà giữ nguyên chữ số của appId, orderId, transId: Mini App ID của Beeftown có 19 chữ số, quá số
+ * nguyên an toàn của JavaScript — Zalo gửi dạng số thì JSON.parse làm tròn và chuỗi ký không còn khớp chuỗi Zalo ký.
+ * Không phải JSON: ném lỗi như JSON.parse.
+ */
+export function docThanCallback(thanGoc: string): unknown {
+  return JSON.parse(thanGoc.replace(/("(?:appId|orderId|transId)"\s*:\s*)(-?\d{16,})(?=\s*[,}])/g, '$1"$2"'));
 }
 
 /** Thân trả Zalo: 1 đã ghi, 2 đã ghi từ trước (trùng giao dịch), khác: chưa ghi (Zalo không gửi lại). */

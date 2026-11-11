@@ -694,7 +694,8 @@ export class SoDon {
       .get() as { luc: number | null };
     const cuoi = this.db.query('select max(luc) as luc from nhat_ky').get() as { luc: number | null };
     const tienVe = this.db.query(`select max(nhan_luc) as luc, sum(case when can_xem = 1 and xem_xong_luc is null then 1 else 0 end) as can
-      from (select nhan_luc, can_xem, xem_xong_luc from giao_dich union all select nhan_luc, can_xem, xem_xong_luc from thanh_toan_zalo)`)
+      from (select nhan_luc, can_xem, xem_xong_luc from giao_dich union all select nhan_luc, can_xem, xem_xong_luc from thanh_toan_zalo
+        where ket_qua in ('du', 'thieu', 'thua', 'khong_khop') or can_xem = 1)`)
       .get() as { luc: number | null; can: number | null };
     return {
       soChoSoan: dem('da_thanh_toan'),

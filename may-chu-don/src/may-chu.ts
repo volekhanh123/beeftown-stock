@@ -28,7 +28,7 @@ import { SoDon, PHUT_CHO_THANH_TOAN, type DonDayDu } from './so-don.ts';
 import { DA_NHAN, docTinTienVe, kiemChuKy, type TinTienVe } from './sepay.ts';
 import { chuoiVietQr, noiDungChuyenKhoan, svgVietQr, type TaiKhoanNhan } from './viet-qr.ts';
 import { NHAN, duocBam, laTrangThai } from './trang-thai.ts';
-import { docCallback, dongNhatKyIpnVnpay, laThuNghiem, thamSoTaoDon, traCheckout, type CauHinhCheckout, type ThamSoTaoDon } from './checkout-zalo.ts';
+import { docCallback, docThanCallback, dongNhatKyIpnVnpay, laThuNghiem, thamSoTaoDon, traCheckout, type CauHinhCheckout, type ThamSoTaoDon } from './checkout-zalo.ts';
 import { laCauBao, trangDangNhap, trangDanhSach, trangXacNhanHuy, type NgonNgu } from './man-quay.ts';
 import { gioVnTuMs } from '../../web/src/lib/gio-vn.ts';
 
@@ -203,6 +203,7 @@ export function taoXuLy(tc: TuyChonMayChu) {
   const saiMatKhau = new GioiHan(5, 10 * 60_000);
   /** Callback Checkout SDK bị từ chối (sai MAC, sai Mini App, sai dạng) từ lúc máy chủ chạy — số liệu sức khỏe báo. */
   let soCallbackBiTuChoi = 0;
+  const gioiHanIpn = new GioiHan(60, 60_000);
 
   const coPhien = (req: Request, ms: number) => {
     const t = docCookie(req, 'phien_quay');
@@ -332,9 +333,9 @@ export function taoXuLy(tc: TuyChonMayChu) {
         new Response(traCheckout(ma, chu), { status, headers: { 'Content-Type': 'application/json; charset=utf-8' } });
       if (!tc.checkout) return tra(503, 0, 'Checkout SDK not configured');
       const thanGoc = await docThan(req, 16 * 1024);
-      if (thanGoc === null) return tra(413, 0, 'Too large');
+      if (thanGoc === null) { soCallbackBiTuChoi++; return tra(413, 0, 'Too large'); }
       let than: unknown;
-      try { than = JSON.parse(thanGoc); } catch { soCallbackBiTuChoi++; return tra(400, 0, 'Not JSON'); }
+      try { than = docThanCallback(thanGoc); } catch { soCallbackBiTuChoi++; return tra(400, 0, 'Not JSON'); }
       const kq = docCallback(than, tc.checkout);
       if (!kq.ok) {
         soCallbackBiTuChoi++;
@@ -353,6 +354,8 @@ export function taoXuLy(tc: TuyChonMayChu) {
     }
     if (duong === '/zalo/vnpay-ipn' && req.method === 'POST') {
       if (!tc.checkout) return new Response('Not found', { status: 404 });
+      // Không có MAC: chỉ ghi nhật ký, và giới hạn lượt để máy chạy không có Caddy (laptop thử) không bị ghi dồn.
+      if (!gioiHanIpn.thu(ip, ms)) return new Response(traCheckout(0, 'Too many'), { status: 429, headers: { 'Content-Type': 'application/json; charset=utf-8' } });
       const thanGoc = await docThan(req, 16 * 1024);
       let than: unknown = null;
       try { than = thanGoc === null ? null : JSON.parse(thanGoc); } catch { than = null; }
