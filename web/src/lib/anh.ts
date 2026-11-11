@@ -138,7 +138,7 @@ export const DANH_MUC_ANH: Readonly<Record<IdAnh, MoTaAnh>> = {
     alt: {
       vi: 'Tủ kính mát bày các phần bò sống đóng skin-pack trên khay đen phẳng, lớp màng trong ôm sát từng miếng, mỗi khay có một nhãn trắng nhỏ.',
       en: 'A chilled glass display case of raw beef cuts skin-packed on flat black trays, the clear film moulded tightly over each piece, each with a small white label.',
-      ko: '냉장 유리 진열대에 검은 납작한 트레이 위로 투명 필름이 밀착된 스킨팩 생 소고기가 줄지어 놓여 있고, 트레이마다 작은 흰 라벨이 붙어 있어요.',
+      ko: '냉장 유리 진열대 안에 납작한 검은 트레이에 스킨팩으로 포장된 생 소고기가 줄지어 있고, 트레이마다 작은 흰 라벨이 붙어 있어요.',
     },
   },
   // Ba ảnh sản phẩm: thẻ Mua thịt về chọn theo loại — kim chi, thịt đông lạnh, còn lại là thịt mát (MuaThitThe.astro).
@@ -147,15 +147,15 @@ export const DANH_MUC_ANH: Readonly<Record<IdAnh, MoTaAnh>> = {
     alt: {
       vi: 'Một miếng bò sống đóng skin-pack trên khay đen phẳng, lớp màng trong ôm sát thớ thịt, đặt trên bàn gỗ sáng cạnh khăn vải màu kem.',
       en: 'A raw beef steak skin-packed on a flat black tray, the clear film moulded tightly over the meat, on a light wood table beside a cream napkin.',
-      ko: '밝은 나무 테이블 위 크림색 냅킨 옆에, 검은 납작한 트레이 위로 투명 필름이 밀착된 스킨팩 생 소고기가 놓여 있어요.',
+      ko: '밝은 나무 테이블 위 크림색 냅킨 옆에 납작한 검은 트레이에 스킨팩으로 포장된 생 소고기가 놓여 있어요.',
     },
   },
   'mua-thit-dong-lanh': {
     minhHoa: true,
     alt: {
-      vi: 'Những cuộn bò thái mỏng đông lạnh đóng skin-pack trên khay đen phẳng, lớp màng trong phủ chút sương giá, đặt trên bàn gỗ sáng.',
-      en: 'Rolls of thinly sliced frozen beef skin-packed on a flat black tray, the clear film lightly frosted, on a light wood table.',
-      ko: '밝은 나무 테이블 위, 검은 납작한 트레이에 얇게 썬 냉동 소고기 롤이 스킨팩으로 밀착 포장되어 있고 필름에 성에가 살짝 끼어 있어요.',
+      vi: 'Những cuộn bò thái mỏng đông lạnh đóng skin-pack trên khay đen phẳng, lớp màng trong ôm sát từng cuộn, đặt trên bàn gỗ sáng.',
+      en: 'Rolls of thinly sliced frozen beef skin-packed on a flat black tray, the clear film moulded around each roll, on a light wood table.',
+      ko: '밝은 나무 테이블 위에 납작한 검은 트레이에 스킨팩으로 포장된 얇은 냉동 소고기 롤이 놓여 있어요.',
     },
   },
   // Kim chi ở đây là chính sản phẩm khách đặt, không phải món phụ trang hứa — alt được gọi tên.
