@@ -130,30 +130,32 @@ export const DANH_MUC_ANH: Readonly<Record<IdAnh, MoTaAnh>> = {
 
   // --- Ảnh tạm 10/11/2026 (ngoại lệ ở đầu file): quầy và ảnh sản phẩm Mua thịt về -------------------
   // ChatGPT tạo qua cầu nối Codex; vân mỡ vừa phải như bò Úc nuôi hạt (luật "vân mỡ không đẹp hơn thịt quán
-  // bán"), nhãn trên khay để trắng (không chữ, không giá). Có ảnh chụp thật thì thay, rồi bỏ ngoại lệ.
+  // bán"), thịt đóng skin-pack trên khay đen phẳng như quán làm (Khánh xác nhận 11/11/2026: khay đen, skin-pack),
+  // nhãn trên khay để trắng (không chữ, không giá).
+  // Có ảnh chụp thật thì thay, rồi bỏ ngoại lệ.
   'quay-chon-bo': {
     minhHoa: true,
     alt: {
-      vi: 'Tủ kính mát bày các phần bò sống trong khay hút chân không, xếp thành hàng, mỗi khay có một nhãn trắng nhỏ.',
-      en: 'A chilled glass display case of raw beef cuts in vacuum skin-packed trays, laid out in rows, each with a small white label.',
-      ko: '냉장 유리 진열대에 진공 포장한 생 소고기 트레이들이 줄지어 놓여 있고, 트레이마다 작은 흰 라벨이 붙어 있어요.',
+      vi: 'Tủ kính mát bày các phần bò sống đóng skin-pack trên khay đen phẳng, lớp màng trong ôm sát từng miếng, mỗi khay có một nhãn trắng nhỏ.',
+      en: 'A chilled glass display case of raw beef cuts skin-packed on flat black trays, the clear film moulded tightly over each piece, each with a small white label.',
+      ko: '냉장 유리 진열대 안에 납작한 검은 트레이에 스킨팩으로 포장된 생 소고기가 줄지어 있고, 트레이마다 작은 흰 라벨이 붙어 있어요.',
     },
   },
   // Ba ảnh sản phẩm: thẻ Mua thịt về chọn theo loại — kim chi, thịt đông lạnh, còn lại là thịt mát (MuaThitThe.astro).
   'mua-thit-mat': {
     minhHoa: true,
     alt: {
-      vi: 'Một miếng bò sống trong khay đen hút chân không, lớp màng trong ôm sát thớ thịt, đặt trên bàn gỗ sáng cạnh khăn vải màu kem.',
-      en: 'A raw beef steak in a black vacuum skin-pack tray, the clear film hugging the meat, on a light wood table beside a cream napkin.',
-      ko: '밝은 나무 테이블 위 크림색 냅킨 옆에, 투명 필름이 고기에 밀착된 검은 진공 트레이 속 생 소고기가 놓여 있어요.',
+      vi: 'Một miếng bò sống đóng skin-pack trên khay đen phẳng, lớp màng trong ôm sát thớ thịt, đặt trên bàn gỗ sáng cạnh khăn vải màu kem.',
+      en: 'A raw beef steak skin-packed on a flat black tray, the clear film moulded tightly over the meat, on a light wood table beside a cream napkin.',
+      ko: '밝은 나무 테이블 위 크림색 냅킨 옆에 납작한 검은 트레이에 스킨팩으로 포장된 생 소고기가 놓여 있어요.',
     },
   },
   'mua-thit-dong-lanh': {
     minhHoa: true,
     alt: {
-      vi: 'Những cuộn bò thái mỏng đông lạnh xếp trong túi hút chân không phủ một lớp sương giá, đặt trên bàn gỗ sáng.',
-      en: 'Rolls of thinly sliced frozen beef packed in a frosted vacuum-sealed bag on a light wood table.',
-      ko: '밝은 나무 테이블 위, 성에가 살짝 낀 진공 포장 봉지에 얇게 썬 냉동 소고기 롤이 가지런히 담겨 있어요.',
+      vi: 'Những cuộn bò thái mỏng đông lạnh đóng skin-pack trên khay đen phẳng, lớp màng trong ôm sát từng cuộn, đặt trên bàn gỗ sáng.',
+      en: 'Rolls of thinly sliced frozen beef skin-packed on a flat black tray, the clear film moulded around each roll, on a light wood table.',
+      ko: '밝은 나무 테이블 위에 납작한 검은 트레이에 스킨팩으로 포장된 얇은 냉동 소고기 롤이 놓여 있어요.',
     },
   },
   // Kim chi ở đây là chính sản phẩm khách đặt, không phải món phụ trang hứa — alt được gọi tên.

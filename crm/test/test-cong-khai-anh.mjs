@@ -88,7 +88,8 @@ const ANH_MON = [
 ];
 // Ảnh tách nền: mọi ảnh món trừ hai ảnh tartare (ảnh có nền bàn gỗ, cắt như ảnh cũ).
 const TACH_NEN = ANH_MON.filter(id => !['mon-tartare-bo-hoa-tuyet', 'mon-com-tron-tartare-bo-cay'].includes(id));
-// Bốn ảnh tạm ChatGPT tạo ngày 10/11/2026 (qua cầu nối Codex): quầy và ba ảnh sản phẩm trang Mua thịt về.
+// Bốn ảnh tạm ChatGPT tạo ngày 10/11/2026 (qua cầu nối Codex): quầy và ba ảnh sản phẩm trang Mua thịt về. Ba ảnh có thịt
+// (quầy, thịt mát, thịt đông lạnh) sửa lại ngày 11/11/2026 thành skin-pack trên khay đen — file gốc mới thay file cũ cùng tên.
 const ANH_TAM = ['quay-chon-bo', 'mua-thit-mat', 'mua-thit-dong-lanh', 'mua-kim-chi'];
 const ANH_AI = [...ANH_CHATGPT, ...ANH_MON, ...ANH_TAM];
 const ANH_THAT = [];
@@ -122,7 +123,7 @@ const CO_GOC = {
   'mon-salad-nam.webp': [1000, 863], 'mon-set-4-sot.webp': [1000, 610], 'mon-tartare-bo-hoa-tuyet.jpg': [1024, 1656],
   'mon-trung-hap-nui-lua.webp': [760, 752], 'uong-berry-rouge-highball.webp': [479, 756], 'uong-khong-con-ba-ly.png': [1200, 758],
   'uong-milky-cloud-makgeolli.webp': [524, 754], 'uong-strawberry-crush.webp': [449, 920],
-  // Bốn PNG của ChatGPT ngày 10/11/2026.
+  // Bốn PNG của ChatGPT: kim chi ngày 10/11/2026; quầy, thịt mát, thịt đông lạnh bản skin-pack ngày 11/11/2026 (cùng cỡ).
   'quay-chon-bo-4x3.png': [1448, 1086], 'mua-thit-mat-4x3.png': [1448, 1086], 'mua-thit-dong-lanh-4x3.png': [1448, 1086],
   'mua-kim-chi-4x3.png': [1448, 1086],
 };
@@ -448,6 +449,17 @@ await nhom('5 · BỐN QUYẾT ĐỊNH CỦA KHÁNH (11/10/2026): DẢI TỐI, C
     && !NOI_DUOC[g.file]?.includes(g.id));
   ok('Ảnh AI chỉ nằm ở trang chủ, trang Thực đơn và bốn chỗ ảnh tạm (quầy của Đến Beeftown, thẻ Mua thịt về)', ngoaiHaiTrang.length === 0,
      ngoaiHaiTrang.map(g => `${g.file}: ${g.id}`).join(' | '));
+  // Quán đóng thịt bằng skin-pack trên khay đen (Khánh xác nhận 11/11/2026): ba ảnh tạm có thịt vẽ đúng như thế, alt
+  // ba thứ tiếng nói skin-pack và khay đen — không còn "túi hút chân không" hay khay nhựa trong.
+  const ANH_CO_THIT = ['quay-chon-bo', 'mua-thit-mat', 'mua-thit-dong-lanh'];
+  const SKIN_PACK_KHAY_DEN = {
+    vi: a => /skin-pack/.test(a) && /khay đen/u.test(a) && !/túi|nhựa trong|khay trong/u.test(a),
+    en: a => /skin-pack/i.test(a) && /\bblack (?:skin-pack )?trays?\b/i.test(a) && !/\bbag\b|clear (?:plastic )?trays?|transparent trays?/i.test(a),
+    ko: a => /스킨팩/u.test(a) && /검은 트레이/u.test(a) && !/봉지|투명 트레이|투명 용기/u.test(a),
+  };
+  const sai = ANH_CO_THIT.flatMap(id => NGON_NGU.filter(nn => !SKIN_PACK_KHAY_DEN[nn](DANH_MUC_ANH[id]?.alt?.[nn] ?? '')).map(nn => `${id} [${nn}]`));
+  ok('Ảnh có thịt (quay-chon-bo, mua-thit-mat, mua-thit-dong-lanh): alt ba thứ tiếng nói skin-pack trên khay đen — như quán đóng (Khánh, 11/11/2026)',
+     sai.length === 0, sai.join(', '));
   ok('Ảnh tạm chỉ ở đúng chỗ của nó: quay-chon-bo chỉ ở Đến Beeftown, mua-… chỉ ở thẻ Mua thịt về',
      goiAnh.filter(g => ANH_TAM.includes(g.id)).every(g => NOI_DUOC[g.file]?.includes(g.id)));
   ok('Chỗ của ảnh AI khi chưa dựng cỡ không bao giờ là hình lối vào hay thang máy (thayBang chỉ khay / ban-nuong; quầy chỉ cho quay-chon-bo)',

@@ -456,10 +456,10 @@
       }
     },
     "quay-chon-bo": {
-      "mo_ta": "Tủ kính mát bày các phần bò sống trong khay hút chân không, mỗi khay một nhãn trắng không chữ — ảnh tạm cho bước 3 'Ghé quầy chọn bò' của trang Đến Beeftown (TrangDenBeeftown), tới khi có ảnh quầy chụp thật",
+      "mo_ta": "Tủ kính mát bày các phần bò sống đóng skin-pack trên khay đen phẳng (quán đóng skin-pack, khay đen), mỗi khay một nhãn trắng không chữ — ảnh tạm cho bước 3 'Ghé quầy chọn bò' của trang Đến Beeftown (TrangDenBeeftown), tới khi có ảnh quầy chụp thật",
       "nguon": {
-        "cong_cu": "ChatGPT · gọi qua Codex CLI · 10/11/2026",
-        "da_chon": "bản hai: sửa từ bản một (cùng bố cục), chỉ đổi vân mỡ cho vừa như bò Úc nuôi hạt — bản một vân mỡ dày kiểu wagyu, đẹp hơn thịt quán bán, đã bỏ"
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 10/11/2026 (sửa khay đen, skin-pack 11/11/2026)",
+        "da_chon": "bản bốn (11/11/2026): sửa từ bản ba (cùng bố cục), chỉ đổi cách đóng gói thành skin-pack thật (khay đen phẳng, màng ôm sát và dán xuống khay) — Khánh nhắc quán đóng skin-pack. Bản ba: đổi khay nhựa trong thành khay đen (Khánh xác nhận khay thật màu đen). Bản hai: sửa từ bản một, chỉ đổi vân mỡ cho vừa như bò Úc nuôi hạt — bản một vân mỡ dày kiểu wagyu, đẹp hơn thịt quán bán, đã bỏ"
       },
       "goc": "quay-chon-bo-4x3.png",
       "khung": {
@@ -467,10 +467,10 @@
       }
     },
     "mua-thit-mat": {
-      "mo_ta": "Một miếng bò sống (kiểu ribeye, vân mỡ vừa) trong khay đen hút chân không, nhãn trắng không chữ, trên bàn gỗ sáng cạnh khăn vải kem — ảnh tạm của thẻ sản phẩm thịt mát trang Mua thịt về (MuaThitThe)",
+      "mo_ta": "Một miếng bò sống (kiểu ribeye, vân mỡ vừa) đóng skin-pack trên khay đen phẳng, nhãn trắng không chữ, trên bàn gỗ sáng cạnh khăn vải kem — ảnh tạm của thẻ sản phẩm thịt mát trang Mua thịt về (MuaThitThe)",
       "nguon": {
-        "cong_cu": "ChatGPT · gọi qua Codex CLI · 10/11/2026",
-        "da_chon": "lần tạo duy nhất"
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 10/11/2026 (sửa skin-pack 11/11/2026)",
+        "da_chon": "bản hai (11/11/2026): sửa từ bản một (cùng bố cục), chỉ đổi cách đóng gói thành skin-pack thật (khay đen phẳng, màng ôm sát và dán xuống khay) — Khánh nhắc quán đóng skin-pack"
       },
       "goc": "mua-thit-mat-4x3.png",
       "khung": {
@@ -479,10 +479,10 @@
       }
     },
     "mua-thit-dong-lanh": {
-      "mo_ta": "Những cuộn bò thái mỏng đông lạnh trong túi hút chân không phủ sương giá, nhãn trắng không chữ, trên bàn gỗ sáng — ảnh tạm của thẻ sản phẩm thịt đông lạnh trang Mua thịt về (MuaThitThe)",
+      "mo_ta": "Những cuộn bò thái mỏng đông lạnh đóng skin-pack trên khay đen phẳng, màng phủ chút sương giá, nhãn trắng không chữ, trên bàn gỗ sáng — ảnh tạm của thẻ sản phẩm thịt đông lạnh trang Mua thịt về (MuaThitThe)",
       "nguon": {
-        "cong_cu": "ChatGPT · gọi qua Codex CLI · 10/11/2026",
-        "da_chon": "lần tạo duy nhất"
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 10/11/2026 (sửa skin-pack 11/11/2026)",
+        "da_chon": "bản hai (11/11/2026): sửa từ bản một, đổi túi hút chân không thành skin-pack trên khay đen phẳng — Khánh nhắc quán đóng skin-pack"
       },
       "goc": "mua-thit-dong-lanh-4x3.png",
       "khung": {
