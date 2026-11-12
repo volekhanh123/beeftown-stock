@@ -57,6 +57,7 @@ mạng: dữ liệu đi qua máy chủ Cloudflare.
 | `src/viet-qr.ts` | Chuỗi VietQR chuẩn NAPAS (CRC16), ảnh SVG, nội dung chuyển khoản "BT" + mã đơn |
 | `src/sepay.ts` | Kiểm chữ ký HMAC-SHA256 của SePay, đọc tin tiền về, tìm mã đơn trong nội dung |
 | `src/checkout-zalo.ts` | VNPay qua Checkout SDK, phần thuần: cấu hình (đủ ba biến hoặc không), tham số createOrder và MAC, đọc callback (mac, overallMac, Mini App ID, extradata → mã đơn), IP của Zalo, dòng nhật ký IPN sandbox. Nguồn và giả định ghi đầu file |
+| `src/vnpay-thu.ts` | Trang thử VNPay trên web (Khánh 12/11/2026, chỉ sandbox, chỉ tiếng Việt): ký đường dẫn tới cổng thử VNPay (HMAC-SHA512), Return URL kiểm chữ ký rồi hiện kết quả; không ghi sổ đơn. Chỉ để làm phiếu kiểm thử thủ công của VNPay (`test/thu.ts` nhóm 23) |
 | `src/zns.ts` | ZNS phần thuần: cấu hình từ biến môi trường (đủ bốn hoặc không), `duLieuTin` (tên tham số của mẫu Zalo), mã hóa token |
 | `src/gui-zns.ts` | Một lượt gửi ZNS: làm mới token (lưu trước khi gửi), gửi, xử lý mã lỗi theo `XU_LY_LOI` của `web/src/lib/zalo.ts` |
 | `src/trang-thai.ts` | Trạng thái, bước quầy được bấm, nhãn vi / en và kiểu vẽ K1–K7 |
@@ -88,6 +89,9 @@ giờ nhận và số điện thoại `mini-app/src/don.ts`, giờ Việt Nam `w
   09/11/2026, README "Chế độ demo") — nút quầy `POST /quay/demo/tien-ve` gọi cùng `ghiTienVe` với id âm cố định theo đơn
   (`idTienVeDemo`) và tài khoản giả `TAI_KHOAN_DEMO`; `main.ts` không cho bật cùng tài khoản nhận thật hay
   `SEPAY_KHOA_KY` (`test/thu.ts` nhóm 21).
+- Trang thử VNPay (`/quay/vnpay-thu`, `/vnpay-thu/ket-qua`) không bao giờ ghi sổ đơn hay đổi đơn — chỉ ký đường dẫn và
+  hiện kết quả. Cổng ghi cứng là sandbox; tự tắt khi máy chủ nhận tiền thật. Chỉ tiếng Việt là ngoại lệ tạm (Khánh
+  12/11/2026: "làm mỗi tiếng Việt trước"); trang dùng chung `khung` của màn quầy.
 - Mỗi id SePay ghi đúng một lần, cùng giao dịch với việc đổi đơn. Khoản tiền nào mang mã của quán mà không tự khớp được
   (thiếu, dư, gõ sai mã, sai tài khoản) phải hiện ở "Tiền về cần xem" — không bao giờ lặng lẽ bỏ qua.
 - Không giữ `content` / `description` của SePay (có thể có tên, số tài khoản người chuyển).

@@ -32,6 +32,9 @@ import {
   type CauHinhCheckout,
 } from '../src/checkout-zalo.ts';
 import { PHUT_CHO_KET_QUA_ZALO, SO_LAN_MO_ZALO_TOI_DA } from '../src/so-don.ts';
+import {
+  CONG_THANH_TOAN_THU, PHUT_HET_HAN_THU, docCauHinhVnpayThu, docKetQuaVe, ngayVnpay, taoLinkThanhToanThu, taoMaGiaoDichThu,
+} from '../src/vnpay-thu.ts';
 
 let dat = 0, hong = 0;
 const ok = (ten: string, dieuKien: boolean, chiTiet = '') => {
@@ -1554,6 +1557,145 @@ nhom('22 · VNPay qua Checkout SDK của Zalo (Khánh 11/11/2026): MAC tạo đ�
   ok('main.ts: nhật ký khởi động nói rõ MÔI TRƯỜNG THỬ và địa chỉ IPN khai với VNPay; không in Private key',
     ra.includes('MÔI TRƯỜNG THỬ') && ra.includes(diaChiIpnVnpay(MINI_APP)) && !ra.includes(KHOA_ZALO), ra.slice(0, 400));
   fs.rmSync(tam, { recursive: true, force: true });
+}
+
+// =====================================================================================================
+nhom('23 · Trang thử VNPay trên web (Khánh 12/11/2026): chỉ sandbox, ký đúng, Return URL kiểm chữ ký, không ghi sổ đơn');
+{
+  const KHOA = 'khoa-bi-mat-vnpay-thu-0123456789ABCDEF';
+  const CH = { maTmn: 'SLKGTE22', khoaBiMat: KHOA };
+  // Ký độc lập theo code mẫu NodeJS của VNPay: khóa a→z, encodeURIComponent, dấu cách thành "+", HMAC-SHA512.
+  const maHoa = (v: string) => encodeURIComponent(v).replace(/%20/g, '+');
+  const chuoiMau = (o: Record<string, string>) => Object.keys(o).sort().map(k => `${maHoa(k)}=${maHoa(o[k])}`).join('&');
+  const kyMau = (o: Record<string, string>, khoa = KHOA) => createHmac('sha512', khoa).update(chuoiMau(o)).digest('hex');
+  const veVnpay = (o: Record<string, string>, khoa = KHOA) => new URLSearchParams({ ...o, vnp_SecureHash: kyMau(o, khoa) });
+
+  // --- cấu hình ---
+  ok('Cấu hình: không biến nào → tắt (null)', (() => { const c = docCauHinhVnpayThu({}); return c.ok && c.cauHinh === null; })());
+  ok('Cấu hình: thiếu một biến, mã Terminal sai dạng, khóa ngắn hay có dấu cách → lỗi',
+    [{ VNPAY_THU_MA_TMN: 'SLKGTE22' }, { VNPAY_THU_KHOA_BI_MAT: KHOA }, { VNPAY_THU_MA_TMN: 'slkgte22', VNPAY_THU_KHOA_BI_MAT: KHOA },
+      { VNPAY_THU_MA_TMN: 'SLKGTE22', VNPAY_THU_KHOA_BI_MAT: 'ngan' }, { VNPAY_THU_MA_TMN: 'SLKGTE22', VNPAY_THU_KHOA_BI_MAT: 'co dau cach 0123456789' }]
+      .every(e => !docCauHinhVnpayThu(e).ok));
+  ok('Cấu hình: đủ hai biến (cắt khoảng trắng) → đúng mã Terminal',
+    (() => { const c = docCauHinhVnpayThu({ VNPAY_THU_MA_TMN: ' SLKGTE22 ', VNPAY_THU_KHOA_BI_MAT: KHOA }); return c.ok && c.cauHinh?.maTmn === 'SLKGTE22'; })());
+
+  // --- giờ VN, mã giao dịch ---
+  ok('Ngày kiểu VNPay theo giờ VN: 23:50 và 00:10 (máy chạy UTC hay múi khác)',
+    ngayVnpay(msVn('2026-11-13T23:50:00+07:00')) === '20261113235000' && ngayVnpay(msVn('2026-11-14T00:10:05+07:00')) === '20261114001005');
+  const cacMa = new Set(Array.from({ length: 50 }, () => taoMaGiaoDichThu(LUC_DAT)));
+  ok('Mã giao dịch "BTTHU" + yyMMddHHmmss giờ VN + 4 ký tự, 50 lần trong cùng giây không trùng',
+    cacMa.size === 50 && [...cacMa].every(m => /^BTTHU261113090000[A-Z2-9]{4}$/.test(m)), [...cacMa][0]);
+
+  // --- đường dẫn tới cổng thử ---
+  const { url, maGiaoDich } = taoLinkThanhToanThu({ ch: CH, soTien: 300_000, ip: '113.161.1.2', ms: msVn('2026-11-13T23:50:00+07:00'), goc: 'https://don.beeftown.vn' });
+  const u = new URL(url);
+  const tham = Object.fromEntries([...u.searchParams].filter(([k]) => k !== 'vnp_SecureHash'));
+  ok('Chỉ cổng thử (sandbox) của VNPay — không có cách nào ra cổng thật', `${u.origin}${u.pathname}` === CONG_THANH_TOAN_THU
+    && CONG_THANH_TOAN_THU.startsWith('https://sandbox.vnpayment.vn/'));
+  ok('Tham số đúng đặc tả 2.1.0: pay, VND, số tiền × 100, Terminal, mã giao dịch, Return URL của máy chủ đơn, IP, locale vn',
+    tham.vnp_Version === '2.1.0' && tham.vnp_Command === 'pay' && tham.vnp_CurrCode === 'VND' && tham.vnp_Amount === '30000000'
+    && tham.vnp_TmnCode === 'SLKGTE22' && tham.vnp_TxnRef === maGiaoDich && tham.vnp_ReturnUrl === 'https://don.beeftown.vn/vnpay-thu/ket-qua'
+    && tham.vnp_IpAddr === '113.161.1.2' && tham.vnp_Locale === 'vn' && tham.vnp_OrderType === 'other', JSON.stringify(tham));
+  ok(`Ngày tạo theo giờ VN, hết hạn sau ${PHUT_HET_HAN_THU} phút (qua nửa đêm vẫn đúng ngày)`,
+    tham.vnp_CreateDate === '20261113235000' && tham.vnp_ExpireDate === '20261114000500');
+  ok('Nội dung thanh toán không dấu, không ký tự đặc biệt', /^[A-Za-z0-9 ]+$/.test(tham.vnp_OrderInfo), tham.vnp_OrderInfo);
+  ok('Chữ ký vnp_SecureHash = HMAC-SHA512 theo cách ký của code mẫu VNPay (tự tính độc lập ra cùng số)',
+    u.searchParams.get('vnp_SecureHash') === kyMau(tham));
+  ok('Chuỗi trước vnp_SecureHash đúng y chuỗi đã ký (VNPay ký lại trên chính chuỗi nhận)',
+    url.split('?')[1].split('&vnp_SecureHash=')[0] === chuoiMau(tham));
+  let nem = 0;
+  for (const t of [0, 4_000, 10_000_001, 1.5]) { try { taoLinkThanhToanThu({ ch: CH, soTien: t, ip: '1.1.1.1', ms: LUC_DAT, goc: 'https://x' }); } catch { nem++; } }
+  ok('Số tiền ngoài 5.000–10.000.000 đ hay lẻ → không ký', nem === 4);
+  ok('IP lạ thay bằng 127.0.0.1 (không đưa chữ lạ vào chuỗi ký)',
+    new URL(taoLinkThanhToanThu({ ch: CH, soTien: 10_000, ip: '<x>', ms: LUC_DAT, goc: 'https://x' }).url).searchParams.get('vnp_IpAddr') === '127.0.0.1');
+
+  // --- Return URL ---
+  const ve = (them: Record<string, string> = {}) => ({
+    vnp_Amount: '30000000', vnp_BankCode: 'NCB', vnp_BankTranNo: 'VNP15734226', vnp_CardType: 'ATM', vnp_OrderInfo: `Beeftown thu VNPay ${maGiaoDich}`,
+    vnp_PayDate: '20261113235210', vnp_ResponseCode: '00', vnp_TmnCode: 'SLKGTE22', vnp_TransactionNo: '15734226',
+    vnp_TransactionStatus: '00', vnp_TxnRef: maGiaoDich, ...them,
+  });
+  const k1 = docKetQuaVe(veVnpay(ve()), CH);
+  ok('Return URL thành công (00 / 00) đúng chữ ký → đã trả, đúng mã giao dịch, số tiền 300.000, giờ VN',
+    k1.chuKyDung && k1.daTra && k1.maGiaoDich === maGiaoDich && k1.soTien === 300_000 && k1.thoiGian === '13/11/2026 23:52:10', JSON.stringify(k1));
+  const k2 = docKetQuaVe(veVnpay(ve({ vnp_ResponseCode: '24', vnp_TransactionStatus: '02', vnp_BankTranNo: '', vnp_TransactionNo: '0' })), CH);
+  ok('Khách hủy (24 / 02) → chữ ký đúng, chưa trả', k2.chuKyDung && !k2.daTra && k2.maPhanHoi === '24');
+  const thamTrong = ve({ vnp_BankTranNo: '' });
+  const coRong = new URLSearchParams({ ...thamTrong, vnp_SecureHash: createHmac('sha512', KHOA).update(chuoiMau(thamTrong)).digest('hex') });
+  ok('Tham số rỗng có trong chuỗi ký (cách của code mẫu PHP) hay không (thư viện vnpay): đều nhận', docKetQuaVe(coRong, CH).chuKyDung);
+  const sua = veVnpay(ve()); sua.set('vnp_Amount', '100');
+  ok('Sửa số tiền sau khi ký → chữ ký sai, không bao giờ "đã trả"', !docKetQuaVe(sua, CH).chuKyDung && !docKetQuaVe(sua, CH).daTra);
+  ok('Ký bằng khóa khác → chữ ký sai', !docKetQuaVe(veVnpay(ve(), 'khoa-cua-nguoi-khac-0123456789'), CH).chuKyDung);
+  const hoa = veVnpay(ve()); hoa.set('vnp_SecureHash', (hoa.get('vnp_SecureHash') ?? '').toUpperCase());
+  ok('Chữ ký viết hoa vẫn nhận (VNPay có lúc trả hex hoa)', docKetQuaVe(hoa, CH).chuKyDung);
+  ok('Không có chữ ký → sai, không ném lỗi', !docKetQuaVe(new URLSearchParams(ve()), CH).chuKyDung);
+
+  // --- đường dẫn của máy chủ ---
+  const so = new SoDon(':memory:');
+  const { xuLy } = taoMay(so, { vnpayThu: CH });
+  const { xuLy: tat } = taoMay(so);
+  const phien = ((await goi(xuLy, '/quay/dang-nhap', { method: 'POST', body: `mat_khau=${MK}`,
+    headers: { 'content-type': 'application/x-www-form-urlencoded', 'sec-fetch-site': 'same-origin' } })).headers.get('set-cookie') ?? '').split(';')[0];
+  ok('Chưa đăng nhập quầy → /quay/vnpay-thu chuyển về trang đăng nhập', (await goi(xuLy, '/quay/vnpay-thu?so-tien=10000')).status === 303);
+  ok('Trang thử tắt (không cấu hình) → /quay/vnpay-thu 404, /vnpay-thu/ket-qua 404',
+    (await goi(tat, '/quay/vnpay-thu', { headers: { cookie: phien } })).status !== 200
+    && (await goi(tat, `/vnpay-thu/ket-qua?${veVnpay(ve())}`)).status === 404);
+  const trangChon = await (await goi(xuLy, '/quay/vnpay-thu', { headers: { cookie: phien } })).text();
+  ok('Trang thử: dòng cảnh báo môi trường thử, ba số tiền để chọn, chưa có đường dẫn', trangChon.includes('môi trường thử (sandbox)')
+    && trangChon.includes('/quay/vnpay-thu?so-tien=10000') && trangChon.includes('/quay/vnpay-thu?so-tien=300000') && !trangChon.includes('sandbox.vnpayment.vn'));
+  const trangLink = await (await goi(xuLy, '/quay/vnpay-thu?so-tien=50000', { headers: { cookie: phien } })).text();
+  const href = trangLink.match(/href="(https:\/\/sandbox\.vnpayment\.vn[^"]+)"/)?.[1]?.replace(/&amp;/g, '&') ?? '';
+  const hu = href ? new URL(href) : null;
+  ok('Chọn 50.000 đ → đường dẫn tới cổng thử, số tiền 5000000, Return URL theo tên miền đang mở (https)',
+    !!hu && hu.searchParams.get('vnp_Amount') === '5000000' && hu.searchParams.get('vnp_ReturnUrl') === 'https://don.beeftown.test/vnpay-thu/ket-qua', href.slice(0, 200));
+  ok('Đường dẫn trong trang ký đúng (tự tính lại) và hiện mã giao dịch; khóa bí mật không có trong trang',
+    !!hu && hu.searchParams.get('vnp_SecureHash') === kyMau(Object.fromEntries([...hu.searchParams].filter(([k]) => k !== 'vnp_SecureHash')))
+    && trangLink.includes(hu.searchParams.get('vnp_TxnRef') ?? '?') && !trangLink.includes(KHOA));
+  ok('Số tiền lạ (?so-tien=12345) → không có đường dẫn', !(await (await goi(xuLy, '/quay/vnpay-thu?so-tien=12345', { headers: { cookie: phien } })).text()).includes('sandbox.vnpayment.vn'));
+  const dem = () => ['don', 'giao_dich', 'thanh_toan_zalo', 'nhat_ky'].map(b => (so.db.query(`select count(*) as n from ${b}`).get() as { n: number }).n).join(',');
+  const truoc = dem();
+  const tKq = await (await goi(xuLy, `/vnpay-thu/ket-qua?${veVnpay(ve())}`)).text();
+  ok('Return URL (không cần đăng nhập): "Thanh toán đã hoàn tất", mã giao dịch, 300.000 đ, chữ ký đúng',
+    tKq.includes('Thanh toán đã hoàn tất') && tKq.includes(maGiaoDich) && tKq.includes('300.000 đ') && tKq.includes('Chữ ký VNPay: <b>đúng</b>'));
+  const tHuy = await (await goi(xuLy, `/vnpay-thu/ket-qua?${veVnpay(ve({ vnp_ResponseCode: '24', vnp_TransactionStatus: '02' }))}`)).text();
+  ok('Return URL khách hủy: "Giao dịch chưa hoàn tất", "Khách hủy giao dịch."', tHuy.includes('Giao dịch chưa hoàn tất') && tHuy.includes('Khách hủy giao dịch.'));
+  const tSai = await (await goi(xuLy, `/vnpay-thu/ket-qua?${sua}`)).text();
+  ok('Return URL bị sửa: "Không xác nhận được kết quả", không có chữ "đã hoàn tất"', tSai.includes('Không xác nhận được kết quả') && !tSai.includes('đã hoàn tất'));
+  const doc = veVnpay(ve({ vnp_TxnRef: '<script>alert(1)</script>' }));
+  const tXss = await (await goi(xuLy, `/vnpay-thu/ket-qua?${doc}`)).text();
+  ok('Chữ lạ trong tham số được thoát (không chèn mã được vào trang)', !tXss.includes('<script>alert') && tXss.includes('&lt;script&gt;'));
+  ok('Trang kết quả và trang thử không ghi gì vào sổ đơn (đơn, tiền về, VNPay, nhật ký)', dem() === truoc, `${truoc} → ${dem()}`);
+  // Số tiền của giao dịch thử (10.000 đ…) không phải giá món: quét câu chữ, bỏ số tiền như màn quầy (nhóm 11 chỉ quét câu cố định).
+  ok('Hai trang không có chữ "thành công", câu chữ không chữ cấm',
+    ![trangChon, trangLink, tKq, tHuy, tSai].some(t => /thành công/i.test(t)
+      || timChuoiCam(t.replace(/<[^>]+>/g, ' ').replace(/\d{1,3}(\.\d{3})+ đ/g, ' ')).length));
+  so.dong();
+
+  // --- main.ts ---
+  const chay = (them: Record<string, string>) => Bun.spawnSync(['bun', 'src/main.ts'], { cwd: path.join(import.meta.dir, '..'),
+    env: { ...process.env, MAT_KHAU_QUAY: MK, CONG: '1', THU_MUC_DU_LIEU: path.join(os.tmpdir(), 'may-chu-don-khong-mo'), ...them } });
+  const mot = chay({ VNPAY_THU_MA_TMN: 'SLKGTE22' });
+  ok('main.ts: chỉ một biến trang thử → không mở máy chủ, nói đủ hai tên', mot.exitCode === 1 && mot.stderr.toString().includes('VNPAY_THU_KHOA_BI_MAT'));
+  const chayNghe = async (them: Record<string, string>) => {
+    const tam = fs.mkdtempSync(path.join(os.tmpdir(), 'may-chu-don-vnpay-thu-'));
+    const cong = 20000 + Math.floor(Math.random() * 20000);
+    const p = Bun.spawn(['bun', 'src/main.ts'], { cwd: path.join(import.meta.dir, '..'), stdout: 'pipe', stderr: 'pipe',
+      env: { ...process.env, MAT_KHAU_QUAY: MK, CONG: String(cong), THU_MUC_DU_LIEU: tam, ...them } });
+    let r: Response | null = null;
+    for (let i = 0; i < 50 && !r; i++) { await Bun.sleep(100); r = await fetch(`http://127.0.0.1:${cong}/suc-khoe`).catch(() => null); }
+    const ketQua = await fetch(`http://127.0.0.1:${cong}/vnpay-thu/ket-qua?${veVnpay(ve())}`).then(x => x.status).catch(() => 0);
+    p.kill('SIGTERM');
+    const ra = await new Response(p.stdout).text();
+    fs.rmSync(tam, { recursive: true, force: true });
+    return { ra, ketQua };
+  };
+  const bat = await chayNghe({ VNPAY_THU_MA_TMN: 'SLKGTE22', VNPAY_THU_KHOA_BI_MAT: KHOA });
+  ok('main.ts: đủ hai biến → trang thử bật, nhật ký ghi đường dẫn, không in khóa bí mật',
+    bat.ketQua === 200 && bat.ra.includes('Trang thử VNPay (sandbox, Terminal SLKGTE22)') && !bat.ra.includes(KHOA), bat.ra.slice(0, 300));
+  const that = await chayNghe({ VNPAY_THU_MA_TMN: 'SLKGTE22', VNPAY_THU_KHOA_BI_MAT: KHOA,
+    ZALO_MINI_APP_ID: '2858300068641327950', ZALO_CHECKOUT_KHOA_RIENG: 'khoa-rieng-checkout-thu-0123456789abcdef', ZALO_CHECKOUT_PHUONG_THUC: 'VNPAY' });
+  ok('main.ts: máy chủ nhận tiền thật (VNPAY) → trang thử tự TẮT (404) nhưng máy chủ vẫn chạy, nhật ký báo',
+    that.ketQua === 404 && that.ra.includes('Trang thử VNPay: TẮT'), that.ra.slice(0, 300));
 }
 
 console.log(hong === 0 ? `\nTẤT CẢ ${dat} KIỂM TRA MÁY CHỦ ĐƠN ĐỀU ĐẠT` : `\n${hong} KIỂM TRA HỎNG / ${dat + hong}`);

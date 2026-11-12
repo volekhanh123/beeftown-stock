@@ -233,6 +233,8 @@ Chưa có (đợt 4, issue #138): sao lưu sổ đơn ra ngoài máy, đèn sứ
 | `ZALO_MINI_APP_ID` | khi trả qua VNPay | Mini App ID của Beeftown: `2858300068641327950` |
 | `ZALO_CHECKOUT_KHOA_RIENG` | khi trả qua VNPay | **Private key** của Checkout SDK (Mini App Center → Checkout SDK → Cấu hình chung), ít nhất 16 ký tự. Không phải Secret Key của VNPay. Không gửi qua chat |
 | `ZALO_CHECKOUT_PHUONG_THUC` | khi trả qua VNPay | `VNPAY_SANDBOX` (môi trường thử, tiền thử) hoặc `VNPAY` (tiền thật) |
+| `VNPAY_THU_MA_TMN` | trang thử VNPay | Mã Terminal VNPay cho trang thử trên web, ví dụ `SLKGTE22` (mục "Trang thử VNPay trên web") |
+| `VNPAY_THU_KHOA_BI_MAT` | trang thử VNPay | Secret Key (vnp_HashSecret) của Terminal đó, trong tệp .zip VNPay gửi. Không gửi qua chat |
 
 Bốn biến tài khoản phải đặt đủ cả bốn, hoặc không đặt cái nào (máy chủ vẫn nhận đơn nhưng không có mã trả tiền). Thiếu
 một biến, khóa SePay dưới 16 ký tự, hay có khóa SePay mà chưa có tài khoản: máy chủ không chạy và báo rõ biến nào sai.
@@ -249,6 +251,8 @@ VNPay thì app trả qua VNPay (thắng VietQR); `CHE_DO_DEMO=1` cùng ba biến
 | `POST /api/don/<mã>/vnpay` | Mini App | Báo vừa mở trang VNPay (mã thanh toán của Zalo) — chỉ để biết đơn nào chờ Zalo báo kết quả quá lâu |
 | `POST /sepay/tien-ve` | SePay | Tin có tiền về, ký HMAC-SHA256. Trả `{"success": true}` chỉ khi đã ghi xong |
 | `POST /zalo/thanh-toan` | Checkout SDK của Zalo (Callback URL) | Kết quả VNPay, ký `mac` và `overallMac` bằng Private key. Trả `{"returnCode": 1}` chỉ khi đã ghi xong, `2` khi đã ghi từ trước. Caddy chỉ cho IP của Zalo |
+| `GET /quay/vnpay-thu` | Quầy (đã đăng nhập), chỉ khi có hai biến `VNPAY_THU_…` | Trang thử VNPay: chọn số tiền, mở cổng thử của VNPay |
+| `GET /vnpay-thu/ket-qua` | Trình duyệt, VNPay đưa về (Return URL) | Kết quả giao dịch thử: kiểm chữ ký VNPay rồi hiện — không ghi gì vào sổ đơn |
 | `POST /zalo/vnpay-ipn` | Checkout SDK của Zalo (sandbox) | Zalo chuyển tiếp IPN của VNPay để làm hồ sơ kiểm thử — chỉ ghi nhật ký, không đổi đơn |
 | `GET /quay` | Quầy | Màn hình đơn |
 | `POST /quay/demo/tien-ve` | Quầy, chỉ khi `CHE_DO_DEMO=1` | Giả lập khách chuyển đủ tiền cho một đơn chờ trả tiền (mục "Chế độ demo"); tắt demo thì 404 |
@@ -380,6 +384,36 @@ khách". Máy chủ chưa gọi API hoàn tiền của Checkout SDK (việc ti�
 callback, Zalo có gửi lại khi máy chủ trả lỗi không (tài liệu: không), IP của webhook IPN sandbox. Zalo không gọi lại
 sau 20 phút thì tài liệu bảo tra `getOrderStatus` — chưa làm (việc tiếp); trong lúc chờ, ô `soDonVnpayChoKetQua` của
 `/suc-khoe` cho biết đơn nào cần tra tay ở Mini App Center.
+
+## Trang thử VNPay trên web (phiếu kiểm thử của VNPay)
+
+Khánh 12/11/2026: phiếu kiểm thử thủ công của VNPay (vsm-sit-client) đòi **Return URL** — trang web khách được đưa về
+sau khi trả — kèm ảnh chụp trang đó khi giao dịch thành công và thất bại. Mini App trả qua Zalo không có trang web như
+vậy, nên máy chủ đơn có một **trang thử tạm, chỉ tiếng Việt, chỉ môi trường thử (sandbox)**. Khách không dùng trang này;
+trang không tạo đơn, không đổi đơn, không ghi gì vào sổ đơn.
+
+1. Trên máy BizFly, sau khi cập nhật bản có trang thử (`cap-nhat`), thêm hai dòng vào file bí mật:
+   ```
+   nano /etc/beeftown/may-chu-don.env
+   ```
+   ```
+   VNPAY_THU_MA_TMN=SLKGTE22
+   VNPAY_THU_KHOA_BI_MAT=<Secret Key trong tệp VNPAY-QR_PGW_SLKGTE22_TEST_Key.zip>
+   ```
+   Lưu (Ctrl + O, Enter, Ctrl + X), rồi `systemctl restart may-chu-don` và `journalctl -u may-chu-don -n 10`: thấy dòng
+   "Trang thử VNPay (sandbox, Terminal SLKGTE22): /quay/vnpay-thu" là đã bật.
+2. Trên máy tính, mở `https://don.beeftown.vn/quay` → đăng nhập bằng mật khẩu quầy → mở
+   `https://don.beeftown.vn/quay/vnpay-thu`.
+3. **Giao dịch trả xong:** bấm một số tiền (ví dụ 10.000 đ) → "Mở trang thanh toán VNPay" → trả bằng thẻ thử trong email
+   VNPay → VNPay đưa về `https://don.beeftown.vn/vnpay-thu/ket-qua?...` với chữ **"Thanh toán đã hoàn tất"**. Chụp cả trang,
+   **thấy cả thanh địa chỉ**; chép "Mã giao dịch (TxnRef)".
+4. **Giao dịch thất bại:** về trang thử, bấm lại một số tiền → mở trang VNPay → bấm **Hủy** → VNPay đưa về trang kết quả
+   với **"Giao dịch chưa hoàn tất"**, "Khách hủy giao dịch." Chụp, chép TxnRef.
+5. Ở phiếu "Kiểm thử thủ công" của VNPay: điền hai TxnRef, tải hai ảnh, bấm "Lưu kết quả QC".
+
+IPN của SLKGTE22 trỏ về Zalo, nên với giao dịch của trang thử Zalo trả VNPay "không thấy đơn" — đúng, vì đơn không nằm
+ở Zalo; kết quả vẫn hiện đúng ở trang kết quả. Trang thử **tự tắt** khi `ZALO_CHECKOUT_PHUONG_THUC=VNPAY` (tiền thật).
+Xong phiếu kiểm thử thì xóa hai dòng `VNPAY_THU_…` rồi chạy lại dịch vụ.
 
 ## Cài ZNS (tin Zalo báo khách)
 
