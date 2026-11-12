@@ -13,7 +13,7 @@ Khi hai file nói khác nhau thì làm theo `CLAUDE.md` và báo chỗ lệch tr
 | `THUONG-HIEU.md` | Mục 0: bộ nhận diện 21/10/2026 (Brand Guidelines của designer), quyết định của Khánh, danh sách việc. Mục 1–4: bảng màu (đỏ `#BD0000`, đen, trắng và năm màu pha màn hình), luật logo / phông / ảnh, token đang chạy (website đã đổi ở PR 1 "Đổi nhận diện website"). Mục 5: thứ còn mang nhận diện cũ (Beeftown Cân — báo PR đổi màu Cân lẻ tẻ ngoài việc 7; ảnh hướng dẫn kho). Mục 6: địa điểm. Phụ lục: lịch sử bảng 09/10/2026 |
 | `web/THIET-KE.md` | Giao diện trang công khai đang chạy: màu theo vai (mục 2; `/noi-bo` và kho dùng cùng token), chữ, thành phần |
 | `web/src/lib/chuoi-cam.js` | Danh sách chữ cấm trên trang công khai, kèm lý do |
-| `mini-app/CLAUDE.md` | Mini App Zalo: tình trạng trên Zalo, lệnh, việc được làm và phải hỏi Khánh (không đọc hay commit `mini-app/.env`; đổi chữ khách thấy phải hỏi trước) |
+| `mini-app/CLAUDE.md`, `mini-app/TINH-TRANG.md` | Mini App Zalo: lệnh, cách app chạy, quy tắc, việc được làm và phải hỏi Khánh; tình trạng trên Zalo và việc tiếp theo ở `TINH-TRANG.md` (không đọc hay commit `mini-app/.env`; đổi chữ khách thấy phải hỏi trước) |
 | `crm/CLAUDE.md`, `web/CLAUDE.md`, `can-app/CLAUDE.md`, `may-chu-don/CLAUDE.md` | Bản đồ của từng thư mục: việc gì đọc mục nào, sửa file nào, thêm hàm SQL thì đụng những chỗ nào, chạy kiểm thử nào. Làm trong thư mục nào thì đọc file của thư mục đó trước — đừng đọc cả README |
 | `mo-rong-fabi/README.md` | Mở rộng FABi (extension Chrome): cách cài, giả định về giao diện FABi CMS, việc Khánh phải thử trên FABi thật |
 | `.github/CLAUDE.md` | Khi nào CI chạy gì: từng workflow, lúc chạy, thời gian, nơi xem kết quả |
