@@ -37,11 +37,13 @@ import Anh from './Anh.astro';
 import BieuTuong from './BieuTuong.astro';
 import LenTang3 from './LenTang3.astro';
 import NhanKhay from './NhanKhay.astro';
+import ChonTheoGu from './ChonTheoGu.astro';
+import type { PhanCatGu } from '../lib/chon-theo-gu';
 import ThucDonNhom from './ThucDonNhom.astro';
 import ThucDonNhomAnh from './ThucDonNhomAnh.astro';
 
-interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; thucDon: ThucDon; }
-const { ngonNgu, noiDung: nd, thucDon: td } = Astro.props;
+interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; thucDon: ThucDon; theoGu?: PhanCatGu[]; }
+const { ngonNgu, noiDung: nd, thucDon: td, theoGu = [] } = Astro.props;
 const t = chu(ngonNgu);
 
 const c = dich(ngonNgu, {
@@ -220,6 +222,9 @@ const coKenh = coKenhHoiBan(nd);
                sizes="(min-width: 1280px) 620px, (min-width: 900px) 50vw, calc(100vw - 40px)" />
         </div>
       </div>
+
+      {/* Chọn theo gu (đợt 2, 12/11/2026): chỉ khi chủ đã gắn gu cho ít nhất một phần thịt — xem lib/chon-theo-gu.ts. */}
+      <ChonTheoGu ngonNgu={ngonNgu} phanCat={theoGu} />
 
       <div class="td-quay-nhan">
         <NhanKhay ngonNgu={ngonNgu} />

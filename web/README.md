@@ -26,6 +26,7 @@ Hệ quả cụ thể:
 | Hotline | Không hiện nút gọi (cả nút "Gọi" của thanh hành động điện thoại), và JSON-LD không khai `telephone`. |
 | Giờ phục vụ | Không hiện giờ, và không khai `openingHoursSpecification` — Google đưa giờ này lên kết quả tìm kiếm, khai sai là dẫn khách tới cửa đóng. |
 | Thực đơn (`hien_thuc_don`, món đã công bố) | Trang Thực đơn vẫn có phần Bò tại quầy đầy đủ (khay skin-pack, cách đọc nhãn, trọng lượng và giá xem tại quầy) và lời giới thiệu theo nhóm món — không danh sách món, không giá, JSON-LD không khai `hasMenu`. Công bố món: màn `/noi-bo/thuc-don`, hoặc SQL trong [`THUC-DON.md`](THUC-DON.md). |
+| Gu của phần thịt (`ban_le_san_pham.gu`, 0116 — gắn ở /noi-bo/ban-le/<id>) | Tab Bò tại quầy của trang Thực đơn không có khối "Chọn theo gu". Gắn gu cho một phần thịt là đưa nó lên khối (tên, gu, mô tả; không giá); gỡ hết gu là gỡ khỏi khối. |
 | Đồ uống có cồn (`hien_do_uong_co_con`) | Không nhắc highball, soju, makgeolli, bia ở đâu cả; không món có cồn (ba ly signature), không dòng luật rượu. |
 | Form hỏi bàn (`form_dat_ban_dang_mo`) | Nút chính màn đầu là "Khám phá thực đơn" (`nutMoDau()` trong `lib/trang-cong-khai.ts`); trang Hỏi bàn nói chưa mở hỏi bàn trực tuyến; thanh hành động điện thoại (`thanhHanhDong()`) có nút chính "Khám phá thực đơn". Bật lên thì màn đầu có **hỏi bàn nhanh** — ô ngày, ô số người, nút "Hỏi bàn" mở trang Hỏi bàn đúng ngày, chọn sẵn số người (12/11/2026) — và thanh điện thoại có nút "Hỏi bàn". |
 | Ngày khai trương | Không ngày, không đếm ngược, không ưu đãi. |

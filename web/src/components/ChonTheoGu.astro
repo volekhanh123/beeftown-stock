@@ -1,0 +1,108 @@
+---
+/**
+ * CHỌN THEO GU — tab "Bò tại quầy" của trang Thực đơn (đợt 2 của đề xuất giao diện, Khánh duyệt 12/11/2026)
+ *
+ * Khách chưa rành bò bấm một gu, thấy các phần cắt hợp gu đó: tên (trang en / ko in thêm tên ở quầy, để khách nói
+ * với nhân viên), gu, mô tả chủ đã viết. Không giá — thẻ nói rõ giá mỗi 100 g ở trên nhãn khay tại quầy. Dữ liệu:
+ * lib/chon-theo-gu.ts. Danh sách rỗng (chưa nối database, chưa gắn gu, đọc lỗi) thì trang không dựng khối này.
+ *
+ * Lọc không cần JavaScript: mỗi gu là một ô chọn một (radio) thật, nhãn vẽ thành nút; CSS :has() ẩn thẻ không hợp gu
+ * đang chọn. Trình duyệt chưa biết :has() thì mọi thẻ cùng hiện — vẫn đọc được đủ. Ô đang chọn khác ô khác ở nền
+ * đặc VÀ chữ đậm 800 (không chỉ khác màu); bàn phím: Tab vào nhóm, mũi tên đổi gu như mọi nhóm radio.
+ * Chỉ một gu có phần cắt thì không có hàng nút — lọc một lựa chọn là thừa.
+ */
+import { dich } from '../lib/chu';
+import type { NgonNgu } from '../lib/noi-dung';
+import { TEN_GU, guCoMat, type PhanCatGu } from '../lib/chon-theo-gu';
+import BieuTuong from './BieuTuong.astro';
+
+interface Props { ngonNgu: NgonNgu; phanCat: PhanCatGu[]; }
+const { ngonNgu, phanCat } = Astro.props;
+const c = dich(ngonNgu, {
+  hieu:    { vi: 'Chọn theo gu', en: 'Pick by taste', ko: '취향대로 고르기' },
+  tieuDe:  { vi: 'Chưa rành bò? Chọn theo gu.', en: 'Unsure which cut? Pick by taste.', ko: '소고기를 잘 몰라도 취향대로 골라 보세요.' },
+  dan:     { vi: 'Chọn gu bạn thích để xem phần cắt hợp gu. Tới quầy, nói tên phần đó hoặc nhờ nhân viên gợi ý theo số người.',
+             en: 'Pick what you like to see matching cuts. At the counter, ask for a cut by name or ask our staff for suggestions based on your group size.',
+             ko: '취향을 고르면 그에 맞는 부위를 보여 드려요. 카운터에서 부위 이름을 말씀하시거나, 직원에게 인원수를 알려 주고 추천을 받아 보세요.' },
+  nhomGu:  { vi: 'Gu', en: 'Taste', ko: '취향' },
+  tatCa:   { vi: 'Tất cả', en: 'All', ko: '전체' },
+  oQuay:   { vi: 'Ở quầy:', en: 'Say at the counter:', ko: '직원에게 말할 이름:' },
+  giaNhan: { vi: 'Giá mỗi 100g ghi trên nhãn khay tại quầy', en: 'The price per 100 g is on the tray label at the counter',
+             ko: '100g당 가격은 카운터의 트레이 라벨에 적혀 있어요' },
+});
+const coMat = guCoMat(phanCat);
+const coLoc = coMat.length > 1;
+---
+{phanCat.length > 0 && (
+  <section class="cg" id="chon-theo-gu" aria-labelledby="cg-tieu-de">
+    <p class="hieu">{c.hieu}</p>
+    <h3 id="cg-tieu-de">{c.tieuDe}</h3>
+    <p class="dan">{c.dan}</p>
+
+    {coLoc && (
+      <fieldset class="cg-loc">
+        <legend class="an-chu">{c.nhomGu}</legend>
+        <span class="cg-chon"><input type="radio" name="cg-gu" id="cg-tat-ca" value="tat-ca" checked /><label for="cg-tat-ca">{c.tatCa}</label></span>
+        {coMat.map(g => (
+          <span class="cg-chon"><input type="radio" name="cg-gu" id={`cg-${g}`} value={g} /><label for={`cg-${g}`}>{TEN_GU[g][ngonNgu]}</label></span>
+        ))}
+      </fieldset>
+    )}
+
+    <ul class="cg-luoi">
+      {phanCat.map(p => (
+        <li class="the cg-the" data-gu={p.gu.join(' ')}>
+          <p class="cg-ten">{p.ten}</p>
+          {ngonNgu !== 'vi' && p.tenVi !== p.ten && <p class="cg-ten-quay">{c.oQuay} <span lang="vi">{p.tenVi}</span></p>}
+          <p class="cg-gu">{p.gu.map((g, i) => <>{i > 0 && ' · '}<span>{TEN_GU[g][ngonNgu]}</span></>)}</p>
+          {p.moTa && <p class="cg-mo-ta">{p.moTa}</p>}
+          <p class="cg-gia"><BieuTuong ten="nhan" /><span>{c.giaNhan}</span></p>
+        </li>
+      ))}
+    </ul>
+  </section>
+)}
+
+<style>
+  .cg { margin-top: var(--k-8); padding-top: var(--k-7); border-top: 1px solid var(--vien); }
+  .cg h3 { font-size: var(--co-h2); margin: var(--k-3) 0 0; }
+  .cg .dan { margin: var(--k-4) 0 0; }
+
+  /* Hàng nút lọc: radio thật ẩn (trong suốt, cắt hết) ngay dưới nhãn (vẫn nhận Tab, mũi tên, trình đọc màn hình đọc được);
+     bấm vào nhãn là chọn. Nhãn vẽ thành nút viền cao 48px. */
+  .cg-loc { border: 0; margin: var(--k-6) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--k-2); min-width: 0; }
+  .cg-chon { position: relative; display: inline-flex; }
+  .cg-chon input { position: absolute; left: 50%; bottom: 0; margin: 0; opacity: 0; pointer-events: none; clip-path: inset(50%); }
+  .cg-chon label {
+    display: inline-flex; align-items: center; min-height: 48px; padding: 0 var(--k-4);
+    border: 1.5px solid var(--chu-chinh); border-radius: var(--bo);
+    color: var(--chu-chinh); font-weight: 600; font-size: 15px; cursor: pointer;
+    transition: background-color var(--nhanh), color var(--nhanh);
+  }
+  /* Đang chọn: nền đặc VÀ chữ đậm hơn — không chỉ khác màu. */
+  .cg-chon input:checked + label { background: var(--chu-chinh); color: var(--nen); font-weight: 800; }
+  .cg-chon input:focus-visible + label { outline: 3px solid var(--vong-focus); outline-offset: 3px; }
+  @media (hover: hover) { .cg-chon input:not(:checked):hover + label { background: var(--vach-kem); } }
+
+  .cg-luoi { list-style: none; margin: var(--k-6) 0 0; padding: 0; display: grid; gap: var(--k-3); }
+  @media (min-width: 600px) { .cg-luoi { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 1024px) { .cg-luoi { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .cg-the { display: flex; flex-direction: column; gap: var(--k-2); margin: 0; }
+  .cg-the p { margin: 0; }
+  .cg-ten { font-size: var(--co-h3); font-weight: 700; line-height: 1.3; }
+  .cg-ten-quay { font-size: var(--co-nho); color: var(--chu-phu); }
+  .cg-ten-quay span { font-weight: 700; color: var(--chu-chinh); }
+  .cg-gu { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--nhan-nho); }
+  .cg-mo-ta { font-size: var(--co-nho); line-height: 1.5; }
+  .cg-gia {
+    display: flex; align-items: center; gap: var(--k-2); margin-top: auto !important; padding-top: var(--k-3);
+    border-top: 1px solid var(--vien); font-size: var(--co-nho); color: var(--chu-phu);
+  }
+  .cg-gia :global(svg) { width: 24px; height: 24px; flex: none; color: var(--nhan); }
+
+  /* Lọc bằng CSS: gu đang chọn ẩn thẻ không có gu đó. Một quy tắc cho mỗi gu của lib/chon-theo-gu.ts (GU). */
+  .cg:has(#cg-mem_beo:checked) .cg-the:not([data-gu~='mem_beo']),
+  .cg:has(#cg-dam_vi:checked) .cg-the:not([data-gu~='dam_vi']),
+  .cg:has(#cg-nac_thanh:checked) .cg-the:not([data-gu~='nac_thanh']),
+  .cg:has(#cg-lat_mong:checked) .cg-the:not([data-gu~='lat_mong']) { display: none; }
+</style>

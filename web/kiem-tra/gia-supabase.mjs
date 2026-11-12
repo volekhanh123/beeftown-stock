@@ -22,6 +22,8 @@
  *   nop_ho_so_ung_tuyen(16 tham số, 0026)  → chuỗi mã hồ sơ 'BT-UV-YYMM-XXXXX'
  *   mua_thit_ve_cong_khai(p_ngon_ngu, p_chi_nhanh_ma) → bảng 11 cột (0101): mỗi dòng một gói khách chọn được;
  *                                            kịch bản cũ trả [] (kênh chưa mở), mua-thit-* trả MENU_THU
+ *   bo_tai_quay_theo_gu(p_ngon_ngu)        → bảng 6 cột (0116): phần thịt của MENU_THU đã gắn gu (GU_THU); chỉ
+ *                                            day-du và thuc-don-thu-suc, kịch bản khác trả [] (khối ẩn)
  *
  * supabase-js gọi POST {URL}/rest/v1/rpc/<tên hàm> với thân JSON. PostgREST chọn hàm
  * theo TÊN tham số: gửi một tham số lạ (đổi tên p_ho_ten ở web mà quên database) là
@@ -258,6 +260,34 @@ export const MENU_THU = [
                  '냉장 보관하고, 구운 고기와 함께 드시거나 찌개에 넣어 드세요.'),
     goi: [{ soGam: 500, gia: 90000 }] },
 ];
+
+/**
+ * Gu thử của các phần thịt trong MENU_THU (0116) — đủ ca khối "Chọn theo gu" phải chịu: một gu, hai gu, cả bốn gu có
+ * mặt (thành bốn nút lọc), tên en / ko giống tên tiếng Việt (LA Galbi), tên dài 120 ký tự và mô tả 500 ký tự ở 320px.
+ * Kim chi không có gu (database chặn).
+ */
+export const GU_THU = {
+  'ribeye-cap': ['mem_beo'],
+  'than-ngoai': ['dam_vi', 'nac_thanh'],
+  'ba-chi-bo-my': ['mem_beo', 'lat_mong'],
+  'la-galbi': ['dam_vi'],
+  'than-lung-cat-day': ['nac_thanh'],
+};
+const KICH_BAN_CO_GU = new Set(['day-du', 'thuc-don-thu-suc']);
+
+/** Đúng các dòng bo_tai_quay_theo_gu(p_ngon_ngu) trả — 6 cột, thứ tự của 0116; kịch bản không có gu → []. */
+export function boTaiQuayTheoGu(kichBan, nn = 'vi') {
+  if (!KICH_BAN_CO_GU.has(kichBan)) return [];
+  const n = NN.includes(nn) ? nn : 'vi';
+  return MENU_THU.filter(sp => sp.loai === 'thit' && GU_THU[sp.ma]).map(sp => ({
+    san_pham_ma: sp.ma,
+    ten: sp.ten[n],
+    ten_vi: sp.ten.vi,
+    mo_ta: sp.moTa?.[n] ?? null,
+    cach_dung: sp.cachDung?.[n] ?? null,
+    gu: GU_THU[sp.ma],
+  }));
+}
 
 /**
  * Đúng các dòng mua_thit_ve_cong_khai(p_ngon_ngu, p_chi_nhanh_ma) trả trong một kịch bản — 11 cột, đúng thứ tự của
@@ -537,6 +567,7 @@ const HAM = {
   tao_dat_ban: { thamSo: THAM_SO_DAT_BAN, batBuoc: THAM_SO_DAT_BAN.slice(0, 6) },
   nop_ho_so_ung_tuyen: { thamSo: THAM_SO_NOP_HO_SO, batBuoc: THAM_SO_NOP_HO_SO.slice(0, 3) },
   mua_thit_ve_cong_khai: { thamSo: ['p_ngon_ngu', 'p_chi_nhanh_ma'], batBuoc: [] },
+  bo_tai_quay_theo_gu: { thamSo: ['p_ngon_ngu'], batBuoc: [] },
   tao_don_mua_thit: { thamSo: THAM_SO_DAT_HANG, batBuoc: THAM_SO_DAT_HANG.slice(0, 8) },
 };
 
@@ -637,6 +668,7 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
           if (cham > 0) return void setTimeout(() => taoDonMuaThit(thamSo), cham);
           return taoDonMuaThit(thamSo);
         }
+        case 'bo_tai_quay_theo_gu': return tra(200, boTaiQuayTheoGu(hienTai, nn));
         case 'mua_thit_ve_cong_khai': {
           if (hienTai === 'mua-thit-loi') return tra(500, loiPostgrest('XX000', 'upstream request timeout'));
           if (hienTai === 'mua-thit-dut') { req.socket.destroy(); return; }   // mất mạng giữa chừng: không một byte

@@ -115,6 +115,8 @@ await nhom('1 · QUYỀN THỰC THI HÀM (lỗ hổng 1 và 4)', async () => {
     // Mua thịt về (0101): gói đang bán có giá chủ đã chốt, không mã nội bộ, không số tồn; rỗng khi kênh chưa mở.
     // test-mua-thit-ve.mjs.
     'mua_thit_ve_cong_khai',
+    // Chọn theo gu (0116): phần thịt đã gắn gu — tên, mô tả, gu; không giá, không gói, không tồn. test-ban-le-gu.mjs.
+    'bo_tai_quay_theo_gu',
     // Mua thịt về trả trước qua VNPay (0115): mở một lần trả cho đơn có ma_gui này (mã ngẫu nhiên chỉ trình duyệt đã đặt
     // đơn biết); số tiền do database chốt; tối đa 10 lần mỗi đơn; không đọc lại được gì ngoài mã đơn, số tiền, mã giao
     // dịch. Ghi kết quả trả tiền thì KHÔNG phải anon (máy may_vnpay). test-mua-thit-vnpay.mjs.

@@ -21,13 +21,14 @@
  */
 import NoiBo from '../../../layouts/NoiBo.astro';
 import {
-  docSanPham, docMatHangChon, docCaiDat, luuSanPham, chotGia, chonChiNhanhBanLe, dongGoiDaGo, cauLoiDoc, cauCanhBao, giaGoi,
+  docSanPham, docMatHangChon, docCaiDat, luuSanPham, chotGia, luuGu, chonChiNhanhBanLe, dongGoiDaGo, cauLoiDoc, cauCanhBao, giaGoi,
   cungChu, canhBaoDauTrang, dongGiaDeChot, tenKieu,
   VAI_XEM_BAN_LE, VAI_SUA_BAN_LE, VAI_CHOT_GIA, KIEU_SAN_PHAM, CANH_BAO_BAN_LE, TEN_LOAI_BAN_LE,
   TEN_BAO_QUAN, TRANG_THAI_BAN_LE, NGUON_GOI, O_DICH_BAN_LE, SO_GOI_TOI_DA,
   type SanPhamBanLe, type MatHangBanLe, type ChiNhanhBanLe, type GoiBanLe, type KetQuaLuu, type DongGoiDaGo,
 } from '../../../lib/ban-le-noi-bo';
 import { dichBu, chayNen, oDangCho, moTaO, cauTomTat } from '../../../lib/ban-dich';
+import { GU, TEN_GU } from '../../../lib/chon-theo-gu';
 import { dichNB, nnCua } from '../../../lib/ngon-ngu-noi-bo';
 import { CAU_DOC_FORM_HONG, chuyenHuongNoiBo, docBaoNoiBo, docFormNoiBo } from '../../../lib/gui-noi-bo';
 import { dinhDangKg, dinhDangTien, dinhDangThoiDiem, docTien, duoc, TEN_LOAI_MAT_HANG_NB } from '../../../lib/kho/chung';
@@ -40,6 +41,14 @@ if (!(VAI_XEM_BAN_LE as readonly string[]).includes(nhanSu.vai_tro)) return Astr
 
 const t = dichNB(nn, {
   tieuDe:      { vi: 'Sản phẩm bán lẻ', en: 'Retail product' },
+  // Gu của phần thịt (0116) — khối "Chọn theo gu" ở tab Bò tại quầy của trang Thực đơn
+  guTieuDe:    { vi: 'Gu — khối "Chọn theo gu" ở trang Thực đơn', en: 'Taste tags — the "Pick by taste" block on the Menu page' },
+  guDan:       { vi: 'Gắn gu là đưa phần thịt này lên khối "Chọn theo gu" của tab Bò tại quầy, với tên và mô tả ở trên (máy dịch sang tiếng Anh, tiếng Hàn). Bỏ hết gu là gỡ khỏi khối. Khối không hiện giá: giá chỉ có trên nhãn khay.',
+                 en: 'Tagging a taste puts this cut in the "Pick by taste" block of the Counter beef tab, with the name and description above (machine-translated into English and Korean). Untick every taste to take it out. The block shows no prices: prices are only on the tray labels.' },
+  guNhom:      { vi: 'Gu của phần thịt', en: 'Taste tags of this cut' },
+  luuGu:       { vi: 'Lưu gu', en: 'Save taste tags' },
+  guCo:        { vi: 'Có', en: 'Yes' },
+  guKhong:     { vi: 'Không', en: 'No' },
   tatCa:       { vi: '← Menu bán lẻ', en: '← Retail menu' },
   khongThay:   { vi: 'Không thấy sản phẩm này, hoặc tài khoản của bạn không xem được.', en: 'This product was not found, or your account cannot view it.' },
   viecSai:     { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
@@ -184,6 +193,7 @@ if (Astro.request.method === 'POST') {
   if (form) {
     const viec = String(form.get('viec') ?? '');
     bao = viec === 'luu'  ? await luuSanPham(client, id, form, nn)
+        : viec === 'gu'   ? await luuGu(client, id, form, nn)
         : viec === 'chot' ? await chotGia(client, id, String(form.get('phien_ban') ?? ''), String(form.get('gia_da_xem') ?? ''), nn)
         // Dịch ngay thì CHỜ kết quả: người bấm nút muốn biết nó xong hay hỏng vì sao.
         : viec === 'dich' ? cauTomTat(await dichBu(client, { bang: 'ban_le_san_pham', dongId: id }), nn)
@@ -589,6 +599,29 @@ const lyDoAn = !sp ? null
         </fieldset>
       </form>
 
+      {/* ------------------------------------------------------------ GU (0116) */}
+      {sp.loai === 'thit' && (
+        <form method="POST" action={duongDan} class="nb-the bl-form" id="gu">
+          <input type="hidden" name="viec" value="gu" />
+          <h2>{t.guTieuDe}</h2>
+          <p class="bl-phu bl-dan">{t.guDan}</p>
+          {/* Mỗi gu một ô chọn Có / Không — trang bán lẻ không dùng ô đánh dấu (ô bỏ trống không được gửi đi). */}
+          <fieldset disabled={!duocSua} class="bl-gu">
+            <legend class="nb-an">{t.guNhom}</legend>
+            {GU.map(g => (
+              <label class="nb-o bl-gu-o">
+                <span>{TEN_GU[g][nn]}</span>
+                <select name={`gu_${g}`}>
+                  <option value="co" selected={(sp.gu ?? []).includes(g)}>{t.guCo}</option>
+                  <option value="khong" selected={!(sp.gu ?? []).includes(g)}>{t.guKhong}</option>
+                </select>
+              </label>
+            ))}
+            <button type="submit" class="nb-nut">{t.luuGu}</button>
+          </fieldset>
+        </form>
+      )}
+
       {/* ------------------------------------------------------------ DỊCH */}
       {duocSua && dangCho.size > 0 && (
         <form method="POST" action={duongDan} class="nb-the bl-form">
@@ -683,4 +716,7 @@ const lyDoAn = !sp ? null
     border: 1px solid var(--vach); border-radius: 999px; background: var(--kem-sau);
   }
   .bl-canh { margin: .35rem 0 0; font-size: .85rem; color: var(--than); }
+  /* Gu (0116): bốn ô chọn Có / Không thành lưới, nút Lưu gu dưới cùng. */
+  .bl-gu { border: 0; margin: .75rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: .5rem 1rem; align-items: end; }
+  .bl-gu .nb-nut { grid-column: 1 / -1; justify-self: start; }
 </style>

@@ -196,6 +196,10 @@ export const CAU_EN: Readonly<Record<string, string>> = {
     'This account cannot change the price per kg in Stock → Items.',
   'Mã sản phẩm này đã có. Đổi tên hoặc sửa mã.': 'This product code already exists. Change the name or edit the code.',
   'Không thấy sản phẩm này.': 'Product not found.',
+  // 0116 — gu của phần thịt (khối "Chọn theo gu" ở trang Thực đơn)
+  'Chỉ chủ hoặc quản lý được sửa gu của phần thịt.': 'Only the owner or a manager can change the taste tags of a meat cut.',
+  'Gu không hợp lệ.': 'Invalid taste tag.',
+  'Chỉ phần thịt mới có gu.': 'Only meat cuts can have taste tags.',
   'Lưu mặt hàng kho trước, rồi mới sửa giá mỗi kg.': 'Save the stock item first, then change the price per kg.',
   'Sản phẩm chưa gắn mặt hàng kho đang dùng, chưa sửa được giá mỗi kg.':
     'This product is not linked to an active stock item yet, so the price per kg cannot be changed.',
