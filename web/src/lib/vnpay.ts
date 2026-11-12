@@ -28,6 +28,7 @@
 
 import { docChuoi, envNode, envWorker, type Env } from './bien-moi-truong.ts';
 import { gioVnTuMs, isoGioVn } from './gio-vn.ts';
+import { bangNhauHang } from './kho/ipos.ts';
 import type { NgonNgu } from './noi-dung.ts';
 
 /** Cổng thanh toán VNPay — môi trường thử. */
@@ -138,14 +139,6 @@ export async function kyHmac(khoa: string, chuoi: string): Promise<string> {
   return Array.from(ky, b => b.toString(16).padStart(2, '0')).join('');
 }
 
-/** So hai chuỗi trong thời gian không đổi (không lộ chữ ký đúng qua thời gian trả lời). */
-function bangNhau(a: string, b: string): boolean {
-  const x = ma.encode(a), y = ma.encode(b);
-  let khac = x.length ^ y.length;
-  for (let i = 0; i < Math.max(x.length, y.length); i++) khac |= (x[i] ?? 0) ^ (y[i] ?? 0);
-  return khac === 0;
-}
-
 export interface LanTra {
   /** vnp_TxnRef — mã đơn + số lần (mua_thit_mo_vnpay, 0115). */
   maGiaoDich: string;
@@ -208,7 +201,7 @@ export async function docThamSoVnpay(query: URLSearchParams, ch: Pick<CauHinhVnp
   let dung = false;
   if (/^[0-9a-f]{128}$/.test(nhan)) {
     for (const chuoi of new Set([chuoiKy(thamSo, true), chuoiKy(thamSo, false)])) {
-      if (bangNhau(await kyHmac(ch.khoaBiMat, chuoi), nhan)) dung = true;
+      if (bangNhauHang(await kyHmac(ch.khoaBiMat, chuoi), nhan)) dung = true;   // thời gian không đổi
     }
   }
   const g = (k: string, toiDa = 64) => (thamSo[k] ?? '').slice(0, toiDa);

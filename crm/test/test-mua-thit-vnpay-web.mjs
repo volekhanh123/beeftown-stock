@@ -169,8 +169,10 @@ await nhom('1 · CẤU HÌNH — THIẾU MỘT BÍ MẬT LÀ TRANG CHẠY NHƯ C
     const loi = [];
     const cu = console.error; console.error = (...a) => loi.push(a.join(' '));
     const tat = await XL.vnpayChoTrang({ url: new URL('https://beeftown.vn/mua-thit-ve') }, 'vi');
+    await XL.vnpayChoTrang({ url: new URL('https://beeftown.vn/en/buy-meat') }, 'en');
     console.error = cu;
-    ok('vnpayChoTrang: thiếu một bí mật → null và một dòng log nêu tên', tat === null && loi.length === 1 && loi[0].includes('VNPAY_MAY_MAT_KHAU'), loi.join(' | '));
+    ok('vnpayChoTrang: thiếu một bí mật → null và MỘT dòng log nêu tên (dựng trang lần hai không ghi lại)',
+       tat === null && loi.length === 1 && loi[0].includes('VNPAY_MAY_MAT_KHAU'), loi.join(' | '));
   } finally { process.env = goc; }
 });
 
@@ -385,6 +387,14 @@ await nhom('7 · ĐẶT HÀNG CÓ VNPAY → CHUYỂN THẲNG SANG VNPAY (bam-hai
   const rong = await XL.luotDatHang(yeuCau(formDon()), boc(async () => ({ data: null, error: null })), '/mua-thit-ve', 'vi', VNPAY_TRANG);
   console.error = cu;
   ok('Trả lời rỗng → coi như không nghe được (choTra), không bao giờ sang VNPay với số bừa', rong.ketQua.choTra === true && !rong.sangVnpay);
+
+  // Rà soát 12/11/2026: số tiền ngoài khoảng VNPay nhận làm taoLinkVnpay ném → trước đây trang 500 dù đơn đã ghi.
+  console.error = () => {};
+  const tienNho = await XL.luotDatHang(yeuCau(formDon()), boc(async () => ({ data: { ma_don: 'ZX23CD', so_tien: 4000, da_tra: false, ma_giao_dich: 'ZX23CD01' }, error: null })),
+    '/mua-thit-ve', 'vi', VNPAY_TRANG);
+  console.error = cu;
+  ok('Số tiền VNPay không nhận (4.000 đ) → thẻ "đã nhận đơn, CHƯA trả tiền", không ném, không sang VNPay',
+     tienNho.ketQua.ok && tienNho.ketQua.choTra === true && !tienNho.sangVnpay && tienNho.ketQua.loi === DH.CAU_DAT_HANG.chuaMoTraTien.vi, JSON.stringify(tienNho.ketQua));
 
   const kq = XL.ketQuaDatHang({ cookies: { get: () => ({ value: JSON.stringify({ ...matMang.ketQua, loai: 'dat_hang' }) }), delete: () => {} } }, 'en');
   ok('ketQuaDatHang đưa choTra, loiTra cho thẻ', kq.ok && kq.choTra === true && kq.loiTra === matMang.ketQua.loi && kq.daTra === false);

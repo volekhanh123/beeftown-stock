@@ -300,12 +300,15 @@ export const DUONG_KET_QUA_VNPAY: Record<NgonNgu, string> = {
 
 /**
  * Đọc VNPay cho trang đang dựng. Thiếu bí mật nào → null (trang như 0113: quán gọi xác nhận, website không thu tiền);
- * thiếu một phần thì ghi một dòng log nêu tên bí mật thiếu. Gốc đường về: SITE_URL, không có thì gốc của request.
+ * thiếu một phần thì ghi một dòng log nêu tên bí mật thiếu (một lần mỗi isolate, mỗi câu). Gốc đường về: SITE_URL, không có thì gốc của request.
  */
+/** Câu thiếu bí mật đã ghi log trong isolate này — mỗi lần dựng trang không ghi lại cùng một dòng. */
+let cauThieuDaGhi = '';
+
 export async function vnpayChoTrang(ctx: Pick<APIContext, 'url'>, ngonNgu: NgonNgu, env?: Record<string, unknown>): Promise<VnpayTrang | null> {
   const doc = await docCauHinhVnpay(env);
   if (!doc.ok) {
-    if (!doc.chuaCai) console.error(`[vnpay] ${doc.cau}`);
+    if (!doc.chuaCai && doc.cau !== cauThieuDaGhi) { cauThieuDaGhi = doc.cau; console.error(`[vnpay] ${doc.cau}`); }
     return null;
   }
   const goc = (layBienCong('SITE_URL', env) ?? ctx.url.origin).replace(/\/$/, '');
@@ -381,9 +384,16 @@ async function moVnpay(
   }
   if (!mo.ok) return { ketQua: { ok: true, ma: maDon, choTra: true, loi: mo.cau }, ve: 'da_nhan', traVnpay };
   if (mo.daTra) return { ketQua: { ok: true, ma: mo.maDon, daTra: true }, ve: 'da_nhan' };
-  const url = await taoLinkVnpay(vnpay.cauHinh, {
-    maGiaoDich: mo.maGiaoDich, maDon: mo.maDon, soTien: mo.soTien, ngonNgu, ip: layIp(request), duongVe: vnpay.duongVe, ms,
-  });
+  let url: string;
+  try {
+    url = await taoLinkVnpay(vnpay.cauHinh, {
+      maGiaoDich: mo.maGiaoDich, maDon: mo.maDon, soTien: mo.soTien, ngonNgu, ip: layIp(request), duongVe: vnpay.duongVe, ms,
+    });
+  } catch (e) {
+    // Số tiền ngoài khoảng VNPay nhận (dưới 5.000 đ, từ 1 tỷ): đơn đã ghi — nói đúng là CHƯA trả, không bao giờ trang 500.
+    console.error('[dat-hang] không dựng được đường dẫn VNPay:', loiNgan(e));
+    return { ketQua: { ok: true, ma: maDon, choTra: true, loi: CAU_DAT_HANG.chuaMoTraTien[ngonNgu] }, ve: 'da_nhan', traVnpay };
+  }
   return { ketQua: { ok: true, ma: mo.maDon }, ve: url, traVnpay, sangVnpay: true };
 }
 

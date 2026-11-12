@@ -7,7 +7,7 @@
  * Messenger — không cookie, không phiên người), và src/pages/hook/vnpay-ipn.ts cho `astro dev`.
  *
  * Luật IPN (trả lời luôn là 200 + JSON {RspCode, Message} như code mẫu VNPay; VNPay gọi lại khi không nhận được 00 / 02):
- *   · chưa cài đủ bốn bí mật → 99 "Unknown error" (một dòng log nêu tên bí mật thiếu).
+ *   · phương thức khác GET / POST → 405. Chưa cài đủ bốn bí mật → 99 "Unknown error" (một dòng log nêu tên bí mật thiếu).
  *   · IP nguồn (CF-Connecting-IP — Cloudflare tự đặt, khách không giả được) ngoài dải của VNPay → 03 "IP prohibited".
  *   · chữ ký sai → 97 "Invalid Checksum". vnp_TmnCode khác Terminal của website → 01. Số tiền sai dạng → 04.
  *   · đăng nhập tài khoản máy may_vnpay (phiên nhớ trong isolate — taoPhienMayNho) → vnpay_ghi_ipn:
@@ -75,7 +75,7 @@ function taoGhi(pt: PhuThuocVnpay, ch: CauHinhVnpay | null, dau: string) {
 // -----------------------------------------------------------------------------
 // IPN
 // -----------------------------------------------------------------------------
-export const RSP = {
+export const MA_TRA_LOI_IPN = {
   thanhCong:  { RspCode: '00', Message: 'Confirm Success' },
   khongThay:  { RspCode: '01', Message: 'Order not found' },
   daXacNhan:  { RspCode: '02', Message: 'Order already confirmed' },
@@ -89,8 +89,8 @@ const traIpn = (r: { RspCode: string; Message: string }) => new Response(JSON.st
   status: 200, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
 });
 
-const KET_QUA_IPN: Record<string, (typeof RSP)[keyof typeof RSP]> = {
-  da_ghi: RSP.thanhCong, khong_thay: RSP.khongThay, da_xac_nhan: RSP.daXacNhan, sai_tien: RSP.saiTien,
+const KET_QUA_IPN: Record<string, (typeof MA_TRA_LOI_IPN)[keyof typeof MA_TRA_LOI_IPN]> = {
+  da_ghi: MA_TRA_LOI_IPN.thanhCong, khong_thay: MA_TRA_LOI_IPN.khongThay, da_xac_nhan: MA_TRA_LOI_IPN.daXacNhan, sai_tien: MA_TRA_LOI_IPN.saiTien,
 };
 
 /** Một lần VNPay gọi IPN. Không bao giờ ném lỗi. */
@@ -99,29 +99,29 @@ export async function xuLyIpnVnpay(req: Request, pt: PhuThuocVnpay = {}): Promis
   const ch = doc.ok ? doc.cauHinh : null;
   const ghi = taoGhi(pt, ch, 'VNPay IPN');
   if (req.method !== 'GET' && req.method !== 'POST') {
-    return new Response('Chỉ nhận GET', { status: 405, headers: { allow: 'GET, POST' } });
+    return new Response('Chỉ nhận GET hoặc POST', { status: 405, headers: { allow: 'GET, POST' } });
   }
-  if (!doc.ok) { ghi(doc.cau); return traIpn(RSP.loiKhac); }
+  if (!doc.ok) { ghi(doc.cau); return traIpn(MA_TRA_LOI_IPN.loiKhac); }
   const c = doc.cauHinh;
 
   const ip = req.headers.get('cf-connecting-ip');
   if (!ipTrongDanhSach(ip, c.ipIpn)) {
     ghi(`từ chối IPN từ IP ${String(ip ?? '(không có)').slice(0, 45)} — không nằm trong ${TEN_BI_MAT_VNPAY.ipIpn}`);
-    return traIpn(RSP.saiIp);
+    return traIpn(MA_TRA_LOI_IPN.saiIp);
   }
 
   let kq;
-  try { kq = await docThamSoVnpay(new URL(req.url).searchParams, c); } catch { return traIpn(RSP.loiKhac); }
-  if (!kq.chuKyDung) { ghi(`chữ ký sai (mã giao dịch ${kq.maGiaoDich.slice(0, 20) || '(trống)'})`); return traIpn(RSP.saiChuKy); }
-  if (kq.maTmn !== c.maTmn || !kq.maDon) { ghi(`không phải giao dịch của website (${kq.maTmn} / ${kq.maGiaoDich.slice(0, 20)})`); return traIpn(RSP.khongThay); }
-  if (kq.soTien === null) { ghi(`số tiền sai dạng (${kq.maGiaoDich})`); return traIpn(RSP.saiTien); }
+  try { kq = await docThamSoVnpay(new URL(req.url).searchParams, c); } catch { return traIpn(MA_TRA_LOI_IPN.loiKhac); }
+  if (!kq.chuKyDung) { ghi(`chữ ký sai (mã giao dịch ${kq.maGiaoDich.slice(0, 20) || '(trống)'})`); return traIpn(MA_TRA_LOI_IPN.saiChuKy); }
+  if (kq.maTmn !== c.maTmn || !kq.maDon) { ghi(`không phải giao dịch của website (${kq.maTmn} / ${kq.maGiaoDich.slice(0, 20)})`); return traIpn(MA_TRA_LOI_IPN.khongThay); }
+  if (kq.soTien === null) { ghi(`số tiền sai dạng (${kq.maGiaoDich})`); return traIpn(MA_TRA_LOI_IPN.saiTien); }
   if (!/^[0-9A-Z]{2}$/.test(kq.maPhanHoi) || (kq.trangThaiGd !== null && !/^[0-9A-Z]{2}$/.test(kq.trangThaiGd))) {
     ghi(`mã phản hồi sai dạng (${kq.maGiaoDich})`);
-    return traIpn(RSP.loiKhac);
+    return traIpn(MA_TRA_LOI_IPN.loiKhac);
   }
 
   const { dn, nho } = await dangNhap(c, pt);
-  if (!dn.ok) { ghi(dn.cau); return traIpn(RSP.loiKhac); }
+  if (!dn.ok) { ghi(dn.cau); return traIpn(MA_TRA_LOI_IPN.loiKhac); }
   try {
     const { data, error } = await dn.client.rpc('vnpay_ghi_ipn', {
       p_ma_giao_dich: kq.maGiaoDich, p_so_tien: kq.soTien, p_ma_phan_hoi: kq.maPhanHoi, p_trang_thai_gd: kq.trangThaiGd,
@@ -130,16 +130,16 @@ export async function xuLyIpnVnpay(req: Request, pt: PhuThuocVnpay = {}): Promis
     if (error) {
       if (nho) phienVnpay.quen();
       ghi(`không ghi được kết quả ${kq.maGiaoDich}: ${error.message ?? ''}`);
-      return traIpn(RSP.loiKhac);
+      return traIpn(MA_TRA_LOI_IPN.loiKhac);
     }
     const r = typeof data === 'string' ? KET_QUA_IPN[data] : undefined;
-    if (!r) { ghi(`database trả lời lạ cho ${kq.maGiaoDich}`); return traIpn(RSP.loiKhac); }
+    if (!r) { ghi(`database trả lời lạ cho ${kq.maGiaoDich}`); return traIpn(MA_TRA_LOI_IPN.loiKhac); }
     ghi(`${kq.maGiaoDich}: ${data}${data === 'da_ghi' ? (kq.daTra ? ' (đã trả)' : ` (chưa trả, mã ${kq.maPhanHoi})`) : ''}`);
     return traIpn(r);
   } catch (e) {
     if (nho) phienVnpay.quen();
     ghi(`lỗi khi ghi ${kq.maGiaoDich}: ${e instanceof Error ? e.message : String(e)}`);
-    return traIpn(RSP.loiKhac);
+    return traIpn(MA_TRA_LOI_IPN.loiKhac);
   } finally {
     await dn.dangXuat();
   }
