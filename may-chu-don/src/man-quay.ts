@@ -121,7 +121,8 @@ export const laCauBao = (v: unknown): v is MaCauBao => typeof v === 'string' && 
 
 export const thoat = (s: unknown) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 
-function khung(nn: NgonNgu, than: string, { taiLai = false, coDangXuat = false } = {}): string {
+/** Khung chung của mọi trang quầy (đầu trang đen, phông, CSS). Trang thử VNPay (vnpay-thu.ts) cũng dùng. */
+export function khung(nn: NgonNgu, than: string, { taiLai = false, coDangXuat = false } = {}): string {
   const c = (k: keyof typeof CHU) => thoat(CHU[k][nn]);
   return `<!doctype html>
 <html lang="${nn}">

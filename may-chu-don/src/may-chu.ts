@@ -10,6 +10,8 @@
  *   POST /zalo/thanh-toan      Checkout SDK của Zalo báo kết quả VNPay (kiểm mac, overallMac → SoDon.ghiThanhToanZalo).
  *                              Trả {"returnCode": 1} chỉ khi đã ghi; 2 khi đã ghi từ trước.
  *   POST /zalo/vnpay-ipn       Zalo chuyển tiếp IPN của VNPay sandbox (hồ sơ kiểm thử SIT): chỉ ghi nhật ký.
+ *   GET  /quay/vnpay-thu       Trang thử VNPay (sandbox, Khánh 12/11/2026): ký đường dẫn tới cổng thử của VNPay.
+ *   GET  /vnpay-thu/ket-qua    Return URL của trang thử: kiểm chữ ký, hiện kết quả — không ghi gì vào sổ đơn.
  *   GET  /suc-khoe             Số đếm cho đèn sức khỏe — không dữ liệu cá nhân.
  *   GET  /quay                 Màn hình đơn cho quầy (mật khẩu quầy → phiên 12 giờ).
  *   POST /quay/dang-nhap · /quay/dang-xuat · /quay/doi · /quay/ngon-ngu · /quay/tien-ve/da-xem;
@@ -28,6 +30,7 @@ import { SoDon, PHUT_CHO_THANH_TOAN, type DonDayDu } from './so-don.ts';
 import { DA_NHAN, docTinTienVe, kiemChuKy, type TinTienVe } from './sepay.ts';
 import { chuoiVietQr, noiDungChuyenKhoan, svgVietQr, type TaiKhoanNhan } from './viet-qr.ts';
 import { NHAN, duocBam, laTrangThai } from './trang-thai.ts';
+import { SO_TIEN_THU, docKetQuaVe, taoLinkThanhToanThu, trangKetQuaThu, trangTaoThu, type CauHinhVnpayThu } from './vnpay-thu.ts';
 import { docCallback, docThanCallback, dongNhatKyIpnVnpay, laThuNghiem, thamSoTaoDon, traCheckout, type CauHinhCheckout, type ThamSoTaoDon } from './checkout-zalo.ts';
 import { laCauBao, trangDangNhap, trangDanhSach, trangXacNhanHuy, type NgonNgu } from './man-quay.ts';
 import { gioVnTuMs } from '../../web/src/lib/gio-vn.ts';
@@ -62,6 +65,8 @@ export interface TuyChonMayChu {
    * cho mã VietQR. main.ts không cho bật cùng chế độ demo.
    */
   checkout?: CauHinhCheckout;
+  /** Trang thử VNPay trên web (vnpay-thu.ts): mã Terminal và vnp_HashSecret. Không có: hai đường của trang thử trả 404. */
+  vnpayThu?: CauHinhVnpayThu;
 }
 
 /**
@@ -390,6 +395,13 @@ export function taoXuLy(tc: TuyChonMayChu) {
       }
     }
 
+    // ---------- Trang thử VNPay: Return URL (công khai — VNPay đưa trình duyệt về đây, không mang cookie quầy) ----------
+    if (duong === '/vnpay-thu/ket-qua' && req.method === 'GET') {
+      if (!tc.vnpayThu) return html(trangKetQuaThu(null), 404);
+      if (!gioiHanXem.thu(ip, ms)) return html(trangKetQuaThu(null), 429);
+      return html(trangKetQuaThu(docKetQuaVe(url.searchParams, tc.vnpayThu)));
+    }
+
     if (duong === '/suc-khoe' && req.method === 'GET') {
       if (tc.khoaSucKhoe && !bangNhau(url.searchParams.get('khoa') ?? '', tc.khoaSucKhoe)) return loiApi(403, 'Sai khóa.');
       try {
@@ -454,6 +466,17 @@ export function taoXuLy(tc: TuyChonMayChu) {
         return html(trangDanhSach(nn, tc.so.danhSachQuay(ms), bao, tc.so.tienVeCanXem(), ma => daNhan.get(ma) ?? 0,
           tc.so.donCoTienDemo(), tc.demo ? tc.so.donChoThanhToan() : undefined,
           { donTienThu: tc.so.donCoTienThuVnpay(), dangThuNghiem: !!tc.checkout && laThuNghiem(tc.checkout.phuongThuc) }));
+      }
+
+      if (duong === '/quay/vnpay-thu' && req.method === 'GET') {
+        if (!tc.vnpayThu) return html('Not found', 404);
+        const soTien = Number(url.searchParams.get('so-tien'));
+        const chon = (SO_TIEN_THU as readonly number[]).includes(soTien) ? soTien : null;
+        // Đường dẫn về: tên miền khách đang mở (máy thuê sau Caddy: https://don.beeftown.vn).
+        const host = req.headers.get('host') ?? '';
+        const goc = `${tc.cookieAnToan ? 'https' : 'http'}://${/^[A-Za-z0-9.:-]{1,253}$/.test(host) ? host : 'don.beeftown.vn'}`;
+        const link = chon === null ? null : taoLinkThanhToanThu({ ch: tc.vnpayThu, soTien: chon, ip, ms, goc });
+        return html(trangTaoThu({ soTien: chon, link }));
       }
 
       if (duong === '/quay/huy' && req.method === 'GET') {

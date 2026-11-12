@@ -22,6 +22,9 @@
  *   ZALO_MINI_APP_ID, ZALO_CHECKOUT_KHOA_RIENG, ZALO_CHECKOUT_PHUONG_THUC
  *                      khách trả qua VNPay bằng Checkout SDK của Zalo (README, "Cài VNPay qua Checkout SDK"). Đặt đủ cả
  *                      ba, hoặc không đặt cái nào. Phương thức: VNPAY_SANDBOX (thử) hoặc VNPAY (tiền thật)
+ *   VNPAY_THU_MA_TMN, VNPAY_THU_KHOA_BI_MAT
+ *                      trang thử VNPay trên web, chỉ sandbox, cho phiếu kiểm thử của VNPay (README, "Trang thử VNPay
+ *                      trên web"). Đủ cả hai hoặc không. Tự tắt khi ZALO_CHECKOUT_PHUONG_THUC=VNPAY (tiền thật)
  */
 import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -31,6 +34,7 @@ import { laTaiKhoanNhan } from './viet-qr.ts';
 import { dauToken, docCauHinhZns, maHoaToken } from './zns.ts';
 import { guiZnsMotLuot } from './gui-zns.ts';
 import { diaChiIpnVnpay, docCauHinhCheckout, laThuNghiem } from './checkout-zalo.ts';
+import { docCauHinhVnpayThu } from './vnpay-thu.ts';
 
 const env = process.env;
 const matKhauQuay = env.MAT_KHAU_QUAY ?? '';
@@ -89,6 +93,12 @@ if (demo && checkout.cauHinh) {
   process.exit(1);
 }
 
+// Trang thử VNPay (chỉ sandbox): đủ hai biến hoặc không. Khi máy chủ đã nhận tiền thật qua VNPay thì trang thử tự tắt —
+// không chặn máy chủ chạy (quên xóa hai dòng thì quầy vẫn bán được), chỉ ghi nhật ký.
+const vnpayThu = docCauHinhVnpayThu({ VNPAY_THU_MA_TMN: env.VNPAY_THU_MA_TMN, VNPAY_THU_KHOA_BI_MAT: env.VNPAY_THU_KHOA_BI_MAT });
+if (!vnpayThu.ok) { console.error(vnpayThu.loi); process.exit(1); }
+const batTrangThu = !!vnpayThu.cauHinh && !(checkout.cauHinh && !laThuNghiem(checkout.cauHinh.phuongThuc));
+
 const zns = docCauHinhZns({
   ZALO_APP_ID: env.ZALO_APP_ID, ZALO_SECRET_KEY: env.ZALO_SECRET_KEY, ZNS_MAU_DA_NHAN: env.ZNS_MAU_DA_NHAN,
   ZNS_MAU_DANG_GIAO: env.ZNS_MAU_DANG_GIAO, ZALO_CHE_DO: env.ZALO_CHE_DO,
@@ -111,6 +121,7 @@ const xuLy = taoXuLy({
   so, matKhauQuay, khoaSucKhoe: env.KHOA_SUC_KHOE || undefined, cookieAnToan: env.KHONG_HTTPS !== '1',
   taiKhoan: demo ? TAI_KHOAN_DEMO : coTaiKhoan ? taiKhoan : undefined, khoaSepay: khoaSepay || undefined,
   choTraGiaThu: env.CHO_TRA_GIA_THU === '1', demo, checkout: checkout.cauHinh ?? undefined,
+  vnpayThu: batTrangThu ? vnpayThu.cauHinh! : undefined,
 });
 const tinProxy = env.TIN_PROXY === '1';
 
@@ -146,8 +157,12 @@ const hetHan = setInterval(() => {
 
 console.log(`Máy chủ đơn đang nghe http://${diaChi}:${mayChu.port} · sổ đơn ${join(thuMuc, 'don.sqlite')}`);
 console.log(demo ? 'CHẾ ĐỘ DEMO: mã QR dùng tài khoản giả, quầy có nút giả lập tiền về — không có tiền thật. Tắt trước khi mở bán.'
-  : coTaiKhoan ? `Nhận chuyển khoản vào ${taiKhoan.tenNganHang} …${taiKhoan.soTaiKhoan.slice(-4)}` : 'Chưa có tài khoản nhận: đơn chưa có mã trả tiền.');
+  : coTaiKhoan ? `Nhận chuyển khoản vào ${taiKhoan.tenNganHang} …${taiKhoan.soTaiKhoan.slice(-4)}`
+  : checkout.cauHinh ? 'Chuyển khoản VietQR: tắt (chưa có tài khoản nhận) — khách trả qua VNPay.' : 'Chưa có tài khoản nhận: đơn chưa có mã trả tiền.');
 console.log(khoaSepay ? 'SePay: đã có khóa ký.' : 'SePay: chưa có khóa ký — /sepay/tien-ve trả 503.');
+if (vnpayThu.cauHinh) console.log(batTrangThu
+  ? `Trang thử VNPay (sandbox, Terminal ${vnpayThu.cauHinh.maTmn}): /quay/vnpay-thu — chỉ để làm phiếu kiểm thử của VNPay.`
+  : 'Trang thử VNPay: TẮT vì máy chủ đang nhận tiền thật (ZALO_CHECKOUT_PHUONG_THUC=VNPAY). Xóa hai dòng VNPAY_THU_… cho gọn.');
 console.log(!checkout.cauHinh ? 'VNPay: chưa cấu hình Checkout SDK — đơn trả bằng VietQR (nếu có tài khoản nhận).'
   : `VNPay qua Checkout SDK: ${laThuNghiem(checkout.cauHinh.phuongThuc) ? 'MÔI TRƯỜNG THỬ (VNPAY_SANDBOX) — tiền thử, không phải tiền thật' : 'tiền thật (VNPAY)'}`
     + `, Mini App ${checkout.cauHinh.maMiniApp}. IPN khai với VNPay: ${diaChiIpnVnpay(checkout.cauHinh.maMiniApp)}`);
