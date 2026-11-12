@@ -1620,6 +1620,9 @@ nhom('23 · Trang thử VNPay trên web (Khánh 12/11/2026): chỉ sandbox, ký 
     k1.chuKyDung && k1.daTra && k1.maGiaoDich === maGiaoDich && k1.soTien === 300_000 && k1.thoiGian === '13/11/2026 23:52:10', JSON.stringify(k1));
   const k2 = docKetQuaVe(veVnpay(ve({ vnp_ResponseCode: '24', vnp_TransactionStatus: '02', vnp_BankTranNo: '', vnp_TransactionNo: '0' })), CH);
   ok('Khách hủy (24 / 02) → chữ ký đúng, chưa trả', k2.chuKyDung && !k2.daTra && k2.maPhanHoi === '24');
+  const khongTrangThai = ve(); delete (khongTrangThai as Record<string, string>).vnp_TransactionStatus;
+  ok('Return URL không có vnp_TransactionStatus mà mã 00 → vẫn là đã trả', docKetQuaVe(veVnpay(khongTrangThai), CH).daTra);
+  ok('Mã 00 mà trạng thái 02 → chưa trả', !docKetQuaVe(veVnpay(ve({ vnp_TransactionStatus: '02' })), CH).daTra);
   const thamTrong = ve({ vnp_BankTranNo: '' });
   const coRong = new URLSearchParams({ ...thamTrong, vnp_SecureHash: createHmac('sha512', KHOA).update(chuoiMau(thamTrong)).digest('hex') });
   ok('Tham số rỗng có trong chuỗi ký (cách của code mẫu PHP) hay không (thư viện vnpay): đều nhận', docKetQuaVe(coRong, CH).chuKyDung);

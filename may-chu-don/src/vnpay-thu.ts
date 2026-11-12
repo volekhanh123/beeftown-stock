@@ -135,7 +135,8 @@ export function docKetQuaVe(query: URLSearchParams, ch: CauHinhVnpayThu): KetQua
   const ngay = g('vnp_PayDate').match(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/);
   return {
     chuKyDung: dung,
-    daTra: dung && thamSo.vnp_ResponseCode === '00' && thamSo.vnp_TransactionStatus === '00',
+    // Trạng thái giao dịch thường có; thiếu thì theo mã phản hồi (có thì phải là 00).
+    daTra: dung && thamSo.vnp_ResponseCode === '00' && (thamSo.vnp_TransactionStatus ?? '00') === '00',
     maGiaoDich: g('vnp_TxnRef'), soTien: tien, maPhanHoi: g('vnp_ResponseCode', 4), trangThai: g('vnp_TransactionStatus', 4),
     nganHang: g('vnp_BankCode', 20), maGiaoDichVnpay: g('vnp_TransactionNo', 20),
     thoiGian: ngay ? `${ngay[3]}/${ngay[2]}/${ngay[1]} ${ngay[4]}:${ngay[5]}:${ngay[6]}` : '',
