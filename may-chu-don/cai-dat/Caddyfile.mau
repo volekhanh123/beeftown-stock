@@ -29,6 +29,9 @@ TEN_MIEN_MAY_CHU {
 	}
 	respond @khong_phai_zalo "Chỉ Checkout SDK của Zalo được gọi đường này." 403
 
+	# Trạng thái chuyến xe Ahamove (/ahamove/trang-thai): Ahamove không công bố danh sách IP gọi webhook (tài liệu Webhook,
+	# đọc 12/11/2026), nên không chặn theo IP ở đây — máy chủ đơn kiểm khóa webhook (header apikey) trước khi đọc thân.
+
 	# Máy chủ đơn chỉ nghe trong máy (127.0.0.1:8787, TIN_PROXY=1): IP khách lấy từ mục cuối X-Forwarded-For mà Caddy đặt.
 	reverse_proxy 127.0.0.1:8787
 

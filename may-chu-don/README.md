@@ -6,7 +6,7 @@ khách chọn khay, trả tiền trong app, đơn hiện ngay trên máy tính b
 Máy chủ phải chạy ở Việt Nam: Zalo bắt dữ liệu khách của Mini App phải xử lý và lưu trong nước. Đợt thử chạy trên
 laptop ở công ty, khi mở bán chuyển lên máy chủ thuê ở Việt Nam (khoảng 95.000–120.000 đ/tháng chưa VAT).
 
-## Đã làm được (đợt 1, 2a, 2b, 3, VNPay 1)
+## Đã làm được (đợt 1, 2a, 2b, 3, VNPay 1, Ahamove 1)
 
 - Nhận đơn từ Mini App: máy chủ tự tính tiền theo bảng giá, kiểm giờ nhận theo giờ Việt Nam, bấm gửi hai lần vẫn
   chỉ ra một đơn. Đơn trả trước chỉ giao tận nơi, giá khay đã gồm phí giao (Khánh 09/11/2026); màn quầy hiện địa
@@ -31,6 +31,12 @@ laptop ở công ty, khi mở bán chuyển lên máy chủ thuê ở Việt Nam
 - Tin Zalo (ZNS, đợt 3): tiền về đủ → khách nhận tin "Beeftown đã nhận đơn"; quầy bấm "Soạn xong, chờ giao" → khách
   nhận tin "đang giao". Mỗi đơn mỗi tin đúng một lần; mất mạng thì máy chủ tự gửi lại. Chỉ chạy khi đã cài ZNS (mục
   "Cài ZNS"); chưa cài thì máy chủ vẫn chạy như cũ.
+- Gọi xe Ahamove (Khánh 12/11/2026, mục "Cài Ahamove"): quầy bấm "Soạn xong, chờ giao" là máy chủ gọi một xe máy
+  Ahamove giao ngay (trong khoảng 15 giây), trả bằng ví Ahamove của quán. Thẻ đơn hiện chuyến: đang tìm tài xế, tài xế
+  (tên, số bấm gọi), đang giao, link theo dõi, phí xe. Ahamove báo giao được thì đơn tự sang "Đã giao tới khách". Ahamove
+  không nhận đơn, hủy (không có tài xế), giao không được: thẻ báo lý do, có nút "Gọi lại xe Ahamove" và "Quầy tự xử lý".
+  Quầy hủy đơn thì máy chủ hủy luôn chuyến (khi tài xế chưa lấy hàng). Mất mạng giữa lúc gọi: máy chủ tra Ahamove theo
+  mã đơn trước khi gọi lại — không ra hai xe. Chưa cài thì quầy tự gọi xe như cũ.
 
 Bộ cài lên máy chủ thuê ở Việt Nam: mục "Đưa lên máy chủ thuê" (đợt 4a).
 
@@ -235,11 +241,18 @@ Chưa có (đợt 4, issue #138): sao lưu sổ đơn ra ngoài máy, đèn sứ
 | `ZALO_CHECKOUT_PHUONG_THUC` | khi trả qua VNPay | `VNPAY_SANDBOX` (môi trường thử, tiền thử) hoặc `VNPAY` (tiền thật) |
 | `VNPAY_THU_MA_TMN` | trang thử VNPay | Mã Terminal VNPay cho trang thử trên web, ví dụ `SLKGTE22` (mục "Trang thử VNPay trên web") |
 | `VNPAY_THU_KHOA_BI_MAT` | trang thử VNPay | Secret Key (vnp_HashSecret) của Terminal đó, trong tệp .zip VNPay gửi. Không gửi qua chat |
+| `AHAMOVE_API_KEY` | khi gọi xe Ahamove | API key Ahamove cấp (Partner Portal → Tích hợp, hay email sau khi đăng ký). Không gửi qua chat |
+| `AHAMOVE_SO_DIEN_THOAI` | khi gọi xe Ahamove | Số điện thoại đã đăng ký tích hợp với Ahamove (dạng `0961…` hay `84961…`) |
+| `AHAMOVE_KHOA_WEBHOOK` | khi gọi xe Ahamove | Khóa quán tự tạo cho webhook (ít nhất 16 ký tự, `openssl rand -hex 24`), khai cùng chuỗi ở Partner Portal |
+| `AHAMOVE_MOI_TRUONG` | không | `thu` (mặc định: Staging, không có tài xế thật) hoặc `that` (chỉ đơn có tiền thật mới gọi xe) |
+| `AHAMOVE_SDT_LAY_HANG` | không | Số tài xế gọi khi tới quán lấy hàng. Mặc định: số đăng ký tích hợp |
+| `AHAMOVE_DICH_VU` | không | Mã dịch vụ Ahamove, mặc định `SGN-BIKE` (xe máy, lấy hàng ngay, giao hỏa tốc) |
 
 Bốn biến tài khoản phải đặt đủ cả bốn, hoặc không đặt cái nào (máy chủ vẫn nhận đơn nhưng không có mã trả tiền). Thiếu
 một biến, khóa SePay dưới 16 ký tự, hay có khóa SePay mà chưa có tài khoản: máy chủ không chạy và báo rõ biến nào sai.
 Bốn biến ZNS đầu cũng vậy: đủ cả bốn, hoặc không cái nào (không gửi tin Zalo). Ba biến VNPay cũng vậy; có ba biến
-VNPay thì app trả qua VNPay (thắng VietQR); `CHE_DO_DEMO=1` cùng ba biến VNPay thì máy chủ không chạy.
+VNPay thì app trả qua VNPay (thắng VietQR); `CHE_DO_DEMO=1` cùng ba biến VNPay thì máy chủ không chạy. Ba biến Ahamove
+đầu cũng vậy: đủ cả ba, hoặc không cái nào (không gọi xe); đặt biến Ahamove phụ mà thiếu ba biến đầu thì máy chủ không chạy.
 
 ## Đường dẫn
 
@@ -254,9 +267,11 @@ VNPay thì app trả qua VNPay (thắng VietQR); `CHE_DO_DEMO=1` cùng ba biến
 | `GET /quay/vnpay-thu` | Quầy (đã đăng nhập), chỉ khi có hai biến `VNPAY_THU_…` | Trang thử VNPay: chọn số tiền, mở cổng thử của VNPay |
 | `GET /vnpay-thu/ket-qua` | Trình duyệt, VNPay đưa về (Return URL) | Kết quả giao dịch thử: kiểm chữ ký VNPay rồi hiện — không ghi gì vào sổ đơn |
 | `POST /zalo/vnpay-ipn` | Checkout SDK của Zalo (sandbox) | Zalo chuyển tiếp IPN của VNPay để làm hồ sơ kiểm thử — chỉ ghi nhật ký, không đổi đơn |
+| `POST /ahamove/trang-thai` | Ahamove (webhook) | Trạng thái chuyến xe, header `apikey` bằng `AHAMOVE_KHOA_WEBHOOK`. Trả 200 chỉ khi đã ghi (hay chuyến không phải của quán); sai khóa 401. Ahamove không công bố IP nên Caddy không chặn theo IP |
 | `GET /quay` | Quầy | Màn hình đơn |
+| `POST /quay/xe/goi-lai` · `/quay/xe/tu-goi` | Quầy | Chuyến xe cần người làm: gọi lại một lần mới, hay quầy tự xử lý (thôi báo) |
 | `POST /quay/demo/tien-ve` | Quầy, chỉ khi `CHE_DO_DEMO=1` | Giả lập khách chuyển đủ tiền cho một đơn chờ trả tiền (mục "Chế độ demo"); tắt demo thì 404 |
-| `GET /suc-khoe` | Đèn sức khỏe (đợt 4) | Số đơn chờ soạn, chờ lâu nhất bao nhiêu phút, tin ZNS chờ / hỏng, trạng thái token Zalo; VNPay: phương thức, lần trả cuối, số lần thất bại 24 giờ, số đơn mở trang VNPay quá 20 phút chưa có kết quả, số tin Zalo bị từ chối — không dữ liệu khách |
+| `GET /suc-khoe` | Đèn sức khỏe (đợt 4) | Số đơn chờ soạn, chờ lâu nhất bao nhiêu phút, tin ZNS chờ / hỏng, trạng thái token Zalo; VNPay: phương thức, lần trả cuối, số lần thất bại 24 giờ, số đơn mở trang VNPay quá 20 phút chưa có kết quả, số tin Zalo bị từ chối; Ahamove: môi trường, số chuyến cần quầy làm, lần cuối Ahamove báo, lỗi token, số webhook bị từ chối — không dữ liệu khách |
 
 ## Chế độ demo (thử trọn luồng khi chưa có tài khoản ngân hàng)
 
@@ -465,6 +480,57 @@ sau. Tin quá cũ không gửi nữa: "đã nhận đơn" sau 24 giờ hay khi �
 Máy chủ tắt giữa lúc gọi Zalo: tin đó không gửi lại (khách nhận hai tin còn tệ hơn thiếu một tin). Đơn mẫu không có
 tin nào. Nhật ký chỉ ghi mã đơn và mã lỗi — không tên, không số điện thoại, không token.
 
+## Cài Ahamove (gọi xe giao đơn)
+
+Khánh chọn Ahamove ngày 12/11/2026 (API tự xin, giao ngay trong 60 phút từ lúc tài xế nhận, công ty Việt Nam). Máy chủ
+gọi thẳng Ahamove từ máy ở Việt Nam. Ahamove nhận tên, số điện thoại, địa chỉ giao và ghi chú của khách — đúng phần tài
+xế cần để giao. Tài liệu API: developers.ahamove.com/docs (đọc 12/11/2026).
+
+**Trước khi bật cho khách thật** (Khánh và Sang):
+
+- Sang chốt: bán kính giao xa nhất, đơn tối thiểu (giá khay đã gồm phí giao: một khay 115.000 đ giao 5 km mất khoảng
+  30.000 đ tiền xe), túi giữ lạnh và đá gel cho mỗi đơn.
+- Ahamove trả lời các câu trong form đăng ký: dữ liệu khách lưu ở Việt Nam không, phí bảo hiểm hàng, bật chặn trùng mã
+  theo dõi, webhook có gửi lại không, có nhận địa chỉ kiểu mới (không còn quận) không, hóa đơn VAT cho SLK Group.
+- Chính sách bảo mật của Mini App ghi thêm Ahamove là bên nhận tên, số điện thoại, địa chỉ để giao hàng.
+
+**Các bước** (12/11/2026 đã có tài khoản Staging: Partner ID `beeftown`, cổng thử `business-stg.ahamove.com`):
+
+1. Lấy **API key** Staging ở Partner Portal (`business-stg.ahamove.com`) → **Tích hợp**, hay trong email Ahamove gửi.
+   Không gửi qua chat.
+2. Tạo **khóa webhook** trên máy chủ: `openssl rand -hex 24`, chép chuỗi ra.
+3. Partner Portal → **Tích hợp** → Webhook: URL `https://don.beeftown.vn/ahamove/trang-thai`, xác thực kiểu **API Key**,
+   giá trị là khóa vừa tạo. Cổng không cho tự khai thì gửi Ahamove (support@ahamove.com) URL, kiểu xác thực và khóa đó
+   — chỉ khóa webhook, không bao giờ gửi API key hay mật khẩu khác. Chưa khai webhook máy chủ vẫn chạy: nó tự hỏi
+   trạng thái chuyến 3 phút một lần.
+4. Trên máy chủ: `sudo nano /etc/beeftown/may-chu-don.env`, bỏ dấu `#` ở các dòng Ahamove, điền `AHAMOVE_API_KEY`,
+   `AHAMOVE_SO_DIEN_THOAI`, `AHAMOVE_KHOA_WEBHOOK`, để `AHAMOVE_MOI_TRUONG=thu`, điền `AHAMOVE_SDT_LAY_HANG` bằng số
+   của quầy. Lưu, rồi `sudo systemctl restart may-chu-don`. Nhật ký (`journalctl -u may-chu-don -n 20`) phải có
+   "Ahamove: MÔI TRƯỜNG THỬ (Staging) — không có tài xế thật". Màn quầy có dòng cảnh báo môi trường thử.
+5. Thử trên Staging (không tốn tiền, không có tài xế thật): đặt một đơn thử, quầy bấm "Bắt đầu soạn" rồi "Soạn xong,
+   chờ giao" → trong khoảng 15 giây thẻ đơn hiện "Ahamove đang tìm tài xế" và link "Xem chuyến trên Ahamove"; cổng
+   Staging có đơn mang mã theo dõi `<mã đơn>-1`. Cho tài xế nhận đơn bằng **Tích hợp → Giả lập đơn hàng** trên cổng
+   Staging (hay app AhaDriver STG, Android): thẻ đơn đổi theo — tài xế, đang giao; giao xong thì đơn tự sang "Đã giao tới
+   khách". Không ai nhận: Staging tự hủy sau khoảng 10 phút, thẻ hiện "Ahamove đã hủy chuyến" và nút "Gọi lại xe
+   Ahamove". Thử thêm: hủy một đơn đang tìm tài xế → chuyến trên cổng Staging thành đã hủy.
+6. Chạy các tình huống trong mục "Test case mẫu" của tài liệu Ahamove, điền phiếu "UAT Completion Form"
+   (`https://forms.gle/HAo3hVUw6XEq4M1a8`) để xin **mã thật**.
+7. Mở thật: Ahamove gửi API key thật; nạp ví ở `business.ahamove.com` (Tài chính → Thanh toán); khai webhook trên cổng
+   thật như bước 3; trong file bí mật thay API key, đổi `AHAMOVE_MOI_TRUONG=that`, chạy lại dịch vụ. Từ đó chỉ đơn có
+   **tiền thật** đủ tổng đơn mới gọi xe (đơn mẫu, tiền giả lập demo, tiền thử VNPay sandbox không bao giờ gọi tài xế).
+
+Cách máy chủ gọi xe: 15 giây một lượt. Mỗi đơn mỗi lần gọi một dòng trong sổ đơn (xếp cùng lúc với bước "Soạn xong"),
+mang mã theo dõi `<mã đơn>-<lần>` — bấm đúp không ra hai chuyến. Trước khi gửi, máy chủ đánh dấu "chưa rõ": mất mạng,
+hết giờ, Ahamove lỗi 500 hay máy chủ tắt giữa chừng thì lượt sau (sau 60 giây) tra Ahamove theo mã theo dõi — có đơn thì
+nhận lấy, chắc chưa có mới gửi lại cùng mã. Ahamove không nhận đơn (địa chỉ ngoài vùng, xa quá, ví hết tiền, ngoài giờ):
+thôi, thẻ đơn ghi lý do. Gửi 4 lần không được thì thôi, báo quầy. Token Ahamove giữ trong bộ nhớ, chỉ lấy lại khi Ahamove
+báo hết hạn (token mới làm chết token cũ). Nhật ký chỉ ghi mã đơn, mã Ahamove, mã lỗi — không tên, không số điện thoại,
+không địa chỉ, không API key.
+
+Giả định chưa thử với Ahamove thật (thử ở bước 5; sai thì báo Claude Code sửa `src/ahamove.ts`): thân yêu cầu là JSON
+như ví dụ cURL của tài liệu (trang giới thiệu lại ghi URL-encoded); câu lỗi có mã ở `title` / `code` / `message`;
+webhook gửi khóa ở header `apikey`; hủy đơn gửi lý do trong thân của lệnh DELETE.
+
 ## Việc của Khánh trước khi bật cho khách
 
 1. Cài VNPay qua Checkout SDK theo mục trên (môi trường thử trước). SePay và VietinBank chỉ cần khi muốn nhận thêm
@@ -473,3 +539,4 @@ tin nào. Nhật ký chỉ ghi mã đơn và mã lỗi — không tên, không s
    giao hàng.
 3. Hỏi luật sư: Mini App có chức năng đặt hàng và thanh toán có phải thông báo Bộ Công Thương không.
 4. Cài ZNS theo mục trên: App Zalo riêng, hai mẫu tin được Zalo duyệt, refresh token, thử ở chế độ thử.
+5. Cài Ahamove theo mục trên: thử hết trên Staging, xin mã thật, nạp ví; Sang chốt bán kính, đơn tối thiểu, túi lạnh.

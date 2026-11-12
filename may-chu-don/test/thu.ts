@@ -35,6 +35,12 @@ import { PHUT_CHO_KET_QUA_ZALO, SO_LAN_MO_ZALO_TOI_DA } from '../src/so-don.ts';
 import {
   CONG_THANH_TOAN_THU, PHUT_HET_HAN_THU, docCauHinhVnpayThu, docKetQuaVe, ngayVnpay, taoLinkThanhToanThu, taoMaGiaoDichThu,
 } from '../src/vnpay-thu.ts';
+import {
+  DIA_CHI_QUAN_MINI_APP, DIEM_LAY, MS_CHO_KIEM_LAI, MS_GOI_LAU, MS_HOI_LAI, SO_LAN_TAO_TOI_DA, buocXe, diaChiGiaoAhamove,
+  docCauHinhAhamove, docLoiAhamove, docMaTheoDoiXe, docTinChuyen, khoiLuongKg, thanTaoChuyen,
+} from '../src/ahamove.ts';
+import { goiXeMotLuot, taoPhienAhamove, type HamFetchAhamove } from '../src/goi-xe.ts';
+import { LOI_XE, NHAN_XE } from '../src/man-quay.ts';
 
 let dat = 0, hong = 0;
 const ok = (ten: string, dieuKien: boolean, chiTiet = '') => {
@@ -424,7 +430,7 @@ nhom('11 · Câu chữ: đủ vi / en, không chữ cấm, không "thành công"
   const cap = [...Object.values(CHU), ...Object.values(NHAN), ...Object.values(CAU_BAO), ...BUOC_QUAY];
   ok('Mọi câu của màn quầy, nhãn, bước, câu báo đều có cả vi và en', cap.every(c => c.vi.trim() && c.en.trim()));
   ok('Đủ nhãn cho mọi trạng thái', TRANG_THAI.every(t => NHAN[t]?.vi && NHAN[t]?.en));
-  const maNguon = ['tao-don.ts', 'may-chu.ts', 'man-quay.ts', 'trang-thai.ts', 'so-don.ts']
+  const maNguon = ['tao-don.ts', 'may-chu.ts', 'man-quay.ts', 'trang-thai.ts', 'so-don.ts', 'ahamove.ts', 'goi-xe.ts']
     .map(f => fs.readFileSync(path.join(import.meta.dir, '../src', f), 'utf8')).join('\n');
   const chuoi = [...maNguon.matchAll(/'((?:[^'\\\n]|\\.)*)'|`((?:[^`\\]|\\.)*)`/g)].map(m => m[1] ?? m[2]).filter(s => /[À-ỹ]/.test(s));
   const cam = chuoi.flatMap(s => timChuoiCam(s).map(t => `${t.tim_thay} (${s.slice(0, 40)})`));
@@ -1699,6 +1705,416 @@ nhom('23 · Trang thử VNPay trên web (Khánh 12/11/2026): chỉ sandbox, ký 
     ZALO_MINI_APP_ID: '2858300068641327950', ZALO_CHECKOUT_KHOA_RIENG: 'khoa-rieng-checkout-thu-0123456789abcdef', ZALO_CHECKOUT_PHUONG_THUC: 'VNPAY' });
   ok('main.ts: máy chủ nhận tiền thật (VNPAY) → trang thử tự TẮT (404) nhưng máy chủ vẫn chạy, nhật ký báo',
     that.ketQua === 404 && that.ra.includes('Trang thử VNPay: TẮT'), that.ra.slice(0, 300));
+}
+
+// =====================================================================================================
+nhom('24 · Xe Ahamove (Khánh 12/11/2026): một chuyến mỗi lần bấm, không gọi trùng xe khi mất mạng, webhook có khóa, không lộ khóa và số');
+{
+  const API_KEY = 'api-key-ahamove-thu-abcdef0123';
+  const KHOA_WH = 'khoa-webhook-ahamove-thu-0123';
+  const env3 = { AHAMOVE_API_KEY: API_KEY, AHAMOVE_SO_DIEN_THOAI: '0961 245 124', AHAMOVE_KHOA_WEBHOOK: KHOA_WH };
+
+  // --- cấu hình ---
+  const c0 = docCauHinhAhamove({}), c3 = docCauHinhAhamove(env3), cThat = docCauHinhAhamove({ ...env3, AHAMOVE_MOI_TRUONG: 'that', AHAMOVE_SDT_LAY_HANG: '0901 234 567' });
+  ok('Cấu hình: không biến nào → không gọi xe; đủ ba → Staging, SGN-BIKE, số 84…, số lấy hàng là số tài khoản',
+    c0.ok && c0.cauHinh === null && c3.ok && c3.cauHinh?.moiTruong === 'thu' && c3.cauHinh.goc === 'https://partner-apistg.ahamove.com'
+    && c3.cauHinh.dichVu === 'SGN-BIKE' && c3.cauHinh.soDienThoai === '84961245124' && c3.cauHinh.sdtLayHang === '84961245124');
+  ok('Cấu hình "that" → partner-api; số lấy hàng riêng được', cThat.ok && cThat.cauHinh?.goc === 'https://partner-api.ahamove.com' && cThat.cauHinh.sdtLayHang === '84901234567');
+  const cThieu = docCauHinhAhamove({ AHAMOVE_API_KEY: API_KEY }), cPhu = docCauHinhAhamove({ AHAMOVE_MOI_TRUONG: 'that' });
+  const cSai = docCauHinhAhamove({ ...env3, AHAMOVE_MOI_TRUONG: 'live', AHAMOVE_KHOA_WEBHOOK: 'ngan', AHAMOVE_DICH_VU: 'HAN-BIKE' });
+  ok('Thiếu một nửa, khóa webhook ngắn, môi trường lạ, dịch vụ ngoài TP.HCM → lỗi nêu đúng biến; chỉ đặt biến phụ → lỗi',
+    !cThieu.ok && cThieu.loi.includes('AHAMOVE_SO_DIEN_THOAI') && cThieu.loi.includes('AHAMOVE_KHOA_WEBHOOK') && !cPhu.ok
+    && !cSai.ok && cSai.loi.includes('AHAMOVE_MOI_TRUONG') && cSai.loi.includes('AHAMOVE_KHOA_WEBHOOK') && cSai.loi.includes('AHAMOVE_DICH_VU'));
+  if (!c3.ok || !c3.cauHinh) throw new Error('cấu hình Ahamove mẫu hỏng');
+  const CH = c3.cauHinh;
+
+  // --- thân Tạo đơn ---
+  {
+    const soT = new SoDon(':memory:');
+    const d = donMoi(soT, { ghiChu: 'Gửi bảo vệ', diaChi: '12 Nguyễn Huệ, phường Sài Gòn' });
+    const than = thanTaoChuyen(d, 1, CH) as { path: Record<string, unknown>[]; [k: string]: unknown };
+    const lay = than.path[0], giao = than.path[1];
+    ok('Tạo đơn: lấy ở 63 Hồ Tùng Mậu (cùng địa chỉ Mini App), ghi chú lấy hàng dùng câu chỉ đường, không ghi số tầng, có mã đơn',
+      DIEM_LAY.diaChi.startsWith(DIA_CHI_QUAN_MINI_APP.split(',')[0]) && lay.address === DIEM_LAY.diaChi && lay.mobile === CH.sdtLayHang
+      && String(lay.remarks).includes(CAU_HINH.chiDuong) && !/tầng\s*\d/i.test(String(lay.remarks)) && String(lay.remarks).includes(d.ma));
+    ok('Tạo đơn: giao tới địa chỉ khách + thành phố, tên, số khách, mã theo dõi mã-1, ghi chú của khách, giá trị hàng = tổng đơn',
+      giao.address === '12 Nguyễn Huệ, phường Sài Gòn, Thành phố Hồ Chí Minh, Việt Nam' && giao.mobile === '0912345678' && giao.name === 'Khánh'
+      && giao.tracking_number === `${d.ma}-1` && String(giao.remarks).includes('Gửi bảo vệ') && giao.item_value === d.tongTien && !('cod' in giao), JSON.stringify(giao));
+    const items = than.items as { price: number; num: number }[];
+    ok('Tạo đơn: ví quán (BALANCE), giao ngay, SGN-BIKE, giá mỗi dòng = số khay × giá, khối lượng có túi lạnh',
+      than.payment_method === 'BALANCE' && than.order_time === 0 && than.service_id === 'SGN-BIKE' && Array.isArray(than.requests)
+      && items.reduce((t, x) => t + x.price, 0) === d.tongTien && khoiLuongKg(d) === Math.round((3 * 150 / 1000 + 0.5) * 10) / 10);
+    ok('Địa chỉ đã có TP.HCM / Việt Nam thì không thêm lần hai', diaChiGiaoAhamove('5 Lê Lợi, phường Sài Gòn, TP.HCM') === '5 Lê Lợi, phường Sài Gòn, TP.HCM, Việt Nam'
+      && diaChiGiaoAhamove('5 Lê Lợi, Hồ Chí Minh, Việt Nam') === '5 Lê Lợi, Hồ Chí Minh, Việt Nam');
+    ok('Mã theo dõi: đọc lại mã đơn và lần; mã lạ → null', docMaTheoDoiXe(`${d.ma}-2`)?.lan === 2 && docMaTheoDoiXe(`${d.ma}-2`)?.maDon === d.ma
+      && docMaTheoDoiXe('ABC-1') === null && docMaTheoDoiXe(42) === null);
+    soT.dong();
+  }
+
+  // --- đọc trạng thái, lỗi ---
+  const tinWh = docTinChuyen({ _id: '26ABCDEF-1', status: 'ACCEPTED', sub_status: 'ARRIVED', api_key: API_KEY, supplier_id: '84909561477', supplier_name: 'Hieu Nguyen',
+    shared_link: 'https://expressstg.ahamove.com/s/241021HRHVJ4', total_price: 33000, path: [{ mobile: '84961245124' }, { tracking_number: 'K7QX4M9A-1', mobile: '0912345678' }] });
+  ok('Đọc webhook: bỏ đuôi -1 của điểm giao, tài xế, link ahamove.com, phí, mã theo dõi; không giữ api_key, số khách',
+    tinWh?.maAha === '26ABCDEF' && tinWh.trangThai === 'ACCEPTED' && tinWh.trangThaiPhu === 'ARRIVED' && tinWh.taiXeSdt === '84909561477' && tinWh.phi === 33000
+    && tinWh.maTheoDoi === 'K7QX4M9A-1' && tinWh.link.startsWith('https://expressstg.ahamove.com/') && !JSON.stringify(tinWh).includes(API_KEY)
+    && !JSON.stringify(tinWh).includes('0912345678'));
+  ok('Link không phải ahamove.com → bỏ; thiếu mã đơn → null', docTinChuyen({ _id: 'XYZ1234', shared_link: 'https://evil.example/ahamove.com/x' })?.link === ''
+    && docTinChuyen({ status: 'ASSIGNING' }) === null && docTinChuyen([1]) === null);
+  ok('Lý do hủy: bỏ dãy số dài (số điện thoại)', docTinChuyen({ _id: 'XYZ1234', status: 'CANCELLED', cancel_comment: 'Gọi 0909 123 456 không nghe' })?.lyDo === 'Gọi … không nghe');
+  ok('Lỗi Ahamove: mã lấy từ title / code…, không có mã → HTTP_<số>; câu bỏ dãy số',
+    docLoiAhamove(406, { title: 'INVALID_DELIVERY_AREA', description: 'Khách 0912345678' }).ma === 'INVALID_DELIVERY_AREA'
+    && docLoiAhamove(406, { title: 'INVALID_DELIVERY_AREA', description: 'Khách 0912345678' }).cau === 'Khách …' && docLoiAhamove(500, undefined).ma === 'HTTP_500');
+
+  // --- sổ: xếp chuyến ---
+  let gio = LUC_DAT;
+  const soanXong = (so: SoDon, d: DonDayDu) => { so.doiTrangThai(d.ma, 'da_thanh_toan', 'dang_soan', gio); return so.doiTrangThai(d.ma, 'dang_soan', 'cho_lay', gio); };
+  const demChuyen = (so: SoDon, ma: string) => (so.db.query('select count(*) as n from chuyen_xe where ma_don = ?').get(ma) as { n: number }).n;
+  {
+    const so = new SoDon(':memory:');
+    const daTra = () => { const d = donMoi(so); so.ghiDaThanhToan(d.ma, gio); return d; };
+    const tat = daTra(); soanXong(so, tat);
+    ok('Chưa bật gọi xe → "Soạn xong" không xếp chuyến', demChuyen(so, tat.ma) === 0);
+    so.goiXe = { chiTienThat: false };
+    const a = daTra(); soanXong(so, a); so.doiTrangThai(a.ma, 'dang_soan', 'cho_lay', gio);
+    ok('Bật gọi xe (Staging) → "Soạn xong", kể cả bấm đúp, xếp đúng một chuyến: lần 1, việc tạo', demChuyen(so, a.ma) === 1 && so.layChuyen(a.ma, 1)?.viec === 'tao');
+    so.goiXe = { chiTienThat: true };
+    const mau = daTra(); soanXong(so, mau);
+    const tienVe = (d: DonDayDu, id: number) => so.ghiTienVe({ idSepay: id, vao: true, soTien: d.tongTien, soTaiKhoan: TK.soTaiKhoan, taiKhoanPhu: '',
+      coMaQuan: true, ngayGiaoDich: '2026-11-13 09:00:00', maThamChieu: 'FT', maDon: d.ma }, TK.soTaiKhoan, gio);
+    const demo = donMoi(so); tienVe(demo, -77); soanXong(so, demo);
+    const sb = donMoi(so);
+    so.db.query(`insert into thanh_toan_zalo (ma_zalo, ma_don, ma_giao_dich, phuong_thuc, so_tien, ngay_giao_dich, ket_qua, can_xem, nhan_luc)
+      values ('z-sb-1', ?, 'g', 'VNPAY_SANDBOX', ?, '2026-11-13 09:00:00', 'du', 0, ?)`).run(sb.ma, sb.tongTien, gio);
+    so.ghiDaThanhToan(sb.ma, gio, 'vnpay'); soanXong(so, sb);
+    const that = donMoi(so); tienVe(that, 5551); soanXong(so, that);
+    ok('Ahamove thật: đơn mẫu, tiền giả lập demo, tiền thử VNPay sandbox không gọi xe; tiền SePay thật đủ tổng đơn → gọi xe',
+      demChuyen(so, mau.ma) === 0 && demChuyen(so, demo.ma) === 0 && demChuyen(so, sb.ma) === 0 && demChuyen(so, that.ma) === 1);
+    so.dong();
+  }
+
+  // --- Ahamove giả ---
+  type GoiAha = { method: string; duong: string; than: Record<string, unknown> | null; auth: string };
+  const goiAha: GoiAha[] = [];
+  let soAha = 0, soToken = 0;
+  const donAha = new Map<string, Record<string, unknown>>();
+  const theoMa = new Map<string, string>();
+  type KichBan = 'nem' | 'treo' | 'tao_roi_nem' | { status: number; json: unknown };
+  const kichBanTao = new Map<string, KichBan[]>();
+  const kichBanHuy = new Map<string, { status: number; json: unknown }>();
+  const tokenTot = new Set<string>();
+  let tuChoiToken: { status: number; json: unknown } | null = null;
+  const taoTrenAha = (ma: string) => {
+    const id = `AH${String(++soAha).padStart(4, '0')}`;
+    const o: Record<string, unknown> = { _id: id, status: 'ASSIGNING', shared_link: `https://expressstg.ahamove.com/s/${id}`, total_price: 30400,
+      path: [{ address: DIEM_LAY.diaChi }, { tracking_number: ma }] };
+    donAha.set(id, o); theoMa.set(ma, id);
+    return o;
+  };
+  const tra = (status: number, json: unknown) => ({ status, text: async () => JSON.stringify(json) });
+  const ahaGia: HamFetchAhamove = async (url, init) => {
+    const u = new URL(url);
+    const than = init.body ? JSON.parse(init.body) as Record<string, unknown> : null;
+    goiAha.push({ method: init.method, duong: u.pathname, than, auth: init.headers.Authorization ?? '' });
+    if (u.pathname === '/v3/accounts/token') {
+      if (tuChoiToken) return tra(tuChoiToken.status, tuChoiToken.json);
+      const t = `token-${++soToken}-abcdefghijkl`;
+      tokenTot.clear(); tokenTot.add(t);   // tài liệu: token mới làm token cũ hết hạn
+      return tra(200, { token: t, refresh_token: 'r' });
+    }
+    if (!tokenTot.has((init.headers.Authorization ?? '').replace('Bearer ', ''))) return tra(401, { title: 'NOT_AUTHORIZED' });
+    if (init.method === 'POST' && u.pathname === '/v3/orders') {
+      const ma = String((than!.path as Record<string, unknown>[])[1].tracking_number);
+      const kb = kichBanTao.get(ma)?.shift();
+      if (kb === 'nem') throw new TypeError('fetch failed');
+      if (kb === 'treo') return new Promise(() => {});
+      if (kb === 'tao_roi_nem') { taoTrenAha(ma); throw new TypeError('socket hang up'); }
+      if (kb) return tra(kb.status, kb.json);
+      const o = taoTrenAha(ma);
+      return tra(200, { order_id: o._id, status: o.status, shared_link: o.shared_link, order: o });
+    }
+    if (init.method === 'GET' && u.pathname.startsWith('/v3/orders/tracks/')) {
+      const id = theoMa.get(decodeURIComponent(u.pathname.split('/').pop()!));
+      return id ? tra(200, [donAha.get(id)]) : tra(404, { title: 'ORDER_NOT_FOUND' });
+    }
+    if (init.method === 'DELETE') {
+      const id = u.pathname === '/v3/orders/tracks' ? theoMa.get(String(than!.tracking_number)) : u.pathname.split('/').pop()!;
+      if (!id || !donAha.has(id)) return tra(404, { title: 'ORDER_NOT_FOUND' });
+      const kb = kichBanHuy.get(id);
+      if (kb) return tra(kb.status, kb.json);
+      donAha.get(id)!.status = 'CANCELLED'; donAha.get(id)!.cancel_by_user = true;
+      return tra(200, {});
+    }
+    if (init.method === 'GET' && u.pathname.startsWith('/v3/orders/')) {
+      const o = donAha.get(u.pathname.split('/').pop()!);
+      return o ? tra(200, o) : tra(404, { title: 'ORDER_NOT_FOUND' });
+    }
+    return tra(404, {});
+  };
+  const so = new SoDon(':memory:');
+  so.goiXe = { chiTienThat: false };
+  const phien = taoPhienAhamove();
+  const nhatKy: string[] = [];
+  const luot = () => goiXeMotLuot({ so, cauHinh: CH, hamFetch: ahaGia, bayGio: () => gio, phien, ghi: c => nhatKy.push(c), msHetGio: 50 });
+  const donChoGiao = (them: Record<string, unknown> = {}) => { const d = donMoi(so, them); so.ghiDaThanhToan(d.ma, gio); soanXong(so, d); return d; };
+  const postCua = (d: DonDayDu, lan = 1) => goiAha.filter(g => g.method === 'POST' && g.duong === '/v3/orders'
+    && (g.than!.path as Record<string, unknown>[])[1].tracking_number === `${d.ma}-${lan}`).length;
+  const buoc = (d: DonDayDu) => { const c = so.chuyenMoiNhat(d.ma)!; return buocXe(c, gio); };
+
+  const r0 = await luot();
+  ok('Không chuyến nào → không gọi Ahamove, không lấy token vô cớ', goiAha.length === 0 && r0.daTao === 0);
+
+  const a = donChoGiao();
+  const r1 = await luot();
+  const tk = goiAha[0], tao = goiAha[1];
+  ok('Lượt đầu: lấy token (mobile 84…, api_key) rồi tạo đơn với Bearer token', tk?.duong === '/v3/accounts/token' && tk.than?.mobile === '84961245124'
+    && tk.than?.api_key === API_KEY && tao?.duong === '/v3/orders' && tao.auth === 'Bearer token-1-abcdefghijkl' && r1.daTao === 1);
+  const ca = so.chuyenMoiNhat(a.ma)!;
+  ok('Tạo được: chuyến ghi mã Ahamove, link theo dõi, phí, hết việc; quầy thấy "Ahamove đang tìm tài xế"',
+    ca.maAha === 'AH0001' && ca.link === 'https://expressstg.ahamove.com/s/AH0001' && ca.phi === 30400 && ca.viec === null && buoc(a).buoc === 'tim_tai_xe');
+  goiAha.length = 0;
+  await luot();
+  ok('Lượt sau không còn việc, chuyến vừa có tin → không gọi Ahamove (không tạo lại, không hỏi)', goiAha.length === 0);
+
+  // Token hết hạn: Ahamove báo 401 → lấy token mới một lần, tạo lại đúng đơn đó (Ahamove chưa nhận lần 401).
+  tokenTot.clear();
+  const b = donChoGiao();
+  await luot();
+  ok('Token hết hạn (401) → lấy token mới, gửi lại một lần; Ahamove có đúng một đơn', goiAha.filter(g => g.duong === '/v3/accounts/token').length === 1
+    && postCua(b) === 2 && [...theoMa.keys()].filter(k => k === `${b.ma}-1`).length === 1 && so.chuyenMoiNhat(b.ma)?.maAha !== null);
+
+  // Mất mạng lúc tạo mà Ahamove đã nhận: KHÔNG gửi lại mù — tra theo mã theo dõi, nhận lấy đơn đã có.
+  const c = donChoGiao();
+  kichBanTao.set(`${c.ma}-1`, ['tao_roi_nem']);
+  const r2 = await luot();
+  ok('Mất mạng giữa lúc tạo → chuyến "kiem_lai", lượt dừng, chưa gửi lại', so.chuyenMoiNhat(c.ma)?.viec === 'kiem_lai' && r2.dungVi !== null && postCua(c) === 1);
+  goiAha.length = 0;
+  await luot();
+  ok('Chưa đủ 60 giây → không tra, không gửi', goiAha.length === 0);
+  gio += MS_CHO_KIEM_LAI + 1000;
+  await luot();
+  ok('Sau 60 giây: tra theo mã theo dõi, thấy đơn Ahamove đã tạo → nhận lấy, KHÔNG tạo đơn thứ hai',
+    goiAha.some(g => g.duong === `/v3/orders/tracks/${c.ma}-1`) && postCua(c) === 0
+    && [...donAha.values()].filter(o => (o.path as Record<string, unknown>[])[1].tracking_number === `${c.ma}-1`).length === 1
+    && so.chuyenMoiNhat(c.ma)?.maAha === theoMa.get(`${c.ma}-1`)
+    && so.chuyenMoiNhat(c.ma)?.viec === null);
+
+  // Hết giờ mà Ahamove chưa nhận: tra không thấy → gửi lại CÙNG mã theo dõi.
+  const d = donChoGiao();
+  kichBanTao.set(`${d.ma}-1`, ['treo']);
+  await luot();
+  gio += MS_CHO_KIEM_LAI + 1000;
+  await luot();
+  ok('Hết giờ, tra lại không thấy → về hàng tạo', so.chuyenMoiNhat(d.ma)?.viec === 'tao');
+  await luot();
+  ok('Gửi lại cùng mã theo dõi mã-1, được; đếm 2 lần', postCua(d) === 2 && so.chuyenMoiNhat(d.ma)?.maAha !== null && so.chuyenMoiNhat(d.ma)?.soLan === 2);
+
+  // Ahamove không nhận (406): thôi, quầy thấy lý do; "Gọi lại xe" ra lần 2, bấm đúp vẫn một lần.
+  const e = donChoGiao();
+  kichBanTao.set(`${e.ma}-1`, [{ status: 406, json: { title: 'INVALID_DELIVERY_AREA', description: 'Khu vực không hỗ trợ' } }]);
+  await luot();
+  ok('406 → không gửi lại, quầy thấy "Chưa gọi được xe Ahamove", được gọi lại', postCua(e) === 1 && so.chuyenMoiNhat(e.ma)?.maLoi === 'INVALID_DELIVERY_AREA'
+    && buoc(e).buoc === 'khong_goi_duoc' && buoc(e).canXem && buoc(e).choGoiLai);
+  ok('Gọi lại xe: lần 2; bấm đúp → "đã ở bước mới", vẫn hai lần', so.goiLaiXe(e.ma, 1, gio) === 'da_doi' && so.goiLaiXe(e.ma, 1, gio) === 'da_o_buoc_moi' && demChuyen(so, e.ma) === 2);
+  await luot();
+  ok('Lần 2 gửi mã theo dõi mã-2', postCua(e, 2) === 1 && so.chuyenMoiNhat(e.ma)?.lan === 2 && so.chuyenMoiNhat(e.ma)?.maAha !== null);
+  ok('Gọi lại khi chuyến đang chạy → "lech", không thêm lần', so.goiLaiXe(a.ma, 1, gio) === 'lech' && demChuyen(so, a.ma) === 1);
+
+  // 503: chắc chưa tạo — không tra, gửi lại sau 2 phút. 500: không rõ — tra lại.
+  const f = donChoGiao(), g5 = donChoGiao();
+  kichBanTao.set(`${f.ma}-1`, [{ status: 503, json: { title: 'SERVICE_UNAVAILABLE' } }]);
+  kichBanTao.set(`${g5.ma}-1`, [{ status: 500, json: { title: 'INTERNAL_SERVER_ERROR' } }]);
+  goiAha.length = 0;
+  await luot();
+  ok('503 → về hàng tạo, không tra; 500 → "kiem_lai" (Ahamove có thể đã tạo)', so.chuyenMoiNhat(f.ma)?.viec === 'tao'
+    && so.chuyenMoiNhat(g5.ma)?.viec === 'kiem_lai' && !goiAha.some(x => x.duong.startsWith('/v3/orders/tracks/')));
+  gio += 2 * 60_000 + 1000;
+  await luot(); await luot();
+  ok('Sau đó: f gửi lại được; g tra không thấy rồi gửi lại được', so.chuyenMoiNhat(f.ma)?.maAha !== null && so.chuyenMoiNhat(g5.ma)?.maAha !== null && postCua(g5) === 2);
+
+  // Mất mạng mãi: tới SO_LAN_TAO_TOI_DA lần thì thôi, báo quầy.
+  const h = donChoGiao();
+  kichBanTao.set(`${h.ma}-1`, Array(10).fill('nem'));
+  for (let i = 0; i < SO_LAN_TAO_TOI_DA * 2; i++) { await luot(); gio += MS_CHO_KIEM_LAI + 1000; }
+  ok(`Mất mạng mãi → gửi đúng ${SO_LAN_TAO_TOI_DA} lần rồi thôi, quầy thấy cần làm`, postCua(h) === SO_LAN_TAO_TOI_DA
+    && so.chuyenMoiNhat(h.ma)?.maLoi === 'QUA_SO_LAN' && buoc(h).canXem, String(postCua(h)));
+
+  // Máy chủ tắt ngay sau khi đánh dấu (trước khi biết kết quả): lượt sau tra lại chứ không gửi mù.
+  const k = donChoGiao();
+  so.batDauTaoChuyen(k.ma, 1, gio);
+  gio += MS_CHO_KIEM_LAI + 1000;
+  goiAha.length = 0;
+  await luot();
+  ok('Đã đánh dấu mà chưa gửi (máy chủ tắt giữa chừng) → tra lại trước, rồi mới gửi', goiAha[0]?.duong === `/v3/orders/tracks/${k.ma}-1`
+    && so.chuyenMoiNhat(k.ma)?.viec === 'tao' && postCua(k) === 0);
+  await luot();
+
+  // Ahamove từ chối cấp token: không gửi đơn, chuyến chờ, /suc-khoe báo.
+  phien.token = null;
+  tuChoiToken = { status: 404, json: { title: 'PARTNER_NOT_FOUND' } };
+  const m = donChoGiao();
+  const r3 = await luot();
+  ok('Ahamove từ chối cấp token → không gửi đơn, chuyến còn chờ (không đếm lần), lỗi nêu biến cần kiểm',
+    postCua(m) === 0 && so.chuyenMoiNhat(m.ma)?.viec === 'tao' && so.chuyenMoiNhat(m.ma)?.soLan === 0 && r3.dungVi?.includes('AHAMOVE_API_KEY') === true
+    && phien.loiToken?.includes('PARTNER_NOT_FOUND') === true);
+  tuChoiToken = null;
+  await luot();
+  ok('Token được lại → chuyến đi', so.chuyenMoiNhat(m.ma)?.maAha !== null && phien.loiToken === null);
+
+  // --- webhook ---
+  const { xuLy } = taoMay(so, { bayGio: () => gio, ahamove: { cauHinh: CH, phien } });
+  const wh = (than: unknown, khoa: string | null = KHOA_WH, kieu: 'apikey' | 'bearer' = 'apikey') => goi(xuLy, '/ahamove/trang-thai', {
+    method: 'POST', body: typeof than === 'string' ? than : JSON.stringify(than),
+    headers: { 'content-type': 'application/json', ...(khoa === null ? {} : kieu === 'apikey' ? { apikey: khoa } : { authorization: `Bearer ${khoa}` }) },
+  }, '13.250.1.1');
+  const maA = so.chuyenMoiNhat(a.ma)!.maAha!;
+  const r401 = await wh({ _id: maA, status: 'ACCEPTED' }, null), rSai = await wh({ _id: maA, status: 'ACCEPTED' }, 'khoa-sai-khoa-sai-khoa-sai');
+  ok('Webhook không khóa, sai khóa → 401, chuyến không đổi', r401.status === 401 && rSai.status === 401 && so.chuyenMoiNhat(a.ma)?.trangThaiAha === 'ASSIGNING');
+  const rDung = await wh({ _id: maA, status: 'ACCEPTED', sub_status: 'ARRIVED', supplier_id: '84909561477', supplier_name: 'Hieu Nguyen', api_key: API_KEY,
+    path: [{}, { tracking_number: `${a.ma}-1`, mobile: '0912345678' }] });
+  ok('Webhook đúng khóa (header apikey) → 200 khi đã ghi; tài xế tới quán', rDung.status === 200 && (await rDung.json() as { ghi: string }).ghi === 'da_ghi'
+    && buoc(a).buoc === 'tai_xe_toi' && so.chuyenMoiNhat(a.ma)?.taiXeTen === 'Hieu Nguyen' && so.chuyenMoiNhat(a.ma)?.trangThaiPhu === 'ARRIVED');
+  ok('Webhook nhận cả "Authorization: Bearer <khóa>"', (await wh({ _id: maA, status: 'IN PROCESS' }, KHOA_WH, 'bearer')).status === 200 && buoc(a).buoc === 'dang_giao');
+  ok('Webhook lặp lại → vẫn 200, vẫn một chuyến', (await wh({ _id: maA, status: 'IN PROCESS' })).status === 200 && demChuyen(so, a.ma) === 1);
+  const rXong = await wh({ _id: maA, status: 'COMPLETED', path: [{}, { status: 'COMPLETED', tracking_number: `${a.ma}-1` }] });
+  const ai = (so.db.query("select ai from nhat_ky where ma_don = ? and den = 'da_giao'").get(a.ma) as { ai: string } | null)?.ai;
+  ok('Ahamove báo giao được → đơn tự sang "Đã giao tới khách", nhật ký ghi ai = ahamove', rXong.status === 200 && so.layDon(a.ma)?.trangThai === 'da_giao' && ai === 'ahamove'
+    && buoc(a).buoc === 'da_giao');
+  await wh({ _id: maA, status: 'IN PROCESS' });
+  ok('Webhook tới trễ (IN PROCESS sau COMPLETED) không kéo lùi', so.chuyenMoiNhat(a.ma)?.trangThaiAha === 'COMPLETED');
+  const maB = so.chuyenMoiNhat(b.ma)!.maAha!;
+  await wh({ _id: maB, status: 'COMPLETED', sub_status: 'RETURNED', path: [{}, { status: 'FAILED', fail_comment: 'Recipient does not pickup phone call' }] });
+  ok('Giao không được → đơn vẫn "chờ giao", quầy thấy cần làm, được gọi lại, có lý do', so.layDon(b.ma)?.trangThai === 'cho_lay' && buoc(b).buoc === 'giao_hong'
+    && buoc(b).choGoiLai && so.chuyenMoiNhat(b.ma)?.lyDo === 'Recipient does not pickup phone call');
+  const maC = so.chuyenMoiNhat(c.ma)!.maAha!;
+  await wh({ _id: maC, status: 'CANCELLED', cancel_by_user: false, cancel_comment: 'Auto cancel, no driver accepted' });
+  ok('Ahamove tự hủy (không có tài xế) → quầy thấy "Ahamove đã hủy chuyến" và lý do', buoc(c).buoc === 'aha_huy' && buoc(c).canXem);
+  const n0 = (so.db.query('select count(*) as n from chuyen_xe').get() as { n: number }).n;
+  const rLa = await wh({ _id: 'ZZZ99999', status: 'ACCEPTED', path: [{}, { tracking_number: 'KHONGCO1-1' }] });
+  ok('Webhook của đơn lạ → 200 "khong_thay", không ghi gì', rLa.status === 200 && (await rLa.json() as { ghi: string }).ghi === 'khong_thay'
+    && (so.db.query('select count(*) as n from chuyen_xe').get() as { n: number }).n === n0);
+  ok('Webhook không phải JSON → 400; quá dài → 413', (await wh('{khong-json')).status === 400 && (await wh('x'.repeat(70 * 1024))).status === 413);
+  // Webhook tới trước câu trả lời Tạo đơn: nhận theo mã theo dõi.
+  const p1 = donChoGiao();
+  so.batDauTaoChuyen(p1.ma, 1, gio);
+  await wh({ _id: 'AHWEB001', status: 'ASSIGNING', path: [{}, { tracking_number: `${p1.ma}-1` }] });
+  ok('Webhook tới trước câu trả lời Tạo đơn → nhận theo mã theo dõi, hết việc tra lại', so.chuyenMoiNhat(p1.ma)?.maAha === 'AHWEB001' && so.chuyenMoiNhat(p1.ma)?.viec === null);
+  const { xuLy: khongAha } = taoMay(so);
+  ok('Máy chủ chưa cấu hình Ahamove → /ahamove/trang-thai 404', (await goi(khongAha, '/ahamove/trang-thai', { method: 'POST', body: '{}', headers: { apikey: KHOA_WH } })).status === 404);
+  const dumpXe = JSON.stringify(so.db.query('select * from chuyen_xe').all());
+  ok('Sổ chuyến xe không có api_key, token, số điện thoại khách', !dumpXe.includes(API_KEY) && !dumpXe.includes('token-') && !dumpXe.includes('0912345678'));
+
+  // --- hủy ---
+  const q = donChoGiao();
+  await luot();
+  so.doiTrangThai(q.ma, 'cho_lay', 'can_hoan_tien', gio);
+  ok('Quầy hủy đơn có chuyến đang chạy → chuyến chuyển sang hủy', so.chuyenMoiNhat(q.ma)?.viec === 'huy' && buoc(q).buoc === 'dang_huy');
+  goiAha.length = 0;
+  await luot();
+  const del = goiAha.find(x => x.method === 'DELETE');
+  ok('Lượt sau hủy theo mã Ahamove, có lý do; quầy thấy "Đã hủy chuyến", không cần làm gì', del?.duong === `/v3/orders/${so.chuyenMoiNhat(q.ma)!.maAha}`
+    && del.than?.comment === 'Khách hàng muốn hủy đơn' && buoc(q).buoc === 'quan_huy' && !buoc(q).canXem);
+  const r2t = donChoGiao();
+  so.doiTrangThai(r2t.ma, 'cho_lay', 'can_hoan_tien', gio);
+  goiAha.length = 0;
+  await luot();
+  ok('Hủy đơn khi chuyến chưa gửi Ahamove → khỏi gọi Ahamove', !goiAha.some(x => x.method === 'DELETE' || (x.method === 'POST' && postCua(r2t) > 0)) && buoc(r2t).buoc === 'quan_huy');
+  const s2 = donChoGiao();
+  await luot();
+  const maS = so.chuyenMoiNhat(s2.ma)!.maAha!;
+  donAha.get(maS)!.status = 'IN PROCESS';
+  kichBanHuy.set(maS, { status: 406, json: { title: 'INVALID_ORDER_STATUS' } });
+  so.doiTrangThai(s2.ma, 'cho_lay', 'can_hoan_tien', gio);
+  await luot();
+  ok('Tài xế đã lấy hàng (406, hỏi lại thấy IN PROCESS) → "Không hủy được", quầy cần làm', buoc(s2).buoc === 'huy_khong_duoc' && buoc(s2).canXem);
+  // Quầy hủy giữa lúc đang tạo: Tạo đơn xong sau lệnh hủy → vẫn hủy.
+  const t2 = donChoGiao();
+  so.batDauTaoChuyen(t2.ma, 1, gio);
+  so.doiTrangThai(t2.ma, 'cho_lay', 'can_hoan_tien', gio);
+  const oT = taoTrenAha(`${t2.ma}-1`);
+  so.ghiTinAhamove(docTinChuyen({ order_id: oT._id, status: 'ASSIGNING', order: oT })!, gio, { ma: t2.ma, lan: 1 });
+  ok('Tạo đơn xong sau lệnh hủy → chuyến vẫn mang việc hủy', so.chuyenMoiNhat(t2.ma)?.viec === 'huy');
+  await luot();
+  ok('… và lượt sau hủy nó trên Ahamove', donAha.get(String(oT._id))?.status === 'CANCELLED' && buoc(t2).buoc === 'quan_huy');
+
+  // --- tự hỏi khi webhook im ---
+  const u = donChoGiao();
+  await luot();
+  const maU = so.chuyenMoiNhat(u.ma)!.maAha!;
+  donAha.get(maU)!.status = 'ACCEPTED'; donAha.get(maU)!.supplier_name = 'Lan'; donAha.get(maU)!.supplier_id = '84901112233';
+  goiAha.length = 0;
+  await luot();
+  ok('Webhook mới im chưa tới 3 phút → chưa hỏi', !goiAha.some(x => x.duong === `/v3/orders/${maU}`));
+  gio += MS_HOI_LAI + 1000;
+  await luot();
+  ok('Im quá 3 phút → máy chủ tự hỏi trạng thái, thấy tài xế đã nhận', goiAha.some(x => x.method === 'GET' && x.duong === `/v3/orders/${maU}`) && buoc(u).buoc === 'tai_xe_toi'
+    && so.chuyenMoiNhat(u.ma)?.taiXeTen === 'Lan');
+  goiAha.length = 0;
+  await luot();
+  ok('Vừa hỏi xong → lượt kế không hỏi lại', !goiAha.some(x => x.duong === `/v3/orders/${maU}`));
+
+  // --- màn quầy ---
+  const dangNhap = await goi(xuLy, '/quay/dang-nhap', { method: 'POST', body: `mat_khau=${encodeURIComponent(MK)}`,
+    headers: { 'content-type': 'application/x-www-form-urlencoded', 'sec-fetch-site': 'same-origin' } });
+  const phienQuay = (dangNhap.headers.get('set-cookie') ?? '').split(';')[0];
+  const quay = (duong: string, init: RequestInit = {}) => goi(xuLy, duong, { ...init, headers: { cookie: phienQuay, ...(init.headers ?? {}) } });
+  const ds = await (await quay('/quay')).text();
+  ok('Màn quầy: dòng cảnh báo Ahamove môi trường thử', ds.includes(thoat(CHU.xeThuDauTrang.vi)));
+  ok('Màn quầy: thẻ đơn có bước chuyến, tài xế bấm gọi (0901 112 233), link Ahamove mở thẻ mới không gửi referrer',
+    ds.includes(NHAN_XE.tai_xe_toi.vi) && ds.includes('href="tel:84901112233"') && ds.includes('0901 112 233')
+    && ds.includes(`href="https://expressstg.ahamove.com/s/${maU}" target="_blank" rel="noopener noreferrer"`));
+  ok('Màn quầy: chuyến Ahamove không nhận → lý do theo mã lỗi, nút "Gọi lại xe Ahamove" là nút chính duy nhất',
+    ds.includes(NHAN_XE.aha_huy.vi) && ds.includes(thoat(LOI_XE.QUA_SO_LAN.vi)) && ds.includes(CHU.xeNutGoiLai.vi));
+  const nutPost = (duong: string, ma: string, lan: number, cungNguon = true) => quay(duong, { method: 'POST', body: `ma=${ma}&lan=${lan}`,
+    headers: { 'content-type': 'application/x-www-form-urlencoded', ...(cungNguon ? { 'sec-fetch-site': 'same-origin' } : { 'sec-fetch-site': 'cross-site' }) } });
+  ok('Nút xe từ trang khác (cross-site) → 403', (await nutPost('/quay/xe/goi-lai', b.ma, 1, false)).status === 403 && demChuyen(so, b.ma) === 1);
+  const gl = await nutPost('/quay/xe/goi-lai', b.ma, 1);
+  ok('Quầy bấm "Gọi lại xe" cho chuyến giao không được → lần 2, câu báo nói đúng việc', gl.status === 303 && (gl.headers.get('location') ?? '').includes('bao=xe_da_goi_lai')
+    && demChuyen(so, b.ma) === 2);
+  const tg = await nutPost('/quay/xe/tu-goi', c.ma, 1), tg2 = await nutPost('/quay/xe/tu-goi', c.ma, 1);
+  ok('Quầy bấm "Quầy tự xử lý" → thôi báo; bấm đúp → "đã xử lý từ trước"', (tg.headers.get('location') ?? '').includes('bao=xe_da_tu_goi')
+    && (tg2.headers.get('location') ?? '').includes('bao=xe_lam_roi') && buoc(c).buoc === 'tu_goi' && !buoc(c).canXem);
+  ok('"Quầy tự xử lý" cho chuyến đang chạy bình thường → "lech", không đổi', (await nutPost('/quay/xe/tu-goi', u.ma, 1)).headers.get('location')?.includes('bao=xe_lech') === true
+    && buoc(u).buoc === 'tai_xe_toi');
+  const { xuLy: chuaVao } = taoMay(so, { ahamove: { cauHinh: CH, phien } });
+  const khongPhien = await goi(chuaVao, '/quay/xe/goi-lai', { method: 'POST', body: `ma=${h.ma}&lan=1`,
+    headers: { 'content-type': 'application/x-www-form-urlencoded', 'sec-fetch-site': 'same-origin' } });
+  ok('Chưa đăng nhập: nút xe → về trang đăng nhập, không thêm lần', khongPhien.status === 303 && demChuyen(so, h.ma) === 1);
+  const goiLau = donChoGiao();
+  gio += MS_GOI_LAU + 1000;
+  ok('Gọi xe quá 5 phút chưa có đơn Ahamove → quầy thấy cần làm', buoc(goiLau).buoc === 'dang_goi' && buoc(goiLau).canXem);
+
+  // --- sức khỏe, nhật ký ---
+  const sk = await (await goi(xuLy, '/suc-khoe')).json() as Record<string, unknown>;
+  ok('/suc-khoe: số chuyến cần quầy làm, môi trường thử, số webhook bị từ chối; không api_key, không khóa webhook',
+    typeof sk.soXeCanXem === 'number' && (sk.soXeCanXem as number) >= 3 && (sk.ahamove as { moiTruong: string }).moiTruong === 'thu'
+    && (sk.ahamove as { soWebhookBiTuChoi: number }).soWebhookBiTuChoi >= 4 && !JSON.stringify(sk).includes(API_KEY) && !JSON.stringify(sk).includes(KHOA_WH));
+  const nk = nhatKy.join('\n');
+  ok('Nhật ký gọi xe không có api_key, token, số khách, địa chỉ khách', nhatKy.length > 5 && !nk.includes(API_KEY) && !nk.includes('token-')
+    && !nk.includes('0912345678') && !nk.includes('Nguyễn Huệ'));
+
+  // --- chữ ---
+  const capXe = [...Object.values(NHAN_XE), ...Object.values(LOI_XE)];
+  ok('Mọi bước chuyến, mọi lý do lỗi đều có cả vi và en, không chữ "thành công"', capXe.every(x => x.vi.trim() && x.en.trim())
+    && !capXe.some(x => /thành công/i.test(x.vi)));
+  so.dong();
+
+  // --- main.ts ---
+  const chayAha = (them: Record<string, string>) => Bun.spawnSync(['bun', 'src/main.ts'], { cwd: path.join(import.meta.dir, '..'),
+    env: { ...process.env, MAT_KHAU_QUAY: MK, CONG: '1', THU_MUC_DU_LIEU: path.join(os.tmpdir(), 'may-chu-don-khong-mo'), ...them } });
+  const nua = chayAha({ AHAMOVE_API_KEY: API_KEY });
+  ok('main.ts: Ahamove khai thiếu → không mở máy chủ, nói đủ biến thiếu', nua.exitCode === 1 && nua.stderr.toString().includes('AHAMOVE_SO_DIEN_THOAI')
+    && nua.stderr.toString().includes('AHAMOVE_KHOA_WEBHOOK'));
+  const tam = fs.mkdtempSync(path.join(os.tmpdir(), 'may-chu-don-aha-'));
+  const cong = 20000 + Math.floor(Math.random() * 20000);
+  const pr = Bun.spawn(['bun', 'src/main.ts'], { cwd: path.join(import.meta.dir, '..'), stdout: 'pipe', stderr: 'pipe',
+    env: { ...process.env, MAT_KHAU_QUAY: MK, CONG: String(cong), THU_MUC_DU_LIEU: tam, ...env3 } });
+  let skr: Response | null = null;
+  for (let i = 0; i < 50 && !skr; i++) { await Bun.sleep(100); skr = await fetch(`http://127.0.0.1:${cong}/suc-khoe`).catch(() => null); }
+  pr.kill('SIGTERM');
+  const raAha = await new Response(pr.stdout).text();
+  fs.rmSync(tam, { recursive: true, force: true });
+  ok('main.ts: đủ ba biến → chạy, nhật ký báo môi trường thử, không in api_key hay khóa webhook', skr?.status === 200 && raAha.includes('Ahamove: MÔI TRƯỜNG THỬ')
+    && !raAha.includes(API_KEY) && !raAha.includes(KHOA_WH), raAha.slice(0, 400));
 }
 
 console.log(hong === 0 ? `\nTẤT CẢ ${dat} KIỂM TRA MÁY CHỦ ĐƠN ĐỀU ĐẠT` : `\n${hong} KIỂM TRA HỎNG / ${dat + hong}`);

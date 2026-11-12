@@ -44,6 +44,8 @@ mạng: dữ liệu đi qua máy chủ Cloudflare.
 | 4a | Bộ cài máy chủ thuê (`cai-dat/`): Ubuntu 24.04, Caddy HTTPS, systemd, tường lửa, `/sepay` chỉ IP SePay, `cap-nhat` chạy kiểm thử rồi mới chạy lại; laptop dư (tự tắt ngủ, README mục 1b) | đã gộp (PR #155) |
 | VNPay 1 | VNPay qua Checkout SDK (`checkout-zalo.ts`): tham số createOrder ký MAC ở máy chủ, callback `POST /zalo/thanh-toan` kiểm mac + overallMac + Mini App ID, sổ `thanh_toan_zalo` đúng một lần mỗi orderId, đủ / thiếu / dư / không khớp / thất bại / sai phương thức, "Tiền về cần xem" có tiền VNPay, nhãn tiền thử sandbox ở màn quầy, Mini App nút "Trả … qua VNPay" (`CheckoutSDK.createOrder`, `PaymentDone`), `test/thu.ts` nhóm 22 | PR #172 |
 | VNPay 2 | `getOrderStatus` cho đơn quá 20 phút chưa có callback, hoàn tiền qua `createRefund`, mã thật khi mở bán, bỏ hay giữ SePay, VNPay cho website (mã SLKGTE11) | việc tiếp (#171) |
+| Ahamove 1 | Gọi xe Ahamove (Khánh 12/11/2026, `ahamove.ts`, `goi-xe.ts`): "Soạn xong, chờ giao" xếp một chuyến (bảng `chuyen_xe`, mã theo dõi `<mã đơn>-<lần>`), lượt 15 giây gửi Tạo đơn (đánh dấu `kiem_lai` TRƯỚC khi gửi — mất mạng thì tra theo mã theo dõi, không gửi mù), webhook `POST /ahamove/trang-thai` (header `apikey`), tự hỏi khi webhook im 3 phút, giao được thì đơn tự "Đã giao", quầy hủy đơn thì hủy chuyến, thẻ đơn hiện chuyến + "Gọi lại xe Ahamove" / "Quầy tự xử lý", Ahamove thật chỉ gọi xe cho đơn có tiền thật, `test/thu.ts` nhóm 24. Chạy khi Khánh cài theo README "Cài Ahamove" (Staging trước) | PR này |
+| Ahamove 2 | Báo phí trước khi khách đặt (Ước tính phí, chặn địa chỉ xa — đổi Mini App, Zalo duyệt lại), link theo dõi trong ZNS "đang giao" (mẫu mới), đèn trong `/noi-bo`, bảo hiểm hàng (`SGN-BIKE-INSURANCE`) khi Ahamove báo phí | việc tiếp |
 | 4 | Máy chủ thuê ở Việt Nam, HTTPS (xong 09/11/2026: BizFly Cloud TP.HCM, `https://don.beeftown.vn`, Mini App điền địa chỉ), sao lưu sổ đơn ở Việt Nam, xóa dữ liệu khách quá hạn, đèn sức khỏe trong `/noi-bo`, báo số khay sang kho | đang làm (#138) |
 
 ## File
@@ -58,6 +60,8 @@ mạng: dữ liệu đi qua máy chủ Cloudflare.
 | `src/sepay.ts` | Kiểm chữ ký HMAC-SHA256 của SePay, đọc tin tiền về, tìm mã đơn trong nội dung |
 | `src/checkout-zalo.ts` | VNPay qua Checkout SDK, phần thuần: cấu hình (đủ ba biến hoặc không), tham số createOrder và MAC, đọc callback (mac, overallMac, Mini App ID, extradata → mã đơn), IP của Zalo, dòng nhật ký IPN sandbox. Nguồn và giả định ghi đầu file |
 | `src/vnpay-thu.ts` | Trang thử VNPay trên web (Khánh 12/11/2026, chỉ sandbox, chỉ tiếng Việt): ký đường dẫn tới cổng thử VNPay (HMAC-SHA512), Return URL kiểm chữ ký rồi hiện kết quả; không ghi sổ đơn. Chỉ để làm phiếu kiểm thử thủ công của VNPay (`test/thu.ts` nhóm 23) |
+| `src/ahamove.ts` | Ahamove phần thuần: cấu hình (đủ ba biến hoặc không), thân Tạo đơn, đọc trạng thái (`docTinChuyen` — không giữ api_key của thân webhook), đọc lỗi, mô hình chuyến `ChuyenXe` và bước quầy thấy (`buocXe`). Nguồn và giả định ghi đầu file |
+| `src/goi-xe.ts` | Một lượt gọi xe: token trong bộ nhớ (401 thì lấy lại một lần), tạo / tra lại / hủy / hỏi lại theo việc của từng chuyến |
 | `src/zns.ts` | ZNS phần thuần: cấu hình từ biến môi trường (đủ bốn hoặc không), `duLieuTin` (tên tham số của mẫu Zalo), mã hóa token |
 | `src/gui-zns.ts` | Một lượt gửi ZNS: làm mới token (lưu trước khi gửi), gửi, xử lý mã lỗi theo `XU_LY_LOI` của `web/src/lib/zalo.ts` |
 | `src/trang-thai.ts` | Trạng thái, bước quầy được bấm, nhãn vi / en và kiểu vẽ K1–K7 |
@@ -101,6 +105,13 @@ giờ nhận và số điện thoại `mini-app/src/don.ts`, giờ Việt Nam `w
   qua website (số điện thoại khách Mini App không rời Việt Nam). Refresh token mới lưu vào sổ đơn TRƯỚC khi gửi; tin
   đang gửi dở khi máy chủ tắt thành `khong_ro`, không gửi lại. Nhật ký, cột `loi`: qua `xoaBiMatZalo` — không số điện
   thoại, không token. Chữ của mẫu tin nằm trên Zalo (Khánh tạo và duyệt), máy chủ chỉ gửi tham số.
+- Ahamove: chuyến xếp cùng giao dịch với "Soạn xong, chờ giao" (`xepChuyenXe` trong `doiTrongGiaoDich`), mỗi đơn mỗi lần
+  một dòng. Trước khi gửi Tạo đơn chuyến đã là `kiem_lai` (`batDauTaoChuyen`): không kết quả rõ (mất mạng, hết giờ, 500,
+  409, máy chủ tắt) thì tra theo mã theo dõi — KHÔNG gửi lại mù. Chỉ 400/404/406 là "Ahamove không nhận"; 503 là chưa
+  tạo. Chuyến đã khép (COMPLETED, CANCELLED) không đổi nữa. Quầy đã hủy đơn (`huy_yeu_cau`) mà chuyến còn chạy thì
+  luôn mang việc `huy`, kể cả khi Tạo đơn xong sau lệnh hủy. Ahamove thật (`AHAMOVE_MOI_TRUONG=that`): chỉ đơn có tiền
+  thật đủ tổng đơn (SePay id dương, VNPay không sandbox) mới gọi xe. Thân webhook mang api_key của quán: không ghi thân
+  thô ra nhật ký hay sổ đơn. Ghi chú cho tài xế không ghi số tầng (giấy chứng nhận Tầng 4, website tầng 3 — chưa khớp).
 - Màn hình quầy: không màu trạng thái (bảy kiểu K1–K7 của nội bộ, skill `thiet-ke-beeftown`); chữ đủ vi / en.
 - Thư mục du-lieu (sổ đơn `don.sqlite`) không bao giờ vào git — `.gitignore` chặn, `crm/test/test-quy-trinh.mjs` kiểm.
 
