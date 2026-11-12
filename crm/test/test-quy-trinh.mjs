@@ -131,6 +131,7 @@ await nhom('3 · FILE CỦA QUY TRÌNH CÓ MẶT VÀ ĐƯỢC GIT THEO DÕI', as
     'web/CLAUDE.md',
     'can-app/CLAUDE.md',
     'may-chu-don/CLAUDE.md',
+    '.github/CLAUDE.md',
   ];
   for (const f of CAN) {
     let biChan = false;
