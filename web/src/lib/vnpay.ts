@@ -28,7 +28,6 @@
 
 import { docChuoi, envNode, envWorker, type Env } from './bien-moi-truong.ts';
 import { gioVnTuMs, isoGioVn } from './gio-vn.ts';
-import { bangNhauHang } from './kho/ipos.ts';
 import type { NgonNgu } from './noi-dung.ts';
 
 /** Cổng thanh toán VNPay — môi trường thử. */
@@ -132,6 +131,18 @@ export function chuoiKy(thamSo: Record<string, string>, boRong = true): string {
 }
 
 const ma = new TextEncoder();
+/**
+ * So hai chuỗi trong thời gian không đổi (không lộ chữ ký đúng qua thời gian trả lời). Viết riêng ở đây chứ không
+ * dùng bangNhauHang của kho/ipos.ts: file này nằm trong đồ thị import của trang công khai, kho thì không được
+ * (crm/test/test-cong-khai-dia-diem.mjs, "Không quét kho và /noi-bo").
+ */
+function bangNhau(a: string, b: string): boolean {
+  const x = ma.encode(a), y = ma.encode(b);
+  let khac = x.length ^ y.length;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) khac |= (x[i] ?? 0) ^ (y[i] ?? 0);
+  return khac === 0;
+}
+
 /** HMAC-SHA512, chữ hex thường. */
 export async function kyHmac(khoa: string, chuoi: string): Promise<string> {
   const k = await crypto.subtle.importKey('raw', ma.encode(khoa), { name: 'HMAC', hash: 'SHA-512' }, false, ['sign']);
@@ -201,7 +212,7 @@ export async function docThamSoVnpay(query: URLSearchParams, ch: Pick<CauHinhVnp
   let dung = false;
   if (/^[0-9a-f]{128}$/.test(nhan)) {
     for (const chuoi of new Set([chuoiKy(thamSo, true), chuoiKy(thamSo, false)])) {
-      if (bangNhauHang(await kyHmac(ch.khoaBiMat, chuoi), nhan)) dung = true;   // thời gian không đổi
+      if (bangNhau(await kyHmac(ch.khoaBiMat, chuoi), nhan)) dung = true;
     }
   }
   const g = (k: string, toiDa = 64) => (thamSo[k] ?? '').slice(0, toiDa);
