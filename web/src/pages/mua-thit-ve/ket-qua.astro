@@ -1,0 +1,17 @@
+---
+/* Trang kết quả trả tiền VNPay (Return URL, 0115) — vỏ: GET đọc kết quả VNPay gửi kèm, POST là nút "Trả tiền qua VNPay"
+   (lib/xu-ly-form.ts xuLyKetQuaVnpay); màn do TrangKetQuaVnpay dựng. Không lập chỉ mục. Sửa bản này thì sửa cả hai bản
+   kia (/mua-thit-ve/ket-qua, /en/buy-meat/result, /ko/buy-meat/result). */
+import Trang from '../../layouts/Trang.astro';
+import TrangKetQuaVnpay from '../../components/TrangKetQuaVnpay.astro';
+import { docNoiDung } from '../../lib/noi-dung';
+import { xuLyKetQuaVnpay } from '../../lib/xu-ly-form';
+
+const man = await xuLyKetQuaVnpay(Astro, 'vi');
+if (man instanceof Response) return man;
+Astro.response.headers.set('cache-control', 'no-store');
+const noiDung = await docNoiDung('vi');
+---
+<Trang ngonNgu="vi" noiDung={noiDung} duongDan="/mua-thit-ve/ket-qua" tieuDe="Trả tiền đơn mua thịt — Beeftown" khongLapChiMuc>
+  <TrangKetQuaVnpay ngonNgu="vi" noiDung={noiDung} man={man} />
+</Trang>

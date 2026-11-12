@@ -2,9 +2,10 @@
  * TÀI KHOẢN MÁY — ĐĂNG NHẬP SUPABASE CHO VIỆC CHẠY NỀN
  * ===================================================
  *
- * Bốn việc chạy nền đăng nhập bằng tài khoản máy riêng của mình: báo động (may_bao_dong,
+ * Năm việc chạy nền đăng nhập bằng tài khoản máy riêng của mình: báo động (may_bao_dong,
  * bao-dong.ts), Zalo (may_zalo, zalo-gui.ts), iPOS (may_ipos, kho/ipos-dong-bo.ts — cả hook nhận
- * hóa đơn), Messenger (may_messenger, messenger-hook.ts). Cùng một cách:
+ * hóa đơn), Messenger (may_messenger, messenger-hook.ts), VNPay (may_vnpay, vnpay-hook.ts — IPN và
+ * trang kết quả trả tiền của Mua thịt về, 0115). Cùng một cách:
  *
  *   client anon RIÊNG (không lưu phiên, không tự làm mới, không đọc URL) → signInWithPassword →
  *   dùng → dangXuat() (thu hồi phiên vừa cấp, không giữ refresh token nào).

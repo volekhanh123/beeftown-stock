@@ -53,7 +53,47 @@ export const CAU_DAT_HANG = {
     en: 'Beeftown has received your order.',
     ko: 'Beeftown에 주문이 접수되었어요.',
   },
+  // 0115 · trả trước qua VNPay
+  chuaMoTraTien: {
+    vi: 'Chưa mở được trang trả tiền VNPay. Đơn đã ghi nhận nhưng CHƯA được trả tiền.',
+    en: 'We could not open the VNPay payment page. Your order is recorded but has NOT been paid.',
+    ko: 'VNPay 결제 페이지를 열지 못했어요. 주문은 접수되었지만 아직 결제되지 않았어요.',
+  },
 } as const satisfies Record<string, BaThuTieng>;
+
+/** Kết quả mở một lần trả VNPay (mua_thit_mo_vnpay, 0115). */
+export type MoTraTien =
+  | { ok: true; maDon: string; soTien: number; daTra: true }
+  | { ok: true; maDon: string; soTien: number; daTra: false; maGiaoDich: string }
+  /** Database từ chối (đơn đã hủy, quá số lần…): câu khách đọc, đúng thứ tiếng. */
+  | { ok: false; cau: string };
+
+/**
+ * Mở một lần trả VNPay cho đơn có ma_gui này — client anon, như tao_don_mua_thit. Database chốt số tiền (tạm tính
+ * của đơn — giá gói đã gồm phí giao). Ném khi không nghe được trả lời (lần trả có thể đã mở: không sao, chỉ là một
+ * dòng "chờ" — khách bấm lại thì mở lần mới).
+ */
+export async function moTraTienVnpay(
+  client: Pick<SupabaseClient, 'rpc'>, maGui: string, ngonNgu: NgonNgu,
+): Promise<MoTraTien> {
+  const cau = dich(ngonNgu, CAU_DAT_HANG);
+  const { data, error } = await client.rpc('mua_thit_mo_vnpay', { p_ma_gui: maGui });
+  if (error) {
+    if (!laLoiDatabase(error)) throw new Error(`mua_thit_mo_vnpay: không nghe được trả lời — ${error.message ?? ''}`);
+    return { ok: false, cau: cauLoiDatabase(error.message ?? '', ngonNgu, cau.chuaMoTraTien) };
+  }
+  const d = data && typeof data === 'object' && !Array.isArray(data) ? data as Record<string, unknown> : {};
+  const maDon = d.ma_don, soTien = Number(d.so_tien);
+  if (typeof maDon !== 'string' || !/^[0-9A-Z]{6}$/.test(maDon) || !Number.isSafeInteger(soTien) || soTien <= 0) {
+    throw new Error('mua_thit_mo_vnpay: trả lời không có mã đơn / số tiền');
+  }
+  if (d.da_tra === true) return { ok: true, maDon, soTien, daTra: true };
+  const maGiaoDich = d.ma_giao_dich;
+  if (typeof maGiaoDich !== 'string' || !/^[0-9A-Z]{6}[0-9]{2}$/.test(maGiaoDich)) {
+    throw new Error('mua_thit_mo_vnpay: trả lời không có mã giao dịch');
+  }
+  return { ok: true, maDon, soTien, daTra: false, maGiaoDich };
+}
 
 export interface KetQuaDatHang {
   ok: boolean;
@@ -61,6 +101,11 @@ export interface KetQuaDatHang {
   cau: string;
   /** Không nghe được trả lời của database: đơn CÓ THỂ đã ghi. Trang không dựng lại form. */
   khongChac?: boolean;
+  /** 0115 · website có VNPay mà chưa mở được trang trả tiền: đơn đã ghi, CHƯA trả. loiTra: vì sao. */
+  choTra?: boolean;
+  loiTra?: string;
+  /** 0115 · đơn đã trả đủ qua VNPay. */
+  daTra?: boolean;
 }
 
 /** Đơn đọc từ thân POST — chưa kiểm với menu (database làm việc đó). */

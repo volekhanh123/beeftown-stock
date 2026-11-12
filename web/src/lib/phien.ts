@@ -225,6 +225,10 @@ export interface KetQua {
   khongChac?: boolean;
   /** Form nào ghi kết quả này. Đơn mua thịt (0113) ghi 'dat_hang' — trang Mua thịt về bỏ qua kết quả của form khác. */
   loai?: 'dat_hang';
+  /** Đơn mua thịt (0115): website có VNPay mà chưa mở được trang trả tiền — loi mang lý do; trang mời trả lại. */
+  choTra?: boolean;
+  /** Đơn mua thịt (0115): đơn này đã trả đủ qua VNPay (gửi lại form của đơn đã trả). */
+  daTra?: boolean;
 }
 
 export function ghiKetQua(cookies: AstroCookies, kq: KetQua) {

@@ -1,0 +1,118 @@
+---
+/**
+ * TRANG KẾT QUẢ TRẢ TIỀN VNPAY — /mua-thit-ve/ket-qua · /en/buy-meat/result · /ko/buy-meat/result (0115)
+ * ======================================================================================================
+ *
+ * VNPay đưa khách về đây sau khi trả (Return URL). Ba file vỏ gọi xuLyKetQuaVnpay (lib/xu-ly-form.ts) rồi giao màn cho
+ * component này. Trang chỉ NÓI kết quả; kết quả thật do IPN ghi (lib/vnpay-hook.ts). Câu đúng sự thật:
+ *   · "Beeftown đã nhận tiền" — CHỈ khi database đã ghi đơn đã trả;
+ *   · "VNPay báo bạn đã trả xong" — chữ ký đúng, mã 00, database chưa ghi: không mời trả lại (trả hai lần);
+ *   · "chưa được trả tiền" — kèm lý do theo mã VNPay và nút trả lại (chỉ khi trình duyệt này đã đặt đơn đó);
+ *   · "không xác nhận được" — chữ ký sai: không tin số nào trên đường dẫn.
+ * Không lập chỉ mục (khongLapChiMuc ở Trang.astro). Số tiền chỉ trong phần tử data-tien (bộ quét chữ cấm miễn chỗ đó).
+ */
+import { dich as dichCau, duongDanTuongUng } from '../lib/chu';
+import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+import { lienHe } from '../lib/trang-cong-khai';
+import { dinhDangTien } from '../lib/don-mua-thit';
+import { DUONG_KET_QUA_VNPAY, type ManKetQuaVnpay } from '../lib/xu-ly-form';
+import { CONG_VNPAY } from '../lib/vnpay';
+import BieuTuong from './BieuTuong.astro';
+
+interface Props {
+  ngonNgu: NgonNgu;
+  noiDung: NoiDung;
+  man: ManKetQuaVnpay;
+}
+const { ngonNgu: nn, noiDung: nd, man } = Astro.props;
+const lh = lienHe(nd);
+const congThu = /sandbox/.test(CONG_VNPAY);
+
+const c = dichCau(nn, {
+  hieu: { vi: 'Mua thịt về', en: 'Take home', ko: '포장 구매' },
+  daNhanTienH1: { vi: 'Beeftown đã nhận tiền cho đơn của bạn', en: 'Beeftown has received your payment', ko: 'Beeftown에서 결제를 확인했어요' },
+  vnpayBaoH1: { vi: 'VNPay báo bạn đã trả xong', en: 'VNPay says your payment went through', ko: 'VNPay에서 결제가 끝났다고 알려 왔어요' },
+  vnpayBaoDan: {
+    vi: 'Beeftown đang chờ VNPay gửi xác nhận khoản tiền này. Bạn không cần trả lại.',
+    en: 'Beeftown is waiting for VNPay to confirm this payment. You do not need to pay again.',
+    ko: 'Beeftown은 VNPay의 결제 확인을 기다리고 있어요. 다시 결제하지 않으셔도 돼요.',
+  },
+  sauTra: {
+    vi: 'Quán sẽ gọi số điện thoại bạn để lại để hẹn giờ giao.',
+    en: 'We will call the phone number you gave to agree the delivery time.',
+    ko: '남겨 주신 전화번호로 연락드려 배달 시간을 정해 드려요.',
+  },
+  chuaTraH1: { vi: 'Đơn của bạn chưa được trả tiền', en: 'Your order has not been paid', ko: '주문이 아직 결제되지 않았어요' },
+  chuaTraDan: {
+    vi: 'Đơn vẫn được giữ. Bạn bấm trả tiền bên dưới, hoặc gọi Beeftown.',
+    en: 'Your order is still held. Tap pay below, or call Beeftown.',
+    ko: '주문은 그대로 있어요. 아래에서 결제하시거나 Beeftown에 전화해 주세요.',
+  },
+  goiDeTra: {
+    vi: 'Đơn vẫn được giữ. Muốn trả lại, vui lòng gọi Beeftown kèm mã đơn.',
+    en: 'Your order is still held. To pay again, please call Beeftown with your order code.',
+    ko: '주문은 그대로 있어요. 다시 결제하시려면 주문 번호와 함께 Beeftown에 전화해 주세요.',
+  },
+  loiTraLaiH1: { vi: 'Chưa mở được trang trả tiền', en: 'We could not open the payment page', ko: '결제 페이지를 열지 못했어요' },
+  saiChuKyH1: { vi: 'Không xác nhận được kết quả trả tiền', en: 'We could not confirm the payment result', ko: '결제 결과를 확인하지 못했어요' },
+  saiChuKyDan: {
+    vi: 'Đường dẫn này không mang chữ ký đúng của VNPay. Nếu tài khoản của bạn đã bị trừ tiền, vui lòng gọi Beeftown.',
+    en: 'This link does not carry a valid VNPay signature. If money has left your account, please call Beeftown.',
+    ko: '이 링크에는 올바른 VNPay 서명이 없어요. 계좌에서 돈이 빠져나갔다면 Beeftown에 전화해 주세요.',
+  },
+  chuaCaiH1: { vi: 'Website chưa nhận trả tiền qua VNPay', en: 'The website does not take VNPay payments yet', ko: '웹사이트에서 아직 VNPay 결제를 받지 않아요' },
+  chuaCaiDan: {
+    vi: 'Nếu bạn vừa trả tiền cho một đơn của Beeftown, vui lòng gọi quán.',
+    en: 'If you have just paid for a Beeftown order, please call us.',
+    ko: 'Beeftown 주문을 방금 결제하셨다면 매장에 전화해 주세요.',
+  },
+  maDon: { vi: 'Mã đơn', en: 'Order code', ko: '주문 번호' },
+  soTien: { vi: 'Số tiền', en: 'Amount', ko: '결제 금액' },
+  traLai: { vi: 'Trả tiền qua VNPay', en: 'Pay with VNPay', ko: 'VNPay로 결제하기' },
+  goiBeeftown: { vi: 'Gọi Beeftown', en: 'Call Beeftown', ko: 'Beeftown에 전화하기' },
+  veMuaThit: { vi: 'Về trang Mua thịt về', en: 'Back to Take home', ko: '포장 구매로 돌아가기' },
+  congThu: {
+    vi: 'Cổng VNPay đang ở chế độ thử: không trừ tiền thật.',
+    en: 'VNPay is in test mode: no real money is taken.',
+    ko: 'VNPay 테스트 중이에요. 실제 돈은 나가지 않아요.',
+  },
+});
+
+const tieuDe = man.loai === 'da_nhan_tien' ? c.daNhanTienH1
+  : man.loai === 'vnpay_bao_da_tra' ? c.vnpayBaoH1
+  : man.loai === 'chua_tra' ? c.chuaTraH1
+  : man.loai === 'loi_tra_lai' ? c.loiTraLaiH1
+  : man.loai === 'sai_chu_ky' ? c.saiChuKyH1 : c.chuaCaiH1;
+const maDon = 'maDon' in man ? man.maDon : null;
+const soTien = 'soTien' in man ? man.soTien : null;
+const coTraLai = (man.loai === 'chua_tra' || man.loai === 'loi_tra_lai') && man.coTraLai && maDon !== null;
+const canGoi = man.loai !== 'da_nhan_tien' && man.loai !== 'vnpay_bao_da_tra';
+---
+<section class="mo-dau-trang be-kem mtv-ket-qua" aria-labelledby="vnp-tieu-de">
+  <div class="khung khung-hep" data-ket-qua-vnpay={man.loai} tabindex="-1">
+    <p class="hieu">{c.hieu}</p>
+    <h1 id="vnp-tieu-de">{tieuDe}</h1>
+    {maDon && (<p class="mtv-ma-don">{c.maDon}: <strong>{maDon}</strong></p>)}
+    {soTien !== null && man.loai !== 'sai_chu_ky' && (<p>{c.soTien}: <strong data-tien>{dinhDangTien(soTien)}</strong></p>)}
+
+    {man.loai === 'da_nhan_tien' && (<p class="dan">{c.sauTra}</p>)}
+    {man.loai === 'vnpay_bao_da_tra' && (<><p class="dan">{c.vnpayBaoDan}</p><p class="dan">{c.sauTra}</p></>)}
+    {man.loai === 'chua_tra' && (<p class="mtv-loi" role="alert"><strong>{man.cau}</strong></p>)}
+    {man.loai === 'loi_tra_lai' && (<p class="mtv-loi" role="alert"><strong>{man.cau}</strong></p>)}
+    {(man.loai === 'chua_tra' || man.loai === 'loi_tra_lai') && (<p class="dan">{coTraLai ? c.chuaTraDan : c.goiDeTra}</p>)}
+    {man.loai === 'sai_chu_ky' && (<p class="dan">{c.saiChuKyDan}</p>)}
+    {man.loai === 'chua_cai' && (<p class="dan">{c.chuaCaiDan}</p>)}
+
+    <div class="hang-nut mtv-hang-nut-dau">
+      {coTraLai && (
+        <form method="post" action={DUONG_KET_QUA_VNPAY[nn]}>
+          <input type="hidden" name="ma_don" value={maDon} />
+          <button class="nut nut-chinh" type="submit">{c.traLai}</button>
+        </form>
+      )}
+      {canGoi && lh.goi && (<a class={coTraLai ? 'lien-ket' : 'nut nut-chinh'} href={lh.goi}><BieuTuong ten="dien-thoai" />{c.goiBeeftown}</a>)}
+      <a class="lien-ket" href={duongDanTuongUng('/mua-thit-ve', nn)}>{c.veMuaThit}<BieuTuong ten="mui-ten" /></a>
+    </div>
+    {congThu && man.loai !== 'chua_cai' && (<p class="mtv-ghi"><strong>{c.congThu}</strong></p>)}
+  </div>
+</section>

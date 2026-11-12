@@ -28,14 +28,17 @@
  * thử gọi thẳng (crm/test/test-cong-khai-gui-lai.mjs, test-cong-khai-mat-mang.mjs).
  */
 
-import type { APIContext } from 'astro';
+import type { APIContext, AstroCookies } from 'astro';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { taoClient, type NgonNgu } from './noi-dung.ts';
 import { ghiKetQua, docKetQua, layIp, type KetQua } from './phien.ts';
 import type { BaThuTieng } from './chu';
 import { nopHoSo, CAU_NOP, type KetQuaNop } from './nop-ho-so.ts';
 import { guiYeuCauDatBan, CAU_DAT_BAN, type KetQuaDatBan } from './dat-ban.ts';
-import { docDonGui, guiDonMuaThit, CAU_DAT_HANG, type KetQuaDatHang } from './dat-hang-mua-thit.ts';
+import { docDonGui, guiDonMuaThit, moTraTienVnpay, CAU_DAT_HANG, type KetQuaDatHang } from './dat-hang-mua-thit.ts';
+import { docCauHinhVnpay, taoLinkVnpay, cauMaPhanHoi, type CauHinhVnpay } from './vnpay.ts';
+import { docKetQuaVe } from './vnpay-hook.ts';
+import { layBienCong } from './bien-moi-truong.ts';
 import { gioThanhDiaChi } from './don-mua-thit.ts';
 import { docFormGioiHan } from './than-gioi-han.ts';
 
@@ -134,6 +137,22 @@ const CAU = {
     en: 'We could not read your order — the connection may have dropped. It has NOT been recorded. Please order again.',
     ko: '보내신 주문을 읽지 못했어요. 연결이 중간에 끊겼을 수 있어요. 주문은 접수되지 않았어요. 다시 주문해 주세요.',
   },
+  // 0115 · trả lại qua VNPay (thẻ "đã nhận đơn" hay trang kết quả)
+  traLaiChuaSan: {
+    vi: 'Trả tiền trên website chưa sẵn sàng. Vui lòng gọi Beeftown.',
+    en: 'Paying on the website is not ready yet. Please call Beeftown.',
+    ko: '웹사이트 결제가 아직 준비되지 않았어요. Beeftown에 전화해 주세요.',
+  },
+  traLaiKhongKhop: {
+    vi: 'Không mở lại được trang trả tiền cho đơn này trên trình duyệt này. Vui lòng gọi Beeftown kèm mã đơn.',
+    en: 'We cannot reopen the payment page for this order in this browser. Please call Beeftown with your order code.',
+    ko: '이 브라우저에서는 이 주문의 결제 페이지를 다시 열 수 없어요. 주문 번호와 함께 Beeftown에 전화해 주세요.',
+  },
+  traLaiKhongChac: {
+    vi: 'Không nhận được phản hồi khi mở trang trả tiền. Đơn của bạn vẫn được giữ. Vui lòng thử lại sau ít phút hoặc gọi Beeftown.',
+    en: 'We got no response while opening the payment page. Your order is still held. Please try again in a few minutes or call Beeftown.',
+    ko: '결제 페이지를 여는 중에 응답을 받지 못했어요. 주문은 그대로 있어요. 몇 분 뒤 다시 시도하시거나 Beeftown에 전화해 주세요.',
+  },
 } as const satisfies Record<string, BaThuTieng>;
 
 /** Lỗi rút gọn cho log: cổng 502 trả nguyên trang HTML vào message. */
@@ -143,6 +162,10 @@ const loiNgan = (e: unknown) => (e instanceof Error ? e.message : String(e)).sli
 export interface LuotGui {
   ketQua: KetQua;
   ve: string;
+  /** Đơn mua thịt có VNPay (0115): "<mã đơn>.<ma_gui>" cho cookie trả lại (ghiCookieTraVnpay). */
+  traVnpay?: string;
+  /** Đã chuyển sang trang VNPay (ve là đường dẫn của VNPay): không ghi cookie kết quả. */
+  sangVnpay?: boolean;
 }
 
 /**
@@ -264,6 +287,34 @@ export function ketQuaDatBan(ctx: Pick<APIContext, 'cookies'>, ngonNgu: NgonNgu)
 // -----------------------------------------------------------------------------
 // ĐƠN MUA THỊT VỀ (0113) — cùng khuôn, cùng lý do
 // -----------------------------------------------------------------------------
+/** VNPay của trang: cấu hình đủ bốn bí mật và đường dẫn đầy đủ VNPay đưa khách về. null = trang chạy như chưa có VNPay. */
+export interface VnpayTrang {
+  cauHinh: Pick<CauHinhVnpay, 'maTmn' | 'khoaBiMat'>;
+  duongVe: string;
+}
+
+/** Trang kết quả trả tiền của mỗi thứ tiếng (Return URL của VNPay). */
+export const DUONG_KET_QUA_VNPAY: Record<NgonNgu, string> = {
+  vi: '/mua-thit-ve/ket-qua', en: '/en/buy-meat/result', ko: '/ko/buy-meat/result',
+};
+
+/**
+ * Đọc VNPay cho trang đang dựng. Thiếu bí mật nào → null (trang như 0113: quán gọi xác nhận, website không thu tiền);
+ * thiếu một phần thì ghi một dòng log nêu tên bí mật thiếu (một lần mỗi isolate, mỗi câu). Gốc đường về: SITE_URL, không có thì gốc của request.
+ */
+/** Câu thiếu bí mật đã ghi log trong isolate này — mỗi lần dựng trang không ghi lại cùng một dòng. */
+let cauThieuDaGhi = '';
+
+export async function vnpayChoTrang(ctx: Pick<APIContext, 'url'>, ngonNgu: NgonNgu, env?: Record<string, unknown>): Promise<VnpayTrang | null> {
+  const doc = await docCauHinhVnpay(env);
+  if (!doc.ok) {
+    if (!doc.chuaCai && doc.cau !== cauThieuDaGhi) { cauThieuDaGhi = doc.cau; console.error(`[vnpay] ${doc.cau}`); }
+    return null;
+  }
+  const goc = (layBienCong('SITE_URL', env) ?? ctx.url.origin).replace(/\/$/, '');
+  return { cauHinh: doc.cauHinh, duongVe: `${goc}${DUONG_KET_QUA_VNPAY[ngonNgu]}` };
+}
+
 /**
  * Một lượt đặt hàng, không cần Astro.
  *
@@ -271,19 +322,26 @@ export function ketQuaDatBan(ctx: Pick<APIContext, 'cookies'>, ngonNgu: NgonNgu)
  * giỏ (đặt lại chỉ còn một cú bấm thì quán nhận hai đơn). Chưa ghi (chặn sớm hay database từ chối) → về #dat-hang
  * KÈM giỏ trên địa chỉ (gioThanhDiaChi: chỉ khóa gói và số gói) để khách không phải chọn lại; họ tên, số điện thoại,
  * địa chỉ thì script của trang điền lại từ sessionStorage — không bao giờ đi qua địa chỉ trang.
+ *
+ * Có VNPay (0115): đã nhận → mở một lần trả (mua_thit_mo_vnpay) → chuyển thẳng sang trang VNPay. Mở không được (database
+ * từ chối, không nghe trả lời) → thẻ "đã nhận đơn" nói đơn CHƯA trả tiền, kèm nút trả lại. Đơn đã trả đủ (gửi lại
+ * form cũ) → thẻ "đã trả".
  */
 export async function luotDatHang(
   request: Request, client: Pick<SupabaseClient, 'rpc'> | null, duongDan: string, ngonNgu: NgonNgu,
+  vnpay: VnpayTrang | null = null, bayGio: () => number = Date.now,
 ): Promise<LuotGui> {
   const veForm = `${duongDan}#dat-hang`;
-  const kq = await luotDatHangTho(request, client, ngonNgu);
-  return { ketQua: { ...kq.ketQua, loai: 'dat_hang' }, ve: kq.ve === null ? veForm : kq.ve === 'da_nhan' ? `${duongDan}#da-nhan` : `${duongDan}?${kq.ve}#dat-hang` };
+  const kq = await luotDatHangTho(request, client, ngonNgu, vnpay, bayGio);
+  const ve = kq.sangVnpay ? kq.ve! : kq.ve === null ? veForm : kq.ve === 'da_nhan' ? `${duongDan}#da-nhan` : `${duongDan}?${kq.ve}#dat-hang`;
+  return { ketQua: { ...kq.ketQua, loai: 'dat_hang' }, ve, traVnpay: kq.traVnpay, sangVnpay: kq.sangVnpay };
 }
 
 /** Phần quyết định của luotDatHang. ve: null → #dat-hang; 'da_nhan' → #da-nhan; chuỗi khác → giỏ trên địa chỉ trang. */
 async function luotDatHangTho(
-  request: Request, client: Pick<SupabaseClient, 'rpc'> | null, ngonNgu: NgonNgu,
-): Promise<{ ketQua: KetQua; ve: string | null }> {
+  request: Request, client: Pick<SupabaseClient, 'rpc'> | null, ngonNgu: NgonNgu, vnpay: VnpayTrang | null,
+  bayGio: () => number,
+): Promise<{ ketQua: KetQua; ve: string | null; traVnpay?: string; sangVnpay?: boolean }> {
   const veForm = null;
   if (!client) return { ketQua: { ok: false, loi: CAU.datHangChuaSan[ngonNgu] }, ve: veForm };
 
@@ -302,18 +360,51 @@ async function luotDatHangTho(
     return { ketQua: { ok: false, loi: CAU.datHangKhongChac[ngonNgu], khongChac: true }, ve: veForm };
   }
 
-  if (kq.ok) return { ketQua: { ok: true, ma: kq.ma }, ve: 'da_nhan' };
-  const gio = gioThanhDiaChi(don.gio);
-  return { ketQua: { ok: false, loi: kq.cau }, ve: gio || veForm };
+  if (!kq.ok) {
+    const gio = gioThanhDiaChi(don.gio);
+    return { ketQua: { ok: false, loi: kq.cau }, ve: gio || veForm };
+  }
+  // Đơn ghi được thì mã chống gửi hai lần đúng dạng (database từ chối khi thiếu).
+  if (!vnpay || !don.maGui) return { ketQua: { ok: true, ma: kq.ma }, ve: 'da_nhan' };
+  return moVnpay(request, client, kq.ma!, don.maGui, ngonNgu, vnpay, bayGio());
+}
+
+/** Mở một lần trả và dựng đường dẫn VNPay — chung cho lượt đặt hàng và nút "Trả lại". */
+async function moVnpay(
+  request: Request, client: Pick<SupabaseClient, 'rpc'>, maDon: string, maGui: string, ngonNgu: NgonNgu,
+  vnpay: VnpayTrang, ms: number,
+): Promise<{ ketQua: KetQua; ve: string | null; traVnpay?: string; sangVnpay?: boolean }> {
+  const traVnpay = `${maDon}.${maGui}`;
+  let mo;
+  try {
+    mo = await moTraTienVnpay(client, maGui, ngonNgu);
+  } catch (e) {
+    console.error('[dat-hang] không mở được lần trả VNPay:', loiNgan(e));
+    return { ketQua: { ok: true, ma: maDon, choTra: true, loi: CAU.traLaiKhongChac[ngonNgu] }, ve: 'da_nhan', traVnpay };
+  }
+  if (!mo.ok) return { ketQua: { ok: true, ma: maDon, choTra: true, loi: mo.cau }, ve: 'da_nhan', traVnpay };
+  if (mo.daTra) return { ketQua: { ok: true, ma: mo.maDon, daTra: true }, ve: 'da_nhan' };
+  let url: string;
+  try {
+    url = await taoLinkVnpay(vnpay.cauHinh, {
+      maGiaoDich: mo.maGiaoDich, maDon: mo.maDon, soTien: mo.soTien, ngonNgu, ip: layIp(request), duongVe: vnpay.duongVe, ms,
+    });
+  } catch (e) {
+    // Số tiền ngoài khoảng VNPay nhận (dưới 5.000 đ, từ 1 tỷ): đơn đã ghi — nói đúng là CHƯA trả, không bao giờ trang 500.
+    console.error('[dat-hang] không dựng được đường dẫn VNPay:', loiNgan(e));
+    return { ketQua: { ok: true, ma: maDon, choTra: true, loi: CAU_DAT_HANG.chuaMoTraTien[ngonNgu] }, ve: 'da_nhan', traVnpay };
+  }
+  return { ketQua: { ok: true, ma: mo.maDon }, ve: url, traVnpay, sangVnpay: true };
 }
 
 export async function xuLyDatHang(
   ctx: APIContext, duongDan: string, ngonNgu: NgonNgu,
 ): Promise<Response | null> {
   if (ctx.request.method !== 'POST') return null;
-  const { ketQua, ve } = await luotDatHang(ctx.request, taoClient(), duongDan, ngonNgu);
-  ghiKetQua(ctx.cookies, ketQua);
-  return ctx.redirect(ve, 303);
+  const l = await luotDatHang(ctx.request, taoClient(), duongDan, ngonNgu, await vnpayChoTrang(ctx, ngonNgu));
+  if (!l.sangVnpay) ghiKetQua(ctx.cookies, l.ketQua);
+  if (l.traVnpay) ghiCookieTraVnpay(ctx.cookies, l.traVnpay);
+  return ctx.redirect(l.ve, 303);
 }
 
 export function ketQuaDatHang(ctx: Pick<APIContext, 'cookies'>, ngonNgu: NgonNgu): KetQuaDatHang | null {
@@ -322,6 +413,89 @@ export function ketQuaDatHang(ctx: Pick<APIContext, 'cookies'>, ngonNgu: NgonNgu
   // thành thẻ "đã nhận đơn" với mã đặt bàn.
   if (!kq || kq.loai !== 'dat_hang') return null;
   return kq.ok
-    ? { ok: true, ma: kq.ma, cau: CAU_DAT_HANG.daNhan[ngonNgu] }
+    ? { ok: true, ma: kq.ma, cau: CAU_DAT_HANG.daNhan[ngonNgu], choTra: kq.choTra === true, loiTra: kq.choTra ? kq.loi : undefined,
+        daTra: kq.daTra === true }
     : { ok: false, cau: kq.loi ?? CAU_DAT_HANG.chuaGhi[ngonNgu], khongChac: kq.khongChac === true };
+}
+
+// -----------------------------------------------------------------------------
+// TRẢ LẠI QUA VNPAY (0115) — nút ở thẻ "đã nhận đơn" và trang kết quả
+// -----------------------------------------------------------------------------
+/**
+ * Cookie "<mã đơn>.<ma_gui>": chỉ trình duyệt đã đặt đơn mới mở lại được lần trả cho đơn đó (ma_gui là thứ
+ * mua_thit_mo_vnpay đòi). httpOnly, SameSite=Lax (VNPay đưa khách về bằng một lần mở trang GET — cookie vẫn đi kèm),
+ * 2 giờ. Không bao giờ vào HTML hay địa chỉ trang.
+ */
+export const COOKIE_TRA_VNPAY = 'bt_tra_vnpay';
+const MAU_TRA_VNPAY = /^([0-9A-Z]{6})\.([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
+
+export function ghiCookieTraVnpay(cookies: AstroCookies, giaTri: string) {
+  cookies.set(COOKIE_TRA_VNPAY, giaTri, {
+    httpOnly: true, secure: import.meta.env.PROD, sameSite: 'lax', path: '/', maxAge: 2 * 3600,
+  });
+}
+
+/** Mã đơn của cookie trả lại (để trang biết có nên hiện nút "Trả lại" không), hoặc null. */
+export function maDonTraVnpay(cookies: Pick<AstroCookies, 'get'>): string | null {
+  return MAU_TRA_VNPAY.exec(cookies.get(COOKIE_TRA_VNPAY)?.value ?? '')?.[1] ?? null;
+}
+
+export type LuotTraLai =
+  | { loai: 'sang_vnpay'; url: string }
+  | { loai: 'da_tra'; maDon: string }
+  | { loai: 'loi'; cau: string; maDon: string | null };
+
+/**
+ * Một lần bấm "Trả lại qua VNPay". Thân form chỉ có ma_don (đơn của nút); cookie phải là của đúng đơn đó — nút của một
+ * đơn không bao giờ mở lần trả cho đơn khác vừa đặt trong cùng trình duyệt.
+ */
+export async function luotTraLai(
+  request: Request, cookieTra: string | null | undefined, client: Pick<SupabaseClient, 'rpc'> | null, ngonNgu: NgonNgu,
+  vnpay: VnpayTrang | null, bayGio: () => number = Date.now,
+): Promise<LuotTraLai> {
+  const doc = await docFormGioiHan(request, 4 * 1024);
+  const maDon = doc.loi ? null : String(doc.form.get('ma_don') ?? '').trim();
+  const m = MAU_TRA_VNPAY.exec(cookieTra ?? '');
+  const maHop = maDon && /^[0-9A-Z]{6}$/.test(maDon) ? maDon : null;
+  if (!vnpay || !client) return { loai: 'loi', cau: CAU.traLaiChuaSan[ngonNgu], maDon: maHop };
+  if (!m || !maHop || m[1] !== maHop) return { loai: 'loi', cau: CAU.traLaiKhongKhop[ngonNgu], maDon: maHop };
+  const kq = await moVnpay(request, client, m[1], m[2], ngonNgu, vnpay, bayGio());
+  if (kq.sangVnpay) return { loai: 'sang_vnpay', url: kq.ve! };
+  if (kq.ketQua.daTra) return { loai: 'da_tra', maDon: m[1] };
+  return { loai: 'loi', cau: kq.ketQua.loi ?? CAU.traLaiKhongChac[ngonNgu], maDon: m[1] };
+}
+
+// -----------------------------------------------------------------------------
+// TRANG KẾT QUẢ TRẢ TIỀN (Return URL — /mua-thit-ve/ket-qua, /en/buy-meat/result, /ko/buy-meat/result)
+// -----------------------------------------------------------------------------
+export type ManKetQuaVnpay =
+  | { loai: 'chua_cai' }
+  | { loai: 'sai_chu_ky' }
+  /** Database đã ghi đơn ĐÃ TRẢ (IPN đã tới). */
+  | { loai: 'da_nhan_tien'; maDon: string; soTien: number | null }
+  /** Chữ ký đúng, VNPay báo mã 00, database chưa ghi (IPN chưa tới / không hỏi được). Không bao giờ nói "đã nhận tiền". */
+  | { loai: 'vnpay_bao_da_tra'; maDon: string; soTien: number | null }
+  | { loai: 'chua_tra'; maDon: string; soTien: number | null; cau: string; coTraLai: boolean }
+  /** Bấm "Trả tiền" mà không mở được. */
+  | { loai: 'loi_tra_lai'; maDon: string | null; cau: string; coTraLai: boolean };
+
+/**
+ * GET: đọc kết quả VNPay gửi kèm (docKetQuaVe — kiểm chữ ký, ghi dấu khách về). POST: nút "Trả tiền qua VNPay"
+ * (luotTraLai) → chuyển sang VNPay (Response 303) hoặc một màn lỗi.
+ */
+export async function xuLyKetQuaVnpay(ctx: APIContext, ngonNgu: NgonNgu): Promise<Response | ManKetQuaVnpay> {
+  const vnpay = await vnpayChoTrang(ctx, ngonNgu);
+  const maDonCookie = maDonTraVnpay(ctx.cookies);
+  if (ctx.request.method === 'POST') {
+    const r = await luotTraLai(ctx.request, ctx.cookies.get(COOKIE_TRA_VNPAY)?.value, taoClient(), ngonNgu, vnpay);
+    if (r.loai === 'sang_vnpay') return ctx.redirect(r.url, 303);
+    if (r.loai === 'da_tra') return { loai: 'da_nhan_tien', maDon: r.maDon, soTien: null };
+    return { loai: 'loi_tra_lai', maDon: r.maDon, cau: r.cau, coTraLai: !!vnpay && !!r.maDon && r.maDon === maDonCookie };
+  }
+  const kq = await docKetQuaVe(ctx.url);
+  if (kq.loai !== 'co_ket_qua') return kq;
+  if (kq.daGhi === true) return { loai: 'da_nhan_tien', maDon: kq.maDon, soTien: kq.soTien };
+  if (kq.daTra) return { loai: 'vnpay_bao_da_tra', maDon: kq.maDon, soTien: kq.soTien };
+  return { loai: 'chua_tra', maDon: kq.maDon, soTien: kq.soTien, cau: cauMaPhanHoi(kq.maPhanHoi, ngonNgu),
+           coTraLai: !!vnpay && kq.maDon === maDonCookie };
 }

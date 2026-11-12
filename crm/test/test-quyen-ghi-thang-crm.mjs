@@ -288,6 +288,9 @@ await nhom('8 · CỔNG — mọi hàm definer authenticated gọi được ph�
     // 0113 — hộp thư đơn mua thịt website: chủ, quản lý, thu ngân, theo chi nhánh; từ chối marketing, vai kho, nhân sự
     // đã nghỉ, không nhan_su, chi nhánh khác (test-mua-thit-dat-hang.mjs nhóm 1, test-noi-bo-don-mua-thit.mjs nhóm 1).
     don_mua_thit_danh_sach: 'tu_kiem_vai', don_mua_thit_chuyen: 'tu_kiem_vai',
+    // 0115 — hai hàm máy may_vnpay (kết quả VNPay của đơn mua thịt): từ chối anon, chủ, quản lý, thu ngân, máy khác, máy
+    // đã tắt, nhân sự đã nghỉ, không nhan_su bằng 42501 (test-mua-thit-vnpay.mjs nhóm 1).
+    vnpay_ghi_ipn: 'tu_kiem_vai', vnpay_ghi_ve: 'tu_kiem_vai',
     // Chỉ đọc thứ đã công khai cho anon (cong_tac_bat: công tắc đã công bố; lịch trống: như lich_trong_theo_ma).
     cong_tac_bat: 'cong_khai', khung_gio_trong_ngay: 'cong_khai', so_ban_con_trong: 'cong_khai',
     lich_trong_theo_ngay: 'cong_khai',

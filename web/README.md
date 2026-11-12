@@ -160,7 +160,7 @@ Cỡ ảnh dựng sẵn bằng `python3 -I cong-cu/anh/tao-co-anh.py <thư-mục
 
 ## Mua thịt về (`/mua-thit-ve`)
 
-Trang công khai `/mua-thit-ve` (`/en/buy-meat`, `/ko/buy-meat`): khách chọn gói thịt bò và hộp kim chi, điền họ tên, số điện thoại, địa chỉ giao rồi bấm **Đặt hàng** — đơn ghi thẳng vào database, **chỉ giao tận nơi**, website **không thu tiền**. Khánh 03/11/2026: "Menu này phức tạp quá" — "đã lên website rồi thì cần gì Zalo OA" — "chỉ giao tận nơi". Trước đó (PR 2, 26/10/2026) khách chép tin đơn rồi tự gửi qua Zalo OA; luồng đó đã bỏ.
+Trang công khai `/mua-thit-ve` (`/en/buy-meat`, `/ko/buy-meat`): khách chọn gói thịt bò và hộp kim chi, điền họ tên, số điện thoại, địa chỉ giao rồi bấm **Đặt hàng** — đơn ghi thẳng vào database, **chỉ giao tận nơi**; đã cài VNPay thì khách **trả trước qua VNPay** (giá gói đã gồm phí giao — mục "VNPay cho Mua thịt về" bên dưới), chưa cài thì website **không thu tiền**. Khánh 03/11/2026: "Menu này phức tạp quá" — "đã lên website rồi thì cần gì Zalo OA" — "chỉ giao tận nơi". Trước đó (PR 2, 26/10/2026) khách chép tin đơn rồi tự gửi qua Zalo OA; luồng đó đã bỏ.
 
 Database: `crm/supabase/migrations/0101_mua_thit_ve.sql` (menu công khai `mua_thit_ve_cong_khai`, công tắc hiệu lực trong `noi_dung_cong_khai`) và `0113_mua_thit_dat_hang_web.sql` (bảng khóa kín `don_mua_thit`, hàm anon `tao_don_mua_thit`, hộp thư `don_mua_thit_danh_sach` / `don_mua_thit_chuyen`). Web: `src/components/TrangMuaThitVe.astro` (trang), `MuaThitThe.astro` (thẻ sản phẩm), `src/lib/mua-thit-ve.ts` (đọc menu), `src/lib/don-mua-thit.ts` (giỏ, tạm tính — chạy cả trong trình duyệt), `src/lib/dat-hang-mua-thit.ts` (gửi đơn), `luotDatHang` trong `src/lib/xu-ly-form.ts` (POST → chuyển hướng 303 → GET), `src/pages/noi-bo/don-mua-thit.astro` (hộp thư). Kiểm thử: `crm/test/test-mua-thit-dat-hang.mjs` (database đơn), `test-mua-thit-ve.mjs` (database menu), `test-mua-thit-dat-hang-web.mjs` (gửi đơn, mất mạng), `test-mua-thit-ve-web.mjs` (giỏ, menu), `test-cong-khai-mua-thit-ve.mjs` (component), `test-cong-khai-mua-thit-dieu-huong.mjs` (điều hướng, vỏ trang, quyền riêng tư), `test-noi-bo-don-mua-thit.mjs` (hộp thư), `kiem-tra/thu-day-du.mjs` nhóm 12 (trình duyệt thật trên Supabase giả).
 
@@ -197,6 +197,55 @@ Khóa chữ chủ công bố thêm vào trang (chưa công bố thì dùng câu 
 6. Khách ghi "cần hơn 10 gói một loại" trong ghi chú → kiểm quầy trước khi xác nhận.
 
 **Việc Khánh thử trên máy thật** (trước khi bật công tắc cho khách): đặt một đơn trên iPhone và Android (trình duyệt thường và trình duyệt trong Zalo, Facebook) — thấy trang "đã nhận" và mã đơn; đơn hiện ở `/noi-bo/don-mua-thit` và ô đếm ở Tổng quan; bấm đúp nút Đặt hàng — chỉ một đơn; tắt mạng đúng lúc bấm — trang nói "không chắc"; đổi giá ở Bán lẻ rồi chốt lại trong lúc trang đang mở — trang báo giá vừa đổi; tắt JavaScript rồi đặt thử.
+
+### VNPay cho Mua thịt về — khách trả trước (0115)
+
+Khánh 12/11/2026: "Đặt hàng đơn của bạn xác nhận là sai rồi, chưa link với VNPay để mở ra cổng thanh toán" — chọn **khách trả VNPay ở Mua thịt về** và **giá gói đã gồm phí giao**. Website nối thẳng cổng VNPay bằng **Terminal riêng của website** (`SLKGTE11`, đăng ký cho https://beeftown.vn). Terminal của Mini App (`SLKGTE22`) không dùng được: IPN của nó trỏ về Zalo (Checkout SDK).
+
+**Luồng.** Bấm Đặt hàng → database ghi đơn (`tao_don_mua_thit`, như trên) → mở một lần trả (`mua_thit_mo_vnpay`, anon, theo `ma_gui` — số tiền là tạm tính của đơn, database chốt) → trình duyệt chuyển thẳng sang trang VNPay (đường dẫn ký HMAC-SHA512, hết hạn 15 phút) → khách trả → VNPay gọi **IPN** `https://beeftown.vn/hook/vnpay-ipn` (máy chủ với máy chủ — chỉ IPN ghi "đã trả") và đưa khách về **trang kết quả** `/mua-thit-ve/ket-qua` (`/en/buy-meat/result`, `/ko/buy-meat/result`). Hộp thư `/noi-bo/don-mua-thit` có dòng **Trả tiền**: "✓ Đã trả qua VNPay …, mã giao dịch VNPay …", "Chưa trả — khách đã mở trang VNPay n lần", hay "! Khách về trang kết quả với VNPay báo đã trả, nhưng VNPay chưa báo về website" (xem trang quản lý của VNPay trước khi giao). Khách trả hai lần → hộp thư ghi số phải hoàn. Còn cổng thử thì dòng "Đã trả" ghi thêm **"CỔNG THỬ của VNPay — không phải tiền thật, đừng giao như đơn đã trả"**: thẻ thử của VNPay là công khai, ai cũng "trả" được.
+
+| Trang kết quả nói | Khi nào |
+|---|---|
+| "Beeftown đã nhận tiền cho đơn của bạn" | IPN đã ghi đơn đã trả |
+| "VNPay báo bạn đã trả xong" — "bạn không cần trả lại" | chữ ký đúng, mã 00, IPN chưa tới (hoặc không hỏi được database) |
+| "Đơn của bạn chưa được trả tiền" + lý do theo mã VNPay + nút **Trả tiền qua VNPay** | mã khác 00 (hủy, sai OTP, không đủ tiền…). Nút chỉ hiện trên trình duyệt đã đặt đơn đó (cookie `bt_tra_vnpay`, 2 giờ); mỗi lần bấm là một mã giao dịch mới, tối đa 10 lần mỗi đơn |
+| "Không xác nhận được kết quả trả tiền" | chữ ký sai — không tin số nào trên đường dẫn |
+
+Không mở được trang trả tiền (mất mạng, database từ chối) → thẻ "Beeftown đã nhận đơn của bạn" kèm câu đơn **CHƯA được trả tiền** và nút trả lại. Gửi lại form của đơn đã trả → thẻ "Đơn này đã được trả tiền", không mở lần mới.
+
+**Chưa cài đủ bốn bí mật thì trang chạy như trên** (quán gọi xác nhận, website không thu tiền) — không bao giờ thu tiền khi không ghi được kết quả về database. Đang dùng **cổng thử** (`sandbox.vnpayment.vn`, ghi cứng trong `src/lib/vnpay.ts`): trang ghi "Đang thử cổng VNPay: chỉ thẻ thử trả được, không trừ tiền thật" — **đừng bật công tắc Mua thịt về cho khách thật khi còn cổng thử**. Sang tiền thật là PR riêng (Terminal thật, dải IP thật của VNPay).
+
+**Bốn bí mật Worker** (đặt như các bí mật khác — dashboard Cloudflare → Workers & Pages → `beeftown` → Settings → Variables and Secrets → **Secret**, hoặc `npx wrangler secret put <TÊN>` trong `web/`; không ghi vào repo, chat hay `wrangler.toml`):
+
+| Bí mật | Là gì |
+|---|---|
+| `VNPAY_MA_TMN` | Mã Terminal của website: `SLKGTE11` |
+| `VNPAY_KHOA_BI_MAT` | Secret Key (vnp_HashSecret) của Terminal `SLKGTE11` — trong email VNPay gửi admin@beeftown.vn |
+| `VNPAY_MAY_EMAIL`, `VNPAY_MAY_MAT_KHAU` | Tài khoản máy vai `may_vnpay` (bên dưới) |
+
+Tùy chọn, không bí mật: `VNPAY_IP_IPN` — dải IP được gọi IPN (CIDR IPv4, cách nhau dấu phẩy). Vắng thì dùng dải VNPay báo cho môi trường thử: `113.20.124.24/29, 58.187.148.88/29`. IPN từ IP khác → `RspCode 03` và một dòng log.
+
+**Tạo tài khoản máy `may_vnpay` — một lần** (sau khi đã chạy 0114 rồi 0115):
+
+1. Supabase Studio → **Authentication → Users → Add user**: email riêng (vd. `may-vnpay@<tên miền của quán>`), mật khẩu dài ngẫu nhiên, tích **Auto confirm**. Chép `User UID`.
+2. SQL Editor:
+   ```sql
+   insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro)
+   values ('<User UID>', (select id from chi_nhanh order by ma limit 1), 'Máy VNPay website', 'may_vnpay');
+   ```
+3. Đặt `VNPAY_MAY_EMAIL`, `VNPAY_MAY_MAT_KHAU` bằng đúng email / mật khẩu đó.
+
+Vai `may_vnpay` không đọc / ghi được bảng CRM, kho hay đơn nào; nó chỉ gọi `vnpay_ghi_ipn`, `vnpay_ghi_ve`.
+
+**Khai IPN ở VNPay.** Trang quản lý Terminal của VNPay (môi trường thử: tài khoản SIT VNPay cấp) → Terminal `SLKGTE11` → IPN URL: `https://beeftown.vn/hook/vnpay-ipn`. Return URL không cần khai — mỗi lần trả web gửi kèm đường về đúng thứ tiếng.
+
+**IPN trả lời** (luôn HTTP 200 + JSON, đúng bảng của VNPay; VNPay gọi lại khi không nhận được 00 / 02): `00` đã ghi · `01` không thấy giao dịch (hoặc Terminal khác) · `02` đã có kết quả (VNPay gửi lại) · `03` IP ngoài dải · `04` sai số tiền · `97` sai chữ ký · `99` chưa cài / lỗi database / mất mạng — **không bao giờ 00 khi database chưa xác nhận**. Log Workers ghi mã giao dịch và kết quả, không ghi chữ ký, khóa hay mật khẩu.
+
+**Đèn "Thanh toán VNPay"** (bảng sức khỏe, khối Toàn thương hiệu): **đỏ** khi khách về trang kết quả với mã 00 quá 10 phút (trong 24 giờ) mà VNPay chưa báo về — IPN hỏng (sai địa chỉ IPN, dải IP, tài khoản máy), đơn đã trả mà hộp thư chưa ghi; báo động gửi ngay như đèn hệ thống. "Chưa dùng" khi 30 ngày không ai mở trang trả tiền.
+
+**Việc Khánh thử thật trên cổng thử** (sau khi gộp, chạy migration, deploy, đặt bốn bí mật, khai IPN): đặt một đơn → sang trang VNPay → trả bằng thẻ thử NCB trong email VNPay → về trang "Beeftown đã nhận tiền" (hoặc "VNPay báo bạn đã trả xong", tải lại sau vài giây) → hộp thư ghi "Đã trả qua VNPay"; đặt đơn khác → bấm Hủy trên trang VNPay → trang "chưa được trả tiền" → bấm **Trả tiền qua VNPay** → trả xong; xem log Workers có dòng `[VNPay IPN] … da_ghi`. Hai giao dịch này cũng là ảnh Return URL / IPN cho phiếu kiểm thử (SIT) của Terminal `SLKGTE11`.
+
+Mã: `src/lib/vnpay.ts` (cấu hình, ký, kiểm chữ ký, dải IP, câu mã phản hồi), `src/lib/vnpay-hook.ts` (IPN, trang kết quả — tài khoản máy), `luotDatHang` / `luotTraLai` / `xuLyKetQuaVnpay` trong `src/lib/xu-ly-form.ts`, `src/components/TrangKetQuaVnpay.astro`, `src/pages/hook/vnpay-ipn.ts` (và `src/worker.ts` chặn đường đó trước Astro). Kiểm thử: `crm/test/test-mua-thit-vnpay.mjs` (database), `test-mua-thit-vnpay-web.mjs` (web).
 
 ---
 
