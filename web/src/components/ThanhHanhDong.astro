@@ -58,13 +58,14 @@ const thanh = thanhHanhDong(noiDung, ngonNgu, duongDan);
   /* Ô phụ: biểu tượng trên, chữ dưới, luôn có chữ. Viền và chữ theo biến bề mặt (trắng trên đen). */
   .thd-phu {
     flex: 0 0 auto; display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
-    min-width: 56px; min-height: 48px; padding: 2px var(--k-3);
+    min-width: 56px; min-height: 48px; padding: 1px var(--k-3);
     border: 1px solid var(--chu-chinh); border-radius: var(--bo);
     color: var(--chu-chinh); text-decoration: none;
     font-size: var(--co-ti); font-weight: 700; line-height: 1.2;
     transition: background-color var(--nhanh), color var(--nhanh);
   }
-  .thd-phu :global(svg) { width: 20px; height: 20px; }
+  /* Biểu tượng 24px như mọi biểu tượng của trang công khai: 24 + một dòng chữ 13px vẫn vừa ô cao 48px. */
+  .thd-phu :global(svg) { width: 24px; height: 24px; flex: none; }
   @media (hover: hover) { .thd-phu:hover { background: var(--chu-chinh); color: var(--nen); } }
   .thd-phu:active { background: var(--chu-chinh); color: var(--nen); }
   /* Chỉ có ô phụ (trang Thực đơn khi form hỏi bàn chưa mở): hai ô chia đều thanh, biểu tượng cạnh chữ. */
