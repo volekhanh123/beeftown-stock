@@ -441,6 +441,10 @@ await nhom('9 · CÂU CHỮ BA THỨ TIẾNG, KHÔNG CHỮ CẤM (cau-chu)', asy
   const kq = readFileSync(join(WEB, 'components', 'TrangKetQuaVnpay.astro'), 'utf8');
   ok('Trang kết quả: "Beeftown đã nhận tiền" chỉ dùng cho màn da_nhan_tien', /man\.loai === 'da_nhan_tien' \? c\.daNhanTienH1/.test(kq));
   ok('Trang kết quả: số tiền trong phần tử data-tien', /data-tien>\{dinhDangTien\(soTien\)\}/.test(kq));
+  const hopThu = readFileSync(join(WEB, 'pages', 'noi-bo', 'don-mua-thit.astro'), 'utf8');
+  ok('Hộp thư: cổng còn là cổng thử thì dòng "Đã trả" ghi rõ CỔNG THỬ, không phải tiền thật (ai cũng trả được bằng thẻ thử công khai)',
+     /const congThu = \/sandbox\/\.test\(CONG_VNPAY\);/.test(hopThu) && /\{congThu && <><br \/><strong data-cong-thu>\{t\.congThu\}<\/strong><\/>\}/.test(hopThu)
+     && /CỔNG THỬ của VNPay — không phải tiền thật/.test(hopThu) && /VNPay TEST gateway — not real money/.test(hopThu));
   for (const [f, cau] of [['quyen-rieng-tu.astro', /VNPay/], ['en/privacy.astro', /VNPay/], ['ko/privacy.astro', /VNPay/]]) {
     const s = readFileSync(join(WEB, 'pages', f), 'utf8');
     ok(`Quyền riêng tư (${f}) nói về VNPay và không còn nói website không bao giờ thu tiền`, cau.test(s)
