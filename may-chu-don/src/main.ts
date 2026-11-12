@@ -25,6 +25,10 @@
  *   VNPAY_THU_MA_TMN, VNPAY_THU_KHOA_BI_MAT
  *                      trang thử VNPay trên web, chỉ sandbox, cho phiếu kiểm thử của VNPay (README, "Trang thử VNPay
  *                      trên web"). Đủ cả hai hoặc không. Tự tắt khi ZALO_CHECKOUT_PHUONG_THUC=VNPAY (tiền thật)
+ *   AHAMOVE_API_KEY, AHAMOVE_SO_DIEN_THOAI, AHAMOVE_KHOA_WEBHOOK
+ *                      gọi xe Ahamove khi quầy bấm "Soạn xong, chờ giao" (README, "Cài Ahamove"). Đủ cả ba, hoặc không
+ *   AHAMOVE_MOI_TRUONG "thu" (mặc định: Staging, không có tài xế thật) hoặc "that"
+ *   AHAMOVE_SDT_LAY_HANG, AHAMOVE_DICH_VU  số tài xế gọi khi tới quán (mặc định số tài khoản), mã dịch vụ (SGN-BIKE)
  */
 import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -35,6 +39,8 @@ import { dauToken, docCauHinhZns, maHoaToken } from './zns.ts';
 import { guiZnsMotLuot } from './gui-zns.ts';
 import { diaChiIpnVnpay, docCauHinhCheckout, laThuNghiem } from './checkout-zalo.ts';
 import { docCauHinhVnpayThu } from './vnpay-thu.ts';
+import { docCauHinhAhamove } from './ahamove.ts';
+import { goiXeMotLuot, taoPhienAhamove } from './goi-xe.ts';
 
 const env = process.env;
 const matKhauQuay = env.MAT_KHAU_QUAY ?? '';
@@ -110,7 +116,16 @@ if (tokenMoi && !zns.cauHinh) {
   process.exit(1);
 }
 
+// Ahamove: đủ ba biến hoặc không. Môi trường thật thì chỉ đơn có tiền thật mới gọi xe (SoDon.goiXe).
+const ahamove = docCauHinhAhamove({
+  AHAMOVE_API_KEY: env.AHAMOVE_API_KEY, AHAMOVE_SO_DIEN_THOAI: env.AHAMOVE_SO_DIEN_THOAI, AHAMOVE_KHOA_WEBHOOK: env.AHAMOVE_KHOA_WEBHOOK,
+  AHAMOVE_MOI_TRUONG: env.AHAMOVE_MOI_TRUONG, AHAMOVE_SDT_LAY_HANG: env.AHAMOVE_SDT_LAY_HANG, AHAMOVE_DICH_VU: env.AHAMOVE_DICH_VU,
+});
+if (!ahamove.ok) { console.error(ahamove.loi); process.exit(1); }
+const phienAhamove = taoPhienAhamove();
+
 const so = new SoDon(join(thuMuc, 'don.sqlite'));
+if (ahamove.cauHinh) so.goiXe = { chiTienThat: ahamove.cauHinh.moiTruong === 'that' };
 // Tin đang gửi dở khi máy chủ tắt: Zalo có thể đã nhận — không gửi lại (SoDon.datKhongRoTinZnsDangGui).
 const khongRo = so.datKhongRoTinZnsDangGui(Date.now());
 if (khongRo) console.log(`ZNS: ${khongRo} tin đang gửi dở khi máy chủ tắt — không gửi lại.`);
@@ -122,6 +137,7 @@ const xuLy = taoXuLy({
   taiKhoan: demo ? TAI_KHOAN_DEMO : coTaiKhoan ? taiKhoan : undefined, khoaSepay: khoaSepay || undefined,
   choTraGiaThu: env.CHO_TRA_GIA_THU === '1', demo, checkout: checkout.cauHinh ?? undefined,
   vnpayThu: batTrangThu ? vnpayThu.cauHinh! : undefined,
+  ahamove: ahamove.cauHinh ? { cauHinh: ahamove.cauHinh, phien: phienAhamove } : undefined,
 });
 const tinProxy = env.TIN_PROXY === '1';
 
@@ -149,6 +165,16 @@ const guiZns = zns.cauHinh ? setInterval(async () => {
   finally { dangGuiZns = false; }
 }, 60_000) : undefined;
 
+// Xe Ahamove 15 giây một lần (quầy bấm "Soạn xong" thì chuyến đi trong khoảng đó); lượt trước chưa xong thì bỏ lượt này.
+let dangGoiXe = false;
+const goiXe = ahamove.cauHinh ? setInterval(async () => {
+  if (dangGoiXe) return;
+  dangGoiXe = true;
+  try { await goiXeMotLuot({ so, cauHinh: ahamove.cauHinh!, hamFetch: (url, init) => fetch(url, init), bayGio: Date.now, phien: phienAhamove }); }
+  catch (e) { console.error('Ahamove: lượt gọi xe hỏng:', e instanceof Error ? e.message : e); }
+  finally { dangGoiXe = false; }
+}, 15_000) : undefined;
+
 // Đơn chờ trả tiền quá 30 phút → hết hạn. Lỗi một lượt thì ghi nhật ký, lượt sau chạy lại.
 const hetHan = setInterval(() => {
   try { const n = so.datHetHan(Date.now()); if (n) console.log(`Hết hạn ${n} đơn chưa trả tiền.`); }
@@ -168,7 +194,10 @@ console.log(!checkout.cauHinh ? 'VNPay: chưa cấu hình Checkout SDK — đơn
     + `, Mini App ${checkout.cauHinh.maMiniApp}. IPN khai với VNPay: ${diaChiIpnVnpay(checkout.cauHinh.maMiniApp)}`);
 console.log(!zns.cauHinh ? 'ZNS: chưa cấu hình — không gửi tin Zalo.'
   : `ZNS: chế độ ${zns.cauHinh.cheDo === 'thu' ? 'thử (chỉ quản trị viên OA nhận)' : 'thật'}, token ${so.docTokenZalo()?.refreshMa ? 'đã có' : 'CHƯA có — đặt ZALO_REFRESH_TOKEN_MOI'}.`);
+console.log(!ahamove.cauHinh ? 'Ahamove: chưa cấu hình — quầy tự gọi xe.'
+  : `Ahamove: ${ahamove.cauHinh.moiTruong === 'thu' ? 'MÔI TRƯỜNG THỬ (Staging) — không có tài xế thật' : 'thật — chỉ đơn có tiền thật mới gọi xe'}`
+    + `, dịch vụ ${ahamove.cauHinh.dichVu}. Webhook khai ở Partner Portal: https://<tên miền>/ahamove/trang-thai, header apikey = AHAMOVE_KHOA_WEBHOOK.`);
 
 for (const tin of ['SIGINT', 'SIGTERM'] as const) {
-  process.on(tin, () => { clearInterval(hetHan); clearInterval(guiZns); mayChu.stop(); so.dong(); process.exit(0); });
+  process.on(tin, () => { clearInterval(hetHan); clearInterval(guiZns); clearInterval(goiXe); mayChu.stop(); so.dong(); process.exit(0); });
 }

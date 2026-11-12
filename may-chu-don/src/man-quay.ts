@@ -9,9 +9,10 @@
  *
  * Chữ đủ vi / en như nội bộ (CLAUDE.md gốc, mục cau-chu). Tên phần thịt là tên tiếng Anh của quầy, giữ nguyên.
  */
-import { chuoiSangNgay, dinhDangTien, hienSoDienThoai, ngayDayDu } from '../../mini-app/src/don.ts';
+import { chuanHoaSoDienThoai, chuoiSangNgay, dinhDangTien, hienSoDienThoai, ngayDayDu } from '../../mini-app/src/don.ts';
 import type { DonDayDu, TienVeCanXem } from './so-don.ts';
-import { BUOC_QUAY, NHAN, NHAN_TAI_QUAN, NUT_TAI_QUAN, type TrangThai } from './trang-thai.ts';
+import { buocXe, type BuocXe, type ChuyenXe } from './ahamove.ts';
+import { BUOC_QUAY, NHAN, NHAN_TAI_QUAN, NUT_TAI_QUAN, type Kieu, type TrangThai } from './trang-thai.ts';
 
 export type NgonNgu = 'vi' | 'en';
 
@@ -90,7 +91,63 @@ export const CHU = {
   demoKhongCoDonCho: { vi: 'Không có đơn nào đang chờ chuyển khoản.', en: 'No orders are awaiting transfer.' },
   demoGiaLap: { vi: 'Giả lập khách đã chuyển khoản', en: 'Simulate customer payment' },
   demoTienGiaLap: { vi: 'Tiền giả lập (demo)', en: 'Simulated payment (demo)' },
+  xeTieuDe: { vi: 'Xe Ahamove', en: 'Ahamove delivery' },
+  xeTaiXe: { vi: 'Tài xế', en: 'Driver' },
+  xeTaiXeToiQuan: { vi: 'Tài xế đã tới quán.', en: 'The driver has arrived at the shop.' },
+  xeTheoDoi: { vi: 'Xem chuyến trên Ahamove', en: 'Track the trip on Ahamove' },
+  xePhi: { vi: 'Phí xe Ahamove báo', en: 'Delivery fee from Ahamove' },
+  xeLyDo: { vi: 'Lý do Ahamove báo', en: 'Reason from Ahamove' },
+  xeNutGoiLai: { vi: 'Gọi lại xe Ahamove', en: 'Book Ahamove again' },
+  xeNutTuGoi: { vi: 'Quầy tự xử lý', en: 'Counter will handle it' },
+  xeGoiLau: {
+    vi: 'Gọi xe hơn 5 phút chưa xong. Xem chuyến trên cổng đối tác Ahamove, hoặc quầy tự gọi xe rồi bấm “Quầy tự xử lý”.',
+    en: 'Booking has taken more than 5 minutes. Check the trip on the Ahamove partner portal, or arrange a driver and tap “Counter will handle it”.',
+  },
+  xeHuyKhongDuoc: {
+    vi: 'Tài xế có thể đã lấy hàng. Gọi tài xế hoặc tổng đài Ahamove để mang hàng về quán.',
+    en: 'The driver may already have the goods. Call the driver or Ahamove support to bring the goods back.',
+  },
+  xeGiaoHong: {
+    vi: 'Tài xế mang hàng về quán. Gọi khách hẹn lại rồi bấm gọi lại xe, hoặc quầy tự xử lý.',
+    en: 'The driver is bringing the goods back. Call the customer to rearrange, then book again, or handle it at the counter.',
+  },
+  xeThuDauTrang: {
+    vi: 'Ahamove đang ở môi trường thử: không có tài xế thật tới lấy hàng. Đơn giao tận nơi vẫn phải tự gọi xe. Đổi sang mã thật trước khi mở bán.',
+    en: 'Ahamove is in test mode: no real driver will come. Arrange delivery for home-delivery orders yourself. Switch to the live key before opening sales.',
+  },
 } as const satisfies Record<string, { vi: string; en: string }>;
+
+/** Bước của chuyến xe (ahamove.ts, buocXe): chữ vi / en và kiểu vẽ K1–K7. */
+export const NHAN_XE: Readonly<Record<BuocXe, { vi: string; en: string; kieu: Kieu }>> = {
+  dang_goi: { vi: 'Đang gọi xe Ahamove', en: 'Booking Ahamove', kieu: 'k3' },
+  tim_tai_xe: { vi: 'Ahamove đang tìm tài xế', en: 'Ahamove is finding a driver', kieu: 'k3' },
+  tai_xe_toi: { vi: 'Tài xế đang tới lấy hàng', en: 'Driver on the way to pick up', kieu: 'k3' },
+  dang_giao: { vi: 'Tài xế đang giao', en: 'Driver is delivering', kieu: 'k3' },
+  da_giao: { vi: 'Ahamove báo đã giao tới khách', en: 'Ahamove reports delivered', kieu: 'k4' },
+  giao_hong: { vi: 'Giao không được', en: 'Delivery failed', kieu: 'k1' },
+  aha_huy: { vi: 'Ahamove đã hủy chuyến', en: 'Ahamove cancelled the trip', kieu: 'k1' },
+  khong_goi_duoc: { vi: 'Chưa gọi được xe Ahamove', en: 'Could not book Ahamove', kieu: 'k1' },
+  dang_huy: { vi: 'Đang hủy chuyến Ahamove', en: 'Cancelling the Ahamove trip', kieu: 'k3' },
+  quan_huy: { vi: 'Đã hủy chuyến Ahamove', en: 'Ahamove trip cancelled', kieu: 'k6' },
+  huy_khong_duoc: { vi: 'Không hủy được chuyến Ahamove', en: 'Could not cancel the Ahamove trip', kieu: 'k1' },
+  tu_goi: { vi: 'Quầy tự xử lý chuyến này', en: 'Handled by the counter', kieu: 'k7' },
+};
+
+/** Vì sao Ahamove không nhận đơn — theo mã lỗi của tài liệu Ahamove (ahamove.ts, docLoiAhamove). */
+export const LOI_XE: Readonly<Record<string, { vi: string; en: string }>> = {
+  INVALID_DELIVERY_AREA: { vi: 'Ahamove không giao tới khu vực của địa chỉ này.', en: 'Ahamove does not deliver to this address area.' },
+  INVALID_MAX_DISTANCE: { vi: 'Địa chỉ xa quá mức gói xe cho phép.', en: 'The address is farther than the service allows.' },
+  NOT_ENOUGH_CREDIT: { vi: 'Ví Ahamove của quán không đủ tiền. Nạp thêm rồi bấm gọi lại.', en: 'The shop’s Ahamove wallet is too low. Top up, then book again.' },
+  INVALID_SERVICE_HOUR: { vi: 'Ngoài giờ hoạt động của gói xe.', en: 'Outside the service’s operating hours.' },
+  BAD_REQUEST: { vi: 'Ahamove không nhận thông tin đơn, thường do địa chỉ chưa rõ. Gọi khách hỏi lại địa chỉ.', en: 'Ahamove rejected the order details, usually an unclear address. Call the customer to confirm it.' },
+  MISSING_REQUIRED_INFO: { vi: 'Ahamove báo thiếu thông tin đơn, thường do địa chỉ chưa rõ. Gọi khách hỏi lại địa chỉ.', en: 'Ahamove reports missing order details, usually an unclear address. Call the customer to confirm it.' },
+  SERVICE_NOT_FOUND: { vi: 'Gói xe đang cài không có ở Ahamove (AHAMOVE_DICH_VU). Báo người quản lý máy chủ.', en: 'The configured service does not exist at Ahamove (AHAMOVE_DICH_VU). Tell the server admin.' },
+  SERVICE_NOT_VALID_AT_PICKUP: { vi: 'Gói xe đang cài không dùng được ở quán. Báo người quản lý máy chủ.', en: 'The configured service is not available at the shop. Tell the server admin.' },
+  INVALID_PICKUP_AREA: { vi: 'Gói xe đang cài không dùng được ở quán. Báo người quản lý máy chủ.', en: 'The configured service is not available at the shop. Tell the server admin.' },
+  NOT_AUTHORIZED: { vi: 'Ahamove từ chối tài khoản của máy chủ. Báo người quản lý máy chủ.', en: 'Ahamove rejected the server’s account. Tell the server admin.' },
+  QUA_SO_LAN: { vi: 'Ahamove không nhận hay không trả lời sau nhiều lần gọi.', en: 'Ahamove did not accept or answer after several tries.' },
+};
+const LOI_XE_KHAC = { vi: 'Ahamove không nhận đơn (mã {ma}).', en: 'Ahamove did not accept the order (code {ma}).' };
 
 /** Câu báo sau khi bấm một bước (mã trong ?bao= của trang danh sách). */
 export const CAU_BAO = {
@@ -114,6 +171,18 @@ export const CAU_BAO = {
     vi: 'Đơn này không còn chờ chuyển khoản (đã có tiền, đã hết hạn hoặc không có).',
     en: 'This order is no longer awaiting transfer (already paid, expired, or not found).', loi: true,
   },
+  xe_da_goi_lai: {
+    vi: 'Đã xếp lần gọi xe mới cho đơn #{so}. Máy chủ gửi Ahamove trong khoảng 15 giây.',
+    en: 'A new Ahamove booking is queued for order #{so}. The server sends it within about 15 seconds.', loi: false,
+  },
+  xe_da_tu_goi: { vi: 'Đã ghi: quầy tự xử lý chuyến của đơn #{so}.', en: 'Saved: the counter handles delivery for order #{so}.', loi: false },
+  xe_lam_roi: { vi: 'Chuyến của đơn #{so} đã được xử lý từ trước.', en: 'The trip for order #{so} was already handled.', loi: false },
+  xe_lech: {
+    vi: 'Chuyến của đơn #{so} vừa đổi, chưa làm gì. Xem lại trên thẻ.',
+    en: 'The trip for order #{so} just changed; nothing was done. Check the card.', loi: true,
+  },
+  xe_khong_co: { vi: 'Không thấy chuyến xe này.', en: 'Trip not found.', loi: true },
+  xe_khong_duoc: { vi: 'Máy chủ chưa bật gọi xe Ahamove.', en: 'Ahamove booking is not enabled on this server.', loi: true },
 } as const satisfies Record<string, { vi: string; en: string; loi: boolean }>;
 export type MaCauBao = keyof typeof CAU_BAO;
 /** Mã trong ?bao= là một câu có thật — không lấy "constructor", "__proto__" của Object. */
@@ -174,8 +243,51 @@ export function ngayTheoTieng(ngay: string, nn: NgonNgu): string {
 const nhanTrangThai = (tt: TrangThai, nn: NgonNgu, taiQuan = false) =>
   `<span class="qd-nhan ${NHAN[tt].kieu}">${thoat((taiQuan && NHAN_TAI_QUAN[tt]) ? NHAN_TAI_QUAN[tt]![nn] : NHAN[tt][nn])}</span>`;
 
+/** "84909561477" → "0909 561 477"; số lạ để nguyên. */
+const hienSoTaiXe = (so: string) => { const s = chuanHoaSoDienThoai(so); return s ? hienSoDienThoai(s) : so; };
+
+/**
+ * Khối "Xe Ahamove" trong thẻ đơn: bước của chuyến (K1–K7), tài xế, link theo dõi, phí xe, lý do Ahamove báo, và hai
+ * nút khi chuyến cần người làm — "Gọi lại xe Ahamove" (chỉ khi đơn còn "Soạn xong, chờ giao" và bước cho gọi lại) và
+ * "Quầy tự xử lý". Mỗi nút mang lần gọi xe lúc trang dựng: bấm đúp, hai máy cùng bấm, máy chủ chỉ làm một lần.
+ */
+export function khoiXe(c: ChuyenXe, don: DonDayDu, nn: NgonNgu, ms: number, coNut: boolean): string {
+  const ch = (k: keyof typeof CHU) => thoat(CHU[k][nn]);
+  const b = buocXe(c, ms);
+  const nhan = NHAN_XE[b.buoc];
+  const lau = b.buoc === 'dang_goi' && b.canXem;
+  const dong: string[] = [];
+  if (c.taiXeTen || c.taiXeSdt) {
+    dong.push(`${ch('xeTaiXe')}: ${thoat(c.taiXeTen ?? '')}${c.taiXeSdt ? ` · <a href="tel:${thoat(chuanHoaSoDienThoai(c.taiXeSdt) ?? c.taiXeSdt)}">${thoat(hienSoTaiXe(c.taiXeSdt))}</a>` : ''}`);
+  }
+  if (b.buoc === 'tai_xe_toi' && c.trangThaiPhu === 'ARRIVED') dong.push(ch('xeTaiXeToiQuan'));
+  if (b.buoc === 'khong_goi_duoc') {
+    const l = (c.maLoi && Object.hasOwn(LOI_XE, c.maLoi) ? LOI_XE[c.maLoi] : LOI_XE_KHAC)[nn];
+    dong.push(thoat(l.replace('{ma}', c.maLoi ?? '')));
+  }
+  if (lau) dong.push(ch('xeGoiLau'));
+  if (b.buoc === 'huy_khong_duoc') dong.push(ch('xeHuyKhongDuoc'));
+  if (b.buoc === 'giao_hong') dong.push(ch('xeGiaoHong'));
+  if (c.lyDo && (b.buoc === 'aha_huy' || b.buoc === 'giao_hong')) dong.push(`${ch('xeLyDo')}: ${thoat(c.lyDo)}`);
+  const lienKet = c.link ? `<a href="${thoat(c.link)}" target="_blank" rel="noopener noreferrer">${ch('xeTheoDoi')}</a>` : '';
+  const phi = c.phi !== null ? `${ch('xePhi')}: ${thoat(dinhDangTien(c.phi))}` : '';
+  if (lienKet || phi) dong.push([lienKet, phi].filter(Boolean).join(' · '));
+  const form = (duong: string, nut: string, kieuNut: 'chinh' | 'phu') => `<form method="post" action="${duong}">
+        <input type="hidden" name="ma" value="${thoat(don.ma)}"><input type="hidden" name="lan" value="${c.lan}">
+        <button class="qd-nut ${kieuNut}" type="submit">${nut}</button></form>`;
+  const goiLai = coNut && b.choGoiLai && don.trangThai === 'cho_lay';
+  const nut = !coNut || !b.canXem ? '' : [
+    goiLai ? form('/quay/xe/goi-lai', ch('xeNutGoiLai'), 'chinh') : '',
+    form('/quay/xe/tu-goi', ch('xeNutTuGoi'), goiLai ? 'phu' : 'chinh'),
+  ].join('');
+  return `<p><b>${ch('xeTieuDe')}:</b> <span class="qd-nhan ${lau ? 'k1' : nhan.kieu}">${thoat(nhan[nn])}</span></p>
+  ${dong.map(d => `<p>${d}</p>`).join('\n  ')}
+  ${nut ? `<div class="qd-hang-nut">${nut}</div>` : ''}`;
+}
+
 /** `tienGia`: tiền giả lập của chế độ demo, hay tiền thử VNPay sandbox — nhãn để quầy không tưởng là tiền thật. */
-function theDon(don: DonDayDu, nn: NgonNgu, coNut: boolean, baoHtml = '', daNhan = 0, tienGia: '' | 'demo' | 'vnpay_thu' = ''): string {
+function theDon(don: DonDayDu, nn: NgonNgu, coNut: boolean, baoHtml = '', daNhan = 0, tienGia: '' | 'demo' | 'vnpay_thu' = '',
+  xe?: { chuyen: ChuyenXe; ms: number }): string {
   const c = (k: keyof typeof CHU) => thoat(CHU[k][nn]);
   const dong = don.dong.map(d => `<li>${thoat(d.ten)} · ${d.baoQuan === 'dong-lanh' ? c('dongLanh') : c('mat')}, ~${d.soGamKhay} g · <b>${d.soKhay} ${c('khay')}</b></li>`).join('');
   const nut = !coNut ? '' : BUOC_QUAY.filter(b => b.tu === don.trangThai).map(b => b.den === 'can_hoan_tien'
@@ -193,6 +305,7 @@ function theDon(don: DonDayDu, nn: NgonNgu, coNut: boolean, baoHtml = '', daNhan
   <p class="qd-tong">${tong}: ${thoat(dinhDangTien(don.tongTien))}${don.giaThu ? ` <span class="qd-nhan k3">${c('giaThu')}</span>` : ''}${tienGia ? ` <span class="qd-nhan k3">${c(tienGia === 'demo' ? 'demoTienGiaLap' : 'vnpayTienThu')}</span>` : ''}</p>
   ${daNhan > 0 ? `<p>${c('daNhanChuyenKhoan')}: ${thoat(dinhDangTien(daNhan))}</p>` : ''}
   ${don.ghiChu ? `<p class="qd-ghi-chu">${c('ghiChu')}: ${thoat(don.ghiChu)}</p>` : ''}
+  ${xe ? khoiXe(xe.chuyen, don, nn, xe.ms, coNut) : ''}
   ${baoHtml}
   ${nut ? `<div class="qd-hang-nut">${nut}</div>` : ''}
 </article>`;
@@ -237,6 +350,8 @@ export function trangDanhSach(
   choTienDemo?: DonDayDu[],
   /** VNPay: đơn có tiền thử sandbox (nhãn, kể cả khi đã đổi sang tiền thật), máy chủ đang ở sandbox (dòng cảnh báo). */
   vnpay: { donTienThu: Set<string>; dangThuNghiem: boolean } = { donTienThu: new Set(), dangThuNghiem: false },
+  /** Xe Ahamove: lần gọi xe mới nhất của từng đơn, Ahamove đang ở môi trường thử (dòng cảnh báo), giờ dựng trang. */
+  xe: { theoDon: Map<string, ChuyenXe>; dangThu: boolean; ms: number } = { theoDon: new Map(), dangThu: false, ms: 0 },
 ): string {
   const c = (k: keyof typeof CHU) => thoat(CHU[k][nn]);
   const cau = bao ? CAU_BAO[bao.ma] : undefined;
@@ -247,18 +362,19 @@ export function trangDanhSach(
   // Thẻ vừa bấm còn trong "Còn phải làm" thì câu báo nằm trong thẻ; đơn đã khép (vào mục đã gập) thì nằm đầu trang.
   const trongThe = !!bao && ds.conViec.some(d => d.ma === bao.maDon);
   const tienGia = (ma: string) => daGiaLap.has(ma) ? 'demo' as const : vnpay.donTienThu.has(ma) ? 'vnpay_thu' as const : '' as const;
+  const xeCua = (ma: string) => { const ch = xe.theoDon.get(ma); return ch ? { chuyen: ch, ms: xe.ms } : undefined; };
   const nutGiaLap = (d: DonDayDu) => `<div class="qd-hang-nut"><form method="post" action="/quay/demo/tien-ve">
     <input type="hidden" name="ma" value="${thoat(d.ma)}"><button class="qd-nut chinh" type="submit">${c('demoGiaLap')}</button></form></div>`;
   const phanDemo = !choTienDemo ? '' : `<p class="qd-bao loi" role="note">${c('demoDauTrang')}</p>
 <h2 id="cho-chuyen-khoan">${c('demoChoChuyenKhoan')} (${choTienDemo.length})</h2>
 ${choTienDemo.length ? choTienDemo.map(d => theDon(d, nn, false, nutGiaLap(d))).join('\n') : `<p class="qd-trong">${c('demoKhongCoDonCho')}</p>`}`;
-  return khung(nn, `${vnpay.dangThuNghiem ? `<p class="qd-bao loi" role="note">${c('vnpayThuNghiemDauTrang')}</p>\n` : ''}${phanDemo}
+  return khung(nn, `${vnpay.dangThuNghiem ? `<p class="qd-bao loi" role="note">${c('vnpayThuNghiemDauTrang')}</p>\n` : ''}${xe.dangThu ? `<p class="qd-bao loi" role="note">${c('xeThuDauTrang')}</p>\n` : ''}${phanDemo}
 ${trongThe ? '' : baoHtml}
 ${tienVe.length ? `<h2 id="tien-ve">${c('tienVeCanXem')} (${tienVe.length})</h2>\n${tienVe.map(t => theTienVe(t, nn)).join('\n')}` : ''}
 <h2>${c('conViec')} (${ds.conViec.length})</h2>
-${ds.conViec.length ? ds.conViec.map(d => theDon(d, nn, true, trongThe && d.ma === bao!.maDon ? baoHtml : '', tienDaNhan(d.ma), tienGia(d.ma))).join('\n') : `<p class="qd-trong">${c('khongCoViec')}</p>`}
+${ds.conViec.length ? ds.conViec.map(d => theDon(d, nn, true, trongThe && d.ma === bao!.maDon ? baoHtml : '', tienDaNhan(d.ma), tienGia(d.ma), xeCua(d.ma))).join('\n') : `<p class="qd-trong">${c('khongCoViec')}</p>`}
 ${ds.xongHomNay.length ? `<details class="qd-xong"><summary>${c('xongHomNay')} (${ds.xongHomNay.length})</summary>
-${ds.xongHomNay.map(d => theDon(d, nn, false, '', 0, tienGia(d.ma))).join('\n')}</details>` : ''}`, { taiLai: true, coDangXuat: true });
+${ds.xongHomNay.map(d => theDon(d, nn, false, '', 0, tienGia(d.ma), xeCua(d.ma))).join('\n')}</details>` : ''}`, { taiLai: true, coDangXuat: true });
 }
 
 /** `don` null: không có đơn (coDon false), hoặc đơn không còn hủy được (coDon true) — không in câu "khách đã trả tiền". */

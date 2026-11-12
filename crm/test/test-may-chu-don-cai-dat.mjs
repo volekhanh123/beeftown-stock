@@ -135,6 +135,9 @@ await nhom('3 · File bí mật mẫu: không biến cố định, đúng dạng
   ok('Ba dòng VNPay (Checkout SDK) để tắt sẵn, Private key trống, phương thức mặc định là môi trường thử',
     /^#ZALO_MINI_APP_ID=2858300068641327950$/m.test(mau) && /^#ZALO_CHECKOUT_KHOA_RIENG=$/m.test(mau)
       && /^#ZALO_CHECKOUT_PHUONG_THUC=VNPAY_SANDBOX$/m.test(mau));
+  ok('Ba dòng Ahamove để tắt sẵn, API key và khóa webhook trống, môi trường mặc định là thử (Staging)',
+    /^#AHAMOVE_API_KEY=$/m.test(mau) && /^#AHAMOVE_SO_DIEN_THOAI=$/m.test(mau) && /^#AHAMOVE_KHOA_WEBHOOK=$/m.test(mau)
+      && /^#AHAMOVE_MOI_TRUONG=thu$/m.test(mau));
 });
 
 await nhom('4 · Script: cú pháp, kiểm thử trước khi chạy lại, quay về bản cũ, tường lửa', async () => {

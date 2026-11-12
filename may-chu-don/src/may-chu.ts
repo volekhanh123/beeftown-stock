@@ -10,11 +10,14 @@
  *   POST /zalo/thanh-toan      Checkout SDK của Zalo báo kết quả VNPay (kiểm mac, overallMac → SoDon.ghiThanhToanZalo).
  *                              Trả {"returnCode": 1} chỉ khi đã ghi; 2 khi đã ghi từ trước.
  *   POST /zalo/vnpay-ipn       Zalo chuyển tiếp IPN của VNPay sandbox (hồ sơ kiểm thử SIT): chỉ ghi nhật ký.
+ *   POST /ahamove/trang-thai   Ahamove báo trạng thái chuyến xe (header apikey = AHAMOVE_KHOA_WEBHOOK → SoDon.ghiTinAhamove).
+ *                              200 chỉ khi đã ghi (hay chuyến không phải của máy chủ này); lỗi sổ đơn → 500.
  *   GET  /quay/vnpay-thu       Trang thử VNPay (sandbox, Khánh 12/11/2026): ký đường dẫn tới cổng thử của VNPay.
  *   GET  /vnpay-thu/ket-qua    Return URL của trang thử: kiểm chữ ký, hiện kết quả — không ghi gì vào sổ đơn.
  *   GET  /suc-khoe             Số đếm cho đèn sức khỏe — không dữ liệu cá nhân.
  *   GET  /quay                 Màn hình đơn cho quầy (mật khẩu quầy → phiên 12 giờ).
  *   POST /quay/dang-nhap · /quay/dang-xuat · /quay/doi · /quay/ngon-ngu · /quay/tien-ve/da-xem;
+ *        POST /quay/xe/goi-lai · /quay/xe/tu-goi (chuyến xe Ahamove cần người làm);
  *        GET /quay/huy?ma= (hỏi lại trước khi hủy)
  *   POST /quay/demo/tien-ve    Chỉ ở chế độ demo (CHE_DO_DEMO=1): giả lập khách chuyển đủ tiền cho một đơn chờ trả tiền.
  *
@@ -34,6 +37,8 @@ import { SO_TIEN_THU, docKetQuaVe, taoLinkThanhToanThu, trangKetQuaThu, trangTao
 import { docCallback, docThanCallback, dongNhatKyIpnVnpay, laThuNghiem, thamSoTaoDon, traCheckout, type CauHinhCheckout, type ThamSoTaoDon } from './checkout-zalo.ts';
 import { laCauBao, trangDangNhap, trangDanhSach, trangXacNhanHuy, type NgonNgu } from './man-quay.ts';
 import { gioVnTuMs } from '../../web/src/lib/gio-vn.ts';
+import { docTinChuyen, khoaWebhookTrongYeuCau, type CauHinhAhamove } from './ahamove.ts';
+import type { PhienAhamove } from './goi-xe.ts';
 
 const CSS_QUAY = CSS_QUAY_FILE as unknown as string;
 
@@ -67,6 +72,8 @@ export interface TuyChonMayChu {
   checkout?: CauHinhCheckout;
   /** Trang thử VNPay trên web (vnpay-thu.ts): mã Terminal và vnp_HashSecret. Không có: hai đường của trang thử trả 404. */
   vnpayThu?: CauHinhVnpayThu;
+  /** Xe Ahamove (ahamove.ts, goi-xe.ts): cấu hình (khóa webhook, môi trường) và phiên token (lỗi token cho /suc-khoe). */
+  ahamove?: { cauHinh: CauHinhAhamove; phien: PhienAhamove };
 }
 
 /**
@@ -209,6 +216,9 @@ export function taoXuLy(tc: TuyChonMayChu) {
   /** Callback Checkout SDK bị từ chối (sai MAC, sai Mini App, sai dạng) từ lúc máy chủ chạy — số liệu sức khỏe báo. */
   let soCallbackBiTuChoi = 0;
   const gioiHanIpn = new GioiHan(60, 60_000);
+  /** Webhook Ahamove bị từ chối (sai khóa, sai dạng) từ lúc máy chủ chạy — số liệu sức khỏe báo. */
+  let soWebhookXeBiTuChoi = 0;
+  const gioiHanWebhookXe = new GioiHan(300, 60_000);
 
   const coPhien = (req: Request, ms: number) => {
     const t = docCookie(req, 'phien_quay');
@@ -369,6 +379,35 @@ export function taoXuLy(tc: TuyChonMayChu) {
       return new Response(traCheckout(1, 'Logged'), { status: 200, headers: { 'Content-Type': 'application/json; charset=utf-8' } });
     }
 
+    // ---------- Ahamove báo trạng thái chuyến xe ----------
+    if (duong === '/ahamove/trang-thai' && req.method === 'POST') {
+      const tra = (status: number, v: Record<string, unknown>) => new Response(JSON.stringify(v),
+        { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
+      if (!tc.ahamove) return tra(404, { ok: false, loi: 'Ahamove chưa cấu hình' });
+      if (!gioiHanWebhookXe.thu(ip, ms)) return tra(429, { ok: false, loi: 'Too many' });
+      if (!bangNhau(khoaWebhookTrongYeuCau(req.headers), tc.ahamove.cauHinh.khoaWebhook)) {
+        soWebhookXeBiTuChoi++;
+        console.warn(`Ahamove: từ chối webhook sai khóa từ ${ip}`);
+        return tra(401, { ok: false, loi: 'Invalid key' });
+      }
+      const thanGoc = await docThan(req, 64 * 1024);
+      if (thanGoc === null) { soWebhookXeBiTuChoi++; return tra(413, { ok: false, loi: 'Too large' }); }
+      let than: unknown;
+      try { than = JSON.parse(thanGoc); } catch { soWebhookXeBiTuChoi++; return tra(400, { ok: false, loi: 'Not JSON' }); }
+      // Thân webhook mang cả api_key của quán, số điện thoại: chỉ giữ các trường của TinChuyen, không ghi thân thô.
+      const tin = docTinChuyen(than);
+      if (!tin) { soWebhookXeBiTuChoi++; return tra(400, { ok: false, loi: 'Invalid body' }); }
+      try {
+        const r = tc.so.ghiTinAhamove(tin, ms);
+        if (!r) console.log(`Ahamove: webhook chuyến ${tin.maAha} không phải của máy chủ này — bỏ qua`);
+        else if (r.doi) console.log(`Ahamove: ${r.maDon}-${r.lan} ${tin.trangThai}${r.daGiao ? ' — đơn đã giao' : ''}`);
+        return tra(200, { ok: true, ghi: r ? (r.doi ? 'da_ghi' : 'da_ghi_tu_truoc') : 'khong_thay' });
+      } catch (e) {
+        console.error('Ghi trạng thái Ahamove hỏng:', e);
+        return tra(500, { ok: false, loi: 'Not recorded' });
+      }
+    }
+
     // ---------- SePay báo tiền về ----------
     if (duong === '/sepay/tien-ve' && req.method === 'POST') {
       const tuChoi = (status: number, ly: string) => new Response(JSON.stringify({ success: false, message: ly }),
@@ -406,7 +445,8 @@ export function taoXuLy(tc: TuyChonMayChu) {
       if (tc.khoaSucKhoe && !bangNhau(url.searchParams.get('khoa') ?? '', tc.khoaSucKhoe)) return loiApi(403, 'Sai khóa.');
       try {
         return json({ ok: true, luc: ms, cheDoDemo: !!tc.demo, ...tc.so.soLieu(ms),
-          vnpay: tc.checkout ? { phuongThuc: tc.checkout.phuongThuc, soCallbackBiTuChoi } : null });
+          vnpay: tc.checkout ? { phuongThuc: tc.checkout.phuongThuc, soCallbackBiTuChoi } : null,
+          ahamove: tc.ahamove ? { moiTruong: tc.ahamove.cauHinh.moiTruong, loiToken: tc.ahamove.phien.loiToken, soWebhookBiTuChoi: soWebhookXeBiTuChoi } : null });
       }
       catch (e) { console.error('Đọc số liệu hỏng:', e); return loiApi(500, 'Không đọc được sổ đơn.'); }
     }
@@ -463,9 +503,11 @@ export function taoXuLy(tc: TuyChonMayChu) {
         const don = ma ? tc.so.layDon(ma) : null;
         const bao = laCauBao(baoMa) ? { ma: baoMa, maDon: don?.ma ?? '', so: don?.soTrongNgay ?? null, den: laTrangThai(den) ? den : null } : null;
         const daNhan = tc.so.tienDaNhanTheoDon();
-        return html(trangDanhSach(nn, tc.so.danhSachQuay(ms), bao, tc.so.tienVeCanXem(), ma => daNhan.get(ma) ?? 0,
+        const ds = tc.so.danhSachQuay(ms);
+        return html(trangDanhSach(nn, ds, bao, tc.so.tienVeCanXem(), ma => daNhan.get(ma) ?? 0,
           tc.so.donCoTienDemo(), tc.demo ? tc.so.donChoThanhToan() : undefined,
-          { donTienThu: tc.so.donCoTienThuVnpay(), dangThuNghiem: !!tc.checkout && laThuNghiem(tc.checkout.phuongThuc) }));
+          { donTienThu: tc.so.donCoTienThuVnpay(), dangThuNghiem: !!tc.checkout && laThuNghiem(tc.checkout.phuongThuc) },
+          { theoDon: tc.so.chuyenMoiNhatTheoDon([...ds.conViec, ...ds.xongHomNay].map(d => d.ma)), dangThu: tc.ahamove?.cauHinh.moiTruong === 'thu', ms }));
       }
 
       if (duong === '/quay/vnpay-thu' && req.method === 'GET') {
@@ -508,6 +550,17 @@ export function taoXuLy(tc: TuyChonMayChu) {
         const kq = tc.so.ghiTienVe(tin, tc.taiKhoan.soTaiKhoan, ms);
         if (kq.moi) console.log(`Demo: giả lập tiền về đơn ${don.ma} (${kq.ketQua})`);
         return chuyen(`/quay?bao=${kq.moi ? 'demo_da_tra' : 'demo_da_tra_roi'}&ma=${encodeURIComponent(don.ma)}#don-${encodeURIComponent(don.ma)}`);
+      }
+      // Chuyến xe Ahamove cần người làm: gọi lại (lần mới), hay quầy tự xử lý. Mỗi nút mang lần gọi xe lúc trang dựng.
+      if ((duong === '/quay/xe/goi-lai' || duong === '/quay/xe/tu-goi') && req.method === 'POST') {
+        const f = new URLSearchParams((await docThan(req, 1024)) ?? '');
+        const ma = f.get('ma') ?? '', lan = Number(f.get('lan'));
+        if (!Number.isSafeInteger(lan) || lan < 1) return chuyen('/quay?bao=xe_khong_co');
+        const goiLai = duong === '/quay/xe/goi-lai';
+        const kq = goiLai ? tc.so.goiLaiXe(ma, lan, ms) : tc.so.quayTuGoiXe(ma, lan, ms);
+        const bao = kq === 'da_doi' ? (goiLai ? 'xe_da_goi_lai' : 'xe_da_tu_goi') : kq === 'da_o_buoc_moi' ? 'xe_lam_roi'
+          : kq === 'lech' ? 'xe_lech' : kq === 'khong_duoc' ? 'xe_khong_duoc' : 'xe_khong_co';
+        return chuyen(`/quay?bao=${bao}&ma=${encodeURIComponent(ma)}#don-${encodeURIComponent(ma)}`);
       }
       if (duong === '/quay/tien-ve/da-xem' && req.method === 'POST') {
         const f = new URLSearchParams((await docThan(req, 1024)) ?? '');

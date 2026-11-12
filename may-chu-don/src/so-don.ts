@@ -23,6 +23,11 @@
  * "đã trả tiền" trong cùng một giao dịch, như ghiTienVe. Tiền đã nhận của một đơn là tổng của cả hai bảng.
  * Bảng mo_thanh_toan_zalo: Mini App báo orderId ngay khi mở trang VNPay — đơn đã mở trang mà quá 20 phút chưa có kết
  * quả hiện ở số liệu sức khỏe (callback có thể đã lạc: Zalo không gửi lại).
+ *
+ * Xe Ahamove (Khánh 12/11/2026, ahamove.ts, goi-xe.ts): bảng chuyen_xe, mỗi đơn mỗi lần gọi xe một dòng (khóa chính
+ * mã đơn + lần). Chuyến xếp cùng giao dịch với bước "Soạn xong, chờ giao" (bấm đúp: một chuyến); quầy hủy đơn thì
+ * chuyến đang chạy chuyển sang việc "huy" trong cùng giao dịch. Trước khi gửi Tạo đơn, chuyến đã mang việc "kiem_lai":
+ * máy chủ tắt hay mất mạng giữa chừng thì lượt sau tra Ahamove theo mã theo dõi, không gửi lại mù (không ra hai xe).
  */
 import { Database } from 'bun:sqlite';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
@@ -32,6 +37,10 @@ import { laThuNghiem, type TinCheckout } from './checkout-zalo.ts';
 import type { LoaiTin } from './zns.ts';
 import type { DonMoi, DongMoi } from './tao-don.ts';
 import { CON_VIEC, duocBam, laTrangThai, type TrangThai } from './trang-thai.ts';
+import {
+  MS_CHO_KIEM_LAI, MS_HOI_LAI, MS_THOI_HOI, SO_LAN_HUY_TOI_DA, SO_LAN_TAO_TOI_DA, buocXe, daKhepHan, docMaTheoDoiXe, laTrangThaiCuoi,
+  type ChuyenXe, type LoiAhamove, type TinChuyen, type ViecXe,
+} from './ahamove.ts';
 
 /** Đơn chưa trả tiền quá chừng này thì hết hạn (khách mở lại app phải đặt lại). */
 export const PHUT_CHO_THANH_TOAN = 30;
@@ -215,6 +224,34 @@ create table if not exists zalo_token (
   loi text,
   cap_nhat_luc integer not null
 );
+create table if not exists chuyen_xe (
+  ma_don text not null references don (ma),
+  lan integer not null check (lan between 1 and 20),
+  viec text check (viec in ('tao', 'kiem_lai', 'huy')),
+  viec_sau integer not null,
+  so_lan integer not null default 0,
+  ma_aha text,
+  trang_thai_aha text,
+  trang_thai_phu text,
+  diem_giao text,
+  ly_do text,
+  tai_xe_ten text,
+  tai_xe_sdt text,
+  link text,
+  phi integer,
+  ma_loi text,
+  loi text,
+  huy_yeu_cau integer not null default 0,
+  loi_huy text,
+  tu_goi_luc integer,
+  tao_luc integer not null,
+  cap_nhat_luc integer not null,
+  aha_luc integer,
+  hoi_luc integer,
+  primary key (ma_don, lan)
+);
+create index if not exists chuyen_xe_viec on chuyen_xe (viec, viec_sau);
+create unique index if not exists chuyen_xe_ma_aha on chuyen_xe (ma_aha) where ma_aha is not null;
 `;
 
 /**
@@ -241,6 +278,12 @@ type DongDb = Record<string, string | number>;
 
 export class SoDon {
   readonly db: Database;
+  /**
+   * Gọi xe Ahamove (main.ts bật khi có cấu hình Ahamove). null: "Soạn xong, chờ giao" không xếp chuyến nào.
+   * chiTienThat (Ahamove thật): chỉ đơn có tiền thật đủ tổng đơn mới gọi xe — đơn mẫu, tiền giả lập demo, tiền thử VNPay
+   * sandbox không bao giờ gọi tài xế thật.
+   */
+  goiXe: { chiTienThat: boolean } | null = null;
 
   /** `duongDan` ":memory:" cho kiểm thử. File thật: WAL, khóa ngoại bật. */
   constructor(duongDan: string) {
@@ -336,6 +379,9 @@ export class SoDon {
       // "Soạn xong, chờ giao" của đơn giao tận nơi đã báo khách "đã nhận đơn" (tiền thật) → báo "đang giao".
       if (den === 'cho_lay' && this.db.query(`select 1 from don d join zns_tin z on z.ma_don = d.ma and z.loai = 'da_nhan'
         where d.ma = ? and d.cach_nhan = 'giao-hang'`).get(ma)) this.xepTinZns(ma, 'dang_giao', ms);
+      if (den === 'cho_lay') this.xepChuyenXe(ma, ms);
+      if (den === 'can_hoan_tien') this.huyChuyenXeCuaDon(ma, ms);
+      if (den === 'da_giao' && ai === 'quay') this.thoiChuyenKhiQuayTuGiao(ma, ms);
       return 'da_doi';
     }
     const hienTai = this.db.query('select trang_thai from don where ma = ?').get(ma) as { trang_thai: string } | null;
@@ -685,6 +731,260 @@ export class SoDon {
       .run(trangThai, loi.slice(0, 300), ms);
   }
 
+  // ---------- Chuyến xe Ahamove (goi-xe.ts, POST /ahamove/trang-thai) ----------
+
+  private docChuyen(h: DongDb | null): ChuyenXe | null {
+    if (!h) return null;
+    const s = (k: string) => (h[k] === null || h[k] === undefined ? null : String(h[k]));
+    const n = (k: string) => (h[k] === null || h[k] === undefined ? null : Number(h[k]));
+    return {
+      maDon: String(h.ma_don), lan: Number(h.lan), viec: s('viec') as ViecXe | null, viecSau: Number(h.viec_sau), soLan: Number(h.so_lan),
+      maAha: s('ma_aha'), trangThaiAha: s('trang_thai_aha'), trangThaiPhu: s('trang_thai_phu'), diemGiao: s('diem_giao'),
+      lyDo: s('ly_do'), taiXeTen: s('tai_xe_ten'), taiXeSdt: s('tai_xe_sdt'), link: s('link'), phi: n('phi'),
+      maLoi: s('ma_loi'), loi: s('loi'), huyYeuCau: Number(h.huy_yeu_cau) === 1, loiHuy: s('loi_huy'), tuGoiLuc: n('tu_goi_luc'),
+      taoLuc: Number(h.tao_luc), capNhatLuc: Number(h.cap_nhat_luc), ahaLuc: n('aha_luc'),
+    };
+  }
+
+  layChuyen(ma: string, lan: number): ChuyenXe | null {
+    return this.docChuyen(this.db.query('select * from chuyen_xe where ma_don = ? and lan = ?').get(ma, lan) as DongDb | null);
+  }
+
+  /** Lần gọi xe mới nhất của đơn — lần quầy thấy và bấm. */
+  chuyenMoiNhat(ma: string): ChuyenXe | null {
+    return this.docChuyen(this.db.query('select * from chuyen_xe where ma_don = ? order by lan desc limit 1').get(ma) as DongDb | null);
+  }
+
+  /** Lần gọi xe mới nhất của các đơn `ma` (đơn trên màn quầy) — một câu, không quét cả lịch sử. */
+  chuyenMoiNhatTheoDon(ma: string[]): Map<string, ChuyenXe> {
+    if (!ma.length) return new Map();
+    const dau = ma.map(() => '?').join(', ');
+    const hang = this.db.query(`select c.* from chuyen_xe c join (select ma_don, max(lan) as lan from chuyen_xe
+        where ma_don in (${dau}) group by ma_don) m on m.ma_don = c.ma_don and m.lan = c.lan`).all(...ma) as DongDb[];
+    return new Map(hang.map(h => [String(h.ma_don), this.docChuyen(h)!]));
+  }
+
+  /** Tiền THẬT đã về đủ tổng đơn: SePay id dương (id âm là giả lập của demo), VNPay không phải sandbox. */
+  private coTienThat(ma: string): boolean {
+    const h = this.db.query(`select (select coalesce(sum(so_tien), 0) from giao_dich where ma_don = ?1 and id_sepay > 0
+        and ket_qua in ('du', 'thieu', 'thua'))
+      + (select coalesce(sum(so_tien), 0) from thanh_toan_zalo where ma_don = ?1 and phuong_thuc not glob '*_SANDBOX'
+        and ket_qua in ('du', 'thieu', 'thua')) as n, (select tong_tien from don where ma = ?1) as t`).get(ma) as { n: number; t: number | null };
+    return h.t !== null && h.n >= h.t;
+  }
+
+  /** "Soạn xong, chờ giao" của đơn giao tận nơi → lần gọi xe đầu tiên — trong giao dịch đổi trạng thái. */
+  private xepChuyenXe(ma: string, ms: number) {
+    if (!this.goiXe) return;
+    if (!this.db.query("select 1 from don where ma = ? and cach_nhan = 'giao-hang'").get(ma)) return;
+    if (this.goiXe.chiTienThat && !this.coTienThat(ma)) return;
+    this.db.query(`insert or ignore into chuyen_xe (ma_don, lan, viec, viec_sau, tao_luc, cap_nhat_luc) values (?, 1, 'tao', ?, ?, ?)`)
+      .run(ma, ms, ms, ms);
+  }
+
+  /**
+   * Quầy hủy đơn → chuyến mới nhất (trong giao dịch đổi trạng thái). Đã gửi Ahamove mà chưa khép (có mã Ahamove, hay
+   * đang 'kiem_lai'): việc 'huy'. Chưa gửi lần nào ('tao'), hay đã khép (Ahamove không nhận, Ahamove hủy, giao không
+   * được): khỏi gọi Ahamove, chỉ đánh dấu đã hủy — quầy thôi thấy nút "Gọi lại xe".
+   */
+  private huyChuyenXeCuaDon(ma: string, ms: number) {
+    const c = this.chuyenMoiNhat(ma);
+    if (!c || c.tuGoiLuc !== null || c.huyYeuCau) return;
+    if (c.viec === 'kiem_lai' || (c.maAha && !laTrangThaiCuoi(c.trangThaiAha))) {
+      this.db.query(`update chuyen_xe set viec = 'huy', viec_sau = ?, so_lan = 0, huy_yeu_cau = 1, cap_nhat_luc = ?
+        where ma_don = ? and lan = ?`).run(ms, ms, ma, c.lan);
+    } else {
+      this.db.query('update chuyen_xe set viec = null, huy_yeu_cau = 1, cap_nhat_luc = ? where ma_don = ? and lan = ?').run(ms, ma, c.lan);
+    }
+  }
+
+  /**
+   * Quầy tự bấm "Đã giao tới khách" (quầy tự giao) trong lúc chuyến chưa tới tay tài xế: chưa gửi Ahamove → thôi gọi;
+   * đã gửi mà tài xế chưa lấy hàng → hủy. Tài xế đã lấy hàng (IN PROCESS): để nguyên — thường là webhook tới chậm hơn quầy.
+   */
+  private thoiChuyenKhiQuayTuGiao(ma: string, ms: number) {
+    const c = this.chuyenMoiNhat(ma);
+    if (!c || c.tuGoiLuc !== null || c.huyYeuCau || laTrangThaiCuoi(c.trangThaiAha) || c.trangThaiAha === 'IN PROCESS') return;
+    if (c.viec === 'tao' || (!c.maAha && c.viec === null)) {
+      this.db.query('update chuyen_xe set viec = null, tu_goi_luc = ?, cap_nhat_luc = ? where ma_don = ? and lan = ?').run(ms, ms, ma, c.lan);
+    } else {
+      this.db.query(`update chuyen_xe set viec = 'huy', viec_sau = ?, so_lan = 0, huy_yeu_cau = 1, tu_goi_luc = ?, cap_nhat_luc = ?
+        where ma_don = ? and lan = ?`).run(ms, ms, ms, ma, c.lan);
+    }
+  }
+
+  /** Chuyến có việc đến hạn (tạo, tra lại, hủy) — hủy trước (tài xế đừng tới đơn đã hủy), rồi cũ trước. */
+  chuyenCanLam(ms: number, gioiHan: number): ChuyenXe[] {
+    return (this.db.query(`select * from chuyen_xe where viec is not null and viec_sau <= ?
+      order by case viec when 'huy' then 0 else 1 end, viec_sau, tao_luc limit ?`)
+      .all(ms, gioiHan) as DongDb[]).map(h => this.docChuyen(h)!);
+  }
+
+  /** Chuyến đang chạy mà Ahamove im quá MS_HOI_LAI (webhook lạc, hay chưa cài webhook): máy chủ tự hỏi. */
+  chuyenCanHoi(ms: number, gioiHan: number): ChuyenXe[] {
+    return (this.db.query(`select * from chuyen_xe where ma_aha is not null and viec is null and tu_goi_luc is null
+        and (trang_thai_aha is null or trang_thai_aha <> 'CANCELLED') and not (trang_thai_aha = 'COMPLETED' and diem_giao is not null)
+        and max(coalesce(aha_luc, 0), coalesce(hoi_luc, 0), cap_nhat_luc) < ? and tao_luc > ?
+      order by coalesce(hoi_luc, 0) limit ?`).all(ms - MS_HOI_LAI, ms - MS_THOI_HOI, gioiHan) as DongDb[]).map(h => this.docChuyen(h)!);
+  }
+
+  /**
+   * tao → kiem_lai NGAY TRƯỚC khi gửi Tạo đơn (đếm một lần). Máy chủ tắt, mất mạng giữa chừng: lượt sau tra lại theo mã
+   * theo dõi chứ không gửi lại mù. false: chuyến đã bị lượt khác lấy, hay không còn việc tạo — không gửi.
+   */
+  batDauTaoChuyen(ma: string, lan: number, ms: number): boolean {
+    return this.db.transaction(() => this.db.query(`update chuyen_xe set viec = 'kiem_lai', viec_sau = ?, so_lan = so_lan + 1,
+      cap_nhat_luc = ? where ma_don = ? and lan = ? and viec = 'tao' and viec_sau <= ?`)
+      .run(ms + MS_CHO_KIEM_LAI, ms, ma, lan, ms).changes === 1).immediate();
+  }
+
+  /** Còn tra lại / hủy, chưa xong (mất mạng, 5xx, 409): giữ việc, lùi giờ làm, ghi câu lỗi. */
+  hoanViecXe(ma: string, lan: number, sauMs: number, loi: string, ms: number): void {
+    this.db.query('update chuyen_xe set viec_sau = ?, loi = ?, cap_nhat_luc = ? where ma_don = ? and lan = ? and viec is not null')
+      .run(ms + sauMs, loi.slice(0, 300), ms, ma, lan);
+  }
+
+  /**
+   * Ahamove chắc chắn CHƯA có đơn của lần gọi này (503, hay tra lại không thấy): về 'tao', gửi lại sau `sauMs`. Đã gửi
+   * SO_LAN_TAO_TOI_DA lần: thôi, báo quầy (QUA_SO_LAN). Quầy đã hủy đơn: thôi luôn, không gọi. tinhLan false: lần vừa
+   * rồi không tới được Ahamove (token hỏng trước khi gửi) — không đếm.
+   */
+  traChuyenVeTao(ma: string, lan: number, sauMs: number, loi: string, ms: number, tinhLan = true): ViecXe | null {
+    return this.db.transaction((): ViecXe | null => {
+      const c = this.layChuyen(ma, lan);
+      if (!c || (c.viec !== 'kiem_lai' && c.viec !== 'huy')) return c?.viec ?? null;
+      if (c.huyYeuCau) {
+        this.db.query('update chuyen_xe set viec = null, loi = ?, cap_nhat_luc = ? where ma_don = ? and lan = ?').run(loi.slice(0, 300), ms, ma, lan);
+        return null;
+      }
+      const soLan = tinhLan ? c.soLan : Math.max(c.soLan - 1, 0);
+      const het = soLan >= SO_LAN_TAO_TOI_DA;
+      this.db.query(`update chuyen_xe set viec = ?, viec_sau = ?, so_lan = ?, ma_loi = ?, loi = ?, cap_nhat_luc = ? where ma_don = ? and lan = ?`)
+        .run(het ? null : 'tao', ms + sauMs, soLan, het ? 'QUA_SO_LAN' : null, loi.slice(0, 300), ms, ma, lan);
+      return het ? null : 'tao';
+    }).immediate();
+  }
+
+  /** Ahamove không nhận đơn (400, 404, 406…): thôi tạo, quầy thấy lý do theo mã lỗi. */
+  ghiLoiTaoChuyen(ma: string, lan: number, l: LoiAhamove, ms: number): void {
+    this.db.query(`update chuyen_xe set viec = null, ma_loi = ?, loi = ?, cap_nhat_luc = ?
+      where ma_don = ? and lan = ? and viec in ('kiem_lai', 'huy') and ma_aha is null`)
+      .run(l.ma, `${l.ma}${l.cau ? `: ${l.cau}` : ''}`.slice(0, 300), ms, ma, lan);
+  }
+
+  /**
+   * Ghi một trạng thái Ahamove báo (câu trả lời Tạo đơn, tra lại, hỏi lại, webhook). Tìm chuyến theo mã Ahamove, không
+   * thấy thì theo mã theo dõi (webhook tới trước câu trả lời Tạo đơn). Chuyến đã khép (COMPLETED, CANCELLED) không đổi
+   * nữa — webhook tới trễ không kéo lùi. Giao được (COMPLETED, điểm giao COMPLETED): đơn "Soạn xong, chờ giao" tự sang
+   * "Đã giao tới khách" (ai: ahamove). Quầy đã hủy đơn mà chuyến còn chạy: việc 'huy' (Tạo đơn xong sau lệnh hủy).
+   * null: không phải chuyến của máy chủ này.
+   */
+  ghiTinAhamove(tin: TinChuyen, ms: number, khoa?: { ma: string; lan: number }): { maDon: string; lan: number; doi: boolean; daGiao: boolean } | null {
+    return this.db.transaction(() => {
+      let c = this.docChuyen(this.db.query('select * from chuyen_xe where ma_aha = ?').get(tin.maAha) as DongDb | null);
+      const theoMa = khoa ? { maDon: khoa.ma, lan: khoa.lan } : docMaTheoDoiXe(tin.maTheoDoi);
+      if (!c && theoMa) {
+        const cu = this.layChuyen(theoMa.maDon, theoMa.lan);
+        if (cu && (cu.maAha === null || cu.maAha === tin.maAha)) c = cu;
+      }
+      if (!c) return null;
+      if (c.maAha === tin.maAha && daKhepHan(c.trangThaiAha, c.diemGiao)) return { maDon: c.maDon, lan: c.lan, doi: false, daGiao: false };
+      const tt = tin.trangThai || c.trangThaiAha;
+      const cuoi = laTrangThaiCuoi(tt);
+      // Lần cũ hơn lần quầy đang thấy (đã bấm "Gọi lại xe") mà Ahamove vẫn chạy: hủy nó — một đơn một xe.
+      const moiNhat = this.db.query('select max(lan) as lan from chuyen_xe where ma_don = ?').get(c.maDon) as { lan: number };
+      const biThay = !cuoi && c.lan < moiNhat.lan;
+      if (biThay && !c.huyYeuCau) this.db.query('update chuyen_xe set huy_yeu_cau = 1 where ma_don = ? and lan = ?').run(c.maDon, c.lan);
+      const huyYeuCau = c.huyYeuCau || biThay;
+      const coTaiXe = tt === 'ACCEPTED' || tt === 'IN PROCESS' || tt === 'COMPLETED' || tt === 'CONFIRMING' || tt === 'PAYING';
+      // Việc tiếp theo: tra lại / tạo xong rồi thì hết việc; quầy đã hủy đơn mà chuyến còn chạy thì hủy; khép thì hết.
+      // Hủy không được (loi_huy) thì thôi thử lại: webhook sau không mở lại vòng hủy.
+      const viec: ViecXe | null = cuoi ? null : (huyYeuCau && !c.loiHuy) || c.viec === 'huy' ? 'huy' : null;
+      this.db.query(`update chuyen_xe set ma_aha = ?, trang_thai_aha = ?, trang_thai_phu = ?, diem_giao = coalesce(?, diem_giao),
+          ly_do = coalesce(?, ly_do), tai_xe_ten = ?, tai_xe_sdt = ?, link = coalesce(?, link), phi = coalesce(?, phi),
+          viec = ?, viec_sau = case when ? is null then viec_sau else ? end, ma_loi = null, aha_luc = ?, cap_nhat_luc = ?
+        where ma_don = ? and lan = ?`).run(
+        tin.maAha, tt, tin.trangThaiPhu || null, tin.diemGiao || null, tin.lyDo || null,
+        coTaiXe ? (tin.taiXeTen || c.taiXeTen) : null, coTaiXe ? (tin.taiXeSdt || c.taiXeSdt) : null,
+        tin.link || null, tin.phi, viec, viec, viec === c.viec ? c.viecSau : ms, ms, ms, c.maDon, c.lan);
+      const daGiao = tt === 'COMPLETED' && tin.diemGiao === 'COMPLETED'
+        && this.doiTrongGiaoDich(c.maDon, 'cho_lay', 'da_giao', 'ahamove', ms) === 'da_doi';
+      return { maDon: c.maDon, lan: c.lan, doi: true, daGiao };
+    }).immediate();
+  }
+
+  /** Đã hủy chuyến (Ahamove trả 200), hay không có chuyến nào để hủy (404): thôi việc hủy. */
+  ghiDaHuyChuyen(ma: string, lan: number, ms: number): void {
+    this.db.query(`update chuyen_xe set viec = null, trang_thai_aha = case when ma_aha is null then trang_thai_aha else 'CANCELLED' end,
+      loi = null, cap_nhat_luc = ? where ma_don = ? and lan = ? and viec = 'huy'`).run(ms, ma, lan);
+  }
+
+  /** Hủy không được (tài xế đã lấy hàng, hay hỏng quá SO_LAN_HUY_TOI_DA lần): quầy gọi tài xế / Ahamove. */
+  ghiHuyKhongDuoc(ma: string, lan: number, loi: string, ms: number): void {
+    this.db.query(`update chuyen_xe set viec = null, loi_huy = ?, cap_nhat_luc = ? where ma_don = ? and lan = ? and viec = 'huy'`)
+      .run(loi.slice(0, 300) || 'Không hủy được', ms, ma, lan);
+  }
+
+  /** Một lần hủy hỏng tạm (mất mạng, 5xx): đếm; quá SO_LAN_HUY_TOI_DA lần thì thôi, báo quầy. */
+  hoanHuyChuyen(ma: string, lan: number, sauMs: number, loi: string, ms: number): void {
+    this.db.transaction(() => {
+      const c = this.layChuyen(ma, lan);
+      if (!c || c.viec !== 'huy') return;
+      if (c.soLan + 1 >= SO_LAN_HUY_TOI_DA) { this.ghiHuyKhongDuoc(ma, lan, `QUA_SO_LAN: ${loi}`, ms); return; }
+      this.db.query('update chuyen_xe set so_lan = so_lan + 1, viec_sau = ?, loi = ?, cap_nhat_luc = ? where ma_don = ? and lan = ?')
+        .run(ms + sauMs, loi.slice(0, 300), ms, ma, lan);
+    }).immediate();
+  }
+
+  /** Đã hỏi Ahamove (được hay không): lượt sau chờ thêm MS_HOI_LAI mới hỏi lại chuyến này. */
+  daHoiChuyen(ma: string, lan: number, ms: number): void {
+    this.db.query('update chuyen_xe set hoi_luc = ? where ma_don = ? and lan = ?').run(ms, ma, lan);
+  }
+
+  /**
+   * Quầy bấm "Gọi lại xe Ahamove" cho lần `lan` (lần mới nhất, đang cần người làm và được gọi lại: Ahamove không nhận,
+   * Ahamove hủy, giao không được) — đơn phải còn ở "Soạn xong, chờ giao". Bấm đúp, hai máy cùng bấm: một lần mới.
+   */
+  goiLaiXe(ma: string, lan: number, ms: number): KetQuaDoi {
+    if (!this.goiXe) return 'khong_duoc';
+    return this.db.transaction((): KetQuaDoi => {
+      const c = this.chuyenMoiNhat(ma);
+      if (!c) return 'khong_co';
+      if (c.lan > lan) return 'da_o_buoc_moi';
+      if (c.lan < lan) return 'khong_co';
+      const don = this.db.query('select trang_thai from don where ma = ?').get(ma) as { trang_thai: string } | null;
+      if (!don || don.trang_thai !== 'cho_lay' || !buocXe(c, ms).choGoiLai || c.lan >= 20) return 'lech';
+      this.db.query(`insert into chuyen_xe (ma_don, lan, viec, viec_sau, tao_luc, cap_nhat_luc) values (?, ?, 'tao', ?, ?, ?)`)
+        .run(ma, c.lan + 1, ms, ms, ms);
+      return 'da_doi';
+    }).immediate();
+  }
+
+  /** Quầy bấm "Quầy tự xử lý" cho lần `lan` đang cần người làm: thôi báo, máy chủ không làm gì thêm với chuyến này. */
+  quayTuGoiXe(ma: string, lan: number, ms: number): KetQuaDoi {
+    return this.db.transaction((): KetQuaDoi => {
+      const c = this.chuyenMoiNhat(ma);
+      if (!c || c.lan !== lan) return c && c.lan > lan ? 'lech' : 'khong_co';
+      if (c.tuGoiLuc !== null) return 'da_o_buoc_moi';
+      if (!buocXe(c, ms).canXem) return 'lech';
+      // Đang gọi lâu (đã gửi mà chưa rõ) hay chuyến còn chạy: Ahamove có thể đã có đơn — hủy nó, kẻo hai tài xế.
+      const conChay = c.viec === 'kiem_lai' || (c.maAha !== null && !laTrangThaiCuoi(c.trangThaiAha) && !c.loiHuy);
+      this.db.query(`update chuyen_xe set tu_goi_luc = ?, viec = ?, viec_sau = ?, so_lan = case when ? = 'huy' then 0 else so_lan end,
+        huy_yeu_cau = case when ? = 'huy' then 1 else huy_yeu_cau end, cap_nhat_luc = ? where ma_don = ? and lan = ?`)
+        .run(ms, conChay ? 'huy' : null, ms, conChay ? 'huy' : '', conChay ? 'huy' : '', ms, ma, lan);
+      return 'da_doi';
+    }).immediate();
+  }
+
+  private soLieuXe(ms: number) {
+    const dangLam = (this.db.query(`select ma from don where trang_thai in (${CON_VIEC.map(() => '?').join(', ')})`)
+      .all(...CON_VIEC) as { ma: string }[]).map(r => r.ma);
+    let canXem = 0;
+    for (const c of this.chuyenMoiNhatTheoDon(dangLam).values()) if (buocXe(c, ms).canXem) canXem++;
+    const cuoi = this.db.query('select max(aha_luc) as luc from chuyen_xe').get() as { luc: number | null };
+    return { soXeCanXem: canXem, lanAhamoveCuoi: cuoi.luc };
+  }
+
   /** Số liệu cho đèn sức khỏe — chỉ số đếm và mốc giờ, không tên, không số điện thoại. */
   soLieu(ms: number) {
     const soTheoTrangThai = new Map((this.db.query('select trang_thai as t, count(*) as n from don group by trang_thai').all() as
@@ -709,6 +1009,7 @@ export class SoDon {
       soTienVeCanXem: tienVe.can ?? 0,
       ...this.soLieuZns(ms),
       ...this.soLieuVnpay(ms),
+      ...this.soLieuXe(ms),
     };
   }
 
