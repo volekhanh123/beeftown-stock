@@ -43,8 +43,10 @@ const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — QUY TRÌNH: BẢN ĐỒ VÀ
 
 /** Cỡ tối đa của CLAUDE.md gốc, tính theo byte UTF-8 (chữ có dấu tốn 2–3 byte). */
 const TRAN_CLAUDE_GOC = 12_000;
+/** Cỡ tối đa của mini-app/CLAUDE.md: tình trạng, việc chờ chốt, việc tiếp theo ghi ở mini-app/TINH-TRANG.md. */
+const TRAN_CLAUDE_MINI_APP = 21_000;
 const BAN_DO = ['CLAUDE.md', 'AGENTS.md', 'crm/CLAUDE.md', 'web/CLAUDE.md', 'can-app/CLAUDE.md', 'may-chu-don/CLAUDE.md',
-  '.github/CLAUDE.md'];
+  '.github/CLAUDE.md', 'mini-app/CLAUDE.md', 'mini-app/TINH-TRANG.md'];
 // Cả file mới chưa commit (không bị .gitignore chặn): bản đồ viết cùng lúc với file nó nhắc.
 const TEP_GIT = git(['ls-files', '--cached', '--others', '--exclude-standard']).split('\n').filter(Boolean);
 const TEN_TEP = new Set(TEP_GIT.map(f => f.split('/').pop()));
@@ -125,6 +127,13 @@ await nhom('1 · BẢN ĐỒ CHỈ NHẮC THỨ CÓ THẬT', async () => {
   const coGoc = Buffer.byteLength(goc, 'utf8');
   ok(`CLAUDE.md gốc dưới ${TRAN_CLAUDE_GOC.toLocaleString('vi-VN')} byte (nạp ở mọi phiên)`, coGoc <= TRAN_CLAUDE_GOC,
      `${coGoc.toLocaleString('vi-VN')} byte — chuyển chi tiết của một khu xuống CLAUDE.md của thư mục đó`);
+  // mini-app/CLAUDE.md nạp ở mọi phiên sửa Mini App (12/11/2026: 30 KB → 19 KB, tình trạng và việc tiếp theo sang
+  // mini-app/TINH-TRANG.md, chỉ đọc khi được hỏi). Trần này giữ sổ tình trạng không chảy ngược về bản đồ.
+  const mini = doc('mini-app/CLAUDE.md');
+  const coMini = Buffer.byteLength(mini, 'utf8');
+  ok(`mini-app/CLAUDE.md dưới ${TRAN_CLAUDE_MINI_APP.toLocaleString('vi-VN')} byte`, coMini <= TRAN_CLAUDE_MINI_APP,
+     `${coMini.toLocaleString('vi-VN')} byte — tình trạng, việc chờ chốt, việc tiếp theo ghi vào mini-app/TINH-TRANG.md`);
+  ok('mini-app/CLAUDE.md trỏ tới TINH-TRANG.md', mini.includes('`TINH-TRANG.md`'));
   ok('AGENTS.md (Codex, agent khác) cũng trỏ tới bản đồ từng thư mục', doc('AGENTS.md').includes('web/CLAUDE.md'));
 });
 

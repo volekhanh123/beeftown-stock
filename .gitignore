@@ -85,6 +85,8 @@
 !/mini-app/.gitignore
 !/mini-app/.gitattributes
 !/mini-app/CLAUDE.md
+# Tình trạng trên Zalo, việc chờ chốt, việc tiếp theo (tách khỏi CLAUDE.md để phiên sửa mã đọc ít hơn).
+!/mini-app/TINH-TRANG.md
 !/mini-app/README.md
 !/mini-app/package.json
 !/mini-app/package-lock.json

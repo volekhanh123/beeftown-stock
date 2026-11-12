@@ -1,36 +1,36 @@
-# Beeftown Mini App: đọc trước khi làm
+# mini-app/ — Mini App Zalo Beeftown
 
-Zalo Mini App bán 6 phần thịt mang về của nhà hàng Beeftown (63 Hồ Tùng Mậu, phường Sài Gòn, TP.HCM). Khách chọn số khay (bán theo khay, giá cố định), app mở chat với Zalo OA của quán và điền sẵn tin đơn có tổng tiền; khách tự bấm Gửi. Không máy chủ, không lưu dữ liệu khách, không thu tiền trong app — cho tới khi khai máy chủ đơn (`diaChiMayChuDon` trong `src/cau-hinh.ts`, đợt 2b): khi đó khách gửi đơn lên máy chủ đơn của repo (`may-chu-don/`, đặt ở Việt Nam) và chuyển khoản VietQR ngay trong app, chỉ giao tận nơi, giá khay đã gồm phí giao (Khánh 09/11/2026).
+Phiên Claude tự nạp file này khi đọc file trong `mini-app/`. Quy trình chung ở `CLAUDE.md` gốc (9 mục trong mô tả PR,
+`/code-review` trước khi mở PR, không nới kiểm thử). File này nói **cách làm với mã**. Tình trạng trên Zalo (ID,
+phiên bản đã đưa lên, xác thực), việc chờ Sang / luật sư / iPOS chốt, hướng phát triển và việc tiếp theo nằm ở
+`TINH-TRANG.md` — chỉ đọc khi được hỏi tình trạng hay việc tiếp theo. Hướng dẫn cho người, từng bước: `README.md`.
+Mọi lệnh ở mục "Lệnh" chạy trong `mini-app/`.
 
-- Người giao việc: Khánh (Võ Lê Khánh), CMO và partner của Beeftown. Pháp nhân bán hàng: Công ty TNHH SLK Group, mã số doanh nghiệp 0319712805.
-- Bản 1.0 do Claude dựng ngày 22/10/2026 trong dự án "FnB Investment" trên claude.ai, rồi chuyển sang Claude Code cùng ngày lúc 13:00. Ghi chú đầy đủ của dự án: tài liệu `claude/zalo-oa-beeftown.md` trong project "FnB Investment".
-- Hướng dẫn cho người (tiếng Việt, từng bước): `README.md`.
-- Từ 22/10/2026 mã nằm trong repo `volekhanh123/beeftown-stock`, thư mục `mini-app/`. Thư mục cũ `Documents\beeftown-mini-app` trên máy Khánh chỉ để lưu, không sửa ở đó nữa. Quy trình của repo áp dụng cho Mini App: `CLAUDE.md` gốc (9 mục trong mô tả PR, `/code-review` trước khi mở PR, không nới kiểm thử). Mọi lệnh ở mục "Lệnh" chạy trong `mini-app/`.
+Zalo Mini App bán 6 phần thịt mang về của nhà hàng Beeftown. **Bán theo khay, giá cố định** (Khánh quyết 22/10/2026):
+mỗi khay khoảng `soGamKhay` gam, giá `giaMoiKhay` không đổi theo số gam thật; tin đơn ghi từng dòng "số khay × giá =
+tiền" và tổng tiền thịt. Số gam và giá đang là **số thử** (`giaThu: true` trong `src/cau-hinh.ts`), chưa phải số của
+Sang. Hai cách đặt:
 
-## Tình trạng 22/10/2026, 13:00
-
-- OA "Nhà hàng Beeftown Hồ Tùng Mậu" đã xác thực. OA ID `3030027075662095415`, đã điền trong `src/cau-hinh.ts`. Gói OA Tăng trưởng.
-- Mini App "Beeftown", **Mini App ID `2858300068641327950`**, nằm trong Zalo App "SLK Group 2210" (ID 2513314422490328273). Loại hình Doanh nghiệp/Hộ kinh doanh (không đổi được), danh mục F&B → Kinh doanh/Quản lí dịch vụ ăn uống. Trang quản lý: https://miniapp.zaloplatforms.com/miniapp/2858300068641327950/statistic/overview
-- Đăng nhập zmp-cli đã xong: file `.env` có `APP_ID` và `ZMP_TOKEN`. File này nằm ở `Documents\beeftown-mini-app\.env`, **không vào git** (`.gitignore` chặn, `test-quy-trinh.mjs` kiểm). Muốn đưa lên từ bản clone của repo: Khánh chép file đó sang `mini-app\.env`, hoặc chạy lại `npx zmp login` trong `mini-app\`.
-- **Bản thử phiên bản 2** đã đưa lên 22/10 16:33 bằng `npm run deploy:thu` (kiem-tra 11/11, `tsc` đạt). Link mở bản thử: `https://zalo.me/s/2858300068641327950/?env=TESTING&version=2`. Lượt Testing tháng 10: 4/60. Chưa đối chiếu ở Mini App Center → Danh sách phiên bản. Lần 11:40 lỗi "No asset defined" (mục "Lỗi đã gặp"), đã sửa lúc 11:58.
-- Xác thực Mini App: bước chủ sở hữu đã xong (xác thực bằng OA, 22/10 11:33). Còn thiếu giấy tờ kinh doanh: giấy xác nhận ngành nghề kinh doanh phù hợp (dịch vụ ăn uống) và giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm. Thiếu 2 giấy này thì không gửi Zalo duyệt phiên bản được. Bản thử (testing) vẫn mở được bằng tài khoản Admin, Developer, người thử.
-- **Bán theo khay, giá cố định** (Khánh quyết 22/10/2026): không bán đúng số gam. Mỗi khay khoảng `soGamKhay` gam (đang để ~150 g), giá `giaMoiKhay` không đổi theo số gam thật; tin đơn ghi từng dòng "số khay × giá = tiền" và tổng tiền thịt (chưa gồm phí giao). Bản thử phiên bản 2 trên Zalo còn bán theo giá/100 g.
-- Số gam và giá đang là **số thử** (`giaThu: true` trong `src/cau-hinh.ts`), chưa phải số của Sang. Giá ghi dạng "120.000 đ" (có dấu cách, như repo) từ 22/10/2026; bản thử phiên bản 2 trên Zalo còn ghi "120.000đ".
-- **Còn hàng theo kho** (bước 2, 23/10/2026): app hỏi `https://beeftown.vn/mini-app/con-hang.json` (`diaChiConHang` trong `src/cau-hinh.ts`) khi mở và khi khách quay lại app sau 60 giây. Kho báo `het` → thẻ hiện "Tạm hết", không thêm được khay; phần đã chọn mà vừa hết thì thẻ và màn đơn hàng ghi "Phần này vừa hết ở quầy; quán báo lại khi xác nhận đơn.", tin đơn ghi thêm "— app báo quầy vừa hết"; `sap_het` hiện như còn hàng (repo cấm câu khan hiếm kiểu "sắp hết"); không biết → hiện như cũ. Chưa chạy được thật cho tới khi: chạy migration 0093 và deploy web; gắn ô "Phần thịt trên Mini App Zalo" cho mặt hàng ở màn mặt hàng của kho; khai `beeftown.vn` ở Mini App Center → Cấu hình API Domains; chủ bật công tắc `mini_app_hien_con_hang` ở `/noi-bo` (mặc định tắt). Chi tiết: `web/KHO.md` mục 3r.
-- Màu: Khánh chốt ngày 22/10/2026 bảng đỏ `#BD0000`, đen `#000000`, trắng `#FFFFFF`, bỏ Cream, Marigold, Warm Stone (`THUONG-HIEU.md` mục 0 của repo). `src/styles.css` dùng thêm 7 màu pha. Đỏ đậm và các xám (nền, vạch, chữ phụ) Khánh duyệt ngày 25/10/2026 (câu 1 ở mục đó); hai đỏ nhạt `#fff1f1`, `#d9a3a3` và chữ `#111111` chưa nằm trong câu trả lời — chốt cùng PR đổi màu, đừng dùng thêm chỗ mới. Website và Beeftown Cân còn màu cũ tới PR đổi màu.
+- `diaChiMayChuDon` (`src/cau-hinh.ts`) để trống: app mở chat với Zalo OA của quán và điền sẵn tin đơn; khách tự bấm
+  Gửi. Không máy chủ, không lưu dữ liệu khách, không thu tiền trong app.
+- `diaChiMayChuDon` có địa chỉ (đang là `https://don.beeftown.vn`): khách gửi đơn lên máy chủ đơn của repo
+  (`may-chu-don/`, đặt ở Việt Nam) và trả tiền ngay trong app; chỉ giao tận nơi, giá khay đã gồm phí giao
+  (Khánh 09/11/2026).
 
 ## Lệnh
 
 | Lệnh | Việc |
 |---|---|
-| `npm install` | Cài thư viện |
-| `npm run dev` | Chạy thử ở http://localhost:3000. Ngoài Zalo, nút "Gửi đơn qua Zalo" hiện tin nhắn thay vì mở chat. Thử trả trước với máy chủ đơn trên máy: đặt `VITE_DIA_CHI_MAY_CHU_DON=http://127.0.0.1:8787` (README, "Thử đặt và trả tiền với máy chủ đơn") |
+| `npm install` | Cài thư viện (`npm ci` cần Node 24 — mục "Lỗi đã gặp") |
+| `npm run dev` | Chạy thử ở http://localhost:3000. Ngoài Zalo, nút "Gửi đơn qua Zalo" hiện tin nhắn thay vì mở chat. Thử trả trước với máy chủ đơn trên máy: đặt `VITE_DIA_CHI_MAY_CHU_DON=http://127.0.0.1:8787` (`README.md`, "Thử đặt và trả tiền với máy chủ đơn") |
 | `npm run kiem-tra` | Kiểm tra giờ nhận, số điện thoại, nội dung tin, tổng tiền, dòng giá thử, đọc còn hàng, trả trước (gửi đơn, mất mạng, màn theo trạng thái, giữ đơn trên máy) (cần Node 22.6 trở lên) |
 | `npm run build` | `tsc --noEmit && vite build`. Bản build trong `www/` chỉ chạy dưới `/zapps/<APP_ID>/` |
 | `npm run deploy:thu` | `zmp deploy --testing --passive --desc "..."`. zmp-cli tự build, rồi tải `www/` lên. In "Deploy Done!", số phiên bản và mã QR mở bản thử |
 | `npx zmp login` | Đăng nhập lại khi khóa hết hạn. Phải chọn cách đăng nhập và quét mã QR bằng app Zalo, nên để Khánh tự chạy trong cửa sổ dòng lệnh (hoặc bấm đúp `dua-len-zalo.cmd`) |
 
-Trước mỗi lần đưa lên: `npm run kiem-tra`, `npx tsc --noEmit` và (trong `crm/`) `node test/test-mini-app-chu.mjs` phải đạt.
+Đưa lên cần `mini-app/.env` (`APP_ID`, `ZMP_TOKEN`), không bao giờ vào git; bản clone chưa có thì Khánh chép file từ
+máy cũ hoặc chạy `npx zmp login`. Trước mỗi lần đưa lên: `npm run kiem-tra`, `npx tsc --noEmit` và (trong `crm/`)
+`node test/test-mini-app-chu.mjs` phải đạt.
 
 Kiểm thử trong repo:
 
@@ -64,21 +64,23 @@ zmp-cli.json         đánh dấu dự án Zalo Mini App cho zmp-cli
 dua-len-zalo.cmd     cho Khánh bấm đúp trên Windows: cài thư viện, đăng nhập, đưa bản thử lên
 .gitattributes       giữ dua-len-zalo.cmd xuống dòng CRLF (cmd.exe) trên mọi máy
 .gitignore           node_modules, www, .env (repo gốc cũng chặn; file mới phải mở trong .gitignore gốc)
+TINH-TRANG.md        tình trạng trên Zalo, việc chờ chốt, việc tiếp theo (không cần đọc khi chỉ sửa mã)
 ```
 
 ## Cách app chạy
 
 - Gửi đơn: `openChat({ type: "oa", id, message })` của zmp-sdk 2.53.1 (điền sẵn tin từ SDK 2.20.0); khách vẫn tự bấm Gửi. Quan tâm OA: `followOA({ id })`. Quyền 44 (mở chat) và 56 (yêu cầu theo dõi OA) đã cấp mặc định.
+- Còn hàng theo kho: app hỏi `https://beeftown.vn/mini-app/con-hang.json` (`diaChiConHang` trong `src/cau-hinh.ts`) khi mở và khi khách quay lại app sau 60 giây. Kho báo `het` → thẻ hiện "Tạm hết", không thêm được khay; phần đã chọn mà vừa hết thì thẻ và màn đơn hàng ghi "Phần này vừa hết ở quầy; quán báo lại khi xác nhận đơn.", tin đơn ghi thêm "— app báo quầy vừa hết"; `sap_het` hiện như còn hàng (repo cấm câu khan hiếm kiểu "sắp hết"); không biết → hiện như cũ. Phía kho: `web/KHO.md` mục 3r; việc còn phải làm để chạy thật: `TINH-TRANG.md`.
 - Trả trước (khi có máy chủ đơn, `TRA_TRUOC` của `src/may-chu-don.ts`): `POST /api/don` rồi màn `/tra-tien` hỏi `GET /api/don/<mã>?khoa=` (4 giây khi chờ tiền, 15 giây sau đó, ngay khi khách quay lại app). Mã QR vẽ trong app từ `thanhToan.chuoiQr` (không tải ảnh `qr.svg` của máy chủ: khỏi khai thêm tên miền ảnh, và có PNG để `saveImageToGallery`). Chép bằng `navigator.clipboard` (zmp-sdk 2.53.1 không có lệnh chép). Mất mạng, hết giờ, trả lời lạ: "không rõ" — không bao giờ báo đã ghi hay đã trả; gửi lại cùng mã gửi. `saveImageToGallery` có cần khai quyền ở Mini App Center không: chưa thử trên Zalo thật.
 - Trả qua VNPay (Khánh 11/11/2026, máy chủ đơn có cấu hình Checkout SDK — `may-chu-don/README.md`, "Cài VNPay qua Checkout SDK"): `thanhToan.kieu` là `"vnpay"` thì màn `/tra-tien` hiện nút "Trả … qua VNPay" thay cho mã QR. Bấm nút: `CheckoutSDK.createOrder` với đúng `thanhToan.taoDon` máy chủ đã ký MAC (app không sửa chữ nào; Private key không bao giờ xuống app), Zalo mở trang VNPay; orderId Zalo trả về được báo lên máy chủ (`POST /api/don/<mã>/vnpay`, chỉ để máy chủ thấy đơn chờ kết quả quá lâu). Nghe `EventName.PaymentDone` rồi `checkTransaction` chỉ để nói với khách đang chờ gì ("Zalo báo bạn đã trả xong. App đang chờ quán ghi nhận tiền…") và hỏi lại máy chủ ngay — "Quán đã nhận đủ tiền" chỉ khi máy chủ đơn báo. Zalo đã báo trả xong thì nút trả khóa lại (trả hai lần là quán phải hoàn một lần). Sandbox (`thuNghiem`): dòng "Bản thử: … không trừ tiền thật". Ngoài Zalo: "Mở Mini App Beeftown trong Zalo để trả tiền". Chưa thử trên Zalo thật.
-- Chia sẻ món (Khánh chọn 09/11/2026, ý từ mẫu zaui-fashion của Zalo, mã viết mới): nút "Chia sẻ" trên thẻ phần thịt, chỉ hiện trong Zalo. `openShareSheet({ type: "zmp_deep_link" })` với đường dẫn `/mon/<mã>` (route trong `ung-dung.tsx`, mở trang chủ, cuộn tới và viền đậm phần đó); ảnh xem trước là ảnh chia sẻ của website `https://beeftown.vn/thuong-hieu/chia-se-1200x630.png` (chưa có ảnh từng phần thịt). Bạn bè mở tin có đúng phần thịt không và ảnh có hiện không: chưa thử trên Zalo thật.
-- Quan tâm OA và nút chat (Khánh chọn 09/11/2026, ý từ mẫu zaui-fashion, mã viết mới): màn đặt xong (`da-gui`, `tra-tien` khi đã nhận tiền) hiện khung quan tâm OA do Zalo vẽ (`showOAWidget`, `KhungQuanTamOA` trong `thanh-phan.tsx`); ngoài Zalo hay Zalo báo lỗi thì hiện lại nút "Quan tâm Beeftown trên Zalo" (`followOA`). Nút chat nhỏ (`NutChat`) cạnh "Xem đơn" ở trang chủ và cạnh "Gửi đơn và trả tiền" ở màn đơn hàng, chỉ trong Zalo. Khung OA lấy đúng OA Beeftown không (OA gắn với Mini App): chưa thử trên Zalo thật.
-- Đơn của tôi (Khánh chọn 09/11/2026, ý từ mẫu zaui-fashion, mã viết mới): màn `/don-cua-toi`, lối vào "Đơn của tôi (N)" ở trang chủ khi có đơn. Danh sách nằm trên máy (`localStorage` khóa `beeftown-don-cua-toi`, `docDanhSachDon` / `themVaoDanhSach` trong `tra-truoc.ts`): tối đa 20 đơn, 30 ngày, chỉ mã đơn, khóa xem, số đơn, ngày nhận — không tên, số điện thoại, địa chỉ. Trạng thái hỏi máy chủ mỗi lần mở màn; máy chủ báo không có đơn thì bỏ khỏi danh sách. Bấm "Xem đơn" mở màn trả tiền / trạng thái của đơn đó.
+- Chia sẻ món (Khánh chọn 09/11/2026): nút "Chia sẻ" trên thẻ phần thịt, chỉ hiện trong Zalo. `openShareSheet({ type: "zmp_deep_link" })` với đường dẫn `/mon/<mã>` (route trong `ung-dung.tsx`, mở trang chủ, cuộn tới và viền đậm phần đó); ảnh xem trước là ảnh chia sẻ của website `https://beeftown.vn/thuong-hieu/chia-se-1200x630.png` (chưa có ảnh từng phần thịt). Bạn bè mở tin có đúng phần thịt không và ảnh có hiện không: chưa thử trên Zalo thật.
+- Quan tâm OA và nút chat (Khánh chọn 09/11/2026): màn đặt xong (`da-gui`, `tra-tien` khi đã nhận tiền) hiện khung quan tâm OA do Zalo vẽ (`showOAWidget`, `KhungQuanTamOA` trong `thanh-phan.tsx`); ngoài Zalo hay Zalo báo lỗi thì hiện lại nút "Quan tâm Beeftown trên Zalo" (`followOA`). Nút chat nhỏ (`NutChat`) cạnh "Xem đơn" ở trang chủ và cạnh "Gửi đơn và trả tiền" ở màn đơn hàng, chỉ trong Zalo. Khung OA lấy đúng OA Beeftown không (OA gắn với Mini App): chưa thử trên Zalo thật.
+- Đơn của tôi (Khánh chọn 09/11/2026): màn `/don-cua-toi`, lối vào "Đơn của tôi (N)" ở trang chủ khi có đơn. Danh sách nằm trên máy (`localStorage` khóa `beeftown-don-cua-toi`, `docDanhSachDon` / `themVaoDanhSach` trong `tra-truoc.ts`): tối đa 20 đơn, 30 ngày, chỉ mã đơn, khóa xem, số đơn, ngày nhận — không tên, số điện thoại, địa chỉ. Trạng thái hỏi máy chủ mỗi lần mở màn; máy chủ báo không có đơn thì bỏ khỏi danh sách. Bấm "Xem đơn" mở màn trả tiền / trạng thái của đơn đó.
 - Nhận biết đang ở trong Zalo: `/zalo/i.test(navigator.userAgent)`.
 - Router: `ZMPRouter` của zmp-ui đặt basename `/zapps/${window.APP_ID}` ở bản production.
 - Không dùng `Icon` và `Snackbar` của zmp-ui vì chúng tải phông từ h5.zadn.vn. Biểu tượng vẽ SVG, thông báo tự làm.
 - Nếu `oaId` để trống, Vite bỏ hẳn đoạn gọi `openChat` khỏi bản build. Không đưa lên bản nào có `oaId` trống.
-- Mã viết mới, không chép mẫu zaui của Zalo (giấy phép mẫu chỉ cho thử nghiệm, phi thương mại).
+- Mã viết mới, không chép mẫu zaui của Zalo (giấy phép mẫu chỉ cho thử nghiệm, phi thương mại). Chia sẻ món, khung quan tâm OA, Đơn của tôi lấy ý từ mẫu zaui-fashion, mã viết mới.
 - Đổi giá: thay `soGamKhay`, `giaMoiKhay` trong `src/san-pham.ts`, đổi `giaThu` thành `false`, chạy kiểm tra, đưa lên lại. Tổng tiền tính ở `tongTienThit` (`src/don.ts`); phần chưa có giá thì tổng ghi "quán báo khi xác nhận".
 
 ## Lỗi đã gặp
@@ -105,7 +107,8 @@ Thỏa thuận nhà phát triển Zalo Mini App, cập nhật 25/09/2026: https:
 - Viết tiếng Việt theo quy tắc từ ngữ của Khánh: câu thường, có số, không ẩn dụ. Không dùng: nút thắt, đầu phễu, nước rút, dựng nền, hệ hạng, xoay trục, cổng số liệu, kích hoạt, leads, seeding, broadcast, footage, creative, camp, nghiệm thu. Số kiểu Việt Nam: 84.500 đ (giá có dấu cách trước chữ đ, như repo), 42,6%, ngày dd/mm. Việc cần làm ghi đủ 4 phần: động từ, con số, ai làm, hạn ngày.
 - Beeftown là nhà hàng chuyên bò (Beef Specialty Restaurant). Không viết: Korean BBQ, nướng Hàn, buffet, rẻ, cao cấp, ngon nhất, số một.
 - Chadolbagi và LA Galbi là thịt đông lạnh. Không gọi chung cả tủ là thịt mát.
-- Màu: đỏ `#BD0000`, đen, trắng (Khánh chốt 22/10/2026, `THUONG-HIEU.md` mục 0 của repo). Chữ Montserrat (giấy phép OFL, chỉ các bộ latin, latin-ext, vietnamese). Câu khẩu hiệu: "Pick it, grill it, love it!"
+- Màu: đỏ `#BD0000`, đen, trắng (Khánh chốt 22/10/2026, `THUONG-HIEU.md` mục 0 của repo). `src/styles.css` dùng thêm 7 màu pha: đỏ đậm và các xám (nền, vạch, chữ phụ) Khánh duyệt ngày 25/10/2026 (câu 1 ở mục đó); hai đỏ nhạt `#fff1f1`, `#d9a3a3` và chữ `#111111` chưa nằm trong câu trả lời — chốt cùng PR đổi màu, đừng dùng thêm chỗ mới. Chữ Montserrat (giấy phép OFL, chỉ các bộ latin, latin-ext, vietnamese). Câu khẩu hiệu: "Pick it, grill it, love it!"
+- Giá: máy quét chữ cấm của repo coi mọi giá là "giá chưa duyệt" (mẫu cuối của `web/src/lib/chuoi-cam.js`). Mini App được hiện giá thử trên bản thử, kèm nhãn "Giá thử" và dòng báo trong tin đơn — `test-mini-app-chu.mjs` nhóm 4 giữ điều này. Bản phát hành phải dùng giá Sang đã duyệt, đặt `giaThu: false`. Giá ghi dạng "000.000 đ" như repo (`dinhDangTien` của `src/don.ts`, so với `web/src/lib/kho/chung.ts` trong `test-mini-app-chu.mjs` nhóm 3).
 - Địa chỉ: câu chỉ đường cho khách không ghi số tầng. Phần đơn vị bán hàng ghi theo giấy chứng nhận: "Tầng 4, Số 63 Hồ Tùng Mậu". Website, Google, Meta đang ghi tầng 3, chưa khớp.
 
 ## Được làm và phải hỏi
@@ -114,57 +117,3 @@ Thỏa thuận nhà phát triển Zalo Mini App, cập nhật 25/09/2026: https:
 - Phải hỏi Khánh trước: gửi Zalo duyệt phiên bản, phát hành, bật "Hiển thị công khai", sửa thông tin Mini App trên Mini App Center, đổi chữ khách thấy (giá, mô tả phần thịt, giờ nhận, cách tính tiền).
 - Không đọc, in ra hay commit file `.env` (có `ZMP_TOKEN`).
 - Trong Beeftown, Khánh phụ trách marketing. Kho, FABi, giao hàng là việc vận hành của Sang. Chỉ nêu điều kiện để Mini App nối vào, không tự làm phần vận hành.
-
-## Chờ người khác chốt
-
-- **Sang:**
-  - Số gam khoảng và giá một khay của 6 phần (thay số thử).
-  - Khay bán qua app đóng riêng, hay cả quầy bán theo khay giá cố định. Quầy vẫn tính theo kg thì cùng một khay có 2 giá (khay 162 g theo giá 2.000 đ/g là 324.000 đ ở quầy, 300.000 đ trên app). Cả quầy bán theo khay thì cần: cân TMA in theo kiểu "theo gói" (Beeftown Cân đang gửi mọi mặt hàng kiểu "cân ký"), iPOS bán theo khay (`don_vi_ban` = `goi`).
-  - Xác nhận 4 phần thịt mát.
-  - Đọc lại mô tả và cách nướng (câu "Thịt sườn đã lóc xương" của Galbisal là Claude thêm).
-  - Khung giờ nhận 10:30–13:30 và 16:30–21:00, 60 phút soạn khay.
-  - Giao hàng: ai giao, xa nhất bao nhiêu km, phí, túi giữ lạnh.
-- **Luật sư:**
-  - Mini App có chức năng đặt hàng có phải thông báo Bộ Công Thương không (Luật Thương mại điện tử 122/2025/QH15, Nghị định 248/2026/NĐ-CP).
-  - Website và kho đặt trên Cloudflare, Supabase Singapore, có phải lập hồ sơ chuyển dữ liệu cá nhân ra nước ngoài không (Luật Bảo vệ dữ liệu cá nhân 91/2025/QH15, Nghị định 356/2025/NĐ-CP).
-  - Khay bán giá cố định ghi định lượng thế nào ("~150 g" hay "từ 150 g") và được lệch bao nhiêu gam theo quy định đo lường hàng đóng gói sẵn.
-- **iPOS:** FABi có nhận đơn tạo từ phần mềm ngoài qua API không, phí bao nhiêu.
-- **Khánh** (thấy khi đưa vào repo 22/10/2026):
-  - Guideline (`THUONG-HIEU.md` mục 2) ghi không viết chữ về than, lửa, khói; cách nướng của 5 phần thịt trong `src/san-pham.ts` ghi "Lửa vừa", "Lửa cao". Giữ, hay đổi chữ (ví dụ "Vỉ nóng vừa")?
-  - Địa chỉ trong `src/cau-hinh.ts` ghi "phường Sài Gòn". Website không ghi phường vì tới 11/10/2026 chưa có giấy xác nhận (`THUONG-HIEU.md` mục 6); giấy chứng nhận địa điểm kinh doanh 20/10/2026 nay ghi "Phường Sài Gòn". Báo để website và Mini App ghi giống nhau.
-
-## Hướng phát triển (Claude đề xuất 22/10, Khánh chưa chốt mốc)
-
-- **Mức 1** (bản này): bán theo khay giá cố định, tin đơn có tổng tiền; gửi đơn vào chat OA, nhân viên xác nhận và tính tiền trên FABi như khách tại quán.
-- **Mức 2** (làm 23/10/2026, chờ gộp và bật): hiện còn hàng / sắp hết / tạm hết của từng phần thịt, đọc từ phần mềm kho — không hiện số khay.
-  - Kho: repo `volekhanh123/beeftown-stock`, web và API trên Cloudflare Workers, dữ liệu ở Supabase "Beeftown" vùng ap-southeast-1. Kho đã có sẵn phần đồng bộ hóa đơn iPOS (các bảng `kho_ipos_*`) và mã cân trên nhãn khay (`kho_o_ma`, `kho_can_tem`); ngày 22/10 các bảng này chưa có dữ liệu.
-  - Chỉ đọc số khay, không đụng dữ liệu khách.
-  - Kho đã đếm số khay ở quầy: `kho_ton.so_goi` theo lô và vị trí, đọc qua `kho_v_ton` với vị trí loại `quay`. Mọi chỗ đọc tồn đều cần đăng nhập vai kho; chưa có gì mở cho `anon`.
-  - Cần: 1 chỗ đọc công khai trên website chỉ trả "còn hàng / sắp hết / hết" của từng phần thịt Mini App (hàm SQL mới, kiểm thử quyền); gắn mỗi phần thịt Mini App với 1 `kho_mat_hang`; quầy quét khay ra vào kho đúng lúc; khai tên miền API ở Mini App Center → Cấu hình API Domains; Zalo duyệt lại.
-- **Mức 3:** giá cố định nên tổng tiền biết trước khi gửi; trả tiền trong app (Checkout SDK, mã MAC ký ở máy chủ), đơn tự vào FABi, tin báo qua ZNS.
-  - Cần 1 máy chủ nhỏ ở Việt Nam chỉ cho đơn của Mini App (BizFly 1–2 GB RAM, 95.000–120.000 đ/tháng chưa VAT). Máy này chỉ báo sang kho mã khay và số lượng.
-  - **Đang làm từ 29/10/2026** (Khánh: "đừng theo kiểu nhắn tin nữa mà phải tự động hoàn toàn"): thư mục `may-chu-don/` của repo, chia 4 đợt (`may-chu-don/CLAUDE.md`, "Chia đợt"). Khánh chốt: trả trước, thu tiền online qua SePay (chuyển khoản VietQR vào VietinBank của SLK Group — thay cho Checkout SDK của Zalo, 29/10/2026), màn hình đơn riêng cho quầy, laptop ở công ty để thử rồi máy chủ thuê ở Việt Nam khi mở bán, báo khách trong app và bằng ZNS. Đợt 2b (30/10/2026): Mini App gửi đơn lên máy chủ khi `diaChiMayChuDon` có địa chỉ, màn trả tiền vẽ mã QR từ chuỗi VietQR máy chủ gửi, chép số tài khoản / số tiền / nội dung, tự cập nhật khi quán nhận đủ tiền (mục "Cách app chạy"). Khánh chốt 30/10/2026: chuyển dư thì đơn vẫn soạn, hoàn phần dư; tiền về đủ sau 30 phút vẫn tính là đã trả. Khánh thuê máy chủ BizFly Cloud (TP.HCM, 134.000 đ/tháng) và cài máy chủ đơn ngày 09/11/2026; từ đó `diaChiMayChuDon` là `https://don.beeftown.vn`. Chưa có tài khoản nhận tiền và SePay thì app ghi đơn nhưng báo "Quán chưa mở nhận chuyển khoản trong app", mời khách chat với quán.
-  - Làm khi đơn online khoảng 20 đơn/ngày (giả định của Claude, đo lại sau 4 tuần mở bán).
-- **Hạ tầng** (Claude khuyên 22/10): giữ Supabase và Cloudflare; không chuyển cơ sở dữ liệu sang BizFly trước khai trương; không dùng laptop làm máy chủ chạy thật.
-
-## Trong repo beeftown-stock (từ 22/10/2026)
-
-- Vào repo qua 1 PR: mã nguồn và ảnh (không `.env`, `node_modules`, `www`); dòng mở `!/mini-app/...` trong mục ĐƯỢC PHÉP của `.gitignore` gốc (ảnh PNG mở ở cuối file, sau `*.png`); workflow `.github/workflows/mini-app.yml`; `mini-app/` trong `.github/dependabot.yml`; kiểm thử chữ cấm `crm/test/test-mini-app-chu.mjs`; dòng trong bảng "Repo gồm gì" và bảng CI của `CLAUDE.md` gốc.
-- Màu đã chốt ngày 22/10/2026 (mục "Tình trạng"). Câu hỏi treo từ 21/10 (giữ Cream và Marigold làm màu phụ hay không) đã xong: bỏ.
-- Giá: máy quét chữ cấm của repo coi mọi giá là "giá chưa duyệt" (mẫu cuối của `web/src/lib/chuoi-cam.js`). Mini App được hiện giá thử trên bản thử, kèm nhãn "Giá thử" và dòng báo trong tin đơn — `test-mini-app-chu.mjs` nhóm 4 giữ điều này. Bản phát hành phải dùng giá Sang đã duyệt, đặt `giaThu: false` (việc 9 dưới đây).
-- Giá ghi dạng "000.000 đ" như repo (`dinhDangTien` của `src/don.ts`, so với `web/src/lib/kho/chung.ts` trong `test-mini-app-chu.mjs` nhóm 3).
-- 10 ảnh chụp trong `tai-lieu/anh-chup/` chụp trước khi đổi sang bán theo khay: còn giá theo 100 g, dạng "120.000đ". Chụp lại khi có giá thật.
-
-## Việc tiếp theo
-
-1. Đã xong 22/10: bản thử phiên bản 2 lên Zalo, mã QR đã gửi Khánh. Còn: Khánh xem phiên bản 2 có ở Mini App Center → Quản lý → Danh sách phiên bản — 23/10.
-2. Khánh thử 1 đơn nhận tại quán và 1 đơn giao tận nơi trên bản thử, xem 2 tin có vào chat OA không — 22/10.
-3. Đã xong 22/10: Mini App vào repo `volekhanh123/beeftown-stock`, thư mục `mini-app/`. Còn: Khánh duyệt và gộp PR; sau đó chép `Documents\beeftown-mini-app\.env` sang `mini-app\.env` của bản clone (hoặc `npx zmp login` lại) để đưa bản thử lên từ repo — sau khi gộp.
-4. Khánh thêm 2 người thử (Sang, John) ở Mini App Center → Phân quyền thành viên — 24/10.
-5. Khánh hỏi Sang hoặc John 1 câu: quán đã có giấy chứng nhận đủ điều kiện an toàn thực phẩm chưa, ai giữ — 24/10.
-6. Khánh nộp 2 giấy (ngành nghề, an toàn thực phẩm) ở Quản lý → Quản lý xác thực — trước 03/11.
-7. Khánh gửi luật sư 2 câu hỏi ở mục "Chờ người khác chốt" — 30/10.
-8. Khánh hỏi iPOS 1 câu về API tạo đơn FABi, hỏi Sang 1 câu về đếm khay ở quầy theo phần thịt — 30/10.
-9. Khi Sang gửi số gam và giá một khay: Claude Code đổi `san-pham.ts`, đặt `giaThu: false`, chạy kiểm tra, đưa bản thử; Khánh duyệt rồi gửi Zalo duyệt — trước 06/11.
-10. Sau khi PR còn hàng gộp: Khánh chạy migration 0093 rồi deploy web; Sang gắn ô "Phần thịt trên Mini App Zalo" cho 6 mặt hàng ở màn mặt hàng của kho; Khánh khai `beeftown.vn` ở Mini App Center → Cấu hình API Domains; Khánh bật công tắc `mini_app_hien_con_hang` khi Sang xác nhận quầy quét khay ra vào đúng lúc — Khánh ghi hạn.
-11. Máy chủ đơn chạy ở `https://don.beeftown.vn` từ 09/11/2026 (`may-chu-don/README.md`, "Đưa lên máy chủ thuê"). Khánh thêm `https://don.beeftown.vn` ở Mini App Center → Cấu hình API Domains, rồi bấm đúp `dua-len-zalo.cmd` đưa bản thử mới lên, đặt thử 1 đơn — sau khi PR điền địa chỉ gộp. Khách trả tiền được trong app khi có tài khoản VietinBank và SePay (`may-chu-don/README.md`, "Cài SePay").
