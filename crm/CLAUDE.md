@@ -37,8 +37,17 @@ npm run tom-tat-pr                            # nhánh đang mở so với origi
 | Kiểm thử | Ít nhất một file test nhắc tên hàm (`test-quy-trinh.mjs` nhóm 1). Thử quyền bằng `duoi()` / `duoiAnon()` cho anon, vai khác, chi nhánh khác, `UID.nghiViec`, tài khoản không có `nhan_su` |
 | Câu `raise exception` | Bản tiếng Anh: kho ở `web/src/lib/kho/cau-kho-en.ts` (`CAU_DB` câu cố định, `MAU_KHO_EN` câu có `%`), phần khác ở `web/src/lib/cau-noi-bo.ts`. Không đổi chữ câu cũ — test khớp theo chữ |
 
-Việc chạy nền hay dịch vụ ngoài mới: đèn sức khỏe (`suc_khoe_so_lieu()` + `web/src/lib/suc-khoe.ts` +
-`test-suc-khoe.mjs` danh sách `KHOA` + `web/src/lib/bao-dong-chinh-sach.ts` `NHOM`) — `CLAUDE.md` gốc, mục 9.
+## Đèn sức khỏe — việc chạy nền, dịch vụ ngoài mới
+
+Việc chạy nền hay dịch vụ ngoài MỚI phải có đèn trong bảng sức khỏe ở `/noi-bo` (`CLAUDE.md` gốc, mục 9) — hỏng thì
+chủ thấy ngay, không đợi khách báo. Đủ năm chỗ:
+
+1. Số liệu vào `suc_khoe_so_lieu()` (migration mới). Đọc bằng hàm riêng như sao lưu thì gắn thêm vào
+   `bao_dong_bat_dau_luot`, không thì không bao giờ được báo.
+2. Màu và câu vào `web/src/lib/suc-khoe.ts`.
+3. `test-suc-khoe.mjs`: ô mới trong danh sách `KHOA`.
+4. `test-suc-khoe-web.mjs`: thử từng ngưỡng của đèn mới bằng dữ liệu giả — đổi đúng màu, câu nói đúng số.
+5. Đèn mới xếp vào `NHOM` của `web/src/lib/bao-dong-chinh-sach.ts` (đỏ ban đêm có báo ngay không).
 
 ## Viết kiểm thử
 

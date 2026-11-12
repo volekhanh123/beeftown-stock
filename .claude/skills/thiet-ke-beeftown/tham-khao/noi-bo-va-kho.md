@@ -102,7 +102,7 @@ chữ của nhãn hay khung ("Cần xem", "Cân sẵn sàng", "vạch xám bên 
 Đèn sức khỏe (`MauDen` trong `web/src/lib/suc-khoe.ts` — tên mức giữ): `do` = tam giác đỏ **"Xử lý
 ngay"** · `vang` = hình thoi xám **"Xem hôm nay"** · `xanh` = chấm đen **"Ổn"** · `tat` = vòng rỗng
 **"Chưa bật"**. **Không đọc được số liệu thì không bao giờ là "Ổn".** Mức và câu do `suc-khoe.ts` quyết
-định, `SucKhoeHeThong.astro` chỉ vẽ. Đèn mới: `CLAUDE.md` mục 9.
+định, `SucKhoeHeThong.astro` chỉ vẽ. Đèn mới: `crm/CLAUDE.md`, "Đèn sức khỏe".
 
 Trạng thái chứng từ → nhãn: `trangThaiKho(ma, nn)` (`TRANG_THAI_CHUNG_TU_NB` trong
 `web/src/lib/kho/chung.ts`) — "chờ duyệt", "đang chuyển" là **K1** (nền đỏ, "!") vì đang chờ một người

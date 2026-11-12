@@ -41,7 +41,10 @@ const boMau = s => s.replace(/\x1b\[[0-9;]*m/g, '');
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — QUY TRÌNH: BẢN ĐỒ VÀ CÔNG CỤ GIẢM TẢI RÀ SOÁT');
 
-const BAN_DO = ['CLAUDE.md', 'AGENTS.md', 'crm/CLAUDE.md', 'web/CLAUDE.md', 'can-app/CLAUDE.md', 'may-chu-don/CLAUDE.md'];
+/** Cỡ tối đa của CLAUDE.md gốc, tính theo byte UTF-8 (chữ có dấu tốn 2–3 byte). */
+const TRAN_CLAUDE_GOC = 12_000;
+const BAN_DO = ['CLAUDE.md', 'AGENTS.md', 'crm/CLAUDE.md', 'web/CLAUDE.md', 'can-app/CLAUDE.md', 'may-chu-don/CLAUDE.md',
+  '.github/CLAUDE.md'];
 // Cả file mới chưa commit (không bị .gitignore chặn): bản đồ viết cùng lúc với file nó nhắc.
 const TEP_GIT = git(['ls-files', '--cached', '--others', '--exclude-standard']).split('\n').filter(Boolean);
 const TEN_TEP = new Set(TEP_GIT.map(f => f.split('/').pop()));
@@ -108,14 +111,20 @@ await nhom('1 · BẢN ĐỒ CHỈ NHẮC THỨ CÓ THẬT', async () => {
   }
 
   // Bản đồ của thư mục chỉ có ích khi được nạp: Claude Code nạp CLAUDE.md của thư mục con, .gitignore phải mở nó.
-  for (const f of ['crm/CLAUDE.md', 'web/CLAUDE.md', 'can-app/CLAUDE.md']) {
+  for (const f of ['crm/CLAUDE.md', 'web/CLAUDE.md', 'can-app/CLAUDE.md', '.github/CLAUDE.md']) {
     let biChan = false;
     try { git(['check-ignore', '-q', f]); biChan = true; } catch { /* mã 1 = không bị chặn */ }
     ok(`${f} không bị .gitignore chặn`, !biChan, `thêm dòng !/${f} vào mục ĐƯỢC PHÉP của .gitignore`);
   }
   const goc = doc('CLAUDE.md');
   ok('CLAUDE.md gốc trỏ tới bản đồ của từng thư mục và hai công cụ tra',
-     ['crm/CLAUDE.md', 'web/CLAUDE.md', 'can-app/CLAUDE.md', 'npm run tim', 'npm run tom-tat-pr'].every(x => goc.includes(x)));
+     ['crm/CLAUDE.md', 'web/CLAUDE.md', 'can-app/CLAUDE.md', '.github/CLAUDE.md', 'npm run tim', 'npm run tom-tat-pr']
+       .every(x => goc.includes(x)));
+  // CLAUDE.md gốc nạp ở MỌI phiên (12/11/2026: 17 KB → 11 KB, chi tiết từng khu xuống bản đồ thư mục, bảng CI xuống
+  // .github/CLAUDE.md). Trần này giữ nó gọn: thêm quy tắc chỉ một khu cần thì ghi vào bản đồ của khu đó.
+  const coGoc = Buffer.byteLength(goc, 'utf8');
+  ok(`CLAUDE.md gốc dưới ${TRAN_CLAUDE_GOC.toLocaleString('vi-VN')} byte (nạp ở mọi phiên)`, coGoc <= TRAN_CLAUDE_GOC,
+     `${coGoc.toLocaleString('vi-VN')} byte — chuyển chi tiết của một khu xuống CLAUDE.md của thư mục đó`);
   ok('AGENTS.md (Codex, agent khác) cũng trỏ tới bản đồ từng thư mục', doc('AGENTS.md').includes('web/CLAUDE.md'));
 });
 
