@@ -44,7 +44,7 @@ import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import { CAU_DAT_BAN, type TinhTrangDatBan, type KetQuaDatBan } from '../lib/dat-ban';
 import { homNayVn } from '../lib/noi-dung';
 import { congNgay } from '../lib/gio-vn';
-import { lienHe } from '../lib/trang-cong-khai';
+import { SO_KHACH_HOI_NHANH, lienHe, soKhachTuUrl } from '../lib/trang-cong-khai';
 import LenTang3 from './LenTang3.astro';
 import BieuTuong from './BieuTuong.astro';
 
@@ -61,6 +61,11 @@ const lh = lienHe(nd);
 
 const homNay = homNayVn();
 const toiDa = congNgay(homNay, 60);
+// Số người khách đã chọn ở thanh hỏi bàn nhanh của màn đầu (?so_khach=, KhoiMoDau.astro): chọn sẵn ở ô số người.
+// Không có hay số lạ thì 2 như trước. Có thì thắng chữ đã lưu của lượt trước (data-chon-tu-dia-chi): lựa chọn
+// khách vừa bấm mới hơn bản nháp cũ.
+const soKhachXin = Astro.url.searchParams.get('so_khach');
+const soKhachChon = soKhachTuUrl(soKhachXin);
 
 const chonDuoc = tinhTrang.khung.filter(k => k.con_cho && !k.da_qua);
 const trua = chonDuoc.filter(k => k.buoi === 'trua');
@@ -344,9 +349,10 @@ const t = dich(ngonNgu, {
             <div class="o">
               <label for="hb-so-khach">{t.soKhach} <em>({t.batBuoc})</em></label>
               <small id="goi-y-so-khach">{t.soKhachPhu}</small>
-              <select id="hb-so-khach" name="so_khach" required aria-describedby="goi-y-so-khach">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
-                  <option value={n} selected={n === 2}>{n}</option>
+              <select id="hb-so-khach" name="so_khach" required aria-describedby="goi-y-so-khach"
+                      data-chon-tu-dia-chi={soKhachXin !== null ? '' : undefined}>
+                {SO_KHACH_HOI_NHANH.map(n => (
+                  <option value={n} selected={n === soKhachChon}>{n}</option>
                 ))}
               </select>
             </div>
@@ -474,6 +480,7 @@ const t = dich(ngonNgu, {
       const v = daLuu[ten];
       if (!o || typeof v !== 'string' || !v) continue;
       if (o instanceof HTMLSelectElement) {
+        if (o.hasAttribute('data-chon-tu-dia-chi')) continue;
         if ([...o.options].some(op => op.value === v)) o.value = v;
       } else if (!o.value) {
         o.value = v;

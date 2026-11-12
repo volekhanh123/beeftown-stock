@@ -7,8 +7,9 @@
  * Facebook thì không có nút Facebook; chưa có Maps thì không có nút Chỉ đường —
  * một nút dẫn tới hư không tệ hơn là không có nút.
  */
-import { DIA_CHI_NHA_HANG, DIA_CHI_PHAN, chu, duongDanTuongUng } from './chu.ts';
+import { DIA_CHI_NHA_HANG, DIA_CHI_PHAN, chu, duongDanTuongUng, type BaThuTieng } from './chu.ts';
 import { muaThitVeMo } from './dich-dat-hang.ts';
+import { congNgay, homNayVn } from './gio-vn.ts';
 import type { NgonNgu, NoiDung } from './noi-dung.ts';
 
 /**
@@ -224,4 +225,108 @@ export function dieuHuong(ngonNgu: NgonNgu, nd?: NoiDung): { url: string; chu: s
     muc('/den-beeftown', t.denBeeftown),
     muc('/dat-ban', t.datBan),
   ];
+}
+
+/**
+ * THANH HỎI BÀN NHANH Ở MÀN ĐẦU (KhoiMoDau.astro) — Khánh duyệt 12/11/2026
+ * ==========================================================================
+ * Khi form hỏi bàn đang mở, màn đầu không chỉ có nút "Hỏi bàn" mà có hai ô chọn: ngày đến và số người.
+ * Bấm "Hỏi bàn" là form GET sang /dat-ban?ngay=…&so_khach=…#hb-gio: trang Hỏi bàn mở đúng ngày đó, cuộn
+ * tới khung giờ còn trống, ô số người chọn sẵn. Không cần JavaScript. Giờ thì KHÔNG chọn ở màn đầu: khung
+ * giờ còn trống đọc từ database ở trang Hỏi bàn — màn đầu không đoán.
+ *
+ * Ngày: 14 ngày kể từ hôm nay theo giờ Việt Nam (như cacNgayToi của lib/dat-ban.ts): "Hôm nay, 12/11",
+ * "Thứ Bảy, 14/11" · "Today, 12 November", "Saturday, 14 November" · "오늘, 11월 12일", "11월 14일 토요일".
+ * Tên thứ, tên tháng viết đủ — không viết tắt (Codex rà câu chữ 12/11/2026). Trong 14 ngày tới không có hai
+ * ngày trùng ngày-tháng, nên nhãn không cần năm.
+ */
+export const SO_NGAY_HOI_NHANH = 14;
+/** Số người chọn được ở màn đầu — đúng như ô số người của trang Hỏi bàn (1–8; từ 9 người nhắn quán). */
+export const SO_KHACH_HOI_NHANH = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+export const SO_KHACH_MAC_DINH = 2;
+
+const THU: BaThuTieng<readonly string[]> = {
+  vi: ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'],
+  en: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+  ko: ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'],
+};
+const HOM_NAY: BaThuTieng = { vi: 'Hôm nay', en: 'Today', ko: '오늘' };
+const NGAY_MAI: BaThuTieng = { vi: 'Ngày mai', en: 'Tomorrow', ko: '내일' };
+const THANG_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const hai = (n: number) => String(n).padStart(2, '0');
+/** Nhãn một ngày: `ten` là "Hôm nay" / "Ngày mai" hoặc tên thứ; `thu` là tên thứ (tiếng Hàn in sau ngày). */
+const VIET_NGAY: BaThuTieng<(ten: string, thu: string, ngay: number, thang: number, dacBiet: boolean) => string> = {
+  vi: (ten, _thu, ngay, thang) => `${ten}, ${hai(ngay)}/${hai(thang)}`,
+  en: (ten, _thu, ngay, thang) => `${ten}, ${ngay} ${THANG_EN[thang - 1]}`,
+  ko: (ten, thu, ngay, thang, dacBiet) => (dacBiet ? `${ten}, ${thang}월 ${ngay}일` : `${thang}월 ${ngay}일 ${thu}`),
+};
+
+export interface NgayChon { iso: string; chu: string; }
+
+/** 14 ngày chọn được ở màn đầu, ngày đầu là hôm nay theo giờ Việt Nam. `homNay` chỉ để kiểm thử. */
+export function ngayHoiNhanh(ngonNgu: NgonNgu, homNay: string = homNayVn()): NgayChon[] {
+  return Array.from({ length: SO_NGAY_HOI_NHANH }, (_, i) => {
+    const iso = congNgay(homNay, i);
+    const [nam, thang, ngay] = iso.split('-').map(Number);
+    // Thứ tính trên lịch (UTC của chính ngày đó), không qua múi giờ của máy chủ.
+    const thu = THU[ngonNgu][new Date(Date.UTC(nam, thang - 1, ngay)).getUTCDay()];
+    const ten = i === 0 ? HOM_NAY[ngonNgu] : i === 1 ? NGAY_MAI[ngonNgu] : thu;
+    return { iso, chu: VIET_NGAY[ngonNgu](ten, thu, ngay, thang, i < 2) };
+  });
+}
+
+const NHAN_SO_KHACH: BaThuTieng<(n: number) => string> = {
+  vi: n => `${n} người`,
+  en: n => (n === 1 ? '1 guest' : `${n} guests`),
+  ko: n => `${n}명`,
+};
+export function nhanSoKhach(n: number, ngonNgu: NgonNgu): string {
+  return NHAN_SO_KHACH[ngonNgu](n);
+}
+
+/**
+ * Số người khách đã chọn ở màn đầu (?so_khach= của trang Hỏi bàn) → số chọn sẵn ở ô số người. Chỉ nhận số
+ * nguyên 1–8 viết bằng chữ số; trống, lạ ("4.5", "9", "abc", "1e1") thì về mặc định 2 — ô vẫn như trước.
+ */
+export function soKhachTuUrl(v: string | null | undefined): number {
+  if (typeof v !== 'string' || !/^\d{1,2}$/.test(v.trim())) return SO_KHACH_MAC_DINH;
+  const n = Number(v.trim());
+  return (SO_KHACH_HOI_NHANH as readonly number[]).includes(n) ? n : SO_KHACH_MAC_DINH;
+}
+
+/**
+ * THANH HÀNH ĐỘNG DÍNH ĐÁY MÀN HÌNH ĐIỆN THOẠI (ThanhHanhDong.astro) — Khánh duyệt 12/11/2026
+ * ===========================================================================================
+ * Dưới 768px đầu trang chỉ có logo và nút "Danh mục": cuộn khỏi màn đầu là mất đường tới Hỏi bàn. Thanh
+ * này đứng ở đáy màn hình trên trang chủ, Thực đơn và Đến Beeftown:
+ *  · nút chính: "Hỏi bàn" khi form hỏi bàn đang mở; chưa mở thì "Khám phá thực đơn" (trừ ở chính trang
+ *    Thực đơn — khi đó không có nút chính);
+ *  · "Gọi" chỉ khi hotline đã công bố, "Chỉ đường" chỉ khi Google Maps đã công bố — dữ kiện CHỈ THÊM vào
+ *    trang, không nút nào dẫn tới hư không.
+ * Không có gì để hiện thì không có thanh. Trang Hỏi bàn (chính là form) và Mua thịt về (đã có thanh giỏ
+ * riêng) không có thanh này. `duongDan` là đường dẫn của trang như Trang.astro nhận ("/", "/en/thuc-don"…).
+ */
+const TRANG_CO_THANH = ['/', '/thuc-don', '/den-beeftown'];
+
+export interface ThanhHanhDong {
+  chinh: Nut | null;
+  goi: string | null;
+  chiDuong: string | null;
+}
+
+export function thanhHanhDong(nd: NoiDung, ngonNgu: NgonNgu, duongDan: string): ThanhHanhDong | null {
+  // duongDanTuongUng trả trang chủ cho đường dẫn nó không biết (404, trang kết quả VNPay…): đi một vòng
+  // sang tiếng Việt rồi về lại phải ra đúng đường dẫn cũ, không thì đó không phải trang có thanh.
+  const sach = duongDan.length > 1 ? duongDan.replace(/\/$/, '') : duongDan;
+  const duongViet = duongDanTuongUng(sach, 'vi');
+  if (duongDanTuongUng(duongViet, ngonNgu) !== sach || !TRANG_CO_THANH.includes(duongViet)) return null;
+  const t = chu(ngonNgu);
+  const lh = lienHe(nd);
+  const chinh: Nut | null = formHoiBanMo(nd)
+    ? { url: duongDanTuongUng('/dat-ban', ngonNgu), chu: t.datBan, kieu: 'chinh' }
+    : duongViet !== '/thuc-don'
+      ? { url: duongDanTuongUng('/thuc-don', ngonNgu), chu: t.khamPhaThucDon, kieu: 'chinh' }
+      : null;
+  if (!chinh && !lh.goi && !lh.maps) return null;
+  return { chinh, goi: lh.goi, chiDuong: lh.maps };
 }

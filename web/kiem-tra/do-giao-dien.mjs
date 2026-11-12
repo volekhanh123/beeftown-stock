@@ -525,7 +525,12 @@ export function doGiaoDien() {
     veCho(scrollY + kf.top + kf.height / 2 - innerHeight / 2);
     const k2 = f.getBoundingClientRect();
     const cheTren = (document.querySelector('header.dau-trang')?.getBoundingClientRect().bottom ?? 0) + (document.querySelector('.td-thanh')?.getBoundingClientRect().height ?? 0) + 2;
-    const tren2 = Math.max(k2.top, cheTren), duoi2 = Math.min(k2.bottom, innerHeight - 1);
+    // Thanh hành động dính đáy màn hình điện thoại (ThanhHanhDong.astro) cũng là khung của trang như đầu trang dính:
+    // lấy điểm phía trên nó. Thanh đứng ở cuối trang (sau chân trang) thì không che gì — chỉ tính khi nó đang trong màn.
+    const thd = document.querySelector('.thd');
+    const kthd = thd && hien(thd) ? thd.getBoundingClientRect() : null;
+    const cheDuoi = kthd && kthd.top < innerHeight ? kthd.top - 2 : innerHeight - 1;
+    const tren2 = Math.max(k2.top, cheTren), duoi2 = Math.min(k2.bottom, cheDuoi);
     if (duoi2 - tren2 > 40) {
       for (const [tx, ty] of [[0.5, 0.5], [0.12, 0.12], [0.88, 0.12], [0.12, 0.88], [0.88, 0.88]]) {
         const tc = document.elementFromPoint(k2.left + k2.width * tx, tren2 + (duoi2 - tren2) * ty);
@@ -624,10 +629,11 @@ export function doGiaoDien() {
     const h1 = kmd?.querySelector('h1'), dan = kmd?.querySelector('.kmd-dan'), nut = kmd?.querySelector('.kmd-nut');
     const hinh = kmd?.querySelector('.kmd-hinh'), tin = kmd?.querySelector('.kmd-thong-tin'), dai = kmd?.querySelector('.kmd-khau-hieu');
     const anhDau = coAnh(kmd, 'hero-vi-gas');
+    // Câu chính cho khách (THUONG-HIEU.md), Khánh đưa lên màn đầu ngày 12/11/2026.
     const CAU_CHINH = {
-      vi: 'Chọn phần bò bạn thích, rồi cùng cả bàn thưởng thức.',
-      en: 'Pick the cut you like, then enjoy it with the whole table.',
-      ko: '좋아하는 부위를 고르고, 함께 온 사람들과 즐겨 보세요.',
+      vi: 'Không cần rành bò. Chọn theo gu, thấy giá trước.',
+      en: 'No need to be a beef expert. Pick what you like, see the price first.',
+      ko: '소고기를 잘 몰라도 괜찮아요. 취향대로 고르고, 가격은 먼저 확인하세요.',
     }[NGON_NGU];
     if (!kmd || !h1 || !dan || !nut || !hinh || !tin) sai('màn đầu thiếu một trong: câu chính, mô tả, nhóm nút, hình, dòng địa điểm');
     else {
@@ -650,19 +656,25 @@ export function doGiaoDien() {
             if (thuTu[i][1].top < thuTu[i - 1][1].bottom - 0.5) sai(`màn ${RONG}px: ${thuTu[i][0]} phải nằm dưới ${thuTu[i - 1][0]}`);
           }
         } else {
-          // Hai cột: chữ bên trái (descriptor, câu chính, mô tả, hai nút), ảnh bên phải, cân nhau theo chiều dọc;
-          // dòng địa điểm thành một hàng ngang dưới cả hai cột.
+          // Máy tính (Khánh duyệt 12/11/2026): câu chính trải ngang; dưới nó mô tả bên trái, nhóm nút (hay hỏi bàn
+          // nhanh) bên phải, đáy hai cột thẳng nhau; rồi dải hai ảnh Pick → Grill trải hết bề ngang khung, ảnh quầy
+          // trái, ảnh vỉ gas phải, ngang hàng, cùng cỡ, mỗi ảnh ít nhất 45 % khung; dòng địa điểm dưới cùng.
           const kkhung = kmd.querySelector('.khung').getBoundingClientRect();
-          const cotChu = { top: kmd.querySelector('.hieu')?.getBoundingClientRect().top ?? kh1.top, bottom: knut.bottom };
-          const [caoChu, caoHinh] = [cotChu.bottom - cotChu.top, khinh.height];
-          if (kanh.left < kh1.right - 0.5 || kanh.left < kkhung.left + kkhung.width * 0.35) sai('máy tính: ảnh phải ở cột phải, chữ ở cột trái');
-          if (kdan.left > kh1.left + 1 || knut.left > kh1.left + 1 || kdan.right > kanh.left || knut.top < kdan.bottom - 0.5 || kdan.top < kh1.bottom - 0.5) sai('máy tính: mô tả và hai nút phải nằm dưới câu chính, trong cột chữ');
-          if (kanh.width < kkhung.width * 0.45) sai(`máy tính: ảnh rộng ${kanh.width.toFixed(0)}px, dưới 45 % khung ${kkhung.width.toFixed(0)}px — chưa đủ lớn`);
-          if (caoHinh < caoChu * 0.6 || caoHinh > caoChu * 1.4) sai(`máy tính: khối hình cao ${caoHinh.toFixed(0)}px, cột chữ cao ${caoChu.toFixed(0)}px — hai cột chưa cân (cần 60–140 %)`);
-          const lech = Math.abs((khinh.top + khinh.bottom) / 2 - (cotChu.top + cotChu.bottom) / 2);
-          if (lech > 8) sai(`máy tính: tâm khối hình lệch tâm cột chữ ${lech.toFixed(0)}px theo chiều dọc (cần ≤ 8px)`);
-          if (ktin.top < Math.max(knut.bottom, khinh.bottom) - 0.5) sai('máy tính: dòng địa điểm phải nằm dưới cả cột chữ lẫn khối hình');
-          if (Math.abs(ktin.left - kkhung.left) > 1 || Math.abs(ktin.right - kkhung.right) > 1) sai('máy tính: dòng địa điểm phải trải hết bề ngang khung, dưới cả hai cột');
+          const anhQuay = coAnh(kmd, 'quay-chon-bo');
+          const kquay = anhQuay && hien(anhQuay) ? anhQuay.getBoundingClientRect() : null;
+          if (kdan.top < kh1.bottom - 0.5 || knut.top < kh1.bottom - 0.5) sai('máy tính: mô tả và nhóm nút phải nằm dưới câu chính');
+          if (kdan.left > kh1.left + 1 || knut.left < kdan.right - 0.5) sai('máy tính: mô tả ở cột trái (thẳng mép câu chính), nhóm nút ở cột phải');
+          if (Math.abs(kdan.bottom - knut.bottom) > 2) sai(`máy tính: đáy mô tả và đáy nhóm nút lệch ${Math.abs(kdan.bottom - knut.bottom).toFixed(0)}px (cần thẳng nhau)`);
+          if (khinh.top < Math.max(kdan.bottom, knut.bottom) - 0.5) sai('máy tính: dải ảnh phải nằm dưới mô tả và nhóm nút');
+          if (Math.abs(khinh.left - kkhung.left) > 1 || Math.abs(khinh.right - kkhung.right) > 1) sai('máy tính: dải ảnh phải trải hết bề ngang khung');
+          if (!kquay) sai('máy tính: màn đầu thiếu ảnh quầy quay-chon-bo (bước 1, Pick)');
+          else {
+            if (kquay.right > kanh.left + 0.5 || Math.abs(kquay.top - kanh.top) > 1) sai('máy tính: ảnh quầy bên trái, ảnh vỉ gas bên phải, ngang hàng');
+            if (Math.abs(kquay.width - kanh.width) > 1 || Math.abs(kquay.height - kanh.height) > 1) sai('máy tính: hai ảnh phải cùng cỡ');
+            if (kanh.width < kkhung.width * 0.45) sai(`máy tính: mỗi ảnh rộng ${kanh.width.toFixed(0)}px, dưới 45 % khung ${kkhung.width.toFixed(0)}px — chưa đủ lớn`);
+          }
+          if (ktin.top < Math.max(knut.bottom, khinh.bottom) - 0.5) sai('máy tính: dòng địa điểm phải nằm dưới cả chữ lẫn dải ảnh');
+          if (Math.abs(ktin.left - kkhung.left) > 1 || Math.abs(ktin.right - kkhung.right) > 1) sai('máy tính: dòng địa điểm phải trải hết bề ngang khung');
         }
         // Tagline (theo logo 21/10/2026, Khánh chốt 26/10/2026): một dải đỏ gọn cạnh hoặc dưới ảnh — không đè lên ảnh.
         // Chữ chép tay (hàm chạy trong trang); THUONG_HIEU.khauHieu của chu.ts do test-cong-khai-nhan-dien.mjs gác.

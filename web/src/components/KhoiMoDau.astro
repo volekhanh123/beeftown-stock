@@ -2,23 +2,29 @@
 /**
  * MÀN HÌNH ĐẦU TRANG CHỦ
  *
- * Câu chính (h1) theo brief 06/10/2026, Khánh giữ nguyên ngày 11/10/2026: "Chọn phần bò
- * bạn thích, rồi cùng cả bàn thưởng thức." Descriptor đứng trên câu chính.
+ * Câu chính (h1): "Không cần rành bò. Chọn theo gu, thấy giá trước." — câu chính cho khách của
+ * THUONG-HIEU.md, Khánh đưa lên màn đầu ngày 12/11/2026 (thay câu của brief 06/10/2026, câu đó chuyển
+ * xuống đoạn dẫn). Hai câu, mỗi câu một dòng; câu sau màu nhấn của bề mặt. Descriptor đứng trên.
  *
- * Hình chính là ảnh hero-vi-gas (ảnh minh họa, lib/anh.ts) — thay cho mảng vân mỡ đỏ của bản
- * trước. Tagline (THUONG_HIEU.khauHieu) là một dải đỏ gọn ngay dưới ảnh, chữ trắng in hoa như
- * logo chính in "PICK IT, GRILL IT, LOVE IT!": không đè lên ảnh, không logo hay chữ nào đặt lên
- * ảnh, khung ảnh không bóng đổ. Dải có aria-hidden (như bản trước): khối ba bước ngay sau đã đọc
- * tagline ở dòng hiệu.
+ * Hình: hai ảnh minh họa kể đúng thứ tự Pick → Grill — quầy khay (quay-chon-bo, ảnh tạm Khánh cho dùng
+ * ở đây từ 12/11/2026, tới khi có ảnh quầy chụp thật) rồi vỉ gas (hero-vi-gas, ảnh ưu tiên tải ngay).
+ * Chú thích có số nằm TRÊN mỗi ảnh, không đè lên ảnh. Tagline (THUONG_HIEU.khauHieu) là một dải đỏ gọn
+ * dính ngay dưới hai ảnh, chữ trắng in hoa như logo chính: không logo hay chữ nào đặt lên ảnh, khung
+ * ảnh không bóng đổ. Dải có aria-hidden: khối ba bước ngay sau đã đọc tagline ở dòng hiệu. Dưới 600px
+ * hai ảnh cạnh nhau chỉ còn 170px mỗi ảnh, nên điện thoại giữ MỘT ảnh vỉ gas 4:5 như trước (ảnh quầy
+ * lazy và ẩn — không tải); câu chính đã nói phần "chọn tại quầy".
+ *
+ * Hỏi bàn nhanh (form hỏi bàn đang mở): hai ô chọn — ngày đến (14 ngày tới) và số người — rồi nút
+ * "Hỏi bàn" gửi GET sang trang Hỏi bàn (lib/trang-cong-khai.ts → ngayHoiNhanh, soKhachTuUrl). Form chưa
+ * mở thì vẫn là hai nút của nutMoDau().
  *
  * Thứ tự (một nguồn HTML, CSS xếp lại):
- *  · điện thoại, máy tính bảng (dưới 900px): câu chính → mô tả → 2 nút → ảnh → dòng địa điểm.
- *    Ở 360–430px đỉnh ảnh cách đầu trang 551–606px: điện thoại thật (vùng nhìn cao khoảng
- *    550–700px) chỉ thấy mép trên của ảnh ở màn hình đầu;
+ *  · điện thoại, máy tính bảng (dưới 900px): câu chính → mô tả → hỏi bàn nhanh / 2 nút → ảnh → dòng
+ *    địa điểm;
  *  · điện thoại rất nhỏ (dưới 360px, cũng là máy tính phóng to 400 %): phần chữ đã dài hơn một
  *    màn hình, nên ảnh lên ngay sau câu chính — ảnh tải ngay không được nằm hẳn dưới màn hình đầu;
- *  · máy tính (từ 900px): chữ bên trái, ảnh bên phải, hai cột cân nhau theo chiều dọc; dòng địa
- *    điểm thành một hàng ngang dưới cả hai cột.
+ *  · máy tính (từ 900px): câu chính trải ngang; dưới nó mô tả bên trái, hỏi bàn nhanh bên phải; rồi
+ *    dải hai ảnh trải hết bề ngang khung; dòng địa điểm thành một hàng ngang dưới cùng.
  *
  * Hàng thông tin có ba trạng thái theo khóa ngay_khai_truong — chưa có ngày, sắp mở ("Đón bạn từ
  * …"), đã mở ("Mở cửa từ …") — và dòng trạng thái dài ngắn tuỳ /noi-bo công bố. Ở trạng thái nào
@@ -31,7 +37,9 @@
 import { THUONG_HIEU, chu, duongDanTuongUng } from '../lib/chu';
 import { dinhDangNgay, homNayVn } from '../lib/noi-dung';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
-import { cumDiaChi, diaChiManDau, nutMoDau, lienHe } from '../lib/trang-cong-khai';
+import {
+  SO_KHACH_HOI_NHANH, SO_KHACH_MAC_DINH, cumDiaChi, diaChiManDau, formHoiBanMo, lienHe, ngayHoiNhanh, nhanSoKhach, nutMoDau,
+} from '../lib/trang-cong-khai';
 import Anh from './Anh.astro';
 import BieuTuong from './BieuTuong.astro';
 
@@ -39,6 +47,11 @@ interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; }
 const { ngonNgu, noiDung: nd } = Astro.props;
 const t = chu(ngonNgu);
 const nut = nutMoDau(nd, ngonNgu);
+// Form hỏi bàn mở: nút chính là "Hỏi bàn" (nut[0]) — thành nút gửi của thanh hỏi bàn nhanh.
+const hoiNhanh = formHoiBanMo(nd);
+const ngayChon = hoiNhanh ? ngayHoiNhanh(ngonNgu) : [];
+// Câu chính hai câu, mỗi câu một khối: tách sau dấu chấm (cả "요." tiếng Hàn). Chữ giữ nguyên — test đọc nguyên câu.
+const cauChinh = t.cauChinh.split(/(?<=[.!?])\s+/u);
 const lh = lienHe(nd);
 const ngayMo = nd.ngay_khai_truong;
 const daMo = !!(ngayMo && ngayMo <= homNayVn());
@@ -56,19 +69,53 @@ const cumDc = cumDiaChi(diaChiManDau(nd));
   <div class="khung kmd-luoi">
     <div class="kmd-dau">
       <p class="hieu"><span lang="en">{THUONG_HIEU.descriptor}</span></p>
-      <h1 id="kmd-tieu-de">{t.cauChinh}</h1>
+      <h1 id="kmd-tieu-de">{cauChinh.map((cau, i) => <>{i > 0 && ' '}<span class:list={['kmd-cau', { 'kmd-cau-nhan': i > 0 }]}>{cau}</span></>)}</h1>
     </div>
     <p class="dan kmd-dan">{t.gioiThieu}</p>
 
-    <div class="hang-nut kmd-nut">
-      {nut.map(n => (
-        <a class:list={['nut', n.kieu === 'chinh' ? 'nut-chinh' : 'nut-vien']} href={n.url}>{n.chu}</a>
-      ))}
-    </div>
+    {hoiNhanh ? (
+      /* GET sang trang Hỏi bàn: ngày và số người lên địa chỉ trang, #hb-gio cuộn thẳng tới khung giờ. */
+      <form class="kmd-nut kmd-hoi" method="get" action={`${nut[0].url}#hb-gio`} aria-label={t.hoiBanNhanh}>
+        <div class="kmd-chon">
+          <div class="o">
+            <label for="kmd-ngay">{t.ngayDen}</label>
+            <select id="kmd-ngay" name="ngay">
+              {ngayChon.map((n, i) => <option value={n.iso} selected={i === 0}>{n.chu}</option>)}
+            </select>
+          </div>
+          <div class="o">
+            <label for="kmd-so-khach">{t.soNguoi}</label>
+            <select id="kmd-so-khach" name="so_khach">
+              {SO_KHACH_HOI_NHANH.map(n => <option value={n} selected={n === SO_KHACH_MAC_DINH}>{nhanSoKhach(n, ngonNgu)}</option>)}
+            </select>
+          </div>
+        </div>
+        <div class="hang-nut">
+          <button type="submit" class="nut nut-chinh">{nut[0].chu}</button>
+          <a class="nut nut-vien" href={nut[1].url}>{nut[1].chu}</a>
+        </div>
+      </form>
+    ) : (
+      <div class="hang-nut kmd-nut">
+        {nut.map(n => (
+          <a class:list={['nut', n.kieu === 'chinh' ? 'nut-chinh' : 'nut-vien']} href={n.url}>{n.chu}</a>
+        ))}
+      </div>
+    )}
 
     <div class="kmd-hinh">
-      <Anh id="hero-vi-gas" ngonNgu={ngonNgu} khung="4x3" khungNho="4x5" uuTien thayBang="ban-nuong"
-           sizes="(min-width: 1280px) 620px, (min-width: 900px) 50vw, calc(100vw - 40px)" />
+      <div class="kmd-hai-anh">
+        <div class="kmd-buoc kmd-buoc-quay">
+          <p class="kmd-chu-anh"><span class="kmd-so">1</span>{t.anhQuay}</p>
+          <Anh id="quay-chon-bo" ngonNgu={ngonNgu} khung="4x3" thayBang="quay"
+               sizes="(min-width: 1280px) 592px, (min-width: 600px) calc(50vw - 46px), 1px" />
+        </div>
+        <div class="kmd-buoc">
+          <p class="kmd-chu-anh"><span class="kmd-so">2</span>{t.anhNuong}</p>
+          <Anh id="hero-vi-gas" ngonNgu={ngonNgu} khung="4x3" khungNho="4x5" uuTien thayBang="ban-nuong"
+               sizes="(min-width: 1280px) 592px, (min-width: 600px) calc(50vw - 46px), calc(100vw - 40px)" />
+        </div>
+      </div>
       {/* aria-hidden: dải này để NHÌN. Trình đọc màn hình đọc tagline một lần, ở dòng hiệu của khối ba bước
           ngay sau (BaBuoc.astro) — không đọc hai lần liền nhau. */}
       <p class="kmd-khau-hieu" lang="en" aria-hidden="true">{veKhauHieu.map((ve, i) => <>{i > 0 && ' '}<span>{ve}</span></>)}</p>
@@ -98,17 +145,53 @@ const cumDc = cumDiaChi(diaChiManDau(nd));
     display: flex; flex-direction: column;
     padding-block: var(--k-5) var(--k-7);
   }
-  .kmd h1 { max-width: 15ch; margin: 0 0 var(--k-5); }
-  /* ch đo theo chữ số Latin: 15ch chỉ chứa 8–9 chữ Hangul — tiếng Hàn đo bằng em. Cỡ chữ thì
-     như vi / en (32 → 48px, không co riêng): cụm đầu "좋아하는 부위를 고르고," dài ~10,6em nên
-     màn dưới 375px câu xuống bốn dòng như bản tiếng Việt, từ 375px là ba dòng. */
-  .kmd h1:lang(ko) { max-width: 12em; }
+  .kmd h1 { margin: 0 0 var(--k-5); }
+  /* Mỗi câu một khối; câu sau màu nhấn của bề mặt (đỏ trên trắng: 6,64 : 1, chữ ≥ 32px đậm). */
+  .kmd-cau { display: block; }
+  .kmd-cau-nhan { color: var(--nhan); }
   .kmd-dan { margin: 0 0 var(--k-5); }
   .kmd-nut { margin-bottom: var(--k-6); }
   .kmd-hinh { margin-bottom: var(--k-6); }
 
-  /* Ảnh và dải tagline là một khối: ảnh bo hai góc trên, dải đỏ bo hai góc dưới. Chữ trắng trên đỏ 6,64 : 1. */
+  /* Hỏi bàn nhanh. Ô chọn dùng ô nhập chung của trang (.o: nhãn trên ô, cao 48px, chữ 16px, viền --vien-o).
+     Từ 600px: hai ô chọn cạnh nhau (ngày rộng hơn — "Wednesday, 18 November"), nhóm nút ngay dưới.
+     Điện thoại: ô ngày một hàng riêng; hàng sau là ô số người cạnh nút "Hỏi bàn" (nút thẳng đáy ô); nút viền
+     cuối cùng. .kmd-chon và .hang-nut "display: contents" để bốn phần tử xếp chung một lưới. */
+  .kmd-hoi { display: grid; gap: var(--k-3); }
+  .kmd-chon, .kmd-hoi .hang-nut { display: contents; }
+  .kmd-hoi {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    grid-template-areas: "ngay ngay" "nguoi gui" "phu phu";
+    align-items: end;
+  }
+  .kmd-chon .o { margin: 0; min-width: 0; }
+  .kmd-chon .o:first-child { grid-area: ngay; }
+  .kmd-chon .o:last-child { grid-area: nguoi; }
+  .kmd-hoi .nut-chinh { grid-area: gui; }
+  .kmd-hoi .nut-vien { grid-area: phu; }
+  @media (min-width: 600px) {
+    .kmd-hoi { display: grid; gap: var(--k-4); grid-template-columns: none; grid-template-areas: none; align-items: stretch; }
+    .kmd-chon { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--k-3); }
+    .kmd-hoi .hang-nut { display: flex; margin: 0; }
+  }
+
+  /* Hai ảnh và dải tagline là một khối: ảnh bo hai góc trên, dải đỏ bo hai góc dưới, dính ngay dưới ảnh.
+     Chữ trắng trên đỏ 6,64 : 1. */
   .kmd-hinh :global(.anh) { border-radius: var(--bo-anh) var(--bo-anh) 0 0; }
+  .kmd-hai-anh { display: grid; gap: var(--k-3); align-items: end; }
+  /* Chú thích có số đứng trên ảnh — không đè lên ảnh. */
+  .kmd-chu-anh {
+    display: flex; align-items: center; gap: var(--k-2);
+    margin: 0 0 var(--k-2); font-size: var(--co-nho); font-weight: 700; line-height: 1.4;
+  }
+  .kmd-so { color: var(--nhan); font-weight: 800; }
+  /* Điện thoại: một ảnh vỉ gas 4:5, không chú thích (ảnh quầy ẩn, lazy nên không tải). */
+  @media (max-width: 599.98px) {
+    .kmd-buoc-quay, .kmd-chu-anh { display: none; }
+  }
+  @media (min-width: 600px) {
+    .kmd-hai-anh { grid-template-columns: 1fr 1fr; }
+  }
   .kmd-khau-hieu {
     display: flex; flex-wrap: wrap; justify-content: center; gap: 2px .9em;
     margin: 0; padding: var(--k-3) var(--k-4);
@@ -153,20 +236,19 @@ const cumDc = cumDiaChi(diaChiManDau(nd));
     .kmd-luoi { padding-block: var(--k-6) var(--k-7); }
   }
 
-  /* --- Máy tính: chữ trái, ảnh phải; dòng địa điểm thành hàng ngang phía dưới --- */
+  /* --- Máy tính: câu chính trải ngang; mô tả trái, hỏi bàn nhanh phải; dải hai ảnh; hàng địa điểm --- */
   @media (min-width: 900px) {
     .kmd-luoi {
       display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); column-gap: var(--k-7);
-      /* Hai hàng 1fr trên và dưới cột chữ: khối hình cao hơn thì cột chữ tự nằm giữa. */
-      grid-template-rows: 1fr auto auto auto 1fr auto;
+      grid-template-rows: auto auto auto auto;
       padding-block: var(--k-7) var(--k-6);
     }
-    .kmd-dau { grid-area: 2 / 1; }
-    .kmd-dan { grid-area: 3 / 1; margin-bottom: var(--k-6); }
-    .kmd-nut { grid-area: 4 / 1; margin-bottom: 0; }
-    .kmd-hinh { grid-area: 1 / 2 / 6 / 3; align-self: center; margin-bottom: 0; }
+    .kmd-dau { grid-area: 1 / 1 / 2 / 3; }
+    .kmd-dan { grid-area: 2 / 1; margin-bottom: 0; align-self: end; }
+    .kmd-nut { grid-area: 2 / 2; margin-bottom: 0; align-self: end; }
+    .kmd-hinh { grid-area: 3 / 1 / 4 / 3; margin: var(--k-7) 0 0; }
     .kmd-thong-tin {
-      grid-area: 6 / 1 / 7 / 3;
+      grid-area: 4 / 1 / 5 / 3;
       margin-top: var(--k-7); padding-top: var(--k-5); border-top: 1px solid var(--vien);
       /* Cột địa chỉ co lại được (câu chỉ đường xuống dòng theo vế). Cột giữa rộng ít nhất bằng dòng ngày
          (không xuống dòng) và 14em của dòng trạng thái — không bị ép thành cột chữ hẹp. */
