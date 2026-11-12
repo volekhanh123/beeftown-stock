@@ -41,6 +41,7 @@ import { dichNB, type HaiThuTieng, type NgonNguNB } from './ngon-ngu-noi-bo.ts';
 import { dichCau } from './cau-noi-bo.ts';
 import { CAU_MAT_MANG_GHI, laLoiMang } from './qua-tai.ts';
 import { boDau, dinhDangKg, dinhDangTien, docSoNguyen, docTien, laUuid } from './kho/chung.ts';
+import { GU } from './chon-theo-gu.ts';
 import { GIA_KG_TOI_DA_100G, GIA_TOI_DA } from './kho/can-tma.ts';
 import { timChuoiCam } from './chuoi-cam.js';
 
@@ -72,6 +73,11 @@ const CAU = {
   khongLuu:     { vi: 'Không lưu được.', en: 'Could not save.' },
   khongTao:     { vi: 'Không thêm được sản phẩm.', en: 'Could not add the product.' },
   khongChot:    { vi: 'Không xác nhận được giá.', en: 'Could not confirm the prices.' },
+  daLuuGu:      { vi: 'Đã lưu gu. Trang Thực đơn hiện theo gu mới ngay.', en: 'Taste tags saved. The Menu page shows them right away.' },
+  daGoGu:       { vi: 'Đã gỡ hết gu: phần thịt này không còn trong khối "Chọn theo gu".',
+                  en: 'All taste tags removed: this cut is no longer in the "Pick by taste" block.' },
+  khongLuuGu:   { vi: 'Không lưu được gu.', en: 'Could not save the taste tags.' },
+  guLa:         { vi: 'Gu không hợp lệ — tải lại trang.', en: 'Invalid taste tag — reload the page.' },
   khongDoc:     { vi: 'Không đọc được menu bán lẻ.', en: 'Could not read the retail menu.' },
   nguoiKhacSua: { vi: 'Sản phẩm vừa được người khác sửa. Bạn đang thấy bản mình vừa gõ, CHƯA được lưu — bấm Lưu lần nữa sẽ ghi đè bản của họ.',
                   en: 'Someone else just edited this product. You are seeing what you typed, NOT saved yet — saving again will overwrite their version.' },
@@ -206,6 +212,8 @@ export interface SanPhamBanLe {
   kenh_mini_app: boolean;
   kenh_web: boolean;
   thu_tu: number;
+  /** Gu của phần thịt (0116) — khối "Chọn theo gu" ở trang Thực đơn; rỗng = không có trong khối. */
+  gu: string[];
   gia_chot: AnhChupGia | null;
   gia_chot_luc: string | null;
   gia_chot_boi: string | null;
@@ -1243,3 +1251,23 @@ export function cauViecDoiChieu(d: DongDoiChieu, nn: NgonNguNB = 'vi'): string[]
 
 /** Dòng có việc phải làm (không phải "khớp"). */
 export const coViec = (d: DongDoiChieu) => d.viec.some(v => v !== 'khop');
+
+// -----------------------------------------------------------------------------
+// GU CỦA PHẦN THỊT — khối "Chọn theo gu" ở trang Thực đơn (0116)
+// -----------------------------------------------------------------------------
+/**
+ * Lưu gu từ form: mỗi gu một ô chọn name="gu_<khóa>" giá trị "co" / "khong" (trang bán lẻ không dùng ô đánh dấu —
+ * ô bỏ trống không được gửi đi, form thiếu ô trông y như "không"). Thiếu ô hay giá trị lạ thì từ chối, không gửi.
+ * "Đã lưu" chỉ khi database trả mảng đã ghi — cùng một await với lần ghi; mất mạng, lỗi quyền, lỗi khác → câu lỗi.
+ */
+export async function luuGu(client: SupabaseClient, id: string, form: FormData, nn: NgonNguNB = 'vi'): Promise<KetQua> {
+  const t = dichNB(nn, CAU);
+  if (!laUuid(id)) return { ok: false, cau: t.khongThay };
+  const giaTri = GU.map(g => form.get(`gu_${g}`));
+  if (giaTri.some(v => v !== 'co' && v !== 'khong')) return { ok: false, cau: t.guLa };
+  const chon = GU.filter((_, i) => giaTri[i] === 'co');
+  const { data, error } = await chacChan(() => client.rpc('ban_le_luu_gu', { p_id: id, p_gu: chon }));
+  if (error) return { ok: false, cau: cauLoi(error, t.khongLuuGu, nn) };
+  if (!Array.isArray(data)) return { ok: false, cau: t.khongLuuGu };
+  return { ok: true, cau: data.length > 0 ? t.daLuuGu : t.daGoGu };
+}
