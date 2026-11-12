@@ -1,40 +1,37 @@
 # Beeftown — hướng dẫn cho mọi phiên làm việc
 
-Mỗi phiên Claude mở repo này đều đọc file này. Nó là **quy trình bắt buộc**, không phải gợi ý:
-lỗi của repo lặp lại theo đúng tám nhóm bên dưới, và phần lớn lộ ra ở commit "sửa N lỗi sau
-rà soát" *sau khi* tính năng đã gộp. Mục tiêu: chặn chúng *trước* khi gộp.
+Mỗi phiên Claude mở repo này đều đọc file này. Nó là **quy trình bắt buộc**, không phải gợi ý: lỗi của repo lặp lại
+theo đúng chín nhóm ở mục "Định nghĩa xong", và phần lớn lộ ra ở commit "sửa N lỗi sau rà soát" *sau khi* tính năng đã
+gộp. Mục tiêu: chặn chúng *trước* khi gộp.
+
+File này nạp ở **mọi** phiên, nên chỉ giữ thứ mọi phiên cần. Chi tiết của một khu nằm ở `CLAUDE.md` của thư mục đó,
+bảng CI ở `.github/CLAUDE.md` — cả hai tự nạp khi phiên đọc file ở đó. Codex và các agent khác đọc `AGENTS.md`.
 
 ## Repo gồm gì
 
-| Thư mục | Nội dung | Đọc thêm |
+| Thư mục | Nội dung | Bản đồ |
 |---|---|---|
-| `web/` | Website Astro trên Cloudflare Workers: trang công khai vi/en/ko, `/noi-bo`, kho, Zalo, Messenger, iPOS | `web/CLAUDE.md` (bản đồ), `web/README.md`, `web/KHO.md` |
-| `crm/` | Database Supabase (`supabase/migrations/`) và **toàn bộ kiểm thử** (`test/`, chạy trên PGlite) | `crm/CLAUDE.md`, `crm/README.md` |
-| `can-app/` | Beeftown Cân (Windows `.exe`, Bun): gửi giá xuống cân TMA, máy quầy | `can-app/CLAUDE.md`, `can-app/README.md` |
-| `mini-app/` | Mini App Zalo (React, zmp-cli): khách chọn khay thịt mang về, đơn mở sẵn trong chat Zalo OA; khai máy chủ đơn thì gửi đơn lên đó và chuyển khoản ngay trong app. Không database, `package.json` và lệnh đưa lên riêng | `mini-app/CLAUDE.md`, `mini-app/README.md` |
-| `may-chu-don/` | Máy chủ đơn của Mini App (Bun, SQLite): nhận đơn trả trước, màn hình đơn cho quầy. Chạy ở Việt Nam (dữ liệu khách Mini App không lên Supabase, Cloudflare) — laptop thử, máy chủ thuê khi mở bán. Thu tiền qua VNPay bằng Checkout SDK của Zalo (Zalo bắt buộc; VietQR qua SePay còn làm đường dự phòng), báo khách bằng ZNS; Mini App gửi đơn lên khi khai địa chỉ máy chủ (chưa khai tới khi có máy chủ thuê) | `may-chu-don/CLAUDE.md`, `may-chu-don/README.md` |
-| `mo-rong-fabi/` | Mở rộng FABi (extension Chrome, Manifest V3): trên FABi CMS, đưa món mới của kho vào hộp thoại "Thêm món từ file" — người dùng tự bấm Lưu. Không `package.json`, cài bằng "Tải tiện ích đã giải nén" | `mo-rong-fabi/README.md` |
-
-Bảng màu thương hiệu đã chốt, giá trị đã áp dụng và thứ còn mang màu cũ (Beeftown Cân, ảnh hướng dẫn kho): `THUONG-HIEU.md`. Codex và các agent khác đọc `AGENTS.md` (cùng quy trình này).
-Bộ nhận diện 21/10/2026 (Brand Guidelines của designer) và bảng đỏ `#BD0000`, đen, trắng Khánh chốt 22/10/2026
-(`THUONG-HIEU.md` mục 0) đã áp cho cả `web/` — trang công khai nền trắng, `/noi-bo` và kho không màu trạng thái — cùng
-logo SVG tách từ PDF guideline (`web/public/thuong-hieu/`). Kiểm thử canh bảng mới. Còn nhận diện cũ: Beeftown Cân
-(PR riêng, việc 7) và ảnh hướng dẫn kho `hd-*.png` (việc 8). Đừng đổi màu lẻ tẻ ngoài các PR của danh sách ở mục 0.
+| `web/` | Website Astro trên Cloudflare Workers: trang công khai vi/en/ko, `/noi-bo`, kho, Zalo, Messenger, iPOS | `web/CLAUDE.md` |
+| `crm/` | Database Supabase (`supabase/migrations/`) và **toàn bộ kiểm thử** (`test/`, chạy trên PGlite) | `crm/CLAUDE.md` |
+| `can-app/` | Beeftown Cân (Windows `.exe`, Bun): gửi giá xuống cân TMA, máy quầy | `can-app/CLAUDE.md` |
+| `mini-app/` | Mini App Zalo (React, zmp-cli): khách chọn khay thịt mang về. Không database, `package.json` và lệnh đưa lên riêng | `mini-app/CLAUDE.md` |
+| `may-chu-don/` | Máy chủ đơn của Mini App (Bun, SQLite), chạy ở Việt Nam: đơn trả trước, VNPay, ZNS, màn hình đơn cho quầy | `may-chu-don/CLAUDE.md` |
+| `mo-rong-fabi/` | Extension Chrome: đưa món mới của kho vào FABi CMS, người dùng tự bấm Lưu. Không `package.json` | `mo-rong-fabi/README.md` |
 
 Quy ước chung:
 - Tên hàm, biến, chú thích, tài liệu viết **tiếng Việt không tắt**, giống mã đang có.
 - `.gitignore` **chặn hết rồi mở từng cái** — file mới phải có dòng `!đường-dẫn` trong mục ĐƯỢC PHÉP,
   kiểm bằng `git status --short`. `test-quy-trinh.mjs` báo file mã nguồn bị chặn.
 - Trang công khai phải đúng và đủ **khi chưa có database** (CI build không có `.env`).
-- Việc giao diện, màu, câu chữ, ảnh, ấn phẩm: làm theo skill `.claude/skills/thiet-ke-beeftown/`
-  (tự nạp khi việc khớp mô tả). Mã đổi thì sửa skill cùng PR — `test-ky-nang-thiet-ke.mjs` bắt mã màu,
-  đường dẫn, tên biểu tượng, lớp CSS lệch; số đo và tên hàm thì tự giữ.
+- Giao diện, màu, câu chữ, ảnh, ấn phẩm: skill `.claude/skills/thiet-ke-beeftown/` (tự nạp khi việc khớp mô tả). Mã đổi
+  thì sửa skill cùng PR (`test-ky-nang-thiet-ke.mjs` bắt mã màu, đường dẫn, tên biểu tượng, lớp CSS lệch). Bảng màu đã
+  chốt và thứ còn mang nhận diện cũ: `THUONG-HIEU.md` mục 0 — đừng đổi màu lẻ tẻ ngoài các PR của danh sách ở đó.
 
 ## Bắt đầu phiên — đọc ít, tra nhiều
 
-Mỗi thư mục có `CLAUDE.md` riêng, tự nạp khi phiên đọc file trong đó: việc gì đọc mục nào, sửa file nào, chạy kiểm thử
-nào, sửa một hàm thì phải đụng những chỗ nào. Đọc đúng mục nó chỉ — đừng đọc cả README hay `web/KHO.md`.
-Tra tên bằng máy thay vì lục hàng chục nghìn dòng migration:
+Bản đồ của thư mục tự nạp khi phiên đọc file trong đó: việc gì đọc mục nào, sửa file nào, chạy kiểm thử nào, sửa một
+hàm thì phải đụng những chỗ nào. Đọc đúng mục nó chỉ — đừng đọc cả README hay `web/KHO.md`. Tra tên bằng máy thay vì
+lục hàng chục nghìn dòng migration:
 
 ```bash
 cd crm
@@ -43,7 +40,7 @@ npm run tim -- <hàm> --than              # nguyên văn bản cuối, để ch�
 npm run tom-tat-pr                       # nhánh này đụng khu nào, cỡ bao nhiêu, việc sau khi gộp
 ```
 
-Làm tiếp một tính năng đã có đợt trước: đọc issue nhãn `viec-tiep` của nó (mục "Chia việc thành PR"), không đọc lại PR cũ.
+Làm tiếp một tính năng đã có đợt trước: đọc issue nhãn `viec-tiep` của nó, không đọc lại PR cũ.
 
 ## Cài và chạy kiểm thử
 
@@ -53,65 +50,40 @@ cd crm && npm test                  # mọi file test, song song, in tổng số
 node test/test-zalo.mjs             # một file
 npm run kiem-migration              # gác số migration (so với origin/main)
 npm run so-migration                # số migration kế tiếp — tính trên MỌI nhánh origin/*
-cd ../can-app && npx bun test/thu.ts                     # Beeftown Cân
-npx bun test/thu-trinh-duyet.ts                          # Beeftown Cân trong Chromium: thẻ theo từng vai (CI cũng chạy)
-cd ../may-chu-don && npm ci && npx bun test/thu.ts && npm run kiem-kieu   # Máy chủ đơn Mini App (CI cũng chạy)
-cd ../web && npx astro check && npm run quet && npm run thu-trinh-duyet -- --khong-build   # quet vừa build (không database)
-cd ../mini-app && npm ci && npm run kiem-tra && npx tsc --noEmit && npx vite build       # Mini App Zalo
-cd .. && node mo-rong-fabi/thu/thu-trinh-duyet.mjs                                       # Mở rộng FABi trong Chromium (CI cũng chạy)
+cd .. && node mo-rong-fabi/thu/thu-trinh-duyet.mjs   # Mở rộng FABi trong Chromium (CI cũng chạy)
 ```
 
-File test mới tên `crm/test/test-<khu>-<ten>.mjs` **tự được chạy** — không sửa `package.json`.
-`crm/test/thu-tai.mjs` (`npm run thu-tai`) là thử tải trên project Supabase THẬT Beeftown-thu — chỉ chạy tay,
-không nằm trong `npm test` hay CI (xem README gốc, mục "Hạ tầng cho 100 người dùng cùng lúc").
-`crm/test/doi-chieu-production.mjs` (`npm run doi-chieu`, chuỗi kết nối ở biến `DOI_CHIEU_DB_URL`) cũng chỉ chạy tay:
-đối chiếu database thật với mọi migration — hàm, bảng, cột, ràng buộc, chỉ mục, trigger, policy, quyền. Kiểm thử của nó
-(`test-doi-chieu-production.mjs`) thì chạy trong `npm test`.
-Dùng khung chung `kho-chung.mjs` (`dungDatabase`, `taoBoDem`, `duoi(uid, sql)`, `duoiAnon(sql)`) — `npm test` nạp database
-trống từ một ảnh chụp chung thay vì chạy lại từng migration, nên file dựng qua khung này chạy nhanh hơn.
+Đã có `node_modules` (setup script của môi trường cloud cài sẵn) thì bỏ qua `npm ci`.
+Lệnh của web, Beeftown Cân, máy chủ đơn, Mini App: mục "Lệnh" trong bản đồ của thư mục đó. Máy cần Node ≥ 22.18 để đọc
+thẳng file `.ts`; CI chạy Node 24.
 
 ## Định nghĩa "xong" — 9 mục
 
-Mỗi tính năng hoặc bản sửa phải trả lời đủ 9 mục trong mô tả PR: **tên kiểm tra chứng minh**
-(tên trong `ok(...)`), hoặc **"không áp dụng vì …"**. Mỗi mục là một nhóm lỗi đã thật sự xảy ra.
+Mỗi tính năng hoặc bản sửa phải trả lời đủ 9 mục trong mô tả PR: **tên kiểm tra chứng minh** (tên trong `ok(...)`),
+hoặc **"không áp dụng vì …"**. Mỗi mục là một nhóm lỗi đã thật sự xảy ra. Chỗ phải đụng của từng khu: bản đồ của thư mục.
 
-1. `quyen` — **Quyền.** `anon`, vai khác, chi nhánh khác, nhân sự đã nghỉ, tài khoản không có dòng
-   `nhan_su` đều bị từ chối — thử bằng `duoi()` / `duoiAnon()`. Hàm `security definer` mới: kiểm vai
-   ngay đầu thân hàm, có `set search_path`; xếp vào `DUOC_PHEP` (`test-an-toan.mjs`) hoặc
-   `GOI_DUOC` / `NOI_BO` (`test-kho-quyen.mjs`). File `web/src/lib` mới đọc bảng: phân loại trong
-   `CHAY_DA_DANG_NHAP` (`test-hop-dong-web.mjs`). Chính sách Storage: PGlite không có — ghi các
-   bước thử tay trên project Beeftown-thu. *(4868551, 5021735, f9bcde0, 8cbf5fc)*
-2. `bam-hai-lan` — **Gửi hai lần.** Bấm đúp, Meta / iPOS gửi lại webhook, hai lượt cron chồng nhau:
-   chỉ đúng một bản ghi, không trừ kho hai lần, không gửi tin hai lần. *(861ff7f, 702ff11, b98c845)*
-3. `gio-vn` — **Giờ Việt Nam.** Database dùng `hom_nay_vn()` / `bay_gio_vn()` / `gio_vn()`, không
-   `current_date` (`kiem-migration.mjs` chặn). Web dùng `web/src/lib/gio-vn.ts` (`homNayVn`, `namVn`,
-   `congNgay`, `docGioVnDiaPhuong` cho ô giờ người nhập / máy ngoài gửi) — `test-gio-vn.mjs` chặn tự
-   cộng 7 tiếng. Thử mốc 23:50 và 00:10 giờ VN (đồng hồ giả `dong-ho-gia.mjs`; phía database
-   `datGioDatabase` / `traGioDatabase` của `kho-chung.mjs`) và ngày không có thật (31/02). *(4868551)*
-4. `chu-va-so` — **Chữ có dấu và số kiểu Việt.** "1.000" là một nghìn, "1,5" là một phẩy năm; tên
-   file có dấu thành khóa ASCII; chữ không dính nhau khi xuống dòng (`compressHTML`); so khớp câu có
-   dấu đúng ("Đúng" không phải "dừng"). *(6b1fddc, 52d0937, 1bb55ac, b98c845)*
-5. `mat-mang` — **Mất mạng giữa chừng.** `fetch` ném lỗi, hết giờ, dịch vụ trả 500: **không bao giờ**
-   báo thành công, không để bản ghi nửa vời. Thứ ghi dữ liệu và thứ quyết định câu thông báo là
-   cùng một biểu thức `await` (README gốc).
-6. `ton-kho` — **Sổ kho.** Mọi kiểm thử kho kết thúc bằng `kho_doi_soat_ton()` rỗng. *(861ff7f)*
-7. `cau-chu` — **Câu thông báo.** Đúng sự thật ("đã nhận" khác "thành công"); đủ vi/en ở nội bộ,
-   vi/en/ko ở trang công khai; câu `raise exception` mới có bản tiếng Anh trong
-   `web/src/lib/kho/cau-kho-en.ts` hoặc `web/src/lib/cau-noi-bo.ts`; không chứa chữ cấm (`chuoi-cam.js`).
-8. `migration` — **Số migration.** Lấy từ `npm run so-migration`. Không sửa migration đã có trên main
-   (viết migration mới). Không chạy migration lên production trước khi PR được gộp. Chạy xong thì
-   `npm run doi-chieu` phải báo KHỚP (README gốc, "Chạy migration lên production") — SQL Editor hay Supabase
-   MCP báo xong chưa chắc đã chạy hết: `apply_migration` / `execute_sql` của MCP chờ xác nhận với câu có
-   `delete`, phiên không có người bấm thì hết 60 giây và không chạy gì.
-   *(6 lần đánh lại số trong 3 ngày; 2 lần đã chạy lên production; 04/10/2026 thiếu hai hàm vì một mảnh không chạy)*
-9. `dich-vu-ngoai` — **Dịch vụ ngoài** (iPOS, Zalo, Meta, Gemini, Supabase Storage, Cloudflare): ghi rõ
-   giả định và nguồn của nó; có kiểm thử giả cho từng kiểu hỏng; liệt kê việc Khánh phải thử thật.
-   Việc chạy nền hay dịch vụ ngoài MỚI phải có đèn trong bảng sức khỏe ở `/noi-bo`: số liệu vào
-   `suc_khoe_so_lieu()` (migration mới; đọc bằng hàm riêng như sao lưu thì gắn thêm vào
-   `bao_dong_bat_dau_luot`, không thì không bao giờ được báo), màu và câu vào `web/src/lib/suc-khoe.ts`, kiểm ở
-   `test-suc-khoe.mjs` (ô mới trong danh sách `KHOA`) và `test-suc-khoe-web.mjs`; đèn mới xếp vào `NHOM`
-   của `web/src/lib/bao-dong-chinh-sach.ts` (đỏ ban đêm có báo ngay không) — hỏng thì chủ thấy ngay,
-   không đợi khách báo. *(0c92b10, 0410c58, 5d03c40)*
+1. `quyen` — **Quyền.** `anon`, vai khác, chi nhánh khác, nhân sự đã nghỉ, tài khoản không có dòng `nhan_su` đều bị
+   từ chối — thử bằng `duoi()` / `duoiAnon()`. Hàm `security definer` mới và danh sách quyền: `crm/CLAUDE.md`,
+   "Hàm mới"; file `web/src/lib` mới đọc bảng: `web/CLAUDE.md`. Chính sách Storage: PGlite không có — ghi các bước thử tay trên project Beeftown-thu.
+2. `bam-hai-lan` — **Gửi hai lần.** Bấm đúp, Meta / iPOS gửi lại webhook, hai lượt cron chồng nhau: chỉ đúng một bản
+   ghi, không trừ kho hai lần, không gửi tin hai lần.
+3. `gio-vn` — **Giờ Việt Nam.** Database dùng `hom_nay_vn()` / `bay_gio_vn()` / `gio_vn()`, web dùng
+   `web/src/lib/gio-vn.ts`; không `current_date`, không tự cộng 7 tiếng. Thử mốc 23:50 và 00:10 giờ VN và ngày không
+   có thật (31/02).
+4. `chu-va-so` — **Chữ có dấu và số kiểu Việt.** "1.000" là một nghìn, "1,5" là một phẩy năm; tên file có dấu thành
+   khóa ASCII; chữ không dính nhau khi xuống dòng (`compressHTML`); so khớp câu có dấu đúng ("Đúng" không phải "dừng").
+5. `mat-mang` — **Mất mạng giữa chừng.** `fetch` ném lỗi, hết giờ, dịch vụ trả 500: **không bao giờ** báo thành công,
+   không để bản ghi nửa vời. Thứ ghi dữ liệu và thứ quyết định câu thông báo là cùng một biểu thức `await`.
+6. `ton-kho` — **Sổ kho.** Mọi kiểm thử kho kết thúc bằng `kho_doi_soat_ton()` rỗng.
+7. `cau-chu` — **Câu thông báo.** Đúng sự thật ("đã nhận" khác "thành công"); đủ vi/en ở nội bộ, vi/en/ko ở trang công
+   khai; câu `raise exception` mới có bản tiếng Anh (`crm/CLAUDE.md`, "Hàm mới"); không chứa chữ cấm (`chuoi-cam.js`).
+8. `migration` — **Số migration.** Lấy từ `npm run so-migration`. Không sửa migration đã có trên main (viết migration
+   mới). Chỉ chạy lên production sau khi PR được gộp; chạy xong thì `npm run doi-chieu` phải báo KHỚP — vì sao không
+   chạy qua Supabase MCP khi không có người bấm xác nhận: `README.md`, "Chạy migration lên production".
+9. `dich-vu-ngoai` — **Dịch vụ ngoài** (iPOS, Zalo, Meta, Gemini, Supabase Storage, Cloudflare): ghi rõ giả định và
+   nguồn của nó; có kiểm thử giả cho từng kiểu hỏng; liệt kê việc Khánh phải thử thật. Việc chạy nền hay dịch vụ ngoài
+   MỚI phải có đèn trong bảng sức khỏe ở `/noi-bo` — hỏng thì chủ thấy ngay, không đợi khách báo. Năm chỗ phải đụng:
+   `crm/CLAUDE.md`, "Đèn sức khỏe".
 
 ## Sửa lỗi
 
@@ -126,24 +98,25 @@ Khánh là người duyệt duy nhất và không đọc code. PR nhỏ, một v
 - **Một PR, một thay đổi người dùng thấy được.** Lỗi gặp dọc đường mà không thuộc việc đang làm: PR riêng, hoặc issue.
 - **Cỡ:** dưới khoảng 1.500 dòng mã + SQL thật sự đổi — không tính kiểm thử, tài liệu, thân hàm chép nguyên văn.
   `npm run tom-tat-pr` đo; comment "Máy tóm tắt PR" nhắc khi vượt.
-- **Tính năng lớn chia đợt.** Mỗi đợt gộp được một mình, main vẫn đúng sau mỗi đợt (đợt 1 database + màn chính,
-  đợt 2 iPOS, đợt 3 báo cáo…). Phần còn lại: mở issue theo mẫu "Việc tiếp theo" (`.github/ISSUE_TEMPLATE/viec-tiep.yml`)
-  — đã quyết gì, còn gì, nằm ở hàm / file / mục tài liệu nào. PR đợt sau ghi `Tiếp #<số>`.
+- **Tính năng lớn chia đợt.** Mỗi đợt gộp được một mình, main vẫn đúng sau mỗi đợt. Phần còn lại: issue theo mẫu
+  `.github/ISSUE_TEMPLATE/viec-tiep.yml` — đã quyết gì, còn gì, nằm ở hàm / file / mục tài liệu nào. PR đợt sau ghi
+  `Tiếp #<số>`.
 - **Nhánh.** Mỗi phiên một nhánh. PR của nhánh đã gộp thì việc mới bắt đầu lại từ `origin/main`. Nhiều phiên chạy song
   song thì chia theo khu (kho / trang công khai / Beeftown Cân / Mini App) để ít đụng cùng file và cùng số migration.
 
 ## Trước khi mở PR
 
 1. `git fetch origin --prune && git merge origin/main` — rồi `npm run kiem-migration`.
-2. Chạy đủ kiểm thử phần đã đụng (mục trên). `crm` thì luôn chạy toàn bộ `npm test`.
+2. Chạy đủ kiểm thử phần đã đụng (lệnh ở bản đồ của thư mục). `crm` thì luôn chạy toàn bộ `npm test`.
 3. Chạy `/code-review` (mức high) trên diff so với `origin/main`; thêm `/security-review` khi đụng
    quyền, `security definer`, webhook, đăng nhập.
 4. `cd crm && npm run tom-tat-pr`, rồi điền mẫu PR. Phần Khánh đọc ở trên cùng: "Tóm tắt cho Khánh" (bốn dòng, không
    tên hàm, không tên file; "Sau khi gộp" chép từ `tom-tat-pr`) và cách tự thử. 9 mục, migration, kiểm thử để trong phần
    gập "Chi tiết cho người rà soát". Kiểm trước: `node test/kiem-mo-ta-pr.mjs --tep <file mô tả>` — workflow
    "Mô tả PR" đỏ khi thiếu mục.
-5. CI đỏ trên PR của mình là việc của mình. Comment "Số migration của PR này không còn hợp lệ"
-   nghĩa là PR khác vừa gộp cùng số — đánh lại số ngay.
+5. CI đỏ trên PR của mình là việc của mình. PR nháp không chạy bộ kiểm thử đầy đủ — chạy đủ trên máy trước khi đẩy.
+   Comment "Số migration của PR này không còn hợp lệ" nghĩa là PR khác vừa gộp cùng số — đánh lại số ngay. Khi nào CI
+   chạy gì: `.github/CLAUDE.md`.
 
 ## Không bao giờ
 
@@ -152,20 +125,3 @@ Khánh là người duyệt duy nhất và không đọc code. PR nhỏ, một v
 - Báo "thành công" trước khi database xác nhận. Chuỗi `"đặt bàn thành công"` không được tồn tại.
 - Đổi chữ của câu `raise exception` cũ — kiểm thử khớp theo chữ tiếng Việt.
 - Deploy khi CI chưa xanh. `npm run deploy` tự chặn; `npm run deploy:khan-cap` chỉ dùng khi khẩn cấp.
-
-## CI (GitHub Actions)
-
-| Khi nào | Chạy gì | Thời gian |
-|---|---|---|
-| Đẩy nhánh có đổi migration | `gac-nhanh.yml`: số migration, trùng với nhánh khác | ~30 giây |
-| Mở / sửa mô tả / đẩy thêm vào PR (cả nháp) | `mo-ta-pr.yml`: comment "Máy tóm tắt PR" (`tom-tat-pr.mjs` — việc sau khi gộp, cỡ, chỗ cần chú ý; sửa lại comment cũ), mô tả đủ mục (`kiem-mo-ta-pr.mjs`) | ~20 giây |
-| Mở / cập nhật PR không phải nháp; bấm "Ready for review" | `kiem-thu.yml`: database, kho, Zalo, Messenger, Beeftown Cân, máy chủ đơn Mini App, Mở rộng FABi; web: astro check, build, đóng gói thử, chữ cấm, trình duyệt. PR nháp bỏ qua hai job này (đỡ phút CI) — chạy đủ kiểm thử trên máy trước khi đẩy | ~10 phút |
-| Main nhận commit | như PR, rồi comment vào PR đang mở nào vừa bị trùng số migration | ~10 phút |
-| 00:30 giờ VN mỗi đêm | quét chữ cấm trên beeftown.vn thật; toàn bộ với `TZ=Asia/Ho_Chi_Minh` khi main có commit trong 48 giờ qua, đêm Chủ nhật, đêm đầu / cuối tháng, hoặc không hỏi được GitHub (job `co-doi`). Cổng deploy bỏ qua lượt đêm không kiểm mã (`web/kiem-tra/ket-qua-ci.mjs`) | ~1 phút / ~10 phút |
-| 02:00 giờ VN mỗi đêm; chạy tay | `sao-luu.yml`: sao lưu database (`crm/sao-luu/`) → mã hoá → artifact 30 ngày → khôi phục thử vào Supabase dựng tạm → ghi `he_thong_sao_luu` (đèn "Sao lưu dữ liệu"). Secret `SAO_LUU_DB_URL`, `SAO_LUU_MAT_KHAU` (README gốc, "Sao lưu và khôi phục") | ~5–10 phút |
-| Main hoặc PR đổi `can-app/`, `web/src/lib/`; chạy tay (gõ số PR) | `dong-goi-can.yml`: kiểm thử Beeftown Cân rồi đóng gói `BeeftownCan.exe` → artifact, Release khi `PHIEN_BAN` mới, bản cài lên kho công khai `beeftown-can-ban-cai` cho nút Cập nhật (secret `TOKEN_BAN_CAI_CAN`) (PR: chỉ đóng gói thử, không tải lên) | ~1 phút |
-| Main hoặc PR đổi `mini-app/`; chạy tay | `mini-app.yml`: Mini App Zalo — kiểm tra đơn, tsc, build (không có `.env`, không đưa lên Zalo). Chữ cấm trên chữ của Mini App quét trong `kiem-thu.yml` (`crm/test/test-mini-app-chu.mjs`) | ~1 phút |
-| Đầu mỗi tháng | `dependabot.yml`: PR nâng thư viện `web/`, `crm/`, `can-app/`, `mini-app/` và action — bản nhỏ gom một PR mỗi thư mục, bản lớn PR riêng. CI xanh mới gộp | — |
-
-Kết quả: tab Actions → lượt chạy → **Summary** (bảng từng file, số migration kế tiếp).
-CI chạy Node 24 (`web/.node-version`); máy cần Node ≥ 22.18 để đọc thẳng file `.ts`.

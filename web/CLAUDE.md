@@ -79,4 +79,13 @@ npm run thu-trinh-duyet -- --khong-build     # trình duyệt thật, không dat
 npm run thu-day-du                           # trình duyệt thật, Supabase giả (đã nối database)
 ```
 
+`--khong-build` chỉ dùng ngay sau `npm run quet`. `npm run quet` và `npm run thu-trinh-duyet` (không kèm
+`--khong-build`) tự build với `PUBLIC_SUPABASE_*` để rỗng. Đừng `npx astro build` tay như CI rồi chạy `--khong-build`
+— máy có sẵn hai biến đó (môi trường cloud của Beeftown có, `web/.env` cũng vậy) thì bản build tay là bản đã nối
+database, và `thu-trinh-duyet` đỏ ở form đặt bàn, tuyển dụng, Mua thịt về dù mã không sai.
+
+Báo `Executable doesn't exist at …/chromium_headless_shell-NNNN/…`: Playwright của `web/` mới hơn Chromium có trên máy
+(Dependabot vừa nâng, hoặc máy chỉ có bản của Playwright cài chung). Tải đúng bản: `npx playwright install chromium`
+trong `web/`.
+
 Không chạy `npm run deploy` trong phiên làm việc: Khánh deploy sau khi PR gộp và CI của main xanh.

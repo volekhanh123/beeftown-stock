@@ -34,6 +34,8 @@
 # KHAI-TRUONG.md: việc phải làm để đưa kho vào chạy thật (dọn dữ liệu thử, migration, tài khoản, hai tuần đầu).
 !/KHAI-TRUONG.md
 !/.github/workflows/*.yml
+# Bản đồ CI cho phiên Claude (tự nạp khi phiên đọc file trong .github/; CLAUDE.md gốc trỏ tới).
+!/.github/CLAUDE.md
 # Dependabot: PR nâng thư viện và action mỗi tháng (lịch và cách gom ghi ở đầu file).
 !/.github/dependabot.yml
 !/.github/pull_request_template.md
