@@ -73,7 +73,7 @@ const CAU = {
   khongLuu:     { vi: 'Không lưu được.', en: 'Could not save.' },
   khongTao:     { vi: 'Không thêm được sản phẩm.', en: 'Could not add the product.' },
   khongChot:    { vi: 'Không xác nhận được giá.', en: 'Could not confirm the prices.' },
-  daLuuGu:      { vi: 'Đã lưu gu. Trang Thực đơn hiện theo gu mới ngay.', en: 'Taste tags saved. The Menu page shows them right away.' },
+  daLuuGu:      { vi: 'Đã lưu gu.', en: 'Taste tags saved.' },
   daGoGu:       { vi: 'Đã gỡ hết gu: phần thịt này không còn trong khối "Chọn theo gu".',
                   en: 'All taste tags removed: this cut is no longer in the "Pick by taste" block.' },
   khongLuuGu:   { vi: 'Không lưu được gu.', en: 'Could not save the taste tags.' },

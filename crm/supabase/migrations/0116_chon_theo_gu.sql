@@ -10,9 +10,10 @@
 --   mem_beo   Mềm, béo              dam_vi    Đậm vị, dai giòn
 --   nac_thanh Nạc, thanh            lat_mong  Lát mỏng
 --
--- CÔNG BỐ = GẮN GU. Phần thịt chưa gắn gu nào thì không có trong khối; gỡ hết gu là gỡ khỏi khối. Không phụ thuộc
--- kênh bán web hay trạng thái bán lẻ: khối nói về quầy ở nhà hàng, không phải về đơn mang về. Tên còn chữ tạm
--- (la_van_ban_tam) thì ẩn, như mọi chỗ công khai khác.
+-- CÔNG BỐ = GẮN GU. Phần thịt chưa gắn gu nào thì không có trong khối; gỡ hết gu là gỡ khỏi khối. Phần thịt Tạm ngưng
+-- ở menu bán lẻ cũng không có (quầy không còn bán thì khách đừng đi hỏi), dù còn gu. Không phụ thuộc kênh bán web:
+-- khối nói về quầy ở nhà hàng, không phải về đơn mang về. Tên còn chữ tạm (la_van_ban_tam) thì ẩn, như mọi chỗ công
+-- khai khác.
 --
 -- Không câu delete. Không thêm giá trị enum. Chạy migration trước, deploy web sau (web cũ không gọi hàm mới; web mới
 -- gọi hàm chưa có thì khối ẩn — lib/chon-theo-gu.ts không bao giờ ném lỗi ra trang).
@@ -108,6 +109,7 @@ as $$
          x.gu
   from ban_le_san_pham x
   where x.loai = 'thit'
+    and x.trang_thai = 'dang_ban'
     and cardinality(x.gu) > 0
     and not la_van_ban_tam(x.ten_vi)
   order by x.thu_tu, x.ten_vi, x.id

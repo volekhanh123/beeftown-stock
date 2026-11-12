@@ -13,7 +13,7 @@
  *      đều bị từ chối và gu không đổi. Anon đọc được bo_tai_quay_theo_gu.
  *   2. Dữ liệu: khóa lạ, null, gu cho kim chi bị từ chối cả lượt (không ghi nửa vời); thứ tự cố định, bỏ trùng —
  *      gửi hai lần cùng lựa chọn là cùng một kết quả; mảng rỗng là gỡ khỏi khối. Ràng buộc bảng chặn cả ghi thẳng.
- *   3. Hàm công khai: chỉ phần thịt đã gắn gu, tên còn chữ tạm thì không, không cột giá / gói / tồn; bản dịch en /
+ *   3. Hàm công khai: chỉ phần thịt Đang bán đã gắn gu, tên còn chữ tạm thì không, không cột giá / gói / tồn; bản dịch en /
  *      ko chỉ khi còn khớp câu tiếng Việt; theo thu_tu.
  *   4. Web công khai (lib/chon-theo-gu.ts): lớp chặn thứ hai; không bao giờ ném lỗi — lỗi, ném, hết giờ, chưa nối
  *      database đều ra danh sách rỗng (khối ẩn).
@@ -62,6 +62,9 @@ const skirt = await tao('outside-skirt', 'Outside Skirt');
 const topBlade = await tao('top-blade', 'Top Blade');
 const kimChi = await tao('kim-chi-cai-thao', 'Kim chi cải thảo', 'kim_chi', 'theo_hop');
 const tam = await tao('phan-tam', '[Tên tạm] Phần mới');
+// Đang bán (khối chỉ có phần thịt Đang bán). Ghi thẳng: luồng bán lẻ đầy đủ (mặt hàng kho, gói, giá) không phải việc
+// của file này — test-ban-le.mjs gác nó.
+await db.query(`update ban_le_san_pham set trang_thai = 'dang_ban' where ma in ('ribeye', 'outside-skirt', 'top-blade', 'phan-tam')`);
 
 // ===========================================================================
 await nhom('1 · QUYỀN: CHỈ CHỦ VÀ QUẢN LÝ ĐANG LÀM GẮN ĐƯỢC GU; ANON ĐỌC KHỐI', async () => {
@@ -125,6 +128,9 @@ await nhom('3 · HÀM CÔNG KHAI: CHỈ PHẦN THỊT ĐÃ GẮN GU, KHÔNG GIÁ
   ok('Đúng sáu cột: san_pham_ma, ten, ten_vi, mo_ta, cach_dung, gu — không giá, không gói, không tồn',
      JSON.stringify(Object.keys(dong[0] ?? {}).sort()) === JSON.stringify(['cach_dung', 'gu', 'mo_ta', 'san_pham_ma', 'ten', 'ten_vi']), Object.keys(dong[0] ?? {}).join(', '));
 
+  await db.query(`update ban_le_san_pham set trang_thai = 'tam_ngung' where id = $1`, [topBlade]);
+  ok('Phần thịt Tạm ngưng ở menu bán lẻ → không có trong khối dù còn gu', !(await congKhai('vi')).some(d => d.san_pham_ma === 'top-blade'));
+  await db.query(`update ban_le_san_pham set trang_thai = 'dang_ban' where id = $1`, [topBlade]);
   await luu(UID.chu, topBlade, []);
   ok('Gỡ hết gu → phần thịt ra khỏi khối', !(await congKhai('vi')).some(d => d.san_pham_ma === 'top-blade'));
   await luu(UID.chu, topBlade, ['nac_thanh']);
