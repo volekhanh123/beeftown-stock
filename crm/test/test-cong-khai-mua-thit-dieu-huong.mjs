@@ -170,14 +170,15 @@ await nhom('4 · ĐƯỜNG DẪN, VỎ TRANG', async () => {
   for (const [nn, f, duong, tieuDe, len] of VO) {
     const s = doc(f);
     const q = `'${nn}'`;
-    if (!s.includes(`await Promise.all([docNoiDung(${q}), docMuaThitVe(${q})])`)
+    // 0115: đọc song song cả VNPay của trang (vnpayChoTrang — đủ bí mật thì đặt xong là trả trước qua VNPay).
+    if (!s.includes(`await Promise.all([docNoiDung(${q}), docMuaThitVe(${q}), vnpayChoTrang(Astro, ${q})])`)
       || (s.match(/ngonNgu="([a-z]+)"/g) ?? []).some(x => x !== `ngonNgu="${nn}"`)
       || (s.match(new RegExp(`duongDan="${duong.replace(/\//g, '\\/')}"`, 'g')) ?? []).length !== 2
       || /duongDan=\{/.test(s)) loiSongSong.push(f);
     if (!/const trangThai = trangThaiMuaThit\(muaThitVeMo\(noiDung\), menu\);/.test(s)
       || !s.includes(`moTa={moTaTrangMuaThit(${q}, trangThai === 'mo' || trangThai === 'het_quay')}`)
       || !s.includes(`const ketQua = ketQuaDatHang(Astro, ${q});`)
-      || !/<TrangMuaThitVe ngonNgu="[a-z]+" noiDung=\{noiDung\} menu=\{menu\} trangThai=\{trangThai\} ketQua=\{ketQua\}\s+thamSo=\{\[\.\.\.Astro\.url\.searchParams\]\} duongDan="[^"]+" \/>/.test(s)) loiTrangThai.push(f);
+      || !/<TrangMuaThitVe ngonNgu="[a-z]+" noiDung=\{noiDung\} menu=\{menu\} trangThai=\{trangThai\} ketQua=\{ketQua\}\s+thamSo=\{\[\.\.\.Astro\.url\.searchParams\]\} duongDan="[^"]+"\s+traVnpay=\{vnpay !== null\} \/>/.test(s)) loiTrangThai.push(f);
     // POST đặt hàng xử lý TRƯỚC khi đọc nội dung, menu: chuyển hướng 303 về chính trang (lib/xu-ly-form.ts).
     const iPost = s.indexOf(`const chuyenHuong = await xuLyDatHang(Astro, '${duong}', ${q});`);
     if (iPost < 0 || !/if \(chuyenHuong\) return chuyenHuong;/.test(s) || iPost > s.indexOf('await Promise.all')) loiPost.push(f);
@@ -185,7 +186,7 @@ await nhom('4 · ĐƯỜNG DẪN, VỎ TRANG', async () => {
     const mongNap = [`import Trang from '${len}layouts/Trang.astro';`, `import TrangMuaThitVe from '${len}components/TrangMuaThitVe.astro';`,
       `import { docNoiDung } from '${len}lib/noi-dung';`, `import { docMuaThitVe, trangThaiMuaThit } from '${len}lib/mua-thit-ve';`,
       `import { muaThitVeMo } from '${len}lib/dich-dat-hang';`, `import { moTaTrangMuaThit } from '${len}lib/trang-cong-khai';`,
-      `import { xuLyDatHang, ketQuaDatHang } from '${len}lib/xu-ly-form';`];
+      `import { xuLyDatHang, ketQuaDatHang, vnpayChoTrang } from '${len}lib/xu-ly-form';`];
     if (mongNap.some(d => !s.includes(d))) loiNap.push(`${f}: thiếu ${mongNap.filter(d => !s.includes(d)).join(' ')}`);
   }
   ok('Ba file vỏ đọc docNoiDung và docMuaThitVe song song (Promise.all), đúng thứ tiếng, duongDan là chuỗi cố định',
@@ -240,11 +241,14 @@ await nhom('5 · MÔ TẢ TRANG', async () => {
 await nhom('6 · QUYỀN RIÊNG TƯ, XÓA DỮ LIỆU', async () => {
   const RIENG_TU = [
     ['vi', 'web/src/pages/quyen-rieng-tu.astro', 'Khi bạn đặt mua thịt về', 'Dùng để làm gì',
-      [/họ tên,\s*số điện thoại,\s*địa chỉ giao,\s*ghi chú/u, /chủ nhà hàng,\s*quản lý và thu ngân/u, /không thu tiền/u, /IP[^.]*chặn/u, /15 phút/u]],
+      [/họ tên,\s*số điện thoại,\s*địa chỉ giao,\s*ghi chú/u, /chủ nhà hàng,\s*quản lý và thu ngân/u,
+       /trên\s*trang của VNPay/u, /không\s*thấy và không lưu số thẻ/u, /IP[^.]*chặn/u, /15 phút/u]],
     ['en', 'web/src/pages/en/privacy.astro', 'When you order beef to take home', 'What we use it for',
-      [/name, phone number, delivery address, note/u, /owner, managers and\s*cashiers/u, /does not take\s*payment/u, /IP address[^.]*block/u, /15 minutes/u]],
+      [/name, phone number, delivery address, note/u, /owner, managers and\s*cashiers/u,
+       /on the VNPay\s*page/u, /never sees or stores a card\s*number/u, /IP address[^.]*block/u, /15 minutes/u]],
     ['ko', 'web/src/pages/ko/privacy.astro', '소고기 포장 주문을 하실 때', '이용 목적',
-      [/이름,\s*전화번호,\s*배달 주소,\s*메모/u, /대표,\s*매니저,\s*캐셔/u, /결제하지 않으며/u, /IP 주소[^.]*막는/u, /15분/u]],
+      [/이름,\s*전화번호,\s*배달 주소,\s*메모/u, /대표,\s*매니저,\s*캐셔/u,
+       /VNPay\s*페이지에서/u, /카드 번호,\s*카드 소유자 이름,\s*비밀번호를 보거나 저장하지 않아요/u, /IP 주소[^.]*막는/u, /15분/u]],
   ];
   const loiMuc = [], loiCau = [];
   for (const [nn, f, tieuDe, sau, y] of RIENG_TU) {
@@ -263,7 +267,7 @@ await nhom('6 · QUYỀN RIÊNG TƯ, XÓA DỮ LIỆU', async () => {
     if (cam.length) loiCau.push(`${nn}: chữ cấm ${cam.map(c => c.tim_thay).join(', ')}`);
   }
   ok('Ba trang quyền riêng tư có mục đặt mua thịt về ngay sau mục Messenger', loiMuc.length === 0, loiMuc.join(' | '));
-  ok('Mục đó nói đủ: lưu họ tên, số điện thoại, địa chỉ, ghi chú; ai đọc; không thu tiền; IP chỉ để chặn; trình duyệt giữ 15 phút; không còn "đơn qua Zalo"',
+  ok('Mục đó nói đủ: lưu họ tên, số điện thoại, địa chỉ, ghi chú; ai đọc; trả qua VNPay thì nhập thẻ trên trang VNPay, Beeftown không lưu số thẻ (0115); IP chỉ để chặn; trình duyệt giữ 15 phút; không còn "đơn qua Zalo"',
      loiCau.length === 0, loiCau.join(' | '));
 
   const XOA = [

@@ -241,6 +241,9 @@ export const CAU_EN: Readonly<Record<string, string>> = {
   'Không có quyền xử lý đơn mua thịt': 'You are not allowed to handle take-home orders',
   'Bước chuyển trạng thái đơn không hợp lệ': 'That order status change is not allowed',
   'Không thấy đơn này': 'This order could not be found',
+  // 0115 · trả tiền VNPay của đơn mua thịt về — hai hàm máy may_vnpay (câu chỉ vào nhật ký Worker)
+  'Không có quyền ghi kết quả thanh toán VNPay': 'You are not allowed to record VNPay payment results',
+  'Mã phản hồi VNPay không hợp lệ': 'The VNPay response code is not valid',
   'Không sinh được mã đơn, vui lòng thử lại': 'Could not create an order code, please try again',
   // 0113 — tao_don_mua_thit (khách đọc bản en / ko ở LOI_DATABASE của lib/chu.ts; đây là bản cho màn nội bộ)
   'Mua thịt về qua website đang tạm đóng': 'Take-home orders on the website are paused',
@@ -264,6 +267,13 @@ export const CAU_EN: Readonly<Record<string, string>> = {
     'Too many orders were sent from this network, please try again later or call us',
   'Hệ thống đang nhận quá nhiều đơn, vui lòng thử lại sau hoặc gọi quán':
     'The system is receiving too many orders, please try again later or call us',
+  // 0115 — mở lần trả VNPay cho đơn mua thịt (mua_thit_mo_vnpay; khách đọc bản ở chu.ts, đây cho nhật ký / nội bộ)
+  'Thiếu mã đơn — tải lại trang rồi đặt lại.': 'The order code is missing — reload the page and order again.',
+  'Không thấy đơn để trả tiền, vui lòng gọi quán': 'The order to pay for was not found, please call us',
+  'Đơn này đã hủy, không trả tiền được nữa': 'This order has been cancelled and can no longer be paid',
+  'Đơn này đã giao xong, không cần trả tiền qua website nữa': 'This order has already been delivered, no need to pay on the website',
+  'Đơn này đã mở trang trả tiền quá nhiều lần, vui lòng gọi quán':
+    'The payment page has been opened too many times for this order, please call us',
 
   // 0102 — cài đặt bán lẻ: cỡ gói thịt bò dùng chung (ban_le_luu_co_goi). Câu có % ở MAU_EN.
   'Danh sách cỡ gói không hợp lệ — tải lại trang.': 'Invalid pack size list — reload the page.',
@@ -305,10 +315,10 @@ export const MO_TA_KHOA_EN: Readonly<Record<string, string>> = {
   hien_tuyen_dung:      'Show the careers section.',
   // Mua thịt về (0101). Tám khóa văn bản kết bằng cùng một câu dặn không ghi số tiền (KHONG_TIEN của
   // crm/test/test-mua-thit-ve.mjs).
-  hien_mua_thit_ve:     'Opens the Take home page and its menu item: customers choose packs, enter their name, phone number and delivery address and place the order on the website; the order lands in the Take-home orders inbox in /noi-bo, and staff call the customer to confirm the total, the delivery fee and the delivery time. Delivery only, the website does not take payment. The page ONLY opens when this switch is on AND at least one product is On sale, on the website channel, with prices confirmed by the owner in Retail. The page shows the confirmed pack prices; if a price per kg changes in Warehouse, the page keeps the confirmed price until the owner confirms again. Turn it on only when someone watches the inbox and calls customers during opening hours, who delivers is settled, and the lawyer has advised on labelling fixed-price packs by weight.',
+  hien_mua_thit_ve:     'Opens the Take home page and its menu item: customers choose packs, enter their name, phone number and delivery address and place the order on the website; the order lands in the Take-home orders inbox in /noi-bo. Delivery only. When the website has VNPay set up, customers pay in advance through VNPay for exactly the pack total (pack prices include delivery), the inbox shows Paid and staff call the customer to agree the delivery time; without VNPay the website does not take payment and staff call the customer to confirm the total, the delivery fee and the delivery time. The page ONLY opens when this switch is on AND at least one product is On sale, on the website channel, with prices confirmed by the owner in Retail. The page shows the confirmed pack prices; if a price per kg changes in Warehouse, the page keeps the confirmed price until the owner confirms again. Turn it on only when someone watches the inbox and calls customers during opening hours, who delivers is settled, and the lawyer has advised on labelling fixed-price packs by weight.',
   mua_thit_hien_tam_het: 'The Take home page says "Sold out at the counter for now" from counter stock in the warehouse. ONLY turn it on once the branch deducts stock from iPOS and the counter records goods in and out on time — if the warehouse shows too little, customers see "sold out" while the counter still has stock.',
   mua_thit_gio_nhan:    'Delivery hours for take-home orders, as customers read them. Until published, the page says we agree the delivery time when we call to confirm the order. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
-  mua_thit_giao_hang:   'Delivery area and how the delivery fee works for take-home orders, as customers read them (the page is delivery only). Until published, the page says we give the delivery fee when we call to confirm the order. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
+  mua_thit_giao_hang:   'Delivery area and how the delivery fee works for take-home orders, as customers read them (the page is delivery only). When the website has VNPay set up, pack prices include delivery: write only the delivery area. Until published, the page says delivery is included in the pack price (VNPay set up), or that we give the delivery fee when we call to confirm the order (not set up). Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
   mua_thit_thue:        'One sentence about VAT for prices on the Take home page. Until published, the page says nothing about tax. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
   mua_thit_bao_quan_mat: 'How to store chilled beef at home: temperature and how many days to use it. Until published, chilled cuts have no Storage section. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',
   mua_thit_bao_quan_dong_lanh: 'How to store and thaw frozen beef at home. Until published, frozen cuts have no Storage section. Do not write amounts of money — we give delivery fees and minimum orders when we confirm the order.',

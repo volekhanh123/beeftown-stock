@@ -3,7 +3,8 @@
  * ==================================================================================
  *
  * Database (suc_khoe_he_thong, migration 0055; suc_khoe_sao_luu, 0058; 0060 thêm ô bao_dong; 0061 thêm ô can — đèn
- * Beeftown Cân của mỗi chi nhánh; 0074 thêm ô don_dep — đèn Dọn dữ liệu cá nhân) chỉ trả SỐ LIỆU: số đếm và mốc giờ. File này
+ * Beeftown Cân của mỗi chi nhánh; 0074 thêm ô don_dep — đèn Dọn dữ liệu cá nhân; 0115 thêm ô vnpay — đèn Thanh toán
+ * VNPay) chỉ trả SỐ LIỆU: số đếm và mốc giờ. File này
  * quyết định MÀU và CÂU hai thứ tiếng; crm/test/test-suc-khoe-web.mjs thử từng ngưỡng bằng dữ
  * liệu giả, không cần database.
  *
@@ -45,6 +46,8 @@ import { gioVnTuMs, homNayVn, isoGioVn } from './gio-vn.ts';
 // -----------------------------------------------------------------------------
 /** Cron chạy 5 phút một lần: 30 phút không có lượt nào = đã lỡ 6 lượt, không còn là chậm nữa. */
 export const PHUT_NHIP_TIM = 30;
+/** VNPay (0115): khách về với mã 00 chừng này phút mà VNPay chưa báo về → IPN hỏng. PHẢI bằng interval của ve_chua_ipn trong 0115. */
+export const PHUT_CHO_IPN_VNPAY = 10;
 /** Bot Messenger: lỗi của tin gần nhất trong khoảng này mới coi là "đang hỏng". */
 export const PHUT_LOI_MOI = 60;
 /** Bot Messenger bật mà chừng này giờ không nhận được tin nào → xem lại webhook. */
@@ -149,6 +152,11 @@ export interface SucKhoeTho {
   bao_dong?: { lan_chay_cuoi: string | null; kenh: string; co_loi: boolean; lan_gui_cuoi: string | null };
   /** 0074. Thiếu ô (database chưa chạy 0074) → đèn vàng nói rõ, không bao giờ xanh. */
   don_dep?: DonDepTho;
+  /**
+   * 0115 · trả trước VNPay của đơn mua thịt về. ve_chua_ipn: khách về trang kết quả với mã 00 quá PHUT_CHO_IPN_VNPAY phút
+   * (trong 24 giờ) mà VNPay chưa báo về — IPN hỏng. Thiếu ô (database chưa chạy 0115) → "Chưa dùng", không bao giờ xanh.
+   */
+  vnpay?: { lan_mo_30_ngay: number; ipn_cuoi: string | null; ve_chua_ipn: number };
   /** Gắn thêm từ suc_khoe_sao_luu() (docSucKhoeVaSaoLuu). undefined: database chưa chạy 0058; null: không đọc được. */
   sao_luu?: SaoLuuTho | null;
   chi_nhanh: ChiNhanhTho[];
@@ -243,7 +251,7 @@ export async function docSucKhoeVaSaoLuu(client: Pick<SupabaseClient, 'rpc'>): P
 // -----------------------------------------------------------------------------
 export type MauDen = 'xanh' | 'vang' | 'do' | 'tat';
 export type MaDen = 'dat_ban' | 'ipos' | 'so_kho' | 'can' | 'tin_zalo' | 'tuyen_dung' | 'zalo' | 'messenger' | 'dich' | 'sao_luu' | 'bao_dong'
-  | 'don_dep';
+  | 'don_dep' | 'vnpay';
 
 export interface Den {
   ma: MaDen;
@@ -286,6 +294,7 @@ const TEN: Record<MaDen, Cau> = {
   sao_luu:    { vi: 'Sao lưu dữ liệu', en: 'Data backup' },
   bao_dong:   { vi: 'Báo động', en: 'Alerts' },
   don_dep:    { vi: 'Dọn dữ liệu cá nhân', en: 'Personal data clean-up' },
+  vnpay:      { vi: 'Thanh toán VNPay', en: 'VNPay payments' },
 };
 
 export const TEN_THUONG_HIEU: Cau = { vi: 'Toàn thương hiệu', en: 'Whole brand' };
@@ -616,6 +625,24 @@ function denMessenger(m: Partial<SucKhoeTho['messenger']>, bayGio: number, nn: N
         en: `The bot replies normally — last message ${tuTruoc(bayGio, nhan).en}.` }, di, nn);
 }
 
+// --- Thanh toán VNPay của đơn mua thịt về (cả thương hiệu — một Terminal, 0115) -------
+function denVnpay(v: Partial<NonNullable<SucKhoeTho['vnpay']>> | undefined, bayGio: number, nn: NgonNguNB): Den {
+  const di = '/noi-bo/don-mua-thit';
+  if (!v) return denTat('vnpay', { vi: 'Chưa có số liệu — database chưa chạy migration 0115.', en: 'No data yet — the database has not run migration 0115.' }, di, nn);
+  const mo = so(v.lan_mo_30_ngay), ipn = ms(v.ipn_cuoi), ve = so(v.ve_chua_ipn);
+  if (mo === 0 && ipn === null && ve === 0) {
+    return denTat('vnpay', { vi: 'Chưa có khách mở trang trả tiền VNPay trong 30 ngày qua.', en: 'No customer opened the VNPay payment page in the last 30 days.' }, di, nn);
+  }
+  const vd: VanDe[] = [];
+  if (ve > 0) vd.push({ muc: 'do', cau: {
+    vi: `${ve} lần khách trả xong trên VNPay mà quá ${PHUT_CHO_IPN_VNPAY} phút VNPay chưa báo về website — hộp thư chưa ghi "Đã trả". Đối chiếu trên trang quản lý của VNPay rồi báo người quản trị kỹ thuật (địa chỉ IPN, dải IP, tài khoản máy may_vnpay).`,
+    en: `${ve} time${s(ve)} a customer finished paying on VNPay but VNPay has not notified the website for over ${PHUT_CHO_IPN_VNPAY} min — the inbox does not show "Paid". Check the VNPay merchant portal, then tell the technical admin (IPN address, IP ranges, may_vnpay machine account).` } });
+  return denTu('vnpay', vd, ipn === null
+    ? { vi: 'Khách đã mở trang trả tiền; VNPay chưa báo kết quả nào về.', en: 'Customers opened the payment page; VNPay has not reported any result yet.' }
+    : { vi: `VNPay báo kết quả về bình thường — lần gần nhất ${tuTruoc(bayGio, ipn).vi}.`,
+        en: `VNPay reports results normally — last one ${tuTruoc(bayGio, ipn).en}.` }, di, nn);
+}
+
 // --- Máy dịch (cả thương hiệu) ------------------------------------------------------
 function denDich(d: Partial<SucKhoeTho['dich']>, nn: NgonNguNB): Den {
   const loi = so(d.loi), cho = so(d.cho);
@@ -811,7 +838,7 @@ export function bangSucKhoe(kq: KetQuaDoc, nn: NgonNguNB, laChu = false): BangSu
 }
 
 /**
- * Số liệu thô → các khối đèn. Khối đầu là "Toàn thương hiệu" (sao lưu, Zalo, Messenger, máy dịch, báo
+ * Số liệu thô → các khối đèn. Khối đầu là "Toàn thương hiệu" (sao lưu, Zalo, Messenger, VNPay, máy dịch, báo
  * động, dọn dữ liệu cá nhân — cấu hình chung), sau đó mỗi chi nhánh một khối theo thứ tự database trả (theo tên).
  * laChu: chủ sở hữu được mở màn cài đặt Zalo; quản lý chỉ mở màn Zalo chung.
  */
@@ -825,6 +852,7 @@ export function danhGiaSucKhoe(tho: SucKhoeTho, nn: NgonNguNB, laChu = false): S
         denSaoLuu(tho.sao_luu, bayGio, nn),
         denZalo(tho.zalo ?? {}, laChu, bayGio, nn),
         denMessenger(tho.messenger ?? {}, bayGio, nn),
+        denVnpay(tho.vnpay, bayGio, nn),
         denDich(tho.dich ?? {}, nn),
         denBaoDong(tho.bao_dong ?? {}, bayGio, nn),
         denDonDep(tho.don_dep, laChu, nn),

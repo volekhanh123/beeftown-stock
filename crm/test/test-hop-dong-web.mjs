@@ -227,6 +227,11 @@ const CHAY_DA_DANG_NHAP = [
   // signInWithPassword, sau đó là authenticated) rồi mới gọi bốn RPC bao_dong_* của máy. Không bao giờ
   // chạy vai anon: thiếu tài khoản máy thì không gọi database nào.
   'web/src/lib/bao-dong.ts',
+  // VNPay của Mua thịt về (0115): IPN /hook/vnpay-ipn và trang kết quả công khai, nhưng MỌI lời gọi trong file này đi
+  // bằng tài khoản máy may_vnpay đã đăng nhập (client anon riêng + signInWithPassword, sau đó là authenticated) — chỉ
+  // sau khi chữ ký HMAC-SHA512 của VNPay khớp; chỉ hai RPC máy vnpay_ghi_ipn, vnpay_ghi_ve. Mở lần trả
+  // (mua_thit_mo_vnpay) là anon và nằm ở lib/dat-hang-mua-thit.ts — phép thử mục 5 vẫn kiểm file đó.
+  'web/src/lib/vnpay-hook.ts',
 ];
 
 function laAnon(g) {
@@ -390,6 +395,8 @@ await nhom('5 · WEB KHÔNG GỌI HÀM NGOÀI DANH SÁCH CHO PHÉP', async () =>
     'mua_thit_ve_cong_khai',
     // 0113: trang Mua thịt về ghi đơn giao tận nơi (lib/dat-hang-mua-thit.ts) — chỉ trả mã đơn vừa tạo.
     'tao_don_mua_thit',
+    // 0115: mở một lần trả VNPay cho đơn có ma_gui này (lib/dat-hang-mua-thit.ts) — chỉ trả mã đơn, số tiền, mã giao dịch.
+    'mua_thit_mo_vnpay',
   ];
 
   for (const g of goiRpc.filter(laAnon)) {

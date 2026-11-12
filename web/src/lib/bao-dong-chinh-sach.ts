@@ -62,6 +62,9 @@ export const NHOM: Readonly<Record<MaDenBaoDong, NhomDen>> = {
   // Beeftown Cân (0061): chỉ đỏ trong giờ mở cửa của chi nhánh (máy quầy tắt ban đêm là bình thường) — đỏ lúc
   // 22:00–23:00 khi quán còn mở thì báo ngay như mọi đèn hệ thống.
   can: 'he_thong',
+  // Thanh toán VNPay (0115): đỏ khi khách trả xong trên VNPay mà VNPay không báo về website — IPN hỏng, đơn đã trả mà
+  // hộp thư ghi chưa. Máy hỏng, không phải khách bị bỏ quên: báo ngay như mọi đèn hệ thống.
+  vnpay: 'he_thong',
   doc_so_lieu: 'he_thong',
   dat_ban: 'khach',
   tuyen_dung: 'khach',

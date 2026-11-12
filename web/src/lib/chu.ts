@@ -691,6 +691,27 @@ const LOI_DATABASE: ReadonlyArray<readonly [RegExp, Readonly<Record<'en' | 'ko',
     en: 'We are receiving too many orders right now. Please try again later or call us.',
     ko: '지금 주문이 너무 많이 들어오고 있어요. 잠시 후 다시 시도하시거나 매장에 전화해 주세요.',
   }],
+  // mua_thit_mo_vnpay() — 0115: mở trang trả tiền VNPay cho đơn vừa đặt
+  [/^Thiếu mã đơn — tải lại trang/, {
+    en: 'Please reload the page and place your order again.',
+    ko: '페이지를 새로 고친 뒤 다시 주문해 주세요.',
+  }],
+  [/^Không thấy đơn để trả tiền/, {
+    en: 'We could not find the order to pay for. Please call us.',
+    ko: '결제할 주문을 찾지 못했어요. 매장에 전화해 주세요.',
+  }],
+  [/^Đơn này đã hủy, không trả tiền được nữa/, {
+    en: 'This order has been cancelled, so it can no longer be paid.',
+    ko: '취소된 주문이라 더 이상 결제할 수 없어요.',
+  }],
+  [/^Đơn này đã giao xong/, {
+    en: 'This order has already been delivered, so there is no need to pay on the website.',
+    ko: '이미 배달이 끝난 주문이라 웹사이트에서 결제하지 않으셔도 돼요.',
+  }],
+  [/^Đơn này đã mở trang trả tiền quá nhiều lần/, {
+    en: 'The payment page has been opened too many times for this order. Please call us.',
+    ko: '이 주문의 결제 페이지를 너무 여러 번 여셨어요. 매장에 전화해 주세요.',
+  }],
 ];
 
 /**

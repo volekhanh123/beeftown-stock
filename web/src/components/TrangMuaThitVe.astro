@@ -8,6 +8,12 @@
  * MuaThitThe.astro), khách chọn số gói, điền họ tên, số điện thoại, địa chỉ giao, bấm Đặt hàng. Đơn ghi thẳng vào database (tao_don_mua_thit, 0113 — lib/dat-hang-mua-thit.ts, lib/xu-ly-form.ts); quán gọi
  * lại xác nhận tổng tiền, phí giao, giờ giao ở hộp thư /noi-bo/don-mua-thit. Website không thu tiền.
  *
+ * VNPAY (0115, Khánh 12/11/2026 — traVnpay: Worker đã cài đủ bí mật VNPay, lib/xu-ly-form.ts vnpayChoTrang): đặt xong
+ * khách được chuyển thẳng sang trang VNPay để trả đúng tổng tiền gói; giá gói đã gồm phí giao; quán gọi hẹn giờ giao.
+ * Câu "Website không thu tiền", "quán báo phí giao" chỉ còn khi chưa cài. Cổng thử (sandbox) thì trang ghi rõ không
+ * trừ tiền thật. Kết quả trả tiền ở trang riêng (TrangKetQuaVnpay.astro); thẻ "đã nhận đơn" ở đây chỉ hiện khi chưa
+ * mở được trang trả tiền (kèm nút trả lại) hay đơn đã trả rồi.
+ *
  * Trạng thái (ba file vỏ tính bằng trangThaiMuaThit(muaThitVeMo(noiDung), menu)):
  *   · chua_mo  — chưa nối database (CI), công tắc tắt hay chưa gói nào: tiêu đề, một câu, link Thực đơn.
  *   · loi      — trang đang mở mà đọc menu lỗi / hết giờ: "chưa tải được", mời tải lại hay gọi quán.
@@ -35,6 +41,8 @@ import { lienHe } from '../lib/trang-cong-khai';
 import type { LoaiNhom, MenuMuaThit, TrangThaiTrang } from '../lib/mua-thit-ve';
 import { CHU_DON, dinhDangTien, docGio, nhanGoi, rutGonMenu, tinhDon } from '../lib/don-mua-thit';
 import type { KetQuaDatHang } from '../lib/dat-hang-mua-thit';
+import { DUONG_KET_QUA_VNPAY } from '../lib/xu-ly-form';
+import { CONG_VNPAY } from '../lib/vnpay';
 import BieuTuong from './BieuTuong.astro';
 import MuaThitThe from './MuaThitThe.astro';
 
@@ -46,8 +54,11 @@ interface Props {
   ketQua: KetQuaDatHang | null;
   thamSo: [string, string][];
   duongDan: string;
+  /** 0115 · Worker đã cài đủ bí mật VNPay: đặt xong là trả trước qua VNPay, giá gói đã gồm phí giao. */
+  traVnpay?: boolean;
 }
-const { ngonNgu: nn, noiDung: nd, menu, trangThai, ketQua, thamSo, duongDan } = Astro.props;
+const { ngonNgu: nn, noiDung: nd, menu, trangThai, ketQua, thamSo, duongDan, traVnpay = false } = Astro.props;
+const congThu = /sandbox/.test(CONG_VNPAY);
 const lh = lienHe(nd);
 const { gio, boTamHet } = docGio(thamSo, menu.sanPham);
 const don = tinhDon(gio, menu.sanPham, boTamHet);
@@ -84,6 +95,11 @@ const c = dichCau(nn, {
     en: 'Choose your packs, add your address and tap Place order. We call you back to confirm the total, the delivery fee and the time.',
     ko: '팩을 고르고 주소를 적은 뒤 주문하기를 눌러 주세요. 매장에서 전화로 총액, 배달비, 배달 시간을 확인해 드려요.',
   },
+  danVnpay: {
+    vi: 'Chọn gói, điền địa chỉ rồi bấm Đặt hàng và trả tiền qua VNPay. Giá gói đã gồm phí giao; quán gọi lại hẹn giờ giao.',
+    en: 'Choose your packs, add your address, tap Place order and pay with VNPay. Pack prices include delivery; we call you back to agree the delivery time.',
+    ko: '팩을 고르고 주소를 적은 뒤 주문하기를 눌러 VNPay로 결제해 주세요. 팩 가격에 배달비가 포함되어 있고, 매장에서 전화로 배달 시간을 정해 드려요.',
+  },
   coKimChi: { vi: 'Có cả kim chi theo hộp.', en: 'Kimchi by the box, too.', ko: '김치도 통으로 판매해요.' },
   nhomMat: { vi: 'Thịt mát', en: 'Chilled beef', ko: '냉장 소고기' },
   nhomDong: { vi: 'Thịt đông lạnh', en: 'Frozen beef', ko: '냉동 소고기' },
@@ -96,6 +112,7 @@ const c = dichCau(nn, {
   hoTen: { vi: 'Họ tên', en: 'Full name', ko: '이름' },
   sdt: { vi: 'Số điện thoại', en: 'Phone number', ko: '전화번호' },
   sdtPhu: { vi: 'Quán gọi số này để xác nhận đơn.', en: 'We call this number to confirm your order.', ko: '이 번호로 주문 확인 전화를 드려요.' },
+  sdtPhuVnpay: { vi: 'Quán gọi số này để hẹn giờ giao.', en: 'We call this number to agree the delivery time.', ko: '이 번호로 배달 시간을 정하는 전화를 드려요.' },
   diaChi: { vi: 'Địa chỉ giao', en: 'Delivery address', ko: '배달 주소' },
   diaChiPhu: { vi: 'Ghi rõ số nhà, tên đường và khu vực.', en: 'Include the house number, street and area.', ko: '번지, 거리 이름, 지역까지 적어 주세요.' },
   ghiChu: { vi: 'Ghi chú', en: 'Note', ko: '메모' },
@@ -114,13 +131,26 @@ const c = dichCau(nn, {
     en: 'We tell you when we call to confirm. The subtotal does not include it.',
     ko: '주문 확인 전화 때 알려 드려요. 소계에는 포함되지 않아요.',
   },
+  phiGiaoDaGom: { vi: 'Đã gồm trong giá gói.', en: 'Included in the pack price.', ko: '팩 가격에 포함되어 있어요.' },
+  dtKhuVuc: { vi: 'Khu vực giao', en: 'Delivery area', ko: '배달 지역' },
   dtGioGiao: { vi: 'Giờ giao', en: 'Delivery time', ko: '배달 시간' },
+  gioGiaoVnpay: { vi: 'Quán gọi hẹn với bạn sau khi bạn trả tiền.', en: 'We call to agree it with you after you pay.', ko: '결제 후 전화로 함께 정해요.' },
   gioGiaoMacDinh: { vi: 'Quán hẹn với bạn khi gọi xác nhận.', en: 'We agree it with you when we call.', ko: '확인 전화 때 함께 정해요.' },
   dtTraTien: { vi: 'Trả tiền', en: 'Payment', ko: '결제' },
   traTien: {
     vi: 'Khi nhận hàng, hoặc chuyển khoản khi quán gọi xác nhận. Website không thu tiền.',
     en: 'On delivery, or by bank transfer when we call to confirm. The website does not take payment.',
     ko: '받으실 때, 또는 확인 전화 때 계좌이체로 결제해 주세요. 웹사이트에서는 결제하지 않아요.',
+  },
+  traTienVnpay: {
+    vi: 'Trả trước qua VNPay ngay sau khi bấm Đặt hàng: thẻ ATM, thẻ quốc tế, ví điện tử hoặc mã QR ngân hàng.',
+    en: 'Pay in advance with VNPay right after you tap Place order: ATM card, international card, e-wallet or bank QR code.',
+    ko: '주문하기를 누른 뒤 바로 VNPay로 미리 결제해 주세요. ATM 카드, 해외 카드, 전자지갑, 은행 QR 코드를 쓸 수 있어요.',
+  },
+  congThu: {
+    vi: 'Đang thử cổng VNPay: chỉ thẻ thử trả được, không trừ tiền thật.',
+    en: 'VNPay is in test mode: only test cards work and no real money is taken.',
+    ko: 'VNPay 테스트 중이에요. 테스트 카드로만 결제되고 실제 돈은 나가지 않아요.',
   },
   dtThue: { vi: 'Thuế', en: 'Tax', ko: '세금' },
   giaCongBo: {
@@ -134,6 +164,11 @@ const c = dichCau(nn, {
     vi: 'Bấm Đặt hàng là bạn để Beeftown dùng họ tên, số điện thoại, địa chỉ này để gọi xác nhận và giao đơn.',
     en: 'By tapping Place order you let Beeftown use this name, phone number and address to call you and deliver the order.',
     ko: '주문하기를 누르시면 Beeftown이 주문 확인 전화와 배달을 위해 이 이름, 전화번호, 주소를 사용해요.',
+  },
+  dongYVnpay: {
+    vi: 'Bấm Đặt hàng là bạn để Beeftown dùng họ tên, số điện thoại, địa chỉ này để giao đơn, rồi được chuyển sang trang VNPay để trả tiền.',
+    en: 'By tapping Place order you let Beeftown use this name, phone number and address to deliver the order, and you go on to the VNPay page to pay.',
+    ko: '주문하기를 누르시면 Beeftown이 배달을 위해 이 이름, 전화번호, 주소를 사용하고, 결제를 위해 VNPay 페이지로 이동해요.',
   },
   quyenRiengTu: { vi: 'Quyền riêng tư', en: 'Privacy', ko: '개인정보 처리방침' },
   boTamHet: {
@@ -150,6 +185,18 @@ const c = dichCau(nn, {
     ko: '남겨 주신 전화번호로 연락드려 총액, 배달비, 배달 시간을 확인해 드려요. 확인 전화 후에 배달해 드려요.',
   },
   datThem: { vi: 'Đặt thêm đơn khác', en: 'Place another order', ko: '다른 주문하기' },
+  chuaTraDan: {
+    vi: 'Đơn vẫn được giữ. Bạn bấm trả tiền bên dưới, hoặc gọi Beeftown.',
+    en: 'Your order is still held. Tap pay below, or call Beeftown.',
+    ko: '주문은 그대로 있어요. 아래에서 결제하시거나 Beeftown에 전화해 주세요.',
+  },
+  traLai: { vi: 'Trả tiền qua VNPay', en: 'Pay with VNPay', ko: 'VNPay로 결제하기' },
+  daTraH1: { vi: 'Đơn này đã được trả tiền', en: 'This order has been paid', ko: '이 주문은 결제가 끝났어요' },
+  sauDaTra: {
+    vi: 'Quán sẽ gọi số điện thoại bạn để lại để hẹn giờ giao.',
+    en: 'We will call the phone number you gave to agree the delivery time.',
+    ko: '남겨 주신 전화번호로 연락드려 배달 시간을 정해 드려요.',
+  },
   khongChacH1: { vi: 'Chưa rõ đơn đã được ghi nhận', en: 'We are not sure your order was recorded', ko: '주문 접수 여부를 확인하지 못했어요' },
   goiBeeftown: { vi: 'Gọi Beeftown', en: 'Call Beeftown', ko: 'Beeftown에 전화하기' },
   canDoi: { vi: 'Cần đổi đơn? Gọi Beeftown:', en: 'Need to change it? Call Beeftown:', ko: '주문을 바꾸시려면 Beeftown에 전화해 주세요:' },
@@ -181,9 +228,21 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
   <section class="mo-dau-trang be-kem mtv-ket-qua" aria-labelledby="mtv-tieu-de">
     <div class="khung khung-hep" id="da-nhan" data-ket-qua="da-nhan" data-ma={ketQua?.ma} tabindex="-1">
       <p class="hieu">{c.hieu}</p>
-      <h1 id="mtv-tieu-de">{ketQua!.cau}</h1>
+      <h1 id="mtv-tieu-de">{ketQua?.daTra ? c.daTraH1 : ketQua!.cau}</h1>
       {ketQua?.ma && (<p class="mtv-ma-don">{c.maDon}: <strong>{ketQua.ma}</strong></p>)}
-      <p class="dan">{c.sauDaNhan}</p>
+      {ketQua?.daTra ? (<p class="dan">{c.sauDaTra}</p>)
+        : ketQua?.choTra ? (
+          <>
+            <p class="mtv-loi" role="alert"><strong>{ketQua.loiTra}</strong></p>
+            <p class="dan">{c.chuaTraDan}</p>
+            {ketQua.ma && (
+              <form method="post" action={DUONG_KET_QUA_VNPAY[nn]} class="hang-nut">
+                <input type="hidden" name="ma_don" value={ketQua.ma} />
+                <button class="nut nut-chinh" type="submit">{c.traLai}</button>
+              </form>
+            )}
+          </>
+        ) : (<p class="dan">{c.sauDaNhan}</p>)}
       {lh.goi && (<p>{c.canDoi} <a href={lh.goi}>{lh.hotline}</a></p>)}
       <p><a class="lien-ket" href={duongDan}>{c.datThem}<BieuTuong ten="mui-ten" /></a></p>
     </div>
@@ -236,7 +295,7 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
       <div class="khung">
         <p class="hieu">{c.hieu}</p>
         <h1 id="mtv-tieu-de">{c.h1}</h1>
-        <p class="dan">{coKimChi ? `${c.dan} ${c.coKimChi}` : c.dan}</p>
+        <p class="dan">{coKimChi ? `${traVnpay ? c.danVnpay : c.dan} ${c.coKimChi}` : traVnpay ? c.danVnpay : c.dan}</p>
         {trangThai === 'het_quay' && (<p class="mtv-loi"><strong>{c.hetQuay}</strong></p>)}
       </div>
     </section>
@@ -272,7 +331,7 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
               </div>
               <div class="o">
                 <label for="mtv-sdt">{c.sdt} <em>({c.batBuoc})</em></label>
-                <small id="mtv-sdt-phu">{c.sdtPhu}</small>
+                <small id="mtv-sdt-phu">{traVnpay ? c.sdtPhuVnpay : c.sdtPhu}</small>
                 <input type="tel" id="mtv-sdt" name="sdt" required maxlength="20" inputmode="tel" autocomplete="tel"
                        aria-describedby="mtv-sdt-phu" />
               </div>
@@ -299,9 +358,20 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
               <p class="mtv-dem" data-mtv-dem hidden={gioRong}>{dem}</p>
               <p class="mtv-tam-tinh" aria-live="polite" aria-atomic="true" data-mtv-tam-tinh><span class="an-chu" data-mtv-vua-doi></span>{CHU_DON.tamTinh[nn]}: <span data-tien>{dinhDangTien(don.tamTinh)}</span></p>
               <dl class="mtv-dieu-kien">
-                <dt>{c.dtPhiGiao}</dt><dd>{giaoHang ?? c.phiGiaoMacDinh}</dd>
-                <dt>{c.dtGioGiao}</dt><dd>{gioGiao ?? c.gioGiaoMacDinh}</dd>
-                <dt>{c.dtTraTien}</dt><dd>{c.traTien}</dd>
+                {traVnpay ? (
+                  <>
+                    <dt>{c.dtPhiGiao}</dt><dd>{c.phiGiaoDaGom}</dd>
+                    {giaoHang && (<><dt>{c.dtKhuVuc}</dt><dd>{giaoHang}</dd></>)}
+                    <dt>{c.dtGioGiao}</dt><dd>{gioGiao ?? c.gioGiaoVnpay}</dd>
+                    <dt>{c.dtTraTien}</dt><dd>{c.traTienVnpay}</dd>
+                  </>
+                ) : (
+                  <>
+                    <dt>{c.dtPhiGiao}</dt><dd>{giaoHang ?? c.phiGiaoMacDinh}</dd>
+                    <dt>{c.dtGioGiao}</dt><dd>{gioGiao ?? c.gioGiaoMacDinh}</dd>
+                    <dt>{c.dtTraTien}</dt><dd>{c.traTien}</dd>
+                  </>
+                )}
                 {thue && (<><dt>{c.dtThue}</dt><dd>{thue}</dd></>)}
               </dl>
               <p class="mtv-ghi">{c.giaCongBo}</p>
@@ -309,7 +379,8 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
               <div class="hang-nut">
                 <button class="nut nut-chinh" type="submit" data-mtv-nut-dat>{c.datHang}</button>
               </div>
-              <p class="mtv-ghi">{c.dongY} <a href={duongQuyenRiengTu}>{c.quyenRiengTu}</a>.</p>
+              {traVnpay && congThu && (<p class="mtv-ghi" data-cong-thu><strong>{c.congThu}</strong></p>)}
+              <p class="mtv-ghi">{traVnpay ? c.dongYVnpay : c.dongY} <a href={duongQuyenRiengTu}>{c.quyenRiengTu}</a>.</p>
             </aside>
           </div>
         </section>

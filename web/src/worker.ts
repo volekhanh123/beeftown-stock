@@ -10,6 +10,8 @@
  *     của bot Messenger đặt bàn (GET xác minh, POST sự kiện có chữ ký). Cũng
  *     chặn trước Astro: Meta không gửi Origin, hook không dùng cookie. Truyền
  *     ctx để hook trả 200 ngay và xử lý tin trong ctx.waitUntil.
+ *   · /hook/vnpay-ipn → xuLyIpnVnpay (lib/vnpay-hook.ts) — VNPay báo kết quả trả tiền của đơn Mua thịt về (0115).
+ *     Chặn trước Astro như hai hook trên: không cookie, không phiên người; truyền env để đọc bí mật VNPAY_*.
  *   · mọi đường dẫn khác: đúng handler mặc định của @astrojs/cloudflare.
  * `scheduled`: Cron Trigger khai ở wrangler.toml `[triggers] crons` — mỗi 5 phút
  * chạy `dongBoTatCa` (lib/kho/ipos-dong-bo.ts): kéo bù hóa đơn iPOS vừa cập nhật +
@@ -35,6 +37,7 @@ import { xuLyHookIpos, khoaTuDuong, DUONG_HOOK } from './lib/kho/ipos-hook.ts';
 import { guiZaloTatCa } from './lib/zalo-gui.ts';
 import { xuLyHookMessenger, DUONG_MESSENGER } from './lib/messenger-hook.ts';
 import { baoDongTatCa, CRON_BAO_DONG } from './lib/bao-dong.ts';
+import { xuLyIpnVnpay, DUONG_IPN_VNPAY } from './lib/vnpay-hook.ts';
 
 interface NguCanh {
   waitUntil(p: Promise<unknown>): void;
@@ -50,6 +53,9 @@ export default {
     }
     if (duong === DUONG_MESSENGER || duong === DUONG_MESSENGER + '/') {
       return xuLyHookMessenger(request, { env, ctx });
+    }
+    if (duong === DUONG_IPN_VNPAY || duong === DUONG_IPN_VNPAY + '/') {
+      return xuLyIpnVnpay(request, { env });
     }
     // Kiểu của handle là Request / Env / ExecutionContext của workerd — dự án không cài kiểu đó.
     return handle(request as never, env as never, ctx as never);

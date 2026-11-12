@@ -2,7 +2,7 @@
  * BIẾN MÔI TRƯỜNG VÀ BÍ MẬT — dùng chung cho các việc chạy nền và webhook
  * =======================================================================
  *
- * Bốn việc (gửi tin Zalo, đồng bộ iPOS, bot Messenger, báo động) đọc bí mật theo cùng một thứ tự,
+ * Năm việc (gửi tin Zalo, đồng bộ iPOS, bot Messenger, báo động, VNPay của Mua thịt về) đọc bí mật theo cùng một thứ tự,
  * trước đây mỗi file chép riêng một bản giống hệt:
  *
  *   1. `env` người gọi truyền vào (cron của Worker, test);

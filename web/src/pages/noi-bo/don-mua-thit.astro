@@ -10,6 +10,10 @@
  * kín. Chủ, quản lý, thu ngân đang làm; theo chi nhánh của mình. Database kiểm vai và bước chuyển — CHUYEN_DUOC ở
  * đây chỉ để dựng nút và chặn sớm tham số tự chế (crm/test/test-noi-bo-don-mua-thit.mjs so hai bên).
  *
+ * Trả trước qua VNPay (0115): dòng "Trả tiền" nói đúng điều database biết — đã trả bao nhiêu, lúc nào, mã giao dịch VNPay;
+ * trả hai lần thì ghi số phải hoàn; khách về trang kết quả với mã 00 mà VNPay chưa báo về thì nói xem trên trang quản lý
+ * của VNPay trước khi giao. Chữ và dấu, không màu (skill thiết kế).
+ *
  * Bấm nút xong thì chuyển hướng 303 về chính trang này (lib/gui-noi-bo.ts) — F5 không gửi lại lệnh cũ. Bấm đúp:
  * database trả "da_o_san" → báo "đơn đã ở …", không báo "người khác đã xử lý".
  */
@@ -77,6 +81,20 @@ const t = dichNB(nn, {
   xuLy:     { vi: 'Người xử lý', en: 'Handled by' },
   ma:       { vi: 'Mã đơn', en: 'Order code' },
   dongLanh: { vi: 'đông lạnh', en: 'frozen' },
+  // 0115 · trả trước qua VNPay
+  dan4:     { vi: ' Đơn ghi "Đã trả qua VNPay" là khách đã trả trước đúng tổng tiền gói (giá gói đã gồm phí giao): chỉ cần gọi hẹn giờ giao.',
+              en: ' An order marked "Paid with VNPay" has been paid in advance for the exact pack total (pack prices include delivery): just call to agree the delivery time.' },
+  traTien:  { vi: 'Trả tiền', en: 'Payment' },
+  daTra:    { vi: (tien: string, luc: string) => `✓ Đã trả qua VNPay ${tien}${luc ? ` lúc ${luc}` : ''}`,
+              en: (tien: string, luc: string) => `✓ Paid with VNPay ${tien}${luc ? ` at ${luc}` : ''}` },
+  maVnpay:  { vi: 'mã giao dịch VNPay', en: 'VNPay transaction no.' },
+  traThua:  { vi: (tien: string) => `Khách trả hai lần — hoàn lại ${tien} trên trang quản lý của VNPay.`,
+              en: (tien: string) => `The customer paid twice — refund ${tien} in the VNPay merchant portal.` },
+  khachVe:  { vi: '! Khách về trang kết quả với VNPay báo đã trả, nhưng VNPay chưa báo về website. Xem trên trang quản lý của VNPay trước khi giao.',
+              en: '! The customer came back with VNPay saying it was paid, but VNPay has not notified the website. Check the VNPay merchant portal before delivering.' },
+  chuaTra:  { vi: (n: number) => `Chưa trả — khách đã mở trang VNPay ${n} lần.`, en: (n: number) => `Not paid — the customer opened the VNPay page ${n} time${n === 1 ? '' : 's'}.` },
+  khongVnpay: { vi: 'Chưa trả qua website: thu khi giao hoặc chuyển khoản khi gọi xác nhận.',
+                en: 'Not paid on the website: collect on delivery or by bank transfer when you call.' },
 });
 const TEN_THU_TIENG: Record<string, HaiThuTieng> = {
   en: { vi: 'tiếng Anh', en: 'English' },
@@ -114,6 +132,8 @@ interface DongDon { khoa: string; ten_vi: string; don_vi: 'goi' | 'hop'; bao_qua
 interface Don {
   id: string; ma_don: string; created_at: string; ho_ten: string; sdt: string; dia_chi: string; ghi_chu: string | null;
   dong: DongDon[]; tam_tinh: number; ngon_ngu: string; trang_thai: string; nguoi_xu_ly: string | null;
+  /** 0115 — vắng khi database chưa chạy 0115 (coi như chưa trả, chưa mở lần nào). */
+  da_tra?: number; tra_luc?: string | null; ma_vnpay?: string | null; so_lan_mo?: number; khach_ve_da_tra?: boolean;
 }
 let dsLoi: string | null = null;
 let ds: Don[] = [];
@@ -146,7 +166,7 @@ const BO_LOC = [
     <div class="nb-bao loi"><p>{t.khongQuyen}</p></div>
   ) : (
     <>
-      <p class="nb-dan">{t.dan1}<strong>{t.dan2}</strong>{t.dan3}</p>
+      <p class="nb-dan">{t.dan1}<strong>{t.dan2}</strong>{t.dan3}{t.dan4}</p>
 
       {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>}
       {dsLoi && <div class="nb-bao loi"><p>{dsLoi}</p></div>}
@@ -194,6 +214,17 @@ const BO_LOC = [
               </dd>
               <dt>{t.tamTinh}</dt>
               <dd><strong>{dinhDangTien(Number(d.tam_tinh))}</strong></dd>
+              <dt>{t.traTien}</dt>
+              <dd data-tra-tien={Number(d.da_tra ?? 0) > 0 ? 'da_tra' : d.khach_ve_da_tra ? 'khach_ve' : 'chua'}>
+                {Number(d.da_tra ?? 0) > 0 ? (
+                  <>
+                    <strong>{t.daTra(dinhDangTien(Number(d.da_tra)), d.tra_luc ? gioDat(d.tra_luc) : '')}</strong>
+                    {d.ma_vnpay && <> · {t.maVnpay} <code>{d.ma_vnpay}</code></>}
+                    {Number(d.da_tra) > Number(d.tam_tinh) && <><br /><strong>{t.traThua(dinhDangTien(Number(d.da_tra) - Number(d.tam_tinh)))}</strong></>}
+                  </>
+                ) : d.khach_ve_da_tra ? (<strong>{t.khachVe}</strong>)
+                  : Number(d.so_lan_mo ?? 0) > 0 ? t.chuaTra(Number(d.so_lan_mo)) : t.khongVnpay}
+              </dd>
               {d.ghi_chu && <><dt>{t.ghiChu}</dt><dd style="white-space:pre-line">{d.ghi_chu}</dd></>}
               {TEN_THU_TIENG[d.ngon_ngu] && <><dt>{t.thuTieng}</dt><dd>{TEN_THU_TIENG[d.ngon_ngu][nn]}</dd></>}
               <dt>{t.datLuc}</dt>

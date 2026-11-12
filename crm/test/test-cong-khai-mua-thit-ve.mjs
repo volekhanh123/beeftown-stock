@@ -170,8 +170,8 @@ const LOP_CHUNG = new Set(['muc', 'khung', 'khung-hep', 'be-kem', 'be-kem-sau', 
 // ===========================================================================
 await nhom('0 · HAI COMPONENT CÓ MẶT, NHẬN ĐÚNG PROPS', async () => {
   ok('Có TrangMuaThitVe.astro và MuaThitThe.astro', !!TRANG.nguon && !!THE.nguon);
-  ok('TrangMuaThitVe nhận { ngonNgu, noiDung, menu, trangThai, ketQua, thamSo, duongDan }',
-     /const \{ ngonNgu: nn, noiDung: nd, menu, trangThai, ketQua, thamSo, duongDan \} = Astro\.props;/.test(TRANG.dau));
+  ok('TrangMuaThitVe nhận { ngonNgu, noiDung, menu, trangThai, ketQua, thamSo, duongDan, traVnpay (0115, mặc định tắt) }',
+     /const \{ ngonNgu: nn, noiDung: nd, menu, trangThai, ketQua, thamSo, duongDan, traVnpay = false \} = Astro\.props;/.test(TRANG.dau));
   ok('MuaThitThe nhận { sanPham, ngonNgu, gio, coOChon }', /const \{ sanPham, ngonNgu, gio, coOChon \} = Astro\.props;/.test(THE.dau));
   ok('Đơn tính bằng hàm của don-mua-thit.ts: docGio(thamSo, menu.sanPham) → tinhDon(gio, menu.sanPham, boTamHet)',
      /docGio\(thamSo, menu\.sanPham\)/.test(TRANG.dau) && /tinhDon\(gio, menu\.sanPham, boTamHet\)/.test(TRANG.dau));
@@ -179,11 +179,18 @@ await nhom('0 · HAI COMPONENT CÓ MẶT, NHẬN ĐÚNG PROPS', async () => {
 
 // ===========================================================================
 await nhom('1 · FORM POST THẬT, CHỈ KHI MỞ; MÃ CHỐNG GỬI HAI LẦN', async () => {
-  const form = theMo(TRANG.khuon, '<form ');
-  ok('Form là <form method="post">, action là duongDan + \'#dat-hang\'', /<form method="post" action=\{duongDan \+ '#dat-hang'\}/.test(form), form);
-  ok('Đúng một form trong trang', dem(TRANG.khuon, /<form\b/) === 1);
-  ok('Form nằm trong nhánh mo / het_quay; ô chọn chỉ khi trạng thái mo (coOChon={trangThai === \'mo\'})',
-     chiTrongKhoi(TRANG.khuon, "(trangThai === 'mo' || trangThai === 'het_quay') && (", '<form ')
+  const DAU_FORM = '<form method="post" action={duongDan';
+  const form = theMo(TRANG.khuon, DAU_FORM);
+  ok('Form đặt hàng là <form method="post">, action là duongDan + \'#dat-hang\'', /<form method="post" action=\{duongDan \+ '#dat-hang'\}/.test(form), form);
+  // 0115: form thứ hai là nút "Trả tiền qua VNPay" của thẻ "đã nhận đơn" (chỉ khi chưa mở được trang trả tiền) — POST
+  // tới trang kết quả, chỉ ô ẩn ma_don (luotTraLai đòi cookie của đúng đơn đó).
+  const formTra = khoi(TRANG.khuon, 'ketQua?.choTra ? (');
+  ok('Đúng một form đặt hàng; form còn lại chỉ là nút trả lại trong thẻ đã nhận (choTra), POST tới trang kết quả, chỉ ô ma_don',
+     dem(TRANG.khuon, /<form\b/) === 2 && dem(TRANG.khuon, /<form method="post" action=\{duongDan/) === 1
+       && /<form method="post" action=\{DUONG_KET_QUA_VNPAY\[nn\]\} class="hang-nut">\s*<input type="hidden" name="ma_don" value=\{ketQua\.ma\} \/>/.test(formTra)
+       && dem(formTra, /<input\b/) === 1, formTra.slice(0, 300));
+  ok('Form đặt hàng nằm trong nhánh mo / het_quay; ô chọn chỉ khi trạng thái mo (coOChon={trangThai === \'mo\'})',
+     chiTrongKhoi(TRANG.khuon, "(trangThai === 'mo' || trangThai === 'het_quay') && (", DAU_FORM)
        && /coOChon=\{trangThai === 'mo'\}/.test(TRANG.khuon));
   ok('Khối Đặt hàng (#dat-hang) và thanh giỏ chỉ khi trạng thái mo',
      chiTrongKhoi(TRANG.khuon, "{trangThai === 'mo' && (", 'id="dat-hang"') && chiTrongKhoi(TRANG.khuon, "{trangThai === 'mo' && (", 'data-mtv-thanh'));
@@ -252,9 +259,9 @@ await nhom('5 · Ô GIAO HÀNG, QUYỀN RIÊNG TƯ, KHÔNG <img>, VÙNG THÔNG B
      && !/placeholder=/.test(TRANG.khuon), id.join(', '));
   ok('Không ô đánh dấu, radio, email', HAI.every(([, f]) => !/type="(?:checkbox|radio|email)"/.test(f.khuon)));
   ok('Câu cho biết họ tên, số điện thoại, địa chỉ dùng để gọi xác nhận và giao, kèm link Quyền riêng tư đúng thứ tiếng',
-     /\{c\.dongY\} <a href=\{duongQuyenRiengTu\}>\{c\.quyenRiengTu\}<\/a>/.test(TRANG.khuon)
+     /\{traVnpay \? c\.dongYVnpay : c\.dongY\} <a href=\{duongQuyenRiengTu\}>\{c\.quyenRiengTu\}<\/a>/.test(TRANG.khuon)
        && /duongDanTuongUng\('\/quyen-rieng-tu', nn\)/.test(TRANG.dau)
-       && ['vi', 'en', 'ko'].every(nn => (cauCua('dongY')?.[nn]?.[0] ?? '').length > 20));
+       && ['vi', 'en', 'ko'].every(nn => (cauCua('dongY')?.[nn]?.[0] ?? '').length > 20 && (cauCua('dongYVnpay')?.[nn]?.[0] ?? '').length > 20));
   // Ảnh tạm 10/11/2026 (Khánh quyết; ảnh, nhãn "Ảnh minh họa", chỗ dùng: test-cong-khai-anh.mjs nhóm 5): thẻ chọn
   // một trong ba ảnh theo loại sản phẩm qua <Anh>, hình thay khi chưa dựng cỡ vẫn là khay; trang không tự đặt ảnh.
   ok('Không <img>; ảnh của thẻ chỉ qua <Anh> (ba ảnh tạm mua-…, khung 4:3 / 1:1, hình thay là khay); trang không đặt ảnh',
@@ -296,9 +303,10 @@ await nhom('6 · CÂU CHỮ: ĐÚNG SỰ THẬT, ĐỦ BA THỨ TIẾNG', async 
 // ===========================================================================
 await nhom('7 · KẾT QUẢ LƯỢT ĐẶT: ĐÃ NHẬN, KHÔNG CHẮC, CHƯA GHI', async () => {
   const daNhan = khoi(TRANG.khuon, '{daNhan && (');
-  ok('Đã nhận: h1 là câu đã nhận, mã đơn, câu "quán sẽ gọi", link đặt đơn khác; không form, không giá',
-     /<h1 id="mtv-tieu-de">\{ketQua!\.cau\}<\/h1>/.test(daNhan) && /ketQua\.ma/.test(daNhan) && /c\.sauDaNhan/.test(daNhan)
-       && /c\.datThem/.test(daNhan) && /data-ket-qua="da-nhan"/.test(daNhan) && !/<form|data-tien/.test(daNhan), daNhan.slice(0, 300));
+  ok('Đã nhận: h1 là câu đã nhận (đã trả → "đã được trả tiền"), mã đơn, câu "quán sẽ gọi", link đặt đơn khác; không giá; form chỉ là nút trả lại khi choTra',
+     /<h1 id="mtv-tieu-de">\{ketQua\?\.daTra \? c\.daTraH1 : ketQua!\.cau\}<\/h1>/.test(daNhan) && /ketQua\.ma/.test(daNhan) && /c\.sauDaNhan/.test(daNhan)
+       && /c\.sauDaTra/.test(daNhan) && /c\.datThem/.test(daNhan) && /data-ket-qua="da-nhan"/.test(daNhan) && !/data-tien/.test(daNhan)
+       && dem(daNhan, /<form\b/) === 1 && chiTrongKhoi(daNhan, 'ketQua?.choTra ? (', '<form '), daNhan.slice(0, 300));
   const khongChac = khoi(TRANG.khuon, '{khongChac && (');
   ok('Không chắc: câu KHÔNG CHẮC, nút gọi quán khi có hotline; không form', /ketQua!\.cau/.test(khongChac) && /data-ket-qua="khong-chac"/.test(khongChac)
      && /lh\.goi/.test(khongChac) && !/<form/.test(khongChac));
