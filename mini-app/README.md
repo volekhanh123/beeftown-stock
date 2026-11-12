@@ -161,7 +161,8 @@ scripts/kiem-tra-don.ts
 tai-lieu/          biểu tượng 512 × 512, banner 1920 × 1080, ảnh chụp màn hình
 dua-len-zalo.cmd   bấm đúp trên Windows: cài thư viện, đăng nhập Zalo, đưa bản thử lên
 zmp-cli.json       đánh dấu dự án Zalo Mini App cho zmp-cli
-CLAUDE.md          ghi chú cho Claude Code: tình trạng, quy tắc, việc tiếp theo
+CLAUDE.md          ghi chú cho Claude Code: lệnh, cách app chạy, quy tắc
+TINH-TRANG.md      tình trạng trên Zalo, việc chờ chốt, việc tiếp theo
 .env               Mini App ID (và khóa đăng nhập sau khi đăng nhập; không gửi file này cho ai)
 ```
 

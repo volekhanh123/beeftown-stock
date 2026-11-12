@@ -46,7 +46,7 @@ const DUOI_CHU = /\.(?:astro|ts|tsx|js|mjs|cjs|css|html|svg|json|webmanifest|xml
 // Vùng quét. crm/test (và các file kiểm thử khác) cố ý chứa tên cũ trong mẫu tự kiểm — không quét; can-app (Beeftown
 // Cân, PR riêng) và mini-app/src (PR Mini App sau) ngoài phạm vi; THUONG-HIEU.md là lịch sử bộ nhận diện.
 const VUNG = [/^web\/src\//, /^web\/public\//, /^web\/kiem-tra\//, /^web\/cong-cu\//, /^\.claude\/skills\//, /^\.github\//,
-  /^[^/]+\.md$/, /^web\/[^/]+\.md$/, /^mini-app\/CLAUDE\.md$/];
+  /^[^/]+\.md$/, /^web\/[^/]+\.md$/, /^mini-app\/(?:CLAUDE|TINH-TRANG)\.md$/];
 const KHONG_QUET = new Set(['THUONG-HIEU.md']);
 const tepQuet = TEP_GIT.filter(f => DUOI_CHU.test(f) && VUNG.some(v => v.test(f)) && !KHONG_QUET.has(f));
 
@@ -165,7 +165,7 @@ await nhom('4 · TAGLINE "Pick it, grill it, love it!" Ở MỌI NƠI', async ()
   ok('may-dich.ts: quy tắc dịch giữ nguyên đúng chuỗi tagline mới (tiếng Anh ở mọi thứ tiếng), không còn chuỗi cũ',
      typeof QUY_TAC_DICH === 'string' && QUY_TAC_DICH.includes(`"${TAGLINE}"`) && !TAGLINE_CU.test(QUY_TAC_DICH));
   // Chữ trên trang và tài liệu: web/src (mọi file chữ), tài liệu .md ở gốc và web/, mini-app (chữ của Mini App, CLAUDE.md).
-  const VUNG_CHU = [/^web\/src\//, /^[^/]+\.md$/, /^web\/[^/]+\.md$/, /^mini-app\/CLAUDE\.md$/, /^mini-app\/src\//];
+  const VUNG_CHU = [/^web\/src\//, /^[^/]+\.md$/, /^web\/[^/]+\.md$/, /^mini-app\/(?:CLAUDE|TINH-TRANG)\.md$/, /^mini-app\/src\//];
   const tep = TEP_GIT.filter(f => DUOI_CHU.test(f) && VUNG_CHU.some(v => v.test(f)) && !KHONG_QUET.has(f));
   const conCu = tep.filter(f => TAGLINE_CU.test(doc(f))).map(f => `${f}: «${doc(f).match(TAGLINE_CU)[0]}»`);
   ok(`${tep.length} file chữ (web/src, tài liệu, Mini App): không còn tagline cũ "Pick it. Grill it. Love it." hay "Pick it – Grill it – Love it"`,
