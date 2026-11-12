@@ -12,7 +12,9 @@
  * JavaScript. Có JavaScript thì thanh ẩn đi khi nhóm nút của màn đầu (.kmd-nut) đang trên màn hình — hai
  * nút "Hỏi bàn" cùng lúc là thừa. Màn thấp (dưới 500px, điện thoại xoay ngang) không có thanh.
  *
- * Bề mặt đen (be-toi): nút chính đỏ chữ trắng, nút phụ viền trắng (biến của bề mặt), biểu tượng luôn kèm chữ.
+ * Bề mặt đen (be-toi): nút chính đỏ chữ trắng. "Gọi" và "Chỉ đường" KHÔNG phải nút .nut (đệm 20px, chữ 15px
+ * không vừa ba ô trên màn 360px): là ô biểu tượng có chữ 13px dưới (sàn cỡ chữ), viền theo bề mặt, vùng chạm
+ * ≥ 48 × 48px — như nút −/+ của Mua thịt về không mang lớp .nut.
  */
 import { chu } from '../lib/chu';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
@@ -28,8 +30,8 @@ const thanh = thanhHanhDong(noiDung, ngonNgu, duongDan);
   <nav class="thd be-toi" aria-label={t.hanhDongNhanh} data-thanh-hanh-dong>
     <div class="thd-hang">
       {thanh.chinh && <a class="nut nut-chinh thd-chinh" href={thanh.chinh.url}>{thanh.chinh.chu}</a>}
-      {thanh.goi && <a class="nut nut-vien thd-phu" href={thanh.goi}><BieuTuong ten="dien-thoai" /><span>{t.goi}</span></a>}
-      {thanh.chiDuong && <a class="nut nut-vien thd-phu" href={thanh.chiDuong} rel="noopener"><BieuTuong ten="ghim" /><span>{t.chiDuong}</span></a>}
+      {thanh.goi && <a class="thd-phu" href={thanh.goi}><BieuTuong ten="dien-thoai" /><span>{t.goi}</span></a>}
+      {thanh.chiDuong && <a class="thd-phu" href={thanh.chiDuong} rel="noopener"><BieuTuong ten="ghim" /><span>{t.chiDuong}</span></a>}
     </div>
   </nav>
 )}
@@ -53,13 +55,19 @@ const thanh = thanhHanhDong(noiDung, ngonNgu, duongDan);
   }
   .thd-hang { display: flex; gap: var(--k-2); max-width: 600px; margin: 0 auto; }
   .thd-chinh { flex: 1 1 auto; min-width: 0; }
-  /* Nút phụ: biểu tượng trên, chữ dưới — gọn, vẫn cao 48px và luôn có chữ. */
+  /* Ô phụ: biểu tượng trên, chữ dưới, luôn có chữ. Viền và chữ theo biến bề mặt (trắng trên đen). */
   .thd-phu {
-    flex: 0 0 auto; flex-direction: column; gap: 0;
-    padding-inline: var(--k-3); font-size: var(--co-ti); line-height: 1.2;
+    flex: 0 0 auto; display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+    min-width: 56px; min-height: 48px; padding: 2px var(--k-3);
+    border: 1px solid var(--chu-chinh); border-radius: var(--bo);
+    color: var(--chu-chinh); text-decoration: none;
+    font-size: var(--co-ti); font-weight: 700; line-height: 1.2;
+    transition: background-color var(--nhanh), color var(--nhanh);
   }
   .thd-phu :global(svg) { width: 20px; height: 20px; }
-  /* Chỉ có nút phụ (trang Thực đơn khi form hỏi bàn chưa mở): hai nút chia đều thanh. */
+  @media (hover: hover) { .thd-phu:hover { background: var(--chu-chinh); color: var(--nen); } }
+  .thd-phu:active { background: var(--chu-chinh); color: var(--nen); }
+  /* Chỉ có ô phụ (trang Thực đơn khi form hỏi bàn chưa mở): hai ô chia đều thanh, biểu tượng cạnh chữ. */
   .thd-hang:not(:has(.thd-chinh)) .thd-phu { flex: 1 1 0; flex-direction: row; gap: var(--k-2); font-size: 15px; }
   .thd-an { display: none; }
   @media (min-width: 768px), (max-height: 499.98px) {

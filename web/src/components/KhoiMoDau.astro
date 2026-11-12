@@ -169,6 +169,14 @@ const cumDc = cumDiaChi(diaChiManDau(nd));
   .kmd-chon .o:last-child { grid-area: nguoi; }
   .kmd-hoi .nut-chinh { grid-area: gui; }
   .kmd-hoi .nut-vien { grid-area: phu; }
+  /* Điện thoại: nút viền "Khám phá thực đơn" của hỏi bàn nhanh không hiện — giữ ảnh màn đầu (tải ngay) trong
+     màn hình đầu ở 360 × 740px cả ba thứ tiếng. Thực đơn vẫn ở Danh mục, ở khối "Cả bữa" ngay dưới, và thanh
+     hành động có nút "Khám phá thực đơn" khi form chưa mở. */
+  @media (max-width: 599.98px) {
+    .kmd-hoi { grid-template-areas: "ngay ngay" "nguoi gui"; }
+    .kmd-hoi .nut-vien { display: none; }
+    .kmd-dan { margin-bottom: var(--k-4); }
+  }
   @media (min-width: 600px) {
     .kmd-hoi { display: grid; gap: var(--k-4); grid-template-columns: none; grid-template-areas: none; align-items: stretch; }
     .kmd-chon { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--k-3); }

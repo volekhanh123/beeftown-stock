@@ -154,8 +154,12 @@ await nhom('4 · MÃ NGUỒN: FORM MÀN ĐẦU, TRANG HỎI BÀN, LAYOUT, THANH'
        && datBan.includes('<select id="hb-so-khach" name="so_khach"') && datBan.includes('<option value={n} selected={n === soKhachChon}>{n}</option>'));
   ok('Trang Hỏi bàn: ngày đọc từ ?ngay= (pages/dat-ban.astro → tinhTrangDatBan), khung giờ có id hb-gio',
      doc('pages', 'dat-ban.astro').includes("Astro.url.searchParams.get('ngay')") && datBan.includes('id="hb-gio"'));
-  ok('Trang Hỏi bàn: số người khách vừa chọn ở màn đầu thắng bản nháp đã lưu (data-chon-tu-dia-chi, bỏ qua khi điền lại)',
-     datBan.includes("data-chon-tu-dia-chi={soKhachXin !== null ? '' : undefined}") && datBan.includes("if (o.hasAttribute('data-chon-tu-dia-chi')) continue;"));
+  ok('Trang Hỏi bàn: số người HỢP LỆ khách vừa chọn ở màn đầu thắng bản nháp đã lưu; số lạ thì bản nháp vẫn được điền lại',
+     datBan.includes('const soKhachTuDiaChi = soKhachXin !== null && soKhachChon === Number(soKhachXin.trim());')
+       && datBan.includes("data-chon-tu-dia-chi={soKhachTuDiaChi ? '' : undefined}") && datBan.includes("if (o.hasAttribute('data-chon-tu-dia-chi')) continue;"));
+  ok('Trang Hỏi bàn: đổi ngày (form GET) mang số người theo — ô ẩn so_khach, script ghi số đang chọn trước khi gửi',
+     datBan.includes('{soKhachTuDiaChi && <input type="hidden" name="so_khach" value={soKhachChon} data-so-khach-giu />}')
+       && datBan.includes("if (giuSoKhach && o?.so_khach) giuSoKhach.value = o.so_khach;"));
 
   const trang = doc('layouts', 'Trang.astro');
   ok('Trang.astro: thanh hành động đứng ngay sau chân trang', /<ChanTrang [^>]*\/>\s*\{\/\*[^*]*\*\/\}\s*<ThanhHanhDong ngonNgu=\{ngonNgu\} noiDung=\{nd\} duongDan=\{duongDan\} \/>/.test(trang));
