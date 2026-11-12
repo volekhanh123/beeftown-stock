@@ -292,7 +292,8 @@ khối: [tham-khao/trang-cong-khai.md](tham-khao/trang-cong-khai.md) (công khai
   thang máy, mặt người: chỉ ảnh chụp thật** (cho tới khi có: `<KhungAnh>`). **Ngoại lệ tạm, Khánh quyết
   10/11/2026**: quầy (bước 3 trang Đến Beeftown, `quay-chon-bo`) và ảnh sản phẩm trang Mua thịt về
   (`mua-thit-mat`, `mua-thit-dong-lanh`, `mua-kim-chi`, chọn theo loại) là ảnh AI tạm có nhãn, tới khi có
-  ảnh chụp thật — không thêm ảnh AI cho quầy, khay ở chỗ nào khác. Không ảnh kho (Unsplash…). Không
+  ảnh chụp thật; **12/11/2026** Khánh cho thêm `quay-chon-bo` ở màn đầu trang chủ (ảnh "1 · Chọn khay tại
+  quầy" cạnh vỉ gas) — không thêm ảnh AI cho quầy, khay ở chỗ nào khác. Không ảnh kho (Unsplash…). Không
   than, củi, khói giả trong ảnh.
 - **Trên ảnh không đặt gì khác**: không logo, không chữ chồng lên; khung
   ảnh bo 6px, không bóng đổ, không viền. Ảnh nào đã dựng cỡ thì phải có chỗ dùng — không để file ảnh

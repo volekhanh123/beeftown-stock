@@ -49,6 +49,7 @@ import { khoiMaPixel, tenTrangPixel } from '../lib/meta-pixel';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import DauTrang from '../components/DauTrang.astro';
 import ChanTrang from '../components/ChanTrang.astro';
+import ThanhHanhDong from '../components/ThanhHanhDong.astro';
 
 interface Props {
   ngonNgu: NgonNgu;
@@ -201,6 +202,8 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
     </main>
 
     <ChanTrang ngonNgu={ngonNgu} noiDung={nd} duongDan={duongDan} />
+    {/* Sau chân trang: dính đáy màn hình điện thoại khi cuộn, cuối trang thì đứng ngay sau chân trang. */}
+    <ThanhHanhDong ngonNgu={ngonNgu} noiDung={nd} duongDan={duongDan} />
 
     <script>
       // Meta Pixel (lib/meta-pixel.ts): ViewContent khi mở trang Thực đơn; Contact khi bấm link gọi điện, Zalo,

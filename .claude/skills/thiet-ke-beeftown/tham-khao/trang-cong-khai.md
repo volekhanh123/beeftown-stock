@@ -23,8 +23,10 @@
 
 ## Nhịp trang
 
-Trang chủ (`TrangRaMat.astro`): trắng (màn đầu: chữ + ảnh, dải tagline đỏ dưới ảnh — dải có
-`aria-hidden`, tagline được đọc một lần ở dòng hiệu của ba bước) → trắng (ba bước) →
+Trang chủ (`TrangRaMat.astro`): trắng (màn đầu: câu chính "Không cần rành bò. Chọn theo gu, thấy giá
+trước." hai dòng, hỏi bàn nhanh — ô ngày, ô số người, nút Hỏi bàn — khi form mở, rồi hai ảnh Pick → Grill có
+chú thích số và dải tagline đỏ dính dưới ảnh — dải có `aria-hidden`, tagline được đọc một lần ở dòng hiệu
+của ba bước; điện thoại chỉ một ảnh vỉ gas 4:5) → trắng (ba bước) →
 **đen** (quầy, thịt sáng lên) → xám nhạt (cả bữa, lớp `.be-kem-dam`) → **đỏ** (đi nhóm) → trắng (tầng 3)
 → trắng (câu hỏi) → chân trang **đen**. Tên lớp bề mặt giữ (`.be-kem`, `.be-toi`…), màu theo bảng
 22/10/2026. Thứ tự tám khối và bề mặt của từng khối là điều Khánh đã quyết (11/10/2026: giữ như đang
@@ -165,6 +167,7 @@ theo ngày — `web/THIET-KE.md` mục 10.
 | `ThucDonNhom` | `nhom`, `ngonNgu`, `ghiChu?`, `khongGia?` | Một nhóm món dạng danh sách (bò tại quầy, đồ uống chưa có ảnh) |
 | `ThucDonNhomAnh` | `nhom`, `ngonNgu`, `kieu?` (`dan-dau` / `deu`), `ghiChu?`, `tieuDeNho?`, `nenKhung?`, `khongGia?` | Một nhóm món kiểu cuốn menu bản sáng: tên nhóm chữ hoa `--co-nhom`, câu của nhóm (`CAU_NHOM`), món dẫn đầu chữ trái – ảnh phải từ 768px, lưới thẻ ảnh trên chữ dưới (2 / 3 cột) từ 600px; dưới 600px món đứng sau món dẫn đầu là hàng gọn `tdn-gon` (ảnh 128px trái, chữ phải) — nhóm không có món dẫn đầu giữ thẻ to; `deu` cho ba ly signature (luôn là thẻ); `tieuDeNho` trong dải đen Bò tại quầy |
 | `ThucDonMon` | `mon`, `ngonNgu`, `lon?`, `khongGia?` | Chữ của một món: tên (chữ thường đậm 700), giá chỉ khi `gia !== null`, mô tả, nhãn Món sống / Có cồn, câu cảnh báo món sống |
+| `ThanhHanhDong` | `ngonNgu`, `noiDung`, `duongDan` | Thanh đen dính đáy màn hình dưới 768px (layout đã gắn, sau chân trang) ở trang chủ, Thực đơn, Đến Beeftown: một nút chính (Hỏi bàn / Khám phá thực đơn), "Gọi" và "Chỉ đường" chỉ khi hotline, Google Maps đã công bố. Quyết định ở `thanhHanhDong()` (`lib/trang-cong-khai.ts`). Ẩn khi nhóm nút màn đầu đang trên màn hình, trên màn thấp dưới 500px |
 | `DauTrang`, `ChanTrang` | — | Layout đã gắn sẵn. Đầu trang cao 64 / 80px, bộ chọn ngôn ngữ in đủ ba thứ tiếng (thứ tiếng đang xem: `aria-current="true"`, chữ đậm và nét gạch), menu gọn có nút đóng và nút chính Hỏi bàn (lớp phủ tối và khoá cuộn chỉ có khi script đã chạy — `data-co-script`). Đầu trang đen, logo phụ trắng (dưới 360px brandmark trắng). Chân trang: hai dải đen, logo chính trắng, không tem, không hoa văn chữ, chữ ≥ 14px, `<footer>` pháp nhân duy nhất, giữ nguyên từng ký tự |
 
 Thêm biểu tượng: vẽ thêm một dòng vào `NET` và kiểu `TenBieuTuong` trong `BieuTuong.astro`, lưới 24,
