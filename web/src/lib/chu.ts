@@ -117,12 +117,22 @@ const VI = {
   nganhHang: 'Nhà hàng chuyên bò',
   diaChiNgan: '63 Hồ Tùng Mậu, TP.HCM',
   moTaNgan: 'Nhà hàng chuyên bò ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM. Chọn bò tại quầy, cùng cả bàn nướng và thưởng thức.',
-  // Câu chính của trang chủ (h1) — brief 06/10/2026.
-  // \u00a0: "bạn thích", "cả bàn" không bị tách hai dòng ở màn hẹp.
-  cauChinh: 'Chọn phần bò bạn\u00a0thích, rồi cùng cả\u00a0bàn thưởng thức.',
+  // Câu chính của trang chủ (h1) — câu chính cho khách của THUONG-HIEU.md, Khánh đưa lên màn đầu ngày
+  // 12/11/2026 (thay câu "Chọn phần bò bạn thích…" của brief 06/10/2026). Hai câu: KhoiMoDau.astro in mỗi câu
+  // một dòng, câu sau màu nhấn. \u00a0: "rành bò", "giá trước" không bị tách hai dòng ở màn hẹp.
+  cauChinh: 'Không cần rành\u00a0bò. Chọn theo gu, thấy giá\u00a0trước.',
   gioiThieu:
-    'Bò được cắt và đóng khay sẵn tại quầy. Bạn nhìn tận mắt, xem nhãn, nhờ ' +
-    'nhân viên tư vấn — rồi cả bàn cùng nướng trên vỉ gas đặt tại bàn.',
+    'Bò được cắt và đóng khay sẵn tại quầy, giá ghi trên nhãn từng khay. Nhân viên quầy ' +
+    'gợi ý phần hợp gu, rồi cả bàn cùng nướng trên vỉ gas đặt tại bàn.',
+  // Màn đầu: thanh hỏi bàn nhanh (ngày, số người → trang Hỏi bàn) và chú thích hai ảnh Pick → Grill.
+  hoiBanNhanh: 'Hỏi bàn nhanh',
+  ngayDen: 'Ngày đến',
+  soNguoi: 'Số người',
+  anhQuay: 'Chọn khay tại quầy',
+  anhNuong: 'Nướng tại bàn',
+  // Thanh hành động dính đáy màn hình điện thoại (ThanhHanhDong.astro).
+  hanhDongNhanh: 'Hành động nhanh',
+  goi: 'Gọi',
 
   // Bản dự phòng khi khóa dong_trang_thai chưa được công bố.
   trangThaiMacDinh:
@@ -266,10 +276,17 @@ const EN: Bo = {
   nganhHang: THUONG_HIEU.descriptor,
   diaChiNgan: '63 Hồ Tùng Mậu, Ho Chi Minh City',
   moTaNgan: 'A beef specialty restaurant on Floor 3, 63 Hồ Tùng Mậu, Ho Chi Minh City. Pick your beef at the counter, then grill and share it at your table.',
-  cauChinh: 'Pick the cut you like, then enjoy it with the whole table.',
+  cauChinh: 'No need to be a beef expert. Pick what you like, see the price first.',
   gioiThieu:
-    'Our beef is cut and packed in trays at the counter. See it for yourself, read ' +
-    'the label, ask our staff — then grill it together on the gas grill at your table.',
+    'Our beef is cut and packed in trays at the counter, with the price on each tray\u2019s label. Our counter ' +
+    'staff suggest cuts to suit your taste, then everyone grills together on the gas grill at your table.',
+  hoiBanNhanh: 'Quick table request',
+  ngayDen: 'Date',
+  soNguoi: 'Guests',
+  anhQuay: 'Pick a tray at the counter',
+  anhNuong: 'Grill it at your table',
+  hanhDongNhanh: 'Quick actions',
+  goi: 'Call',
 
   trangThaiMacDinh:
     'Beeftown is getting ready to welcome you.',
@@ -372,10 +389,17 @@ const KO: Bo = {
   diaChiNgan: '호치민시 Hồ Tùng Mậu 63',
   moTaNgan: '호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점이에요. 정육 코너에서 고기를 고르고 테이블에서 함께 구워 드세요.',
   // \u00a0: "함께 온 사람들과" (định ngữ + danh từ) không bị tách hai dòng.
-  cauChinh: '좋아하는 부위를 고르고, 함께\u00a0온\u00a0사람들과 즐겨 보세요.',
+  cauChinh: '소고기를 잘 몰라도 괜찮아요. 취향대로 고르고, 가격은 먼저\u00a0확인하세요.',
   gioiThieu:
-    '소고기는 정육 코너에서 손질해 트레이에 담아 두었어요. 직접 보고, 라벨을 확인하고, ' +
-    '직원에게 추천을 받은 뒤 테이블 가스 그릴에서 다 함께 구워 드세요.',
+    '소고기는 정육 코너에서 손질해 트레이에 담아 두고, 각 트레이의 라벨에 가격을 표시해요. ' +
+    '직원이 취향에 맞는 부위를 추천해 드려요. 고른 소고기는 테이블에 있는 가스 그릴에서 다 함께 직접 구워 드시면 돼요.',
+  hoiBanNhanh: '빠른 테이블 문의',
+  ngayDen: '방문 날짜',
+  soNguoi: '인원',
+  anhQuay: '카운터에서 트레이 고르기',
+  anhNuong: '테이블에서 굽기',
+  hanhDongNhanh: '바로가기',
+  goi: '전화',
 
   trangThaiMacDinh:
     'Beeftown이 손님을 맞이할 준비를 하고 있어요.',

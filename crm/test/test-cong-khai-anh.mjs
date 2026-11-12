@@ -395,14 +395,20 @@ await nhom('5 · BỐN QUYẾT ĐỊNH CỦA KHÁNH (11/10/2026): DẢI TỐI, C
   ok('Đầu trang (DauTrang.astro) và hai dải chân trang (ChanTrang.astro: ct-chinh, ct-day) là bề mặt đen be-toi',
      [dauTrang, ctChinh, ctDay].every(l => /\bbe-toi\b/.test(l) && !/\bbe-(?:do|kem)/.test(l)), `${dauTrang} · ${ctChinh} · ${ctDay}`);
 
-  // Câu chính — chép tay, kể cả dấu cách không ngắt ( ) đang giữ "bạn thích", "cả bàn" trên một dòng.
+  // Câu chính — câu chính cho khách của THUONG-HIEU.md, Khánh đưa lên màn đầu ngày 12/11/2026 (thay câu "Chọn phần
+  // bò bạn thích…" của brief 06/10/2026). Chép tay, kể cả dấu cách không ngắt ( ) đang giữ "rành bò",
+  // "giá trước", "먼저 확인하세요" trên một dòng.
   const CAU_CHINH = {
-    vi: 'Chọn phần bò bạn thích, rồi cùng cả bàn thưởng thức.',
-    en: 'Pick the cut you like, then enjoy it with the whole table.',
-    ko: '좋아하는 부위를 고르고, 함께 온 사람들과 즐겨 보세요.',
+    vi: 'Không cần rành bò. Chọn theo gu, thấy giá trước.',
+    en: 'No need to be a beef expert. Pick what you like, see the price first.',
+    ko: '소고기를 잘 몰라도 괜찮아요. 취향대로 고르고, 가격은 먼저 확인하세요.',
   };
-  for (const nn of NGON_NGU) ok(`[${nn}] Câu chính của trang chủ giữ nguyên từng chữ: "${CAU_CHINH[nn].replaceAll(' ', ' ')}"`, chu(nn).cauChinh === CAU_CHINH[nn], chu(nn).cauChinh);
-  ok('KhoiMoDau.astro: câu chính là <h1> của trang chủ', /<h1 id="kmd-tieu-de">\{t\.cauChinh\}<\/h1>/.test(doc(SRC, 'components', 'KhoiMoDau.astro')));
+  for (const nn of NGON_NGU) ok(`[${nn}] Câu chính của trang chủ đúng từng chữ (Khánh, 12/11/2026): "${CAU_CHINH[nn].replaceAll(' ', ' ')}"`, chu(nn).cauChinh === CAU_CHINH[nn], chu(nn).cauChinh);
+  const kmdNguon = doc(SRC, 'components', 'KhoiMoDau.astro');
+  ok('KhoiMoDau.astro: câu chính là <h1> của trang chủ — t.cauChinh tách theo câu, mỗi câu một khối, câu sau màu nhấn',
+     kmdNguon.includes('const cauChinh = t.cauChinh.split(/(?<=[.!?])\\s+/u);')
+       && kmdNguon.includes(`<h1 id="kmd-tieu-de">{cauChinh.map((cau, i) => <>{i > 0 && ' '}<span class:list={['kmd-cau', { 'kmd-cau-nhan': i > 0 }]}>{cau}</span></>)}</h1>`));
+  for (const nn of NGON_NGU) ok(`[${nn}] Câu chính có đúng hai câu (hai dòng của h1)`, chu(nn).cauChinh.split(/(?<=[.!?])\s+/u).length === 2, chu(nn).cauChinh);
   // Tagline có ở hai khối liền nhau: dải đỏ dưới ảnh màn đầu (để nhìn) và dòng hiệu của khối ba bước (để đọc).
   // Trình đọc màn hình chỉ đọc MỘT lần: dải dưới ảnh là aria-hidden, dòng hiệu của ba bước thì không.
   const theKhauHieu = mauCua(doc(SRC, 'components', 'KhoiMoDau.astro')).match(/<p\b[^>]*class="kmd-khau-hieu"[^>]*>/)?.[0] ?? '';
@@ -421,6 +427,13 @@ await nhom('5 · BỐN QUYẾT ĐỊNH CỦA KHÁNH (11/10/2026): DẢI TỐI, C
   ok('Ảnh bữa ăn mon-an-chia-se ở khối "Cả bữa, cho cả bàn" (BuaAnCungNhau.astro)', o('mon-an-chia-se', 'BuaAnCungNhau.astro'));
   ok('Ảnh bữa ăn bua-an-cung-ban ở khối "Rủ cả nhà, cả nhóm cùng đến" (DiCungNhom.astro), thay hình vẽ bàn nướng',
      o('bua-an-cung-ban', 'DiCungNhom.astro') && !/<KhungAnh\b/.test(mauCua(doc(SRC, 'components', 'DiCungNhom.astro'))));
+  // Màn đầu kể Pick → Grill bằng hai ảnh (Khánh, 12/11/2026): ảnh tạm quầy quay-chon-bo trước, ảnh vỉ gas hero-vi-gas sau.
+  // Ảnh ưu tiên tải ngay vẫn là hero-vi-gas (ảnh duy nhất của màn đầu trên điện thoại); ảnh quầy lazy, hình thay là quầy.
+  const anhManDau = goiAnh.filter(g => g.file === 'components/KhoiMoDau.astro');
+  ok('Màn đầu: đúng hai ảnh theo thứ tự quay-chon-bo (4:3, lazy, hình thay quầy) rồi hero-vi-gas (ưu tiên)',
+     JSON.stringify(anhManDau.map(g => g.id)) === JSON.stringify(['quay-chon-bo', 'hero-vi-gas'])
+       && anhManDau[0].khung === '4x3' && !anhManDau[0].uuTien && anhManDau[0].thayBang === 'quay' && anhManDau[1].uuTien,
+     anhManDau.map(g => `${g.id} ${g.khung} ${g.uuTien ? 'uuTien' : ''} ${g.thayBang}`).join(' | '));
   ok('hero-vi-gas ở màn đầu, bo-van-mo-can ở Quầy chọn bò; bo-cat-lat, sot-cham và uong-khong-con-ba-ly ở trang Thực đơn',
      o('hero-vi-gas', 'KhoiMoDau.astro') && o('bo-van-mo-can', 'QuayChonBo.astro') && o('bo-cat-lat', 'TrangThucDon.astro') && o('sot-cham', 'TrangThucDon.astro')
        && o('uong-khong-con-ba-ly', 'TrangThucDon.astro'));
@@ -444,7 +457,12 @@ await nhom('5 · BỐN QUYẾT ĐỊNH CỦA KHÁNH (11/10/2026): DẢI TỐI, C
   ok('MuaThitThe.astro: chọn ảnh theo loại — laKimChi → mua-kim-chi; baoQuan đông lạnh → mua-thit-dong-lanh; còn lại → mua-thit-mat',
      /\{laKimChi \? \(\s*<Anh id="mua-kim-chi"[^>]*\/>\s*\) : sanPham\.baoQuan === 'dong_lanh' \? \(\s*<Anh id="mua-thit-dong-lanh"[^>]*\/>\s*\) : \(\s*<Anh id="mua-thit-mat"[^>]*\/>\s*\)\}/.test(the)
        && /const laKimChi = sanPham\.loai === 'kim_chi';/.test(doc(SRC, 'components', 'MuaThitThe.astro')));
-  const NOI_DUOC = { 'components/TrangDenBeeftown.astro': ['quay-chon-bo'], 'components/MuaThitThe.astro': ['mua-kim-chi', 'mua-thit-dong-lanh', 'mua-thit-mat'] };
+  const NOI_DUOC = {
+    'components/TrangDenBeeftown.astro': ['quay-chon-bo'],
+    // Màn đầu trang chủ: Khánh cho dùng ảnh quầy tạm ngày 12/11/2026 (đợt 1 của đề xuất giao diện), tới khi có ảnh chụp thật.
+    'components/KhoiMoDau.astro': ['quay-chon-bo'],
+    'components/MuaThitThe.astro': ['mua-kim-chi', 'mua-thit-dong-lanh', 'mua-thit-mat'],
+  };
   const ngoaiHaiTrang = goiAnh.filter(g => !['KhoiMoDau', 'QuayChonBo', 'BuaAnCungNhau', 'DiCungNhom', 'TrangThucDon', 'ThucDonNhomAnh'].some(c => g.file === `components/${c}.astro`)
     && !NOI_DUOC[g.file]?.includes(g.id));
   ok('Ảnh AI chỉ nằm ở trang chủ, trang Thực đơn và bốn chỗ ảnh tạm (quầy của Đến Beeftown, thẻ Mua thịt về)', ngoaiHaiTrang.length === 0,
@@ -460,7 +478,7 @@ await nhom('5 · BỐN QUYẾT ĐỊNH CỦA KHÁNH (11/10/2026): DẢI TỐI, C
   const sai = ANH_CO_THIT.flatMap(id => NGON_NGU.filter(nn => !SKIN_PACK_KHAY_DEN[nn](DANH_MUC_ANH[id]?.alt?.[nn] ?? '')).map(nn => `${id} [${nn}]`));
   ok('Ảnh có thịt (quay-chon-bo, mua-thit-mat, mua-thit-dong-lanh): alt ba thứ tiếng nói skin-pack trên khay đen — như quán đóng (Khánh, 11/11/2026)',
      sai.length === 0, sai.join(', '));
-  ok('Ảnh tạm chỉ ở đúng chỗ của nó: quay-chon-bo chỉ ở Đến Beeftown, mua-… chỉ ở thẻ Mua thịt về',
+  ok('Ảnh tạm chỉ ở đúng chỗ của nó: quay-chon-bo chỉ ở Đến Beeftown và màn đầu trang chủ, mua-… chỉ ở thẻ Mua thịt về',
      goiAnh.filter(g => ANH_TAM.includes(g.id)).every(g => NOI_DUOC[g.file]?.includes(g.id)));
   ok('Chỗ của ảnh AI khi chưa dựng cỡ không bao giờ là hình lối vào hay thang máy (thayBang chỉ khay / ban-nuong; quầy chỉ cho quay-chon-bo)',
      goiAnh.every(g => [null, 'khay', 'ban-nuong'].includes(g.thayBang) || (g.thayBang === 'quay' && g.id === 'quay-chon-bo')),

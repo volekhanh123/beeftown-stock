@@ -1,0 +1,77 @@
+---
+/**
+ * THANH HÀNH ĐỘNG DÍNH ĐÁY MÀN HÌNH ĐIỆN THOẠI — Khánh duyệt 12/11/2026
+ *
+ * Dưới 768px đầu trang chỉ còn logo và nút "Danh mục"; cuộn khỏi màn đầu là mất đường tới Hỏi bàn. Thanh
+ * đen này đứng ở đáy màn hình trên trang chủ, Thực đơn, Đến Beeftown: một nút chính (Hỏi bàn khi form mở,
+ * Khám phá thực đơn khi chưa mở), thêm "Gọi" và "Chỉ đường" chỉ khi hotline, Google Maps đã công bố.
+ * Quyết định hiện gì nằm ở lib/trang-cong-khai.ts → thanhHanhDong() (có kiểm thử).
+ *
+ * position: sticky; bottom: 0 ở cuối <body>: lúc cuộn, thanh dính đáy màn hình; tới cuối trang, nó đứng
+ * ngay sau chân trang — không bao giờ che chữ của chân trang, không cần chừa đệm cho <body>. Chạy không cần
+ * JavaScript. Có JavaScript thì thanh ẩn đi khi nhóm nút của màn đầu (.kmd-nut) đang trên màn hình — hai
+ * nút "Hỏi bàn" cùng lúc là thừa. Màn thấp (dưới 500px, điện thoại xoay ngang) không có thanh.
+ *
+ * Bề mặt đen (be-toi): nút chính đỏ chữ trắng. "Gọi" và "Chỉ đường" KHÔNG phải nút .nut (đệm 20px, chữ 15px
+ * không vừa ba ô trên màn 360px): là ô biểu tượng có chữ 13px dưới (sàn cỡ chữ), viền theo bề mặt, vùng chạm
+ * ≥ 48 × 48px — như nút −/+ của Mua thịt về không mang lớp .nut.
+ */
+import { chu } from '../lib/chu';
+import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+import { thanhHanhDong } from '../lib/trang-cong-khai';
+import BieuTuong from './BieuTuong.astro';
+
+interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; duongDan: string; }
+const { ngonNgu, noiDung, duongDan } = Astro.props;
+const t = chu(ngonNgu);
+const thanh = thanhHanhDong(noiDung, ngonNgu, duongDan);
+---
+{thanh && (
+  <nav class="thd be-toi" aria-label={t.hanhDongNhanh} data-thanh-hanh-dong>
+    <div class="thd-hang">
+      {thanh.chinh && <a class="nut nut-chinh thd-chinh" href={thanh.chinh.url}>{thanh.chinh.chu}</a>}
+      {thanh.goi && <a class="thd-phu" href={thanh.goi}><BieuTuong ten="dien-thoai" /><span>{t.goi}</span></a>}
+      {thanh.chiDuong && <a class="thd-phu" href={thanh.chiDuong} rel="noopener"><BieuTuong ten="ghim" /><span>{t.chiDuong}</span></a>}
+    </div>
+  </nav>
+)}
+
+<script>
+  // Ẩn thanh khi nhóm nút của màn đầu đang trên màn hình (chỉ trang chủ có .kmd-nut). Không có
+  // IntersectionObserver thì thanh cứ hiện — như khi tắt JavaScript.
+  const thanh = document.querySelector<HTMLElement>('[data-thanh-hanh-dong]');
+  const nutDau = document.querySelector('.kmd-nut');
+  if (thanh && nutDau && 'IntersectionObserver' in window) {
+    new IntersectionObserver(([muc]) => { thanh.classList.toggle('thd-an', muc.isIntersecting); })
+      .observe(nutDau);
+  }
+</script>
+
+<style>
+  .thd {
+    position: sticky; bottom: 0; z-index: 30;
+    padding: var(--k-3) var(--le) calc(var(--k-3) + env(safe-area-inset-bottom, 0px));
+    background: var(--nen); border-top: 1px solid var(--vach-kem);
+  }
+  .thd-hang { display: flex; gap: var(--k-2); max-width: 600px; margin: 0 auto; }
+  .thd-chinh { flex: 1 1 auto; min-width: 0; }
+  /* Ô phụ: biểu tượng trên, chữ dưới, luôn có chữ. Viền và chữ theo biến bề mặt (trắng trên đen). */
+  .thd-phu {
+    flex: 0 0 auto; display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+    min-width: 56px; min-height: 48px; padding: 1px var(--k-3);
+    border: 1px solid var(--chu-chinh); border-radius: var(--bo);
+    color: var(--chu-chinh); text-decoration: none;
+    font-size: var(--co-ti); font-weight: 700; line-height: 1.2;
+    transition: background-color var(--nhanh), color var(--nhanh);
+  }
+  /* Biểu tượng 24px như mọi biểu tượng của trang công khai: 24 + một dòng chữ 13px vẫn vừa ô cao 48px. */
+  .thd-phu :global(svg) { width: 24px; height: 24px; flex: none; }
+  @media (hover: hover) { .thd-phu:hover { background: var(--chu-chinh); color: var(--nen); } }
+  .thd-phu:active { background: var(--chu-chinh); color: var(--nen); }
+  /* Chỉ có ô phụ (trang Thực đơn khi form hỏi bàn chưa mở): hai ô chia đều thanh, biểu tượng cạnh chữ. */
+  .thd-hang:not(:has(.thd-chinh)) .thd-phu { flex: 1 1 0; flex-direction: row; gap: var(--k-2); font-size: 15px; }
+  .thd-an { display: none; }
+  @media (min-width: 768px), (max-height: 499.98px) {
+    .thd { display: none; }
+  }
+</style>

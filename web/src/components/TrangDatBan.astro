@@ -44,7 +44,7 @@ import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import { CAU_DAT_BAN, type TinhTrangDatBan, type KetQuaDatBan } from '../lib/dat-ban';
 import { homNayVn } from '../lib/noi-dung';
 import { congNgay } from '../lib/gio-vn';
-import { lienHe } from '../lib/trang-cong-khai';
+import { SO_KHACH_HOI_NHANH, lienHe, soKhachTuUrl } from '../lib/trang-cong-khai';
 import LenTang3 from './LenTang3.astro';
 import BieuTuong from './BieuTuong.astro';
 
@@ -61,6 +61,13 @@ const lh = lienHe(nd);
 
 const homNay = homNayVn();
 const toiDa = congNgay(homNay, 60);
+// Số người khách đã chọn ở thanh hỏi bàn nhanh của màn đầu (?so_khach=, KhoiMoDau.astro): chọn sẵn ở ô số người.
+// Không có hay số lạ thì 2 như trước. Số hợp lệ thì thắng chữ đã lưu của lượt trước (data-chon-tu-dia-chi): lựa
+// chọn khách vừa bấm mới hơn bản nháp cũ — số lạ ("abc", "9") thì KHÔNG, bản nháp vẫn được điền lại. Đổi ngày
+// (form GET bên dưới) mang số người theo, cả khi tắt JavaScript.
+const soKhachXin = Astro.url.searchParams.get('so_khach');
+const soKhachChon = soKhachTuUrl(soKhachXin);
+const soKhachTuDiaChi = soKhachXin !== null && soKhachChon === Number(soKhachXin.trim());
 
 const chonDuoc = tinhTrang.khung.filter(k => k.con_cho && !k.da_qua);
 const trua = chonDuoc.filter(k => k.buoi === 'trua');
@@ -296,6 +303,7 @@ const t = dich(ngonNgu, {
             <label for="hb-ngay">{t.ngay}</label>
             <div class="hb-hang-ngay">
               <input type="date" id="hb-ngay" name="ngay" value={tinhTrang.ngay} min={homNay} max={toiDa} />
+              {soKhachTuDiaChi && <input type="hidden" name="so_khach" value={soKhachChon} data-so-khach-giu />}
               <button type="submit" class="nut nut-vien">{t.doiNgay}</button>
             </div>
             <p class="hb-ngay-truoc nho" id="hb-ngay-truoc" data-ngay-truoc hidden>{t.ngayTruoc}</p>
@@ -344,9 +352,10 @@ const t = dich(ngonNgu, {
             <div class="o">
               <label for="hb-so-khach">{t.soKhach} <em>({t.batBuoc})</em></label>
               <small id="goi-y-so-khach">{t.soKhachPhu}</small>
-              <select id="hb-so-khach" name="so_khach" required aria-describedby="goi-y-so-khach">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
-                  <option value={n} selected={n === 2}>{n}</option>
+              <select id="hb-so-khach" name="so_khach" required aria-describedby="goi-y-so-khach"
+                      data-chon-tu-dia-chi={soKhachTuDiaChi ? '' : undefined}>
+                {SO_KHACH_HOI_NHANH.map(n => (
+                  <option value={n} selected={n === soKhachChon}>{n}</option>
                 ))}
               </select>
             </div>
@@ -474,6 +483,7 @@ const t = dich(ngonNgu, {
       const v = daLuu[ten];
       if (!o || typeof v !== 'string' || !v) continue;
       if (o instanceof HTMLSelectElement) {
+        if (o.hasAttribute('data-chon-tu-dia-chi')) continue;
         if ([...o.options].some(op => op.value === v)) o.value = v;
       } else if (!o.value) {
         o.value = v;
@@ -509,6 +519,9 @@ const t = dich(ngonNgu, {
     const cu = docDaLuu();
     const o = form ? layCacO(form) : null;
     const coChu = !!o && (O_GIU.some(ten => ten !== 'so_khach' && o[ten].trim()) || o.so_khach !== '2');
+    // Số người mang theo trên địa chỉ (đến từ màn đầu): lấy số đang chọn, không phải số lúc trang mở.
+    const giuSoKhach = formNgay.querySelector<HTMLInputElement>('[data-so-khach-giu]');
+    if (giuSoKhach && o?.so_khach) giuSoKhach.value = o.so_khach;
     if (!coChu && !cu) return;
     ghiDaLuu({ ...(cu ?? {}), ...(o ?? {}), gio: '', ngay: ngayMoi, luc: Date.now() } as DaLuu);
   });

@@ -288,9 +288,13 @@ try {
     og: document.querySelector('meta[property="og:description"]')?.getAttribute('content') ?? '',
     dan: document.querySelector('main p.dan')?.textContent?.trim() ?? '',
   }));
+  // Nút chính của màn đầu: link, hoặc (form hỏi bàn mở, 12/11/2026) nút gửi của hỏi bàn nhanh — khi đó "dẫn tới"
+  // là action của form.
   const nutChinhMoDau = () => page.evaluate(() => {
-    const a = document.querySelector('main a.nut.nut-chinh');
-    return a ? { chu: a.textContent.trim().replace(/\s+/g, ' '), duong: new URL(a.href).pathname } : null;
+    const a = document.querySelector('main .kmd .nut.nut-chinh');
+    if (!a) return null;
+    const toi = a.tagName === 'BUTTON' ? a.form?.action : a.href;
+    return { chu: a.textContent.trim().replace(/\s+/g, ' '), duong: toi ? new URL(toi).pathname : null, gui: a.tagName === 'BUTTON' };
   });
 
   /** Điền form hỏi bàn như khách: bấm chọn giờ, chọn số người, gõ họ tên và số điện thoại. */
@@ -326,12 +330,32 @@ try {
       const tot = [
         ok(`${trangChu}: nút chính màn đầu là "${t.datBan}" và dẫn tới ${duongDanTuongUng('/dat-ban', nn)}`,
            nut?.chu === t.datBan && nut?.duong === duongDanTuongUng('/dat-ban', nn), JSON.stringify(nut)),
+        ok(`${trangChu}: form mở → nút chính là nút gửi của hỏi bàn nhanh (ô ngày, ô số người)`,
+           nut?.gui === true && await page.locator('main .kmd form.kmd-hoi select[name="ngay"]').count() === 1
+             && await page.locator('main .kmd form.kmd-hoi select[name="so_khach"]').count() === 1),
         ok(`${trangChu}: có link Facebook đã công bố`,
            await page.locator(`a[href="${LIEN_HE_THU.facebook_url}"]`).count() > 0),
         ok(`${trangChu}: có nút "${t.chiDuong}" dẫn tới Maps đã công bố`,
            await page.locator(`a[href="${LIEN_HE_THU.google_maps_url}"]`).filter({ hasText: t.chiDuong }).count() > 0),
       ];
       if (tot.includes(false)) await chupLoi(`day-du${trangChu}`);
+
+      // Hỏi bàn nhanh (12/11/2026): chọn ngày thứ ba và 4 người ở màn đầu, bấm "Hỏi bàn" → trang Hỏi bàn đúng thứ
+      // tiếng mở đúng ngày đó, ô số người chọn sẵn 4.
+      const ngayChon = await page.locator('main .kmd select[name="ngay"] option').nth(2).getAttribute('value');
+      await page.selectOption('main .kmd select[name="ngay"]', ngayChon);
+      await page.selectOption('main .kmd select[name="so_khach"]', '4');
+      await Promise.all([page.waitForLoadState('load'), page.waitForURL(u => new URL(u).pathname === duongDanTuongUng('/dat-ban', nn)),
+        page.click('main .kmd form.kmd-hoi button[type="submit"]')]);
+      const diaChi = new URL(page.url());
+      const totHoiNhanh = [
+        ok(`${trangChu}: hỏi bàn nhanh → ${duongDanTuongUng('/dat-ban', nn)}?ngay=${ngayChon}&so_khach=4#hb-gio`,
+           diaChi.searchParams.get('ngay') === ngayChon && diaChi.searchParams.get('so_khach') === '4' && diaChi.hash === '#hb-gio', page.url()),
+        ok(`${trangChu}: trang Hỏi bàn mở đúng ngày đã chọn và ô số người chọn sẵn 4`,
+           await page.locator('form[data-doi-ngay] input[name="ngay"]').getAttribute('value') === ngayChon
+             && await page.locator('form[data-hoi-ban] select[name="so_khach"]').inputValue() === '4'),
+      ];
+      if (totHoiNhanh.includes(false)) await chupLoi(`hoi-nhanh${trangChu}`);
 
       const thucDon = duongDanTuongUng('/thuc-don', nn);
       await page.goto(goc + thucDon, { waitUntil: 'load' });
