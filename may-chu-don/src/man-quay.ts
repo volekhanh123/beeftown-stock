@@ -258,7 +258,7 @@ export function khoiXe(c: ChuyenXe, don: DonDayDu, nn: NgonNgu, ms: number, coNu
   const lau = b.buoc === 'dang_goi' && b.canXem;
   const dong: string[] = [];
   if (c.taiXeTen || c.taiXeSdt) {
-    dong.push(`${ch('xeTaiXe')}: ${thoat(c.taiXeTen ?? '')}${c.taiXeSdt ? ` · <a href="tel:${thoat(c.taiXeSdt)}">${thoat(hienSoTaiXe(c.taiXeSdt))}</a>` : ''}`);
+    dong.push(`${ch('xeTaiXe')}: ${thoat(c.taiXeTen ?? '')}${c.taiXeSdt ? ` · <a href="tel:${thoat(chuanHoaSoDienThoai(c.taiXeSdt) ?? c.taiXeSdt)}">${thoat(hienSoTaiXe(c.taiXeSdt))}</a>` : ''}`);
   }
   if (b.buoc === 'tai_xe_toi' && c.trangThaiPhu === 'ARRIVED') dong.push(ch('xeTaiXeToiQuan'));
   if (b.buoc === 'khong_goi_duoc') {

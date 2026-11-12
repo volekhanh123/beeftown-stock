@@ -39,7 +39,7 @@ import {
   DIA_CHI_QUAN_MINI_APP, DIEM_LAY, MS_CHO_KIEM_LAI, MS_GOI_LAU, MS_HOI_LAI, SO_LAN_TAO_TOI_DA, buocXe, diaChiGiaoAhamove,
   docCauHinhAhamove, docLoiAhamove, docMaTheoDoiXe, docTinChuyen, khoiLuongKg, thanTaoChuyen,
 } from '../src/ahamove.ts';
-import { goiXeMotLuot, taoPhienAhamove, type HamFetchAhamove } from '../src/goi-xe.ts';
+import { MS_CHO_TOKEN, goiXeMotLuot, taoPhienAhamove, type HamFetchAhamove } from '../src/goi-xe.ts';
 import { LOI_XE, NHAN_XE } from '../src/man-quay.ts';
 
 let dat = 0, hong = 0;
@@ -1957,6 +1957,10 @@ nhom('24 · Xe Ahamove (Khánh 12/11/2026): một chuyến mỗi lần bấm, kh
     postCua(m) === 0 && so.chuyenMoiNhat(m.ma)?.viec === 'tao' && so.chuyenMoiNhat(m.ma)?.soLan === 0 && r3.dungVi?.includes('AHAMOVE_API_KEY') === true
     && phien.loiToken?.includes('PARTNER_NOT_FOUND') === true);
   tuChoiToken = null;
+  goiAha.length = 0;
+  await luot();
+  ok('Bị từ chối token → 10 phút sau mới hỏi lại (không gửi API key 15 giây một lần)', !goiAha.some(x => x.duong === '/v3/accounts/token'));
+  gio += MS_CHO_TOKEN + 1000;
   await luot();
   ok('Token được lại → chuyến đi', so.chuyenMoiNhat(m.ma)?.maAha !== null && phien.loiToken === null);
 
@@ -2060,7 +2064,7 @@ nhom('24 · Xe Ahamove (Khánh 12/11/2026): một chuyến mỗi lần bấm, kh
   const ds = await (await quay('/quay')).text();
   ok('Màn quầy: dòng cảnh báo Ahamove môi trường thử', ds.includes(thoat(CHU.xeThuDauTrang.vi)));
   ok('Màn quầy: thẻ đơn có bước chuyến, tài xế bấm gọi (0901 112 233), link Ahamove mở thẻ mới không gửi referrer',
-    ds.includes(NHAN_XE.tai_xe_toi.vi) && ds.includes('href="tel:84901112233"') && ds.includes('0901 112 233')
+    ds.includes(NHAN_XE.tai_xe_toi.vi) && ds.includes('href="tel:0901112233"') && ds.includes('0901 112 233')
     && ds.includes(`href="https://expressstg.ahamove.com/s/${maU}" target="_blank" rel="noopener noreferrer"`));
   ok('Màn quầy: chuyến Ahamove không nhận → lý do theo mã lỗi, nút "Gọi lại xe Ahamove" là nút chính duy nhất',
     ds.includes(NHAN_XE.aha_huy.vi) && ds.includes(thoat(LOI_XE.QUA_SO_LAN.vi)) && ds.includes(CHU.xeNutGoiLai.vi));
@@ -2091,6 +2095,54 @@ nhom('24 · Xe Ahamove (Khánh 12/11/2026): một chuyến mỗi lần bấm, kh
   const nk = nhatKy.join('\n');
   ok('Nhật ký gọi xe không có api_key, token, số khách, địa chỉ khách', nhatKy.length > 5 && !nk.includes(API_KEY) && !nk.includes('token-')
     && !nk.includes('0912345678') && !nk.includes('Nguyễn Huệ'));
+
+  // --- rà soát 12/11 ---
+  const v1 = donChoGiao();
+  so.doiTrangThai(v1.ma, 'cho_lay', 'da_giao', gio);
+  goiAha.length = 0;
+  await luot();
+  ok('HỒI QUY rà soát: quầy tự bấm "Đã giao" trước khi gửi Ahamove → không gọi xe nữa', postCua(v1) === 0 && buoc(v1).buoc === 'tu_goi');
+  const v2 = donChoGiao();
+  await luot();
+  so.doiTrangThai(v2.ma, 'cho_lay', 'da_giao', gio);
+  await luot();
+  ok('HỒI QUY rà soát: quầy tự bấm "Đã giao" khi chuyến đang tìm tài xế → hủy chuyến trên Ahamove',
+    donAha.get(so.chuyenMoiNhat(v2.ma)!.maAha!)?.status === 'CANCELLED');
+  const v3 = donChoGiao();
+  kichBanTao.set(`${v3.ma}-1`, ['tao_roi_nem']);
+  await luot();
+  gio += MS_GOI_LAU + 1000;
+  ok('Chuyến chưa rõ quá 5 phút → "Quầy tự xử lý" được', so.quayTuGoiXe(v3.ma, 1, gio) === 'da_doi');
+  await luot();
+  ok('HỒI QUY rà soát: "Quầy tự xử lý" khi Ahamove có thể đã tạo → hủy đơn Ahamove theo mã theo dõi (không hai tài xế)',
+    donAha.get(theoMa.get(`${v3.ma}-1`)!)?.status === 'CANCELLED' && buoc(v3).buoc === 'tu_goi');
+  const soDelTruoc = goiAha.filter(x => x.method === 'DELETE').length;
+  await wh({ _id: so.chuyenMoiNhat(s2.ma)!.maAha!, status: 'IN PROCESS', sub_status: 'COMPLETING' });
+  await luot();
+  ok('HỒI QUY rà soát: "Không hủy được" rồi webhook tới → không mở lại vòng hủy', so.chuyenMoiNhat(s2.ma)?.viec === null
+    && goiAha.filter(x => x.method === 'DELETE').length === soDelTruoc && buoc(s2).buoc === 'huy_khong_duoc');
+  const v4 = donChoGiao();
+  await luot();
+  const maV4 = so.chuyenMoiNhat(v4.ma)!.maAha!;
+  await wh({ _id: maV4, status: 'COMPLETED' });
+  ok('HỒI QUY rà soát: COMPLETED chưa có trạng thái điểm giao → chưa nói "đã giao", đơn chưa đổi', buoc(v4).buoc === 'dang_giao'
+    && so.layDon(v4.ma)?.trangThai === 'cho_lay');
+  donAha.get(maV4)!.status = 'COMPLETED';
+  donAha.get(maV4)!.path = [{}, { status: 'COMPLETED', tracking_number: `${v4.ma}-1` }];
+  gio += MS_HOI_LAI + 1000;
+  await luot();
+  ok('… máy chủ hỏi lại, thấy giao được → đơn tự sang "Đã giao"', so.layDon(v4.ma)?.trangThai === 'da_giao' && buoc(v4).buoc === 'da_giao');
+  const v5 = donChoGiao();
+  kichBanTao.set(`${v5.ma}-1`, [{ status: 406, json: { title: 'INVALID_MAX_DISTANCE' } }]);
+  await luot();
+  so.goiLaiXe(v5.ma, 1, gio);
+  const cu = taoTrenAha(`${v5.ma}-1`);
+  await wh({ _id: cu._id, status: 'ASSIGNING', path: [{}, { tracking_number: `${v5.ma}-1` }] });
+  ok('HỒI QUY rà soát: lần cũ (lần 1) hiện lên trên Ahamove sau khi đã gọi lại lần 2 → lần 1 mang việc hủy',
+    so.layChuyen(v5.ma, 1)?.viec === 'huy' && so.layChuyen(v5.ma, 1)?.huyYeuCau === true);
+  const nHuy = so.chuyenCanLam(gio + 1, 10);
+  ok('HỒI QUY rà soát: việc hủy đứng trước việc tạo trong lượt', nHuy[0]?.viec === 'huy', nHuy.map(x => x.viec).join(','));
+  await luot();
 
   // --- chữ ---
   const capXe = [...Object.values(NHAN_XE), ...Object.values(LOI_XE)];

@@ -503,10 +503,11 @@ export function taoXuLy(tc: TuyChonMayChu) {
         const don = ma ? tc.so.layDon(ma) : null;
         const bao = laCauBao(baoMa) ? { ma: baoMa, maDon: don?.ma ?? '', so: don?.soTrongNgay ?? null, den: laTrangThai(den) ? den : null } : null;
         const daNhan = tc.so.tienDaNhanTheoDon();
-        return html(trangDanhSach(nn, tc.so.danhSachQuay(ms), bao, tc.so.tienVeCanXem(), ma => daNhan.get(ma) ?? 0,
+        const ds = tc.so.danhSachQuay(ms);
+        return html(trangDanhSach(nn, ds, bao, tc.so.tienVeCanXem(), ma => daNhan.get(ma) ?? 0,
           tc.so.donCoTienDemo(), tc.demo ? tc.so.donChoThanhToan() : undefined,
           { donTienThu: tc.so.donCoTienThuVnpay(), dangThuNghiem: !!tc.checkout && laThuNghiem(tc.checkout.phuongThuc) },
-          { theoDon: tc.so.chuyenMoiNhatTheoDon(), dangThu: tc.ahamove?.cauHinh.moiTruong === 'thu', ms }));
+          { theoDon: tc.so.chuyenMoiNhatTheoDon([...ds.conViec, ...ds.xongHomNay].map(d => d.ma)), dangThu: tc.ahamove?.cauHinh.moiTruong === 'thu', ms }));
       }
 
       if (duong === '/quay/vnpay-thu' && req.method === 'GET') {

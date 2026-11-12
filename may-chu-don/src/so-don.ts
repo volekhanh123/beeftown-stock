@@ -38,7 +38,7 @@ import type { LoaiTin } from './zns.ts';
 import type { DonMoi, DongMoi } from './tao-don.ts';
 import { CON_VIEC, duocBam, laTrangThai, type TrangThai } from './trang-thai.ts';
 import {
-  MS_CHO_KIEM_LAI, MS_HOI_LAI, MS_THOI_HOI, SO_LAN_HUY_TOI_DA, SO_LAN_TAO_TOI_DA, buocXe, docMaTheoDoiXe, laTrangThaiCuoi,
+  MS_CHO_KIEM_LAI, MS_HOI_LAI, MS_THOI_HOI, SO_LAN_HUY_TOI_DA, SO_LAN_TAO_TOI_DA, buocXe, daKhepHan, docMaTheoDoiXe, laTrangThaiCuoi,
   type ChuyenXe, type LoiAhamove, type TinChuyen, type ViecXe,
 } from './ahamove.ts';
 
@@ -381,6 +381,7 @@ export class SoDon {
         where d.ma = ? and d.cach_nhan = 'giao-hang'`).get(ma)) this.xepTinZns(ma, 'dang_giao', ms);
       if (den === 'cho_lay') this.xepChuyenXe(ma, ms);
       if (den === 'can_hoan_tien') this.huyChuyenXeCuaDon(ma, ms);
+      if (den === 'da_giao' && ai === 'quay') this.thoiChuyenKhiQuayTuGiao(ma, ms);
       return 'da_doi';
     }
     const hienTai = this.db.query('select trang_thai from don where ma = ?').get(ma) as { trang_thai: string } | null;
@@ -754,10 +755,12 @@ export class SoDon {
     return this.docChuyen(this.db.query('select * from chuyen_xe where ma_don = ? order by lan desc limit 1').get(ma) as DongDb | null);
   }
 
-  /** Lần gọi xe mới nhất của mọi đơn có chuyến — một câu cho cả màn quầy. */
-  chuyenMoiNhatTheoDon(): Map<string, ChuyenXe> {
-    const hang = this.db.query(`select c.* from chuyen_xe c join (select ma_don, max(lan) as lan from chuyen_xe group by ma_don) m
-      on m.ma_don = c.ma_don and m.lan = c.lan`).all() as DongDb[];
+  /** Lần gọi xe mới nhất của các đơn `ma` (đơn trên màn quầy) — một câu, không quét cả lịch sử. */
+  chuyenMoiNhatTheoDon(ma: string[]): Map<string, ChuyenXe> {
+    if (!ma.length) return new Map();
+    const dau = ma.map(() => '?').join(', ');
+    const hang = this.db.query(`select c.* from chuyen_xe c join (select ma_don, max(lan) as lan from chuyen_xe
+        where ma_don in (${dau}) group by ma_don) m on m.ma_don = c.ma_don and m.lan = c.lan`).all(...ma) as DongDb[];
     return new Map(hang.map(h => [String(h.ma_don), this.docChuyen(h)!]));
   }
 
@@ -795,16 +798,32 @@ export class SoDon {
     }
   }
 
-  /** Chuyến có việc đến hạn (tạo, tra lại, hủy), cũ trước. */
+  /**
+   * Quầy tự bấm "Đã giao tới khách" (quầy tự giao) trong lúc chuyến chưa tới tay tài xế: chưa gửi Ahamove → thôi gọi;
+   * đã gửi mà tài xế chưa lấy hàng → hủy. Tài xế đã lấy hàng (IN PROCESS): để nguyên — thường là webhook tới chậm hơn quầy.
+   */
+  private thoiChuyenKhiQuayTuGiao(ma: string, ms: number) {
+    const c = this.chuyenMoiNhat(ma);
+    if (!c || c.tuGoiLuc !== null || c.huyYeuCau || laTrangThaiCuoi(c.trangThaiAha) || c.trangThaiAha === 'IN PROCESS') return;
+    if (c.viec === 'tao' || (!c.maAha && c.viec === null)) {
+      this.db.query('update chuyen_xe set viec = null, tu_goi_luc = ?, cap_nhat_luc = ? where ma_don = ? and lan = ?').run(ms, ms, ma, c.lan);
+    } else {
+      this.db.query(`update chuyen_xe set viec = 'huy', viec_sau = ?, so_lan = 0, huy_yeu_cau = 1, tu_goi_luc = ?, cap_nhat_luc = ?
+        where ma_don = ? and lan = ?`).run(ms, ms, ms, ma, c.lan);
+    }
+  }
+
+  /** Chuyến có việc đến hạn (tạo, tra lại, hủy) — hủy trước (tài xế đừng tới đơn đã hủy), rồi cũ trước. */
   chuyenCanLam(ms: number, gioiHan: number): ChuyenXe[] {
-    return (this.db.query('select * from chuyen_xe where viec is not null and viec_sau <= ? order by viec_sau, tao_luc limit ?')
+    return (this.db.query(`select * from chuyen_xe where viec is not null and viec_sau <= ?
+      order by case viec when 'huy' then 0 else 1 end, viec_sau, tao_luc limit ?`)
       .all(ms, gioiHan) as DongDb[]).map(h => this.docChuyen(h)!);
   }
 
   /** Chuyến đang chạy mà Ahamove im quá MS_HOI_LAI (webhook lạc, hay chưa cài webhook): máy chủ tự hỏi. */
   chuyenCanHoi(ms: number, gioiHan: number): ChuyenXe[] {
     return (this.db.query(`select * from chuyen_xe where ma_aha is not null and viec is null and tu_goi_luc is null
-        and (trang_thai_aha is null or trang_thai_aha not in ('COMPLETED', 'CANCELLED'))
+        and (trang_thai_aha is null or trang_thai_aha <> 'CANCELLED') and not (trang_thai_aha = 'COMPLETED' and diem_giao is not null)
         and max(coalesce(aha_luc, 0), coalesce(hoi_luc, 0), cap_nhat_luc) < ? and tao_luc > ?
       order by coalesce(hoi_luc, 0) limit ?`).all(ms - MS_HOI_LAI, ms - MS_THOI_HOI, gioiHan) as DongDb[]).map(h => this.docChuyen(h)!);
   }
@@ -869,12 +888,18 @@ export class SoDon {
         if (cu && (cu.maAha === null || cu.maAha === tin.maAha)) c = cu;
       }
       if (!c) return null;
-      if (c.maAha === tin.maAha && laTrangThaiCuoi(c.trangThaiAha)) return { maDon: c.maDon, lan: c.lan, doi: false, daGiao: false };
+      if (c.maAha === tin.maAha && daKhepHan(c.trangThaiAha, c.diemGiao)) return { maDon: c.maDon, lan: c.lan, doi: false, daGiao: false };
       const tt = tin.trangThai || c.trangThaiAha;
       const cuoi = laTrangThaiCuoi(tt);
+      // Lần cũ hơn lần quầy đang thấy (đã bấm "Gọi lại xe") mà Ahamove vẫn chạy: hủy nó — một đơn một xe.
+      const moiNhat = this.db.query('select max(lan) as lan from chuyen_xe where ma_don = ?').get(c.maDon) as { lan: number };
+      const biThay = !cuoi && c.lan < moiNhat.lan;
+      if (biThay && !c.huyYeuCau) this.db.query('update chuyen_xe set huy_yeu_cau = 1 where ma_don = ? and lan = ?').run(c.maDon, c.lan);
+      const huyYeuCau = c.huyYeuCau || biThay;
       const coTaiXe = tt === 'ACCEPTED' || tt === 'IN PROCESS' || tt === 'COMPLETED' || tt === 'CONFIRMING' || tt === 'PAYING';
       // Việc tiếp theo: tra lại / tạo xong rồi thì hết việc; quầy đã hủy đơn mà chuyến còn chạy thì hủy; khép thì hết.
-      const viec: ViecXe | null = cuoi ? null : c.huyYeuCau ? 'huy' : c.viec === 'huy' ? 'huy' : null;
+      // Hủy không được (loi_huy) thì thôi thử lại: webhook sau không mở lại vòng hủy.
+      const viec: ViecXe | null = cuoi ? null : (huyYeuCau && !c.loiHuy) || c.viec === 'huy' ? 'huy' : null;
       this.db.query(`update chuyen_xe set ma_aha = ?, trang_thai_aha = ?, trang_thai_phu = ?, diem_giao = coalesce(?, diem_giao),
           ly_do = coalesce(?, ly_do), tai_xe_ten = ?, tai_xe_sdt = ?, link = coalesce(?, link), phi = coalesce(?, phi),
           viec = ?, viec_sau = case when ? is null then viec_sau else ? end, ma_loi = null, aha_luc = ?, cap_nhat_luc = ?
@@ -942,17 +967,20 @@ export class SoDon {
       if (!c || c.lan !== lan) return c && c.lan > lan ? 'lech' : 'khong_co';
       if (c.tuGoiLuc !== null) return 'da_o_buoc_moi';
       if (!buocXe(c, ms).canXem) return 'lech';
-      this.db.query('update chuyen_xe set tu_goi_luc = ?, viec = null, cap_nhat_luc = ? where ma_don = ? and lan = ?').run(ms, ms, ma, lan);
+      // Đang gọi lâu (đã gửi mà chưa rõ) hay chuyến còn chạy: Ahamove có thể đã có đơn — hủy nó, kẻo hai tài xế.
+      const conChay = c.viec === 'kiem_lai' || (c.maAha !== null && !laTrangThaiCuoi(c.trangThaiAha) && !c.loiHuy);
+      this.db.query(`update chuyen_xe set tu_goi_luc = ?, viec = ?, viec_sau = ?, so_lan = case when ? = 'huy' then 0 else so_lan end,
+        huy_yeu_cau = case when ? = 'huy' then 1 else huy_yeu_cau end, cap_nhat_luc = ? where ma_don = ? and lan = ?`)
+        .run(ms, conChay ? 'huy' : null, ms, conChay ? 'huy' : '', conChay ? 'huy' : '', ms, ma, lan);
       return 'da_doi';
     }).immediate();
   }
 
   private soLieuXe(ms: number) {
-    const mn = this.chuyenMoiNhatTheoDon();
-    const dangLam = new Set((this.db.query(`select ma from don where trang_thai in (${CON_VIEC.map(() => '?').join(', ')})`)
-      .all(...CON_VIEC) as { ma: string }[]).map(r => r.ma));
+    const dangLam = (this.db.query(`select ma from don where trang_thai in (${CON_VIEC.map(() => '?').join(', ')})`)
+      .all(...CON_VIEC) as { ma: string }[]).map(r => r.ma);
     let canXem = 0;
-    for (const [ma, c] of mn) if (dangLam.has(ma) && buocXe(c, ms).canXem) canXem++;
+    for (const c of this.chuyenMoiNhatTheoDon(dangLam).values()) if (buocXe(c, ms).canXem) canXem++;
     const cuoi = this.db.query('select max(aha_luc) as luc from chuyen_xe').get() as { luc: number | null };
     return { soXeCanXem: canXem, lanAhamoveCuoi: cuoi.luc };
   }

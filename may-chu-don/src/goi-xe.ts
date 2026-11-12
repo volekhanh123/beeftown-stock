@@ -27,9 +27,13 @@ import type { SoDon } from './so-don.ts';
 export type HamFetchAhamove = (url: string, init: YeuCauAhamove['init'] & { signal: AbortSignal }) =>
   Promise<{ status: number; text(): Promise<string> }>;
 
-/** Token Ahamove của máy chủ (trong bộ nhớ) và lỗi lấy token gần nhất — /suc-khoe báo. */
-export interface PhienAhamove { token: string | null; loiToken: string | null }
-export const taoPhienAhamove = (): PhienAhamove => ({ token: null, loiToken: null });
+/**
+ * Token Ahamove của máy chủ (trong bộ nhớ), lỗi lấy token gần nhất (/suc-khoe báo) và mốc được hỏi token lại: Ahamove
+ * từ chối (sai API key, số, môi trường) thì chờ MS_CHO_TOKEN mới hỏi lại — không gửi API key 15 giây một lần.
+ */
+export interface PhienAhamove { token: string | null; loiToken: string | null; hoiTokenSau: number }
+export const taoPhienAhamove = (): PhienAhamove => ({ token: null, loiToken: null, hoiTokenSau: 0 });
+export const MS_CHO_TOKEN = 10 * 60_000;
 
 export interface PhuThuocGoiXe {
   so: SoDon;
@@ -89,6 +93,7 @@ type KetQuaToken = { ok: true } | { ok: false; cau: string };
 
 async function layToken(p: PhuThuocGoiXe, buoc: boolean): Promise<KetQuaToken> {
   if (!buoc && p.phien.token) return { ok: true };
+  if (p.bayGio() < p.phien.hoiTokenSau) return { ok: false, cau: p.phien.loiToken ?? 'Chờ hỏi lại token Ahamove' };
   p.phien.token = null;
   const kq = await goi(p, yeuCauToken(p.cauHinh));
   if ('loiMang' in kq) return { ok: false, cau: `Chưa lấy được token Ahamove: ${kq.loiMang}` };
@@ -102,7 +107,7 @@ async function layToken(p: PhuThuocGoiXe, buoc: boolean): Promise<KetQuaToken> {
   const cau = kq.status >= 500
     ? `Ahamove lỗi khi cấp token (${l.ma})`
     : `Ahamove từ chối cấp token (${l.ma}) — kiểm AHAMOVE_API_KEY, AHAMOVE_SO_DIEN_THOAI, AHAMOVE_MOI_TRUONG`;
-  if (kq.status < 500) p.phien.loiToken = cau;
+  if (kq.status < 500) { p.phien.loiToken = cau; p.phien.hoiTokenSau = p.bayGio() + MS_CHO_TOKEN; }
   return { ok: false, cau };
 }
 

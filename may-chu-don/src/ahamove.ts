@@ -174,6 +174,12 @@ export const yeuCauToken = (ch: CauHinhAhamove) =>
 /** Trạng thái đơn của Ahamove (Dòng trạng thái đơn hàng). CONFIRMING, PAYING: Hủy đơn có nhắc, tài liệu không tả. */
 export const TRANG_THAI_CUOI = ['COMPLETED', 'CANCELLED'] as const;
 export const laTrangThaiCuoi = (t: string | null | undefined) => t === 'COMPLETED' || t === 'CANCELLED';
+/**
+ * Chuyến khép hẳn, không đổi nữa: CANCELLED, hay COMPLETED đã biết điểm giao (giao được / không được). COMPLETED mà
+ * chưa có path[1].status thì còn hỏi lại — tài liệu: COMPLETED "không có nghĩa là đã giao tới người nhận".
+ */
+export const daKhepHan = (t: string | null | undefined, diemGiao: string | null | undefined) =>
+  t === 'CANCELLED' || (t === 'COMPLETED' && !!diemGiao);
 
 export interface TinChuyen {
   /** Mã đơn Ahamove, đã bỏ đuôi "-<điểm giao>" của callback đơn 1-N. */
@@ -338,8 +344,8 @@ export type BuocXe =
  */
 export function buocXe(c: ChuyenXe, ms: number): { buoc: BuocXe; canXem: boolean; choGoiLai: boolean } {
   const r = (buoc: BuocXe, canXem = false, choGoiLai = false) => ({ buoc, canXem, choGoiLai });
+  if (c.loiHuy) return r('huy_khong_duoc', c.tuGoiLuc === null);
   if (c.tuGoiLuc !== null) return r('tu_goi');
-  if (c.loiHuy) return r('huy_khong_duoc', true);
   if (c.viec === 'huy') return r('dang_huy');
   // Quầy đã hủy đơn: chuyến đã hủy hay chưa từng có. Ahamove báo đã giao (giao xong trước khi kịp hủy) thì nói thật.
   if (c.huyYeuCau && c.trangThaiAha !== 'COMPLETED') return r('quan_huy');
@@ -348,7 +354,11 @@ export function buocXe(c: ChuyenXe, ms: number): { buoc: BuocXe; canXem: boolean
     if (c.viec === null && c.maLoi) return r('khong_goi_duoc', true, true);
     return r('dang_goi', ms - c.taoLuc > MS_GOI_LAU);
   }
-  if (c.trangThaiAha === 'COMPLETED') return c.diemGiao === 'FAILED' ? r('giao_hong', true, true) : r('da_giao');
+  if (c.trangThaiAha === 'COMPLETED') {
+    if (c.diemGiao === 'FAILED' || c.trangThaiPhu === 'IN_RETURN' || c.trangThaiPhu === 'RETURNED') return r('giao_hong', true, true);
+    // Chưa rõ điểm giao: máy chủ hỏi lại (chuyenCanHoi) — chưa nói "đã giao".
+    return c.diemGiao === 'COMPLETED' ? r('da_giao') : r('dang_giao');
+  }
   if (c.trangThaiAha === 'IN PROCESS') return r('dang_giao');
   if (c.trangThaiAha === 'ACCEPTED' || c.trangThaiAha === 'CONFIRMING' || c.trangThaiAha === 'PAYING') return r('tai_xe_toi');
   return r('tim_tai_xe');
