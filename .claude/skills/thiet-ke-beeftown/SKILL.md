@@ -255,7 +255,7 @@ khối: [tham-khao/trang-cong-khai.md](tham-khao/trang-cong-khai.md) (công khai
 - **Liên kết có mũi tên** `.lien-ket` + `<BieuTuong ten="mui-ten" />` — chữ gạch chân, không đóng hộp.
 - **Biểu tượng**: hai bộ SVG nét tự vẽ, không trộn. Trang công khai: `web/src/components/BieuTuong.astro`
   (nét 1,5px) — mui-ten, menu, dong, cong, tru, khay, nhan, vi-gas, thang-may, nhom, ghim, sao-chep,
-  da-chep, dien-thoai, tin-nhan, mon-song, co-con, cua. Bộ này hiện ở cỡ 24px, nét không co theo cỡ;
+  da-chep, dien-thoai, tin-nhan, mon-song, co-con, cua, xe-giao, the-tra. Bộ này hiện ở cỡ 24px, nét không co theo cỡ;
   biểu tượng trong thứ bấm được luôn kèm nhãn chữ. Nội bộ và kho:
   `web/src/components/kho/BieuTuong.astro` (nét 2px, tên trong `web/src/lib/kho/bieu-tuong.ts`).
   Thiếu thì vẽ thêm vào đúng bộ, cùng lưới 24 và cùng nét — **không emoji, không thư viện biểu tượng**.

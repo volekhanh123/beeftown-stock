@@ -40,11 +40,11 @@ const coLoc = coMat.length > 1;
     <p class="dan">{c.dan}</p>
 
     {coLoc && (
-      <fieldset class="cg-loc">
+      <fieldset class="chon-loc cg-loc">
         <legend class="an-chu">{c.nhomGu}</legend>
-        <span class="cg-chon"><input type="radio" name="cg-gu" id="cg-tat-ca" value="tat-ca" checked /><label for="cg-tat-ca">{c.tatCa}</label></span>
+        <span><input type="radio" name="cg-gu" id="cg-tat-ca" value="tat-ca" checked /><label for="cg-tat-ca">{c.tatCa}</label></span>
         {coMat.map(g => (
-          <span class="cg-chon"><input type="radio" name="cg-gu" id={`cg-${g}`} value={g} /><label for={`cg-${g}`}>{TEN_GU[g][ngonNgu]}</label></span>
+          <span><input type="radio" name="cg-gu" id={`cg-${g}`} value={g} /><label for={`cg-${g}`}>{TEN_GU[g][ngonNgu]}</label></span>
         ))}
       </fieldset>
     )}
@@ -68,21 +68,8 @@ const coLoc = coMat.length > 1;
   .cg h3 { font-size: var(--co-h2); margin: var(--k-3) 0 0; }
   .cg .dan { margin: var(--k-4) 0 0; }
 
-  /* Hàng nút lọc: radio thật ẩn (trong suốt, cắt hết) ngay dưới nhãn (vẫn nhận Tab, mũi tên, trình đọc màn hình đọc được);
-     bấm vào nhãn là chọn. Nhãn vẽ thành nút viền cao 48px. */
-  .cg-loc { border: 0; margin: var(--k-6) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--k-2); min-width: 0; }
-  .cg-chon { position: relative; display: inline-flex; }
-  .cg-chon input { position: absolute; left: 50%; bottom: 0; margin: 0; opacity: 0; pointer-events: none; clip-path: inset(50%); }
-  .cg-chon label {
-    display: inline-flex; align-items: center; min-height: 48px; padding: 0 var(--k-4);
-    border: 1.5px solid var(--chu-chinh); border-radius: var(--bo);
-    color: var(--chu-chinh); font-weight: 600; font-size: 15px; cursor: pointer;
-    transition: background-color var(--nhanh), color var(--nhanh);
-  }
-  /* Đang chọn: nền đặc VÀ chữ đậm hơn — không chỉ khác màu. */
-  .cg-chon input:checked + label { background: var(--chu-chinh); color: var(--nen); font-weight: 800; }
-  .cg-chon input:focus-visible + label { outline: 3px solid var(--vong-focus); outline-offset: 3px; }
-  @media (hover: hover) { .cg-chon input:not(:checked):hover + label { background: var(--vach-kem); } }
+  /* Hàng nút lọc: lớp chung .chon-loc (cong-khai.css) — radio thật ẩn dưới nhãn vẽ thành nút viền 48px. */
+  .cg .cg-loc { margin-top: var(--k-6); }
 
   .cg-luoi { list-style: none; margin: var(--k-6) 0 0; padding: 0; display: grid; gap: var(--k-3); }
   @media (min-width: 600px) { .cg-luoi { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

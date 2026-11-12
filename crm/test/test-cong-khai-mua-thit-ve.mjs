@@ -23,6 +23,9 @@
  *   7. Kết quả: đã nhận → mã đơn, không form; không chắc → không form, mời gọi quán; chưa ghi → câu lỗi trên khối Giao hàng.
  *   8. CSS tiền tố mtv-, :hover trong @media (hover: hover), không bóng đổ, không mã màu.
  *   9. Script: chặn giỏ rỗng và bấm đúp, giữ chữ đã gõ, Meta Pixel một lần mỗi giỏ, không innerHTML.
+ *  11. Đợt 3 (Khánh duyệt 12/11/2026): một khuôn thẻ (giá đậm, cỡ gói ngay dưới, nút ở chân thẻ), dòng gu từ
+ *      bo_tai_quay_theo_gu, cách dùng trong hộp, dải ba điều đúng theo cách trả tiền, nút lọc nhóm chạy nhờ script,
+ *      cột "Đơn của bạn" dính bên phải từ 1024px.
  */
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -165,14 +168,14 @@ const cauCua = khoa => CHU_TRANG.bang.get(khoa) ?? CHU_THE.bang.get(khoa) ?? nul
 // hỏi đáp. Lớp khác trong hai component phải mang tiền tố mtv-.
 const LOP_CHUNG = new Set(['muc', 'khung', 'khung-hep', 'be-kem', 'be-kem-sau', 'be-kem-dam', 'be-toi', 'be-do', 'hieu', 'dan', 'nho',
   'an-chu', 'nut', 'nut-chinh', 'nut-vien', 'nut-nho', 'hang-nut', 'lien-ket', 'the', 'luoi', 'trang-thai', 'anh', 'chu-thich-anh',
-  'khung-anh', 'cau-hoi', 'tra-loi', 'mon', 'nhan-mon', 'o', 'loi-o', 'mo-dau-trang', 'tach-nen', 'bt-mo', 'bt-dong']);
+  'khung-anh', 'cau-hoi', 'tra-loi', 'mon', 'nhan-mon', 'o', 'loi-o', 'mo-dau-trang', 'tach-nen', 'chon-loc', 'bt-mo', 'bt-dong']);
 
 // ===========================================================================
 await nhom('0 · HAI COMPONENT CÓ MẶT, NHẬN ĐÚNG PROPS', async () => {
   ok('Có TrangMuaThitVe.astro và MuaThitThe.astro', !!TRANG.nguon && !!THE.nguon);
-  ok('TrangMuaThitVe nhận { ngonNgu, noiDung, menu, trangThai, ketQua, thamSo, duongDan, traVnpay (0115, mặc định tắt) }',
-     /const \{ ngonNgu: nn, noiDung: nd, menu, trangThai, ketQua, thamSo, duongDan, traVnpay = false \} = Astro\.props;/.test(TRANG.dau));
-  ok('MuaThitThe nhận { sanPham, ngonNgu, gio, coOChon }', /const \{ sanPham, ngonNgu, gio, coOChon \} = Astro\.props;/.test(THE.dau));
+  ok('TrangMuaThitVe nhận { ngonNgu, noiDung, menu, trangThai, ketQua, thamSo, duongDan, traVnpay (0115, mặc định tắt), theoGu (đợt 3, mặc định rỗng) }',
+     /const \{ ngonNgu: nn, noiDung: nd, menu, trangThai, ketQua, thamSo, duongDan, traVnpay = false, theoGu = \[\] \} = Astro\.props;/.test(TRANG.dau));
+  ok('MuaThitThe nhận { sanPham, ngonNgu, gio, coOChon, gu (đợt 3, mặc định rỗng) }', /const \{ sanPham, ngonNgu, gio, coOChon, gu = \[\] \} = Astro\.props;/.test(THE.dau));
   ok('Đơn tính bằng hàm của don-mua-thit.ts: docGio(thamSo, menu.sanPham) → tinhDon(gio, menu.sanPham, boTamHet)',
      /docGio\(thamSo, menu\.sanPham\)/.test(TRANG.dau) && /tinhDon\(gio, menu\.sanPham, boTamHet\)/.test(TRANG.dau));
 });
@@ -335,10 +338,20 @@ await nhom('8 · CSS: TIỀN TỐ mtv-, DI CHUỘT, THANH GIỎ', async () => {
   ok('Thanh giỏ: sticky đáy, z-index dưới 40, ẩn ở @media (max-height: 500px)',
      /position:\s*sticky/.test(thanh) && /bottom:\s*0/.test(thanh) && Number(/z-index:\s*(\d+)/.exec(thanh)?.[1] ?? NaN) < 40
        && /@media\s*\(max-height:\s*500px\)\s*\{[^{}]*\.mtv-thanh\s*\{[^}]*display:\s*none/.test(css), thanh);
-  ok('Lưới gói: 2 cột từ 600px, 3 cột từ 1024px; Đặt hàng hai cột từ 900px',
+  // Đợt 3: từ 1024px lưới gói chỉ còn cột trái (cột "Đơn của bạn" dính bên phải) — số cột đo theo phần gói.
+  const danhSach = /\.mtv-danh-sach\s*\{([^}]*)\}/.exec(css)?.[1] ?? '';
+  ok('Lưới gói: 2 cột từ 600px, 3 cột khi phần gói rộng từ 760px (container query trên .mtv-danh-sach)',
      /@media\s*\(min-width:\s*600px\)\s*\{\s*\.mtv-luoi-the\s*\{\s*grid-template-columns:\s*repeat\(2/.test(css)
-       && /@media\s*\(min-width:\s*1024px\)\s*\{\s*\.mtv-luoi-the\s*\{\s*grid-template-columns:\s*repeat\(3/.test(css)
-       && /@media\s*\(min-width:\s*900px\)\s*\{\s*\.mtv-hai-cot/.test(css));
+       && /@container\s*\(min-width:\s*760px\)\s*\{\s*\.mtv-luoi-the\s*\{\s*grid-template-columns:\s*repeat\(3/.test(css)
+       && /container-type:\s*inline-size/.test(danhSach), danhSach);
+  const tu1024 = /@media\s*\(min-width:\s*1024px\)\s*\{([\s\S]*?\})\s*\}/.exec(css)?.[1] ?? '';
+  const cotDon = /\.mtv-co-don \.mtv-don\s*\{([^}]*)\}/.exec(tu1024)?.[1] ?? '';
+  ok('Từ 1024px (và chỉ khi có cột đơn — trạng thái mo): hai cột, cột đơn trải hai hàng, dính dưới đầu trang, cao hơn màn hình thì cuộn bên trong',
+     /\.mtv-co-don\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\) clamp\(/.test(tu1024)
+       && /grid-column:\s*2/.test(cotDon) && /grid-row:\s*1 \/ span 2/.test(cotDon)
+       && /position:\s*sticky/.test(cotDon) && /top:\s*calc\(var\(--cao-dau\)/.test(cotDon)
+       && /max-height:\s*calc\(100dvh - var\(--cao-dau\)/.test(cotDon) && /overflow-y:\s*auto/.test(cotDon)
+       && /\{ 'mtv-co-don': trangThai === 'mo' \}/.test(TRANG.khuon), cotDon);
   ok('Ô chọn và nút −/+ không bị thanh giỏ che khi Tab tới (scroll-margin-bottom)',
      /scroll-margin-bottom:\s*calc\(64px \+ var\(--k-3\)\)/.test(boChuThichCss(THE.style)));
   ok('Hai component có @media (forced-colors: active)', HAI.every(([, f]) => /@media\s*\(forced-colors:\s*active\)/.test(f.style)));
@@ -400,10 +413,10 @@ await nhom('10 · THẺ GỌN KIỂU EL GAUCHO, HỘP CHỌN GÓI (popover)', as
      dongHop.length === 2 && dongHop.every(b => /popovertarget=\{idHop\} popovertargetaction="hide"/.test(b)), dongHop.join(' | '));
   ok('Nút Đóng có chữ cạnh biểu tượng (không chỉ dấu ×); chân hộp đúng một nút chính',
      /<BieuTuong ten="dong" \/><span>\{c\.dong\}<\/span>/.test(hop) && (hop.match(/nut-chinh/g) ?? []).length === 1);
-  ok('Giá "Từ …": gói rẻ nhất còn đặt được (mọi gói tạm hết: rẻ nhất của sản phẩm); một gói thì nhãn gói thay chữ "Từ"; số tiền trong data-tien',
+  ok('Giá "Từ …": gói rẻ nhất còn đặt được (mọi gói tạm hết: rẻ nhất của sản phẩm); chữ "Từ" chỉ khi nhiều cỡ; số tiền trong data-tien; cỡ gói ngay dưới giá (một cỡ: nhãn gói; nhiều cỡ: số cỡ)',
      /const goiGia = \(datDuoc\.length \? datDuoc : sanPham\.goi\)\.reduce\(\(a, b\) => \(b\.gia < a\.gia \? b : a\)\);/.test(THE.dau)
-       && /<span class="mtv-gia" data-tien>\{dinhDangTien\(goiGia\.gia\)\}<\/span>/.test(k)
-       && /\{motGoi \? <span class="mtv-nhan-goi">\{nhanGoi\(sanPham\.donVi, goiGia\.soGam, ngonNgu\)\}<\/span> : <span>\{c\.tu\}<\/span>\}/.test(k));
+       && /<p class="mtv-gia-tu">\{!motGoi && <><span>\{c\.tu\}<\/span>\{' '\}<\/>\}<span class="mtv-gia" data-tien>\{dinhDangTien\(goiGia\.gia\)\}<\/span><\/p>\s*<p class="mtv-co-goi">\{coGoi\}<\/p>/.test(k)
+       && /const coGoi = motGoi \? nhanGoi\(sanPham\.donVi, goiGia\.soGam, ngonNgu\)\s*: sanPham\.donVi === 'hop' \? c\.soCoHop\(sanPham\.goi\.length\) : c\.soCoGoi\(sanPham\.goi\.length\);/.test(THE.dau));
   ok('Sản phẩm không còn gói đặt được: thẻ ghi "Tạm hết ở quầy" thay nút, không hộp',
      /\{coHop \? \([\s\S]*?data-mtv-mo-hop[\s\S]*?\) : \(\s*<p class="mtv-tam-het" data-mtv-tam-het>\{c\.tamHet\}<\/p>\s*\)\}/.test(k));
   ok('"Đã chọn" (CHU_DON.daChon) trên thẻ và ở chân hộp, máy chủ dựng từ giỏ, ẩn khi 0',
@@ -428,6 +441,72 @@ await nhom('10 · THẺ GỌN KIỂU EL GAUCHO, HỘP CHỌN GÓI (popover)', as
   ok('Script: "Đã chọn" của từng sản phẩm tính từ chính đơn (tinhDon), cùng CHU_DON.daChon với máy chủ',
      /const so = don\.dong\.filter\(d => d\.sanPham\.ma === sp\.ma\)\.reduce\(\(tong, d\) => tong \+ d\.soLuong, 0\);/.test(s)
        && /CHU_DON\.daChon\[nn\]/.test(s) && /CSS\.escape\(sp\.ma\)/.test(s));
+});
+
+// ===========================================================================
+// Đợt 3 của đề xuất giao diện (Khánh duyệt 12/11/2026): "một khuôn thẻ, ba điều nói trước, đơn luôn trong tầm mắt".
+await nhom('11 · ĐỢT 3: KHUÔN THẺ, GU, BA ĐIỀU, LỌC NHÓM, CỘT ĐƠN', async () => {
+  const k = THE.khuon;
+  const chan = /<div class="mtv-the-chan">[\s\S]*?\n {2}<\/div>/.exec(k)?.[0] ?? '';
+  ok('Chân thẻ một khuôn: khối giá (giá, cỡ gói) rồi nút "Chọn gói" hay chữ tạm hết — mọi sản phẩm cùng một nhánh dựng',
+     /<div class="mtv-gia-khoi">\s*<p class="mtv-gia-tu">[\s\S]*?<p class="mtv-co-goi">\{coGoi\}<\/p>\s*<\/div>\s*\{coHop \? \(/.test(chan), chan.slice(0, 300));
+  ok('Thẻ không có giá theo 100 g (quán bán theo gói — quyết định 3 của Khánh 26/10/2026)',
+     !/100\s?g|\/\s?100|soGam\s*\/|\* 100/.test(k + THE.dau.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '')));
+  ok('Dòng gu: chỉ phần thịt có gu, đúng tên ba thứ tiếng của TEN_GU, theo thứ tự đã nhận; không gu thì không dòng',
+     /const guThe = sanPham\.loai === 'thit' \? gu : \[\];/.test(THE.dau)
+       && /\{guThe\.length > 0 && \(<p class="mtv-gu">\{`\$\{c\.guLa\} \$\{guThe\.map\(g => TEN_GU\[g\]\[ngonNgu\]\)\.join\(' · '\)\}`\}<\/p>\)\}/.test(k)
+       && /import \{ TEN_GU, type Gu \} from '\.\.\/lib\/chon-theo-gu';/.test(THE.dau));
+  const hop = cacKhoi(k, '{coHop && (').find(x => x.chu.includes('<div popover'))?.chu ?? '';
+  ok('Cách dùng (cach_dung của menu bán lẻ) chỉ trong hộp chọn, dưới mô tả, có nhãn "Cách dùng:"',
+     chiTrongKhoi(k, '{coHop && (', 'sanPham.cachDung') && /\{sanPham\.cachDung && <p class="mtv-mo-ta mtv-cach-dung"><strong>\{c\.cachDung\}<\/strong>\{' '\}\{sanPham\.cachDung\}<\/p>\}/.test(hop));
+  ok('Trang chuyền gu theo mã sản phẩm từ theoGu (bo_tai_quay_theo_gu) cho từng thẻ',
+     /const guTheoMa = new Map<string, readonly Gu\[\]>\(theoGu\.map\(p => \[p\.ma, p\.gu\]\)\);/.test(TRANG.dau)
+       && /<MuaThitThe sanPham=\{sp\} ngonNgu=\{nn\} gio=\{gio\} coOChon=\{trangThai === 'mo'\} gu=\{guTheoMa\.get\(sp\.ma\)\} \/>/.test(TRANG.khuon));
+
+  // Ba điều: chữ theo cách trả tiền; dòng phụ là chữ chủ đã công bố khi có.
+  const baDieu = /const baDieu[\s\S]*?\n {4}\];/.exec(TRANG.dau)?.[0] ?? '';
+  const [nhanhVnpay, nhanhKhong] = baDieu.split(/\n {2}: \[/);
+  ok('Ba điều khi có VNPay: giá gói đã gồm phí giao (phụ: khu vực giao đã công bố), trả trước qua VNPay, quán gọi hẹn giờ giao (phụ: giờ giao đã công bố, không thì "sau khi bạn trả tiền")',
+     /\{ bt: 'xe-giao', chu: c\.dieuGiaVnpay, phu: giaoHang \}/.test(nhanhVnpay ?? '') && /\{ bt: 'the-tra', chu: c\.dieuTraVnpay, phu: c\.dieuTraVnpayPhu \}/.test(nhanhVnpay ?? '')
+       && /\{ bt: 'dien-thoai', chu: c\.dieuGoiVnpay, phu: gioGiao \?\? c\.dieuGoiVnpayPhu \}/.test(nhanhVnpay ?? ''), baDieu.slice(0, 300));
+  ok('Ba điều khi chưa cài VNPay: giao tận nơi (phụ: phí giao đã công bố, không thì "quán báo phí giao khi gọi"), trả khi nhận hàng, quán gọi xác nhận đơn',
+     /\{ bt: 'xe-giao', chu: c\.dieuGiao, phu: giaoHang \?\? c\.dieuGiaoPhu \}/.test(nhanhKhong ?? '') && /\{ bt: 'the-tra', chu: c\.dieuTra, phu: c\.dieuTraPhu \}/.test(nhanhKhong ?? '')
+       && /\{ bt: 'dien-thoai', chu: c\.dieuGoi, phu: gioGiao \?\? c\.dieuGoiPhu \}/.test(nhanhKhong ?? '') && !/Vnpay/.test(nhanhKhong ?? ''));
+  const vi = khoa => cauCua(khoa)?.vi?.[0] ?? '';
+  ok('Câu ba điều nói đúng: có VNPay thì "đã gồm phí giao", "trả trước"; chưa cài thì "khi nhận hàng", "xác nhận đơn"; đoạn dẫn không còn nói tiền',
+     /đã gồm phí giao/.test(vi('dieuGiaVnpay')) && /Trả trước qua VNPay/.test(vi('dieuTraVnpay')) && /khi nhận hàng/.test(vi('dieuTra'))
+       && /báo phí giao/.test(vi('dieuGiaoPhu')) && /chưa gồm phí giao/.test(vi('dieuGiaoPhu'))
+       && /xác nhận đơn/.test(vi('dieuGoi')) && !/VNPay|phí|tiền/.test(vi('dan')) && !/VNPay/.test(vi('dieuGiao') + vi('dieuTra') + vi('dieuTraPhu') + vi('dieuGoi') + vi('dieuGoiPhu')),
+     ['dieuGiaVnpay', 'dieuTraVnpay', 'dieuTra', 'dieuGoi', 'dan'].map(vi).join(' | '));
+  const dau = khoi(TRANG.khuon, "(trangThai === 'mo' || trangThai === 'het_quay') && (");
+  ok('Dải ba điều là danh sách có tên (aria-label), nằm ở đầu trang của trạng thái mo / tạm hết, trước form',
+     /<ul class="mtv-ba-dieu" aria-label=\{c\.baDieu\}>/.test(dau) && dau.indexOf('mtv-ba-dieu') < dau.indexOf('<form method="post"')
+       && /\{d\.phu && <p class="mtv-dieu-phu">\{d\.phu\}<\/p>\}/.test(dau));
+
+  // Lọc nhóm: chạy nhờ script, ngoài form, không radio.
+  const loc = khoi(TRANG.khuon, '{menu.nhom.length > 1 && (');
+  ok('Nút lọc nhóm chỉ khi có từ hai nhóm; khối ra trang với hidden, role="group" có tên; mọi nút là type="button" aria-pressed; "Tất cả" đang chọn',
+     /<div class="chon-loc mtv-loc" role="group" aria-label=\{c\.locNhom\} data-mtv-loc hidden>/.test(loc)
+       && /<button type="button" aria-pressed="true" data-mtv-loc-nhom="">\{c\.tatCa\}<\/button>/.test(loc)
+       && /<button type="button" aria-pressed="false" data-mtv-loc-nhom=\{n\.loai\}>\{TEN_NHOM\[n\.loai\]\}<\/button>/.test(loc)
+       && dem(loc, /<button\b/) === 2, loc.slice(0, 300));
+  ok('Nút lọc nằm NGOÀI form đặt hàng (không gửi theo đơn, không đè luật ô của form)',
+     dau.indexOf('data-mtv-loc') > 0 && dau.indexOf('data-mtv-loc') < dau.indexOf('<form method="post"'));
+  const s = TRANG.script;
+  ok('Script lọc: hiện khối lọc, đổi aria-pressed, ẩn nhóm khác (chỉ nhóm gói trong #chon-goi) bằng hidden — không tắt (disabled) ô chọn, không xoá thẻ khỏi form',
+     /loc\.hidden = false;/.test(s) && /const cacNhom = \[\.\.\.document\.querySelectorAll<HTMLElement>\('#chon-goi \[data-nhom\]'\)\];/.test(s) && /for \(const n of nutLoc\) n\.setAttribute\('aria-pressed', String\(n === bam\)\);/.test(s)
+       && /for \(const n of cacNhom\) n\.hidden = chon !== '' && n\.dataset\.nhom !== chon;/.test(s)
+       && !/\.disabled\s*=|\.remove\(\)|removeChild/.test(s));
+  ok('Mỗi nhóm gói mang data-nhom (khóa lọc) — đúng ba khóa của LoaiNhom',
+     /<div class="mtv-nhom" data-nhom=\{n\.loai\}>/.test(TRANG.khuon));
+
+  // Cột đơn và thanh giỏ.
+  ok('Cột "Đơn của bạn" là <aside data-mtv-don>, cùng nhánh trạng thái mo; thanh giỏ ẩn khi ô giao hàng HAY cột đơn trên màn hình',
+     chiTrongKhoi(TRANG.khuon, "{trangThai === 'mo' && (", 'data-mtv-don>')
+       && /querySelectorAll<HTMLElement>\('\[data-mtv-dat-hang\], \[data-mtv-don\]'\)/.test(s)
+       && /khoiDatDangHien = dangHien\.size > 0;/.test(s) && /for \(const k of khoiDat\) quan\.observe\(k\);/.test(s));
+  ok('DOM theo thứ tự đọc: lưới gói → ô giao hàng → cột đơn (điện thoại một cột đúng thứ tự đó)',
+     TRANG.khuon.indexOf('id="chon-goi"') < TRANG.khuon.indexOf('id="dat-hang"') && TRANG.khuon.indexOf('id="dat-hang"') < TRANG.khuon.indexOf('data-mtv-don>'));
 });
 
 process.exit(ketThuc('TRANG MUA THỊT VỀ: HAI COMPONENT'));
