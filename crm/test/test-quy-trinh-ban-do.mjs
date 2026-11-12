@@ -56,6 +56,13 @@ const HAM_SQL = new Set(cacCauHam(migration).map(h => h.ten));
 const SCRIPT_NPM = new Set(['crm', 'web', 'can-app', 'mini-app', 'may-chu-don']
   .flatMap(d => Object.keys(JSON.parse(doc(`${d}/package.json`)).scripts ?? {})));
 
+/**
+ * Thư mục do lệnh sinh ra (cài thư viện, build): không nằm trong git, có hay không là tùy máy — máy đã cài Mini App
+ * thì có `node_modules/`, `www/`, máy CI thì không. Bản đồ được nhắc tên chúng mà không bị đòi có thật (HỒI QUY
+ * 12/11/2026: mini-app/CLAUDE.md nhắc `www/`, `node_modules/` — đạt trên máy đã cài, đỏ trên CI và main).
+ */
+const THU_MUC_SINH_RA = new Set(['node_modules/', 'www/', 'dist/']);
+
 /** Đường dẫn trong `…` có thật: tính từ gốc repo, từ thư mục của bản đồ, hoặc (tên trần) có file trùng tên. */
 function coThat(chu, thuMucBanDo) {
   const thu = [join(GOC, chu), join(GOC, thuMucBanDo, chu)];
@@ -77,7 +84,8 @@ await nhom('1 · BẢN ĐỒ CHỈ NHẮC THỨ CÓ THẬT', async () => {
     const LA_DUONG_DAN = /^[\w.@-]+(\/[\w.@[\]-]+)*\/?$/;
     const DUOI = /\.(mjs|ts|tsx|js|md|sql|yml|yaml|astro|json|css|html|toml|cmd|sh|txt)$/;
     // Bỏ chỗ giữ chỗ (`00NN_ten.sql`, `test-<khu>-<ten>.mjs`) và đuôi trần (`.ts`).
-    const duongDan = ma.filter(m => LA_DUONG_DAN.test(m) && (DUOI.test(m) || m.endsWith('/')) && !/NN|<|\*/.test(m) && !/^\.\w+$/.test(m));
+    const duongDan = ma.filter(m => LA_DUONG_DAN.test(m) && (DUOI.test(m) || m.endsWith('/')) && !/NN|<|\*/.test(m) && !/^\.\w+$/.test(m)
+      && !THU_MUC_SINH_RA.has(m));
     const thieu = [...new Set(duongDan.filter(m => !coThat(m, thuMuc)))];
     ok(`${f}: ${duongDan.length} đường dẫn đều có thật`, thieu.length === 0, `không thấy: ${thieu.join(', ')}`);
 
