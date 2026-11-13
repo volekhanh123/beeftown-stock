@@ -11,7 +11,9 @@ laptop ở công ty, khi mở bán chuyển lên máy chủ thuê ở Việt Nam
 Khánh không dùng Mini App nữa: Mini App và máy chủ đơn **tạm ngưng**, mã giữ nguyên để dùng lại sau. Khách mua thịt
 mang về và trả tiền online ở trang Mua thịt về của **website** — website nối thẳng VNPay bằng mã Terminal `SLKGTE11`,
 không qua máy chủ này (`web/README.md`, "VNPay cho Mua thịt về"). Theo sổ tình trạng (`mini-app/TINH-TRANG.md`),
-Mini App chưa có bản chính thức trên Zalo, chỉ có bản thử với giá thử — không khách nào đặt được qua Mini App.
+Mini App chưa có bản chính thức trên Zalo, chỉ có bản thử với giá thử — khách thật không đặt qua Mini App. Máy chủ
+đơn trên BizFly thì **vẫn chạy** (nhận đơn từ bản thử, các vòng ZNS / Ahamove / hết hạn đơn) cho tới khi Khánh tắt
+hay trả máy (bước 3).
 
 **Hai mã VNPay sau khi ngưng:**
 
@@ -40,12 +42,15 @@ khách trả tiền mà quầy không thấy đơn.
    Không còn dòng "Trang thử VNPay (sandbox, Terminal SLKGTE22)" là đã tắt. Kiểm thêm: đăng nhập
    `https://don.beeftown.vn/quay` bằng mật khẩu quầy, rồi mở `https://don.beeftown.vn/quay/vnpay-thu` — thấy
    "Not found".
-2. Khi xin VNPay mã thật (tiền thật), chỉ xin cho **website** (thay `SLKGTE11`). Có thể báo VNPay
-   (kythuatctt@vnpay.vn) là `SLKGTE22` không dùng nữa.
-3. Máy BizFly (134.000 đ/tháng) vẫn chạy. Giữ hay trả máy là Khánh quyết; trả máy thì sổ đơn thử trên máy mất theo.
+2. Khi xin VNPay mã thật (tiền thật), chỉ xin cho **website**. Đổi bí mật trên Cloudflare **chưa đủ**: website đang
+   ghi cứng cổng thử và dải IP thử của VNPay — sang tiền thật là một PR riêng (`web/README.md`, "VNPay cho Mua thịt
+   về"). Đừng báo VNPay đóng `SLKGTE22` nếu còn muốn bật lại Mini App bằng mã đó.
+3. Máy BizFly (134.000 đ/tháng) vẫn chạy. Giữ hay trả máy là Khánh quyết. Trả máy thì mất theo: sổ đơn thử và file
+   bí mật `/etc/beeftown/may-chu-don.env` (khóa Checkout SDK, khóa ZNS, mật khẩu quầy) — chép file bí mật về máy
+   riêng trước nếu muốn bật lại sau mà khỏi cài lại từ đầu. Chuỗi token ZNS của Zalo thì phải cấp lại.
 
 **Bật lại:** hỏi Khánh trước. Mã VNPay của Mini App đi qua Zalo (mục "Cài VNPay qua Checkout SDK") — dùng lại
-`SLKGTE22` hoặc xin VNPay một mã riêng cho Mini App, không dùng chung mã với website.
+`SLKGTE22` (nếu VNPay chưa đóng) hoặc xin VNPay một mã riêng cho Mini App, không dùng chung mã với website.
 
 ## Đã làm được (đợt 1, 2a, 2b, 3, VNPay 1, Ahamove 1)
 
