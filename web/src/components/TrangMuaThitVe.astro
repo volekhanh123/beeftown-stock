@@ -34,6 +34,17 @@
  *     popover, mở bằng popovertarget).
  *   · Form POST: họ tên, số điện thoại, địa chỉ không bao giờ nằm trên địa chỉ trang.
  *   · Một nút chính cho mỗi nhóm nút; không khối kêu gọi cuối trang: trang có một hành động chính là Đặt hàng.
+ *
+ * BỐ CỤC (đợt 3 của đề xuất giao diện, Khánh duyệt 12/11/2026 — "một khuôn thẻ, ba điều nói trước, đơn luôn trong
+ * tầm mắt"):
+ *   · Dưới tiêu đề: dải ba điều — giá và phí giao, cách trả tiền, quán gọi hẹn giờ — chữ theo traVnpay, dòng phụ là chữ
+ *     chủ đã công bố (khu vực giao mua_thit_giao_hang, giờ giao mua_thit_gio_nhan) khi có. Đoạn dẫn chỉ còn cách đặt.
+ *   · Nút lọc nhóm (Tất cả · Thịt mát · Thịt đông lạnh · Kim chi) khi có từ hai nhóm: nút aria-pressed ngoài form, chỉ
+ *     chạy nhờ script nên ra trang với hidden (trang này không dùng radio — test-cong-khai-mua-thit-ve). Nhóm bị lọc chỉ
+ *     ẩn, ô chọn của nó vẫn được gửi. Tắt JavaScript: không nút lọc, mọi nhóm cùng hiện.
+ *   · Từ 1024px: cột "Đơn của bạn" dính bên phải, cạnh lưới gói và ô giao hàng (lưới tự 3 cột khi cột trái đủ rộng —
+ *     container query). Dưới 1024px: gói → giao hàng → đơn, một cột; thanh giỏ đen như trước.
+ *   · Thẻ có dòng gu (theoGu: bo_tai_quay_theo_gu, 0116 — ba file vỏ đọc song song); đọc lỗi thì thẻ không có dòng gu.
  */
 import { dich as dichCau, duongDanTuongUng } from '../lib/chu';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
@@ -43,7 +54,8 @@ import { CHU_DON, dinhDangTien, docGio, nhanGoi, rutGonMenu, tinhDon } from '../
 import type { KetQuaDatHang } from '../lib/dat-hang-mua-thit';
 import { DUONG_KET_QUA_VNPAY } from '../lib/xu-ly-form';
 import { CONG_VNPAY } from '../lib/vnpay';
-import BieuTuong from './BieuTuong.astro';
+import type { Gu, PhanCatGu } from '../lib/chon-theo-gu';
+import BieuTuong, { type TenBieuTuong } from './BieuTuong.astro';
 import MuaThitThe from './MuaThitThe.astro';
 
 interface Props {
@@ -56,8 +68,10 @@ interface Props {
   duongDan: string;
   /** 0115 · Worker đã cài đủ bí mật VNPay: đặt xong là trả trước qua VNPay, giá gói đã gồm phí giao. */
   traVnpay?: boolean;
+  /** Đợt 3 · phần thịt đã gắn gu (bo_tai_quay_theo_gu, 0116): thẻ có dòng "Gu: …". Rỗng thì không thẻ nào có. */
+  theoGu?: readonly PhanCatGu[];
 }
-const { ngonNgu: nn, noiDung: nd, menu, trangThai, ketQua, thamSo, duongDan, traVnpay = false } = Astro.props;
+const { ngonNgu: nn, noiDung: nd, menu, trangThai, ketQua, thamSo, duongDan, traVnpay = false, theoGu = [] } = Astro.props;
 const congThu = /sandbox/.test(CONG_VNPAY);
 const lh = lienHe(nd);
 const { gio, boTamHet } = docGio(thamSo, menu.sanPham);
@@ -90,16 +104,45 @@ const c = dichCau(nn, {
     en: 'Beeftown beef, delivered to you',
     ko: 'Beeftown 소고기, 집까지 배달해 드려요',
   },
+  // Đoạn dẫn chỉ còn cách đặt: tiền, phí giao, giờ giao nằm ở dải ba điều ngay dưới.
   dan: {
-    vi: 'Chọn gói, điền địa chỉ rồi bấm Đặt hàng. Quán gọi lại xác nhận tổng tiền, phí giao và giờ giao.',
-    en: 'Choose your packs, add your address and tap Place order. We call you back to confirm the total, the delivery fee and the time.',
-    ko: '팩을 고르고 주소를 적은 뒤 주문하기를 눌러 주세요. 매장에서 전화로 총액, 배달비, 배달 시간을 확인해 드려요.',
+    vi: 'Chọn gói, điền địa chỉ giao rồi bấm Đặt hàng.',
+    en: 'Choose your packs, add a delivery address and tap Place order.',
+    ko: '팩을 고르고 배달 주소를 적은 뒤 주문하기를 눌러 주세요.',
   },
-  danVnpay: {
-    vi: 'Chọn gói, điền địa chỉ rồi bấm Đặt hàng và trả tiền qua VNPay. Giá gói đã gồm phí giao; quán gọi lại hẹn giờ giao.',
-    en: 'Choose your packs, add your address, tap Place order and pay with VNPay. Pack prices include delivery; we call you back to agree the delivery time.',
-    ko: '팩을 고르고 주소를 적은 뒤 주문하기를 눌러 VNPay로 결제해 주세요. 팩 가격에 배달비가 포함되어 있고, 매장에서 전화로 배달 시간을 정해 드려요.',
+
+  // --- Dải ba điều (đợt 3) ------------------------------------------------------------
+  baDieu: { vi: 'Trước khi đặt', en: 'Before you order', ko: '주문 전에 알아 두세요' },
+  // Câu chữ ba điều: Codex rà 12/11/2026 (tiếng Hàn dạng 해요체; "arrange a delivery time").
+  dieuGiaVnpay: { vi: 'Giá gói đã gồm phí giao', en: 'Pack prices include delivery', ko: '팩 가격에 배달비가 포함돼요' },
+  dieuGiao: { vi: 'Giao tận nơi', en: 'Delivered to your door', ko: '원하시는 주소로 배달해요' },
+  dieuGiaoPhu: {
+    vi: 'Quán báo phí giao khi gọi xác nhận đơn. Tạm tính chưa gồm phí giao.',
+    en: 'We tell you the delivery fee when we call to confirm. The subtotal does not include it.',
+    ko: '배달비는 주문 확인 전화 때 알려 드려요. 소계에는 포함되지 않아요.',
   },
+  dieuTraVnpay: { vi: 'Trả trước qua VNPay', en: 'Pay in advance with VNPay', ko: 'VNPay로 미리 결제해요' },
+  dieuTraVnpayPhu: {
+    vi: 'Thẻ ATM, thẻ quốc tế, ví điện tử hoặc mã QR ngân hàng.',
+    en: 'ATM card, international card, e-wallet or bank QR code.',
+    ko: 'ATM 카드, 해외 카드, 전자지갑, 은행 QR 코드를 쓸 수 있어요.',
+  },
+  dieuTra: { vi: 'Trả khi nhận hàng', en: 'Pay on delivery', ko: '받으실 때 결제해요' },
+  dieuTraPhu: {
+    vi: 'Hoặc chuyển khoản khi quán gọi xác nhận.',
+    en: 'Or by bank transfer when we call to confirm.',
+    ko: '확인 전화 때 계좌이체로 결제하셔도 돼요.',
+  },
+  dieuGoiVnpay: { vi: 'Quán gọi hẹn giờ giao', en: 'We call to arrange a delivery time', ko: '매장에서 전화로 배달 시간을 함께 정해요' },
+  dieuGoiVnpayPhu: { vi: 'Sau khi bạn trả tiền.', en: 'After you pay.', ko: '결제하신 뒤에요.' },
+  dieuGoi: { vi: 'Quán gọi xác nhận đơn', en: 'We call to confirm your order', ko: '매장에서 전화로 주문을 확인해요' },
+  dieuGoiPhu: {
+    vi: 'Hẹn giờ giao trong cuộc gọi đó.',
+    en: 'We arrange a delivery time on that call.',
+    ko: '그 통화에서 배달 시간도 함께 정해요.',
+  },
+  locNhom: { vi: 'Lọc theo nhóm hàng', en: 'Filter by category', ko: '상품 분류로 필터링' },
+  tatCa: { vi: 'Tất cả', en: 'All', ko: '전체' },
   coKimChi: { vi: 'Có cả kim chi theo hộp.', en: 'Kimchi by the box, too.', ko: '김치도 통으로 판매해요.' },
   nhomMat: { vi: 'Thịt mát', en: 'Chilled beef', ko: '냉장 소고기' },
   nhomDong: { vi: 'Thịt đông lạnh', en: 'Frozen beef', ko: '냉동 소고기' },
@@ -220,6 +263,20 @@ const c = dichCau(nn, {
 });
 
 const TEN_NHOM: Record<LoaiNhom, string> = { mat: c.nhomMat, dong_lanh: c.nhomDong, kim_chi: c.nhomKimChi };
+// Dải ba điều: chữ cố định theo cách trả tiền; dòng phụ là chữ chủ đã công bố khi có (khu vực / phí giao, giờ giao).
+const baDieu: { bt: TenBieuTuong; chu: string; phu: string | null }[] = traVnpay
+  ? [
+      { bt: 'xe-giao', chu: c.dieuGiaVnpay, phu: giaoHang },
+      { bt: 'the-tra', chu: c.dieuTraVnpay, phu: c.dieuTraVnpayPhu },
+      { bt: 'dien-thoai', chu: c.dieuGoiVnpay, phu: gioGiao ?? c.dieuGoiVnpayPhu },
+    ]
+  : [
+      { bt: 'xe-giao', chu: c.dieuGiao, phu: giaoHang ?? c.dieuGiaoPhu },
+      { bt: 'the-tra', chu: c.dieuTra, phu: c.dieuTraPhu },
+      { bt: 'dien-thoai', chu: c.dieuGoi, phu: gioGiao ?? c.dieuGoiPhu },
+    ];
+// Gu theo mã sản phẩm — chỉ phần thịt Đang bán đã gắn gu có mặt (bo_tai_quay_theo_gu).
+const guTheoMa = new Map<string, readonly Gu[]>(theoGu.map(p => [p.ma, p.gu]));
 const coKimChi = menu.nhom.some(n => n.loai === 'kim_chi');
 const duongQuyenRiengTu = duongDanTuongUng('/quyen-rieng-tu', nn);
 const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
@@ -295,8 +352,19 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
       <div class="khung">
         <p class="hieu">{c.hieu}</p>
         <h1 id="mtv-tieu-de">{c.h1}</h1>
-        <p class="dan">{coKimChi ? `${traVnpay ? c.danVnpay : c.dan} ${c.coKimChi}` : traVnpay ? c.danVnpay : c.dan}</p>
+        <p class="dan">{coKimChi ? `${c.dan} ${c.coKimChi}` : c.dan}</p>
         {trangThai === 'het_quay' && (<p class="mtv-loi"><strong>{c.hetQuay}</strong></p>)}
+        <ul class="mtv-ba-dieu" aria-label={c.baDieu}>
+          {baDieu.map(d => (
+            <li><BieuTuong ten={d.bt} /><div><p class="mtv-dieu">{d.chu}</p>{d.phu && <p class="mtv-dieu-phu">{d.phu}</p>}</div></li>
+          ))}
+        </ul>
+        {menu.nhom.length > 1 && (
+          <div class="chon-loc mtv-loc" role="group" aria-label={c.locNhom} data-mtv-loc hidden>
+            <button type="button" aria-pressed="true" data-mtv-loc-nhom="">{c.tatCa}</button>
+            {menu.nhom.map(n => (<button type="button" aria-pressed="false" data-mtv-loc-nhom={n.loai}>{TEN_NHOM[n.loai]}</button>))}
+          </div>
+        )}
       </div>
     </section>
 
@@ -304,23 +372,21 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
           data-menu={JSON.stringify(rutGonMenu(menu.sanPham))} data-dang-gui={c.dangGui} data-thieu-gio={CHU_DON.donTrong[nn]}>
       <input type="hidden" name="ma_gui" value={maGui} />
 
-      <section id="chon-goi" class="muc be-kem mtv-cua-hang" aria-label={c.chonGoi}>
-        <div class="khung mtv-danh-sach">
-          {menu.nhom.map(n => (
-            <div class="mtv-nhom">
-              <h2>{TEN_NHOM[n.loai]}</h2>
-              <div class="mtv-luoi-the">
-                {n.sanPham.map(sp => <MuaThitThe sanPham={sp} ngonNgu={nn} gio={gio} coOChon={trangThai === 'mo'} />)}
+      <div class="muc be-kem mtv-cua-hang">
+        <div class:list={['khung', 'mtv-bo-cuc', { 'mtv-co-don': trangThai === 'mo' }]}>
+          <section id="chon-goi" class="mtv-danh-sach" aria-label={c.chonGoi}>
+            {menu.nhom.map(n => (
+              <div class="mtv-nhom" data-nhom={n.loai}>
+                <h2>{TEN_NHOM[n.loai]}</h2>
+                <div class="mtv-luoi-the">
+                  {n.sanPham.map(sp => <MuaThitThe sanPham={sp} ngonNgu={nn} gio={gio} coOChon={trangThai === 'mo'} gu={guTheoMa.get(sp.ma)} />)}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </section>
 
-      {trangThai === 'mo' && (
-        <section id="dat-hang" class="muc be-kem-sau mtv-dat-hang" aria-labelledby="mtv-giao-hang" data-mtv-dat-hang>
-          <div class="khung mtv-hai-cot">
-            <div class="mtv-giao">
+          {trangThai === 'mo' && (
+            <section id="dat-hang" class="mtv-giao" aria-labelledby="mtv-giao-hang" data-mtv-dat-hang>
               <h2 id="mtv-giao-hang">{c.giaoHang}</h2>
               {loiGui && (
                 <div class="mtv-loi-the" role="alert" data-ket-qua="loi" tabindex="-1"><p><strong>{loiGui}</strong></p></div>
@@ -346,9 +412,11 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
                 <small id="mtv-ghi-chu-phu">{c.ghiChuPhu}</small>
                 <textarea id="mtv-ghi-chu" name="ghi_chu" maxlength="500" rows="2" aria-describedby="mtv-ghi-chu-phu"></textarea>
               </div>
-            </div>
+            </section>
+          )}
 
-            <aside class="the mtv-don" aria-labelledby="mtv-don-cua-ban">
+          {trangThai === 'mo' && (
+            <aside class="the mtv-don" aria-labelledby="mtv-don-cua-ban" data-mtv-don>
               <h2 id="mtv-don-cua-ban">{c.donCuaBan}</h2>
               <ul class="mtv-dong-don" data-mtv-dong-don>
                 {don.dong.map(d => <li>{CHU_DON.dongDau[nn](d.sanPham.ten, nhanGoi(d.sanPham.donVi, d.goi.soGam, nn), d.soLuong)}<span data-tien>{dinhDangTien(d.thanhTien)}</span></li>)}
@@ -382,9 +450,9 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
               {traVnpay && congThu && (<p class="mtv-ghi" data-cong-thu><strong>{c.congThu}</strong></p>)}
               <p class="mtv-ghi">{traVnpay ? c.dongYVnpay : c.dongY} <a href={duongQuyenRiengTu}>{c.quyenRiengTu}</a>.</p>
             </aside>
-          </div>
-        </section>
-      )}
+          )}
+        </div>
+      </div>
 
       {trangThai === 'mo' && (
         <div class="mtv-thanh be-toi" data-mtv-thanh hidden>
@@ -462,6 +530,22 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
   if (khungKetQua?.dataset.ketQua === 'da-nhan' || khungKetQua?.dataset.ketQua === 'khong-chac') xoaDaLuu();
   khungKetQua?.focus();
 
+  // Nút lọc nhóm (đợt 3) chỉ chạy nhờ script nên ra trang với hidden: bấm một nhóm thì các nhóm khác ẩn — ô chọn của
+  // chúng vẫn ở trong form và vẫn được gửi theo đơn. Tắt JavaScript: không nút lọc, mọi nhóm cùng hiện.
+  const loc = document.querySelector<HTMLElement>('[data-mtv-loc]');
+  if (loc) {
+    const nutLoc = [...loc.querySelectorAll<HTMLButtonElement>('[data-mtv-loc-nhom]')];
+    const cacNhom = [...document.querySelectorAll<HTMLElement>('#chon-goi [data-nhom]')];
+    loc.hidden = false;
+    loc.addEventListener('click', e => {
+      const bam = e.target instanceof Element ? e.target.closest<HTMLButtonElement>('[data-mtv-loc-nhom]') : null;
+      if (!bam) return;
+      const chon = bam.dataset.mtvLocNhom ?? '';
+      for (const n of nutLoc) n.setAttribute('aria-pressed', String(n === bam));
+      for (const n of cacNhom) n.hidden = chon !== '' && n.dataset.nhom !== chon;
+    });
+  }
+
   const form = document.querySelector<HTMLFormElement>('[data-mtv-form]');
   if (form) khoiDong(form);
 
@@ -479,7 +563,8 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
     const vuaDoi = form.querySelector<HTMLElement>('[data-mtv-vua-doi]');
     const thanh = form.querySelector<HTMLElement>('[data-mtv-thanh]');
     const thanhChu = form.querySelector<HTMLElement>('[data-mtv-thanh-chu]');
-    const khoiDat = form.querySelector<HTMLElement>('[data-mtv-dat-hang]');
+    // Ô giao hàng và cột "Đơn của bạn" (hai khối từ đợt 3: từ 1024px cột đơn dính bên phải, luôn trên màn hình).
+    const khoiDat = [...form.querySelectorAll<HTMLElement>('[data-mtv-dat-hang], [data-mtv-don]')];
     const bao = form.querySelector<HTMLElement>('[data-mtv-bao]');
     const nutDat = form.querySelector<HTMLButtonElement>('[data-mtv-nut-dat]');
 
@@ -549,12 +634,16 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
       capNhatThanh();
     }
 
-    // Thanh giỏ ẩn khi khối Đặt hàng đang trên màn hình — không che ô đang gõ, không lặp nút Đặt hàng.
-    if (khoiDat && 'IntersectionObserver' in window) {
-      new IntersectionObserver(muc => {
-        khoiDatDangHien = muc.some(m => m.isIntersecting);
+    // Thanh giỏ ẩn khi ô giao hàng hay cột đơn đang trên màn hình — không che ô đang gõ, không lặp nút Đặt hàng.
+    // Từ 1024px cột đơn dính bên phải nên thanh giỏ không bao giờ hiện ở đó.
+    if (khoiDat.length > 0 && 'IntersectionObserver' in window) {
+      const dangHien = new Set<Element>();
+      const quan = new IntersectionObserver(muc => {
+        for (const m of muc) { if (m.isIntersecting) dangHien.add(m.target); else dangHien.delete(m.target); }
+        khoiDatDangHien = dangHien.size > 0;
         capNhatThanh();
-      }).observe(khoiDat);
+      });
+      for (const k of khoiDat) quan.observe(k);
     }
 
     // Nút −/+: đổi ô chọn trong 0…10 rồi phát change như khi khách tự chọn.
@@ -642,6 +731,24 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
 
   .mtv-hang-nut-dau { margin-top: var(--k-6); }
   .mtv-dau { padding-bottom: 0; }
+
+  /* --- Dải ba điều: một cột (vạch ngang giữa các điều) dưới 600px; ba cột ngăn bằng vạch dọc từ 600px ------- */
+  .mtv-ba-dieu { list-style: none; margin: var(--k-6) 0 0; padding: 0; display: grid; border-top: 1px solid var(--vien); }
+  .mtv-ba-dieu li {
+    display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: var(--k-3); align-items: start;
+    padding: var(--k-3) 0; border-bottom: 1px solid var(--vien);
+  }
+  .mtv-ba-dieu :global(svg) { width: 24px; height: 24px; color: var(--nhan); }
+  .mtv-dieu { margin: 0; font-weight: 700; line-height: 1.4; }
+  .mtv-dieu-phu { margin: var(--k-1) 0 0; font-size: var(--co-nho); color: var(--chu-phu); overflow-wrap: anywhere; }
+  @media (min-width: 600px) {
+    .mtv-ba-dieu { grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid var(--vien); }
+    .mtv-ba-dieu li { border-bottom: 0; padding: var(--k-4) var(--k-4) var(--k-4) 0; }
+    .mtv-ba-dieu li + li { border-left: 1px solid var(--vien); padding-left: var(--k-4); }
+  }
+
+  /* Nút lọc nhóm: lớp chung .chon-loc (cong-khai.css), nút aria-pressed — script ẩn nhóm khác (hidden). */
+  .mtv-dau .mtv-loc { margin-top: var(--k-5); }
   .mtv-loi { margin-top: var(--k-4); color: var(--chu-chinh); }
   .mtv-ma-don { font-size: var(--co-dan); margin: var(--k-4) 0 0; }
   .mtv-ma-don strong { letter-spacing: .08em; }
@@ -649,16 +756,29 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
   /* Khung kết quả nhận con trỏ bằng script (trình đọc màn hình đọc ngay) nhưng không bấm được: không vẽ vòng focus. */
   .mtv-ket-qua [tabindex='-1']:focus, .mtv-loi-the:focus { outline: none; }
 
-  /* --- Lưới gói: 1 cột điện thoại, 2 cột từ 600px, 3 cột từ 1024px ------------------------------- */
-  .mtv-danh-sach { display: grid; gap: var(--k-7); min-width: 0; }
+  /* --- Bố cục: gói → giao hàng → đơn, một cột; từ 1024px cột "Đơn của bạn" dính bên phải ----------------
+     Cột đơn trải hai hàng (lưới gói, ô giao hàng) và dính dưới đầu trang trong suốt hai hàng đó; cao hơn màn hình
+     thì tự cuộn bên trong, nút Đặt hàng không bao giờ ra ngoài tầm với. */
+  .mtv-bo-cuc { display: grid; gap: var(--k-7); grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 1024px) {
+    .mtv-co-don { grid-template-columns: minmax(0, 1fr) clamp(300px, 28vw, 380px); column-gap: var(--k-7); align-items: start; }
+    .mtv-co-don .mtv-don {
+      grid-column: 2; grid-row: 1 / span 2;
+      position: sticky; top: calc(var(--cao-dau) + var(--k-4));
+      max-height: calc(100dvh - var(--cao-dau) - 2 * var(--k-4)); overflow-y: auto;
+    }
+  }
+
+  /* Lưới gói: 1 cột điện thoại, 2 cột từ 600px, 3 cột khi phần gói rộng từ 760px (đo phần gói — container query —
+     vì từ 1024px phần gói chỉ còn cột trái). */
+  .mtv-danh-sach { display: grid; gap: var(--k-7); min-width: 0; container-type: inline-size; }
   .mtv-nhom h2 { margin-bottom: var(--k-4); }
   .mtv-luoi-the { display: grid; gap: var(--k-4); grid-template-columns: minmax(0, 1fr); }
   @media (min-width: 600px) { .mtv-luoi-the { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (min-width: 1024px) { .mtv-luoi-the { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @container (min-width: 760px) { .mtv-luoi-the { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
-  /* --- Đặt hàng: ô giao hàng trái, đơn của bạn phải từ 900px ---------------------------------- */
-  .mtv-hai-cot { display: grid; gap: var(--k-7); grid-template-columns: minmax(0, 1fr); }
-  @media (min-width: 900px) { .mtv-hai-cot { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); align-items: start; } }
+  /* --- Giao hàng: vạch ngăn với lưới gói, ô không dài quá 40rem --------------------------------------- */
+  .mtv-giao { max-width: 40rem; min-width: 0; padding-top: var(--k-6); border-top: 1px solid var(--vien); }
   .mtv-giao h2, .mtv-don h2 { margin-bottom: var(--k-5); }
   .mtv-don h2 { font-size: var(--co-h3); line-height: 1.3; }
   .mtv-giao textarea { resize: vertical; }

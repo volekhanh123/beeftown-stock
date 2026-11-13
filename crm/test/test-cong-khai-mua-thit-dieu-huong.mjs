@@ -171,14 +171,15 @@ await nhom('4 · ĐƯỜNG DẪN, VỎ TRANG', async () => {
     const s = doc(f);
     const q = `'${nn}'`;
     // 0115: đọc song song cả VNPay của trang (vnpayChoTrang — đủ bí mật thì đặt xong là trả trước qua VNPay).
-    if (!s.includes(`await Promise.all([docNoiDung(${q}), docMuaThitVe(${q}), vnpayChoTrang(Astro, ${q})])`)
+    // Đợt 3: và gu của phần thịt (docBoTheoGu, 0116 — không bao giờ ném lỗi; lỗi thì thẻ không có dòng gu).
+    if (!s.includes(`const [noiDung, menu, vnpay, theoGu] = await Promise.all([docNoiDung(${q}), docMuaThitVe(${q}), vnpayChoTrang(Astro, ${q}), docBoTheoGu(${q})])`)
       || (s.match(/ngonNgu="([a-z]+)"/g) ?? []).some(x => x !== `ngonNgu="${nn}"`)
       || (s.match(new RegExp(`duongDan="${duong.replace(/\//g, '\\/')}"`, 'g')) ?? []).length !== 2
       || /duongDan=\{/.test(s)) loiSongSong.push(f);
     if (!/const trangThai = trangThaiMuaThit\(muaThitVeMo\(noiDung\), menu\);/.test(s)
       || !s.includes(`moTa={moTaTrangMuaThit(${q}, trangThai === 'mo' || trangThai === 'het_quay')}`)
       || !s.includes(`const ketQua = ketQuaDatHang(Astro, ${q});`)
-      || !/<TrangMuaThitVe ngonNgu="[a-z]+" noiDung=\{noiDung\} menu=\{menu\} trangThai=\{trangThai\} ketQua=\{ketQua\}\s+thamSo=\{\[\.\.\.Astro\.url\.searchParams\]\} duongDan="[^"]+"\s+traVnpay=\{vnpay !== null\} \/>/.test(s)) loiTrangThai.push(f);
+      || !/<TrangMuaThitVe ngonNgu="[a-z]+" noiDung=\{noiDung\} menu=\{menu\} trangThai=\{trangThai\} ketQua=\{ketQua\}\s+thamSo=\{\[\.\.\.Astro\.url\.searchParams\]\} duongDan="[^"]+"\s+traVnpay=\{vnpay !== null\} theoGu=\{theoGu\} \/>/.test(s)) loiTrangThai.push(f);
     // POST đặt hàng xử lý TRƯỚC khi đọc nội dung, menu: chuyển hướng 303 về chính trang (lib/xu-ly-form.ts).
     const iPost = s.indexOf(`const chuyenHuong = await xuLyDatHang(Astro, '${duong}', ${q});`);
     if (iPost < 0 || !/if \(chuyenHuong\) return chuyenHuong;/.test(s) || iPost > s.indexOf('await Promise.all')) loiPost.push(f);
@@ -186,17 +187,18 @@ await nhom('4 · ĐƯỜNG DẪN, VỎ TRANG', async () => {
     const mongNap = [`import Trang from '${len}layouts/Trang.astro';`, `import TrangMuaThitVe from '${len}components/TrangMuaThitVe.astro';`,
       `import { docNoiDung } from '${len}lib/noi-dung';`, `import { docMuaThitVe, trangThaiMuaThit } from '${len}lib/mua-thit-ve';`,
       `import { muaThitVeMo } from '${len}lib/dich-dat-hang';`, `import { moTaTrangMuaThit } from '${len}lib/trang-cong-khai';`,
-      `import { xuLyDatHang, ketQuaDatHang, vnpayChoTrang } from '${len}lib/xu-ly-form';`];
+      `import { xuLyDatHang, ketQuaDatHang, vnpayChoTrang } from '${len}lib/xu-ly-form';`,
+      `import { docBoTheoGu } from '${len}lib/chon-theo-gu';`];
     if (mongNap.some(d => !s.includes(d))) loiNap.push(`${f}: thiếu ${mongNap.filter(d => !s.includes(d)).join(' ')}`);
   }
-  ok('Ba file vỏ đọc docNoiDung và docMuaThitVe song song (Promise.all), đúng thứ tiếng, duongDan là chuỗi cố định',
+  ok('Ba file vỏ đọc docNoiDung, docMuaThitVe, VNPay và gu song song (Promise.all), đúng thứ tiếng, duongDan là chuỗi cố định',
      loiSongSong.length === 0, loiSongSong.join(', '));
   ok('Ba file vỏ tính trạng thái bằng trangThaiMuaThit(muaThitVeMo(noiDung), menu); mô tả mở khi mo hoặc het_quay; kết quả lượt đặt qua ketQuaDatHang',
      loiTrangThai.length === 0, loiTrangThai.join(', '));
   ok('Ba file vỏ nhận POST đặt hàng (xuLyDatHang, đúng đường dẫn và thứ tiếng) trước khi đọc nội dung và menu',
      loiPost.length === 0, loiPost.join(', '));
   ok('Tiêu đề ba file đúng chữ', loiTieuDe.length === 0, loiTieuDe.join(' | '));
-  ok('Ba file vỏ nạp đúng bảy thứ, đúng đường dẫn tương đối của thư mục', loiNap.length === 0, loiNap.join(' | '));
+  ok('Ba file vỏ nạp đúng tám thứ, đúng đường dẫn tương đối của thư mục', loiNap.length === 0, loiNap.join(' | '));
 
   const MOI = ['web/src/lib/dich-dat-hang.ts', 'web/src/lib/dat-hang-mua-thit.ts', 'web/src/pages/noi-bo/don-mua-thit.astro',
     ...VO.map(v => v[1]), 'crm/test/test-cong-khai-mua-thit-dieu-huong.mjs'];

@@ -263,6 +263,32 @@ html:has(body.ck) {
 .ck .lien-ket svg { width: 24px; height: 24px; flex: none; color: var(--nhan); transition: transform var(--nhanh); }
 @media (hover: hover) { .ck .lien-ket:hover svg { transform: translateX(3px); } }
 
+/* --- Nút lọc ---------------------------------------------------------------
+   Hàng nút lọc .chon-loc, hai cách dựng cùng một hình (nút viền cao 48px, màu theo bề mặt; đang chọn: nền đặc VÀ chữ
+   800 — không chỉ khác màu):
+   · Không cần JavaScript (ChonTheoGu): <fieldset class="chon-loc"> chứa <span><input type="radio"><label></span> —
+     radio thật trong suốt, cắt hết, nằm ngay dưới nhãn (vẫn nhận Tab, mũi tên, trình đọc màn hình đọc được); bấm nhãn
+     là chọn; component lọc bằng CSS :has(). Không ẩn radio bằng height: 1px (test-cong-khai-giao-dien).
+   · Chạy nhờ script (TrangMuaThitVe — trang đó không dùng radio): <div class="chon-loc" role="group"> chứa
+     <button type="button" aria-pressed>. */
+.ck .chon-loc { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--k-2); min-width: 0; }
+.ck .chon-loc > span { position: relative; display: inline-flex; }
+.ck .chon-loc input {
+  position: absolute; left: 50%; bottom: 0; margin: 0; opacity: 0; pointer-events: none; clip-path: inset(50%);
+}
+.ck .chon-loc :is(label, button) {
+  display: inline-flex; align-items: center; min-height: 48px; padding: 0 var(--k-4);
+  font: inherit; font-weight: 600; font-size: 15px; line-height: 1.3;
+  border: 1.5px solid var(--chu-chinh); border-radius: var(--bo);
+  color: var(--chu-chinh); background: transparent; cursor: pointer;
+  transition: background-color var(--nhanh), color var(--nhanh);
+}
+.ck .chon-loc :is(input:checked + label, button[aria-pressed='true']) { background: var(--chu-chinh); color: var(--nen); font-weight: 800; }
+.ck .chon-loc :is(input:focus-visible + label, button:focus-visible) { outline: 3px solid var(--vong-focus); outline-offset: 3px; }
+.ck .chon-loc :is(input:not(:checked) + label, button[aria-pressed='false']):active { background: var(--vien); }
+@media (hover: hover) { .ck .chon-loc :is(input:not(:checked):hover + label, button[aria-pressed='false']:hover) { background: var(--vien); } }
+@media (forced-colors: active) { .ck .chon-loc :is(input:checked + label, button[aria-pressed='true']) { border-width: 3px; } }
+
 /* --- Dòng trạng thái (cổng nội dung: dong_trang_thai) ---------------------- */
 .ck .trang-thai {
   display: flex; align-items: flex-start; gap: var(--k-3);

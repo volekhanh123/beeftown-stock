@@ -6,11 +6,12 @@ import { docMuaThitVe, trangThaiMuaThit } from '../../lib/mua-thit-ve';
 import { muaThitVeMo } from '../../lib/dich-dat-hang';
 import { moTaTrangMuaThit } from '../../lib/trang-cong-khai';
 import { xuLyDatHang, ketQuaDatHang, vnpayChoTrang } from '../../lib/xu-ly-form';
+import { docBoTheoGu } from '../../lib/chon-theo-gu';
 
 const chuyenHuong = await xuLyDatHang(Astro, '/en/buy-meat', 'en');
 if (chuyenHuong) return chuyenHuong;
 
-const [noiDung, menu, vnpay] = await Promise.all([docNoiDung('en'), docMuaThitVe('en'), vnpayChoTrang(Astro, 'en')]);
+const [noiDung, menu, vnpay, theoGu] = await Promise.all([docNoiDung('en'), docMuaThitVe('en'), vnpayChoTrang(Astro, 'en'), docBoTheoGu('en')]);
 const trangThai = trangThaiMuaThit(muaThitVeMo(noiDung), menu);
 const ketQua = ketQuaDatHang(Astro, 'en');
 ---
@@ -18,5 +19,5 @@ const ketQua = ketQuaDatHang(Astro, 'en');
        moTa={moTaTrangMuaThit('en', trangThai === 'mo' || trangThai === 'het_quay')}>
   <TrangMuaThitVe ngonNgu="en" noiDung={noiDung} menu={menu} trangThai={trangThai} ketQua={ketQua}
                   thamSo={[...Astro.url.searchParams]} duongDan="/en/buy-meat"
-                  traVnpay={vnpay !== null} />
+                  traVnpay={vnpay !== null} theoGu={theoGu} />
 </Trang>

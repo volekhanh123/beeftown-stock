@@ -65,7 +65,7 @@
  *   công tắc hiệu lực mà noi_dung_cong_khai() đã tính (bật + có gói trên menu web; từ 0113 không còn đòi link Zalo).
  *   Mọi kịch bản cũ: null, menu []. tao_don_mua_thit (0113) ghi đơn ở mọi kịch bản có menu, trừ hai kịch bản -dat-.
  *   mua-thit-mo         như day-du (có hotline); hien_mua_thit_ve true, zalo_oa_url = ZALO_OA_THU, giờ giao có chữ
- *                       thử; menu MENU_THU (Ba chỉ bò Mỹ 400 g "Tạm hết ở quầy")
+ *                       thử; menu MENU_THU (Ba chỉ bò Mỹ 400 g "Tạm hết ở quầy"); gu thử GU_THU (đợt 3: dòng gu trên thẻ)
  *   mua-thit-giao       như mua-thit-mo, thêm mua_thit_giao_hang (chữ thử, không số tiền), hotline null
  *   mua-thit-het-quay   như mua-thit-mo, mọi gói tam_het
  *   mua-thit-rong       database tự tính false (bật, 0 gói); menu []
@@ -273,7 +273,8 @@ export const GU_THU = {
   'la-galbi': ['dam_vi'],
   'than-lung-cat-day': ['nac_thanh'],
 };
-const KICH_BAN_CO_GU = new Set(['day-du', 'thuc-don-thu-suc']);
+// Đợt 3: thẻ Mua thịt về đọc cùng gu — mua-thit-mo, mua-thit-giao có gu; mua-thit-het-quay không (thẻ không dòng gu).
+const KICH_BAN_CO_GU = new Set(['day-du', 'thuc-don-thu-suc', 'mua-thit-mo', 'mua-thit-giao']);
 
 /** Đúng các dòng bo_tai_quay_theo_gu(p_ngon_ngu) trả — 6 cột, thứ tự của 0116; kịch bản không có gu → []. */
 export function boTaiQuayTheoGu(kichBan, nn = 'vi') {
