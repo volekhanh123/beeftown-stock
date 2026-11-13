@@ -14,8 +14,8 @@ bảng CI ở `.github/CLAUDE.md` — cả hai tự nạp khi phiên đọc file
 | `web/` | Website Astro trên Cloudflare Workers: trang công khai vi/en/ko, `/noi-bo`, kho, Zalo, Messenger, iPOS | `web/CLAUDE.md` |
 | `crm/` | Database Supabase (`supabase/migrations/`) và **toàn bộ kiểm thử** (`test/`, chạy trên PGlite) | `crm/CLAUDE.md` |
 | `can-app/` | Beeftown Cân (Windows `.exe`, Bun): gửi giá xuống cân TMA, máy quầy | `can-app/CLAUDE.md` |
-| `mini-app/` | Mini App Zalo (React, zmp-cli): khách chọn khay thịt mang về. Không database, `package.json` và lệnh đưa lên riêng | `mini-app/CLAUDE.md` |
-| `may-chu-don/` | Máy chủ đơn của Mini App (Bun, SQLite), chạy ở Việt Nam: đơn trả trước, VNPay, ZNS, màn hình đơn cho quầy, gọi xe Ahamove | `may-chu-don/CLAUDE.md` |
+| `mini-app/` | Mini App Zalo (React, zmp-cli): khách chọn khay thịt mang về. **Tạm ngưng từ 13/11/2026** — giữ mã, không làm thêm khi Khánh chưa bật lại. Không database, `package.json` và lệnh đưa lên riêng | `mini-app/CLAUDE.md` |
+| `may-chu-don/` | Máy chủ đơn của Mini App (Bun, SQLite), chạy ở Việt Nam: đơn trả trước, VNPay, ZNS, màn hình đơn cho quầy, gọi xe Ahamove. **Tạm ngưng cùng Mini App** | `may-chu-don/CLAUDE.md` |
 | `mo-rong-fabi/` | Extension Chrome: đưa món mới của kho vào FABi CMS, người dùng tự bấm Lưu. Không `package.json` | `mo-rong-fabi/README.md` |
 
 Quy ước chung:

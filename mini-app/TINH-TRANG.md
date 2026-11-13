@@ -15,6 +15,9 @@ Ngày trong file là ngày ghi, chưa chắc còn đúng hôm nay: trước khi 
 
 ## Tình trạng (ghi từ 22/10/2026, 13:00; mỗi dòng có ngày của nó)
 
+- **Tạm ngưng** (Khánh 13/11/2026): không dùng Mini App nữa, giữ mã để dùng lại. Mini App chưa có bản chính thức trên
+  Zalo (chỉ bản thử), nên không khách nào đặt được. Mã VNPay `SLKGTE22` ngưng theo; website thu tiền bằng `SLKGTE11`.
+  Các dòng dưới là tình trạng lúc ngưng. Bật lại: hỏi Khánh trước, rồi đọc `may-chu-don/README.md`, "Tạm ngưng".
 - OA "Nhà hàng Beeftown Hồ Tùng Mậu" đã xác thực. OA ID `3030027075662095415`, đã điền trong `src/cau-hinh.ts`. Gói OA Tăng trưởng.
 - Mini App "Beeftown", **Mini App ID `2858300068641327950`**, nằm trong Zalo App "SLK Group 2210" (ID 2513314422490328273). Loại hình Doanh nghiệp/Hộ kinh doanh (không đổi được), danh mục F&B → Kinh doanh/Quản lí dịch vụ ăn uống. Trang quản lý: https://miniapp.zaloplatforms.com/miniapp/2858300068641327950/statistic/overview
 - Đăng nhập zmp-cli đã xong: file `.env` có `APP_ID` và `ZMP_TOKEN`. File này nằm ở `Documents\beeftown-mini-app\.env`, **không vào git** (`.gitignore` chặn, `test-quy-trinh.mjs` kiểm). Muốn đưa lên từ bản clone của repo: Khánh chép file đó sang `mini-app\.env`, hoặc chạy lại `npx zmp login` trong `mini-app\`.

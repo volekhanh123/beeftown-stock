@@ -6,6 +6,11 @@ phiên bản đã đưa lên, xác thực), việc chờ Sang / luật sư / iPO
 `TINH-TRANG.md` — chỉ đọc khi được hỏi tình trạng hay việc tiếp theo. Hướng dẫn cho người, từng bước: `README.md`.
 Mọi lệnh ở mục "Lệnh" chạy trong `mini-app/`.
 
+**Tạm ngưng (Khánh 13/11/2026):** Khánh không dùng Mini App nữa. Mã giữ nguyên để dùng lại sau; không làm tính năng
+mới, không đưa bản mới lên Zalo khi Khánh chưa bật lại. Khách mua thịt mang về và trả tiền online ở trang Mua thịt về
+của website (VNPay, Terminal `SLKGTE11` — `web/README.md`, "VNPay cho Mua thịt về"). Mã VNPay `SLKGTE22` của Mini App
+ngưng theo. Việc Khánh làm khi ngưng và khi bật lại: `may-chu-don/README.md`, "Tạm ngưng".
+
 Zalo Mini App bán 6 phần thịt mang về của nhà hàng Beeftown. **Bán theo khay, giá cố định** (Khánh quyết 22/10/2026):
 mỗi khay khoảng `soGamKhay` gam, giá `giaMoiKhay` không đổi theo số gam thật; tin đơn ghi từng dòng "số khay × giá =
 tiền" và tổng tiền thịt. Số gam và giá đang là **số thử** (`giaThu: true` trong `src/cau-hinh.ts`), chưa phải số của
