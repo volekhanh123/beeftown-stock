@@ -18,8 +18,8 @@
  *            "email_not_confirmed" = mật khẩu tạm đúng; "invalid_credentials" = tài khoản có từ trước; 429 / 5xx /
  *            mất mạng = chưa biết. Chỉ trường hợp đầu mới nối.
  *   · database — trigger nhan_su_kiem_tai_khoan_vua_tao (0123): dưới một phiên, dòng nhan_su chỉ gắn được tài khoản
- *            đăng nhập tạo trong 10 phút gần nhất. Trigger, không thay thân kho_them_nhan_su — nhánh vai học viên
- *            (claude/dao-tao-hoc-vien) cũng viết lại hàm đó.
+ *            đăng nhập tạo trong 10 phút gần nhất. Trigger, không thay thân kho_them_nhan_su — 0119 (vai học viên)
+ *            cũng viết lại hàm đó.
  *
  * Supabase Auth ở đây là bản GIẢ (fetch giả), viết theo đúng các nhánh của mã nguồn nói trên. Giả định đó là đọc
  * mã, chưa chạy với Supabase thật: các bước thử tay trên project Beeftown-thu ở web/KHO.md mục 3f.
@@ -469,8 +469,8 @@ await nhom('6 · Database (0123): dưới một phiên, nhan_su chỉ gắn đư
                            from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'kho_them_nhan_su'`);
   ok('kho_them_nhan_su vẫn là security definer, đặt search_path; người đăng nhập gọi được, anon không',
      kho?.prosecdef === true && /search_path=public/.test(kho.cau_hinh ?? '') && kho.anon === false && kho.nguoi === true, JSON.stringify(kho));
-  // Nhánh vai học viên (claude/dao-tao-hoc-vien) cũng viết lại kho_them_nhan_su: hai file cùng "create or replace" một
-  // hàm thì file chạy sau đè file chạy trước. 0123 chặn bằng trigger để về mã, gộp theo thứ tự nào cũng đúng.
+  // 0119 (vai học viên) cũng viết lại kho_them_nhan_su: hai file cùng "create or replace" một hàm thì file chạy sau
+  // đè file chạy trước. 0123 chặn bằng trigger, không đụng thân hàm — không làm mất vai học viên của 0119.
   const { readFileSync } = await import('node:fs');
   const sql = readFileSync(join(GOC, 'crm/supabase/migrations/0123_kho_tai_khoan_vua_tao.sql'), 'utf8').replace(/--[^\n]*/g, '');
   ok('0123 không viết lại thân kho_them_nhan_su (không đè bản của migration khác)', !/create\s+(or\s+replace\s+)?function\s+kho_them_nhan_su/i.test(sql));
