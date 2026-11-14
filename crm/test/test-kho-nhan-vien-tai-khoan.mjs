@@ -379,6 +379,26 @@ await nhom('6 · Database (0123): dưới một phiên, nhan_su chỉ gắn đư
   const khongTk = await duoi(UID.chu, `insert into nhan_su (chi_nhanh_id, ho_ten, vai_tro) values ($1, 'Chưa có tài khoản', 'thu_kho') returning id`, [cnA.id]);
   ok('Thêm dòng nhân sự chưa có tài khoản đăng nhập → không bị chặn', khongTk.loi === null, khongTk.loi ?? '');
 
+  // c2) Rà soát bảo mật 14/11 (lượt hai): trigger chạy TRƯỚC khi RLS xét quyền ghi thì một tài khoản lạ — đã đăng
+  //     nhập nhưng không phải nhân sự — thêm thử một dòng nhan_su là đọc được từ câu lỗi rằng mã tài khoản nó đưa
+  //     vào có vừa được tạo hay không. Trigger phải chạy SAU khi RLS đã từ chối: người không có quyền ghi nhận cùng
+  //     một câu lỗi của RLS, dù mã tài khoản cũ, mới hay không có thật.
+  const moiChoLa = await themTaiKhoan('moi.cho.nguoi.la@beeftown.test', 'now()');
+  const thuLa = authUid => duoi(null, `insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro) values ($1, $2, 'Người lạ thêm', 'thu_kho') returning id`, [authUid, cnA.id]);
+  const laCu = await thuLa(cuThang);
+  const laMoi = await thuLa(moiChoLa);
+  const laMa = await thuLa(crypto.randomUUID());
+  ok('RÀ SOÁT 14/11: tài khoản lạ thêm thẳng nhan_su → bị RLS từ chối, không dòng nào được ghi',
+     [laCu, laMoi, laMa].every(r => typeof r.loi === 'string' && /row-level security/i.test(r.loi)), `${laCu.loi} | ${laMoi.loi} | ${laMa.loi}`);
+  ok('RÀ SOÁT 14/11: …và câu lỗi giống hệt nhau cho mã tài khoản cũ, vừa tạo, hay không có thật (không dò được tuổi tài khoản)',
+     laCu.loi === laMoi.loi && laMoi.loi === laMa.loi && !biChan(laCu) && !biChan(laMa), `${laCu.loi} | ${laMoi.loi} | ${laMa.loi}`);
+  for (const [ten, uid] of [['quản lý', UID.qlA], ['marketing', UID.mktA], ['người đã nghỉ', UID.nghiViec]]) {
+    const a = await duoi(uid, `insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro) values ($1, $2, 'Thêm thử', 'thu_kho') returning id`, [cuThang, cnA.id]);
+    const b = await duoi(uid, `insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro) values ($1, $2, 'Thêm thử', 'thu_kho') returning id`, [moiChoLa, cnA.id]);
+    ok(`${ten} thêm thẳng nhan_su: tài khoản cũ hay mới đều nhận cùng câu lỗi của RLS`, typeof a.loi === 'string' && a.loi === b.loi && /row-level security/i.test(a.loi), `${a.loi} | ${b.loi}`);
+  }
+  ok('…không dòng nhân sự nào lọt vào từ các lượt thử đó', (await mot(`select count(*)::int as so from nhan_su where ho_ten in ('Người lạ thêm', 'Thêm thử')`)).so === 0);
+
   // d) Không phiên (SQL Editor / Table Editor của Supabase): cách tạo chủ, quản lý, thu ngân, marketing — tài khoản thường đã có từ lâu.
   const cuStudio = await themTaiKhoan('quan.ly.moi@beeftown.test', `now() - interval '30 days'`);
   let loi = null;

@@ -40,7 +40,9 @@
 --
 -- Hàm trigger là security definer: nó phải đọc auth.users (cột created_at) cả khi câu ghi chạy
 -- dưới vai authenticated. Nó không trả gì ra ngoài câu báo bên dưới, đặt search_path, và không
--- ai gọi thẳng được (trigger chạy không cần quyền EXECUTE của người ghi).
+-- ai gọi thẳng được (trigger chạy không cần quyền EXECUTE của người ghi). Trigger chạy SAU khi
+-- dòng đã qua RLS (after insert or update), nên câu báo đó chỉ tới tay người được ghi nhan_su —
+-- lý do ghi ngay trên câu create trigger.
 --
 -- Thứ tự câu báo của kho_them_nhan_su giữ nguyên: câu về quyền, vai, họ tên, chi nhánh, "Không
 -- tìm thấy tài khoản đăng nhập vừa tạo", "đã gắn với một nhân sự khác" đều đến TRƯỚC câu insert —
@@ -82,10 +84,15 @@ end;
 $$;
 
 comment on function nhan_su_kiem_tai_khoan_vua_tao() is
-  'Trigger của nhan_su (0123): người đang đăng nhập gắn một tài khoản Supabase Auth vào dòng nhân sự thì tài khoản đó phải được tạo trong 10 phút gần nhất — tài khoản có từ trước mang mật khẩu của người đã đăng ký nó. Không phiên (SQL Editor, Table Editor) thì bỏ qua.';
+  'Trigger AFTER của nhan_su (0123): người đang đăng nhập gắn một tài khoản Supabase Auth vào dòng nhân sự thì tài khoản đó phải được tạo trong 10 phút gần nhất — tài khoản có từ trước mang mật khẩu của người đã đăng ký nó. Chạy sau RLS, nên chỉ người được ghi nhan_su mới thấy câu báo. Không phiên (SQL Editor, Table Editor) thì bỏ qua.';
 
+-- AFTER, không BEFORE: trigger BEFORE chạy TRƯỚC khi RLS xét quyền ghi, nên một tài khoản đã đăng nhập nhưng không
+-- được ghi nhan_su (quản lý, marketing, tài khoản lạ) thêm thử một dòng là đọc được từ câu lỗi rằng mã tài khoản nó
+-- đưa vào có vừa được tạo hay không. Trigger AFTER chỉ chạy với dòng đã qua RLS (chủ, hoặc hàm definer của chủ);
+-- người không có quyền ghi nhận câu lỗi của RLS, giống nhau cho mọi mã tài khoản. raise exception ở đây vẫn hủy
+-- cả câu lệnh — dòng vừa ghi bị cuốn ngược lại.
 create trigger nhan_su_kiem_tai_khoan_vua_tao_trigger
-  before insert or update of auth_uid on nhan_su
+  after insert or update of auth_uid on nhan_su
   for each row execute function nhan_su_kiem_tai_khoan_vua_tao();
 
 
