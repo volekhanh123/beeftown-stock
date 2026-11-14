@@ -19,10 +19,18 @@
  *            mất mạng = chưa biết. Chỉ trường hợp đầu mới nối.
  *   · database — trigger nhan_su_kiem_tai_khoan_vua_tao (0123): dưới một phiên, dòng nhan_su chỉ gắn được tài khoản
  *            đăng nhập tạo trong 10 phút gần nhất. Trigger, không thay thân kho_them_nhan_su — nhánh vai học viên
- *            (0119) cũng viết lại hàm đó.
+ *            (claude/dao-tao-hoc-vien) cũng viết lại hàm đó.
  *
  * Supabase Auth ở đây là bản GIẢ (fetch giả), viết theo đúng các nhánh của mã nguồn nói trên. Giả định đó là đọc
  * mã, chưa chạy với Supabase thật: các bước thử tay trên project Beeftown-thu ở web/KHO.md mục 3f.
+ *
+ * Vòng hai của rà soát (14/11/2026) làm bản giả sát bản thật hơn ở ba chỗ:
+ *   · /signup cho một email đã có tài khoản CHƯA xác nhận gửi lại thư xác nhận — và Supabase chỉ cho gửi một thư
+ *     mỗi 60 giây cho một người (internal/api/mail.go, validateSentWithinFrequencyLimit; mặc định SMTP.MaxFrequency
+ *     là một phút): bấm tạo lại ngay thì nhận 429 over_email_send_rate_limit, không phải tài khoản cũ. Nhóm 5.
+ *   · /logout ghi lại phạm vi: phiên thử phải được thu hồi với phạm vi "local". Nhóm 1.
+ *   · "Tài khoản lạ" là một người ĐÃ đăng nhập nhưng không có dòng nhan_su (auth.uid() có giá trị) — không phải
+ *     duoi(null), thứ không có auth.uid() nên trigger 0123 bỏ qua. Nhóm 6.
  *
  * Mỗi dòng "RÀ SOÁT 14/11" đỏ trước bản sửa. Các dòng còn lại giữ cho việc tạo nhân viên bình thường vẫn chạy.
  * Cần web/node_modules (cd web && npm install) — như test-qua-tai.mjs.
@@ -73,6 +81,10 @@ const auth = {
   soPhienCap: 0,
   /** Đặt một hàm ở đây để cửa /token trả lời khác đi (429, 5xx, mất mạng). null = trả lời thật. */
   tokenHong: null,
+  /** Đồng hồ của Auth giả = giờ thật + lech (mili-giây). troiQua() cho "chờ hơn một phút" mà không chờ thật. */
+  lech: 0,
+  gio() { return Date.now() + this.lech; },
+  troiQua(ms) { this.lech += ms; },
 
   datLai({ tuXacNhan }) { this.tuXacNhan = tuXacNhan; this.nhatKy = []; this.soPhienCap = 0; this.tokenHong = null; },
   dem(cua) { return this.nhatKy.filter(n => n.cua === cua).length; },
@@ -80,7 +92,8 @@ const auth = {
   /** Một người (không phải chủ) đăng ký email từ trước, bằng mật khẩu của họ. */
   async dangKyTruoc(email, matKhau, { phutTruoc }) {
     const id = crypto.randomUUID();
-    this.taiKhoan.set(email, { id, matKhau, daXacNhan: false });
+    // guiThuLuc: lúc Supabase gửi thư xác nhận gần nhất cho tài khoản này; soThu: đã gửi mấy thư.
+    this.taiKhoan.set(email, { id, matKhau, daXacNhan: false, guiThuLuc: this.gio() - phutTruoc * 60_000, soThu: 1 });
     await db.query(`insert into auth.users (id, email, created_at) values ($1, $2, now() - make_interval(mins => $3))`, [id, email, phutTruoc]);
     return id;
   },
@@ -131,12 +144,18 @@ globalThis.fetch = async (url, init) => {
       return json(200, nguoiDung({ id: crypto.randomUUID() }, email, { identity: false }));
     }
     if (!tk) {
-      tk = { id: crypto.randomUUID(), matKhau: than.password, daXacNhan: false };
+      tk = { id: crypto.randomUUID(), matKhau: than.password, daXacNhan: false, guiThuLuc: null, soThu: 0 };
       auth.taiKhoan.set(email, tk);
       await db.query(`insert into auth.users (id, email) values ($1, $2)`, [tk.id, email]);
     }
     // Tài khoản cũ CHƯA xác nhận: không đổi mật khẩu, trả lại chính nó.
     if (auth.tuXacNhan) { tk.daXacNhan = true; return json(200, phien(tk, email)); }
+    // Bật "Confirm email": Supabase gửi (lại) thư xác nhận — nhưng chỉ một thư mỗi 60 giây cho một người
+    // (internal/api/mail.go: sentAt.Add(MaxFrequency).After(now) → 429). Thư mới thay link của thư cũ.
+    if (tk.guiThuLuc !== null && tk.guiThuLuc + 60_000 > auth.gio()) {
+      return json(429, { code: 'over_email_send_rate_limit', message: 'For security purposes, you can only request this after 42 seconds.' });
+    }
+    tk.guiThuLuc = auth.gio(); tk.soThu += 1;
     return json(200, nguoiDung(tk, email));
   }
 
@@ -151,7 +170,7 @@ globalThis.fetch = async (url, init) => {
   }
 
   if (u.pathname === '/auth/v1/logout') {
-    auth.nhatKy.push({ cua: 'logout' });
+    auth.nhatKy.push({ cua: 'logout', pham_vi: u.searchParams.get('scope') });
     return new Response(null, { status: 204 });
   }
   throw new TypeError(`fetch giả: không biết ${u.pathname}`);
@@ -211,6 +230,8 @@ await nhom('1 · Tạo nhân viên bình thường vẫn chạy — Supabase b�
      `${thu.length} lần thử`);
   ok('…mọi phiên Supabase cấp cho người mới đều được thu hồi ngay (không ai dùng)',
      auth.soPhienCap > 0 && auth.dem('logout') === auth.soPhienCap, `${auth.soPhienCap} phiên, ${auth.dem('logout')} lần đăng xuất`);
+  const phamVi = auth.nhatKy.filter(n => n.cua === 'logout').map(n => n.pham_vi);
+  ok('RÀ SOÁT 14/11 (vòng hai): …và mọi lượt thu hồi đó đều phạm vi "local" (chỉ phiên thử)', phamVi.length > 0 && phamVi.every(v => v === 'local'), JSON.stringify(phamVi));
 
   auth.datLai({ tuXacNhan: false });
   const b = await chuTao('nv.quay.moi@beeftown.test', { hoTen: 'NV quầy mới', vai: 'nhan_vien_quay', chiNhanh: cnB.id });
@@ -309,10 +330,29 @@ await nhom('5 · Bấm tạo hai lần cùng một email → chỉ một nhân v
   auth.datLai({ tuXacNhan: false });
   const email = 'bam.hai.lan@beeftown.test';
   const mot_ = await chuTao(email, { hoTen: 'Bấm hai lần' });
+  const mocHai = auth.nhatKy.length;
   const hai = await chuTao(email, { hoTen: 'Bấm hai lần' });
+  const cuaHai = auth.nhatKy.slice(mocHai).map(n => n.cua);      // các cửa Supabase mà lần bấm thứ hai đụng tới
   ok('Lần một tạo được', mot_.kq.ok === true && MAT_KHAU_TAM.test(mot_.kq.moi?.mat_khau ?? ''), tom(mot_.kq));
   ok('Lần hai (bật "Confirm email") không tạo thêm, không báo thành công', hai.kq.ok === false && hai.kq.moi === undefined, tom(hai.kq));
   ok('…vẫn đúng một dòng nhân sự', await soNhanSu(email) === 1);
+  // Vòng hai 14/11: bấm lại NGAY (trong 60 giây) thì Supabase thật trả 429 ở chính bước đăng ký — chưa tới bước đăng
+  // nhập thử. Màn hình hiện câu về số thư xác nhận; bước thử tay 2 của web/KHO.md mục 3f dặn chờ hơn một phút.
+  ok('RÀ SOÁT 14/11 (vòng hai): bấm lại trong 60 giây → Supabase từ chối ở bước đăng ký (429): không đăng nhập thử, không gọi kho_them_nhan_su',
+     JSON.stringify(cuaHai) === '["signup"]' && !hai.daGoi.includes('kho_them_nhan_su'),
+     `Supabase: ${cuaHai.join(', ')} · database: ${hai.daGoi.join(', ') || '(không)'}`);
+  ok('…câu hiện ra là câu về số thư xác nhận (nghĩa là "bấm lại quá sớm"), không phải câu "tài khoản có từ trước"',
+     /đã gửi quá số thư xác nhận/.test(hai.kq.cau) && !/từ trước/.test(hai.kq.cau), tom(hai.kq));
+  // Chờ hơn một phút rồi bấm lại: Supabase trả lại tài khoản cũ (mật khẩu của lần một) và gửi thư thứ hai.
+  auth.troiQua(61_000);
+  const mocBa = auth.nhatKy.length;
+  const sauMotPhut = await chuTao(email, { hoTen: 'Bấm hai lần' });
+  const cuaBa = auth.nhatKy.slice(mocBa).map(n => n.cua);
+  ok('RÀ SOÁT 14/11 (vòng hai): bấm lại sau hơn một phút → mật khẩu tạm mới không mở được tài khoản cũ: báo "có từ trước", CHƯA tạo nhân viên ở lần bấm này',
+     sauMotPhut.kq.ok === false && sauMotPhut.kq.moi === undefined && /từ trước/.test(sauMotPhut.kq.cau) && /CHƯA tạo nhân viên/.test(sauMotPhut.kq.cau)
+     && JSON.stringify(cuaBa) === '["signup","token"]' && !sauMotPhut.daGoi.includes('kho_them_nhan_su'), `Supabase: ${cuaBa.join(', ')} · ${tom(sauMotPhut.kq)}`);
+  ok('…vẫn đúng một dòng nhân sự; Supabase đã gửi thư xác nhận thứ hai (chỉ link trong thư MỚI NHẤT còn dùng được)',
+     await soNhanSu(email) === 1 && auth.taiKhoan.get(email).soThu === 2, `${auth.taiKhoan.get(email).soThu} thư`);
   auth.xacNhan(email);
   const uid = auth.moDuoc(email, mot_.kq.moi?.mat_khau);
   ok('…mật khẩu tạm của lần một vẫn mở đúng tài khoản nhân viên đó', uid !== null && await laNhanSu(uid));
@@ -328,6 +368,9 @@ await nhom('5 · Bấm tạo hai lần cùng một email → chỉ một nhân v
 // ===========================================================================
 await nhom('6 · Database (0123): dưới một phiên, nhan_su chỉ gắn được tài khoản đăng nhập VỪA tạo', async () => {
   const CAU = 'Tài khoản đăng nhập này có từ trước, không phải vừa tạo ở màn Nhân viên';
+  // Một người tự đăng ký ở Supabase rồi đăng nhập: có auth.uid(), không có dòng nhan_su nào. (duoi(null) thì khác:
+  // vai authenticated nhưng không có auth.uid() — các trigger "không phiên thì bỏ qua" bỏ qua nó.)
+  const UID_LA = crypto.randomUUID();
   const goi = (uid, authUid, ten = 'Người thử') => duoi(uid, `select kho_them_nhan_su($1, $2, 'thu_kho', $3) as kq`, [authUid, ten, cnA.id]);
   const themTaiKhoan = async (email, taoLuc) => {
     const id = crypto.randomUUID();
@@ -354,7 +397,8 @@ await nhom('6 · Database (0123): dưới một phiên, nhan_su chỉ gắn đư
   // b) Câu cũ của kho_them_nhan_su vẫn đến trước: người không phải chủ không dò được tuổi của một tài khoản.
   const cu = await themTaiKhoan('cu.cho.quan.ly@beeftown.test', `now() - interval '1 day'`);
   const moi = await themTaiKhoan('moi.cho.quan.ly@beeftown.test', 'now()');
-  for (const [ten, uid] of [['quản lý', UID.qlA], ['thủ kho', UID.thuKhoA], ['người đã nghỉ', UID.nghiViec], ['tài khoản không có nhân sự', null]]) {
+  for (const [ten, uid] of [['quản lý', UID.qlA], ['thủ kho', UID.thuKhoA], ['người đã nghỉ', UID.nghiViec], ['tài khoản đã đăng nhập nhưng không có nhân sự', UID_LA],
+                            ['lời gọi không có auth.uid()', null]]) {
     const a = await goi(uid, cu);
     const b = await goi(uid, moi);
     ok(`${ten}: tài khoản cũ hay mới đều nhận cùng một câu "Chỉ chủ nhà hàng…"`,
@@ -384,7 +428,10 @@ await nhom('6 · Database (0123): dưới một phiên, nhan_su chỉ gắn đư
   //     vào có vừa được tạo hay không. Trigger phải chạy SAU khi RLS đã từ chối: người không có quyền ghi nhận cùng
   //     một câu lỗi của RLS, dù mã tài khoản cũ, mới hay không có thật.
   const moiChoLa = await themTaiKhoan('moi.cho.nguoi.la@beeftown.test', 'now()');
-  const thuLa = authUid => duoi(null, `insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro) values ($1, $2, 'Người lạ thêm', 'thu_kho') returning id`, [authUid, cnA.id]);
+  const thuLa = authUid => duoi(UID_LA, `insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro) values ($1, $2, 'Người lạ thêm', 'thu_kho') returning id`, [authUid, cnA.id]);
+  const coPhien = await duoi(UID_LA, `select co_phien_dang_nhap() as co, auth.uid() as uid`);
+  ok('Tài khoản lạ của phép thử này có phiên thật (auth.uid() có giá trị) — trigger 0123 không bỏ qua nó',
+     coPhien.rows?.[0]?.co === true && coPhien.rows?.[0]?.uid === UID_LA, JSON.stringify(coPhien.rows ?? coPhien.loi));
   const laCu = await thuLa(cuThang);
   const laMoi = await thuLa(moiChoLa);
   const laMa = await thuLa(crypto.randomUUID());
@@ -411,15 +458,16 @@ await nhom('6 · Database (0123): dưới một phiên, nhan_su chỉ gắn đư
                            from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'nhan_su_kiem_tai_khoan_vua_tao'`);
   ok('nhan_su_kiem_tai_khoan_vua_tao: security definer, đặt search_path, anon và người đăng nhập không gọi thẳng được',
      ham?.prosecdef === true && /search_path=public/.test(ham.cau_hinh ?? '') && ham.anon === false && ham.nguoi === false, JSON.stringify(ham));
+  // Không phải phép thử quyền (dòng trên mới là phép thử quyền): Postgres không cho gọi một hàm trigger ngoài trigger.
   const goiThang = await duoi(UID.chu, `select nhan_su_kiem_tai_khoan_vua_tao()`);
-  ok('…gọi thẳng dưới phiên của chủ cũng bị từ chối', typeof goiThang.loi === 'string', goiThang.loi ?? 'GỌI ĐƯỢC');
+  ok('…và Postgres không cho gọi hàm trigger này ngoài trigger, kể cả dưới phiên của chủ', typeof goiThang.loi === 'string', goiThang.loi ?? 'GỌI ĐƯỢC');
   const kho = await mot(`select p.prosecdef, p.proconfig::text as cau_hinh, has_function_privilege('anon', p.oid, 'execute') as anon,
                                 has_function_privilege('authenticated', p.oid, 'execute') as nguoi
                            from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'kho_them_nhan_su'`);
   ok('kho_them_nhan_su vẫn là security definer, đặt search_path; người đăng nhập gọi được, anon không',
      kho?.prosecdef === true && /search_path=public/.test(kho.cau_hinh ?? '') && kho.anon === false && kho.nguoi === true, JSON.stringify(kho));
-  // Nhánh vai học viên (0119) cũng viết lại kho_them_nhan_su: hai file cùng "create or replace" một hàm thì file chạy
-  // sau đè file chạy trước. 0123 chặn bằng trigger để gộp theo thứ tự nào cũng đúng.
+  // Nhánh vai học viên (claude/dao-tao-hoc-vien) cũng viết lại kho_them_nhan_su: hai file cùng "create or replace" một
+  // hàm thì file chạy sau đè file chạy trước. 0123 chặn bằng trigger để về mã, gộp theo thứ tự nào cũng đúng.
   const { readFileSync } = await import('node:fs');
   const sql = readFileSync(join(GOC, 'crm/supabase/migrations/0123_kho_tai_khoan_vua_tao.sql'), 'utf8').replace(/--[^\n]*/g, '');
   ok('0123 không viết lại thân kho_them_nhan_su (không đè bản của migration khác)', !/create\s+(or\s+replace\s+)?function\s+kho_them_nhan_su/i.test(sql));

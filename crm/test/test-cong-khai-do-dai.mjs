@@ -190,7 +190,17 @@ await nhom('5 · Ràng buộc của bảng chặn mọi đường ghi khác', as
   const hs = await thu(`update ho_so_ung_tuyen set gioi_thieu = $1 where not da_an_danh`, [chu(8001)]);
   ok('RÀ SOÁT 14/11: ghi thẳng giới thiệu 8001 ký tự vào ho_so_ung_tuyen → ràng buộc ho_so_chu_ngan chặn', hs?.includes('ho_so_chu_ngan'), hs ?? 'ghi được');
   const caNhieu = await thu(`update ho_so_ung_tuyen set ca_lam_duoc = array_fill(null::text, array[2000000]) where not da_an_danh`);
-  ok('RÀ SOÁT 14/11: mảng ca 2.000.000 phần tử rỗng → ràng buộc chặn theo số phần tử', caNhieu?.includes('ho_so_chu_ngan'), caNhieu ?? 'ghi được');
+  ok('RÀ SOÁT 14/11: mảng ca 2.000.000 phần tử rỗng → ràng buộc ho_so_chu_ngan chặn', caNhieu?.includes('ho_so_chu_ngan'), caNhieu ?? 'ghi được');
+  // Vòng hai 14/11: mảng 2.000.000 phần tử null bị chặn cả khi KHÔNG có vế đếm số ca (nối lại là 1.999.999 dấu phẩy),
+  // nên dòng trên không chứng minh được vế đó. Hai mảng dưới chỉ vế đếm số ca chặn được: chuỗi nối của chúng ngắn.
+  const ca21 = await thu(`update ho_so_ung_tuyen set ca_lam_duoc = $1::text[] where not da_an_danh`, [Array.from({ length: 21 }, () => 'a')]);
+  ok('RÀ SOÁT 14/11 (vòng hai): 21 ca một chữ (nối lại 41 ký tự) → ràng buộc chặn theo SỐ ca', ca21?.includes('ho_so_chu_ngan'), ca21 ?? 'ghi được');
+  const ca500 = await thu(`update ho_so_ung_tuyen set ca_lam_duoc = array_fill(null::text, array[500]) where not da_an_danh`);
+  ok('RÀ SOÁT 14/11 (vòng hai): 500 phần tử rỗng (nối lại 499 ký tự) → ràng buộc chặn theo SỐ ca', ca500?.includes('ho_so_chu_ngan'), ca500 ?? 'ghi được');
+  const ca20 = await thu(`update ho_so_ung_tuyen set ca_lam_duoc = $1::text[] where not da_an_danh`, [Array.from({ length: 20 }, () => 'sáng')]);
+  ok('…đúng 20 ca thì ghi được', ca20 === null, ca20 ?? '');
+  const noi = (await db.query(`select array_to_string(array_fill(null::text, array[5]), ',', '') as chuoi`)).rows[0].chuoi;
+  ok("…và array_to_string(…, ',', '') giữ dấu phẩy của phần tử null (5 phần tử → 4 dấu phẩy) — đúng như chú thích của 0121", noi === ',,,,', JSON.stringify(noi));
 
   const ham = await db.query(
     `select p.proname, p.prosecdef, p.proconfig::text as cau_hinh, has_function_privilege('anon', p.oid, 'execute') as anon

@@ -91,7 +91,8 @@ globalThis.fetch = async (url, init) => {
       user: { id, aud: 'authenticated', role: 'authenticated', email: than.email, app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() },
     });
   }
-  if (u.pathname === '/auth/v1/logout') { auth.nhatKy.push({ cua: 'logout' }); return new Response(null, { status: 204 }); }
+  // Ghi lại phạm vi của lượt thu hồi: bỏ trống hoặc "global" ở Supabase thật là thu hồi MỌI phiên của người đó.
+  if (u.pathname === '/auth/v1/logout') { auth.nhatKy.push({ cua: 'logout', pham_vi: u.searchParams.get('scope') }); return new Response(null, { status: 204 }); }
   throw new TypeError(`fetch giả: không biết ${u.pathname}`);
 };
 const taoTam = () => createClient(URL_GIA, 'khoa-anon-gia', { auth: { persistSession: false, autoRefreshToken: false } });
@@ -182,6 +183,11 @@ await nhom('5 · Đúng mật khẩu → đổi được PIN', async () => {
   ok('…nhật ký máy ghi đúng một lần đổi PIN', await soLanDoiPin() === 1, `${await soLanDoiPin()} lần`);
   ok('…phiên đăng nhập thử bị thu hồi ngay (không token nào sống mà không ai giữ)',
      auth.soPhienCap === 1 && auth.dem('logout') === 1, `${auth.soPhienCap} phiên, ${auth.dem('logout')} lần đăng xuất`);
+  // Vòng hai 14/11: phiên thử là của CHÍNH người đang dùng máy. Thu hồi không ghi phạm vi "local" (mặc định của
+  // supabase-js là mọi máy) thì đổi PIN xong, phiên đang mở máy và phiên trên điện thoại của người đó chết theo.
+  const phamVi = auth.nhatKy.filter(n => n.cua === 'logout').map(n => n.pham_vi);
+  ok('RÀ SOÁT 14/11 (vòng hai): …và chỉ thu hồi phiên thử (phạm vi "local") — phiên đang dùng máy không bị đá ra',
+     phamVi.length === 1 && phamVi[0] === 'local', JSON.stringify(phamVi));
 
   const lai = await guiDoiPin({ pin: PIN_MOI, pin_lai: PIN_MOI, mat_khau: MAT_KHAU });
   ok('Bấm hai lần: lần hai cũng xong, PIN vẫn là PIN mới', lai.ok === true && (await pinDangLuu()) === (await pinBam(PIN_MOI)), tom(lai));

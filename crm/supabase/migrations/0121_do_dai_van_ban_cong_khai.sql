@@ -597,8 +597,9 @@ alter table khach_hang
 comment on constraint khach_hang_chu_ngan on khach_hang is
   'Trần độ dài họ tên (200) và nguồn utm (300 ký tự) của hồ sơ khách (0121). tao_dat_ban chặt hơn (120 / cắt 100).';
 
--- Số ca kiểm bằng cardinality: array_to_string bỏ qua phần tử null, nên một mảng toàn null dài tuỳ ý
--- vẫn ra chuỗi rỗng.
+-- Số ca kiểm bằng cardinality — vế chuỗi nối không chặn được số ca: 21 ca một chữ nối lại mới 41 ký tự, 500
+-- phần tử null nối lại là 499 dấu phẩy (array_to_string có tham số thứ ba '' thì phần tử null vẫn giữ dấu phẩy
+-- của nó). Vế chuỗi chặn tổng số chữ của các ca.
 alter table ho_so_ung_tuyen
   add constraint ho_so_chu_ngan check (
         char_length(coalesce(ho_ten, '')) <= 200
