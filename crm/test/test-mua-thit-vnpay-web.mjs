@@ -353,7 +353,23 @@ await nhom('7 · ĐẶT HÀNG CÓ VNPAY → CHUYỂN THẲNG SANG VNPAY (bam-hai
      && u?.searchParams.get('vnp_Amount') === String(2 * GIA_GOI * 100), u?.search ?? '');
   const p = Object.fromEntries(u.searchParams); const { vnp_SecureHash: ky, ...conLai } = p;
   ok('Chữ ký đúng (tính độc lập)', ky === kyDocLap(conLai));
-  ok('Đường dẫn VNPay không mang họ tên, số điện thoại, địa chỉ, ma_gui', !/Mai|Pasteur|09\d{8}/.test(decodeURIComponent(l.ve)) && !l.ve.includes(g));
+  // Bỏ vnp_SecureHash trước khi dò: 128 ký tự hex của chữ ký tình cờ chứa "09" + 8 chữ số (đo 200.000 chữ ký: 1,03%
+  // số lượt; mẫu có ranh giới vẫn 0,16% vì chữ a–f cũng là ranh giới) — kiểm tra này từng chập chờn vì thế. Chữ ký
+  // không mang được chữ của khách. Ranh giới (?<!\d) (?!\d) giữ cho ngày giờ, số tiền dài không bị bắt nhầm.
+  const loThongTin = ve => {
+    const khongKy = new URL(ve); khongKy.searchParams.delete('vnp_SecureHash');
+    const chu = decodeURIComponent(khongKy.href);
+    return /Mai|Pasteur|(?<!\d)09\d{8}(?!\d)/.test(chu) || chu.includes(body.get('sdt')) || chu.includes(g);
+  };
+  ok('Đường dẫn VNPay không mang họ tên, số điện thoại, địa chỉ, ma_gui', !loThongTin(l.ve), l.ve);
+  const kyGiongSdt = new URL(l.ve);
+  kyGiongSdt.searchParams.set('vnp_SecureHash', `${ky.slice(0, 40)}0912345678${ky.slice(50)}`);
+  ok('Chữ ký tình cờ có "09" + 8 chữ số → kiểm tra trên không đỏ nhầm (từng hỏng khoảng 1% số lượt)',
+     !loThongTin(kyGiongSdt.href), kyGiongSdt.searchParams.get('vnp_SecureHash'));
+  const coSdt = new URL(l.ve); coSdt.searchParams.set('vnp_OrderInfo', `Don ${ma} sdt ${body.get('sdt')}`);
+  const coTen = new URL(l.ve); coTen.searchParams.set('vnp_OrderInfo', 'Don cua Le Thi Mai');
+  ok('Kiểm tra trên vẫn bắt được số điện thoại, họ tên thật lọt vào một tham số khác',
+     loThongTin(coSdt.href) && loThongTin(coTen.href));
   ok('Cookie trả lại = "<mã đơn>.<ma_gui>"', l.traVnpay === `${ma}.${g}`);
   ok('vnp_IpAddr là IP của khách (CF-Connecting-IP)', /^203\.0\.113\.\d+$/.test(u.searchParams.get('vnp_IpAddr') ?? ''));
   ok('Giờ tạo theo giờ VN của bayGio', u.searchParams.get('vnp_CreateDate') === '20261112235000');

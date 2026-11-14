@@ -160,12 +160,19 @@ const KHOA_HAM = `p.proname || '(' || pg_get_function_identity_arguments(p.oid) 
 const BANG_PUBLIC = `
   from pg_class c join pg_namespace n on n.oid = c.relnamespace
   where n.nspname = 'public' and c.relkind in ('r', 'p', 'v', 'm', 'f') and ${KHONG_PHAI_EXTENSION('pg_class', 'c.oid')}`;
-/** Danh sách quyền (select, insert, update, delete) một vai có trên bảng c. */
+/**
+ * Danh sách quyền một vai có trên bảng c: select, insert, update, delete, và từ 0120 cả truncate, references,
+ * trigger, maintain — 0120 thu bốn quyền đó; khối thu quyền không chạy trên production thì nhóm này báo KHÁC.
+ */
 const QUYEN_BANG = vai => `nullif(concat_ws(', ',
     case when has_table_privilege('${vai}', c.oid, 'SELECT') then 'select' end,
     case when has_table_privilege('${vai}', c.oid, 'INSERT') then 'insert' end,
     case when has_table_privilege('${vai}', c.oid, 'UPDATE') then 'update' end,
-    case when has_table_privilege('${vai}', c.oid, 'DELETE') then 'delete' end), '')`;
+    case when has_table_privilege('${vai}', c.oid, 'DELETE') then 'delete' end,
+    case when has_table_privilege('${vai}', c.oid, 'TRUNCATE') then 'truncate' end,
+    case when has_table_privilege('${vai}', c.oid, 'REFERENCES') then 'references' end,
+    case when has_table_privilege('${vai}', c.oid, 'TRIGGER') then 'trigger' end,
+    case when has_table_privilege('${vai}', c.oid, 'MAINTAIN') then 'maintain' end), '')`;
 
 export const NHOM = [
   {
