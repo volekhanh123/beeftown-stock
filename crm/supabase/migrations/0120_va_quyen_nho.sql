@@ -34,7 +34,7 @@ declare
 begin
   select * into v_pn from kho_phieu_nhap where id = p_id;
   if not found then
-    -- 0120: người không được hủy phiếu ở chi nhánh nào nhận đúng câu như với phiếu có thật — không dò được mã nào
+    -- 0120 · người không được hủy phiếu ở chi nhánh nào nhận đúng câu như với phiếu có thật — không dò được mã nào
     -- có, mã nào không.
     if cardinality(kho_cn_duoc('nhap') || kho_cn_duoc('duyet') || kho_cn_duoc('ke_toan')) = 0 then
       raise exception 'Tài khoản của bạn không được hủy phiếu nhập' using errcode = 'insufficient_privilege';
@@ -42,7 +42,7 @@ begin
     raise exception 'Không tìm thấy phiếu nhập' using errcode = 'foreign_key_violation';
   end if;
 
-  -- 0120: kiểm quyền TRƯỚC mọi câu trả về. Cửa vào là ba quyền mà các bước bên dưới kiểm (nhap: phiếu nháp, bị từ
+  -- 0120 · kiểm quyền TRƯỚC mọi câu trả về. Cửa vào là ba quyền mà các bước bên dưới kiểm (nhap: phiếu nháp, bị từ
   -- chối; duyet: phiếu đã duyệt; ke_toan: nợ đầu kỳ), ở chi nhánh của phiếu. Ai không qua: một câu chung — không số
   -- phiếu, không trạng thái, không loại phiếu. Kế toán qua cửa với phiếu mua / tồn đầu: họ đã xem được phiếu đó
   -- (xem_gia) và từ chối được phiếu chờ duyệt (duyet_nhap), nên câu "đã bị hủy trước đó" / "đang chờ duyệt" không
@@ -67,7 +67,7 @@ begin
 
   -- 0035: nợ đầu kỳ — việc của kế toán. Không có lô, không có sổ kho: chỉ
   -- đổi trạng thái. Đã có thanh toán / giảm trừ thì trigger 0024 chặn.
-  -- 0120: bước kiểm 'ke_toan' của nợ đầu kỳ đã đưa lên đầu hàm.
+  -- 0120 · bước kiểm 'ke_toan' của nợ đầu kỳ đã đưa lên đầu hàm.
   if v_pn.loai = 'no_dau' then
     if coalesce(btrim(p_ly_do), '') = '' then
       raise exception 'Cần ghi lý do hủy nợ đầu kỳ' using errcode = 'check_violation';

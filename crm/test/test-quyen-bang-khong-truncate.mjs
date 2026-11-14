@@ -16,7 +16,7 @@
  *   · 0120 không đổi SELECT, INSERT, UPDATE, DELETE (cả quyền theo cột) của bảng nào — so database trước và sau 0120.
  */
 
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dungDatabase, dungDatabaseTrong, taoBoDem, UID } from './kho-chung.mjs';
@@ -24,8 +24,11 @@ import { dungDatabase, dungDatabaseTrong, taoBoDem, UID } from './kho-chung.mjs'
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — QUYỀN BẢNG: KHÔNG TRUNCATE, REFERENCES, TRIGGER, MAINTAIN');
 
 const THU_MUC_MIG = join(dirname(fileURLToPath(import.meta.url)), '..', 'supabase', 'migrations');
-// Tìm theo tên, không ghi cứng số: PR bị đánh lại số thì file này vẫn so đúng trước / sau migration thu quyền.
-const SO_THU_QUYEN = Number(readdirSync(THU_MUC_MIG).find(f => /^\d{4}_va_quyen_nho\.sql$/.test(f))?.slice(0, 4));
+// Migration thu quyền: tìm theo NỘI DUNG (câu revoke bốn quyền), không theo số hay tên — đánh lại số, đổi tên vẫn đúng.
+const TEP_THU_QUYEN = readdirSync(THU_MUC_MIG).filter(f => /^\d{4}_.+\.sql$/.test(f)).sort()
+  .find(f => /revoke truncate, references, trigger, maintain on all tables in schema public/i
+    .test(readFileSync(join(THU_MUC_MIG, f), 'utf8')));
+const SO_THU_QUYEN = Number(TEP_THU_QUYEN?.slice(0, 4));
 
 const QUYEN_THUA = ['TRUNCATE', 'REFERENCES', 'TRIGGER', 'MAINTAIN'];
 // Bảng, bảng phân vùng, view, materialized view, bảng ngoài — đúng tập mà `on all tables in schema` đụng tới.
@@ -101,18 +104,18 @@ await nhom('1 · SAU MỌI MIGRATION: KHÔNG BẢNG, VIEW NÀO CÒN BỐN QUYỀ
 
 // ===========================================================================
 await nhom('2 · MIGRATION THU QUYỀN KHÔNG ĐỔI SELECT, INSERT, UPDATE, DELETE', async () => {
-  ok('Tìm thấy migration thu quyền (…_va_quyen_nho.sql)', Number.isInteger(SO_THU_QUYEN) && SO_THU_QUYEN > 117, `${SO_THU_QUYEN}`);
-  const { db: truoc } = await dungDatabaseTrong({ den: SO_THU_QUYEN - 1 });
-  const { db: sau } = await dungDatabaseTrong({ den: SO_THU_QUYEN });
-  const [qTruoc, qSau] = [await quyenDocGhi(truoc), await quyenDocGhi(sau)];
+  ok(`Tìm thấy migration thu quyền (${TEP_THU_QUYEN})`, Number.isInteger(SO_THU_QUYEN), `${TEP_THU_QUYEN}`);
+  // Một database: nạp đến ngay trước migration thu quyền, chụp quyền, chạy migration đó, chụp lại.
+  const { db } = await dungDatabaseTrong({ den: SO_THU_QUYEN - 1 });
+  const qTruoc = await quyenDocGhi(db), conTruoc = await conQuyenThua(db);
+  await db.exec(readFileSync(join(THU_MUC_MIG, TEP_THU_QUYEN), 'utf8'));
+  const qSau = await quyenDocGhi(db), conSau = await conQuyenThua(db);
   const mat = qTruoc.filter(x => !qSau.includes(x)), them = qSau.filter(x => !qTruoc.includes(x));
   ok(`Quyền đọc / ghi (mức bảng và mức cột) của anon, authenticated trước và sau ${SO_THU_QUYEN}: y hệt (${qSau.length} dòng)`,
      qSau.length > 100 && mat.length === 0 && them.length === 0, `mất: ${mat.slice(0, 8).join(' · ')} · thêm: ${them.slice(0, 8).join(' · ')}`);
-  const conTruoc = await conQuyenThua(truoc);
   ok(`Trước ${SO_THU_QUYEN} còn quyền thừa (đúng như production 14/11/2026), sau thì hết`,
-     conTruoc.length > 100 && (await conQuyenThua(sau)).length === 0, `trước: ${conTruoc.length}`);
-  await truoc.close();
-  await sau.close();
+     conTruoc.length > 100 && conSau.length === 0, `trước: ${conTruoc.length} · sau: ${conSau.length}`);
+  await db.close();
 });
 
 process.exit(ketThuc('QUYỀN BẢNG'));

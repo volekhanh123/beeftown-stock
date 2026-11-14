@@ -22,6 +22,7 @@ const { db, cnA, cnB, duoi, duoiAnon } = await dungDatabase();
 
 const homNay = (await db.query(`select hom_nay_vn()::text as d`)).rows[0].d;
 const MA_KHONG_CO = '00000000-0000-4000-8000-0000000fffff';
+const UID_KHONG_NHAN_SU = '00000000-0000-4000-8000-0000000eeeee';   // có phiên đăng nhập, không có dòng nhan_su
 const CAU_CHUNG = 'Tài khoản của bạn không được hủy phiếu nhập';
 const CAU_NO_DAU = 'Chỉ kế toán hoặc quản lý hủy được nợ đầu kỳ';
 const CAU_CHO_DUYET = 'Phiếu đang chờ duyệt — rút về hoặc từ chối trước khi hủy';
@@ -111,7 +112,8 @@ const loSoPhieu = loi => Object.values(P).filter(p => p.so_phieu && loi?.include
 await nhom('2 · KHÔNG CÓ QUYỀN Ở CHI NHÁNH NÀO: MỘT CÂU CHUNG, KỂ CẢ MÃ KHÔNG CÓ', async () => {
   const AI = [
     ['NV quầy Q1', UID.nvQuayA], ['Thu ngân Q1', UID.thuNganA], ['Marketing Q1', UID.mktA],
-    ['Thủ kho đã nghỉ', UID.nghiViec], ['Tài khoản không có dòng nhan_su', null],
+    ['Thủ kho đã nghỉ', UID.nghiViec], ['Đăng nhập, auth.uid() rỗng', null],
+    ['Tài khoản đăng nhập thật không có dòng nhan_su', UID_KHONG_NHAN_SU],
   ];
   for (const [ten, uid] of AI) {
     const kq = [];

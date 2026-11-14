@@ -200,6 +200,11 @@ await nhom('6 · TRIGGER, RLS, POLICY, QUYỀN, KIỂU', async () => {
   ok('Hàm nội bộ và bảng lộ cho anon (khối chốt quyền chưa chạy) → báo KHÁC ở nhóm quyền',
     ds(e.n, 'quyen', 'khac') === JSON.stringify(['bảng bao_dong_trang_thai', `hàm ${BAO_DONG}`]) && e.tong === 2
       && e.bao.includes('anon gọi được') && e.bao.includes('anon: select'), e.bao);
+  // 0120 thu TRUNCATE, REFERENCES, TRIGGER, MAINTAIN — khối đó không chạy thì bảng còn các quyền này.
+  const e2 = await sauKhi(`grant truncate, maintain on public.bao_dong_trang_thai to authenticated`);
+  ok('Bảng còn TRUNCATE cho authenticated (khối thu quyền chưa chạy) → báo KHÁC ở nhóm quyền',
+    ds(e2.n, 'quyen', 'khac') === JSON.stringify(['bảng bao_dong_trang_thai']) && e2.tong === 1
+      && e2.bao.includes('truncate') && e2.bao.includes('maintain'), e2.bao);
 
   const f = await sauKhi(`alter type public.vai_tro add value 'them_tay'`);
   ok('Enum có thêm giá trị → báo KHÁC ở nhóm kiểu', ds(f.n, 'kieu', 'khac') === JSON.stringify(['vai_tro']) && f.tong === 1, f.bao);
