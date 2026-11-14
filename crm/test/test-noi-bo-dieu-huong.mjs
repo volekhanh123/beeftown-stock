@@ -190,8 +190,11 @@ await nhom('3 · AI THẤY MỤC NÀO — KHỚP TRANG VÀ RLS', async () => {
   ok('Vai chỉ-kho không thấy mục nhà hàng nào ngoài Kho và Video đào tạo',
     VAI_KHO_DS.every(v => NB.mucNoiBoCuaVai(v).map(m => m.ma).join() === 'kho,dao_tao'));
   const { VAI_XEM_DAO_TAO, VAI_SUA_DAO_TAO } = await import('../../web/src/lib/video-dao-tao.ts');
-  ok('Video đào tạo: bảy vai người = VAI_XEM_DAO_TAO (so với policy video_dao_tao_doc ở test-noi-bo-video-dao-tao.mjs)',
-    bang(vaiCua('dao_tao'), MOI_VAI) && bang(vaiCua('dao_tao'), VAI_XEM_DAO_TAO));
+  // 0119: thêm học viên — tài khoản demo của buổi đào tạo, Video đào tạo là mục DUY NHẤT của vai đó
+  // (test-noi-bo-hoc-vien.mjs nhóm 6).
+  ok('Video đào tạo: bảy vai người và học viên = VAI_XEM_DAO_TAO (so với policy video_dao_tao_doc ở test-noi-bo-video-dao-tao.mjs)',
+    bang(vaiCua('dao_tao'), [...MOI_VAI, 'hoc_vien']) && bang(vaiCua('dao_tao'), VAI_XEM_DAO_TAO));
+  ok('Học viên: đúng một mục nhà hàng — Video đào tạo', NB.mucNoiBoCuaVai('hoc_vien').map(m => m.ma).join() === 'dao_tao');
   const daoTao = doc('web/src/pages/noi-bo/dao-tao.astro');
   ok('Video đào tạo: trang đưa vai ngoài VAI_XEM_DAO_TAO về /noi-bo, ẩn form theo VAI_SUA_DAO_TAO (chủ, quản lý)',
     /if \(!VAI_XEM_DAO_TAO\.includes\(nhanSu\.vai_tro\)\) return Astro\.redirect\('\/noi-bo', 302\)/.test(daoTao)

@@ -32,6 +32,31 @@ export const VAI_VAO_KHO = ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay'
 /** Bảy vai người (bốn vai CRM 0001, ba vai kho 0017) — không có tài khoản máy. Ai cũng xem được Video đào tạo (0117). */
 export const VAI_NGUOI = [...VAI_CRM, 'thu_kho', 'nhan_vien_quay', 'ke_toan'] as const;
 
+/** Trang Video đào tạo (0117, lib/video-dao-tao.ts). */
+export const DUONG_DAO_TAO = '/noi-bo/dao-tao';
+
+/**
+ * HỌC VIÊN (0118, 0119) — tài khoản demo dùng chung cho buổi đào tạo, chủ tạo ở Kho › Cài đặt › Nhân viên. Database
+ * chỉ cho vai này đọc video_dao_tao (và dòng nhan_su của chính nó); middleware.ts đưa MỌI trang /noi-bo khác — kể cả
+ * kho, trang Tất cả chức năng, trang chưa có — về trang Video đào tạo (chuyenHuongHocVien). Trang đó cũng là trang
+ * học viên vào sau khi đăng nhập (đăng nhập xong mọi vai về /noi-bo/kho, middleware chuyển tiếp).
+ */
+export const VAI_HOC_VIEN = 'hoc_vien';
+/** Vai mở được trang Video đào tạo — đúng policy video_dao_tao_doc (0119): bảy vai người và học viên. */
+export const VAI_DAO_TAO = [...VAI_NGUOI, VAI_HOC_VIEN] as const;
+
+/**
+ * Học viên mở đường dẫn này thì phải chuyển về đâu: DUONG_DAO_TAO, hoặc null khi được ở lại (đúng trang Video đào
+ * tạo) hay vai không phải học viên. Chỉ so ĐÚNG đường dẫn (bỏ "/" cuối): /noi-bo/dao-tao/abc, /noi-bo/kho, cả
+ * /noi-bo-abc đều về trang đó — chặn thừa an toàn hơn chặn thiếu. Đăng nhập, đăng xuất không qua đây: middleware mở
+ * hai trang đó cho mọi người TRƯỚC khi đọc phiên.
+ */
+export function chuyenHuongHocVien(vai: string | null | undefined, duong: string): string | null {
+  if (vai !== VAI_HOC_VIEN) return null;
+  const d = duong.replace(/\/+$/, '') || '/';
+  return d === DUONG_DAO_TAO ? null : DUONG_DAO_TAO;
+}
+
 export type MaNhomNoiBo = 'khach' | 'website' | 'nha_hang';
 
 export interface MucNoiBo {
@@ -105,12 +130,13 @@ export const MUC_NOI_BO: readonly MucNoiBo[] = [
   { ma: 'kho', link: '/noi-bo/kho',
     ten: { vi: 'Kho', en: 'Inventory' }, ngan: { vi: 'Kho', en: 'Stock' },
     vai: VAI_VAO_KHO, bieuTuong: 'ton', nhom: null },
-  // Video đào tạo (0117): bảy vai người, như policy video_dao_tao_doc — training là của mọi nhân viên, nên đây là
-  // mục nhà hàng duy nhất vai chỉ-kho thấy ngoài Kho (đứng SAU Kho: thanh của họ là Kho · Đào tạo). Chủ, quản lý
-  // thêm / sửa / xóa ngay trên trang (VAI_SUA_DAO_TAO, lib/video-dao-tao.ts).
-  { ma: 'dao_tao', link: '/noi-bo/dao-tao',
+  // Video đào tạo (0117): bảy vai người và học viên (0119), như policy video_dao_tao_doc — training là của mọi nhân
+  // viên, nên đây là mục nhà hàng duy nhất vai chỉ-kho thấy ngoài Kho (đứng SAU Kho: thanh của họ là Kho · Đào tạo),
+  // và là mục DUY NHẤT của học viên (một mục thì khung NoiBo không vẽ thanh menu). Chủ, quản lý sửa / xóa ngay trên
+  // trang (VAI_SUA_DAO_TAO, lib/video-dao-tao.ts).
+  { ma: 'dao_tao', link: DUONG_DAO_TAO,
     ten: { vi: 'Video đào tạo', en: 'Training videos' }, ngan: { vi: 'Đào tạo', en: 'Training' },
-    vai: VAI_NGUOI, bieuTuong: 'video', nhom: 'nha_hang',
+    vai: VAI_DAO_TAO, bieuTuong: 'video', nhom: 'nha_hang',
     tuKhoa: { vi: 'training hướng dẫn học việc nhân viên mới youtube', en: 'training onboarding new staff how to youtube' } },
   { ma: 'cai_dat', link: '/noi-bo/cai-dat',
     ten: { vi: 'Cài đặt nhà hàng', en: 'Restaurant settings' }, ngan: { vi: 'Cài đặt', en: 'Settings' },
