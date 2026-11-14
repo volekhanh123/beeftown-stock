@@ -1,5 +1,10 @@
 # may-chu-don/ — máy chủ đơn của Mini App Zalo
 
+**Tạm ngưng (Khánh 13/11/2026):** Khánh không dùng Mini App nữa, máy chủ đơn ngưng theo. Mã giữ nguyên để dùng lại;
+không làm tính năng mới khi Khánh chưa bật lại. Mã VNPay `SLKGTE22` (của Mini App) ngưng; **đừng chuyển máy chủ đơn
+sang `SLKGTE11`** — IPN của mã đó trỏ về website, giao dịch tạo ở đây sẽ bị website trả "không thấy đơn". Việc Khánh
+làm khi ngưng và khi bật lại: `README.md`, "Tạm ngưng".
+
 Phiên Claude tự nạp file này khi đọc file trong `may-chu-don/`. Quy trình chung (9 mục "xong", kiểm thử trước khi mở
 PR) ở `CLAUDE.md` gốc. Hướng dẫn cho người (chạy trên laptop, biến môi trường): `README.md`.
 
@@ -12,7 +17,8 @@ nơi, giá khay đã gồm phí giao** ("giao tận nơi tạm thời là bao g�
 địa chỉ giao (cột `dia_chi`, chỉ màn quầy thấy; API của khách không trả); hoàn tiền do người làm tay.
 
 Khánh 11/11/2026: **chuyển sang cổng thanh toán VNPay** (VNPay cấp hai mã môi trường TEST: `SLKGTE22` — dùng cho Mini
-App; `SLKGTE11` — đăng ký cho website beeftown.vn, chưa dùng). Zalo bắt mọi Mini App có thanh toán phải tích hợp
+App; `SLKGTE11` — đăng ký cho website beeftown.vn; website dùng mã này từ 12/11/2026 cho Mua thịt về, mã riêng ở `web/`,
+không qua máy chủ đơn). Zalo bắt mọi Mini App có thanh toán phải tích hợp
 Checkout SDK (docs.zaloplatforms.com/docs/MA/checkoutSdk/intro, đọc 11/11/2026), và Checkout SDK đã nối sẵn VNPay: nên
 VNPay đi **qua Zalo** — Secret Key của VNPay nhập ở Mini App Center, VNPay báo IPN cho Zalo, Zalo báo máy chủ đơn ở
 `POST /zalo/thanh-toan` (mac, overallMac bằng Private key của Checkout SDK). Có cấu hình VNPay thì VietQR không hiện.
@@ -43,7 +49,7 @@ mạng: dữ liệu đi qua máy chủ Cloudflare.
 | 3 | ZNS gửi thẳng từ máy chủ đơn: "Beeftown đã nhận đơn" (tiền về đủ), "đang giao" (quầy bấm "Soạn xong, chờ giao"); hàng chờ `zns_tin`, token riêng mã hóa trong `zalo_token`, vòng gửi mỗi phút (`zns.ts`, `gui-zns.ts`, `test/thu.ts` nhóm 20). Chạy khi Khánh cài App Zalo riêng, hai mẫu được duyệt, refresh token (README, "Cài ZNS") | đã gộp (PR #163) |
 | 4a | Bộ cài máy chủ thuê (`cai-dat/`): Ubuntu 24.04, Caddy HTTPS, systemd, tường lửa, `/sepay` chỉ IP SePay, `cap-nhat` chạy kiểm thử rồi mới chạy lại; laptop dư (tự tắt ngủ, README mục 1b) | đã gộp (PR #155) |
 | VNPay 1 | VNPay qua Checkout SDK (`checkout-zalo.ts`): tham số createOrder ký MAC ở máy chủ, callback `POST /zalo/thanh-toan` kiểm mac + overallMac + Mini App ID, sổ `thanh_toan_zalo` đúng một lần mỗi orderId, đủ / thiếu / dư / không khớp / thất bại / sai phương thức, "Tiền về cần xem" có tiền VNPay, nhãn tiền thử sandbox ở màn quầy, Mini App nút "Trả … qua VNPay" (`CheckoutSDK.createOrder`, `PaymentDone`), `test/thu.ts` nhóm 22 | PR #172 |
-| VNPay 2 | `getOrderStatus` cho đơn quá 20 phút chưa có callback, hoàn tiền qua `createRefund`, mã thật khi mở bán, bỏ hay giữ SePay, VNPay cho website (mã SLKGTE11) | việc tiếp (#171) |
+| VNPay 2 | `getOrderStatus` cho đơn quá 20 phút chưa có callback, hoàn tiền qua `createRefund`, mã thật khi mở bán, bỏ hay giữ SePay (VNPay cho website, mã SLKGTE11: đã làm riêng ở `web/`, 0115) | việc tiếp (#171), tạm ngưng cùng Mini App |
 | Ahamove 1 | Gọi xe Ahamove (Khánh 12/11/2026, `ahamove.ts`, `goi-xe.ts`): "Soạn xong, chờ giao" xếp một chuyến (bảng `chuyen_xe`, mã theo dõi `<mã đơn>-<lần>`), lượt 15 giây gửi Tạo đơn (đánh dấu `kiem_lai` TRƯỚC khi gửi — mất mạng thì tra theo mã theo dõi, không gửi mù), webhook `POST /ahamove/trang-thai` (header `apikey`), tự hỏi khi webhook im 3 phút, giao được thì đơn tự "Đã giao", quầy hủy đơn thì hủy chuyến, thẻ đơn hiện chuyến + "Gọi lại xe Ahamove" / "Quầy tự xử lý", Ahamove thật chỉ gọi xe cho đơn có tiền thật, `test/thu.ts` nhóm 24. Chạy khi Khánh cài theo README "Cài Ahamove" (Staging trước) | PR #180 |
 | Ahamove 2 | Báo phí trước khi khách đặt (Ước tính phí, chặn địa chỉ xa — đổi Mini App, Zalo duyệt lại), link theo dõi trong ZNS "đang giao" (mẫu mới), đèn trong `/noi-bo`, bảo hiểm hàng (`SGN-BIKE-INSURANCE`) khi Ahamove báo phí | việc tiếp |
 | 4 | Máy chủ thuê ở Việt Nam, HTTPS (xong 09/11/2026: BizFly Cloud TP.HCM, `https://don.beeftown.vn`, Mini App điền địa chỉ), sao lưu sổ đơn ở Việt Nam, xóa dữ liệu khách quá hạn, đèn sức khỏe trong `/noi-bo`, báo số khay sang kho | đang làm (#138) |

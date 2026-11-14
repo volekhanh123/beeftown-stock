@@ -6,6 +6,52 @@ khách chọn khay, trả tiền trong app, đơn hiện ngay trên máy tính b
 Máy chủ phải chạy ở Việt Nam: Zalo bắt dữ liệu khách của Mini App phải xử lý và lưu trong nước. Đợt thử chạy trên
 laptop ở công ty, khi mở bán chuyển lên máy chủ thuê ở Việt Nam (khoảng 95.000–120.000 đ/tháng chưa VAT).
 
+## Tạm ngưng (Khánh 13/11/2026)
+
+Khánh không dùng Mini App nữa: Mini App và máy chủ đơn **tạm ngưng**, mã giữ nguyên để dùng lại sau. Khách mua thịt
+mang về và trả tiền online ở trang Mua thịt về của **website** — website nối thẳng VNPay bằng mã Terminal `SLKGTE11`,
+không qua máy chủ này (`web/README.md`, "VNPay cho Mua thịt về"). Theo sổ tình trạng (`mini-app/TINH-TRANG.md`),
+Mini App chưa có bản chính thức trên Zalo, chỉ có bản thử với giá thử — khách thật không đặt qua Mini App. Máy chủ
+đơn trên BizFly thì **vẫn chạy** (nhận đơn từ bản thử, các vòng ZNS / Ahamove / hết hạn đơn) cho tới khi Khánh tắt
+hay trả máy (bước 3).
+
+**Hai mã VNPay sau khi ngưng:**
+
+| Mã | Dùng cho | Kết quả VNPay báo về | Từ 13/11/2026 |
+|---|---|---|---|
+| `SLKGTE11` | Website, trang Mua thịt về | `https://beeftown.vn/hook/vnpay-ipn` | **đang dùng** |
+| `SLKGTE22` | Mini App (qua Checkout SDK của Zalo) và trang thử `/quay/vnpay-thu` | Zalo | ngưng |
+
+**Đừng chuyển máy chủ đơn hay Mini App sang `SLKGTE11`.** Mỗi mã chỉ báo kết quả về một địa chỉ, và địa chỉ của
+`SLKGTE11` là website: giao dịch tạo ở máy chủ đơn bằng mã đó sẽ bị website trả "không thấy đơn" (`RspCode 01`) —
+khách trả tiền mà quầy không thấy đơn.
+
+**Việc Khánh làm khi ngưng** (không có bước nào bắt buộc ngay — Mini App chưa mở bán):
+
+1. Tắt trang thử VNPay trên máy BizFly. Mở file bí mật:
+   ```
+   nano /etc/beeftown/may-chu-don.env
+   ```
+   Xóa hai dòng `VNPAY_THU_MA_TMN=…` và `VNPAY_THU_KHOA_BI_MAT=…`, lưu (Ctrl + O, Enter, Ctrl + X), rồi:
+   ```
+   systemctl restart may-chu-don
+   ```
+   ```
+   journalctl -u may-chu-don -n 10
+   ```
+   Không còn dòng "Trang thử VNPay (sandbox, Terminal SLKGTE22)" là đã tắt. Kiểm thêm: đăng nhập
+   `https://don.beeftown.vn/quay` bằng mật khẩu quầy, rồi mở `https://don.beeftown.vn/quay/vnpay-thu` — thấy
+   "Not found".
+2. Khi xin VNPay mã thật (tiền thật), chỉ xin cho **website**. Đổi bí mật trên Cloudflare **chưa đủ**: website đang
+   ghi cứng cổng thử và dải IP thử của VNPay — sang tiền thật là một PR riêng (`web/README.md`, "VNPay cho Mua thịt
+   về"). Đừng báo VNPay đóng `SLKGTE22` nếu còn muốn bật lại Mini App bằng mã đó.
+3. Máy BizFly (134.000 đ/tháng) vẫn chạy. Giữ hay trả máy là Khánh quyết. Trả máy thì mất theo: sổ đơn thử và file
+   bí mật `/etc/beeftown/may-chu-don.env` (khóa Checkout SDK, khóa ZNS, mật khẩu quầy) — chép file bí mật về máy
+   riêng trước nếu muốn bật lại sau mà khỏi cài lại từ đầu. Chuỗi token ZNS của Zalo thì phải cấp lại.
+
+**Bật lại:** hỏi Khánh trước. Mã VNPay của Mini App đi qua Zalo (mục "Cài VNPay qua Checkout SDK") — dùng lại
+`SLKGTE22` (nếu VNPay chưa đóng) hoặc xin VNPay một mã riêng cho Mini App, không dùng chung mã với website.
+
 ## Đã làm được (đợt 1, 2a, 2b, 3, VNPay 1, Ahamove 1)
 
 - Nhận đơn từ Mini App: máy chủ tự tính tiền theo bảng giá, kiểm giờ nhận theo giờ Việt Nam, bấm gửi hai lần vẫn
@@ -336,7 +382,8 @@ giữ **Private key của Checkout SDK** — không giữ Secret Key của VNPay
 
 **Hai mã VNPay, hai kênh.** Mỗi mã (Terminal) VNPay chỉ gửi kết quả về được một địa chỉ IPN:
 - `SLKGTE22` (email có tệp khóa `VNPAY-QR_PGW_SLKGTE22_TEST_Key.zip`): dùng cho **Mini App**, IPN về Zalo.
-- `SLKGTE11` (email ghi website `https://beeftown.vn`): để cho **website**, chưa dùng (website hiện không thu tiền).
+- `SLKGTE11` (email ghi website `https://beeftown.vn`): của **website** — đang dùng từ 12/11/2026 cho trang Mua thịt
+  về, IPN về `https://beeftown.vn/hook/vnpay-ipn` (`web/README.md`, "VNPay cho Mua thịt về").
 Chưa chắc VNPay cấp `SLKGTE22` cho ứng dụng nào: hỏi lại VNPay (kythuatctt@vnpay.vn) khi gửi địa chỉ IPN ở bước 3.
 
 Thứ tự (sai thứ tự thì khách thấy "Đang lấy mã trả tiền…" mãi):
