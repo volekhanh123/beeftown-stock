@@ -7,11 +7,17 @@
  * mở ra ngoài phải sửa đúng file này — một việc cố ý, nhìn thấy trong diff.
  *
  * Trang công khai không đi qua đây.
+ *
+ * Cũng vì là một chỗ, đây là nơi gắn header bảo vệ cho MỌI trả lời của /noi-bo
+ * (không lưu đệm, không cho nhúng vào khung — lib/header-noi-bo.ts): onRequest
+ * chỉ có hai lối ra, và lối của /noi-bo luôn đi qua datHeaderNoiBo.
  */
 
 import { defineMiddleware } from 'astro:middleware';
+import type { APIContext, MiddlewareNext } from 'astro';
 import { layPhien, coDatabase } from './lib/phien';
 import { QUA_TAI, trangQuaTai } from './lib/qua-tai';
+import { datHeaderNoiBo } from './lib/header-noi-bo';
 import { dichBu, chayNen, denLuotDichBu, VAI_BIEN_TAP } from './lib/ban-dich';
 import { docNgonNguNB, ghiNgonNguNB, laNgonNguNB } from './lib/ngon-ngu-noi-bo';
 
@@ -21,7 +27,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const duong = context.url.pathname.replace(/\/$/, '') || '/';
 
   if (!duong.startsWith('/noi-bo')) return next();
+  return datHeaderNoiBo(await canhNoiBo(context, next, duong));
+});
 
+/** Phần canh cửa của /noi-bo. Mọi câu return ở đây đều ra ngoài qua datHeaderNoiBo của onRequest. */
+async function canhNoiBo(context: APIContext, next: MiddlewareNext, duong: string): Promise<Response> {
   // ĐỔI NGÔN NGỮ (lib/ngon-ngu-noi-bo.ts): nút "English" / "Tiếng Việt" là
   // link ?nn=… tới chính trang đang mở. Ghi cookie rồi chuyển về đúng đường
   // dẫn đó, bỏ ?nn= — đích chuyển luôn là đường dẫn /noi-bo của chính request,
@@ -67,4 +77,4 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   return next();
-});
+}

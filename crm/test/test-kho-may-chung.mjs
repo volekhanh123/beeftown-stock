@@ -155,8 +155,9 @@ await nhom('4 · BIÊN THỜI GIAN TỰ KHÓA', async () => {
 const { db, cnA, cnB, nsId, duoi, duoiAnon } = await dungDatabase();
 
 // Supabase có bảng auth.users; khung test chưa có — dựng bản tối thiểu mà
-// kho_them_nhan_su cần (id, email).
-await db.exec(`create table if not exists auth.users (id uuid primary key, email text)`);
+// kho_them_nhan_su cần (id, email) và trigger nhan_su_kiem_tai_khoan_vua_tao của 0123 cần (created_at — dưới một
+// phiên chỉ nối được tài khoản vừa tạo; ca tài khoản cũ kiểm ở test-kho-nhan-vien-tai-khoan.mjs).
+await db.exec(`create table if not exists auth.users (id uuid primary key, email text, created_at timestamptz default now())`);
 await db.query(`insert into auth.users (id, email) select auth_uid, lower(replace(ho_ten, ' ', '.')) || '@beeftown.test'
                 from nhan_su where auth_uid is not null`);
 

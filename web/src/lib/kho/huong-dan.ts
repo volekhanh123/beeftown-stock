@@ -252,8 +252,8 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
     meo: [
       { vi: 'Sai PIN 5 lần thì tên đó bị khóa 15 phút. Cả máy sai quá nhiều thì máy khóa — nhờ quản lý mở.',
         en: 'After 5 wrong PINs, that name is locked for 15 minutes. Too many wrong PINs on the whole tablet lock the tablet — ask a manager to unlock it.' },
-      { vi: 'Muốn đổi PIN: bấm tên mình → **Đổi PIN của tôi**.',
-        en: 'To change your PIN: press your name → **Change my PIN**.' },
+      { vi: 'Muốn đổi PIN: bấm tên mình → **Đổi PIN của tôi**, nhập mật khẩu tài khoản rồi PIN mới.',
+        en: 'To change your PIN: press your name → **Change my PIN**, enter your account password, then the new PIN.' },
     ],
     link: { href: '/noi-bo/kho/may', chu: { vi: 'Mở màn Ai đang dùng máy', en: 'Open "Who is using this tablet?"' } },
   },

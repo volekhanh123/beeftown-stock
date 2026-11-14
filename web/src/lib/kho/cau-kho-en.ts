@@ -374,6 +374,9 @@ const CAU_DB: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Không tìm thấy tài khoản đăng nhập vừa tạo', en: 'The login account that was just created was not found' },
   { vi: 'Tài khoản đăng nhập này đã gắn với một nhân sự khác',
     en: 'This login account is already linked to another staff member' },
+  //   · 0123_kho_tai_khoan_vua_tao — trigger của nhan_su: chỉ gắn được tài khoản đăng nhập vừa tạo
+  { vi: 'Tài khoản đăng nhập này có từ trước, không phải vừa tạo ở màn Nhân viên',
+    en: 'This login account already existed; it was not just created on the Staff screen' },
   { vi: 'Chỉ chủ nhà hàng mới khóa được tài khoản', en: 'Only the owner can lock accounts' },
   { vi: 'Không tìm thấy nhân viên kho này', en: 'This inventory staff member was not found' },
   { vi: 'Không tự khóa tài khoản của mình được', en: 'You cannot lock your own account' },

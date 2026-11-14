@@ -40,6 +40,9 @@
  *   4. /noi-bo chuyển sang trang đăng nhập (cả đường dẫn lạ dưới /noi-bo — đã đăng nhập thì
  *      chúng hiện trang 404 NỘI BỘ, kiểm ở crm/test/test-noi-bo-khong-co.mjs vì cần database);
  *      hook iPOS không lộ lỗi nội bộ; khóa sai dạng vẫn là 404 chữ trơn của src/worker.ts.
+ *      Mọi trả lời dưới /noi-bo cấm nhúng vào khung (frame-ancestors 'none', X-Frame-Options:
+ *      DENY) và không vào bộ đệm dùng chung (private), không bị ép no-store; đăng xuất mang
+ *      Clear-Site-Data: "cache"; trang công khai thì không bị gắn gì.
  *   5. Menu gọn của màn hẹp (<details class="menu-gon">) mở / đóng được KHI TẮT
  *      JavaScript; có JavaScript thì Esc đóng nó và trả tiêu điểm về nút. Mở ra thì nút
  *      đổi thành nút đóng có nhãn chữ, có link "Hỏi bàn" là nút chính, có bộ chọn ngôn
@@ -489,6 +492,33 @@ try {
            nb.status() === 302 && new URL(nb.headers().location ?? '', goc).pathname === '/noi-bo/dang-nhap',
            `HTTP ${nb.status()} → ${nb.headers().location}`);
       }
+      // Header bảo vệ của khu nội bộ (rà soát 14/11/2026, lib/header-noi-bo.ts): mọi trả lời dưới /noi-bo — trang
+      // đăng nhập (có và không có / cuối), lệnh chuyển hướng của người chưa đăng nhập — cấm trang khác nhúng vào
+      // khung và không cho bộ đệm dùng chung giữ. KHÔNG ép no-store (bấm Quay lại sau trang "đang bận" phải còn form
+      // đang gõ — lý do ở đầu lib/header-noi-bo.ts). Trang công khai thì không bị gắn gì.
+      const camNhung = d => (d['content-security-policy'] ?? '').split(',').some(cs => /^frame-ancestors\s+'none'$/i.test(
+        cs.split(';').map(l => l.trim()).find(l => /^frame-ancestors(\s|$)/i.test(l)) ?? '')) && d['x-frame-options'] === 'DENY';
+      const rieng = d => /(^|,\s*)(private|no-store)\b/.test(d['cache-control'] ?? '');
+      const tomDau = d => `cache-control: ${d['cache-control']} · csp: ${d['content-security-policy']} · x-frame-options: ${d['x-frame-options']}`;
+      for (const duong of ['/noi-bo/dang-nhap', '/noi-bo/dang-nhap/', '/noi-bo/kho', '/noi-bo/khong-co-trang-nay']) {
+        const nb = await page.request.get(goc + duong, { maxRedirects: 0 });
+        ok(`GET ${duong}: cấm nhúng vào khung (frame-ancestors 'none', X-Frame-Options DENY), không vào bộ đệm dùng chung (private hoặc no-store)`,
+           camNhung(nb.headers()) && rieng(nb.headers()), `HTTP ${nb.status()} · ${tomDau(nb.headers())}`);
+      }
+      const dn = (await page.request.get(goc + '/noi-bo/dang-nhap', { maxRedirects: 0 })).headers();
+      ok('Trang đăng nhập không bị ép no-store', !/no-store/.test(dn['cache-control'] ?? ''), tomDau(dn));
+      const ck = (await page.request.get(goc + '/', { maxRedirects: 0 })).headers();
+      ok('Trang chủ công khai không bị gắn header của khu nội bộ', !camNhung(ck) && !/private|no-store/.test(ck['cache-control'] ?? '')
+         && !/frame-ancestors/.test(ck['content-security-policy'] ?? '') && ck['x-frame-options'] === undefined, tomDau(ck));
+      // Đăng xuất (chưa đăng nhập cũng gửi được: /noi-bo/dang-xuat mở cho mọi người): về trang đăng nhập, kèm lệnh
+      // bảo trình duyệt bỏ bản trang đang giữ — người đến sau bấm Quay lại không thấy trang của người trước.
+      const ra = await page.request.post(goc + '/noi-bo/dang-xuat', {
+        headers: { Origin: goc, 'Content-Type': 'application/x-www-form-urlencoded' }, data: '', maxRedirects: 0,
+      });
+      ok('POST /noi-bo/dang-xuat: 302 về trang đăng nhập, mang Clear-Site-Data: "cache" và header chống nhúng',
+         ra.status() === 302 && new URL(ra.headers().location ?? '', goc).pathname === '/noi-bo/dang-nhap'
+         && ra.headers()['clear-site-data'] === '"cache"' && camNhung(ra.headers()),
+         `HTTP ${ra.status()} → ${ra.headers().location} · clear-site-data: ${ra.headers()['clear-site-data']} · ${tomDau(ra.headers())}`);
     });
     await ctx.close();
   }

@@ -221,10 +221,14 @@ await nhom('7 · THỪA: TẠO TAY, HAY CÂU DROP CHƯA CHẠY', async () => {
 
 // ===========================================================================
 await nhom('7b · GỢI Ý FILE: CHỈ CÂU CREATE / DROP THẬT, KHÔNG PHẢI GRANT / ALTER NHẮC TÊN', async () => {
-  // tao_dat_ban: tạo lại ở 0004, 0008, 0010, 0013, 0062, 0084 (giới hạn tần suất); các file khác chỉ grant / revoke nó
-  // trong khối chốt quyền.
-  ok('Hàm tạo nhiều lần → file CUỐI có create (tao_dat_ban → 0084), không phải file chỉ grant nó',
-    timTep(chiMuc, 'ham', 'tao_dat_ban(p_chi_nhanh_ma text)') === '0084_gioi_han_cong_khai.sql', timTep(chiMuc, 'ham', 'tao_dat_ban()'));
+  // tra_cuu_dat_ban: tạo ở 0013, tạo lại ở 0084 (giới hạn tần suất); 0086, 0088, 0090 chỉ grant / revoke nó trong
+  // khối chốt quyền, 0121 chỉ nhắc tên trong chú thích. (Trước 0121 kiểm tra này dùng tao_dat_ban — 0121 viết lại
+  // hàm đó nên không còn file "chỉ grant" nào đứng sau bản cuối của nó.)
+  ok('Hàm tạo nhiều lần → file CUỐI có create (tra_cuu_dat_ban → 0084), không phải file chỉ grant nó',
+    timTep(chiMuc, 'ham', 'tra_cuu_dat_ban(p_ma text)') === '0084_gioi_han_cong_khai.sql', timTep(chiMuc, 'ham', 'tra_cuu_dat_ban()'));
+  // tao_dat_ban: tạo lại ở 0004, 0008, 0010, 0013, 0062, 0084, 0121 (trần độ dài chữ).
+  ok('Hàm vừa được viết lại → file mới nhất có create (tao_dat_ban → 0121)',
+    timTep(chiMuc, 'ham', 'tao_dat_ban(p_chi_nhanh_ma text)') === '0121_do_dai_van_ban_cong_khai.sql', timTep(chiMuc, 'ham', 'tao_dat_ban()'));
   ok('Bảng → file create table (chi_nhanh → 0001, khach_hang → 0002), không phải file alter / bật RLS',
     timTep(chiMuc, 'bang', 'chi_nhanh') === '0001_nen_mong.sql' && timTep(chiMuc, 'bang', 'khach_hang') === '0002_khach_hang.sql',
     `${timTep(chiMuc, 'bang', 'chi_nhanh')}, ${timTep(chiMuc, 'bang', 'khach_hang')}`);

@@ -143,6 +143,10 @@ export const CAU_EN: Readonly<Record<string, string>> = {
     'An application\'s CV path, retention date and anonymised flag can only change through the data clean-up on the Settings screen',
   'Không có quyền gỡ nội dung khỏi trang': 'You are not allowed to remove content from the site',
   'Chỉ chủ nhà hàng hoặc quản lý mới duyệt được mức lương': 'Only the owner or a manager can approve salaries',
+  // 0122 — trigger mon_an_kiem_duyet và noi_dung_cong_bo_khung_gio_kiem_tra (câu có % ở MAU_EN)
+  'Chỉ chủ nhà hàng hoặc quản lý mới thêm được món, duyệt được giá, mức cay, đổi cờ món sống, có cồn, nhóm và các ô khác ngoài phần chữ, thứ tự, trạng thái và đề xuất của món':
+    'Only the owner or a manager can add a dish, approve its price and spice level, change its raw, alcohol or group setting, or change any field other than its text, order, status and proposals',
+  'Không có quyền đổi lịch hiện của nội dung đã công bố': 'You are not allowed to change the display schedule of published content',
   'p_muc phải là một mảng': 'p_muc must be an array',
   'Ngôn ngữ dịch phải là en hoặc ko': 'The translation language must be en or ko',
   'Thiếu bam của câu gốc': 'The source sentence hash (bam) is missing',
@@ -258,6 +262,11 @@ export const CAU_EN: Readonly<Record<string, string>> = {
     'The delivery address is too short, please include the house number, street and area',
   'Địa chỉ giao hàng dài quá 300 ký tự': 'The delivery address is longer than 300 characters',
   'Ghi chú dài quá 500 ký tự': 'The note is longer than 500 characters',
+  // 0121 — tao_dat_ban, nop_ho_so_ung_tuyen (họ tên, ghi chú dùng hai câu của 0113 ở trên)
+  'Dịp dài quá 100 ký tự': 'The occasion is longer than 100 characters',
+  'Email dài quá 200 ký tự': 'The email address is longer than 200 characters',
+  'Phần giới thiệu dài quá 4000 ký tự': 'The introduction is longer than 4000 characters',
+  'Phần kinh nghiệm dài quá 4000 ký tự': 'The experience section is longer than 4000 characters',
   'Đơn chưa có gói nào': 'The order has no packs',
   'Số gói mỗi loại phải từ 0 đến 10': 'Each pack can be ordered 0 to 10 times',
   'Có gói trong đơn vừa tạm hết, vui lòng tải lại trang và chọn lại':
@@ -409,6 +418,8 @@ export const MAU_EN: ReadonlyArray<readonly [RegExp, (m: RegExpMatchArray) => st
   [/^Không tìm thấy vị trí tuyển dụng (.+)$/, m => `Job position ${m[1]} not found`],
   [/^Không có khóa công bố tên (.+)$/, m => `There is no publishing key named ${m[1]}`],
   [/^Khóa (.+?) chỉ chủ sở hữu mới được gỡ khỏi trang$/, m => `Only the owner can remove the key ${m[1]} from the site`],
+  // 0122
+  [/^Khóa (.+?) chỉ chủ sở hữu mới được đổi lịch hiện trên trang$/, m => `Only the owner can change the display schedule of the key ${m[1]}`],
   [/^Bảng (.+?) không nhận bản dịch qua hàm này$/, m => `Table ${m[1]} does not accept translations through this function`],
   [/^Ô (.+?) không nằm trong danh sách dịch của bảng (.+)$/, m => `Field ${m[1]} is not in the translation list of table ${m[2]}`],
   [/^Trạng thái bản dịch không hợp lệ: (.+)$/, m => `Invalid translation status: ${m[1]}`],
@@ -420,6 +431,10 @@ export const MAU_EN: ReadonlyArray<readonly [RegExp, (m: RegExpMatchArray) => st
   [/^Mã vạch (.+) đã dùng cho gói khác\.$/, m => `The barcode ${m[1]} is already used by another pack.`],
   // 0102 — cài đặt bán lẻ
   [/^Cỡ gói (.+) g nhập hai lần\.$/, m => `Pack size ${m[1]} g is entered twice.`],
+  // 0121 — khối chặn ở đầu migration: chỉ người chạy migration thấy câu này. Có bản tiếng Anh để bất biến
+  // "mọi câu raise exception đều dịch được" (test-noi-bo-tieng-anh.mjs) không cần ngoại lệ.
+  [/^0121 DỪNG: (.+?) đặt bàn, (.+?) khách, (.+?) hồ sơ đang có ô chữ vượt trần mới\. Chưa đổi gì\. Xem mục DỮ LIỆU CŨ ở đầu file rồi hỏi Khánh\.$/,
+    m => `0121 STOPPED: ${m[1]} bookings, ${m[2]} customers and ${m[3]} applications have a text field over the new limit. Nothing was changed. See the OLD DATA section at the top of the file, then ask the owner.`],
 ];
 
 export function dichCau(nn: NgonNguNB, cau: string | null | undefined): string {

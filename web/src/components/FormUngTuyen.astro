@@ -175,7 +175,7 @@ const t = dich(ngonNgu, {
 
       <label class="o">
         <span>{t.hoTen} <em>({t.batBuoc})</em></span>
-        <input type="text" name="ho_ten" required value={daNhap.ho_ten ?? ''}
+        <input type="text" name="ho_ten" required maxlength="120" value={daNhap.ho_ten ?? ''}
                autocomplete="name" autocapitalize="words" />
       </label>
 
@@ -188,7 +188,7 @@ const t = dich(ngonNgu, {
 
       <label class="o o-email">
         <span>{t.email} <em>({t.khongBatBuoc})</em></span>
-        <input type="email" name="email" value={daNhap.email ?? ''}
+        <input type="email" name="email" maxlength="200" value={daNhap.email ?? ''}
                inputmode="email" autocomplete="email"
                autocapitalize="off" spellcheck="false" />
       </label>
@@ -213,13 +213,13 @@ const t = dich(ngonNgu, {
 
       <label class="o o-gioi-thieu">
         <span>{t.gioiThieu} <em>({t.khongBatBuoc})</em></span>
-        <textarea name="gioi_thieu" rows="3">{daNhap.gioi_thieu ?? ''}</textarea>
+        <textarea name="gioi_thieu" rows="3" maxlength="4000">{daNhap.gioi_thieu ?? ''}</textarea>
       </label>
 
       <label class="o o-kinh-nghiem">
         <span>{t.kinhNghiem} <em>({t.khongBatBuoc})</em></span>
         <small>{t.kinhNghiemPhu}</small>
-        <textarea name="kinh_nghiem" rows="3">{daNhap.kinh_nghiem ?? ''}</textarea>
+        <textarea name="kinh_nghiem" rows="3" maxlength="4000">{daNhap.kinh_nghiem ?? ''}</textarea>
       </label>
 
       <label class="o o-cv">
