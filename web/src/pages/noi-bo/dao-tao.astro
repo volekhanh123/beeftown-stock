@@ -1,0 +1,200 @@
+---
+/**
+ * VIDEO ĐÀO TẠO — /noi-bo/dao-tao (migration 0117)
+ *
+ * Video training trên YouTube (chế độ "Không công khai"), nhúng ở đây cho mọi nhân viên đang đăng nhập. Chủ nhà
+ * hàng và quản lý dán link để thêm, sửa tên và mô tả, xóa — ngay trên trang này.
+ *
+ * Quyền do database quyết định (đầu lib/video-dao-tao.ts). Trang chỉ đưa vai ngoài bảy vai người về /noi-bo và ẩn
+ * form với người không sửa được, cho khỏi bấm rồi nhận lỗi.
+ *
+ * Không JavaScript: khung video là <iframe loading="lazy"> — video nằm dưới màn hình chưa tải cho tới khi cuộn tới;
+ * sửa, xóa nằm trong mục gập đóng sẵn.
+ */
+import NoiBo from '../../layouts/NoiBo.astro';
+import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo';
+import { CAU_DOC_FORM_HONG, chuyenHuongNoiBo, docBaoNoiBo, docFormNoiBo } from '../../lib/gui-noi-bo';
+import {
+  VAI_XEM_DAO_TAO, VAI_SUA_DAO_TAO, DAI_TIEU_DE, DAI_MO_TA,
+  docDanhSachVideo, themVideo, suaVideo, xoaVideo, linkNhungYoutube,
+  type VideoDaoTao, type BaoVideo,
+} from '../../lib/video-dao-tao';
+
+const { client, nhanSu } = Astro.locals.phien!;
+if (!VAI_XEM_DAO_TAO.includes(nhanSu.vai_tro)) return Astro.redirect('/noi-bo', 302);
+const duocSua = VAI_SUA_DAO_TAO.includes(nhanSu.vai_tro);
+
+const nn = nnCua(Astro);
+const t = dichNB(nn, {
+  tieuDe:     { vi: 'Video đào tạo', en: 'Training videos' },
+  dan:        { vi: 'Video hướng dẫn công việc ở Beeftown. Trang này chỉ người đã đăng nhập mới mở được — đừng gửi link video ra ngoài.',
+                en: 'Videos that show how the work is done at Beeftown. Only signed-in staff can open this page — do not share the video links outside.' },
+  khongDoc:   { vi: 'Chưa đọc được danh sách video. Tải lại trang sau ít phút.',
+                en: 'Could not read the list of videos. Reload the page in a few minutes.' },
+  chuaCo:     { vi: 'Chưa có video nào.', en: 'There are no videos yet.' },
+  chuaCoSua:  { vi: 'Chưa có video nào. Thêm video đầu tiên ở mục bên dưới.',
+                en: 'There are no videos yet. Add the first one in the section below.' },
+  khongQuyen: { vi: 'Chỉ chủ nhà hàng và quản lý thêm, sửa hay xóa được video.',
+                en: 'Only the owner and managers can add, edit or delete videos.' },
+  viecSai:    { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
+  suaXoa:     { vi: 'Sửa tên, mô tả hoặc xóa video', en: 'Edit the title or description, or delete the video' },
+  tenO:       { vi: 'Tên video', en: 'Video title' },
+  moTaO:      { vi: 'Mô tả', en: 'Description' },
+  moTaGoiY:   { vi: 'Không bắt buộc. Ví dụ: video này dành cho ai, xem trước buổi làm đầu tiên.',
+                en: 'Optional. For example: who the video is for, watch before the first shift.' },
+  luu:        { vi: 'Lưu tên và mô tả', en: 'Save title and description' },
+  xoaDan:     { vi: 'Xóa khỏi trang này. Video vẫn còn trên YouTube — muốn gỡ hẳn thì xóa trong YouTube Studio.',
+                en: 'Removes it from this page. The video stays on YouTube — delete it in YouTube Studio to take it down completely.' },
+  xoa:        { vi: 'Xóa video khỏi trang', en: 'Remove video from this page' },
+  themVideo:  { vi: 'Thêm video', en: 'Add a video' },
+  buoc1:      { vi: 'Tải video lên YouTube. Ở mục Chế độ hiển thị, chọn Không công khai.',
+                en: 'Upload the video to YouTube. Under Visibility, choose Unlisted.' },
+  buoc2:      { vi: 'Để nguyên ô Cho phép nhúng (YouTube bật sẵn) — tắt ô đó thì video không phát được ở đây.',
+                en: 'Leave Allow embedding on (YouTube turns it on by default) — with it off, the video will not play here.' },
+  buoc3:      { vi: 'Chép đường liên kết của video, dán vào ô dưới đây.',
+                en: 'Copy the video link and paste it in the box below.' },
+  linkO:      { vi: 'Link YouTube', en: 'YouTube link' },
+  linkGoiY:   { vi: 'Dạng https://youtu.be/… hoặc https://www.youtube.com/watch?v=…',
+                en: 'Like https://youtu.be/… or https://www.youtube.com/watch?v=…' },
+  tenGoiY:    { vi: 'Nhân viên thấy tên này trên trang. Ví dụ: Bài 1 — Đón khách và xếp bàn.',
+                en: 'Staff see this title on the page. For example: Lesson 1 — Greeting guests and seating them.' },
+  them:       { vi: 'Thêm video', en: 'Add video' },
+});
+
+let bao: BaoVideo | null = docBaoNoiBo(Astro.cookies, Astro.url.pathname);
+/** Chữ đã gõ của lượt gửi vừa hỏng — điền lại để khỏi gõ lại (trừ khi người khác vừa đổi dòng đó). */
+let goLai: { viec: string; id: string; link: string; tieuDe: string; moTa: string } | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await docFormNoiBo(Astro.request);
+  if (!form) {
+    bao = { ok: false, cau: CAU_DOC_FORM_HONG[nn] };
+  } else if (!duocSua) {
+    bao = { ok: false, cau: t.khongQuyen };
+  } else {
+    const viec = String(form.get('viec') ?? '');
+    const kq: BaoVideo = viec === 'them' ? await themVideo(client, form, nn)
+      : viec === 'sua' ? await suaVideo(client, form, nn)
+      : viec === 'xoa' ? await xoaVideo(client, form, nn)
+      : { ok: false, cau: t.viecSai };
+    // Ghi được thì chuyển hướng 303 (lib/gui-noi-bo.ts): F5 không gửi lại lệnh cũ.
+    if (kq.ok) return chuyenHuongNoiBo(Astro, kq);
+    bao = kq;
+    if (!kq.banMoi) {
+      goLai = {
+        viec, id: String(form.get('id') ?? ''), link: String(form.get('link') ?? ''),
+        tieuDe: String(form.get('tieu_de') ?? ''), moTa: String(form.get('mo_ta') ?? ''),
+      };
+    }
+  }
+}
+
+let ds: VideoDaoTao[] = [];
+let dsLoi = false;
+try { ds = await docDanhSachVideo(client); } catch { dsLoi = true; }
+
+const goLaiCua = (v: VideoDaoTao) => (goLai && goLai.viec === 'sua' && goLai.id === v.id ? goLai : null);
+const moSua = (v: VideoDaoTao) => !!goLai && (goLai.viec === 'sua' || goLai.viec === 'xoa') && goLai.id === v.id;
+const goThem = goLai?.viec === 'them' ? goLai : null;
+---
+<NoiBo tieuDe={t.tieuDe} nhanSu={nhanSu}>
+  <h1>{t.tieuDe}</h1>
+  {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`} role={bao.ok ? 'status' : 'alert'}><p>{bao.cau}</p></div>}
+  <p class="nb-dan">{t.dan}</p>
+
+  {dsLoi && <div class="nb-bao loi" role="alert"><p>{t.khongDoc}</p></div>}
+  {!dsLoi && ds.length === 0 && <div class="nb-rong"><p style="margin:0">{duocSua ? t.chuaCoSua : t.chuaCo}</p></div>}
+
+  {ds.map(v => {
+    const g = goLaiCua(v);
+    return (
+      <article class="nb-the vd-the" id={`video-${v.id}`}>
+        <h2>{v.tieu_de}</h2>
+        {v.mo_ta && <p class="vd-mo-ta">{v.mo_ta}</p>}
+        <div class="vd-khung">
+          <iframe
+            src={linkNhungYoutube(v.youtube_id)}
+            title={v.tieu_de}
+            loading="lazy"
+            allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen
+          ></iframe>
+        </div>
+        {duocSua && (
+          <details class="vd-sua" open={moSua(v)}>
+            <summary>{t.suaXoa}</summary>
+            <form method="POST">
+              <input type="hidden" name="viec" value="sua" />
+              <input type="hidden" name="id" value={v.id} />
+              <input type="hidden" name="phien_ban" value={v.updated_at} />
+              <label class="nb-o">
+                <span>{t.tenO} *</span>
+                <input type="text" name="tieu_de" required maxlength={DAI_TIEU_DE} value={g ? g.tieuDe : v.tieu_de} />
+              </label>
+              <label class="nb-o">
+                <span>{t.moTaO}</span>
+                <textarea name="mo_ta" maxlength={DAI_MO_TA}>{g ? g.moTa : (v.mo_ta ?? '')}</textarea>
+              </label>
+              <button type="submit" class="nb-nut phu" style="width:100%">{t.luu}</button>
+            </form>
+            <form method="POST" class="vd-xoa">
+              <input type="hidden" name="viec" value="xoa" />
+              <input type="hidden" name="id" value={v.id} />
+              <input type="hidden" name="tieu_de" value={v.tieu_de} />
+              <p class="vd-phu">{t.xoaDan}</p>
+              <button type="submit" class="nb-nut phu" style="width:100%">{t.xoa}</button>
+            </form>
+          </details>
+        )}
+      </article>
+    );
+  })}
+
+  {duocSua && (
+    <>
+      <h2 id="them-video">{t.themVideo}</h2>
+      <form method="POST" class="nb-the">
+        <input type="hidden" name="viec" value="them" />
+        <ol class="vd-cach">
+          <li>{t.buoc1}</li>
+          <li>{t.buoc2}</li>
+          <li>{t.buoc3}</li>
+        </ol>
+        <label class="nb-o">
+          <span>{t.linkO} *</span>
+          <small>{t.linkGoiY}</small>
+          <input type="text" name="link" required maxlength="500" inputmode="url" autocapitalize="off"
+                 autocomplete="off" spellcheck="false" value={goThem?.link ?? ''} />
+        </label>
+        <label class="nb-o">
+          <span>{t.tenO} *</span>
+          <small>{t.tenGoiY}</small>
+          <input type="text" name="tieu_de" required maxlength={DAI_TIEU_DE} autocapitalize="sentences"
+                 value={goThem?.tieuDe ?? ''} />
+        </label>
+        <label class="nb-o">
+          <span>{t.moTaO}</span>
+          <small>{t.moTaGoiY}</small>
+          <textarea name="mo_ta" maxlength={DAI_MO_TA}>{goThem?.moTa ?? ''}</textarea>
+        </label>
+        <button type="submit" class="nb-nut" style="width:100%">{t.them}</button>
+      </form>
+    </>
+  )}
+</NoiBo>
+
+<style>
+  .vd-the h2 { margin: 0 0 .5rem; font-size: 1.1rem; }
+  .vd-mo-ta { margin: 0 0 .75rem; white-space: pre-line; color: var(--muc-nhat); }
+  /* Khung 16:9 giữ chỗ trước khi YouTube tải xong — trang không nhảy. Nền đen như khung của trình phát. */
+  .vd-khung { aspect-ratio: 16 / 9; background: var(--than); border-radius: 6px; overflow: hidden; }
+  .vd-khung iframe { display: block; width: 100%; height: 100%; border: 0; }
+  .vd-sua { margin-top: 1rem; }
+  .vd-sua summary { cursor: pointer; font-weight: 600; min-height: 48px; display: flex; align-items: center; }
+  .vd-sua form { margin-top: .75rem; }
+  .vd-xoa { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--vach); }
+  .vd-phu { margin: 0 0 .75rem; font-size: .88rem; color: var(--muc-nhat); }
+  .vd-cach { margin: 0 0 1rem; padding-left: 1.25rem; font-size: .88rem; line-height: 1.5; }
+  .vd-cach li + li { margin-top: .35rem; }
+</style>

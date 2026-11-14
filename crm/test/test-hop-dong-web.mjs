@@ -232,6 +232,8 @@ const CHAY_DA_DANG_NHAP = [
   // sau khi chữ ký HMAC-SHA512 của VNPay khớp; chỉ hai RPC máy vnpay_ghi_ipn, vnpay_ghi_ve. Mở lần trả
   // (mua_thit_mo_vnpay) là anon và nằm ở lib/dat-hang-mua-thit.ts — phép thử mục 5 vẫn kiểm file đó.
   'web/src/lib/vnpay-hook.ts',
+  // Video đào tạo (0117) — chỉ /noi-bo/dao-tao gọi, sau middleware, bằng client của nhân sự đang đăng nhập.
+  'web/src/lib/video-dao-tao.ts',
 ];
 
 function laAnon(g) {

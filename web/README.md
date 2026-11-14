@@ -317,6 +317,21 @@ thêm một màn mới là thêm một dòng ở đây, vai khớp với RLS / d
 `crm/test/test-noi-bo-dieu-huong.mjs` giữ: thanh đáy ≤ 5 nút, không mục nào nằm ngoài cả thanh đáy lẫn
 trang Tất cả chức năng, vai của từng mục đúng như trang đó cho vào, ô tìm đúng dấu tiếng Việt.
 
+### Video đào tạo (`/noi-bo/dao-tao`, migration 0117)
+
+Video training để trên YouTube ở chế độ **Không công khai**, nhúng vào trang này cho mọi nhân viên đang đăng nhập —
+bảy vai người, kể cả vai kho (mục "Đào tạo" đứng sau "Kho" trên thanh của họ, và trong "Phần khác của nhà hàng" ở menu
+kho). Chủ và quản lý dán link YouTube để thêm, sửa tên / mô tả, xóa — ngay trên trang (`src/lib/video-dao-tao.ts`).
+
+- **Mã video nằm trong database** (bảng `video_dao_tao`), không trong mã nguồn: repo công khai. RLS chỉ cho người đang
+  đăng nhập đọc; `crm/test/test-noi-bo-video-dao-tao.mjs` quét `web/src` để không file nào chứa mã video.
+- **Giới hạn đã chốt (Khánh, 14/11/2026):** cổng đăng nhập giấu link, không khóa video — người đang xem vẫn chép được
+  link YouTube, người đã nghỉ còn giữ link vẫn mở được. Chấp nhận vì nội dung không nhạy cảm. Cần khóa thật: Cloudflare
+  Stream (link ký, tự hết hạn) — thay cột `youtube_id`, không thay trang.
+- Khung nhúng là `<iframe loading="lazy">` của `youtube-nocookie.com`, không JavaScript. Trên YouTube phải để bật
+  **Cho phép nhúng** (mặc định bật) — tắt thì khung báo video không phát được ở trang khác.
+- Xóa ở đây chỉ gỡ khỏi trang; video vẫn còn trên YouTube.
+
 ### Tiếng Anh ở giao diện nội bộ
 
 Mọi trang nội bộ có nút **English / Tiếng Việt** ở đầu trang. Lựa chọn là của **trình duyệt** (cookie `nb_ngon_ngu`, sống dưới `/noi-bo`), không nằm trong đường dẫn như trang công khai: một link `/noi-bo/tin-tuyen-dung/<id>` phải mở đúng tin đó dù người mở đọc tiếng gì. Chưa chọn thì là tiếng Việt.
