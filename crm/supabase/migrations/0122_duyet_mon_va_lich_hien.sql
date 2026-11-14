@@ -53,6 +53,13 @@
 -- món không cồn thành tên đồ uống có cồn. Đó là chính quyền biên tập; ai duyệt chữ là việc
 -- của quy trình, không của bảng.
 --
+-- NGOÀI PHẠM VI CỦA FILE NÀY (vòng hai của rà soát 14/11 ghi lại, để một migration riêng):
+--   · Trigger 2 chỉ giữ LỊCH HIỆN của dòng đã công bố. Các cột ghi chú và ghi vết của dòng đã
+--     công bố hay đã gỡ (ly_do, nguoi_duyet, các mốc giờ) vẫn theo policy noi_dung_sua như trước
+--     file này. Không cột nào trong đó đổi được thứ khách thấy trên trang.
+--   · mon_an.cong_bo_luc nằm trong danh sách được sửa (lý do ở chú thích của v_duoc_sua): người
+--     biên tập — vốn là người được công bố món — ghi được giờ công bố. Cột chỉ để hiện ở màn nội bộ.
+--
 -- AI ĐƯỢC DUYỆT: chủ và quản lý — theo luật 0027 cho lương. Muốn chỉ chủ duyệt thì đổi mảng
 -- vai trong mon_an_kiem_duyet (một migration mới).
 --

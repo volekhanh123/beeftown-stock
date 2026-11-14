@@ -169,7 +169,9 @@ await nhom('4 · Lịch hiện của nội dung ĐÃ CÔNG BỐ: chỉ người 
   const nhap = await duoi(UID.mktA, `insert into noi_dung_cong_bo (khoa, kieu, gia_tri_bool, trang_thai, hien_tu) values ('hien_thuc_don', 'bool', false, 'nhap', now()) returning id`);
   const suaNhap = nhap.loi ? nhap : await duoi(UID.mktA, `update noi_dung_cong_bo set hien_tu = now() + interval '1 day' where id = $1 returning id`, [nhap.rows[0].id]);
   ok('Marketing vẫn đặt lịch cho bản NHÁP của mình', duocMot(suaNhap), ketQua(suaNhap));
-  // Sửa cột khác của dòng đã công bố mà không đụng lịch: trigger mới không can thiệp (trigger cũ quyết).
+  // Sửa cột khác của dòng đã công bố mà không đụng lịch: trigger mới không can thiệp (trigger cũ quyết). Đây là
+  // RANH GIỚI của 0122, không phải lời khẳng định rằng nên để vậy: các cột ghi chú / ghi vết của dòng đã công bố để
+  // một migration riêng (đầu file 0122, mục "NGOÀI PHẠM VI"). Siết ở đó thì dòng dưới đổi theo.
   const lyDo = await duoi(UID.mktA, `update noi_dung_cong_bo set ly_do = 'ghi chú thêm' where khoa = 'hien_thuc_don' and trang_thai = 'da_cong_bo' returning khoa`);
   ok('Marketing sửa cột không phải lịch của dòng đã công bố: không bị trigger MỚI chặn', !biChan(lyDo, CAU_LICH) && !biChan(lyDo, 'đổi lịch hiện'), ketQua(lyDo));
 });

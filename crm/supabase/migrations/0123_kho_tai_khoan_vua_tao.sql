@@ -22,11 +22,14 @@
 --     ký trước phải đoán trúng chủ sẽ bấm tạo trong vòng 10 phút, và mỗi email chỉ đoán được một
 --     lần (đăng ký lại không đổi created_at của tài khoản cũ).
 --
--- VÌ SAO LÀ TRIGGER, KHÔNG THAY THÂN kho_them_nhan_su. Nhánh vai học viên (0119, đang chờ gộp) cũng
--- viết lại kho_them_nhan_su để nhận thêm vai hoc_vien. Hai file cùng "create or replace" một hàm
--- thì file chạy sau đè file chạy trước — bản của file này sẽ làm mất vai học viên. Trigger không
--- đụng thân hàm nào, nên hai PR gộp theo thứ tự nào cũng đúng; và mọi đường ghi nhan_su dưới một
--- phiên (kể cả chủ gọi thẳng bảng qua policy nhan_su_sua) đều qua cùng một luật.
+-- VÌ SAO LÀ TRIGGER, KHÔNG THAY THÂN kho_them_nhan_su. Nhánh vai học viên (claude/dao-tao-hoc-vien,
+-- đang chờ gộp lúc viết file này) cũng viết lại kho_them_nhan_su để nhận thêm vai hoc_vien. Hai
+-- file cùng "create or replace" một hàm thì file chạy sau đè file chạy trước — bản của file này
+-- sẽ làm mất vai học viên. Trigger không đụng thân hàm nào, nên VỀ MÃ hai PR gộp theo thứ tự nào
+-- cũng cho cùng một database (đã nạp thử cả hai thứ tự); và mọi đường ghi nhan_su dưới một phiên
+-- (kể cả chủ gọi thẳng bảng qua policy nhan_su_sua) đều qua cùng một luật. SỐ migration là chuyện
+-- khác: PR gộp SAU phải mang số lớn hơn mọi số đã có trên main (npm run kiem-migration), nên nhánh
+-- nào gộp sau một file số lớn hơn mình thì phải đánh lại số.
 --
 -- VÌ SAO 10 PHÚT. Web gọi kho_them_nhan_su ngay sau auth.signUp, cùng một lần bấm — cách nhau vài
 -- giây. 10 phút đủ rộng cho mạng chậm và đồng hồ lệch, đủ hẹp để một tài khoản đăng ký sẵn từ

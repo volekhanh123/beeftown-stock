@@ -534,18 +534,32 @@ nhân viên mới mang mật khẩu của người đã đăng ký trước. Hai
 Giả định: Supabase Auth kiểm mật khẩu **trước** khi xét email đã xác nhận chưa (mã nguồn công khai,
 `internal/api/token.go`) — đọc mã, chưa chạy với Supabase thật. Kiểm thử dùng Supabase Auth giả viết theo
 đúng các nhánh đó: `crm/test/test-kho-nhan-vien-tai-khoan.mjs`. **Thử tay một lần trên project Beeftown-thu**
-(Authentication → Sign In / Providers → Email, bật "Confirm email"):
+(Authentication → Sign In / Providers → Email, bật "Confirm email" và **giữ nó bật suốt ba bước** — kể cả khi
+một câu trên màn hình gợi ý tắt).
 
-1. Ở màn Nhân viên, tạo một nhân viên với email thử (email chưa từng dùng). Phải thấy "Đã tạo tài khoản…"
-   kèm mật khẩu tạm — chép lại. **Chưa** bấm link trong thư. (Thấy câu "…đã có một tài khoản đăng nhập từ
-   trước…" ngay ở bước này là giả định sai: Supabase không trả `email_not_confirmed` cho mật khẩu đúng.)
-2. Mở lại màn Nhân viên (form mới, không bấm F5), tạo lần nữa **cùng email đó**. Phải thấy "…đã có một tài
-   khoản đăng nhập từ trước lần bấm này… CHƯA tạo nhân viên ở lần bấm này", không có mật khẩu tạm mới, danh
-   sách vẫn đúng một dòng cho email đó. (Thấy "Đã tạo tài khoản…" hay "CHƯA nối được…" là giả định sai:
-   Supabase không trả `invalid_credentials` cho mật khẩu sai của tài khoản chưa xác nhận.)
-3. Bấm link xác nhận trong thư, đăng nhập `/noi-bo` bằng mật khẩu tạm của **bước 1**: vào được.
+Chuẩn bị một địa chỉ email thử: (a) chưa có tài khoản nào trong Authentication → Users của Beeftown-thu, và
+(b) nhận được thư của Supabase — máy gửi thư có sẵn của Supabase chỉ gửi cho địa chỉ của thành viên dự án và
+chỉ vài thư mỗi giờ (mục "Việc cần bật một lần" bên dưới); không có địa chỉ nào như vậy thì cài SMTP riêng cho
+Beeftown-thu trước. Ba điều dưới đây về Supabase (một thư xác nhận mỗi 60 giây cho một địa chỉ, thư mới thay
+link của thư cũ) cũng là đọc mã nguồn công khai và tài liệu của Supabase, chưa chạy thật.
 
-Một trong ba bước không như trên thì báo lại kèm câu màn hình hiện — đừng tắt kiểm thử, đừng bỏ bước thử.
+1. Ở màn Nhân viên, tạo một nhân viên với email thử. Phải thấy "Đã tạo tài khoản…" kèm mật khẩu tạm — chép
+   lại. **Chưa** bấm link trong thư. (Thấy câu "…đã có một tài khoản đăng nhập từ trước…" ngay ở bước này là
+   giả định sai: Supabase không trả `email_not_confirmed` cho mật khẩu đúng. Thấy "Supabase không gửi được
+   thư xác nhận tới email này…" thì chỉ là địa chỉ thử không nhận được thư của Supabase: đổi địa chỉ hoặc cài
+   SMTP — không phải giả định sai.)
+2. **Chờ hơn một phút** (Supabase chỉ gửi một thư xác nhận mỗi 60 giây cho một địa chỉ), rồi mở lại màn Nhân
+   viên (form mới, không bấm F5), tạo lần nữa **cùng email đó**. Phải thấy "…đã có một tài khoản đăng nhập từ
+   trước lần bấm này… CHƯA tạo nhân viên ở lần bấm này", không có mật khẩu tạm mới, danh sách vẫn đúng một
+   dòng cho email đó. (Thấy "Đã tạo tài khoản…" hay "CHƯA nối được…" là giả định sai: Supabase không trả
+   `invalid_credentials` cho mật khẩu sai của tài khoản chưa xác nhận. Thấy "Supabase đã gửi quá số thư xác
+   nhận…" hay "Tạo quá nhiều tài khoản liền nhau…" thì chỉ là bấm lại quá sớm, hoặc đã hết lượt thư của giờ
+   đó: chờ rồi làm lại bước 2 — không phải giả định sai, và đừng tắt "Confirm email" như câu đó gợi ý.)
+3. Bước 2 làm Supabase gửi thêm một thư xác nhận, và link của thư trước hết dùng được. Bấm link trong thư
+   **mới nhất**, rồi đăng nhập `/noi-bo` bằng mật khẩu tạm của **bước 1**: vào được.
+
+Một trong ba bước không như trên (ngoài mấy câu "chờ rồi làm lại" đã kể) thì báo lại kèm câu màn hình hiện —
+đừng tắt kiểm thử, đừng bỏ bước thử. Kiểm thử tự động có cả nhánh "bấm lại trong 60 giây" (nhóm 5).
 
 Khóa = `kho_khoa_nhan_su` (`dang_lam = false`, gỡ khỏi mọi máy); không khóa được chính mình. Lỗi
 Supabase (đăng ký bị tắt, email đã có, cần xác nhận email, giới hạn gửi thư, captcha…) thành câu tiếng
