@@ -40,6 +40,8 @@
  *   4. /noi-bo chuyển sang trang đăng nhập (cả đường dẫn lạ dưới /noi-bo — đã đăng nhập thì
  *      chúng hiện trang 404 NỘI BỘ, kiểm ở crm/test/test-noi-bo-khong-co.mjs vì cần database);
  *      hook iPOS không lộ lỗi nội bộ; khóa sai dạng vẫn là 404 chữ trơn của src/worker.ts.
+ *      Mọi trả lời dưới /noi-bo mang Cache-Control: no-store và cấm nhúng vào khung
+ *      (frame-ancestors 'none', X-Frame-Options: DENY); trang công khai thì không.
  *   5. Menu gọn của màn hẹp (<details class="menu-gon">) mở / đóng được KHI TẮT
  *      JavaScript; có JavaScript thì Esc đóng nó và trả tiêu điểm về nút. Mở ra thì nút
  *      đổi thành nút đóng có nhãn chữ, có link "Hỏi bàn" là nút chính, có bộ chọn ngôn
@@ -489,6 +491,20 @@ try {
            nb.status() === 302 && new URL(nb.headers().location ?? '', goc).pathname === '/noi-bo/dang-nhap',
            `HTTP ${nb.status()} → ${nb.headers().location}`);
       }
+      // Header bảo vệ của khu nội bộ (rà soát 14/11/2026, lib/header-noi-bo.ts): mọi trả lời dưới /noi-bo — trang
+      // đăng nhập (có và không có / cuối), lệnh chuyển hướng của người chưa đăng nhập — không được lưu đệm và không
+      // cho trang khác nhúng vào khung. Trang công khai thì không bị gắn (vẫn lưu đệm và nhúng được như trước).
+      const baoVe = d => /(^|,\s*)no-store\b/.test(d['cache-control'] ?? '')
+        && /frame-ancestors 'none'/.test(d['content-security-policy'] ?? '') && d['x-frame-options'] === 'DENY';
+      const tomDau = d => `cache-control: ${d['cache-control']} · csp: ${d['content-security-policy']} · x-frame-options: ${d['x-frame-options']}`;
+      for (const duong of ['/noi-bo/dang-nhap', '/noi-bo/dang-nhap/', '/noi-bo/kho', '/noi-bo/khong-co-trang-nay']) {
+        const nb = await page.request.get(goc + duong, { maxRedirects: 0 });
+        ok(`GET ${duong}: không lưu đệm (no-store), không cho nhúng khung (frame-ancestors 'none', X-Frame-Options DENY)`,
+           baoVe(nb.headers()), `HTTP ${nb.status()} · ${tomDau(nb.headers())}`);
+      }
+      const ck = (await page.request.get(goc + '/', { maxRedirects: 0 })).headers();
+      ok('Trang chủ công khai không bị gắn header của khu nội bộ', !baoVe(ck) && !/no-store/.test(ck['cache-control'] ?? '')
+         && !/frame-ancestors/.test(ck['content-security-policy'] ?? ''), tomDau(ck));
     });
     await ctx.close();
   }
