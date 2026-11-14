@@ -353,6 +353,9 @@ await nhom('4 · CHỦ TẠO, KHÓA, MỞ LẠI TÀI KHOẢN HỌC VIÊN — ng�
   const f = NV.docFormNhanVien(formTu({ ho_ten: ' Học viên  đào tạo ', email: 'DaoTao@Beeftown.vn', vai_tro: 'hoc_vien', chi_nhanh_id: cnA.id }), [cnA.id]);
   ok('Form Thêm nhân viên nhận vai hoc_vien (họ tên gọn, email chữ thường)',
     f?.vai_tro === 'hoc_vien' && f.ho_ten === 'Học viên đào tạo' && f.email === 'daotao@beeftown.vn', JSON.stringify(f));
+  // web/README.md: mỗi buổi một tài khoản mới, email dạng daotao+<ngày>@… — form phải nhận dấu "+".
+  const f2 = NV.docFormNhanVien(formTu({ ho_ten: 'Học viên 16/11', email: 'daotao+1611@beeftown.vn', vai_tro: 'hoc_vien', chi_nhanh_id: cnA.id }), [cnA.id]);
+  ok('Form nhận email dạng daotao+1611@beeftown.vn (mỗi buổi một tài khoản)', f2?.email === 'daotao+1611@beeftown.vn', JSON.stringify(f2));
   const ten = NV.TEN_VAI_NHAN_VIEN_NB.hoc_vien;
   ok('Tên vai nói luôn tài khoản làm được gì, hai thứ tiếng, bản tiếng Anh không còn chữ Việt',
     ten?.vi === 'Học viên — chỉ xem video đào tạo' && ten.en === 'Trainee — training videos only' && !VIET.test(ten.en), JSON.stringify(ten));
@@ -366,6 +369,10 @@ await nhom('4 · CHỦ TẠO, KHÓA, MỞ LẠI TÀI KHOẢN HỌC VIÊN — ng�
     && /en: 'A trainee account opens only the Training videos page\./.test(trangNv)
     && /hocVien2: \{\s*vi: ' Hết buổi đào tạo thì bấm "Khóa tài khoản"/.test(trangNv) && /en: ' When the training is over, press "Lock account"/.test(trangNv)
     && /xacNhan: \{\s*vi: ' Trước đó/.test(trangNv));
+  // Rà soát: mật khẩu chung không đổi được trên web — mở lại tài khoản cũ là mở cho cả lớp trước.
+  ok('…và dặn buổi sau tạo tài khoản mới (email khác) thay vì mở lại, cả hai thứ tiếng',
+    /Buổi sau tạo tài khoản học viên mới với email khác — mở lại tài khoản này thì lớp trước vẫn đăng nhập được bằng mật khẩu cũ\./.test(trangNv)
+    && /For the next class, create a new trainee account with another email — if you reopen this one, the previous class can still log in with the old password\./.test(trangNv));
   ok('Nhãn vai ở đầu trang /noi-bo: Học viên / Trainee', /hoc_vien:\s*\{ vi: 'Học viên',\s*en: 'Trainee' \}/.test(doc('web/src/layouts/NoiBo.astro')));
 });
 

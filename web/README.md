@@ -349,7 +349,11 @@ values ('AbCdEfGhIjK', 'Bài 1 — Đón khách và xếp bàn', null);
 **Tài khoản học viên** (vai `hoc_vien`, migration 0118 chạy riêng rồi 0119) — một tài khoản demo cả lớp dùng chung:
 
 - Chủ tạo ở **Kho › Cài đặt › Nhân viên**, vai "Học viên — chỉ xem video đào tạo"; mật khẩu tạm hiện một lần. Hết buổi
-  bấm **Khóa tài khoản** ở cùng màn, buổi sau bấm **Mở lại**.
+  bấm **Khóa tài khoản** ở cùng màn. **Buổi sau tạo tài khoản mới** với email khác (ví dụ `daotao+1611@beeftown.vn`)
+  thay vì **Mở lại**: web không đổi được mật khẩu, nên mở lại là mở cho cả lớp trước.
+- Mật khẩu chung là giới hạn đã biết: ai đăng nhập được cũng tự đổi được mật khẩu (hay email) của tài khoản đó thẳng qua
+  Supabase Auth bằng khóa anon công khai — RLS không chặn được việc này. Bị đổi thì cả lớp không đăng nhập lại được
+  bằng mật khẩu cũ: khóa tài khoản đó, tạo tài khoản học viên mới (một phút ở màn Nhân viên).
 - Database: vai này chỉ đọc `video_dao_tao` và dòng `nhan_su` của chính nó — không bảng CRM, bảng kho, không ghi được
   gì; khóa tài khoản là đọc 0 dòng ngay. `crm/test/test-noi-bo-hoc-vien.mjs` quét mọi bảng, mọi hàm.
 - Web: `src/middleware.ts` đưa mọi trang `/noi-bo` khác — kể cả kho và trang chưa có — về `/noi-bo/dao-tao`; đăng nhập

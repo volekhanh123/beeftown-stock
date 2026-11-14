@@ -34,6 +34,9 @@ const t = dichNB(nn, {
   khongDoc:   { vi: 'Chưa đọc được danh sách video. Tải lại trang sau ít phút.',
                 en: 'Could not read the list of videos. Reload the page in a few minutes.' },
   chuaCo:     { vi: 'Chưa có video nào.', en: 'There are no videos yet.' },
+  // Chủ, quản lý: trang không còn mục thêm — nói đường thêm thật (web/README.md, mục "Video đào tạo").
+  chuaCoSua:  { vi: 'Chưa có video nào. Video mới không thêm trên trang này — gửi link YouTube cho người quản trị kỹ thuật để thêm vào database.',
+                en: 'There are no videos yet. New videos are not added on this page — send the YouTube link to the technical admin to add it to the database.' },
   suaXoa:     { vi: 'Sửa tên, mô tả hoặc xóa video', en: 'Edit the title or description, or delete the video' },
   tenO:       { vi: 'Tên video', en: 'Video title' },
   moTaO:      { vi: 'Mô tả', en: 'Description' },
@@ -83,7 +86,7 @@ const moSua = (v: VideoDaoTao) => !!goLai && (goLai.viec === 'sua' || goLai.viec
   <p class="nb-dan">{t.dan}</p>
 
   {dsLoi && <div class="nb-bao loi" role="alert"><p>{t.khongDoc}</p></div>}
-  {!dsLoi && ds.length === 0 && <div class="nb-rong"><p style="margin:0">{t.chuaCo}</p></div>}
+  {!dsLoi && ds.length === 0 && <div class="nb-rong"><p style="margin:0">{duocSua ? t.chuaCoSua : t.chuaCo}</p></div>}
 
   {ds.map(v => {
     const g = goLaiCua(v);

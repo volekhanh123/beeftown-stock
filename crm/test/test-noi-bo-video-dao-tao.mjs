@@ -344,8 +344,10 @@ await nhom('7 · TRANG /noi-bo/dao-tao VÀ MÃ NGUỒN', async () => {
     /\} else if \(!duocSua\) \{\s*bao = \{ ok: false, cau: CAU\.khongQuyen\[nn\] \};/.test(trang));
   ok('Thư viện không còn hàm thêm video (themVideo) — không ai gọi được nữa', VD.themVideo === undefined
     && !/export async function themVideo/.test(doc('web/src/lib/video-dao-tao.ts')));
-  ok('Danh sách rỗng: một câu cho mọi người — không còn câu "thêm video đầu tiên ở mục bên dưới"',
-    !/chuaCoSua|Add the first one/.test(trang) && /\{t\.chuaCo\}/.test(trang));
+  ok('Danh sách rỗng: không còn câu "thêm video đầu tiên ở mục bên dưới"; chủ, quản lý được chỉ đường thêm thật (không thêm trên trang), hai thứ tiếng',
+    !/mục bên dưới|Add the first one|section below/.test(trang) && /\{duocSua \? t\.chuaCoSua : t\.chuaCo\}/.test(trang)
+    && /chuaCoSua:\s+\{ vi: 'Chưa có video nào\. Video mới không thêm trên trang này — gửi link YouTube cho người quản trị kỹ thuật/.test(trang)
+    && /en: 'There are no videos yet\. New videos are not added on this page/.test(trang));
 
   // Mã video chỉ nằm trong database: không file nào của web/src chứa link YouTube có mã cụ thể.
   const moiFile = thuMuc => readdirSync(thuMuc).flatMap(t => {
