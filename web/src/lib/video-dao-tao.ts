@@ -1,6 +1,6 @@
 /**
- * VIDEO ĐÀO TẠO — /noi-bo/dao-tao (migration 0117)
- * ================================================
+ * VIDEO ĐÀO TẠO — /noi-bo/dao-tao (migration 0117, học viên 0119)
+ * ================================================================
  *
  * Video training để trên YouTube ở chế độ "Không công khai", nhúng vào trang nội bộ. Mã video nằm trong bảng
  * video_dao_tao, không nằm trong mã nguồn: repo công khai, và RLS chỉ cho người đang đăng nhập đọc bảng đó.
@@ -8,30 +8,31 @@
  * Giới hạn (Khánh đã chọn, 14/11/2026): cổng đăng nhập giấu link, không khóa video — người đang xem vẫn chép được
  * link YouTube. Nội dung training không nhạy cảm nên chấp nhận.
  *
- * QUYỀN do database quyết định (policy video_dao_tao_*): bảy vai người đang làm xem, chủ và quản lý thêm / sửa / xóa.
- * Hai danh sách dưới đây chỉ để trang ẩn form với người không sửa được, và phải khớp policy
- * (crm/test/test-noi-bo-video-dao-tao.mjs so với pg_policies).
+ * THÊM VIDEO không làm trên trang (Khánh 14/11/2026 bỏ mục "Thêm video": "Không cần mục này"): video mới thêm thẳng
+ * vào bảng — web/README.md, mục "Video đào tạo". Trang chỉ còn sửa tên / mô tả và xóa.
+ *
+ * QUYỀN do database quyết định (policy video_dao_tao_*): bảy vai người đang làm và học viên (0119 — tài khoản demo
+ * của buổi đào tạo) xem; chủ và quản lý sửa / xóa. Hai danh sách dưới đây chỉ để trang đưa vai khác đi chỗ khác và
+ * ẩn form với người không sửa được, và phải khớp policy (crm/test/test-noi-bo-video-dao-tao.mjs so với pg_policies).
  *
  * CÂU BÁO luôn nói đúng điều database đã xác nhận:
- *   · thêm: câu "đã thêm" chỉ khi insert trả về id; trùng mã (23505 — thường là lần hai của cú bấm đúp) nói "đã có
- *     trong danh sách";
  *   · sửa: chỉ ghi khi dòng còn đúng phiên bản lúc mở trang (updated_at). Không khớp thì đọc lại — dòng đã mang đúng
  *     chữ vừa gửi (lần hai của cú bấm đúp) là "đã lưu", khác thì "người khác vừa sửa", mất thì "đã bị xóa";
  *   · xóa: xóa rồi đọc lại — còn dòng là "chưa xóa được", không đọc được là "chưa chắc", hết dòng mới là "đã xóa";
  *   · lỗi mạng, hết giờ, 500: không bao giờ thành câu "đã …".
  *
- * File thuần (chỉ `import type` ngoài danh sách vai), để test nạp thẳng bằng Node.
+ * File thuần (chỉ `import type` ngoài danh sách vai và đường dẫn), để test nạp thẳng bằng Node.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { HaiThuTieng, NgonNguNB } from './ngon-ngu-noi-bo.ts';
-import { VAI_NGUOI } from './dieu-huong-noi-bo.ts';
+import { VAI_DAO_TAO } from './dieu-huong-noi-bo.ts';
 
-export const DUONG_DAO_TAO = '/noi-bo/dao-tao';
+export { DUONG_DAO_TAO } from './dieu-huong-noi-bo.ts';
 
-/** Vai mở được trang — đúng policy video_dao_tao_doc. */
-export const VAI_XEM_DAO_TAO: readonly string[] = VAI_NGUOI;
-/** Vai thấy form thêm / sửa / xóa — đúng policy video_dao_tao_them / _sua / _xoa. */
+/** Vai mở được trang — đúng policy video_dao_tao_doc (0119): bảy vai người và học viên. */
+export const VAI_XEM_DAO_TAO: readonly string[] = VAI_DAO_TAO;
+/** Vai thấy form sửa / xóa — đúng policy video_dao_tao_sua / _xoa (và _them: thêm thẳng bảng cũng chỉ hai vai này). */
 export const VAI_SUA_DAO_TAO: readonly string[] = ['chu_so_huu', 'quan_ly'];
 
 /** Khớp ràng buộc của bảng (char_length — đếm theo ký tự, không theo đơn vị UTF-16). */
@@ -63,6 +64,9 @@ const TEN_MIEN_YOUTUBE = new Set([
  * Tách mã video từ thứ người ta dán vào: link youtu.be, youtube.com/watch?v=…, /shorts/, /embed/, /live/, link của
  * YouTube Studio (studio.youtube.com/video/MÃ/edit), link thiếu "https://", hoặc chính mã 11 ký tự. Link
  * danh sách phát, kênh, trang khác (Google Drive…) → null.
+ *
+ * Trang không còn gọi hàm này (bỏ form "Thêm video"). Giữ làm luật tách mã khi thêm video thẳng vào bảng — cột
+ * youtube_id nhận đúng mã hàm này trả, và kiểm thử nhóm 3 giữ mọi kiểu link YouTube hay gặp (web/README.md).
  */
 export function layMaYoutube(nhap: unknown): string | null {
   const s = typeof nhap === 'string' ? nhap.trim() : '';
@@ -112,10 +116,6 @@ export function lamSachMoTa(nhap: unknown): string | null {
 
 /** Câu báo của thư viện — trang dùng lại khongQuyen, viecSai cho khỏi viết hai bản. */
 export const CAU = {
-  linkSai: {
-    vi: 'Link này không phải link một video YouTube. Dán link dạng https://youtu.be/… hoặc https://www.youtube.com/watch?v=…',
-    en: 'This is not a link to a YouTube video. Paste a link like https://youtu.be/… or https://www.youtube.com/watch?v=…',
-  },
   thieuTen: { vi: 'Ghi tên video.', en: 'Enter a title for the video.' },
   tenDai: {
     vi: `Tên video dài quá ${DAI_TIEU_DE} ký tự.`,
@@ -125,17 +125,9 @@ export const CAU = {
     vi: `Mô tả dài quá ${DAI_MO_TA} ký tự.`,
     en: `The description is longer than ${DAI_MO_TA} characters.`,
   },
-  daCo: {
-    vi: 'Video này đã có trong danh sách.',
-    en: 'This video is already in the list.',
-  },
   khongQuyen: {
-    vi: 'Chỉ chủ nhà hàng và quản lý thêm, sửa hay xóa được video.',
-    en: 'Only the owner and managers can add, edit or delete videos.',
-  },
-  chuaThem: {
-    vi: 'Chưa thêm được video — mạng hoặc máy chủ đang trục trặc. Tải lại trang xem video đã vào danh sách chưa, chưa có thì thử lại.',
-    en: 'The video was not added — the connection or the server is having trouble. Reload the page to check whether it is in the list; if not, try again.',
+    vi: 'Chỉ chủ nhà hàng và quản lý sửa hay xóa được video.',
+    en: 'Only the owner and managers can edit or delete videos.',
   },
   chuaLuu: {
     vi: 'Chưa lưu được — mạng hoặc máy chủ đang trục trặc. Tải lại trang xem tên và mô tả hiện giờ rồi thử lại.',
@@ -163,7 +155,6 @@ export const CAU = {
 
 /** Câu báo đã xong — mang tên video người dùng vừa gõ (tên do database giữ, không dịch). */
 const CAU_XONG = {
-  them: { vi: (ten: string) => `Đã thêm "${ten}" vào danh sách.`, en: (ten: string) => `Added "${ten}" to the list.` },
   sua: {
     vi: (ten: string) => `Đã lưu tên và mô tả của "${ten}".`,
     en: (ten: string) => `Saved the title and description of "${ten}".`,
@@ -207,30 +198,6 @@ function kiemChu(tieuDe: string, moTa: string | null, nn: NgonNguNB): BaoVideo |
   if (soKyTu(tieuDe) > DAI_TIEU_DE) return loi(nn, CAU.tenDai);
   if (moTa && soKyTu(moTa) > DAI_MO_TA) return loi(nn, CAU.moTaDai);
   return null;
-}
-
-/** Thêm một video từ form (ô link, tieu_de, mo_ta). */
-export async function themVideo(client: SupabaseClient, form: FormData, nn: NgonNguNB): Promise<BaoVideo> {
-  const ma = layMaYoutube(form.get('link'));
-  if (!ma) return loi(nn, CAU.linkSai);
-  const tieuDe = lamSachTieuDe(form.get('tieu_de'));
-  const moTa = lamSachMoTa(form.get('mo_ta'));
-  const sai = kiemChu(tieuDe, moTa, nn);
-  if (sai) return sai;
-
-  try {
-    const { data, error } = await client
-      .from('video_dao_tao')
-      .insert({ youtube_id: ma, tieu_de: tieuDe, mo_ta: moTa })
-      .select('id')
-      .single();
-    if (error?.code === '23505') return loi(nn, CAU.daCo);
-    if (laKhongQuyen(error)) return loi(nn, CAU.khongQuyen);
-    if (error || !(data as { id?: string } | null)?.id) return loi(nn, CAU.chuaThem);
-  } catch {
-    return loi(nn, CAU.chuaThem);
-  }
-  return { ok: true, cau: CAU_XONG.them[nn](tieuDe) };
 }
 
 /** Sửa tên và mô tả của một video, chỉ khi dòng còn đúng phiên bản lúc mở trang (ô phien_ban = updated_at). */
