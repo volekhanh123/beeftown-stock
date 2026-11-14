@@ -32,7 +32,10 @@
  *   · "Tài khoản lạ" là một người ĐÃ đăng nhập nhưng không có dòng nhan_su (auth.uid() có giá trị) — không phải
  *     duoi(null), thứ không có auth.uid() nên trigger 0123 bỏ qua. Nhóm 6.
  *
- * Mỗi dòng "RÀ SOÁT 14/11" đỏ trước bản sửa. Các dòng còn lại giữ cho việc tạo nhân viên bình thường vẫn chạy.
+ * Dòng "RÀ SOÁT 14/11" đỏ trước bản sửa. Dòng ghi thêm "(vòng hai)" / "(vòng ba)" là của các vòng rà soát
+ * sau: có dòng là lỗi vòng đó tìm ra (đỏ trước bản sửa của nó), có dòng chỉ là phép kiểm chặt hơn cho mã đã đúng
+ * từ bản sửa đầu — loại này chỉ đỏ khi cố tình làm hỏng đúng chỗ mã nó giữ.
+ * Các dòng còn lại giữ cho việc tạo nhân viên bình thường vẫn chạy.
  * Cần web/node_modules (cd web && npm install) — như test-qua-tai.mjs.
  */
 

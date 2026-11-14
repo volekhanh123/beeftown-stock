@@ -13,7 +13,10 @@
  * ĐANG DÙNG (không lấy email từ form) trước khi ghi PIN mới. Không cần migration.
  *
  * Supabase Auth ở đây là bản giả (fetch giả); database là PGlite thật — PIN đổi hay chưa đọc thẳng từ kho_may_nguoi.
- * Mỗi dòng "RÀ SOÁT 14/11" đỏ trước bản sửa. Cần web/node_modules — như test-qua-tai.mjs.
+ * Dòng "RÀ SOÁT 14/11" đỏ trước bản sửa. Dòng ghi thêm "(vòng hai)" / "(vòng ba)" là của các vòng rà soát
+ * sau: có dòng là lỗi vòng đó tìm ra (đỏ trước bản sửa của nó), có dòng chỉ là phép kiểm chặt hơn cho mã đã đúng
+ * từ bản sửa đầu — loại này chỉ đỏ khi cố tình làm hỏng đúng chỗ mã nó giữ.
+ * Cần web/node_modules — như test-qua-tai.mjs.
  */
 
 import { readFileSync } from 'node:fs';

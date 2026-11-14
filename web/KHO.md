@@ -538,9 +538,10 @@ Giả định: Supabase Auth kiểm mật khẩu **trước** khi xét email đ�
 một câu trên màn hình gợi ý tắt).
 
 Chuẩn bị một địa chỉ email thử: (a) chưa có tài khoản nào trong Authentication → Users của Beeftown-thu, và
-(b) nhận được thư của Supabase — máy gửi thư có sẵn của Supabase chỉ gửi cho địa chỉ của thành viên dự án và
-chỉ vài thư mỗi giờ (mục "Việc cần bật một lần" bên dưới); không có địa chỉ nào như vậy thì cài SMTP riêng cho
-Beeftown-thu trước. Ba điều dưới đây về Supabase (một thư xác nhận mỗi 60 giây cho một địa chỉ, thư mới thay
+(b) nhận được thư của Supabase — máy gửi thư có sẵn của Supabase chỉ gửi cho địa chỉ của thành viên dự án, và
+theo tài liệu của Supabase chỉ khoảng **2 thư mỗi giờ cho cả project** (vừa đủ cho bước 1 và bước 2 — đừng
+làm việc gì khác gửi thư ở Beeftown-thu trong giờ đó); không có địa chỉ nào như vậy thì cài SMTP riêng cho
+Beeftown-thu trước. Hai điều dưới đây về Supabase (một thư xác nhận mỗi 60 giây cho một địa chỉ, thư mới thay
 link của thư cũ) cũng là đọc mã nguồn công khai và tài liệu của Supabase, chưa chạy thật.
 
 1. Ở màn Nhân viên, tạo một nhân viên với email thử. Phải thấy "Đã tạo tài khoản…" kèm mật khẩu tạm — chép
@@ -553,13 +554,16 @@ link của thư cũ) cũng là đọc mã nguồn công khai và tài liệu c�
    trước lần bấm này… CHƯA tạo nhân viên ở lần bấm này", không có mật khẩu tạm mới, danh sách vẫn đúng một
    dòng cho email đó. (Thấy "Đã tạo tài khoản…" hay "CHƯA nối được…" là giả định sai: Supabase không trả
    `invalid_credentials` cho mật khẩu sai của tài khoản chưa xác nhận. Thấy "Supabase đã gửi quá số thư xác
-   nhận…" hay "Tạo quá nhiều tài khoản liền nhau…" thì chỉ là bấm lại quá sớm, hoặc đã hết lượt thư của giờ
-   đó: chờ rồi làm lại bước 2 — không phải giả định sai, và đừng tắt "Confirm email" như câu đó gợi ý.)
+   nhận…" hay "Tạo quá nhiều tài khoản liền nhau…" thì chỉ là bấm lại quá sớm; đã chờ hơn một phút mà vẫn gặp
+   thì là hết lượt thư của giờ đó — chờ tới một giờ rồi làm lại bước 2. Không phải giả định sai, và đừng tắt
+   "Confirm email" như câu đó gợi ý.)
 3. Bước 2 làm Supabase gửi thêm một thư xác nhận, và link của thư trước hết dùng được. Bấm link trong thư
    **mới nhất**, rồi đăng nhập `/noi-bo` bằng mật khẩu tạm của **bước 1**: vào được.
 
 Một trong ba bước không như trên (ngoài mấy câu "chờ rồi làm lại" đã kể) thì báo lại kèm câu màn hình hiện —
 đừng tắt kiểm thử, đừng bỏ bước thử. Kiểm thử tự động có cả nhánh "bấm lại trong 60 giây" (nhóm 5).
+**Thử xong thì tắt lại "Confirm email"** ở Beeftown-thu (cài đặt đúng của hệ thống là tắt — mục ngay dưới) và
+khóa nhân viên thử ở màn Nhân viên.
 
 Khóa = `kho_khoa_nhan_su` (`dang_lam = false`, gỡ khỏi mọi máy); không khóa được chính mình. Lỗi
 Supabase (đăng ký bị tắt, email đã có, cần xác nhận email, giới hạn gửi thư, captcha…) thành câu tiếng
@@ -1593,9 +1597,11 @@ dùng ở:
 | `public/kho/js/ean13.js` | (GĐ5b) Giải mã EAN-13 bằng JS thuần cho iPhone — Safari không có `BarcodeDetector` |
 | `public/kho/js/may-chung.js` | (GĐ5d) Đếm giờ tự khóa máy dùng chung |
 | `public/kho/js/in-an.js` | Hiện nút "In phiếu" và gọi `window.print()` (GĐ4b); nút "Chia sẻ" `[data-chia-se]` của đơn đặt hàng gọi Web Share API khi máy có (GĐ8a) |
+| `components/SauDangXuat.astro` (in thẳng vào `<head>` của hai khung `Kho.astro` và `NoiBo.astro`; mã ở `lib/sau-dang-xuat.js`) | Sau khi đăng xuất, bấm Quay lại không hiện lại trang cũ từ bộ nhớ hay bản lưu đệm của trình duyệt: dấu phiên (cookie `bt_dau_phien`) đã đổi thì giấu trang lúc rời, tải lại lúc hiện lại. Không gọi mạng, không tải file riêng (rà soát 14/11/2026 — `web/README.md`, "Giao diện nội bộ") |
 
 Không thêm thư viện npm cho phía trình duyệt. `test-kho-giao-dien.mjs` hỏng nếu có `<script>`,
-`onclick=…` hay file JS ngoài danh sách này.
+`onclick=…` hay file JS ngoài danh sách này (đoạn của `SauDangXuat.astro` nằm ở khung chung, có kiểm thử
+riêng: `test-noi-bo-dang-xuat.mjs` nhóm 9).
 
 **Chưa làm:** thu nhỏ ảnh hóa đơn trước khi tải (≤ 1600px). Bảng này từng ghi file `anh-nho.js` (GĐ5a)
 nhưng file chưa bao giờ được viết — ảnh chụp bằng điện thoại vẫn lên nguyên cỡ (tối đa 10 MB mỗi ảnh).

@@ -202,6 +202,37 @@ await nhom('5 · Ràng buộc của bảng chặn mọi đường ghi khác', as
   const noi = (await db.query(`select array_to_string(array_fill(null::text, array[5]), ',', '') as chuoi`)).rows[0].chuoi;
   ok("…và array_to_string(…, ',', '') giữ dấu phẩy của phần tử null (5 phần tử → 4 dấu phẩy) — đúng như chú thích của 0121", noi === ',,,,', JSON.stringify(noi));
 
+  // Vòng ba 14/11: các kiểm tra trên chỉ lấy mẫu một vế của mỗi ràng buộc — bỏ vế khác đi (kinh nghiệm, đường dẫn
+  // CV, tổng số chữ của các ca…) thì không kiểm tra nào đỏ. Mỗi vế: ghi thẳng một giá trị vượt trần đúng một ký tự
+  // phải bị chặn bởi đúng ràng buộc đó, và giá trị đúng bằng trần thì ghi được. Ghi xong trả lại giá trị cũ.
+  const hoSoId = (await db.query(`select id from ho_so_ung_tuyen where not da_an_danh order by created_at limit 1`)).rows[0].id;
+  const VE = [
+    ['dat_ban', 'dat_ban_chu_ngan', `ma_dat_ban = '${dat.ma_dat_ban}'`,
+      [['ghi_chu', 1000], ['dip', 200], ['utm_source', 300], ['utm_medium', 300], ['utm_campaign', 300], ['trang_gioi_thieu', 1000]]],
+    ['khach_hang', 'khach_hang_chu_ngan', `sdt = '${dat.sdt}'`,
+      [['ho_ten', 200], ['nguon_utm_source', 300], ['nguon_utm_medium', 300], ['nguon_utm_campaign', 300]]],
+    ['ho_so_ung_tuyen', 'ho_so_chu_ngan', `id = '${hoSoId}'`,
+      [['ho_ten', 200], ['email', 320], ['gioi_thieu', 8000], ['kinh_nghiem', 8000], ['duong_dan_cv', 400], ['nguon_utm_source', 300], ['nguon_utm_campaign', 300]]],
+  ];
+  for (const [bang, rangBuoc, dieuKien, cacCot] of VE) {
+    for (const [cot, tran] of cacCot) {
+      const cu = (await db.query(`select ${cot} as v from ${bang} where ${dieuKien}`)).rows[0].v;
+      const vuot = await thu(`update ${bang} set ${cot} = $1 where ${dieuKien}`, [chu(tran + 1)]);
+      const vua = await thu(`update ${bang} set ${cot} = $1 where ${dieuKien}`, [chu(tran)]);
+      await db.query(`update ${bang} set ${cot} = $1 where ${dieuKien}`, [cu]);
+      ok(`${bang}.${cot}: ${tran + 1} ký tự → ${rangBuoc} chặn; đúng ${tran} ký tự → ghi được`,
+         vuot?.includes(rangBuoc) === true && vua === null, `vượt: ${vuot ?? 'ghi được'} · vừa: ${vua ?? 'ghi được'}`);
+    }
+  }
+  const caCu = (await db.query(`select ca_lam_duoc as v from ho_so_ung_tuyen where id = $1`, [hoSoId])).rows[0].v;
+  const caDai = await thu(`update ho_so_ung_tuyen set ca_lam_duoc = $2::text[] where id = $1`, [hoSoId, [chu(1001)]]);
+  const caHaiNua = await thu(`update ho_so_ung_tuyen set ca_lam_duoc = $2::text[] where id = $1`, [hoSoId, [chu(500), chu(500)]]);   // 500 + dấu phẩy + 500 = 1001
+  const caVua = await thu(`update ho_so_ung_tuyen set ca_lam_duoc = $2::text[] where id = $1`, [hoSoId, [chu(1000)]]);
+  await db.query(`update ho_so_ung_tuyen set ca_lam_duoc = $2::text[] where id = $1`, [hoSoId, caCu]);
+  ok('ho_so_ung_tuyen.ca_lam_duoc: tổng chữ của các ca (nối bằng dấu phẩy) 1001 ký tự → ho_so_chu_ngan chặn; 1000 → ghi được',
+     caDai?.includes('ho_so_chu_ngan') === true && caHaiNua?.includes('ho_so_chu_ngan') === true && caVua === null,
+     `một ca 1001: ${caDai ?? 'ghi được'} · hai ca 500: ${caHaiNua ?? 'ghi được'} · một ca 1000: ${caVua ?? 'ghi được'}`);
+
   const ham = await db.query(
     `select p.proname, p.prosecdef, p.proconfig::text as cau_hinh, has_function_privilege('anon', p.oid, 'execute') as anon
        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
