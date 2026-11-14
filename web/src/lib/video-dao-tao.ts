@@ -110,7 +110,8 @@ export function lamSachMoTa(nhap: unknown): string | null {
   return s ? s : null;
 }
 
-const CAU = {
+/** Câu báo của thư viện — trang dùng lại khongQuyen, viecSai cho khỏi viết hai bản. */
+export const CAU = {
   linkSai: {
     vi: 'Link này không phải link một video YouTube. Dán link dạng https://youtu.be/… hoặc https://www.youtube.com/watch?v=…',
     en: 'This is not a link to a YouTube video. Paste a link like https://youtu.be/… or https://www.youtube.com/watch?v=…',

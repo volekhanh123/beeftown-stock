@@ -16,7 +16,7 @@ import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo';
 import { CAU_DOC_FORM_HONG, chuyenHuongNoiBo, docBaoNoiBo, docFormNoiBo } from '../../lib/gui-noi-bo';
 import {
   VAI_XEM_DAO_TAO, VAI_SUA_DAO_TAO, DAI_TIEU_DE, DAI_MO_TA,
-  docDanhSachVideo, themVideo, suaVideo, xoaVideo, linkNhungYoutube,
+  CAU, docDanhSachVideo, themVideo, suaVideo, xoaVideo, linkNhungYoutube,
   type VideoDaoTao, type BaoVideo,
 } from '../../lib/video-dao-tao';
 
@@ -34,9 +34,6 @@ const t = dichNB(nn, {
   chuaCo:     { vi: 'Chưa có video nào.', en: 'There are no videos yet.' },
   chuaCoSua:  { vi: 'Chưa có video nào. Thêm video đầu tiên ở mục bên dưới.',
                 en: 'There are no videos yet. Add the first one in the section below.' },
-  khongQuyen: { vi: 'Chỉ chủ nhà hàng và quản lý thêm, sửa hay xóa được video.',
-                en: 'Only the owner and managers can add, edit or delete videos.' },
-  viecSai:    { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
   suaXoa:     { vi: 'Sửa tên, mô tả hoặc xóa video', en: 'Edit the title or description, or delete the video' },
   tenO:       { vi: 'Tên video', en: 'Video title' },
   moTaO:      { vi: 'Mô tả', en: 'Description' },
@@ -70,13 +67,13 @@ if (Astro.request.method === 'POST') {
   if (!form) {
     bao = { ok: false, cau: CAU_DOC_FORM_HONG[nn] };
   } else if (!duocSua) {
-    bao = { ok: false, cau: t.khongQuyen };
+    bao = { ok: false, cau: CAU.khongQuyen[nn] };
   } else {
     const viec = String(form.get('viec') ?? '');
     const kq: BaoVideo = viec === 'them' ? await themVideo(client, form, nn)
       : viec === 'sua' ? await suaVideo(client, form, nn)
       : viec === 'xoa' ? await xoaVideo(client, form, nn)
-      : { ok: false, cau: t.viecSai };
+      : { ok: false, cau: CAU.viecSai[nn] };
     // Ghi được thì chuyển hướng 303 (lib/gui-noi-bo.ts): F5 không gửi lại lệnh cũ.
     if (kq.ok) return chuyenHuongNoiBo(Astro, kq);
     bao = kq;
