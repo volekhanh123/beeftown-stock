@@ -263,8 +263,8 @@ async function thuHoiPhien(t: Token, tam: SupabaseClient): Promise<void> {
  * trang vẫn trả lời — không thì người bấm Đăng xuất rồi đóng tab sẽ không bao giờ nhận được lệnh xóa cookie. Bỏ đợi
  * không có nghĩa là hủy: lời gọi đang dở tự kết thúc cùng lượt request của Worker.
  *
- * `thay`: chỗ kiểm thử thay vào (crm/test/test-noi-bo-dang-xuat.mjs) — client nối vào Supabase Auth giả, hạn đợi
- * ngắn. Trang thật không truyền gì.
+ * Tham số thứ hai là chỗ kiểm thử thay vào (crm/test/test-noi-bo-dang-xuat.mjs): client nối vào Supabase Auth giả,
+ * hạn đợi ngắn. Trang thật không truyền gì.
  */
 export async function dangXuat(
   cookies: AstroCookies,
