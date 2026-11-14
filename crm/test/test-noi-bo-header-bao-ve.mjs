@@ -17,7 +17,8 @@
  * KHÔNG ép "no-store" cho cả khu, và đó là cố ý (rà soát mã 14/11, đã thử trong Chromium): trang "hệ thống đang
  * bận" bảo người vừa gửi form hỏng "bấm Quay lại rồi gửi lại" — với no-store, bấm Quay lại là xin lại trang từ máy
  * chủ đang bận, và form đang gõ biến mất. Chỗ cần "người sau không thấy trang của người trước" được làm đúng lúc:
- * Đăng xuất gửi Clear-Site-Data: "cache" (test-noi-bo-dang-xuat.mjs); máy dùng chung đã tự đặt no-store từ trước.
+ * Đăng xuất gửi Clear-Site-Data: "cache", và sau-dang-xuat.js tải lại trang hiện lại từ bộ nhớ quay lại của trình
+ * duyệt sau một lần đăng xuất (test-noi-bo-dang-xuat.mjs nhóm 8 và 9); máy dùng chung đã tự đặt no-store từ trước.
  *
  * Trang công khai không bị đụng. Kiểm trên bản build thật, qua trình duyệt: web/kiem-tra/trinh-duyet.mjs nhóm 4.
  */

@@ -120,5 +120,9 @@ const day = thanhDayNoiBo(nhanSu?.vai_tro);
     <main class="nb-khung nb-chinh">
       <slot />
     </main>
+
+    {/* Nút Quay lại sau khi đăng xuất không hiện lại trang cũ từ bộ nhớ của trình duyệt — lý do ở đầu file đó.
+        Trang vẫn chạy đủ khi tắt JavaScript; đây là thẻ script duy nhất của khung này. */}
+    <script is:inline src="/kho/js/sau-dang-xuat.js" defer></script>
   </body>
 </html>

@@ -15,12 +15,22 @@
  *   · phiên đã mất ở Supabase     → thôi, không tốn lượt nào của hạn mức đăng nhập;
  *   · Supabase bận / mất mạng     → không thu hồi được, nhưng cookie VẪN bị xóa và người bấm vẫn về trang đăng nhập.
  *
- * Supabase Auth ở đây là bản giả (fetch giả), có phiên, có xoay refresh token. Dòng "RÀ SOÁT 14/11" đỏ trước bản sửa.
+ * Supabase Auth ở đây là bản giả (fetch giả), có phiên, có xoay refresh token, và hiểu phạm vi của /logout như
+ * bản thật (local: chỉ phiên này; bỏ trống hoặc global: mọi phiên của người đó). Dòng "RÀ SOÁT 14/11" đỏ trước bản sửa.
  * Cần web/node_modules — như test-qua-tai.mjs.
+ *
+ * Vòng hai của rà soát (14/11/2026) thêm:
+ *   · nhóm 2, 3: phạm vi "local" được kiểm ở CẢ hai đường thu hồi — Auth giả cũ bỏ qua phạm vi nên bỏ tham số đi
+ *     (mặc định của supabase-js là đăng xuất mọi máy) không kiểm tra nào đỏ;
+ *   · nhóm 5: lượt /logout cuối của đường "token hết hạn" hỏng thì phải có một dòng nhật ký;
+ *   · nhóm 7b: trên Worker, việc còn dở lúc trang trả lời bị cắt — lượt thu hồi chậm hơn hạn đợi phải được giao cho
+ *     waitUntil;
+ *   · nhóm 9: nút Quay lại sau khi đăng xuất (web/public/kho/js/sau-dang-xuat.js).
  */
 
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import vm from 'node:vm';
+import { join, dirname, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { taoBoDem } from './kho-chung.mjs';
@@ -82,12 +92,19 @@ globalThis.fetch = async (url, init) => {
   const the = (dau.get('authorization') ?? '').replace(/^Bearer /, '');
 
   if (u.pathname === '/auth/v1/logout') {
-    auth.nhatKy.push({ cua: 'logout', the, pham_vi: u.searchParams.get('scope') });
-    if (auth.logoutHong) return auth.logoutHong();
+    const phamVi = u.searchParams.get('scope');
+    auth.nhatKy.push({ cua: 'logout', the, pham_vi: phamVi });
+    // logoutHong(n): n là số thứ tự của lượt /logout này (từ 1). Trả undefined = lượt này không hỏng.
+    const hong = auth.logoutHong ? auth.logoutHong(auth.goi('logout').length) : undefined;
+    if (hong) return hong;
     const a = auth.truyCap.get(the);
     if (!a || a.hetHan) return json(403, { code: 'bad_jwt', message: 'invalid JWT: unable to parse or verify signature, token has invalid claims: token is expired' });
     if (!auth.phien.get(a.phienId)) return json(403, { code: 'session_not_found', message: 'Session from session_id claim in JWT does not exist' });
-    auth.phien.set(a.phienId, false);
+    // Phạm vi như Supabase Auth thật (mã nguồn công khai, internal/api/logout.go): "local" chỉ thu hồi phiên của
+    // token này; bỏ trống hoặc "global" thu hồi MỌI phiên của người đó; "others" thu hồi mọi phiên trừ phiên này.
+    // Mọi phiên ở đây là của cùng một người (sub "u1").
+    if (phamVi === 'local') auth.phien.set(a.phienId, false);
+    else for (const id of [...auth.phien.keys()]) { if (phamVi !== 'others' || id !== a.phienId) auth.phien.set(id, false); }
     return new Response(null, { status: 204 });
   }
   if (u.pathname === '/auth/v1/token' && u.searchParams.get('grant_type') === 'refresh_token') {
@@ -122,6 +139,16 @@ function hopCookie(giaTri) {
 }
 const cookieCua = t => hopCookie(JSON.stringify({ access_token: t.access_token, refresh_token: t.refresh_token }));
 
+/** Chạy `viec`, trả các dòng console.warn nó in ra (nhật ký "[qua-tai] …" của lib/qua-tai.ts). */
+async function batCanhBao(viec) {
+  const goc = console.warn;
+  const dong = [];
+  console.warn = (...phan) => { dong.push(phan.join(' ')); };
+  try { await viec(); } finally { console.warn = goc; }
+  return dong;
+}
+const dongThuHoi = dong => dong.filter(d => d.startsWith('[qua-tai] đăng xuất · thu hồi phiên'));
+
 /** Bấm "Đăng xuất" với cookie này. Trả { loi, cookies }. */
 async function bamDangXuat(cookies) {
   let loi = null;
@@ -152,6 +179,16 @@ await nhom('2 · Phạm vi "local": phiên trên máy khác của cùng người
   await bamDangXuat(cookieCua(dienThoai));
   ok('Đăng xuất trên điện thoại: phiên điện thoại hết, phiên máy tính còn',
      auth.conDungDuoc(dienThoai) === false && auth.conDungDuoc(mayTinh) === true);
+
+  // Đường thứ hai: trang để mở hơn một giờ rồi mới bấm Đăng xuất (middleware không làm mới token cho
+  // /noi-bo/dang-xuat) — phiên được đổi refresh token rồi thu hồi. Lượt thu hồi đó cũng phải là "local".
+  auth.datLai();
+  const dienThoaiCu = auth.dangNhap({ hetHan: true });
+  const mayTinh2 = auth.dangNhap();
+  await bamDangXuat(cookieCua(dienThoaiCu));
+  ok('RÀ SOÁT 14/11 (vòng hai): token của điện thoại đã hết hạn — phiên điện thoại hết, phiên máy tính còn',
+     auth.conDungDuoc(dienThoaiCu) === false && auth.conDungDuoc(mayTinh2) === true,
+     JSON.stringify(auth.goi('logout').map(l => l.pham_vi)));
 });
 
 // ===========================================================================
@@ -169,6 +206,7 @@ await nhom('3 · Access token đã hết hạn → đổi refresh token rồi th
   ok('…thứ tự: /logout bị từ chối vì token hết hạn → một lượt đổi refresh token của cookie → /logout bằng token mới',
      lo.length === 2 && tk.length === 1 && tk[0].lam_moi === t.refresh_token && lo[0].the === t.access_token && lo[1].the !== t.access_token,
      `${lo.length} logout, ${tk.length} token`);
+  ok('RÀ SOÁT 14/11 (vòng hai): cả hai lượt /logout đều phạm vi "local"', lo.every(l => l.pham_vi === 'local'), JSON.stringify(lo.map(l => l.pham_vi)));
 });
 
 // ===========================================================================
@@ -200,9 +238,12 @@ await nhom('5 · Supabase bận hoặc mất mạng → cookie VẪN bị xóa, 
     auth.datLai();
     auth.logoutHong = hong;
     const t = auth.dangNhap();
-    const { loi, cookies } = await bamDangXuat(cookieCua(t));
-    ok(`${ten}: đăng xuất không ném lỗi, cookie bị xóa`, loi === null && cookies.con() === false, loi ?? '');
+    let kq;
+    const dong = await batCanhBao(async () => { kq = await bamDangXuat(cookieCua(t)); });
+    ok(`${ten}: đăng xuất không ném lỗi, cookie bị xóa`, kq.loi === null && kq.cookies.con() === false, kq.loi ?? '');
     ok('…không đổi refresh token khi chưa biết token có hỏng không (đổi lúc này là tốn hạn mức đang cạn)', auth.goi('token').length === 0);
+    ok('…một dòng nhật ký [qua-tai] — không token, không email trong đó',
+       dongThuHoi(dong).length === 1 && !dong.join(' ').includes(t.access_token) && !/@/.test(dong.join(' ')), dong.join(' | '));
   }
   // Hết hạn + cửa /token bận.
   auth.datLai();
@@ -210,6 +251,25 @@ await nhom('5 · Supabase bận hoặc mất mạng → cookie VẪN bị xóa, 
   const t = auth.dangNhap({ hetHan: true });
   const { loi, cookies } = await bamDangXuat(cookieCua(t));
   ok('Token hết hạn mà cửa /token bận: vẫn đăng xuất được trên máy này', loi === null && cookies.con() === false, loi ?? '');
+
+  // Vòng hai 14/11: token hết hạn, đổi refresh token ĐƯỢC, nhưng lượt /logout sau đó hỏng. Phiên còn sống với refresh
+  // token vừa xoay — bản đầu im lặng, không ai biết đăng xuất đang không thu hồi được.
+  for (const [ten, hong] of CA) {
+    auth.datLai();
+    auth.logoutHong = n => (n >= 2 ? hong() : undefined);      // lượt đầu vẫn trả 403 "token hết hạn" như thật
+    const cu = auth.dangNhap({ hetHan: true });
+    let kq;
+    const dong = await batCanhBao(async () => { kq = await bamDangXuat(cookieCua(cu)); });
+    ok(`Token hết hạn, đổi được, lượt /logout cuối gặp "${ten}": đăng xuất không ném lỗi, cookie bị xóa`,
+       kq.loi === null && kq.cookies.con() === false && auth.goi('token').length === 1 && auth.goi('logout').length === 2, kq.loi ?? '');
+    ok('RÀ SOÁT 14/11 (vòng hai): …và có một dòng nhật ký [qua-tai] cho lượt thu hồi hỏng', dongThuHoi(dong).length === 1, dong.join(' | ') || '(không dòng nào)');
+  }
+  // Bị TỪ CHỐI (phiên đã mất, refresh token đã dùng) không phải "bận": không ghi nhật ký quá tải.
+  auth.datLai();
+  const mat = auth.dangNhap();
+  auth.phien.set(mat.phienId, false);
+  const dongMat = await batCanhBao(() => bamDangXuat(cookieCua(mat)));
+  ok('Phiên đã mất ở Supabase: không ghi dòng [qua-tai] nào (không phải quá tải)', dongThuHoi(dongMat).length === 0, dongMat.join(' | '));
 });
 
 // ===========================================================================
@@ -264,8 +324,37 @@ await nhom('7b · Supabase treo (không trả lời) → đăng xuất vẫn xon
   auth.datLai();
   const t = auth.dangNhap();
   const batDau = Date.now();
-  await dangXuat(cookieCua(t), { taoTam, hanMs: 5000 });
+  const nenNhanh = [];
+  const dongNhanh = await batCanhBao(() => dangXuat(cookieCua(t), { taoTam, hanMs: 5000, chayNen: viec => { nenNhanh.push(viec); } }));
   ok('Supabase trả lời ngay → đăng xuất xong ngay (không đợi hết hạn), phiên đã thu hồi', Date.now() - batDau < 2000 && auth.phien.get(t.phienId) === false, `${Date.now() - batDau} ms`);
+  ok('…không dòng nhật ký nào', dongNhanh.length === 0, dongNhanh.join(' | '));
+
+  // Vòng hai 14/11 — Supabase CHẬM hơn hạn đợi nhưng vẫn chạy. Trên Worker (workerd), việc còn dở lúc trang đã trả
+  // lời bị cắt ngay: lượt /logout đang đi bị đóng kết nối, phiên không bị thu hồi, không ai biết. dangXuat giao
+  // promise của lượt thu hồi cho `chayNen` (trang thật: waitUntil của Worker) và ghi một dòng nhật ký khi quá hạn.
+  auth.datLai();
+  const cham = auth.dangNhap();
+  const fetchNhanh = globalThis.fetch;
+  globalThis.fetch = async (...thamSo) => { await new Promise(xong => setTimeout(xong, 1500)); return fetchNhanh(...thamSo); };
+  try {
+    const nen = [];
+    const cookies = cookieCua(cham);
+    const luc = Date.now();
+    const dong = await batCanhBao(() => dangXuat(cookies, { taoTam, hanMs: 300, chayNen: viec => { nen.push(viec); } }));
+    const mat = Date.now() - luc;
+    ok('RÀ SOÁT 14/11 (vòng hai): Supabase chậm hơn hạn đợi → trang vẫn trả lời đúng hạn, cookie bị xóa',
+       mat >= 250 && mat < 1400 && cookies.con() === false, `${mat} ms`);
+    ok('RÀ SOÁT 14/11 (vòng hai): …lượt thu hồi được giao cho việc chạy nền — đúng một promise',
+       nen.length === 1 && typeof nen[0]?.then === 'function', `${nen.length} lần giao`);
+    ok('RÀ SOÁT 14/11 (vòng hai): …lúc trang trả lời phiên chưa kịp thu hồi, và có đúng một dòng nhật ký nói vậy',
+       auth.phien.get(cham.phienId) === true && dongThuHoi(dong).length === 1, dong.join(' | ') || '(không dòng nào)');
+    await nen[0];
+    ok('RÀ SOÁT 14/11 (vòng hai): …việc chạy nền xong thì phiên đã bị thu hồi', auth.phien.get(cham.phienId) === false);
+  } finally {
+    globalThis.fetch = fetchNhanh;
+  }
+  ok('Supabase trả lời trong hạn: lượt thu hồi cũng được giao cho việc chạy nền (một promise, đã xong)', nenNhanh.length === 1);
+  ok('Không có ngữ cảnh Worker (chayNen không truyền): dangXuat vẫn chạy như cũ', (await bamDangXuat(cookieCua(auth.dangNhap()))).loi === null);
 });
 
 // ===========================================================================
@@ -281,6 +370,8 @@ await nhom('8 · Trang /noi-bo/dang-xuat: gọi đúng hàm này, bảo trình d
      tl.status === 302 && tl.headers.get('location') === '/noi-bo/dang-nhap' && cookies.con() === false, `HTTP ${tl.status} → ${tl.headers.get('location')}`);
   // Rà soát mã 14/11: không ép no-store cho cả khu nội bộ (lib/header-noi-bo.ts), nên chính lúc đăng xuất phải bảo
   // trình duyệt bỏ bản trang nó đang giữ — không thì người đến sau bấm Quay lại là thấy trang của người trước.
+  // Header này gỡ bản lưu đệm HTTP và các trang ĐÃ nằm trong bộ nhớ quay lại; chính trang vừa bấm Đăng xuất thì do
+  // sau-dang-xuat.js lo (nhóm 9).
   ok('RÀ SOÁT 14/11: trả lời đăng xuất mang Clear-Site-Data: "cache"', tl.headers.get('clear-site-data') === '"cache"', tl.headers.get('clear-site-data') ?? '(không có)');
 
   const ck2 = cookieCua(auth.dangNhap());
@@ -288,11 +379,131 @@ await nhom('8 · Trang /noi-bo/dang-xuat: gọi đúng hàm này, bảo trình d
   ok('GET không đăng xuất ai: chỉ chuyển về /noi-bo, cookie còn nguyên, không xóa bộ đệm của ai',
      xem.status === 302 && xem.headers.get('location') === '/noi-bo' && ck2.con() === true && xem.headers.get('clear-site-data') === null);
 
+  // Có ngữ cảnh Worker (locals.cfContext của bộ nối Cloudflare): trang vẫn trả lời đúng, không ném lỗi. Máy chạy
+  // kiểm thử chưa nối database nên không có lượt thu hồi nào để giao — phần giao việc kiểm ở nhóm 7b (hàm) và bằng
+  // mã nguồn ngay dưới (trang).
+  const daGiao = [];
+  const ck3 = cookieCua(auth.dangNhap());
+  const tl3 = await POST({ cookies: ck3, redirect: chuyen, locals: { cfContext: { waitUntil: viec => { daGiao.push(viec); } } } });
+  ok('POST có ngữ cảnh Worker: vẫn 302 về trang đăng nhập, cookie bị xóa', tl3.status === 302 && ck3.con() === false && daGiao.length === 0);
+
   const trang = readFileSync(join(GOC, 'web/src/pages/noi-bo/dang-xuat.ts'), 'utf8');
-  ok('POST đợi dangXuat(cookies) xong rồi mới trả lời', /export const POST: APIRoute = async \(\{ cookies, redirect \}\) => \{\s*await dangXuat\(cookies\);/.test(trang));
+  ok('POST đợi dangXuat xong rồi mới trả lời',
+     /export const POST: APIRoute = async \(\{ cookies, redirect, locals \}\) => \{[\s\S]{0,400}?await dangXuat\(cookies, \{ chayNen/.test(trang), trang.slice(trang.indexOf('export const POST'), trang.indexOf('export const POST') + 300));
+  ok('RÀ SOÁT 14/11 (vòng hai): POST giao lượt thu hồi cho waitUntil của Worker (locals.cfContext)',
+     /const nguCanh = \(locals as [^;]*\)\?\.cfContext;/.test(trang) && /chayNen: viec => nguCanh\?\.waitUntil\?\.\(viec\)/.test(trang));
   const lib = readFileSync(join(GOC, 'web/src/lib/phien.ts'), 'utf8');
   const than = lib.slice(lib.indexOf('export async function dangXuat'), lib.indexOf('\n}\n', lib.indexOf('export async function dangXuat')));
   ok('dangXuat xóa cookie trong khối finally — thu hồi hỏng kiểu gì cũng không giữ cookie lại', /finally\s*\{\s*xoaToken\(cookies\);?\s*\}/.test(than), than.slice(0, 300));
+});
+
+// ===========================================================================
+await nhom('9 · Nút Quay lại sau khi đăng xuất: trang cũ không hiện lại từ bộ nhớ của trình duyệt (sau-dang-xuat.js)', async () => {
+  // Vòng hai 14/11: thử bằng Chromium bản đầy đủ có bfcache (bản mặc định của Playwright không có) — Clear-Site-Data
+  // không gỡ được chính trang vừa bấm Đăng xuất khỏi bộ nhớ quay lại: bấm Quay lại là trang cũ hiện ra, máy chủ không
+  // được hỏi. web/public/kho/js/sau-dang-xuat.js tải lại trang trong đúng trường hợp đó. Ở đây chạy chính file đó với
+  // cửa sổ giả; trên bản build thật và trình duyệt thật: web/kiem-tra/trinh-duyet.mjs nhóm 4.
+  const DUONG_MA = join(GOC, 'web/public/kho/js/sau-dang-xuat.js');
+  let ma = '';
+  try { ma = readFileSync(DUONG_MA, 'utf8'); } catch { /* chưa có file: mọi kiểm tra bên dưới đỏ */ }
+  ok('RÀ SOÁT 14/11 (vòng hai): có file web/public/kho/js/sau-dang-xuat.js', ma.length > 0);
+
+  /** Một trang nội bộ vừa tải lúc `bayGio`, dùng chung kho localStorage `kho` với các tab khác. */
+  function moTrang({ bayGio, kho = new Map(), khoHong = false }) {
+    const nghe = { document: {}, window: {} };
+    const tt = { bayGio, taiLai: 0 };
+    const khoGia = khoHong
+      ? { getItem() { throw new Error('SecurityError'); }, setItem() { throw new Error('SecurityError'); } }
+      : { getItem: k => (kho.has(k) ? kho.get(k) : null), setItem: (k, v) => { kho.set(k, String(v)); } };
+    const goc = { style: {} };
+    const document = { documentElement: goc, addEventListener: (ten, ham) => { (nghe.document[ten] ??= []).push(ham); } };
+    const window = {
+      localStorage: khoGia, location: { reload: () => { tt.taiLai += 1; } },
+      addEventListener: (ten, ham) => { (nghe.window[ten] ??= []).push(ham); },
+    };
+    let loi = null;
+    try { vm.runInNewContext(ma, { window, document, Date: { now: () => tt.bayGio }, parseInt, String }); } catch (e) { loi = String(e?.message ?? e); }
+    const ban = (noi, ten, suKien) => { for (const ham of nghe[noi][ten] ?? []) ham(suKien); };
+    const form = hanhDong => ({ getAttribute: ten => (ten === 'action' ? hanhDong : null) });
+    return {
+      loi, kho,
+      datGio: gio => { tt.bayGio = gio; },
+      guiForm: hanhDong => ban('document', 'submit', { target: form(hanhDong) }),
+      /** Trang hiện ra: tuBoNho = true là lấy từ bộ nhớ quay lại (pageshow, persisted). */
+      hienRa: tuBoNho => ban('window', 'pageshow', { persisted: tuBoNho }),
+      taiLai: () => tt.taiLai,
+      biGiau: () => goc.style.visibility === 'hidden',
+    };
+  }
+
+  const a = moTrang({ bayGio: 1000 });
+  ok('File chạy được với cửa sổ giả', a.loi === null, a.loi ?? '');
+  a.hienRa(true);
+  ok('Chưa ai đăng xuất: Quay lại từ bộ nhớ KHÔNG tải lại (bấm nhầm link rồi quay lại, chữ đang gõ dở còn nguyên)',
+     a.taiLai() === 0 && !a.biGiau());
+
+  const b = moTrang({ bayGio: 1000 });
+  b.datGio(5000); b.guiForm('/noi-bo/dang-xuat');
+  b.hienRa(false);
+  ok('Bấm Đăng xuất rồi trang hiện theo lối thường (không từ bộ nhớ): không làm gì', b.taiLai() === 0 && !b.biGiau());
+  b.hienRa(true);
+  ok('RÀ SOÁT 14/11 (vòng hai): bấm Đăng xuất ở trang này rồi Quay lại từ bộ nhớ → giấu trang và tải lại đúng một lần',
+     b.taiLai() === 1 && b.biGiau(), `tải lại ${b.taiLai()} lần, giấu: ${b.biGiau()}`);
+
+  for (const hanhDong of ['/noi-bo/kho/may', '/noi-bo/dat-ban', '', null, '/noi-bo/dang-xuat-khac']) {
+    const c = moTrang({ bayGio: 1000 });
+    c.guiForm(hanhDong); c.hienRa(true);
+    ok(`Gửi form khác (action ${JSON.stringify(hanhDong)}) không tính là đăng xuất`, c.taiLai() === 0 && !c.biGiau());
+  }
+  for (const hanhDong of ['/noi-bo/dang-xuat/', '/noi-bo/dang-xuat?x=1']) {
+    const c = moTrang({ bayGio: 1000 });
+    c.guiForm(hanhDong); c.hienRa(true);
+    ok(`Form đăng xuất viết ${hanhDong} vẫn được nhận ra`, c.taiLai() === 1);
+  }
+
+  // Hai tab dùng chung localStorage: tab kia bấm Đăng xuất SAU khi tab này tải trang.
+  const khoChung = new Map();
+  const tabNay = moTrang({ bayGio: 1000, kho: khoChung });
+  const tabKia = moTrang({ bayGio: 2000, kho: khoChung });
+  tabKia.datGio(3000); tabKia.guiForm('/noi-bo/dang-xuat');
+  tabNay.hienRa(true);
+  ok('RÀ SOÁT 14/11 (vòng hai): tab khác bấm Đăng xuất sau lúc trang này tải → Quay lại từ bộ nhớ thì tải lại',
+     tabNay.taiLai() === 1 && tabNay.biGiau(), JSON.stringify([...khoChung]));
+  // Trang tải SAU lần đăng xuất đó (đã đăng nhập lại): không bị tải lại nữa.
+  const tabMoi = moTrang({ bayGio: 4000, kho: khoChung });
+  tabMoi.hienRa(true);
+  ok('Trang tải sau lần đăng xuất gần nhất: Quay lại từ bộ nhớ không tải lại', tabMoi.taiLai() === 0 && !tabMoi.biGiau());
+
+  // Trình duyệt chặn localStorage (chế độ riêng tư cũ, cài đặt chặn dữ liệu trang): không ném lỗi, còn biến của trang.
+  const chan = moTrang({ bayGio: 1000, khoHong: true });
+  let loiChan = null;
+  try { chan.hienRa(true); chan.guiForm('/noi-bo/dang-xuat'); chan.hienRa(true); } catch (e) { loiChan = String(e?.message ?? e); }
+  ok('localStorage bị chặn: không ném lỗi; chưa đăng xuất thì không tải lại, bấm Đăng xuất ở trang này thì vẫn tải lại',
+     chan.loi === null && loiChan === null && chan.taiLai() === 1, loiChan ?? `tải lại ${chan.taiLai()} lần`);
+  const rac = moTrang({ bayGio: 1000, kho: new Map([['bt_dang_xuat_luc', 'không phải số']]) });
+  rac.hienRa(true);
+  ok('Giá trị lạ trong localStorage: coi như chưa ai đăng xuất', rac.taiLai() === 0);
+
+  ok('File không đụng cookie (cookie phiên là httpOnly) và không gọi mạng', ma.length > 0 && !/document\.cookie|fetch\(|XMLHttpRequest/.test(ma));
+
+  // Hai khung giao diện nạp file này ở MỌI trang (không điều kiện), và mọi form Đăng xuất nằm trong một khung như vậy.
+  const THE = /<script is:inline src="\/kho\/js\/sau-dang-xuat\.js" defer><\/script>\s*<\/body>/;
+  for (const khung of ['web/src/layouts/NoiBo.astro', 'web/src/layouts/Kho.astro']) {
+    const nguon = readFileSync(join(GOC, khung), 'utf8');
+    ok(`RÀ SOÁT 14/11 (vòng hai): ${khung} nạp sau-dang-xuat.js ngay trước </body>, không điều kiện`,
+       THE.test(nguon) && (nguon.match(/src="\/kho\/js\/sau-dang-xuat\.js"/g) ?? []).length === 1);
+  }
+  const moiAstro = thuMuc => readdirSync(thuMuc, { withFileTypes: true, recursive: true })
+    .filter(f => f.isFile() && f.name.endsWith('.astro')).map(f => join(f.parentPath ?? f.path, f.name));
+  const coForm = moiAstro(join(GOC, 'web/src')).filter(f => /dang-xuat"/.test(readFileSync(f, 'utf8')));
+  const sai = coForm.filter(f => {
+    const nguon = readFileSync(f, 'utf8');
+    const dungDang = (nguon.match(/dang-xuat"/g) ?? []).length === (nguon.match(/<form method="POST" action="\/noi-bo\/dang-xuat"/g) ?? []).length;
+    const trongKhung = /layouts[\\/](NoiBo|Kho)\.astro$/.test(f) || /from '[^']*layouts\/(NoiBo|Kho)\.astro'/.test(nguon);
+    return !(dungDang && trongKhung);
+  });
+  ok(`Mọi form Đăng xuất (${coForm.length} file) viết đúng action="/noi-bo/dang-xuat" và nằm trong khung NoiBo hoặc Kho`,
+     coForm.length >= 3 && sai.length === 0, sai.map(f => relative(GOC, f)).join(', '));
 });
 
 process.exit(ketThuc('đăng xuất thu hồi phiên'));

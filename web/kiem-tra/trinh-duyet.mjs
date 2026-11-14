@@ -43,6 +43,9 @@
  *      Mọi trả lời dưới /noi-bo cấm nhúng vào khung (frame-ancestors 'none', X-Frame-Options:
  *      DENY) và không vào bộ đệm dùng chung (private), không bị ép no-store; đăng xuất mang
  *      Clear-Site-Data: "cache"; trang công khai thì không bị gắn gì.
+ *      Bấm Đăng xuất rồi bấm Quay lại: trang cũ không hiện lại từ bộ nhớ quay lại của trình duyệt
+ *      (bfcache) mà được tải lại từ máy chủ — thử bằng Chromium BẢN ĐẦY ĐỦ có bfcache bật, kèm một
+ *      phép đối chứng là trình duyệt đó có bfcache thật; Quay lại bình thường thì vẫn giữ nguyên trang.
  *   5. Menu gọn của màn hẹp (<details class="menu-gon">) mở / đóng được KHI TẮT
  *      JavaScript; có JavaScript thì Esc đóng nó và trả tiêu điểm về nút. Mở ra thì nút
  *      đổi thành nút đóng có nhãn chữ, có link "Hỏi bàn" là nút chính, có bộ chọn ngôn
@@ -511,7 +514,8 @@ try {
       ok('Trang chủ công khai không bị gắn header của khu nội bộ', !camNhung(ck) && !/private|no-store/.test(ck['cache-control'] ?? '')
          && !/frame-ancestors/.test(ck['content-security-policy'] ?? '') && ck['x-frame-options'] === undefined, tomDau(ck));
       // Đăng xuất (chưa đăng nhập cũng gửi được: /noi-bo/dang-xuat mở cho mọi người): về trang đăng nhập, kèm lệnh
-      // bảo trình duyệt bỏ bản trang đang giữ — người đến sau bấm Quay lại không thấy trang của người trước.
+      // bảo trình duyệt bỏ bản lưu đệm và các trang đã nằm trong bộ nhớ quay lại của nó. Riêng trang vừa bấm Đăng
+      // xuất thì lệnh này không gỡ được — khối "NÚT QUAY LẠI" ngay dưới.
       const ra = await page.request.post(goc + '/noi-bo/dang-xuat', {
         headers: { Origin: goc, 'Content-Type': 'application/x-www-form-urlencoded' }, data: '', maxRedirects: 0,
       });
@@ -519,6 +523,91 @@ try {
          ra.status() === 302 && new URL(ra.headers().location ?? '', goc).pathname === '/noi-bo/dang-nhap'
          && ra.headers()['clear-site-data'] === '"cache"' && camNhung(ra.headers()),
          `HTTP ${ra.status()} → ${ra.headers().location} · clear-site-data: ${ra.headers()['clear-site-data']} · ${tomDau(ra.headers())}`);
+
+      // NÚT QUAY LẠI SAU KHI ĐĂNG XUẤT (vòng hai của rà soát 14/11/2026). Header ở trên KHÔNG đủ: trang vừa bấm Đăng
+      // xuất vẫn nằm trong bộ nhớ quay lại (bfcache) của trình duyệt, bấm Quay lại là hiện ra mà máy chủ không được
+      // hỏi. public/kho/js/sau-dang-xuat.js tải lại trang trong đúng trường hợp đó.
+      //
+      // Phải thử bằng Chromium BẢN ĐẦY ĐỦ: bản rút gọn mà chromium.launch() trần dùng không có bfcache, và Playwright
+      // còn tắt bfcache bằng một cờ mặc định — thử ở đó thì lỗi này không bao giờ lộ (bản đầu của đợt vá đã kết luận
+      // sai đúng vì vậy). Phép đối chứng đầu tiên bắt chính chuyện đó: trình duyệt thử không có bfcache là đỏ.
+      // Bản build này không có database nên không đăng nhập được: form Đăng xuất được dựng ngay trên trang đăng nhập
+      // — cùng khung NoiBo, cùng file sau-dang-xuat.js; lượt POST /noi-bo/dang-xuat là của Worker thật.
+      let coBoNho = null;
+      try {
+        coBoNho = await moChromium(chromium, { channel: 'chromium', ignoreDefaultArgs: ['--disable-back-forward-cache'] });
+      } catch (e) {
+        ok('Mở được Chromium bản đầy đủ để thử nút Quay lại (thiếu thì: cd web && npx playwright install chromium)', false, String(e.message).split('\n')[0]);
+      }
+      if (coBoNho) {
+        try {
+          const ctxLui = await coBoNho.newContext();
+          const tab = await ctxLui.newPage();
+          const dieuHuong = t => {
+            const ds = [];
+            t.on('request', r => { if (r.isNavigationRequest()) ds.push(new URL(r.url()).pathname + new URL(r.url()).search); });
+            return ds;
+          };
+          const yeuCau = dieuHuong(tab);
+          // Trang hiện lại từ bfcache thì không có sự kiện load — page.goBack() chờ mãi. Lùi bằng history.back().
+          const lui = async t => { await t.evaluate(() => { history.back(); }).catch(() => {}); await t.waitForTimeout(1200); await t.waitForLoadState('load').catch(() => {}); };
+          const danhDau = t => t.evaluate(() => { window.__taiLieuCu = true; });
+          const conTaiLieuCu = t => t.evaluate(() => window.__taiLieuCu === true).catch(() => false);
+          const dungFormDangXuat = t => t.evaluate(() => {
+            const f = document.createElement('form');
+            f.method = 'POST'; f.setAttribute('action', '/noi-bo/dang-xuat');
+            f.innerHTML = '<button type="submit" id="thu-dang-xuat">Đăng xuất</button>';
+            document.body.appendChild(f);
+          });
+          const bamDangXuat = async (t, dau) => {
+            await Promise.all([t.waitForURL(u => !u.search.includes(dau)), t.click('#thu-dang-xuat')]);
+            await t.waitForLoadState('load');
+          };
+
+          await tab.goto(goc + '/noi-bo/dang-nhap?buoc=1'); await danhDau(tab);
+          ok('Trang đăng nhập (khung NoiBo) nạp /kho/js/sau-dang-xuat.js',
+             await tab.locator('script[src="/kho/js/sau-dang-xuat.js"]').count() === 1);
+          await tab.goto(goc + '/noi-bo/dang-nhap?buoc=2');
+          await lui(tab);
+          const coBfcache = await conTaiLieuCu(tab);
+          ok('Đối chứng: trình duyệt thử có bfcache thật — Quay lại bình thường hiện lại đúng trang cũ, không hỏi máy chủ, không bị tải lại',
+             coBfcache && new URL(tab.url()).search === '?buoc=1', `${coBoNho.version()} · ${tab.url()}`);
+
+          await tab.goto(goc + '/noi-bo/dang-nhap?buoc=3'); await danhDau(tab); await dungFormDangXuat(tab);
+          await bamDangXuat(tab, 'buoc=3');
+          ok('Bấm Đăng xuất: về trang đăng nhập', new URL(tab.url()).pathname === '/noi-bo/dang-nhap' && new URL(tab.url()).search === '', tab.url());
+          let moc = yeuCau.length;
+          await lui(tab);
+          ok('RÀ SOÁT 14/11 (vòng hai): bấm Đăng xuất rồi Quay lại — trang cũ KHÔNG hiện lại từ bộ nhớ, máy chủ được hỏi lại',
+             coBfcache && !(await conTaiLieuCu(tab)) && yeuCau.slice(moc).some(y => y.includes('buoc=3')),
+             `còn tài liệu cũ: ${await conTaiLieuCu(tab)} · máy chủ nhận sau khi lùi: ${JSON.stringify(yeuCau.slice(moc))}`);
+
+          // Đăng xuất ở TAB KHÁC; tab này đang mở một trang tải từ trước, rời trang rồi Quay lại.
+          const tabKia = await ctxLui.newPage();
+          const yeuCauKia = dieuHuong(tabKia);
+          await tabKia.goto(goc + '/noi-bo/dang-nhap?buoc=4'); await danhDau(tabKia);
+          await tabKia.waitForTimeout(30);
+          await tab.goto(goc + '/noi-bo/dang-nhap?buoc=5'); await dungFormDangXuat(tab);
+          await bamDangXuat(tab, 'buoc=5');
+          await tabKia.goto(goc + '/noi-bo/dang-nhap?buoc=6');
+          moc = yeuCauKia.length;
+          await lui(tabKia);
+          ok('RÀ SOÁT 14/11 (vòng hai): đăng xuất ở tab khác, tab này rời trang rồi Quay lại — trang cũ cũng được tải lại',
+             coBfcache && !(await conTaiLieuCu(tabKia)) && yeuCauKia.slice(moc).some(y => y.includes('buoc=4')),
+             `còn tài liệu cũ: ${await conTaiLieuCu(tabKia)} · máy chủ nhận sau khi lùi: ${JSON.stringify(yeuCauKia.slice(moc))}`);
+
+          // Trang tải SAU lần đăng xuất (như sau khi đăng nhập lại): Quay lại bình thường vẫn giữ nguyên trang —
+          // bấm nhầm một link rồi quay lại, chữ đang gõ dở không mất.
+          await tab.goto(goc + '/noi-bo/dang-nhap?buoc=7'); await danhDau(tab);
+          await tab.goto(goc + '/noi-bo/dang-nhap?buoc=8');
+          await lui(tab);
+          ok('Trang tải sau lần đăng xuất: Quay lại bình thường vẫn hiện đúng trang cũ, không bị tải lại',
+             await conTaiLieuCu(tab) && new URL(tab.url()).search === '?buoc=7', tab.url());
+          await ctxLui.close();
+        } finally {
+          await coBoNho.close();
+        }
+      }
     });
     await ctx.close();
   }

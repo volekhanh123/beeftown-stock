@@ -20,8 +20,11 @@
  * "bấm nút Quay lại của trình duyệt rồi gửi lại". Thử trong Chromium 14/11/2026: không có no-store thì bấm Quay
  * lại hiện lại đúng form với chữ đang gõ, không hỏi máy chủ; có no-store thì trình duyệt xin lại trang từ máy chủ
  * đang bận, nhận trang "đang bận", form biến mất. Việc "người đến sau không thấy trang của người trước" làm ở đúng
- * lúc cần: Đăng xuất gửi Clear-Site-Data: "cache" (pages/noi-bo/dang-xuat.ts), và chế độ máy dùng chung tự đặt
- * no-store cho từng trang (lib/kho/may-chung.ts).
+ * lúc cần: Đăng xuất gửi Clear-Site-Data: "cache" (pages/noi-bo/dang-xuat.ts) VÀ hai khung giao diện nạp
+ * public/kho/js/sau-dang-xuat.js — trang hiện lại từ bộ nhớ quay lại (bfcache) sau một lần bấm Đăng xuất thì tự
+ * tải lại. Riêng header thì không đủ: nó không gỡ được chính trang vừa bấm Đăng xuất khỏi bộ nhớ đó (thử bằng
+ * Chromium 156 và Chrome 153 bản đầy đủ, 14/11/2026). Chế độ máy dùng chung tự đặt no-store cho từng trang
+ * (lib/kho/may-chung.ts).
  *
  * Hàm thuần — kiểm ở crm/test/test-noi-bo-header-bao-ve.mjs; trên bản build thật: kiem-tra/trinh-duyet.mjs nhóm 4.
  */

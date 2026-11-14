@@ -9,7 +9,7 @@
  * Trang công khai không đi qua đây.
  *
  * Cũng vì là một chỗ, đây là nơi gắn header bảo vệ cho MỌI trả lời của /noi-bo
- * (không lưu đệm, không cho nhúng vào khung — lib/header-noi-bo.ts): onRequest
+ * (không vào bộ đệm dùng chung, không cho nhúng vào khung — lib/header-noi-bo.ts): onRequest
  * chỉ có hai lối ra, và lối của /noi-bo luôn đi qua datHeaderNoiBo.
  */
 
