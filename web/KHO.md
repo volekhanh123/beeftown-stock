@@ -506,8 +506,9 @@ khóa máy, quản lý mở ở màn Nhân viên & máy. Mọi sự kiện ghi `
    (`crypto.getRandomValues`, 12 chữ không dễ nhầm, dạng `Xk7m-4Rtq-9wPa`). Phiên của người mới
    **không bao giờ vào cookie** (chủ không bị đăng xuất) và bị thu hồi ngay.
 3. `kho_them_nhan_su(p_auth_uid, p_ho_ten, p_vai_tro, p_chi_nhanh_id)` bằng **client của chủ** — chỉ chủ;
-   chỉ vai `thu_kho | nhan_vien_quay | ke_toan | may_chung | may_ipos` (web không cho chọn `may_ipos`
-   tới GĐ7a); uid phải có trong `auth.users` và chưa gắn nhân sự nào.
+   chỉ vai `thu_kho | nhan_vien_quay | ke_toan | may_chung | may_ipos | hoc_vien` (web không cho chọn `may_ipos`
+   tới GĐ7a; `hoc_vien` từ 0119 — tài khoản demo của buổi đào tạo, chỉ mở trang Video đào tạo, `web/README.md`
+   mục "Video đào tạo"); uid phải có trong `auth.users` và chưa gắn nhân sự nào.
 4. Mật khẩu tạm hiện **một lần** trên màn trả lời POST (không chuyển hướng, `Cache-Control: no-store`),
    không lưu ở đâu. F5 gửi lại → `ma_gui` trùng cookie `bt_kho_nv_gui` (chỉ chứa `ma_gui`) → không tạo lần hai.
 

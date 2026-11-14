@@ -6,6 +6,10 @@
  * bắt được chuyện quên đó. Ở đây thì trang mới tự động được bảo vệ, và muốn
  * mở ra ngoài phải sửa đúng file này — một việc cố ý, nhìn thấy trong diff.
  *
+ * Cùng lý do, tài khoản HỌC VIÊN (0118, 0119 — tài khoản demo của buổi đào
+ * tạo) bị giữ ở trang Video đào tạo ngay tại đây, không ở từng trang: trang
+ * /noi-bo hay /noi-bo/kho thêm sau này tự được chặn với học viên.
+ *
  * Trang công khai không đi qua đây.
  */
 
@@ -14,6 +18,7 @@ import { layPhien, coDatabase } from './lib/phien';
 import { QUA_TAI, trangQuaTai } from './lib/qua-tai';
 import { dichBu, chayNen, denLuotDichBu, VAI_BIEN_TAP } from './lib/ban-dich';
 import { docNgonNguNB, ghiNgonNguNB, laNgonNguNB } from './lib/ngon-ngu-noi-bo';
+import { chuyenHuongHocVien } from './lib/dieu-huong-noi-bo';
 
 const MO_CHO_MOI_NGUOI = ['/noi-bo/dang-nhap', '/noi-bo/dang-xuat'];
 
@@ -54,6 +59,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   context.locals.phien = phien;
+
+  // HỌC VIÊN: chỉ trang Video đào tạo (lib/dieu-huong-noi-bo.ts). Đứng TRƯỚC
+  // next(): trang khác — kể cả lượt POST, file tải về của kho, trang 404 —
+  // không chạy dòng nào. Database cũng chỉ cho vai này đọc video_dao_tao
+  // (0119); dòng này để học viên không lạc vào trang toàn ô trống.
+  const veDaoTao = chuyenHuongHocVien(phien.nhanSu.vai_tro, duong);
+  if (veDaoTao) return context.redirect(veDaoTao, 302);
 
   // DỊCH BÙ, CHẠY NỀN — những chỗ không đi qua nút Lưu của màn soạn: sửa thẳng
   // trong Supabase Studio, hoặc lần dịch trước bị lỗi. Chỉ vai biên tập (vai

@@ -2,8 +2,9 @@
  * KHO — NHÂN VIÊN VÀ MÁY DÙNG CHUNG (GĐ5d, migration 0034)
  *
  * Trang /noi-bo/kho/cai-dat/nhan-vien:
- *   · CHỦ tự tạo tài khoản cho thủ kho, NV quầy/bếp, kế toán và cho tablet
- *     dùng chung — không phải nhờ người rành kỹ thuật vào Supabase.
+ *   · CHỦ tự tạo tài khoản cho thủ kho, NV quầy/bếp, kế toán, cho tablet
+ *     dùng chung và tài khoản học viên của buổi đào tạo (0119 — chỉ mở trang
+ *     Video đào tạo) — không phải nhờ người rành kỹ thuật vào Supabase.
  *   · Chủ khóa / mở lại tài khoản (nghỉ việc thì khóa, không xóa).
  *   · Quản lý và chủ xem máy dùng chung: ai đã gắn, ai đang bị khóa vì sai
  *     PIN; mở khóa, khóa hẳn, tắt máy, gỡ người.
@@ -42,12 +43,14 @@ import { biMatHopLe, BI_MAT_TOI_THIEU } from './may-chung-ma-hoa.ts';
 // VAI
 // -----------------------------------------------------------------------------
 /**
- * Vai chủ tạo được ở màn này — khớp danh sách trong kho_them_nhan_su (0034).
+ * Vai chủ tạo được ở màn này — khớp danh sách trong kho_them_nhan_su (bản cuối 0119).
  * may_ipos (GĐ7a, 0037): tài khoản của máy chủ đồng bộ iPOS (cron) — chỉ có
- * việc dong_bo_ban, không đọc được gì. Vai CRM (quản lý, thu ngân, marketing) KHÔNG tạo ở đây vì họ
+ * việc dong_bo_ban, không đọc được gì. hoc_vien (0119): tài khoản demo dùng
+ * chung cho buổi đào tạo — chỉ đọc được video đào tạo, chỉ mở được trang
+ * /noi-bo/dao-tao (middleware.ts). Vai CRM (quản lý, thu ngân, marketing) KHÔNG tạo ở đây vì họ
  * thấy dữ liệu khách hàng.
  */
-export const VAI_TAO_DUOC = ['thu_kho', 'nhan_vien_quay', 'ke_toan', 'may_chung', 'may_ipos'] as const;
+export const VAI_TAO_DUOC = ['thu_kho', 'nhan_vien_quay', 'ke_toan', 'may_chung', 'may_ipos', 'hoc_vien'] as const;
 export type VaiTaoDuoc = typeof VAI_TAO_DUOC[number];
 
 export const TEN_VAI_NHAN_VIEN_NB: Record<string, HaiThuTieng> = {
@@ -57,6 +60,8 @@ export const TEN_VAI_NHAN_VIEN_NB: Record<string, HaiThuTieng> = {
   ke_toan: { vi: 'Kế toán', en: 'Accountant' },
   may_chung: { vi: 'Máy tính bảng dùng chung', en: 'Shared tablet' },
   may_ipos: { vi: 'Máy đồng bộ iPOS', en: 'iPOS sync device' },
+  // Tên nói luôn tài khoản làm được gì: chủ chọn trong ô Vai, thấy lại ở danh sách Nhân viên.
+  hoc_vien: { vi: 'Học viên — chỉ xem video đào tạo', en: 'Trainee — training videos only' },
 };
 /** Bản chỉ tiếng Việt (tên cũ, giữ cho code và test cũ). */
 export const TEN_VAI_NHAN_VIEN: Record<string, string> = Object.fromEntries(

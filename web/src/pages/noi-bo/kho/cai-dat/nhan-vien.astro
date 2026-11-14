@@ -2,9 +2,9 @@
 /**
  * KHO — CÀI ĐẶT · NHÂN VIÊN VÀ MÁY DÙNG CHUNG (GĐ5d, migration 0034)
  *
- *   · Nhân viên (CHỈ chủ): danh sách quản lý, nhân viên kho, tài khoản máy;
- *     "Thêm nhân viên" (tạo luôn tài khoản đăng nhập, mật khẩu tạm hiện MỘT
- *     lần); khóa / mở lại.
+ *   · Nhân viên (CHỈ chủ): danh sách quản lý, nhân viên kho, tài khoản máy,
+ *     tài khoản học viên (0119 — chỉ mở trang Video đào tạo); "Thêm nhân viên"
+ *     (tạo luôn tài khoản đăng nhập, mật khẩu tạm hiện MỘT lần); khóa / mở lại.
  *   · Máy dùng chung (quản lý, chủ — quyền duyet): máy nào, ai đã gắn, ai bị
  *     khóa vì sai PIN; mở khóa, khóa hẳn, tắt máy, gỡ người.
  *
@@ -115,6 +115,14 @@ const t = dichNB(nn, {
   nguoiNay: {
     vi: 'Người này đăng nhập ở trang Đăng nhập nội bộ bằng email và mật khẩu trên.',
     en: 'This person logs in on the internal login page with the email and password above.',
+  },
+  hocVien1: {
+    vi: 'Tài khoản học viên chỉ mở được trang Video đào tạo. Học viên đăng nhập ở trang Đăng nhập nội bộ bằng email và mật khẩu trên — cả lớp dùng chung một tài khoản được.',
+    en: 'A trainee account opens only the Training videos page. Trainees log in on the internal login page with the email and password above — the whole class can share one account.',
+  },
+  hocVien2: {
+    vi: ' Hết buổi đào tạo thì bấm "Khóa tài khoản" ở danh sách bên dưới. Buổi sau tạo tài khoản học viên mới với email khác — mở lại tài khoản này thì lớp trước vẫn đăng nhập được bằng mật khẩu cũ.',
+    en: ' When the training is over, press "Lock account" in the list below. For the next class, create a new trainee account with another email — if you reopen this one, the previous class can still log in with the old password.',
   },
   xacNhan: {
     vi: ' Trước đó phải bấm link xác nhận trong thư Supabase gửi tới email này.',
@@ -240,6 +248,8 @@ const nhanVienDaKhoa = nhanVien.filter(n => !n.dang_lam);
         <p class="kho-phu">{t.mayChung1} <strong>/noi-bo/kho/may/dang-ky</strong> {t.mayChung2}</p>
       ) : moiTao.vai_tro === 'may_ipos' ? (
         <p class="kho-phu">{t.mayIpos1} <code>KHO_IPOS_EMAIL</code> {t.mayIpos2} <code>KHO_IPOS_MAT_KHAU</code> {t.mayIpos3} <a href="/noi-bo/kho/cai-dat/ipos">{t.ketNoiIpos}</a>{t.mayIpos4}</p>
+      ) : moiTao.vai_tro === 'hoc_vien' ? (
+        <p class="kho-phu">{t.hocVien1}{moiTao.can_xac_nhan && t.xacNhan}{t.hocVien2}</p>
       ) : (
         <p class="kho-phu">{t.nguoiNay}
           {moiTao.can_xac_nhan && t.xacNhan}</p>

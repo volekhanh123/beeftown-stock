@@ -40,9 +40,9 @@ const t = dichNB(nn, {
   tenTrang:  { vi: 'Beeftown nội bộ',   en: 'Beeftown internal' },
 });
 
-// Đúng bảy vai của enum vai_tro (bốn vai CRM ở 0001, ba vai kho ở 0017).
-// Thêm nhãn cho một vai không có trong enum chỉ làm người đọc mã tưởng nó
-// tồn tại.
+// Đúng tám vai người của enum vai_tro (bốn vai CRM ở 0001, ba vai kho ở 0017,
+// học viên ở 0118). Thêm nhãn cho một vai không có trong enum chỉ làm người
+// đọc mã tưởng nó tồn tại.
 const TEN_VAI_TRO: Record<string, HaiThuTieng> = {
   chu_so_huu:     { vi: 'Chủ nhà hàng', en: 'Owner' },
   quan_ly:        { vi: 'Quản lý',      en: 'Manager' },
@@ -51,6 +51,7 @@ const TEN_VAI_TRO: Record<string, HaiThuTieng> = {
   thu_kho:        { vi: 'Thủ kho',      en: 'Storekeeper' },
   nhan_vien_quay: { vi: 'NV quầy/bếp',  en: 'Counter/kitchen staff' },
   ke_toan:        { vi: 'Kế toán',      en: 'Accountant' },
+  hoc_vien:       { vi: 'Học viên',     en: 'Trainee' },
 };
 
 // Ô nào hiện ra do VAI TRÒ quyết định, và danh sách vai ở lib/dieu-huong-noi-bo.ts

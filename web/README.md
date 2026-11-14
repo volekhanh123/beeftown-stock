@@ -317,20 +317,50 @@ thêm một màn mới là thêm một dòng ở đây, vai khớp với RLS / d
 `crm/test/test-noi-bo-dieu-huong.mjs` giữ: thanh đáy ≤ 5 nút, không mục nào nằm ngoài cả thanh đáy lẫn
 trang Tất cả chức năng, vai của từng mục đúng như trang đó cho vào, ô tìm đúng dấu tiếng Việt.
 
-### Video đào tạo (`/noi-bo/dao-tao`, migration 0117)
+### Video đào tạo (`/noi-bo/dao-tao`, migration 0117, học viên 0119)
 
 Video training để trên YouTube ở chế độ **Không công khai**, nhúng vào trang này cho mọi nhân viên đang đăng nhập —
 bảy vai người, kể cả vai kho (mục "Đào tạo" đứng sau "Kho" trên thanh của họ, và trong "Phần khác của nhà hàng" ở menu
-kho). Chủ và quản lý dán link YouTube để thêm, sửa tên / mô tả, xóa — ngay trên trang (`src/lib/video-dao-tao.ts`).
+kho) — và cho tài khoản học viên của buổi đào tạo. Chủ và quản lý sửa tên / mô tả, xóa ngay trên trang
+(`src/lib/video-dao-tao.ts`). Trang không có mục thêm video (Khánh 14/11/2026: "Không cần mục này").
 
 - **Mã video nằm trong database** (bảng `video_dao_tao`), không trong mã nguồn: repo công khai. RLS chỉ cho người đang
   đăng nhập đọc; `crm/test/test-noi-bo-video-dao-tao.mjs` quét `web/src` để không file nào chứa mã video.
 - **Giới hạn đã chốt (Khánh, 14/11/2026):** cổng đăng nhập giấu link, không khóa video — người đang xem vẫn chép được
   link YouTube, người đã nghỉ còn giữ link vẫn mở được. Chấp nhận vì nội dung không nhạy cảm. Cần khóa thật: Cloudflare
   Stream (link ký, tự hết hạn) — thay cột `youtube_id`, không thay trang.
-- Khung nhúng là `<iframe loading="lazy">` của `youtube-nocookie.com`, không JavaScript. Trên YouTube phải để bật
-  **Cho phép nhúng** (mặc định bật) — tắt thì khung báo video không phát được ở trang khác.
+- Khung nhúng là `<iframe loading="lazy">` của `youtube-nocookie.com`, không JavaScript.
 - Xóa ở đây chỉ gỡ khỏi trang; video vẫn còn trên YouTube.
+
+**Thêm video: thẳng vào database** — chủ, hoặc phiên Claude của chủ qua Supabase, chạy một câu `insert` trên project
+production (SQL Editor, hoặc công cụ chạy SQL của Supabase khi chủ bấm xác nhận):
+
+```sql
+insert into video_dao_tao (youtube_id, tieu_de, mo_ta)
+values ('AbCdEfGhIjK', 'Bài 1 — Đón khách và xếp bàn', null);
+```
+
+- `youtube_id`: 11 ký tự sau `youtu.be/` hoặc `watch?v=` của link (`AbCdEfGhIjK` ở trên là mã giả). `layMaYoutube` trong
+  `src/lib/video-dao-tao.ts` tách đúng mọi kiểu link YouTube hay gặp. Trùng mã thì database từ chối — mỗi video một dòng.
+- `tieu_de`: 1–150 ký tự, không khoảng trắng đầu / cuối — nhân viên thấy đúng tên này. `mo_ta`: `null` hoặc 1–1.000 ký tự.
+- Thứ tự trên trang là thứ tự thêm (`created_at`): thêm bài 1 trước. Trên YouTube: Chế độ hiển thị **Không công khai**,
+  để bật **Cho phép nhúng** (mặc định bật) — tắt thì khung báo video không phát được ở trang khác.
+
+**Tài khoản học viên** (vai `hoc_vien`, migration 0118 chạy riêng rồi 0119) — một tài khoản demo cả lớp dùng chung:
+
+- Chủ tạo ở **Kho › Cài đặt › Nhân viên**, vai "Học viên — chỉ xem video đào tạo"; mật khẩu tạm hiện một lần. Hết buổi
+  bấm **Khóa tài khoản** ở cùng màn. **Buổi sau tạo tài khoản mới** với email khác (ví dụ `daotao+1611@beeftown.vn`)
+  thay vì **Mở lại**: web không đổi được mật khẩu, nên mở lại là mở cho cả lớp trước.
+- Mật khẩu chung là giới hạn đã biết: ai đăng nhập được cũng tự đổi được mật khẩu (hay email) của tài khoản đó thẳng qua
+  Supabase Auth bằng khóa anon công khai — RLS không chặn được việc này. Bị đổi thì cả lớp không đăng nhập lại được
+  bằng mật khẩu cũ: khóa tài khoản đó, tạo tài khoản học viên mới (một phút ở màn Nhân viên).
+- Database: vai này chỉ đọc `video_dao_tao` và dòng `nhan_su` của chính nó — không bảng CRM, bảng kho, không ghi được
+  gì; khóa tài khoản là đọc 0 dòng ngay. `crm/test/test-noi-bo-hoc-vien.mjs` quét mọi bảng, mọi hàm.
+- Web: `src/middleware.ts` đưa mọi trang `/noi-bo` khác — kể cả kho và trang chưa có — về `/noi-bo/dao-tao`; đăng nhập
+  xong cũng vào thẳng đó (`chuyenHuongHocVien`, `src/lib/dieu-huong-noi-bo.ts`). Không thanh menu (chỉ một mục), không
+  nút sửa / xóa; còn nút English / Tiếng Việt và Đăng xuất.
+- Cả lớp đăng nhập cùng lúc dễ chạm hạn mức đăng nhập của Supabase (README gốc, "Hạ tầng cho 100 người dùng cùng
+  lúc"): mỗi máy đăng nhập một lần rồi giữ nguyên phiên.
 
 ### Tiếng Anh ở giao diện nội bộ
 

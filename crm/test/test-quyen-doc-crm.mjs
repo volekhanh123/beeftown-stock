@@ -40,9 +40,12 @@ const { db, cnA, cnB, nsId, duoi } = await dungDatabase();
 const UID_LA = '00000000-0000-4000-8000-0000000000aa';
 const UID_TN_NGHI = '00000000-0000-4000-8000-0000000000ac';
 const UID_MAY_ZALO = '00000000-0000-4000-8000-0000000000e1';
+// 0118: học viên (tài khoản demo của buổi đào tạo) — chỉ đọc video_dao_tao; mọi policy CRM khác phải cho nó 0 dòng.
+const UID_HOC_VIEN = '00000000-0000-4000-8000-0000000000c9';
 await db.query(`insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro, dang_lam) values
                 ($1, $2, 'Thu ngân đã nghỉ', 'thu_ngan', false),
-                ($3, $2, 'Máy Zalo', 'may_zalo', true)`, [UID_TN_NGHI, cnA.id, UID_MAY_ZALO]);
+                ($3, $2, 'Máy Zalo', 'may_zalo', true),
+                ($4, $2, 'Học viên đào tạo', 'hoc_vien', true)`, [UID_TN_NGHI, cnA.id, UID_MAY_ZALO, UID_HOC_VIEN]);
 
 const vi = r => (r.loi ? `${r.ma}: ${r.loi}` : 'CHẠY ĐƯỢC');
 
@@ -51,7 +54,7 @@ const MOI_NGUOI = [
   ['Chủ sở hữu', UID.chu], ['Quản lý Q1', UID.qlA], ['Thu ngân Q1', UID.thuNganA], ['Marketing Q1', UID.mktA],
   ['Quản lý Q7', UID.qlB], ['Thủ kho Q1', UID.thuKhoA], ['NV quầy Q1', UID.nvQuayA], ['Kế toán Q1', UID.keToanA],
   ['Thủ kho đã nghỉ', UID.nghiViec], ['Thu ngân đã nghỉ', UID_TN_NGHI], ['Tài khoản không có nhan_su', UID_LA],
-  ['Máy Zalo', UID_MAY_ZALO], ['Không phiên', null],
+  ['Máy Zalo', UID_MAY_ZALO], ['Học viên', UID_HOC_VIEN], ['Không phiên', null],
 ];
 const CRM = new Set([UID.chu, UID.qlA, UID.thuNganA, UID.mktA, UID.qlB]);
 
@@ -190,9 +193,9 @@ const SAU_0070 = {
   // dòng gieo của migration (200 g, 400 g) nên phép thử không rỗng.
   'ban_le_co_goi.ban_le_co_goi_doc': [SPEC_CRM, null],
   // 0117 — video đào tạo (test-noi-bo-video-dao-tao.mjs nhóm 1): đọc = bảy vai người đang làm (vai kho xem được:
-  // training là của mọi nhân viên); thêm, sửa, xóa = chủ, quản lý.
+  // training là của mọi nhân viên) và, từ 0119, học viên (test-noi-bo-hoc-vien.mjs); thêm, sửa, xóa = chủ, quản lý.
   'video_dao_tao.video_dao_tao_doc': [
-    "co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro, 'thu_ngan'::vai_tro, 'marketing'::vai_tro, 'thu_kho'::vai_tro, 'nhan_vien_quay'::vai_tro, 'ke_toan'::vai_tro])",
+    "co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro, 'thu_ngan'::vai_tro, 'marketing'::vai_tro, 'thu_kho'::vai_tro, 'nhan_vien_quay'::vai_tro, 'ke_toan'::vai_tro, 'hoc_vien'::vai_tro])",
     null],
   'video_dao_tao.video_dao_tao_them': [null, "co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro])"],
   'video_dao_tao.video_dao_tao_sua': [
