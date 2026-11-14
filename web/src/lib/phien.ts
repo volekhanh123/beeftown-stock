@@ -207,6 +207,59 @@ export async function dangNhap(
   return null;
 }
 
+/** Client anon riêng, không lưu phiên — cho việc thu hồi phiên lúc đăng xuất. null = chưa nối database. */
+function taoClientThuHoi(): SupabaseClient | null {
+  if (!coDatabase()) return null;
+  return createClient(layBien('PUBLIC_SUPABASE_URL')!, layBien('PUBLIC_SUPABASE_ANON_KEY')!,
+    { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
+/**
+ * Thu hồi ở Supabase phiên mà cookie đang giữ. Không bao giờ ném lỗi: không thu hồi được thì người gọi vẫn xóa
+ * cookie (đăng xuất trên máy này luôn xong).
+ *
+ *   · Access token còn hạn: một lượt /logout, phạm vi "local" — chỉ phiên này, máy khác của cùng người không bị
+ *     đá ra. Không đụng cửa /token (hạn mức đăng nhập chung, lib/qua-tai.ts).
+ *   · Access token hết hạn (Supabase TỪ CHỐI /logout): đổi refresh token lấy phiên mới rồi thu hồi phiên đó —
+ *     refresh token trong bản cookie đã bị chép cũng chết theo.
+ *   · Phiên đã mất ở Supabase (AuthSessionMissingError): không còn gì để thu hồi.
+ *   · Supabase bận / mất mạng: chưa biết token có hỏng không — không đổi refresh token (đổi lúc này là tiêu thêm
+ *     đúng cái hạn mức đang cạn). Phiên sống tới khi tự hết hạn; ghi một dòng nhật ký.
+ */
+async function thuHoiPhien(t: Token, tam: SupabaseClient): Promise<void> {
+  try {
+    const { error } = await tam.auth.admin.signOut(t.access_token, 'local');
+    if (!error || error.name === 'AuthSessionMissingError') return;
+    if (phanLoaiLoiAuth(error) !== 'tu_choi') { ghiQuaTai('đăng xuất · thu hồi phiên', error); return; }
+    const { data, error: loiDoi } = await tam.auth.refreshSession({ refresh_token: t.refresh_token });
+    if (data.session) await tam.auth.signOut({ scope: 'local' });
+    else if (loiDoi && phanLoaiLoiAuth(loiDoi) !== 'tu_choi') ghiQuaTai('đăng xuất · thu hồi phiên', loiDoi);
+  } catch (e) { ghiQuaTai('đăng xuất · thu hồi phiên', e); }
+}
+
+/**
+ * Đăng xuất: thu hồi phiên ở Supabase, rồi xóa cookie.
+ *
+ * Rà soát 14/11/2026: bản trước chỉ xóa cookie trên trình duyệt đang bấm. Phiên ở Supabase vẫn sống tới 7 ngày,
+ * nên ai đã chép được cookie bt_phien từ trước vẫn vào được /noi-bo dưới tên người vừa đăng xuất.
+ *
+ * Còn lại, không đóng được ở đây: access token (JWT) đã cấp vẫn được PostgREST nhận tới khi tự hết hạn (tối đa
+ * một giờ) nếu ai đó cầm nó gọi thẳng database; qua website thì không, vì layPhien hỏi Supabase ở mỗi lần mở trang.
+ *
+ * `taoTam`: kiểm thử truyền client nối vào Supabase Auth giả (crm/test/test-noi-bo-dang-xuat.mjs).
+ */
+export async function dangXuat(
+  cookies: AstroCookies, taoTam: () => SupabaseClient | null = taoClientThuHoi,
+): Promise<void> {
+  try {
+    const t = docToken(cookies);
+    const tam = t ? taoTam() : null;
+    if (t && tam) await thuHoiPhien(t, tam);
+  } finally {
+    xoaToken(cookies);
+  }
+}
+
 // -----------------------------------------------------------------------------
 // KẾT QUẢ SAU KHI GỬI FORM
 // -----------------------------------------------------------------------------
