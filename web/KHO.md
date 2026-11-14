@@ -456,7 +456,7 @@ bắt gắn lại / đăng ký lại máy.
 |---|---|---|
 | `/noi-bo/kho/may` | Máy (vai `may_chung`) | "Ai đang dùng máy?": nút tên người đã gắn → ô PIN → đổi phiên sang người đó |
 | `/noi-bo/kho/may/dang-ky` | Quản lý, trên tablet | Nhập email + mật khẩu của **tài khoản máy** → `kho_dang_ky_may` → cookie `bt_may_tb` |
-| `/noi-bo/kho/may/gan` | Từng nhân viên, trên tablet | Đăng nhập đầy đủ một lần, đặt PIN 4–6 số → `kho_may_gan_nguoi` |
+| `/noi-bo/kho/may/gan` | Từng nhân viên, trên tablet | Đăng nhập đầy đủ một lần, đặt PIN 4–6 số → `kho_may_gan_nguoi`. Đang dùng máy: "Đổi PIN của tôi" → `kho_may_dat_pin` |
 | `/noi-bo/kho/cai-dat/nhan-vien` | Chủ (phần nhân viên); quản lý, chủ (phần máy — `duyet`) | Thêm nhân viên, khóa / mở lại; máy: người đã gắn, mở khóa máy / người, khóa hẳn, tắt máy, gỡ người |
 | `/noi-bo/kho/cai-dat` | Quản lý, chủ | Thẻ "Máy dùng chung": đã bật chưa + cách bật |
 
@@ -494,6 +494,13 @@ mà không được cất (đăng ký máy đè lên phiên quản lý, token m�
 Trang CRM ngoài `/noi-bo/kho` (và file CSV báo cáo) **không** qua `moTrangKho` nên không tự khóa —
 menu ở chế độ máy đã ẩn CRM; quản lý/chủ đừng mở CRM trên tablet dùng chung.
 Chế độ máy: menu người dùng đổi "Đăng xuất" thành "Khóa máy" và "Gỡ tôi khỏi máy này".
+
+**Đổi PIN cần mật khẩu tài khoản** (rà soát 14/11/2026, `doiPin`). Máy đang mở không chứng minh người cầm máy là
+chủ của phiên: người trước rời máy chưa bấm "Khóa máy" thì ai cầm máy trong khoảng tự khóa đặt được PIN mới, rồi
+về sau mở máy dưới tên người kia. Nên form "Đổi PIN của tôi" đòi mật khẩu, máy chủ đăng nhập thử bằng **email của
+phiên đang dùng** (không đọc email từ form) bằng client riêng rồi thu hồi phiên thử ngay; sai mật khẩu thì "PIN
+chưa đổi", Supabase bận thì "đợi rồi thử lại — không phải do sai mật khẩu". Mỗi lần đổi PIN tốn một lượt của hạn
+mức đăng nhập chung — PIN mới sai dạng bị từ chối trước khi tốn lượt đó. Kiểm thử: `test-kho-may-doi-pin.mjs`.
 
 **Sai PIN**: 5 lần liền → khóa người đó 15 phút; 15 lần / 30 phút hoặc 30 lần / 24 giờ (chặn dò chậm) trên một máy (mọi người cộng lại) →
 khóa máy, quản lý mở ở màn Nhân viên & máy. Mọi sự kiện ghi `kho_may_nhat_ky`. `kho_may_nguoi`

@@ -284,9 +284,11 @@ async function lamMoi(rt: string): Promise<Session | typeof TAM_LOI | null> {
  * nếu cần) và phiên — hoặc loại lỗi: 'tu_choi' là sai email / mật khẩu, hai
  * loại kia là Supabase bận / mất mạng (không phải lỗi của người gõ).
  */
-async function dangNhapTam(email: string, matKhau: string): Promise<{ tam: SupabaseClient; s: Session } | LoaiLoiAuth> {
+async function dangNhapTam(
+  email: string, matKhau: string, taoTam: () => SupabaseClient = taoClientTam,
+): Promise<{ tam: SupabaseClient; s: Session } | LoaiLoiAuth> {
   try {
-    const tam = taoClientTam();
+    const tam = taoTam();
     const { data, error } = await tam.auth.signInWithPassword({ email, password: matKhau });
     const loai = error ? phanLoaiLoiAuth(error) : null;
     if (loai && loai !== 'tu_choi') ghiQuaTai('máy dùng chung · đăng nhập', error);
@@ -720,15 +722,38 @@ export async function ganNguoi(Astro: AstroGlobal, form: FormData): Promise<KetQ
         en: `Added ${nsDong.ho_ten} to this tablet. Next time, just choose your name and enter your PIN.` });
 }
 
-/** Đổi PIN khi đang dùng máy bằng phiên của chính mình. */
-export async function doiPin(Astro: AstroGlobal, form: FormData, may: CheDoMay): Promise<KetQua> {
+/**
+ * Đổi PIN khi đang dùng máy bằng phiên của chính mình — phải nhập MẬT KHẨU TÀI KHOẢN.
+ *
+ * Rà soát 14/11/2026: bản trước chỉ đòi PIN mới. Một người rời máy mà chưa bấm "Khóa máy" thì ai cầm máy trong
+ * khoảng tự khóa đặt được PIN mới, rồi về sau mở máy dưới tên người kia bất cứ lúc nào. Máy đang mở không chứng
+ * minh người cầm máy là chủ của phiên; mật khẩu thì có.
+ *
+ * Đăng nhập thử bằng email CỦA PHIÊN ĐANG DÙNG — không đọc email từ form: người cầm máy biết mật khẩu của chính
+ * họ, không được dùng nó để đổi PIN của người khác. PIN mới sai dạng thì từ chối trước, khỏi tốn một lượt của hạn
+ * mức đăng nhập chung (lib/qua-tai.ts). `taoTam`: kiểm thử truyền client nối vào Supabase Auth giả
+ * (crm/test/test-kho-may-doi-pin.mjs).
+ */
+export async function doiPin(
+  Astro: AstroGlobal, form: FormData, may: CheDoMay, taoTam: () => SupabaseClient = taoClientTam,
+): Promise<KetQua> {
   const khoa = await layKhoaMay();
   const phien = Astro.locals.phien;
   if (!khoa || !phien || may.nhanSuId !== phien.nhanSu.id) {
     return kqHai(false, { vi: 'Mở khóa máy bằng tên của bạn trước.', en: 'Unlock the tablet with your name first.' });
   }
+  const matKhau = String(form.get('mat_khau') ?? '');
+  if (!matKhau) {
+    return kqHai(false, { vi: 'Nhập mật khẩu tài khoản của bạn để đổi PIN.', en: 'Enter your account password to change the PIN.' });
+  }
   const pin = docPinMoi(form);
   if (typeof pin !== 'string') return pin;
+  const dn = await dangNhapTam(phien.nhanSu.email, matKhau, taoTam);
+  if (typeof dn === 'string') {
+    return cauDangNhapHong(dn, { vi: 'Mật khẩu không đúng. PIN chưa đổi.', en: 'Wrong password. The PIN was not changed.' });
+  }
+  // Phiên vừa đăng nhập thử chỉ để chứng minh mật khẩu — thu hồi ngay; PIN ghi bằng phiên đang dùng máy.
+  await dangXuatTam(dn.tam);
   const pinBam = await bamPin(khoa, may.mayId, phien.nhanSu.id, pin);
   const { error } = await phien.client.rpc('kho_may_dat_pin', { p_may_id: may.mayId, p_pin_bam: pinBam });
   if (error) return kqLoi(error, { vi: 'Chưa đổi được PIN.', en: 'Could not change the PIN.' });
