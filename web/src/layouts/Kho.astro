@@ -21,9 +21,9 @@
  * đang dùng thì nạp public/kho/js/may-chung.js đếm giờ tự khóa. Chế độ máy
  * đổi "Đăng xuất" thành "Khóa máy" và "Gỡ tôi khỏi máy này"; tài khoản máy
  * (vai may_*) chỉ thấy khung trống, không chuông, không menu.
- * Và một file nhỏ ở mọi trang (public/kho/js/sau-dang-xuat.js, rà soát 14/11/2026):
- * bấm Đăng xuất rồi bấm Quay lại thì trang được tải lại thay vì hiện lại từ bộ nhớ
- * của trình duyệt. Tắt JavaScript thì mọi trang vẫn chạy đủ.
+ * Và một đoạn mã nhỏ in thẳng vào đầu mọi trang (components/SauDangXuat.astro, rà soát
+ * 14/11/2026): phiên đã kết thúc mà bấm Quay lại thì trang được tải lại thay vì hiện
+ * lại từ bộ nhớ của trình duyệt. Tắt JavaScript thì mọi trang vẫn chạy đủ.
  *
  * Hai thứ tiếng (lib/ngon-ngu-noi-bo.ts): nút "English" / "Tiếng Việt" trên thanh
  * trên, cùng cookie với phần CRM. Menu, thanh đáy đọc tên { vi, en } của
@@ -42,6 +42,7 @@ import OTimChucNang from '../components/OTimChucNang.astro';
 import { TEN_VAI_KHO_NB } from '../lib/kho/chung.ts';
 import { laVaiMay, laCheDoMay, DUONG_MAY } from '../lib/kho/may-chung.ts';
 import { dichNB, nhanNB, nnCua, linkDoiNgonNgu, type HaiThuTieng } from '../lib/ngon-ngu-noi-bo.ts';
+import SauDangXuat from '../components/SauDangXuat.astro';
 
 interface Props {
   k: Pick<TrangKho, 'nhanSu' | 'chiNhanh' | 'cacChiNhanh' | 'viec'> & Partial<Pick<TrangKho, 'may'>>;
@@ -126,6 +127,7 @@ const doiChiNhanh = (vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" />
+    <SauDangXuat />
   </head>
 
   <body class="nb-than kho-than">
@@ -265,7 +267,5 @@ const doiChiNhanh = (vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k
       <script is:inline src="/kho/js/may-chung.js" data-may-chung
         data-phut={String(k.may.phutKhoa)} data-giay={String(k.may.giayConLai)} defer></script>
     )}
-    {/* Mọi trang kho: nút Quay lại sau khi đăng xuất không hiện lại trang cũ từ bộ nhớ của trình duyệt. */}
-    <script is:inline src="/kho/js/sau-dang-xuat.js" defer></script>
   </body>
 </html>

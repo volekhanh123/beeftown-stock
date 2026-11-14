@@ -85,8 +85,42 @@ function ghiToken(cookies: AstroCookies, t: Token) {
   });
 }
 
+/**
+ * DẤU PHIÊN — cookie bt_dau_phien. KHÔNG httpOnly (JavaScript của trang phải đọc được), chỉ mang một chuỗi ngẫu
+ * nhiên, không mang gì của phiên: lộ ra cũng không mở được gì.
+ *
+ * Trình duyệt giữ trang vừa rời trong bộ nhớ quay lại (bfcache) và đưa nó trở lại mà không hỏi máy chủ — trang của
+ * người vừa đăng xuất hiện lại cho người đến sau. Trang không tự biết phiên đã kết thúc, nên máy chủ phải để lại
+ * một tín hiệu đọc được: dấu này đổi mỗi lần cookie phiên bị xóa (đăng xuất, phiên bị Supabase từ chối, máy dùng
+ * chung mất phiên máy — mọi đường đều qua xoaToken). Mỗi trang nội bộ mang dấu máy chủ thấy lúc dựng nó
+ * (components/SauDangXuat.astro) và so lại ở ba lúc: rời trang, hiện lại từ bộ nhớ, và lúc tải khi trình duyệt
+ * dựng lại trang từ bản lưu đệm cũ vì bấm Quay lại (lib/sau-dang-xuat.js).
+ *
+ * Làm mới token (ghiToken) và đăng nhập KHÔNG đổi dấu: phiên vẫn là phiên đó, đổi dấu là bắt mọi trang đang mở tải
+ * lại ở lần Quay lại kế tiếp — mất chữ đang gõ. Chỉ gửi dưới /noi-bo: trang công khai không cần.
+ *
+ * Cái giá, cố ý: phiên bị Supabase từ chối giữa lúc đang gõ một form thì sau khi đăng nhập lại, bấm Quay lại về form
+ * đó là form được tải lại — chữ đang gõ mất. Máy chủ không phân biệt được người đăng nhập lại là người cũ hay người
+ * khác, nên trang của phiên đã kết thúc không được hiện lại cho ai. (Cookie tự hết hạn sau 7 ngày thì không qua
+ * xoaToken, dấu không đổi, form còn nguyên.)
+ */
+export const COOKIE_DAU_PHIEN = 'bt_dau_phien';
+
+function doiDauPhien(cookies: AstroCookies) {
+  try {
+    cookies.set(COOKIE_DAU_PHIEN, crypto.randomUUID(), {
+      httpOnly: false,
+      secure: (import.meta.env as { PROD?: boolean } | undefined)?.PROD === true,
+      sameSite: 'lax',
+      path: '/noi-bo',
+      maxAge: 60 * 60 * 24 * 365,
+    });
+  } catch { /* không đặt được dấu thì việc xóa cookie phiên vẫn phải xong */ }
+}
+
 export function xoaToken(cookies: AstroCookies) {
   cookies.delete(COOKIE_PHIEN, { path: '/' });
+  doiDauPhien(cookies);
 }
 
 function taoClientVoiToken(accessToken: string): SupabaseClient {
@@ -274,8 +308,12 @@ async function thuHoiPhien(t: Token, tam: SupabaseClient): Promise<void> {
  * Quá hạn đợi KHÔNG được thành bỏ dở (vòng hai 14/11, thử trên workerd): Worker cắt mọi việc còn dở ngay khi trang
  * đã trả lời — lượt /logout đang đi bị đóng kết nối, phiên không bị thu hồi. Nên lượt thu hồi được giao cho
  * `chayNen` ngay từ đầu (trang thật: waitUntil của Worker, cho việc chạy tiếp tới khoảng 30 giây sau khi trả lời),
- * và quá hạn thì ghi một dòng nhật ký. Không có `chayNen` (astro dev, kiểm thử) thì việc vẫn chạy, chỉ là không ai
- * giữ cho nó chạy hết.
+ * và quá hạn thì ghi một dòng nhật ký. Không truyền `chayNen`, hoặc nơi chạy không có waitUntil, thì việc vẫn chạy,
+ * chỉ là không ai giữ cho nó chạy hết.
+ *
+ * Đăng xuất trên máy này LUÔN xong (vòng ba 14/11): lỗi bất ngờ nào ở bước thu hồi — dựng client hỏng, giao việc chạy
+ * nền ném lỗi — cũng chỉ thành một dòng nhật ký, không thành trang 500; cookie vẫn bị xóa ở khối finally. Trang 500 ở
+ * đây là người bấm Đăng xuất không nhận được lệnh xóa cookie.
  *
  * Tham số thứ hai: `chayNen` do trang truyền; `taoTam` và `hanMs` là chỗ kiểm thử thay vào
  * (crm/test/test-noi-bo-dang-xuat.mjs — client nối vào Supabase Auth giả, hạn đợi ngắn).
@@ -290,9 +328,15 @@ export async function dangXuat(
     const tam = t ? taoTam() : null;
     if (t && tam) {
       const viec = thuHoiPhien(t, tam);   // không bao giờ ném lỗi
-      chayNen?.(viec);
+      // Giao việc mà hỏng (không có ngữ cảnh Worker hợp lệ) thì thôi: việc vẫn chạy, đăng xuất vẫn phải xong — lỗi
+      // lọt ra ngoài là trang trả 500 và lệnh xóa cookie không về tới trình duyệt.
+      try { chayNen?.(viec); } catch { /* không ai giữ cho việc chạy hết; hạn đợi bên dưới vẫn áp dụng */ }
       if (!(await doiCoHan(viec, hanMs))) ghiQuaTai('đăng xuất · thu hồi phiên chưa xong trong hạn đợi', 408);
     }
+  } catch (e) {
+    // Phiên ở Supabase CHƯA được thu hồi — chủ phải thấy trong nhật ký. ghiQuaTai chỉ ghi loại lỗi và mã HTTP, không
+    // ghi chữ của lỗi (chữ đó có thể mang địa chỉ hay token).
+    ghiQuaTai('đăng xuất · thu hồi phiên', e);
   } finally {
     xoaToken(cookies);
   }

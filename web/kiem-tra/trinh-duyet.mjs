@@ -44,8 +44,9 @@
  *      DENY) và không vào bộ đệm dùng chung (private), không bị ép no-store; đăng xuất mang
  *      Clear-Site-Data: "cache"; trang công khai thì không bị gắn gì.
  *      Bấm Đăng xuất rồi bấm Quay lại: trang cũ không hiện lại từ bộ nhớ quay lại của trình duyệt
- *      (bfcache) mà được tải lại từ máy chủ — thử bằng Chromium BẢN ĐẦY ĐỦ có bfcache bật, kèm một
- *      phép đối chứng là trình duyệt đó có bfcache thật; Quay lại bình thường thì vẫn giữ nguyên trang.
+ *      (bfcache) mà được tải lại từ máy chủ, và đã bị giấu từ lúc rời trang — thử bằng Chromium BẢN
+ *      ĐẦY ĐỦ có bfcache bật, kèm một phép đối chứng là trình duyệt đó có bfcache thật; Quay lại bình
+ *      thường thì vẫn giữ nguyên trang. Trả lời đăng xuất đổi cookie dấu phiên bt_dau_phien.
  *   5. Menu gọn của màn hẹp (<details class="menu-gon">) mở / đóng được KHI TẮT
  *      JavaScript; có JavaScript thì Esc đóng nó và trả tiêu điểm về nút. Mở ra thì nút
  *      đổi thành nút đóng có nhãn chữ, có link "Hỏi bàn" là nút chính, có bộ chọn ngôn
@@ -524,15 +525,24 @@ try {
          && ra.headers()['clear-site-data'] === '"cache"' && camNhung(ra.headers()),
          `HTTP ${ra.status()} → ${ra.headers().location} · clear-site-data: ${ra.headers()['clear-site-data']} · ${tomDau(ra.headers())}`);
 
-      // NÚT QUAY LẠI SAU KHI ĐĂNG XUẤT (vòng hai của rà soát 14/11/2026). Header ở trên KHÔNG đủ: trang vừa bấm Đăng
+      // DẤU PHIÊN: trả lời đăng xuất đổi cookie bt_dau_phien — tín hiệu để trang nội bộ biết phiên đã kết thúc khi
+      // trình duyệt đưa nó trở lại từ bộ nhớ (lib/phien.ts xoaToken). JavaScript phải đọc được nó, nên không HttpOnly.
+      const cookieDat = ra.headersArray().filter(h => h.name.toLowerCase() === 'set-cookie').map(h => h.value);
+      const dauPhien = cookieDat.find(c => c.startsWith('bt_dau_phien=')) ?? '';
+      ok('POST /noi-bo/dang-xuat: đặt dấu phiên mới (bt_dau_phien) — chuỗi ngẫu nhiên, Path=/noi-bo, không HttpOnly; cookie phiên bị xóa',
+         /^bt_dau_phien=[0-9a-f-]{36};/.test(dauPhien) && /;\s*Path=\/noi-bo(;|$)/i.test(dauPhien) && !/httponly/i.test(dauPhien)
+         && cookieDat.some(c => /^bt_phien=deleted;|^bt_phien=;/.test(c)), cookieDat.join(' | ').slice(0, 300));
+
+      // NÚT QUAY LẠI SAU KHI ĐĂNG XUẤT (rà soát 14/11/2026, vòng hai và ba). Header ở trên KHÔNG đủ: trang vừa bấm Đăng
       // xuất vẫn nằm trong bộ nhớ quay lại (bfcache) của trình duyệt, bấm Quay lại là hiện ra mà máy chủ không được
-      // hỏi. public/kho/js/sau-dang-xuat.js tải lại trang trong đúng trường hợp đó.
+      // hỏi. Đoạn mã in thẳng vào đầu mọi trang nội bộ (components/SauDangXuat.astro, lib/sau-dang-xuat.js) so dấu
+      // phiên máy chủ in vào trang với dấu trình duyệt đang giữ: khác thì giấu trang lúc rời, tải lại lúc hiện lại.
       //
       // Phải thử bằng Chromium BẢN ĐẦY ĐỦ: bản rút gọn mà chromium.launch() trần dùng không có bfcache, và Playwright
       // còn tắt bfcache bằng một cờ mặc định — thử ở đó thì lỗi này không bao giờ lộ (bản đầu của đợt vá đã kết luận
       // sai đúng vì vậy). Phép đối chứng đầu tiên bắt chính chuyện đó: trình duyệt thử không có bfcache là đỏ.
       // Bản build này không có database nên không đăng nhập được: form Đăng xuất được dựng ngay trên trang đăng nhập
-      // — cùng khung NoiBo, cùng file sau-dang-xuat.js; lượt POST /noi-bo/dang-xuat là của Worker thật.
+      // — cùng khung NoiBo, cùng đoạn mã; lượt POST /noi-bo/dang-xuat (xóa cookie, đổi dấu) là của Worker thật.
       let coBoNho = null;
       try {
         coBoNho = await moChromium(chromium, { channel: 'chromium', ignoreDefaultArgs: ['--disable-back-forward-cache'] });
@@ -540,7 +550,22 @@ try {
         ok('Mở được Chromium bản đầy đủ để thử nút Quay lại (thiếu thì: cd web && npx playwright install chromium)', false, String(e.message).split('\n')[0]);
       }
       if (coBoNho) {
-        try {
+        /**
+         * Mọi lời gọi vào trang đều có hạn. Playwright KHÔNG đọc được một trang đang chờ lượt tải lại của chính nó
+         * (location.reload() mà máy chủ chưa trả lời): evaluate() không trả lời cho tới khi trang mới về, và mặc định
+         * không có hạn — bản đầu của khối này treo cả bộ thử ở đúng chỗ đó. Hết hạn thì trả `undefined`: mọi phép so
+         * bên dưới so ĐÚNG giá trị mong đợi (=== true, === 'hidden'…), nên "không đọc được" không bao giờ thành đạt.
+         */
+        const coHan = (viec, hetMs = 5000) => {
+          let hen;
+          return Promise.race([
+            Promise.resolve(viec).catch(() => undefined),
+            new Promise(xong => { hen = setTimeout(() => xong(undefined), hetMs); }),
+          ]).finally(() => clearTimeout(hen));
+        };
+        const trongTrang = (t, ham, thamSo) => coHan(t.evaluate(ham, thamSo));
+        const nghi = ms => new Promise(xong => setTimeout(xong, ms));
+        const thuNutQuayLai = async () => {
           const ctxLui = await coBoNho.newContext();
           const tab = await ctxLui.newPage();
           const dieuHuong = t => {
@@ -549,11 +574,86 @@ try {
             return ds;
           };
           const yeuCau = dieuHuong(tab);
-          // Trang hiện lại từ bfcache thì không có sự kiện load — page.goBack() chờ mãi. Lùi bằng history.back().
-          const lui = async t => { await t.evaluate(() => { history.back(); }).catch(() => {}); await t.waitForTimeout(1200); await t.waitForLoadState('load').catch(() => {}); };
-          const danhDau = t => t.evaluate(() => { window.__taiLieuCu = true; });
-          const conTaiLieuCu = t => t.evaluate(() => window.__taiLieuCu === true).catch(() => false);
-          const dungFormDangXuat = t => t.evaluate(() => {
+          const taiFile = [];
+          tab.on('request', r => { if (/sau-dang-xuat/.test(r.url())) taiFile.push(r.url()); });
+          /** Chờ tới khi `dieuKien()` đúng, tối đa hetMs — không chờ cứng: máy CI chậm thì chờ lâu hơn, không đỏ oan. */
+          const choDen = async (dieuKien, hetMs = 10_000) => {
+            const het = Date.now() + hetMs;
+            for (;;) {
+              const dat = await dieuKien();
+              if (dat || Date.now() >= het) return dat;
+              await nghi(100);
+            }
+          };
+          // CHÍNH TRANG ghi lại nó đang bị giấu hay hiện ở ba lúc (vào sessionStorage — còn qua lần chuyển trang, riêng
+          // từng tab; nhãn là "b" + số ở ?buoc= của trang, để cảnh sau không đọc nhầm của cảnh trước):
+          //   · hien — lúc trang hiện lại từ bộ nhớ, TRƯỚC khi đoạn mã của trang kịp chạy: 'hidden' ở đây nghĩa là bản
+          //            trình duyệt cất đi đã là bản bị giấu, không có khung hình nào của trang cũ kịp vẽ ra;
+          //   · cho  — 0,6 giây sau đó, nếu trang cũ còn sống (máy chủ chưa trả lời lượt tải lại);
+          //   · roi  — lúc trang RỜI đi, SAU khi đoạn mã của trang đã chạy;
+          //   · giau — lần đầu trang bị giấu thì thân trang (<body>) đã được dựng chưa. Không ghi trạng thái tải của
+          //            tài liệu: lệnh tải lại hủy việc đọc trang, và trình duyệt báo tài liệu "complete" ngay lúc đó;
+          //   · kieu — trình duyệt dựng từng tài liệu ở địa chỉ này theo kiểu nào, nối theo thứ tự: "navigate" (mở
+          //            thường), "back_forward" (bấm Quay lại mà phải dựng lại trang), "reload" (tải lại). Trang hiện
+          //            lại từ bfcache không phải tài liệu mới nên không thêm gì.
+          // Sự kiện gửi tới window chạy các tai nghe theo THỨ TỰ GẮN (cờ capture không đổi được thứ tự — đã thử: bản
+          // đầu của khối này dựa vào cờ đó và đo nhầm). Nên tai nghe "hien" / "cho" gắn bằng addInitScript — chạy ở đầu
+          // mỗi tài liệu mới, trước mọi mã của trang; tai nghe "roi" gắn bằng danhDau sau khi trang tải xong.
+          await ctxLui.addInitScript(() => {
+            const nhan = () => 'b' + (new URLSearchParams(location.search).get('buoc') ?? '');
+            try {
+              const khoa = `thu:${nhan()}:kieu`;
+              sessionStorage.setItem(khoa, `${sessionStorage.getItem(khoa) ?? ''}${performance.getEntriesByType('navigation')[0]?.type ?? '?'},`);
+            } catch { /* tài liệu chưa có địa chỉ thật (about:blank) — không cần ghi */ }
+            window.addEventListener('pageshow', suKien => {
+              if (!suKien.persisted) return;
+              const dangGiau = () => document.documentElement.style.visibility || 'hien';
+              sessionStorage.setItem(`thu:${nhan()}:hien`, dangGiau());
+              setTimeout(() => sessionStorage.setItem(`thu:${nhan()}:cho`, dangGiau()), 600);
+            });
+            let daGhi = false;
+            new MutationObserver(() => {
+              if (daGhi || document.documentElement?.style.visibility !== 'hidden') return;
+              daGhi = true;
+              sessionStorage.setItem(`thu:${nhan()}:giau`, document.body ? 'co-than' : 'chua-co-than');
+            }).observe(document, { subtree: true, attributes: true, attributeFilter: ['style'] });
+          });
+          const danhDau = (t, nhan) => trongTrang(t, n => {
+            window.__taiLieuCu = true;
+            window.addEventListener('pagehide', () => sessionStorage.setItem(`thu:${n}:roi`, document.documentElement.style.visibility || 'hien'));
+          }, nhan);
+          const ghiNhan = async (t, nhan) => (await trongTrang(t, n => Object.fromEntries(
+            ['roi', 'hien', 'cho', 'giau', 'kieu'].map(ten => [ten, sessionStorage.getItem(`thu:${n}:${ten}`)])), nhan)) ?? { khongDocDuoc: true };
+          /** true = còn tài liệu cũ; false = tài liệu mới; undefined = không đọc được trang. */
+          const conTaiLieuCu = t => trongTrang(t, () => window.__taiLieuCu === true);
+          /**
+           * Bấm Quay lại rồi chờ trang về tới địa chỉ có `dau`. Lùi bằng history.back(): page.goBack() chờ sự kiện load,
+           * thứ không có khi trang hiện lại từ bfcache. Trả:
+           *   · taiLai    — sau khi quay về, trình duyệt có XIN LẠI trang đó từ máy chủ không. Mong tải lại thì chờ lượt
+           *                 xin đó tới 10 giây; không mong thì chờ 1 giây yên lặng (lệnh tải lại, nếu có, phát lượt xin
+           *                 ngay trong lúc trang hiện ra — không phụ thuộc máy chủ trả lời nhanh hay chậm);
+           *   · taiLieuCu — trang đang hiện có còn là tài liệu cũ (còn dấu JavaScript đặt trước đó) không;
+           *   · dauKhop   — trang đang hiện mang đúng dấu phiên trình duyệt đang giữ không. Sau một lần đăng xuất, chỉ
+           *                 bản máy chủ VỪA dựng mới mang dấu mới: "có lượt xin trang" chưa đủ nói là máy chủ đã trả
+           *                 lời (trình duyệt có thể tự trả bằng bản lưu đệm), dấu khớp thì đủ.
+           */
+          const lui = async (t, ds, dau, mongTaiLai) => {
+            const moc = ds.length;
+            await trongTrang(t, () => { history.back(); });
+            await choDen(() => t.url().includes(dau));
+            const xinLai = () => ds.slice(moc).some(y => y.includes(dau));
+            if (mongTaiLai) await choDen(xinLai); else await nghi(1000);
+            // Chỉ chờ trang tải xong khi nó ĐƯỢC xin lại. Trang hiện lại từ bfcache không có sự kiện load: chờ là chờ hết
+            // hạn mặc định 30 giây của Playwright (vòng ba 14/11 đo được hai lần chờ như vậy ở bản đầu).
+            if (xinLai()) {
+              await t.waitForLoadState('load', { timeout: 10_000 }).catch(() => {});
+              await choDen(async () => (await conTaiLieuCu(t)) === false);
+            }
+            const dauSau = await dauTrongTrang(t);
+            return { taiLai: xinLai(), taiLieuCu: await conTaiLieuCu(t), veDung: t.url().includes(dau), nhan: JSON.stringify(ds.slice(moc)),
+                     dauKhop: dauSau.soThe === 1 && dauSau.inVao === dauSau.cookie };
+          };
+          const dungFormDangXuat = t => trongTrang(t, () => {
             const f = document.createElement('form');
             f.method = 'POST'; f.setAttribute('action', '/noi-bo/dang-xuat');
             f.innerHTML = '<button type="submit" id="thu-dang-xuat">Đăng xuất</button>';
@@ -563,49 +663,148 @@ try {
             await Promise.all([t.waitForURL(u => !u.search.includes(dau)), t.click('#thu-dang-xuat')]);
             await t.waitForLoadState('load');
           };
+          const dauTrongTrang = async t => (await trongTrang(t, () => {
+            const the = document.querySelectorAll('head script[data-dau-phien]');
+            const khop = document.cookie.match(/(?:^|;\s*)bt_dau_phien=([^;]*)/);
+            return { soThe: the.length, inVao: the[0]?.getAttribute('data-dau-phien') ?? null, cookie: khop ? khop[1] : '' };
+          })) ?? { khongDocDuoc: true };
 
-          await tab.goto(goc + '/noi-bo/dang-nhap?buoc=1'); await danhDau(tab);
-          ok('Trang đăng nhập (khung NoiBo) nạp /kho/js/sau-dang-xuat.js',
-             await tab.locator('script[src="/kho/js/sau-dang-xuat.js"]').count() === 1);
+          await tab.goto(goc + '/noi-bo/dang-nhap?buoc=1'); await danhDau(tab, 'b1');
+          const dau1 = await dauTrongTrang(tab);
+          ok('Trang đăng nhập (khung NoiBo): đoạn mã nằm ngay trong <head>, mang dấu phiên máy chủ thấy; không tải file riêng nào',
+             dau1.soThe === 1 && dau1.inVao === dau1.cookie && taiFile.length === 0, `${JSON.stringify(dau1)} · tải: ${taiFile.join(', ')}`);
           await tab.goto(goc + '/noi-bo/dang-nhap?buoc=2');
-          await lui(tab);
-          const coBfcache = await conTaiLieuCu(tab);
+          const doiChung = await lui(tab, yeuCau, 'buoc=1', false);
+          const ghi1 = await ghiNhan(tab, 'b1');
+          const coBfcache = doiChung.veDung && doiChung.taiLieuCu === true && !doiChung.taiLai;
           ok('Đối chứng: trình duyệt thử có bfcache thật — Quay lại bình thường hiện lại đúng trang cũ, không hỏi máy chủ, không bị tải lại',
-             coBfcache && new URL(tab.url()).search === '?buoc=1', `${coBoNho.version()} · ${tab.url()}`);
+             coBfcache, `${coBoNho.version()} · ${tab.url()} · còn tài liệu cũ: ${doiChung.taiLieuCu} · máy chủ nhận: ${doiChung.nhan}`);
+          ok('…và trang đó không bị giấu lúc rời đi lẫn lúc hiện lại (không ai đăng xuất)',
+             ghi1.roi === 'hien' && ghi1.hien === 'hien', JSON.stringify(ghi1));
 
-          await tab.goto(goc + '/noi-bo/dang-nhap?buoc=3'); await danhDau(tab); await dungFormDangXuat(tab);
+          await tab.goto(goc + '/noi-bo/dang-nhap?buoc=3'); await danhDau(tab, 'b3'); await dungFormDangXuat(tab);
           await bamDangXuat(tab, 'buoc=3');
           ok('Bấm Đăng xuất: về trang đăng nhập', new URL(tab.url()).pathname === '/noi-bo/dang-nhap' && new URL(tab.url()).search === '', tab.url());
-          let moc = yeuCau.length;
-          await lui(tab);
-          ok('RÀ SOÁT 14/11 (vòng hai): bấm Đăng xuất rồi Quay lại — trang cũ KHÔNG hiện lại từ bộ nhớ, máy chủ được hỏi lại',
-             coBfcache && !(await conTaiLieuCu(tab)) && yeuCau.slice(moc).some(y => y.includes('buoc=3')),
-             `còn tài liệu cũ: ${await conTaiLieuCu(tab)} · máy chủ nhận sau khi lùi: ${JSON.stringify(yeuCau.slice(moc))}`);
+          const dau3 = await dauTrongTrang(tab);
+          ok('RÀ SOÁT 14/11 (vòng ba): đăng xuất đổi dấu phiên trong trình duyệt; trang đăng nhập sau đó mang đúng dấu mới',
+             /^[0-9a-f-]{36}$/.test(dau3.cookie ?? '') && dau3.cookie !== dau1.cookie && dau3.inVao === dau3.cookie, `${dau1.cookie || '(chưa có)'} → ${JSON.stringify(dau3)}`);
+          const roi3 = await ghiNhan(tab, 'b3');
+          ok('RÀ SOÁT 14/11 (vòng ba): trang vừa bấm Đăng xuất đã bị GIẤU từ lúc rời đi', roi3.roi === 'hidden', JSON.stringify(roi3));
+          // Bấm Quay lại, và GIỮ lượt tải lại ở máy chủ 1,5 giây (như khi máy chủ chậm). Trong lúc đó không hỏi được
+          // trang từ ngoài (xem coHan), nên chính trang cũ ghi lại: lúc hiện lại nó giấu hay hiện, 0,6 giây sau thì sao.
+          let tha;
+          const giu = new Promise(xong => { tha = xong; });
+          const laBuoc3 = u => u.search.includes('buoc=3');
+          await tab.route(laBuoc3, async tuyen => { await giu; await tuyen.continue().catch(() => {}); });
+          const moc3 = yeuCau.length;
+          await trongTrang(tab, () => { history.back(); });
+          const daXin = await choDen(() => yeuCau.slice(moc3).some(y => y.includes('buoc=3')));
+          await nghi(1500);
+          tha();
+          await tab.waitForLoadState('load', { timeout: 10_000 }).catch(() => {});
+          await choDen(async () => (await conTaiLieuCu(tab)) === false);
+          await tab.unroute(laBuoc3).catch(() => {});
+          const ghi3 = await ghiNhan(tab, 'b3');
+          ok('RÀ SOÁT 14/11 (vòng hai): bấm Đăng xuất rồi Quay lại — trình duyệt xin lại trang từ máy chủ thay vì chỉ lấy từ bộ nhớ',
+             coBfcache && daXin === true, `máy chủ nhận sau khi lùi: ${JSON.stringify(yeuCau.slice(moc3))}`);
+          ok('RÀ SOÁT 14/11 (vòng ba): bản hiện lại từ bộ nhớ là bản ĐÃ GIẤU — trước khi đoạn mã của trang kịp chạy — và vẫn bị giấu suốt lúc chờ máy chủ trả lời',
+             ghi3.hien === 'hidden' && ghi3.cho === 'hidden', JSON.stringify(ghi3));
+          const dauSau3 = await dauTrongTrang(tab);
+          ok('…máy chủ trả lời xong: trang cũ được thay bằng trang MỚI từ máy chủ (mang dấu phiên hiện tại)',
+             (await conTaiLieuCu(tab)) === false && tab.url().includes('buoc=3') && dauSau3.soThe === 1 && dauSau3.inVao === dauSau3.cookie,
+             `${tab.url()} · ${JSON.stringify(dauSau3)}`);
 
           // Đăng xuất ở TAB KHÁC; tab này đang mở một trang tải từ trước, rời trang rồi Quay lại.
           const tabKia = await ctxLui.newPage();
           const yeuCauKia = dieuHuong(tabKia);
-          await tabKia.goto(goc + '/noi-bo/dang-nhap?buoc=4'); await danhDau(tabKia);
-          await tabKia.waitForTimeout(30);
+          await tabKia.goto(goc + '/noi-bo/dang-nhap?buoc=4'); await danhDau(tabKia, 'b4');
           await tab.goto(goc + '/noi-bo/dang-nhap?buoc=5'); await dungFormDangXuat(tab);
           await bamDangXuat(tab, 'buoc=5');
           await tabKia.goto(goc + '/noi-bo/dang-nhap?buoc=6');
-          moc = yeuCauKia.length;
-          await lui(tabKia);
-          ok('RÀ SOÁT 14/11 (vòng hai): đăng xuất ở tab khác, tab này rời trang rồi Quay lại — trang cũ cũng được tải lại',
-             coBfcache && !(await conTaiLieuCu(tabKia)) && yeuCauKia.slice(moc).some(y => y.includes('buoc=4')),
-             `còn tài liệu cũ: ${await conTaiLieuCu(tabKia)} · máy chủ nhận sau khi lùi: ${JSON.stringify(yeuCauKia.slice(moc))}`);
+          const roiKia = await ghiNhan(tabKia, 'b4');
+          const tabKhac = await lui(tabKia, yeuCauKia, 'buoc=4', true);
+          const ghi4 = await ghiNhan(tabKia, 'b4');
+          ok('RÀ SOÁT 14/11 (vòng hai): đăng xuất ở tab khác, tab này rời trang rồi Quay lại — trang cũ bị giấu lúc rời, hiện lại là bản đã giấu, và được tải lại',
+             coBfcache && roiKia.roi === 'hidden' && ghi4.hien === 'hidden' && tabKhac.taiLai && tabKhac.taiLieuCu === false && tabKhac.dauKhop,
+             `lúc rời: ${JSON.stringify(roiKia)} · lúc hiện lại: ${JSON.stringify(ghi4)} · còn tài liệu cũ: ${tabKhac.taiLieuCu} · dấu khớp: ${tabKhac.dauKhop} · máy chủ nhận sau khi lùi: ${tabKhac.nhan}`);
+
+          // Trang ĐÃ NẰM trong bộ nhớ quay lại lúc tab khác đăng xuất (nó rời đi khi dấu chưa đổi, nên được cất nguyên
+          // dạng). Hai lớp cùng lo: Clear-Site-Data của trả lời đăng xuất gỡ nó khỏi bộ nhớ; còn sót thì đoạn mã của
+          // trang tải lại nó lúc hiện ra. Đằng nào thì bấm Quay lại cũng phải hỏi lại máy chủ.
+          await tabKia.goto(goc + '/noi-bo/dang-nhap?buoc=9'); await danhDau(tabKia, 'b9');
+          await tabKia.goto(goc + '/noi-bo/dang-nhap?buoc=10');
+          const roi9 = await ghiNhan(tabKia, 'b9');
+          await tab.goto(goc + '/noi-bo/dang-nhap?buoc=11'); await dungFormDangXuat(tab);
+          await bamDangXuat(tab, 'buoc=11');
+          const daNam = await lui(tabKia, yeuCauKia, 'buoc=9', true);
+          ok('Trang đã nằm trong bộ nhớ quay lại (cất nguyên dạng) lúc tab khác đăng xuất → Quay lại: trình duyệt hỏi lại máy chủ, không hiện bản cũ',
+             coBfcache && roi9.roi === 'hien' && daNam.taiLai && daNam.taiLieuCu === false && daNam.dauKhop,
+             `lúc rời: ${JSON.stringify(roi9)} · còn tài liệu cũ: ${daNam.taiLieuCu} · dấu khớp: ${daNam.dauKhop} · máy chủ nhận sau khi lùi: ${daNam.nhan}`);
+
+          // BẢN LƯU ĐỆM CŨ. Bấm Quay lại mà trình duyệt DỰNG LẠI trang từ bản HTML nó giữ — không hỏi máy chủ, không phải
+          // bfcache. Chromium xóa bản đó khi nhận Clear-Site-Data của trả lời đăng xuất; trình duyệt không nghe lệnh ấy
+          // thì còn. Ở đây đóng vai trình duyệt như vậy: lượt xin trang ĐẦU sau khi lùi được trả bằng đúng bản HTML cũ
+          // (mang dấu cũ), các lượt sau đi tới máy chủ thật. Cảnh này chỉ có nghĩa khi lùi về trang là một lượt DỰNG LẠI
+          // (kiểu "back_forward"), không phải lấy nguyên trang từ bfcache: trang được mở một kết nối WebRTC và gắn một
+          // tai nghe unload — hai thứ làm Chromium không cất trang vào bfcache — và phép kiểm bên dưới TỰ XÁC NHẬN điều
+          // đó bằng chuỗi kiểu tải trình duyệt báo (giữ một Web Lock thì không đủ: đã thử, trang vẫn vào bfcache).
+          await tab.goto(goc + '/noi-bo/dang-nhap?buoc=12');
+          const banCu = await coHan(tab.content());
+          await trongTrang(tab, () => {
+            try { window.__ketNoiThu = new RTCPeerConnection(); window.__ketNoiThu.createDataChannel('thu'); } catch { /* không có WebRTC */ }
+            window.addEventListener('unload', () => {});
+          });
+          await tab.goto(goc + '/noi-bo/dang-nhap?buoc=13');
+          await tabKia.goto(goc + '/noi-bo/dang-nhap?buoc=14'); await dungFormDangXuat(tabKia);
+          await bamDangXuat(tabKia, 'buoc=14');
+          let luotThu = 0;
+          const laBuoc12 = u => u.search.includes('buoc=12');
+          await tab.route(laBuoc12, async tuyen => {
+            luotThu += 1;
+            if (luotThu === 1 && typeof banCu === 'string') await tuyen.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: banCu }).catch(() => {});
+            else await tuyen.continue().catch(() => {});
+          });
+          const moc12 = yeuCau.length;
+          const luot12 = () => yeuCau.slice(moc12).filter(y => y.includes('buoc=12')).length;
+          await trongTrang(tab, () => { history.back(); });
+          await choDen(() => luot12() >= 2);
+          await tab.waitForLoadState('load', { timeout: 10_000 }).catch(() => {});
+          await nghi(1000);   // một vòng tải lại lặp, nếu có, lộ ra trong một giây này
+          await tab.unroute(laBuoc12).catch(() => {});
+          const dau12 = await dauTrongTrang(tab);
+          const ghi12 = await ghiNhan(tab, 'b12');
+          ok('Đối chứng của cảnh "bản lưu đệm cũ": lùi về trang là một lượt DỰNG LẠI (kiểu back_forward), không phải bfcache; lượt sau đó là kiểu reload',
+             ghi12.kieu === 'navigate,back_forward,reload,', JSON.stringify(ghi12));
+          ok('RÀ SOÁT 14/11 (vòng ba): bấm Quay lại mà trình duyệt đưa ra BẢN LƯU ĐỆM CŨ của trang → thân trang của bản đó không bao giờ được dựng, và trang được tải lại đúng một lần',
+             typeof banCu === 'string' && luot12() === 2 && ghi12.giau === 'chua-co-than', `${luot12()} lượt xin trang · ${JSON.stringify(ghi12)}`);
+          ok('…trang cuối cùng là bản mới từ máy chủ: mang đúng dấu trình duyệt đang giữ, không bị giấu',
+             dau12.soThe === 1 && dau12.inVao === dau12.cookie && /^[0-9a-f-]{36}$/.test(dau12.cookie ?? '')
+             && (await trongTrang(tab, () => document.documentElement.style.visibility)) === '', JSON.stringify(dau12));
 
           // Trang tải SAU lần đăng xuất (như sau khi đăng nhập lại): Quay lại bình thường vẫn giữ nguyên trang —
           // bấm nhầm một link rồi quay lại, chữ đang gõ dở không mất.
-          await tab.goto(goc + '/noi-bo/dang-nhap?buoc=7'); await danhDau(tab);
+          await tab.goto(goc + '/noi-bo/dang-nhap?buoc=7'); await danhDau(tab, 'b7');
           await tab.goto(goc + '/noi-bo/dang-nhap?buoc=8');
-          await lui(tab);
-          ok('Trang tải sau lần đăng xuất: Quay lại bình thường vẫn hiện đúng trang cũ, không bị tải lại',
-             await conTaiLieuCu(tab) && new URL(tab.url()).search === '?buoc=7', tab.url());
-          await ctxLui.close();
+          const sauDo = await lui(tab, yeuCau, 'buoc=7', false);
+          const ghi7 = await ghiNhan(tab, 'b7');
+          ok('Trang tải sau lần đăng xuất: Quay lại bình thường vẫn hiện đúng trang cũ, không bị tải lại, không bị giấu',
+             sauDo.veDung && sauDo.taiLieuCu === true && !sauDo.taiLai && ghi7.roi === 'hien' && ghi7.hien === 'hien'
+             && (await trongTrang(tab, () => document.documentElement.style.visibility)) === '',
+             `${tab.url()} · còn tài liệu cũ: ${sauDo.taiLieuCu} · ${JSON.stringify(ghi7)} · máy chủ nhận: ${sauDo.nhan}`);
+          await coHan(ctxLui.close(), 10_000);
+        };
+        // Hạn cho cả khối: một lời gọi nào đó của trình duyệt không trả lời thì khối này đỏ sau 3 phút, không treo cả
+        // bộ thử (và cả việc CI) tới khi bị hủy.
+        let henKhoi;
+        try {
+          const ketCuc = await Promise.race([
+            thuNutQuayLai().then(() => 'xong'),
+            new Promise(xong => { henKhoi = setTimeout(() => xong('het-han'), 180_000); }),
+          ]);
+          if (ketCuc !== 'xong') ok('Khối thử nút Quay lại chạy xong trong 3 phút (không treo)', false, 'một lời gọi vào trình duyệt không trả lời');
         } finally {
-          await coBoNho.close();
+          clearTimeout(henKhoi);
+          await coHan(coBoNho.close(), 10_000);
         }
       }
     });

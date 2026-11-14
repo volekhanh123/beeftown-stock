@@ -23,6 +23,7 @@ import BieuTuong from '../components/kho/BieuTuong.astro';
 import type { NhanSu } from '../lib/phien';
 import { dichNB, nhanNB, nnCua, linkDoiNgonNgu, type HaiThuTieng } from '../lib/ngon-ngu-noi-bo';
 import { thanhTrenNoiBo, thanhDayNoiBo, dangONoiBo } from '../lib/dieu-huong-noi-bo';
+import SauDangXuat from '../components/SauDangXuat.astro';
 
 interface Props {
   tieuDe: string;
@@ -75,6 +76,7 @@ const day = thanhDayNoiBo(nhanSu?.vai_tro);
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap"
     />
+    <SauDangXuat />
   </head>
 
   <body class="nb-than">
@@ -120,9 +122,5 @@ const day = thanhDayNoiBo(nhanSu?.vai_tro);
     <main class="nb-khung nb-chinh">
       <slot />
     </main>
-
-    {/* Nút Quay lại sau khi đăng xuất không hiện lại trang cũ từ bộ nhớ của trình duyệt — lý do ở đầu file đó.
-        Trang vẫn chạy đủ khi tắt JavaScript; đây là thẻ script duy nhất của khung này. */}
-    <script is:inline src="/kho/js/sau-dang-xuat.js" defer></script>
   </body>
 </html>

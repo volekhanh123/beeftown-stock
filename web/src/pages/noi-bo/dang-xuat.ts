@@ -12,16 +12,22 @@
  * trang đã trả lời — vì vậy nó được giao cho waitUntil của Worker
  * (locals.cfContext); không giao thì Worker cắt nó ngay lúc trả lời.
  *
- * NÚT QUAY LẠI SAU KHI ĐĂNG XUẤT — hai lớp, thử bằng Chromium 156 và Chrome 153
- * bản đầy đủ có bfcache (14/11/2026, vòng hai của rà soát):
+ * NÚT QUAY LẠI SAU KHI ĐĂNG XUẤT — trình duyệt giữ trang vừa rời trong bộ nhớ
+ * quay lại (bfcache) và đưa nó trở lại mà không hỏi máy chủ. Hai lớp, thử bằng
+ * Chromium 156 và Chrome 153 bản đầy đủ có bfcache (14/11/2026):
  *
  *   · Trả lời mang Clear-Site-Data: "cache" — trình duyệt bỏ bản lưu đệm HTTP
- *     và các trang ĐÃ nằm trong bộ nhớ quay lại (bfcache) của tên miền này.
- *     Không có nó thì bấm Quay lại là thấy lại trang cũ mà không hỏi máy chủ.
- *   · Lệnh đó KHÔNG gỡ được chính trang vừa bấm Đăng xuất (trang đó vào bộ nhớ
- *     quay lại sau khi lệnh đã được xử lý, và nằm đó khoảng 10 phút). Phần này
- *     do public/kho/js/sau-dang-xuat.js lo: trang hiện lại từ bộ nhớ sau một
- *     lần bấm Đăng xuất thì tự tải lại — máy chủ đưa về trang đăng nhập.
+ *     và các trang ĐÃ nằm trong bộ nhớ quay lại của tên miền này. Lệnh đó KHÔNG
+ *     gỡ được chính trang vừa bấm Đăng xuất (trang đó vào bộ nhớ sau khi lệnh
+ *     được xử lý, và nằm đó khoảng 10 phút).
+ *   · dangXuat đổi cookie "dấu phiên" bt_dau_phien (lib/phien.ts, xoaToken). Mỗi
+ *     trang nội bộ mang dấu máy chủ thấy lúc dựng nó và một đoạn mã nhỏ in ngay
+ *     trong trang (components/SauDangXuat.astro): rời trang mà dấu đã khác thì
+ *     giấu trang, hiện lại từ bộ nhớ mà dấu đã khác thì tải lại — máy chủ đưa
+ *     về trang đăng nhập. Bấm Quay lại mà trình duyệt dựng lại trang từ bản lưu
+ *     đệm cũ thì bản đó cũng bị giấu và tải lại: lớp này không trông vào lệnh
+ *     Clear-Site-Data ở trên (trình duyệt nào không nghe lệnh đó thì vẫn còn
+ *     bản lưu đệm).
  *
  * Bản đầu của đợt vá ghi "có header thì Quay lại về trang đăng nhập": phép thử
  * đó chạy bằng bản Chromium rút gọn của Playwright, bản không có bfcache.
