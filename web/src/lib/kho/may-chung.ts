@@ -752,10 +752,13 @@ export async function doiPin(
   if (typeof dn === 'string') {
     return cauDangNhapHong(dn, { vi: 'Mật khẩu không đúng. PIN chưa đổi.', en: 'Wrong password. The PIN was not changed.' });
   }
-  // Phiên vừa đăng nhập thử chỉ để chứng minh mật khẩu — thu hồi ngay; PIN ghi bằng phiên đang dùng máy.
-  await dangXuatTam(dn.tam);
   const pinBam = await bamPin(khoa, may.mayId, phien.nhanSu.id, pin);
-  const { error } = await phien.client.rpc('kho_may_dat_pin', { p_may_id: may.mayId, p_pin_bam: pinBam });
+  // Phiên vừa đăng nhập thử chỉ để chứng minh mật khẩu: thu hồi nó CÙNG LÚC với việc ghi PIN (PIN ghi bằng phiên
+  // đang dùng máy) — bước thu hồi chậm không được giữ PIN lại. dangXuatTam không bao giờ ném lỗi.
+  const [{ error }] = await Promise.all([
+    phien.client.rpc('kho_may_dat_pin', { p_may_id: may.mayId, p_pin_bam: pinBam }),
+    dangXuatTam(dn.tam),
+  ]);
   if (error) return kqLoi(error, { vi: 'Chưa đổi được PIN.', en: 'Could not change the PIN.' });
   return kqHai(true, { vi: 'Đã đổi PIN. Lần sau mở máy bằng PIN mới.', en: 'PIN changed. Use the new PIN next time you unlock the tablet.' });
 }

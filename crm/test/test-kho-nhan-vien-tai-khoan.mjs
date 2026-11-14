@@ -163,14 +163,18 @@ const taoTam = () => createClient(URL_GIA, 'khoa-anon-gia', {
 
 /** Chủ bấm "Thêm nhân viên". Trả kết quả của themNhanVien kèm danh sách hàm database đã gọi. */
 async function chuTao(email, { hoTen = 'Nhân viên thử', vai = 'thu_kho', chiNhanh = cnA.id } = {}) {
+  daCho = [];
   const form = new FormData();
   form.set('ho_ten', hoTen); form.set('email', email); form.set('vai_tro', vai); form.set('chi_nhanh_id', chiNhanh);
   const chu = clientCua(UID.chu);
   const daGoi = [];
   const chuDem = { rpc(ten, thamSo) { daGoi.push(ten); return chu.rpc(ten, thamSo); } };
-  const kq = await themNhanVien(chuDem, form, CHI_NHANH, taoTam);
+  // cho: kiểm thử không chờ thật giữa các lần đăng nhập thử lại; ghi lại số mili-giây được yêu cầu.
+  const kq = await themNhanVien(chuDem, form, CHI_NHANH, { taoTam, cho: async ms => { daCho.push(ms); } });
   return { kq, daGoi };
 }
+/** Các quãng chờ (mili-giây) themNhanVien đã xin giữa các lần đăng nhập thử, của lần chuTao gần nhất. */
+let daCho = [];
 const tom = kq => `ok=${kq.ok} · ${String(kq.cau).slice(0, 170)}`;
 const MAT_KHAU_TAM = /^[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}$/;
 const MAT_KHAU_NGUOI_KHAC = 'mat-khau-cua-nguoi-dang-ky-truoc';
@@ -179,6 +183,7 @@ const MAT_KHAU_NGUOI_KHAC = 'mat-khau-cua-nguoi-dang-ky-truoc';
 async function kiemBiTuChoi(ten, email, { kq, daGoi }) {
   ok(`RÀ SOÁT 14/11: ${ten} → KHÔNG tạo nhân viên`, kq.ok === false && await soNhanSu(email) === 0, tom(kq));
   ok('…không gọi kho_them_nhan_su, không hiện mật khẩu tạm', !daGoi.includes('kho_them_nhan_su') && kq.moi === undefined, `đã gọi: ${daGoi.join(', ') || '(không)'}`);
+  ok('…Supabase đã TỪ CHỐI mật khẩu thì không thử lại: đúng một lượt đăng nhập thử, không chờ', auth.dem('token') === 1 && daCho.length === 0, `${auth.dem('token')} lượt, chờ ${JSON.stringify(daCho)}`);
   ok('…câu báo nói thật: CHƯA tạo nhân viên, chỉ chỗ xóa tài khoản cũ',
      /CHƯA tạo nhân viên/.test(kq.cau) && kq.cau.includes('Supabase → Authentication → Users') && kq.cau.includes(email), kq.cau);
   ok('…có bản tiếng Anh, không lẫn chữ Việt', typeof kq.cauEn === 'string' && kq.cauEn.includes(email) && !VIET.test(kq.cauEn), kq.cauEn ?? '(thiếu)');
@@ -270,9 +275,32 @@ await nhom('4 · Chưa kiểm được mật khẩu tạm (Supabase bận, mất
     const { kq, daGoi } = await chuTao(email);
     ok(`RÀ SOÁT 14/11: ${ten} → KHÔNG tạo nhân viên, không báo thành công`,
        kq.ok === false && kq.moi === undefined && await soNhanSu(email) === 0 && !daGoi.includes('kho_them_nhan_su'), tom(kq));
+    ok('…đã thử lại hai lần (chờ 1,5 giây rồi 3 giây) trước khi chịu thua', auth.dem('token') === 3 && JSON.stringify(daCho) === '[1500,3000]', `${auth.dem('token')} lượt, chờ ${JSON.stringify(daCho)}`);
     ok('…câu báo nói đúng: chưa kiểm được, CHƯA tạo nhân viên, email có thể đã bị chiếm — xóa rồi tạo lại',
        /chưa kiểm được/i.test(kq.cau) && /CHƯA tạo nhân viên/.test(kq.cau) && kq.cau.includes('Supabase → Authentication → Users')
        && typeof kq.cauEn === 'string' && !VIET.test(kq.cauEn), `${kq.cau} | ${kq.cauEn}`);
+  }
+});
+
+// ===========================================================================
+await nhom('4b · Supabase bận thoáng qua → thử lại là tạo được, không để lại tài khoản mồ côi', async () => {
+  // Rà soát mã 14/11: đăng ký (đã xong) và đăng nhập thử đi qua hai hạn mức khác nhau của Supabase. Đầu ca, cửa
+  // đăng nhập hay chạm trần vài giây — bỏ cuộc ngay ở lần đầu là để lại một tài khoản đăng nhập không ai dùng được,
+  // chủ phải vào Supabase xóa tay. Cửa đó nạp lại một lượt mỗi 2 giây, nên thử lại sau 1,5 giây và 3 giây.
+  for (const [ten, soLanHong, tuXacNhan] of [['429 một lần rồi được', 1, true], ['mất mạng hai lần rồi được', 2, false]]) {
+    auth.datLai({ tuXacNhan });
+    let con = soLanHong;
+    const that = () => { auth.tokenHong = null; };
+    auth.tokenHong = () => {
+      if (--con <= 0) queueMicrotask(that);
+      if (soLanHong === 1) return json(429, { code: 'over_request_rate_limit', message: 'Request rate limit reached' });
+      throw new TypeError('fetch failed');
+    };
+    const email = `ban.thoang.qua.${soLanHong}@beeftown.test`;
+    const { kq, daGoi } = await chuTao(email);
+    ok(`RÀ SOÁT 14/11: ${ten} → vẫn tạo được nhân viên, có mật khẩu tạm`,
+       kq.ok === true && MAT_KHAU_TAM.test(kq.moi?.mat_khau ?? '') && await soNhanSu(email) === 1 && daGoi.includes('kho_them_nhan_su'), tom(kq));
+    ok('…số lượt đăng nhập thử = số lần hỏng + 1', auth.dem('token') === soLanHong + 1 && daCho.length === soLanHong, `${auth.dem('token')} lượt, chờ ${JSON.stringify(daCho)}`);
   }
 });
 

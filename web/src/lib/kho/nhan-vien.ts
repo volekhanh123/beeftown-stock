@@ -316,10 +316,28 @@ function layBien(ten: string): string | undefined {
  * khoản đăng nhập tạo quá 10 phút trước.
  *
  * Thứ tự kiểm của Supabase là đọc mã nguồn, chưa chạy với Supabase thật — cách thử tay: web/KHO.md mục 3f.
+ *
+ * THỬ LẠI KHI CHƯA BIẾT. Đăng ký (đã xong ở bước trước) và đăng nhập thử đi qua hai hạn mức khác nhau của Supabase;
+ * cửa đăng nhập (/token) là cửa cả quán dùng chung (lib/qua-tai.ts) và đầu ca hay chạm trần vài giây. Bỏ cuộc ngay
+ * là để lại một tài khoản đăng nhập không ai dùng được — chủ phải vào Supabase xóa tay. Cửa đó nạp lại một lượt mỗi
+ * 2 giây, nên chờ 1,5 giây rồi 3 giây trước khi chịu thua. Supabase đã TỪ CHỐI mật khẩu thì không thử lại.
  */
 export type KetQuaThuMatKhau = 'dung' | 'da_co_tu_truoc' | 'chua_biet';
 
-export async function thuMatKhauTam(tam: SupabaseClient, email: string, matKhau: string): Promise<KetQuaThuMatKhau> {
+const CHO_THU_LAI_MS = [1500, 3000] as const;
+const choMs = (ms: number) => new Promise<void>(xong => setTimeout(xong, ms));
+
+export async function thuMatKhauTam(
+  tam: SupabaseClient, email: string, matKhau: string, cho: (ms: number) => Promise<void> = choMs,
+): Promise<KetQuaThuMatKhau> {
+  for (let lan = 0; ; lan++) {
+    const kq = await thuMotLan(tam, email, matKhau);
+    if (kq !== 'chua_biet' || lan >= CHO_THU_LAI_MS.length) return kq;
+    await cho(CHO_THU_LAI_MS[lan]);
+  }
+}
+
+async function thuMotLan(tam: SupabaseClient, email: string, matKhau: string): Promise<KetQuaThuMatKhau> {
   try {
     const { data, error } = await tam.auth.signInWithPassword({ email, password: matKhau });
     if (!error) {
@@ -349,14 +367,21 @@ function taoClientDangKy(): SupabaseClient | null {
   });
 }
 
+/** Chỗ kiểm thử thay vào (crm/test/test-kho-nhan-vien-tai-khoan.mjs). Trang thật không truyền gì. */
+export interface ThayKhiThu {
+  /** Client anon riêng cho signUp và đăng nhập thử. Mặc định: dựng từ biến môi trường; null = chưa nối database. */
+  taoTam?: () => SupabaseClient | null;
+  /** Chờ giữa các lần đăng nhập thử lại. Mặc định: setTimeout. */
+  cho?: (ms: number) => Promise<void>;
+}
+
 /**
  * Tạo tài khoản đăng nhập rồi nối thành nhân viên.
- * `client` là client của CHỦ; signUp đi bằng client anon riêng (`taoTam`, mặc định dựng từ biến môi trường —
- * kiểm thử truyền client nối vào Supabase Auth giả: crm/test/test-kho-nhan-vien-tai-khoan.mjs).
+ * `client` là client của CHỦ; signUp và đăng nhập thử đi bằng client anon riêng.
  */
 export async function themNhanVien(
   client: SupabaseClient, form: FormData, chiNhanh: { id: string; ten: string }[],
-  taoTam: () => SupabaseClient | null = taoClientDangKy,
+  { taoTam = taoClientDangKy, cho = choMs }: ThayKhiThu = {},
 ): Promise<KetQuaTaoNhanVien> {
   const idCn = chiNhanh.map(c => c.id);
   const f = docFormNhanVien(form, idCn);
@@ -395,7 +420,7 @@ export async function themNhanVien(
   }
 
   // Chỉ nối khi mật khẩu tạm đúng là mật khẩu của tài khoản này — xem thuMatKhauTam ở trên.
-  const thu = await thuMatKhauTam(tam, f.email, matKhau);
+  const thu = await thuMatKhauTam(tam, f.email, matKhau, cho);
   if (thu === 'da_co_tu_truoc') {
     return kqHai(false, {
       vi: `Email ${f.email} đã có một tài khoản đăng nhập từ trước lần bấm này, và mật khẩu tạm vừa sinh không mở được nó. CHƯA tạo nhân viên ở lần bấm này. Nếu ${f.email} đã có trong danh sách bên dưới thì tài khoản đó tạo từ lần trước — mất mật khẩu tạm thì đặt lại ở Supabase → Authentication → Users. Nếu chưa có: vào Supabase → Authentication → Users, xóa ${f.email}, rồi tạo lại.`,

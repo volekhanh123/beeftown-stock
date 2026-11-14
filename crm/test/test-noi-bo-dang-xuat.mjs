@@ -125,7 +125,7 @@ const cookieCua = t => hopCookie(JSON.stringify({ access_token: t.access_token, 
 /** Bấm "Đăng xuất" với cookie này. Trả { loi, cookies }. */
 async function bamDangXuat(cookies) {
   let loi = null;
-  try { await dangXuat(cookies, taoTam); } catch (e) { loi = String(e?.message ?? e); }
+  try { await dangXuat(cookies, { taoTam }); } catch (e) { loi = String(e?.message ?? e); }
   return { loi, cookies };
 }
 
@@ -240,11 +240,56 @@ await nhom('7 · Bấm đăng xuất hai lần → lần hai không làm gì th�
 });
 
 // ===========================================================================
-await nhom('8 · Trang /noi-bo/dang-xuat gọi đúng hàm này, vẫn chỉ nhận POST', async () => {
+await nhom('7b · Supabase treo (không trả lời) → đăng xuất vẫn xong, không treo theo', async () => {
+  // Rà soát mã 14/11: bản đầu đợi Supabase không giới hạn. Người bấm Đăng xuất rồi đóng tab trong lúc trang còn
+  // treo thì lệnh xóa cookie không bao giờ về tới trình duyệt — tệ hơn bản cũ (xóa ngay). dangXuat chỉ đợi lượt thu
+  // hồi tối đa 4 giây; ở đây đặt hạn 300 mili-giây để kiểm thử khỏi chờ.
+  const goc = globalThis.fetch;
+  globalThis.fetch = () => new Promise(() => {});          // không bao giờ trả lời
+  try {
+    const cookies = cookieCua(auth.dangNhap());
+    const batDau = Date.now();
+    let loi = null;
+    try { await dangXuat(cookies, { taoTam, hanMs: 300 }); } catch (e) { loi = String(e?.message ?? e); }
+    const mat = Date.now() - batDau;
+    ok('RÀ SOÁT 14/11: máy chủ đăng nhập treo → đăng xuất vẫn xong sau hạn đợi, không ném lỗi', loi === null && mat >= 250 && mat < 2000, `${mat} ms${loi ? ` · ${loi}` : ''}`);
+    ok('…cookie vẫn bị xóa', cookies.con() === false);
+  } finally {
+    globalThis.fetch = goc;
+  }
+  const lib = readFileSync(join(GOC, 'web/src/lib/phien.ts'), 'utf8');
+  ok('Hạn đợi của trang thật là 4 giây', /const HAN_THU_HOI_MS = 4000;/.test(lib) && /hanMs = HAN_THU_HOI_MS/.test(lib));
+
+  // Supabase trả lời nhanh thì không đợi hết hạn.
+  auth.datLai();
+  const t = auth.dangNhap();
+  const batDau = Date.now();
+  await dangXuat(cookieCua(t), { taoTam, hanMs: 5000 });
+  ok('Supabase trả lời ngay → đăng xuất xong ngay (không đợi hết hạn), phiên đã thu hồi', Date.now() - batDau < 2000 && auth.phien.get(t.phienId) === false, `${Date.now() - batDau} ms`);
+});
+
+// ===========================================================================
+await nhom('8 · Trang /noi-bo/dang-xuat: gọi đúng hàm này, bảo trình duyệt bỏ bản trang đang giữ, vẫn chỉ nhận POST', async () => {
+  const { POST, GET } = await import('../../web/src/pages/noi-bo/dang-xuat.ts');
+  const chuyen = (duong, ma) => new Response(null, { status: ma, headers: { Location: duong } });   // như context.redirect của Astro
+
+  // Máy chạy kiểm thử chưa nối database: dangXuat không gọi mạng, nhưng trang vẫn phải xóa cookie và trả lời đúng.
+  auth.datLai();
+  const cookies = cookieCua(auth.dangNhap());
+  const tl = await POST({ cookies, redirect: chuyen });
+  ok('POST: chuyển về trang đăng nhập (302), cookie bt_phien bị xóa',
+     tl.status === 302 && tl.headers.get('location') === '/noi-bo/dang-nhap' && cookies.con() === false, `HTTP ${tl.status} → ${tl.headers.get('location')}`);
+  // Rà soát mã 14/11: không ép no-store cho cả khu nội bộ (lib/header-noi-bo.ts), nên chính lúc đăng xuất phải bảo
+  // trình duyệt bỏ bản trang nó đang giữ — không thì người đến sau bấm Quay lại là thấy trang của người trước.
+  ok('RÀ SOÁT 14/11: trả lời đăng xuất mang Clear-Site-Data: "cache"', tl.headers.get('clear-site-data') === '"cache"', tl.headers.get('clear-site-data') ?? '(không có)');
+
+  const ck2 = cookieCua(auth.dangNhap());
+  const xem = await GET({ cookies: ck2, redirect: chuyen });
+  ok('GET không đăng xuất ai: chỉ chuyển về /noi-bo, cookie còn nguyên, không xóa bộ đệm của ai',
+     xem.status === 302 && xem.headers.get('location') === '/noi-bo' && ck2.con() === true && xem.headers.get('clear-site-data') === null);
+
   const trang = readFileSync(join(GOC, 'web/src/pages/noi-bo/dang-xuat.ts'), 'utf8');
-  ok('POST đợi dangXuat(cookies) xong rồi mới chuyển về trang đăng nhập',
-     /export const POST: APIRoute = async \(\{ cookies, redirect \}\) => \{\s*await dangXuat\(cookies\);\s*return redirect\('\/noi-bo\/dang-nhap', 302\);/.test(trang));
-  ok('GET không đăng xuất ai (chỉ chuyển hướng)', /export const GET: APIRoute = \(\{ redirect \}\) => redirect\('\/noi-bo', 302\);/.test(trang));
+  ok('POST đợi dangXuat(cookies) xong rồi mới trả lời', /export const POST: APIRoute = async \(\{ cookies, redirect \}\) => \{\s*await dangXuat\(cookies\);/.test(trang));
   const lib = readFileSync(join(GOC, 'web/src/lib/phien.ts'), 'utf8');
   const than = lib.slice(lib.indexOf('export async function dangXuat'), lib.indexOf('\n}\n', lib.indexOf('export async function dangXuat')));
   ok('dangXuat xóa cookie trong khối finally — thu hồi hỏng kiểu gì cũng không giữ cookie lại', /finally\s*\{\s*xoaToken\(cookies\);?\s*\}/.test(than), than.slice(0, 300));

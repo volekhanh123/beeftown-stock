@@ -21,10 +21,10 @@
 import { dungDatabase, taoBoDem, UID } from './kho-chung.mjs';
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN CRM — DUYỆT GIÁ, CỜ MÓN VÀ LỊCH HIỆN CỦA NỘI DUNG (0122)');
-const { db, duoi } = await dungDatabase();
+const { db, duoi, nsId } = await dungDatabase();
 
 const mot = async (sql, p = []) => (await db.query(sql, p)).rows[0];
-const CAU_MON = 'Chỉ chủ nhà hàng hoặc quản lý mới thêm được món, duyệt được giá, mức cay và đổi cờ món sống, có cồn hay nhóm của món';
+const CAU_MON = 'Chỉ chủ nhà hàng hoặc quản lý mới thêm được món, duyệt được giá, mức cay, đổi cờ món sống, có cồn, nhóm và các ô khác ngoài phần chữ, thứ tự, trạng thái và đề xuất của món';
 const CAU_LICH_CHU = ma => `Khóa ${ma} chỉ chủ sở hữu mới được đổi lịch hiện trên trang`;
 const CAU_LICH = 'Không có quyền đổi lịch hiện của nội dung đã công bố';
 const ketQua = r => (r.loi ? `LỖI: ${r.loi.slice(0, 150)}` : `${r.rows.length} dòng ${JSON.stringify(r.rows).slice(0, 120)}`);
@@ -58,6 +58,26 @@ await nhom('1 · Marketing gọi thẳng không tự duyệt được giá, mứ
     [nhomKhac.id]);
   ok('RÀ SOÁT 14/11: marketing thêm thẳng một món đã công bố (tự chọn nhóm và cờ) → bị từ chối', biChan(them, CAU_MON), ketQua(them));
 
+  // Rà soát mã 14/11: bản đầu của 0122 liệt kê cột BỊ CẤM, nên cột nào màn hình không gửi mà không nằm trong danh
+  // sách thì marketing vẫn ghi được. Giờ là danh sách cột ĐƯỢC SỬA — mọi cột khác, kể cả cột thêm sau này, bị chặn.
+  for (const [ten, cau, gt] of [
+    ['giả người duyệt và giờ duyệt giá', `gia_nguoi_duyet = $2, gia_duyet_luc = now()`, [nsId[UID.chu]]],
+    ['sửa danh sách dị ứng', `di_ung = array['không có gì']`, []],
+    ['đổi mã món', `ma = 'X77'`, []],
+    ['giả người duyệt công bố', `nguoi_duyet = $2`, [nsId[UID.chu]]],
+    ['sửa ghi chú nội bộ "điều gì đang chặn món"', `can_xac_nhan = null, copy_nhap = 'x'`, []],
+    ['đổi ngày tạo', `created_at = now() - interval '1 year'`, []],
+  ]) {
+    const r = await duoi(UID.mktA, `update mon_an set ${cau} where ma = $1 returning ma`, [thuong.ma, ...gt]);
+    ok(`RÀ SOÁT 14/11: marketing ${ten} → bị từ chối`, biChan(r, CAU_MON), ketQua(r));
+  }
+  await db.query(`alter table mon_an add column thu_cot_them_sau text`);
+  const cotMoi = await duoi(UID.mktA, `update mon_an set thu_cot_them_sau = 'x' where ma = $1 returning ma`, [thuong.ma]);
+  ok('RÀ SOÁT 14/11: cột thêm vào bảng sau này mặc định bị chặn với marketing (không phải nhớ thêm vào danh sách cấm)', biChan(cotMoi, CAU_MON), ketQua(cotMoi));
+  const qlCotMoi = await duoi(UID.qlA, `update mon_an set thu_cot_them_sau = 'quản lý ghi' where ma = $1 returning ma`, [thuong.ma]);
+  ok('…quản lý thì ghi được cột đó', duocMot(qlCotMoi), ketQua(qlCotMoi));
+  await db.query(`update mon_an set thu_cot_them_sau = null`);
+
   const sau = await docMon(thuong.ma);
   ok('Món thường không đổi gì: chưa có giá, chưa có mức cay, vẫn nhóm cũ',
      sau.gia === null && !sau.gia_da_duyet && sau.muc_cay === null && !sau.muc_cay_da_duyet && sau.nhom_mon_id === thuong.nhom_mon_id, JSON.stringify(sau));
@@ -69,6 +89,13 @@ await nhom('2 · Việc của marketing ở màn Thực đơn vẫn làm đượ
   const chu = await duoi(UID.mktA,
     `update mon_an set ten_vi = 'Tên viết lại', mo_ta_vi = 'Mô tả viết lại, đủ dài.', khau_phan = '2 người', thu_tu = 7 where ma = $1 returning ma`, [thuong.ma]);
   ok('Marketing sửa tên, mô tả, khẩu phần, thứ tự', duocMot(chu), ketQua(chu));
+  // Mọi cột màn Thực đơn gửi (COT_SUA, COT_DICH của web/src/lib/thuc-don-noi-bo.ts) và sổ bản dịch máy dịch ghi.
+  for (const cot of ['ten_en', 'ten_ko', 'mo_ta_en', 'mo_ta_ko', 'khau_phan_en', 'khau_phan_ko', 'canh_bao', 'canh_bao_en', 'canh_bao_ko']) {
+    const r = await duoi(UID.mktA, `update mon_an set ${cot} = 'Chữ thử cho ${cot}' where ma = $1 returning ma`, [thuong.ma]);
+    ok(`Marketing sửa ô ${cot}`, duocMot(r), ketQua(r));
+  }
+  const so = await duoi(UID.mktA, `update mon_an set ban_dich = ban_dich || '{"thu": {"en": {"cach": "tay"}}}'::jsonb where ma = $1 returning ma`, [thuong.ma]);
+  ok('Marketing (và máy dịch chạy dưới phiên marketing) ghi được sổ bản dịch', duocMot(so), ketQua(so));
   const deXuat = await duoi(UID.mktA, `update mon_an set gia_de_xuat = 185000, muc_cay_de_xuat = 1 where ma = $1 returning ma`, [thuong.ma]);
   ok('Marketing đề xuất giá và mức cay (chưa duyệt)', duocMot(deXuat), ketQua(deXuat));
   const congBo = await duoi(UID.mktA, `update mon_an set trang_thai = 'da_cong_bo' where ma = $1 returning ma`, [thuong.ma]);

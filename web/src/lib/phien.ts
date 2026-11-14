@@ -207,11 +207,24 @@ export async function dangNhap(
   return null;
 }
 
+/** Đăng xuất không được treo theo Supabase: đợi lượt thu hồi tối đa chừng này rồi trả lời. */
+const HAN_THU_HOI_MS = 4000;
+
 /** Client anon riêng, không lưu phiên — cho việc thu hồi phiên lúc đăng xuất. null = chưa nối database. */
 function taoClientThuHoi(): SupabaseClient | null {
   if (!coDatabase()) return null;
   return createClient(layBien('PUBLIC_SUPABASE_URL')!, layBien('PUBLIC_SUPABASE_ANON_KEY')!,
     { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
+/** Đợi `viec` (không bao giờ ném lỗi), nhưng không quá `ms` mili-giây. */
+async function doiCoHan(viec: Promise<void>, ms: number): Promise<void> {
+  let hen: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([viec, new Promise<void>(xong => { hen = setTimeout(xong, ms); })]);
+  } finally {
+    clearTimeout(hen);
+  }
 }
 
 /**
@@ -246,15 +259,21 @@ async function thuHoiPhien(t: Token, tam: SupabaseClient): Promise<void> {
  * Còn lại, không đóng được ở đây: access token (JWT) đã cấp vẫn được PostgREST nhận tới khi tự hết hạn (tối đa
  * một giờ) nếu ai đó cầm nó gọi thẳng database; qua website thì không, vì layPhien hỏi Supabase ở mỗi lần mở trang.
  *
- * `taoTam`: kiểm thử truyền client nối vào Supabase Auth giả (crm/test/test-noi-bo-dang-xuat.mjs).
+ * Không treo theo Supabase: lượt thu hồi chỉ được đợi tối đa HAN_THU_HOI_MS. Máy chủ đăng nhập không trả lời thì
+ * trang vẫn trả lời — không thì người bấm Đăng xuất rồi đóng tab sẽ không bao giờ nhận được lệnh xóa cookie. Bỏ đợi
+ * không có nghĩa là hủy: lời gọi đang dở tự kết thúc cùng lượt request của Worker.
+ *
+ * `thay`: chỗ kiểm thử thay vào (crm/test/test-noi-bo-dang-xuat.mjs) — client nối vào Supabase Auth giả, hạn đợi
+ * ngắn. Trang thật không truyền gì.
  */
 export async function dangXuat(
-  cookies: AstroCookies, taoTam: () => SupabaseClient | null = taoClientThuHoi,
+  cookies: AstroCookies,
+  { taoTam = taoClientThuHoi, hanMs = HAN_THU_HOI_MS }: { taoTam?: () => SupabaseClient | null; hanMs?: number } = {},
 ): Promise<void> {
   try {
     const t = docToken(cookies);
     const tam = t ? taoTam() : null;
-    if (t && tam) await thuHoiPhien(t, tam);
+    if (t && tam) await doiCoHan(thuHoiPhien(t, tam), hanMs);
   } finally {
     xoaToken(cookies);
   }

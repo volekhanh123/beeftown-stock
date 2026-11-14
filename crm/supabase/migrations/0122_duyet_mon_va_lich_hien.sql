@@ -15,7 +15,9 @@
 --       · bỏ co_con — đồ uống có cồn hiện ra khi công tắc hien_do_uong_co_con (chỉ chủ bật) đang tắt;
 --       · bỏ la_mon_song — món sống công bố không kèm câu cảnh báo (CHECK
 --         mon_an_cong_bo_phai_sach chỉ đòi cảnh báo khi cờ còn bật);
---       · chuyển món sang nhóm khác, hay thêm thẳng một món mới với nhóm và cờ tự chọn.
+--       · chuyển món sang nhóm khác, hay thêm thẳng một món mới với nhóm và cờ tự chọn;
+--       · ghi các ô còn lại mà màn hình không bao giờ gửi: giả người duyệt và giờ duyệt giá
+--         (gia_nguoi_duyet, gia_duyet_luc), đổi mã món, xóa danh sách dị ứng, sửa ghi chú nội bộ.
 --
 -- 2 · noi_dung_cong_bo. thu_hoi_noi_dung (0016) chỉ cho chủ gỡ khóa "chỉ chủ sở hữu" và ghi
 --     lại lý do. Trigger noi_dung_cong_bo_kiem_tra (0010, 0036) khóa giá trị và trạng thái của
@@ -27,10 +29,13 @@
 -- ĐỔI GÌ
 --
 --   1. Trigger mon_an_kiem_duyet_trigger (before insert or update on mon_an): người đang đăng
---      nhập mà không phải chủ hay quản lý thì không thêm được món, và không đổi được gia,
---      gia_da_duyet, muc_cay, muc_cay_da_duyet, la_mon_song, co_con, nhom_mon_id. Gửi kèm các
---      cột đó với giá trị KHÔNG đổi thì vẫn lưu. Marketing vẫn sửa chữ, đề xuất giá / mức cay
---      (gia_de_xuat, muc_cay_de_xuat), công bố và gỡ món như trước.
+--      nhập mà không phải chủ hay quản lý thì không thêm được món, và chỉ đổi được ĐÚNG các cột
+--      trong một danh sách: chữ tiếng Việt và bản dịch (tên, mô tả, khẩu phần, cảnh báo), thứ
+--      tự, trạng thái, hai cột đề xuất (gia_de_xuat, muc_cay_de_xuat) và sổ bản dịch — đúng
+--      những ô màn /noi-bo/thuc-don và máy dịch ghi. MỌI CỘT KHÁC bị chặn, kể cả cột thêm vào
+--      bảng sau này: danh sách là "được sửa", không phải "bị cấm", nên quên không thành hở.
+--      Gửi kèm cột khác với giá trị KHÔNG đổi thì vẫn lưu. Marketing vẫn sửa chữ, đề xuất giá /
+--      mức cay, công bố và gỡ món như trước.
 --   2. Trigger noi_dung_cong_bo_khung_gio_trigger (before update on noi_dung_cong_bo): với dòng
 --      ĐÃ CÔNG BỐ, đổi hien_tu / hien_den chỉ dành cho người được công bố khóa đó — chủ với
 --      khóa chi_chu_so_huu, chủ hoặc quản lý với khóa thường (đúng luật của dat_noi_dung và
@@ -52,7 +57,7 @@
 -- vai trong mon_an_kiem_duyet (một migration mới).
 --
 -- CÂU MỚI (bản tiếng Anh ở web/src/lib/cau-noi-bo.ts):
---   'Chỉ chủ nhà hàng hoặc quản lý mới thêm được món, duyệt được giá, mức cay và đổi cờ món sống, có cồn hay nhóm của món'
+--   'Chỉ chủ nhà hàng hoặc quản lý mới thêm được món, duyệt được giá, mức cay, đổi cờ món sống, có cồn, nhóm và các ô khác ngoài phần chữ, thứ tự, trạng thái và đề xuất của món'
 --   'Khóa % chỉ chủ sở hữu mới được đổi lịch hiện trên trang'
 --   'Không có quyền đổi lịch hiện của nội dung đã công bố'
 --
@@ -64,23 +69,34 @@
 
 
 -- =============================================================================
--- 1 · MÓN ĂN — giá, mức cay, cờ món sống / có cồn, nhóm và việc thêm món: chỉ chủ và quản lý
+-- 1 · MÓN ĂN — người biên tập chỉ sửa được chữ, thứ tự, trạng thái và đề xuất; còn lại: chủ và quản lý
 -- =============================================================================
 create or replace function mon_an_kiem_duyet()
 returns trigger
 language plpgsql
 set search_path = public
 as $$
+declare
+  -- Cột người không phải chủ / quản lý (tức marketing — policy mon_an_sua không cho vai nào khác) ĐƯỢC SỬA.
+  --   · chữ tiếng Việt, bản dịch, thứ tự: COT_SUA và COT_DICH của web/src/lib/thuc-don-noi-bo.ts;
+  --   · trang_thai: công bố và gỡ món;
+  --   · gia_de_xuat, muc_cay_de_xuat: đề xuất chờ duyệt (0011: "quản lý hoặc marketing điền thoải mái");
+  --   · ban_dich: sổ bản dịch — ghi_ban_dich (máy dịch, chạy dưới phiên người soạn) và ghi_so_ban_dich ghi;
+  --   · updated_at, cong_bo_luc: hai trigger khác của bảng tự đặt trong cùng câu lệnh (trigger này chạy trước
+  --     chúng theo thứ tự tên; để trong danh sách cho khỏi phụ thuộc thứ tự đó).
+  -- Cột không có ở đây — kể cả cột thêm vào bảng sau này — chỉ chủ và quản lý đổi được.
+  v_duoc_sua constant text[] := array[
+    'ten_vi', 'ten_en', 'ten_ko', 'mo_ta_vi', 'mo_ta_en', 'mo_ta_ko',
+    'khau_phan', 'khau_phan_en', 'khau_phan_ko', 'canh_bao', 'canh_bao_en', 'canh_bao_ko',
+    'thu_tu', 'trang_thai', 'gia_de_xuat', 'muc_cay_de_xuat', 'ban_dich',
+    'updated_at', 'cong_bo_luc'];
 begin
-  if co_phien_dang_nhap()
-     and not co_vai_tro(array['chu_so_huu','quan_ly']::vai_tro[])
-     and (tg_op = 'INSERT'
-          or (new.gia, new.gia_da_duyet, new.muc_cay, new.muc_cay_da_duyet,
-              new.la_mon_song, new.co_con, new.nhom_mon_id)
-             is distinct from
-             (old.gia, old.gia_da_duyet, old.muc_cay, old.muc_cay_da_duyet,
-              old.la_mon_song, old.co_con, old.nhom_mon_id)) then
-    raise exception 'Chỉ chủ nhà hàng hoặc quản lý mới thêm được món, duyệt được giá, mức cay và đổi cờ món sống, có cồn hay nhóm của món'
+  if not co_phien_dang_nhap() or co_vai_tro(array['chu_so_huu','quan_ly']::vai_tro[]) then
+    return new;
+  end if;
+  if tg_op = 'INSERT'
+     or (to_jsonb(new) - v_duoc_sua) is distinct from (to_jsonb(old) - v_duoc_sua) then
+    raise exception 'Chỉ chủ nhà hàng hoặc quản lý mới thêm được món, duyệt được giá, mức cay, đổi cờ món sống, có cồn, nhóm và các ô khác ngoài phần chữ, thứ tự, trạng thái và đề xuất của món'
       using errcode = 'insufficient_privilege';
   end if;
   return new;
@@ -88,7 +104,7 @@ end;
 $$;
 
 comment on function mon_an_kiem_duyet() is
-  'Trigger của mon_an (0122): người đăng nhập không phải chủ / quản lý không thêm được món và không đổi được giá đã duyệt, mức cay đã duyệt, cờ món sống, cờ có cồn, nhóm. Không phiên (SQL Editor) thì bỏ qua.';
+  'Trigger của mon_an (0122): người đăng nhập không phải chủ / quản lý không thêm được món và chỉ đổi được chữ, bản dịch, thứ tự, trạng thái, hai cột đề xuất và sổ bản dịch — giá đã duyệt, mức cay đã duyệt, cờ món sống, cờ có cồn, nhóm và mọi cột khác thì không. Không phiên (SQL Editor) thì bỏ qua.';
 
 create trigger mon_an_kiem_duyet_trigger
   before insert or update on mon_an

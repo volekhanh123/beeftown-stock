@@ -144,8 +144,8 @@ export const CAU_EN: Readonly<Record<string, string>> = {
   'Không có quyền gỡ nội dung khỏi trang': 'You are not allowed to remove content from the site',
   'Chỉ chủ nhà hàng hoặc quản lý mới duyệt được mức lương': 'Only the owner or a manager can approve salaries',
   // 0122 — trigger mon_an_kiem_duyet và noi_dung_cong_bo_khung_gio_kiem_tra (câu có % ở MAU_EN)
-  'Chỉ chủ nhà hàng hoặc quản lý mới thêm được món, duyệt được giá, mức cay và đổi cờ món sống, có cồn hay nhóm của món':
-    'Only the owner or a manager can add a dish, approve its price and spice level, or change its raw, alcohol or group setting',
+  'Chỉ chủ nhà hàng hoặc quản lý mới thêm được món, duyệt được giá, mức cay, đổi cờ món sống, có cồn, nhóm và các ô khác ngoài phần chữ, thứ tự, trạng thái và đề xuất của món':
+    'Only the owner or a manager can add a dish, approve its price and spice level, change its raw, alcohol or group setting, or change any field other than its text, order, status and proposals',
   'Không có quyền đổi lịch hiện của nội dung đã công bố': 'You are not allowed to change the display schedule of published content',
   'p_muc phải là một mảng': 'p_muc must be an array',
   'Ngôn ngữ dịch phải là en hoặc ko': 'The translation language must be en or ko',
