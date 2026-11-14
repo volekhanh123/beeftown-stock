@@ -258,6 +258,11 @@ export const CAU_EN: Readonly<Record<string, string>> = {
     'The delivery address is too short, please include the house number, street and area',
   'Địa chỉ giao hàng dài quá 300 ký tự': 'The delivery address is longer than 300 characters',
   'Ghi chú dài quá 500 ký tự': 'The note is longer than 500 characters',
+  // 0121 — tao_dat_ban, nop_ho_so_ung_tuyen (họ tên, ghi chú dùng hai câu của 0113 ở trên)
+  'Dịp dài quá 100 ký tự': 'The occasion is longer than 100 characters',
+  'Email dài quá 200 ký tự': 'The email address is longer than 200 characters',
+  'Phần giới thiệu dài quá 4000 ký tự': 'The introduction is longer than 4000 characters',
+  'Phần kinh nghiệm dài quá 4000 ký tự': 'The experience section is longer than 4000 characters',
   'Đơn chưa có gói nào': 'The order has no packs',
   'Số gói mỗi loại phải từ 0 đến 10': 'Each pack can be ordered 0 to 10 times',
   'Có gói trong đơn vừa tạm hết, vui lòng tải lại trang và chọn lại':
@@ -420,6 +425,10 @@ export const MAU_EN: ReadonlyArray<readonly [RegExp, (m: RegExpMatchArray) => st
   [/^Mã vạch (.+) đã dùng cho gói khác\.$/, m => `The barcode ${m[1]} is already used by another pack.`],
   // 0102 — cài đặt bán lẻ
   [/^Cỡ gói (.+) g nhập hai lần\.$/, m => `Pack size ${m[1]} g is entered twice.`],
+  // 0121 — khối chặn ở đầu migration: chỉ người chạy migration thấy câu này. Có bản tiếng Anh để bất biến
+  // "mọi câu raise exception đều dịch được" (test-noi-bo-tieng-anh.mjs) không cần ngoại lệ.
+  [/^0121 DỪNG: (.+?) đặt bàn, (.+?) khách, (.+?) hồ sơ đang có ô chữ vượt trần mới\. Chưa đổi gì\. Xem mục DỮ LIỆU CŨ ở đầu file rồi hỏi Khánh\.$/,
+    m => `0121 STOPPED: ${m[1]} bookings, ${m[2]} customers and ${m[3]} applications have a text field over the new limit. Nothing was changed. See the OLD DATA section at the top of the file, then ask the owner.`],
 ];
 
 export function dichCau(nn: NgonNguNB, cau: string | null | undefined): string {

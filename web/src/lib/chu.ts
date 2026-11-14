@@ -683,6 +683,23 @@ const LOI_DATABASE: ReadonlyArray<readonly [RegExp, Readonly<Record<'en' | 'ko',
     en: 'The note can be up to 500 characters.',
     ko: '메모는 500자까지 입력할 수 있어요.',
   }],
+  // 0121 — giới hạn độ dài của tao_dat_ban và nop_ho_so_ung_tuyen (họ tên, ghi chú dùng hai câu của 0113 ở trên)
+  [/^Dịp dài quá 100 ký tự/, {
+    en: 'The occasion can be up to 100 characters.',
+    ko: '방문 목적은 100자까지 입력할 수 있어요.',
+  }],
+  [/^Email dài quá 200 ký tự/, {
+    en: 'The email address can be up to 200 characters.',
+    ko: '이메일 주소는 200자까지 입력할 수 있어요.',
+  }],
+  [/^Phần giới thiệu dài quá 4000 ký tự/, {
+    en: 'The few words about yourself can be up to 4,000 characters.',
+    ko: '자기소개는 4,000자까지 입력할 수 있어요.',
+  }],
+  [/^Phần kinh nghiệm dài quá 4000 ký tự/, {
+    en: 'The previous experience section can be up to 4,000 characters.',
+    ko: '경력 사항은 4,000자까지 입력할 수 있어요.',
+  }],
   [/^Đơn chưa có gói nào/, {
     en: 'Your order has no packs yet.',
     ko: '주문에 아직 팩이 없어요.',
