@@ -140,6 +140,8 @@ nhom('3 · MÀN CRM KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     // Bản đồ chức năng: menu hai khung, trang Tất cả chức năng, ô tìm.
     'lib/dieu-huong-noi-bo.ts', 'lib/ban-do-chuc-nang.ts',
     'pages/noi-bo/chuc-nang.astro', 'components/BanDoChucNang.astro', 'components/OTimChucNang.astro',
+    // Video đào tạo (0117): trang và câu báo của thư viện.
+    'pages/noi-bo/dao-tao.astro', 'lib/video-dao-tao.ts',
   ];
   // Chữ Việt CỐ Ý, không phải câu giao diện bị sót. Mỗi dòng một lý do.
   const CO_Y = [

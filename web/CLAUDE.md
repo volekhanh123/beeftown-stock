@@ -24,6 +24,7 @@ thẳng file `.ts` của `src/lib/`. Tìm test của một file: `cd crm && npm 
 | Việc chạy theo giờ (cron) | `wrangler.toml` | `src/worker.ts` (hàm `scheduled`) |
 | Bản dịch tự động Anh / Hàn | `README.md`, "Bản dịch tự động" | `src/lib/may-dich.ts`, `src/lib/ban-dich.ts` |
 | Meta Pixel | `README.md`, "Meta Pixel" | `src/lib/meta-pixel.ts` |
+| Video đào tạo (YouTube Không công khai, nhúng cho nhân viên) | `README.md`, "Video đào tạo" | `src/lib/video-dao-tao.ts`, `src/pages/noi-bo/dao-tao.astro` |
 
 ## Kho
 

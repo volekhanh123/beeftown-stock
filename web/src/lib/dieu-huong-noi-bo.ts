@@ -29,6 +29,8 @@ import type { TenBieuTuong } from './kho/bieu-tuong.ts';
 export const VAI_CRM = ['chu_so_huu', 'quan_ly', 'thu_ngan', 'marketing'] as const;
 /** Vai vào được kho (0017 / 0018) — khớp quyền 'xem' của QUYEN_KHO. */
 export const VAI_VAO_KHO = ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan'] as const;
+/** Bảy vai người (bốn vai CRM 0001, ba vai kho 0017) — không có tài khoản máy. Ai cũng xem được Video đào tạo (0117). */
+export const VAI_NGUOI = [...VAI_CRM, 'thu_kho', 'nhan_vien_quay', 'ke_toan'] as const;
 
 export type MaNhomNoiBo = 'khach' | 'website' | 'nha_hang';
 
@@ -103,6 +105,13 @@ export const MUC_NOI_BO: readonly MucNoiBo[] = [
   { ma: 'kho', link: '/noi-bo/kho',
     ten: { vi: 'Kho', en: 'Inventory' }, ngan: { vi: 'Kho', en: 'Stock' },
     vai: VAI_VAO_KHO, bieuTuong: 'ton', nhom: null },
+  // Video đào tạo (0117): bảy vai người, như policy video_dao_tao_doc — training là của mọi nhân viên, nên đây là
+  // mục nhà hàng duy nhất vai chỉ-kho thấy ngoài Kho (đứng SAU Kho: thanh của họ là Kho · Đào tạo). Chủ, quản lý
+  // thêm / sửa / xóa ngay trên trang (VAI_SUA_DAO_TAO, lib/video-dao-tao.ts).
+  { ma: 'dao_tao', link: '/noi-bo/dao-tao',
+    ten: { vi: 'Video đào tạo', en: 'Training videos' }, ngan: { vi: 'Đào tạo', en: 'Training' },
+    vai: VAI_NGUOI, bieuTuong: 'video', nhom: 'nha_hang',
+    tuKhoa: { vi: 'training hướng dẫn học việc nhân viên mới youtube', en: 'training onboarding new staff how to youtube' } },
   { ma: 'cai_dat', link: '/noi-bo/cai-dat',
     ten: { vi: 'Cài đặt nhà hàng', en: 'Restaurant settings' }, ngan: { vi: 'Cài đặt', en: 'Settings' },
     vai: ['chu_so_huu', 'quan_ly'], bieuTuong: 'cai_dat', nhom: 'nha_hang',

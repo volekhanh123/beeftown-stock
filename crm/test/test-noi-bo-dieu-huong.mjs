@@ -124,11 +124,11 @@ await nhom('2 · THANH MENU: TỐI ĐA 5 NÚT, KHÔNG MỤC NÀO MẤT', async (
   ok('Thu ngân: Tổng quan · Đặt bàn · Đơn thịt · Bán lẻ · Thêm (0113: 6 mục, Đơn mua thịt lên thanh đáy)',
     ma('thu_ngan') === 'tong_quan,dat_ban,don_mua_thit,ban_le,them', ma('thu_ngan'));
   ok('Vai lạ / chưa đăng nhập: không mục nào, không lỗi', NB.thanhDayNoiBo('may_chung').length === 0 && NB.thanhDayNoiBo(undefined).length === 0);
-  // Vai chỉ-kho mở một trang khung NoiBo: chỉ một mục (Kho) → không hiện thanh nào, như bản cũ;
-  // không có "Tất cả chức năng" (trang đó chuyển họ sang trang Khác của kho).
+  // Vai chỉ-kho mở một trang khung NoiBo (từ 0117 là trang Video đào tạo): đúng hai mục, Kho trước, Đào tạo sau —
+  // thanh hiện ra để quay về Kho; không có "Tất cả chức năng" (trang đó chuyển họ sang trang Khác của kho).
   for (const vai of VAI_KHO_DS) {
-    ok(`${vai}: khung NoiBo chỉ có mục Kho, không "Thêm"`,
-      NB.thanhTrenNoiBo(vai).map(m => m.ma).join() === 'kho' && NB.thanhDayNoiBo(vai).map(m => m.ma).join() === 'kho'
+    ok(`${vai}: khung NoiBo có đúng Kho · Đào tạo, không "Thêm"`,
+      NB.thanhTrenNoiBo(vai).map(m => m.ma).join() === 'kho,dao_tao' && NB.thanhDayNoiBo(vai).map(m => m.ma).join() === 'kho,dao_tao'
       && !NB.canTrangTatCa(vai));
   }
   ok('Chủ: thanh trên có "Tất cả chức năng" ở cuối', NB.thanhTrenNoiBo('chu_so_huu').at(-1) === MUC_THEM);
@@ -186,8 +186,17 @@ await nhom('3 · AI THẤY MỤC NÀO — KHỚP TRANG VÀ RLS', async () => {
   const { VAI_ZALO } = await import('../../web/src/lib/zalo-trang.ts');
   ok('Zalo: vai của mục = VAI_ZALO mà trang Zalo kiểm', bang(vaiCua('zalo'), VAI_ZALO));
   ok('Kho: vai của mục = vai có quyền "xem" kho (QUYEN_KHO)', bang(vaiCua('kho'), QUYEN_KHO.xem) && bang(NB.VAI_VAO_KHO, QUYEN_KHO.xem));
-  ok('Vai chỉ-kho không thấy mục nhà hàng nào ngoài Kho',
-    VAI_KHO_DS.every(v => NB.mucNoiBoCuaVai(v).every(m => m.ma === 'kho')));
+  // 0117: Video đào tạo là mục nhà hàng DUY NHẤT vai chỉ-kho thấy ngoài Kho — training là của mọi nhân viên.
+  ok('Vai chỉ-kho không thấy mục nhà hàng nào ngoài Kho và Video đào tạo',
+    VAI_KHO_DS.every(v => NB.mucNoiBoCuaVai(v).map(m => m.ma).join() === 'kho,dao_tao'));
+  const { VAI_XEM_DAO_TAO, VAI_SUA_DAO_TAO } = await import('../../web/src/lib/video-dao-tao.ts');
+  ok('Video đào tạo: bảy vai người = VAI_XEM_DAO_TAO (so với policy video_dao_tao_doc ở test-noi-bo-video-dao-tao.mjs)',
+    bang(vaiCua('dao_tao'), MOI_VAI) && bang(vaiCua('dao_tao'), VAI_XEM_DAO_TAO));
+  const daoTao = doc('web/src/pages/noi-bo/dao-tao.astro');
+  ok('Video đào tạo: trang đưa vai ngoài VAI_XEM_DAO_TAO về /noi-bo, ẩn form theo VAI_SUA_DAO_TAO (chủ, quản lý)',
+    /if \(!VAI_XEM_DAO_TAO\.includes\(nhanSu\.vai_tro\)\) return Astro\.redirect\('\/noi-bo', 302\)/.test(daoTao)
+    && /const duocSua = VAI_SUA_DAO_TAO\.includes\(nhanSu\.vai_tro\)/.test(daoTao)
+    && bang(VAI_SUA_DAO_TAO, ['chu_so_huu', 'quan_ly']));
 
   const cn = doc('web/src/pages/noi-bo/chuc-nang.astro');
   ok('Trang Tất cả chức năng: vai ngoài bốn vai CRM chuyển sang trang Khác của kho, giữ chữ tìm',
@@ -204,7 +213,9 @@ await nhom('3 · AI THẤY MỤC NÀO — KHỚP TRANG VÀ RLS', async () => {
     const crm = BD.banDoChucNang(vai, 'kho').flatMap(n => n.muc.map(m => m.link)).filter(l => !l.startsWith('/noi-bo/kho'));
     ok(`${vai}: trang Khác chỉ có mục nhà hàng của vai`, crm.every(l => MUC_CRM.find(m => m.link === l)?.vai.includes(vai)));
   }
-  ok('Thủ kho: trang Khác không có phần nhà hàng', !BD.banDoChucNang('thu_kho', 'kho').some(n => n.ma === 'nb_phan_khac'));
+  const phanKhacThuKho = BD.banDoChucNang('thu_kho', 'kho').filter(n => n.ma === 'nb_phan_khac').flatMap(n => n.muc.map(m => m.link));
+  ok('Thủ kho: phần nhà hàng của trang Khác chỉ có Video đào tạo (0117)',
+    phanKhacThuKho.join() === '/noi-bo/dao-tao', phanKhacThuKho.join(', '));
   // Ô menu có nhóm; mục con (`cha`, gọn menu 22/10/2026) không có nhóm — nó theo nhóm của ô cha.
   const khongNhom = MUC_KHO.filter(m => m.cha ? m.nhom : !KDH.NHOM_KHO.some(n => n.ma === m.nhom)).map(m => m.ma);
   ok('Ô menu kho nào cũng thuộc một nhóm có thật; mục con không tự đặt nhóm', khongNhom.length === 0, khongNhom.join(', '));

@@ -101,6 +101,8 @@ await db.query(`insert into phien_ban_thuc_don (ma, ngay_hieu_luc) values ('v-th
 const { rows: [spBanLe] } = await db.query(
   `insert into ban_le_san_pham (ma, ten_vi, loai, cach_ban) values ('ribeye', 'Ribeye', 'thit', 'theo_can') returning id`);
 await db.query(`insert into ban_le_goi (san_pham_id, so_gam) values ($1, 200)`, [spBanLe.id]);
+// 0117 · video đào tạo — một video, để phép thử tương đương của bốn policy không rỗng.
+await db.query(`insert into video_dao_tao (youtube_id, tieu_de) values ('aaaaaaaaaaa', 'Bài 1')`);
 // Hai dữ kiện nháp (chưa công bố) — đúng thứ không được lộ cho người đã nghỉ / vai kho. Hỏng thì ném: bảng
 // thiếu dòng làm phép thử của mục 1–2 thành rỗng.
 await db.query(`insert into noi_dung_cong_bo (khoa, kieu, gia_tri_text)
@@ -187,6 +189,15 @@ const SAU_0070 = {
   // 0102 — cỡ gói thịt bò dùng chung (test-ban-le-cai-dat.mjs nhóm 1): đọc = bốn vai CRM; không policy ghi. Bảng có hai
   // dòng gieo của migration (200 g, 400 g) nên phép thử không rỗng.
   'ban_le_co_goi.ban_le_co_goi_doc': [SPEC_CRM, null],
+  // 0117 — video đào tạo (test-noi-bo-video-dao-tao.mjs nhóm 1): đọc = bảy vai người đang làm (vai kho xem được:
+  // training là của mọi nhân viên); thêm, sửa, xóa = chủ, quản lý.
+  'video_dao_tao.video_dao_tao_doc': [
+    "co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro, 'thu_ngan'::vai_tro, 'marketing'::vai_tro, 'thu_kho'::vai_tro, 'nhan_vien_quay'::vai_tro, 'ke_toan'::vai_tro])",
+    null],
+  'video_dao_tao.video_dao_tao_them': [null, "co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro])"],
+  'video_dao_tao.video_dao_tao_sua': [
+    "co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro])", "co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro])"],
+  'video_dao_tao.video_dao_tao_xoa': ["co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro])", null],
 };
 
 const { rows: MOI_PL } = await db.query(`
