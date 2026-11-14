@@ -8,17 +8,21 @@
  *   · Quản lý và chủ xem máy dùng chung: ai đã gắn, ai đang bị khóa vì sai
  *     PIN; mở khóa, khóa hẳn, tắt máy, gỡ người.
  *
- * TẠO TÀI KHOẢN — HAI BƯỚC, HAI CLIENT KHÁC NHAU
+ * TẠO TÀI KHOẢN — BA BƯỚC, HAI CLIENT KHÁC NHAU
  *
  *   1. auth.signUp bằng một client anon RIÊNG, dùng xong bỏ
  *      (persistSession: false). Phiên của người mới KHÔNG bao giờ được ghi
  *      vào cookie — ghi vào là chủ bị đăng xuất và thành người mới.
  *      Vẫn không có khóa service_role nào ở đây: đăng ký bằng khóa anon là
  *      việc ai cũng làm được với Supabase, nên an toàn không nằm ở bước này.
- *   2. kho_them_nhan_su bằng client của CHỦ (mang access token của chủ).
+ *   2. Đăng nhập thử bằng mật khẩu tạm, cũng bằng client anon đó
+ *      (thuMatKhauTam): email đã bị người khác đăng ký trước thì Supabase trả
+ *      lại tài khoản CŨ, mang mật khẩu của người đó — không được nối.
+ *   3. kho_them_nhan_su bằng client của CHỦ (mang access token của chủ).
  *      Chính bước này biến một tài khoản trống thành nhân viên — và database
- *      chỉ cho chủ làm. Người lạ tự đăng ký được tài khoản Supabase thì vẫn
- *      không thấy gì, vì không có dòng nhan_su (xem layPhien trong phien.ts).
+ *      chỉ cho chủ làm, chỉ với tài khoản đăng nhập vừa tạo (trigger 0123). Người lạ
+ *      tự đăng ký được tài khoản Supabase thì vẫn không thấy gì, vì không có
+ *      dòng nhan_su (xem layPhien trong phien.ts).
  *
  * Mật khẩu tạm sinh ở máy chủ bằng crypto.getRandomValues, hiện MỘT lần trên
  * màn ngay sau khi tạo. Không lưu ở đâu cả: không database, không cookie báo,
@@ -35,7 +39,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { cauLoiKho, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { dichCau } from '../cau-noi-bo.ts';
-import { laLoiMang } from '../qua-tai.ts';
+import { laLoiMang, phanLoaiLoiAuth } from '../qua-tai.ts';
 import { biMatHopLe, BI_MAT_TOI_THIEU } from './may-chung-ma-hoa.ts';
 
 // -----------------------------------------------------------------------------
@@ -294,11 +298,65 @@ function layBien(ten: string): string | undefined {
 }
 
 /**
+ * MẬT KHẨU TẠM CÓ ĐÚNG LÀ MẬT KHẨU CỦA TÀI KHOẢN VỪA NHẬN VỀ KHÔNG (rà soát 14/11/2026)
+ *
+ * Đăng ký bằng khóa anon là việc ai cũng làm được. Khi Supabase bật "Confirm email" và email đã có một tài khoản
+ * CHƯA xác nhận, lần đăng ký sau không báo lỗi và không đổi mật khẩu: Supabase trả lại chính tài khoản cũ, kèm
+ * identity (mã nguồn công khai của Supabase Auth, internal/api/signup.go). Bản trước nối tài khoản đó thành nhân
+ * viên — email đã bị người khác đăng ký trước thì nhân viên mới mang mật khẩu của người đó, còn mật khẩu tạm chủ
+ * cầm không mở được gì. "Confirm email" bị tắt sau lần đăng ký trước thì còn tệ hơn: lần đăng ký của chủ xác nhận
+ * luôn tài khoản cũ và trả về một phiên, nên CÓ PHIÊN CŨNG KHÔNG CHỨNG MINH ĐƯỢC GÌ.
+ *
+ * Supabase kiểm mật khẩu TRƯỚC khi xét email đã xác nhận chưa (internal/api/token.go), nên một lần đăng nhập thử
+ * bằng mật khẩu tạm phân biệt được:
+ *   dung            vào được, hoặc "email_not_confirmed" — mật khẩu tạm đúng: tài khoản là của lần bấm này;
+ *   da_co_tu_truoc  "invalid_credentials" hay 4xx khác — tài khoản có từ trước, mật khẩu của người khác;
+ *   chua_biet       429, 5xx, mất mạng, trả lời không đọc được — KHÔNG đoán là ổn.
+ * Chỉ `dung` mới được nối thành nhân viên. Lớp thứ hai ở database: trigger của nhan_su (0123) từ chối gắn một tài
+ * khoản đăng nhập tạo quá 10 phút trước.
+ *
+ * Thứ tự kiểm của Supabase là đọc mã nguồn, chưa chạy với Supabase thật — cách thử tay: web/KHO.md mục 3f.
+ */
+export type KetQuaThuMatKhau = 'dung' | 'da_co_tu_truoc' | 'chua_biet';
+
+export async function thuMatKhauTam(tam: SupabaseClient, email: string, matKhau: string): Promise<KetQuaThuMatKhau> {
+  try {
+    const { data, error } = await tam.auth.signInWithPassword({ email, password: matKhau });
+    if (!error) {
+      if (!data.session) return 'chua_biet';
+      // Phiên của người mới: không ai dùng nó — thu hồi luôn.
+      try { await tam.auth.signOut({ scope: 'local' }); } catch { /* bỏ qua */ }
+      return 'dung';
+    }
+    const o = error as { code?: unknown; message?: unknown };
+    if (o.code === 'email_not_confirmed' || /email not confirmed/i.test(String(o.message ?? ''))) return 'dung';
+    return phanLoaiLoiAuth(error) === 'tu_choi' ? 'da_co_tu_truoc' : 'chua_biet';
+  } catch {
+    return 'chua_biet';
+  }
+}
+
+/**
+ * Client anon RIÊNG cho việc đăng ký: không lưu phiên, không tự làm mới — phiên của người mới chỉ sống trong
+ * biến này rồi bị bỏ, không đụng tới cookie bt_phien của chủ. null = chưa nối database.
+ */
+function taoClientDangKy(): SupabaseClient | null {
+  const url = layBien('PUBLIC_SUPABASE_URL');
+  const anon = layBien('PUBLIC_SUPABASE_ANON_KEY');
+  if (!url || !anon) return null;
+  return createClient(url, anon, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+}
+
+/**
  * Tạo tài khoản đăng nhập rồi nối thành nhân viên.
- * `client` là client của CHỦ; signUp đi bằng client anon riêng tạo ở đây.
+ * `client` là client của CHỦ; signUp đi bằng client anon riêng (`taoTam`, mặc định dựng từ biến môi trường —
+ * kiểm thử truyền client nối vào Supabase Auth giả: crm/test/test-kho-nhan-vien-tai-khoan.mjs).
  */
 export async function themNhanVien(
   client: SupabaseClient, form: FormData, chiNhanh: { id: string; ten: string }[],
+  taoTam: () => SupabaseClient | null = taoClientDangKy,
 ): Promise<KetQuaTaoNhanVien> {
   const idCn = chiNhanh.map(c => c.id);
   const f = docFormNhanVien(form, idCn);
@@ -308,15 +366,8 @@ export async function themNhanVien(
   }
   const loiDangKy = (e: unknown): KetQuaTaoNhanVien => ({ ok: false, cau: cauLoiDangKy(e), cauEn: cauLoiDangKy(e, 'en') });
 
-  const url = layBien('PUBLIC_SUPABASE_URL');
-  const anon = layBien('PUBLIC_SUPABASE_ANON_KEY');
-  if (!url || !anon) return kqHai(false, { vi: 'Chưa nối database. Xem hướng dẫn trong web/README.md.', en: 'No database connected. See web/README.md.' });
-
-  // Client riêng, không lưu phiên, không tự làm mới: phiên của người mới chỉ
-  // sống trong biến này rồi bị bỏ — không đụng tới cookie bt_phien của chủ.
-  const tam = createClient(url, anon, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  });
+  const tam = taoTam();
+  if (!tam) return kqHai(false, { vi: 'Chưa nối database. Xem hướng dẫn trong web/README.md.', en: 'No database connected. See web/README.md.' });
   const matKhau = taoMatKhauTam();
 
   let uid: string;
@@ -341,6 +392,21 @@ export async function themNhanVien(
     if (data.session) { try { await tam.auth.signOut({ scope: 'local' }); } catch { /* bỏ qua */ } }
   } catch (e) {
     return loiDangKy(e);
+  }
+
+  // Chỉ nối khi mật khẩu tạm đúng là mật khẩu của tài khoản này — xem thuMatKhauTam ở trên.
+  const thu = await thuMatKhauTam(tam, f.email, matKhau);
+  if (thu === 'da_co_tu_truoc') {
+    return kqHai(false, {
+      vi: `Email ${f.email} đã có một tài khoản đăng nhập từ trước lần bấm này, và mật khẩu tạm vừa sinh không mở được nó. CHƯA tạo nhân viên ở lần bấm này. Nếu ${f.email} đã có trong danh sách bên dưới thì tài khoản đó tạo từ lần trước — mất mật khẩu tạm thì đặt lại ở Supabase → Authentication → Users. Nếu chưa có: vào Supabase → Authentication → Users, xóa ${f.email}, rồi tạo lại.`,
+      en: `The email ${f.email} already had a login before this attempt, and the temporary password just generated does not open it. No staff member was created by this attempt. If ${f.email} is already in the list below, that account was created earlier — if its temporary password is lost, reset it in Supabase → Authentication → Users. If it is not in the list: go to Supabase → Authentication → Users, delete ${f.email}, then create it again.`,
+    });
+  }
+  if (thu === 'chua_biet') {
+    return kqHai(false, {
+      vi: `Đã gửi yêu cầu tạo tài khoản đăng nhập cho ${f.email} nhưng chưa kiểm được mật khẩu tạm vì máy chủ đăng nhập đang bận hoặc mất kết nối. CHƯA tạo nhân viên. Email này có thể đã bị chiếm — đợi vài phút, vào Supabase → Authentication → Users, xóa ${f.email} nếu có, rồi tạo lại.`,
+      en: `A login was requested for ${f.email}, but the temporary password could not be checked because the login server is busy or unreachable. The staff member was NOT created. This email may now be taken — wait a few minutes, go to Supabase → Authentication → Users, delete ${f.email} if it is there, then create it again.`,
+    });
   }
 
   const { error } = await client.rpc('kho_them_nhan_su', {

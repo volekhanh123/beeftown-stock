@@ -501,15 +501,44 @@ khóa máy, quản lý mở ở màn Nhân viên & máy. Mọi sự kiện ghi `
 
 ### Chủ tự tạo tài khoản (`lib/kho/nhan-vien.ts`)
 
-1. Kiểm form trước (`docFormNhanVien`) — tạo xong tài khoản đăng nhập mà bước 3 hỏng thì email bị chiếm.
+1. Kiểm form trước (`docFormNhanVien`) — tạo xong tài khoản đăng nhập mà bước sau hỏng thì email bị chiếm.
 2. `auth.signUp` bằng **client anon riêng** (`persistSession: false`), mật khẩu tạm `taoMatKhauTam()`
    (`crypto.getRandomValues`, 12 chữ không dễ nhầm, dạng `Xk7m-4Rtq-9wPa`). Phiên của người mới
    **không bao giờ vào cookie** (chủ không bị đăng xuất) và bị thu hồi ngay.
-3. `kho_them_nhan_su(p_auth_uid, p_ho_ten, p_vai_tro, p_chi_nhanh_id)` bằng **client của chủ** — chỉ chủ;
+3. **Đăng nhập thử bằng mật khẩu tạm** (`thuMatKhauTam`, cũng client anon đó) — chỉ nối khi mật khẩu tạm
+   đúng là mật khẩu của tài khoản vừa nhận về. Xem "Email đã bị đăng ký trước" bên dưới.
+4. `kho_them_nhan_su(p_auth_uid, p_ho_ten, p_vai_tro, p_chi_nhanh_id)` bằng **client của chủ** — chỉ chủ;
    chỉ vai `thu_kho | nhan_vien_quay | ke_toan | may_chung | may_ipos` (web không cho chọn `may_ipos`
-   tới GĐ7a); uid phải có trong `auth.users` và chưa gắn nhân sự nào.
-4. Mật khẩu tạm hiện **một lần** trên màn trả lời POST (không chuyển hướng, `Cache-Control: no-store`),
+   tới GĐ7a); uid phải có trong `auth.users`, chưa gắn nhân sự nào và **tạo trong 10 phút gần nhất** (trigger của
+   `nhan_su`, `0123`).
+5. Mật khẩu tạm hiện **một lần** trên màn trả lời POST (không chuyển hướng, `Cache-Control: no-store`),
    không lưu ở đâu. F5 gửi lại → `ma_gui` trùng cookie `bt_kho_nv_gui` (chỉ chứa `ma_gui`) → không tạo lần hai.
+
+**Email đã bị đăng ký trước** (rà soát 14/11/2026). Đăng ký bằng khóa anon là việc ai cũng làm được. Khi
+Supabase bật "Confirm email" và email đã có một tài khoản **chưa xác nhận**, lần đăng ký sau không báo lỗi
+và không đổi mật khẩu: Supabase trả lại chính tài khoản cũ. Bản trước nối tài khoản đó thành nhân viên —
+nhân viên mới mang mật khẩu của người đã đăng ký trước. Hai lớp chặn, độc lập nhau:
+
+| Lớp | Ở đâu | Làm gì |
+|---|---|---|
+| Web | `thuMatKhauTam` | Đăng nhập thử bằng mật khẩu tạm. Vào được hoặc `email_not_confirmed` → nối. `invalid_credentials` (hay 4xx khác) → tài khoản có từ trước, **không nối**, bảo chủ xóa trong Supabase rồi tạo lại. 429 / 5xx / mất mạng → chưa biết, **không nối** |
+| Database | trigger `nhan_su_kiem_tai_khoan_vua_tao` trên `nhan_su` (`0123`) | Dưới một phiên đăng nhập, từ chối gắn tài khoản `auth.users` tạo quá 10 phút trước hoặc không rõ tạo lúc nào — qua `kho_them_nhan_su` hay chủ ghi thẳng bảng đều vậy. Không phiên (SQL Editor, Table Editor — cách tạo chủ, quản lý, thu ngân, marketing) thì bỏ qua. Là trigger chứ không thay thân `kho_them_nhan_su`, để migration khác viết lại hàm đó không làm mất luật này |
+
+Giả định: Supabase Auth kiểm mật khẩu **trước** khi xét email đã xác nhận chưa (mã nguồn công khai,
+`internal/api/token.go`) — đọc mã, chưa chạy với Supabase thật. Kiểm thử dùng Supabase Auth giả viết theo
+đúng các nhánh đó: `crm/test/test-kho-nhan-vien-tai-khoan.mjs`. **Thử tay một lần trên project Beeftown-thu**
+(Authentication → Sign In / Providers → Email, bật "Confirm email"):
+
+1. Ở màn Nhân viên, tạo một nhân viên với email thử (email chưa từng dùng). Phải thấy "Đã tạo tài khoản…"
+   kèm mật khẩu tạm — chép lại. **Chưa** bấm link trong thư. (Thấy câu "…đã có một tài khoản đăng nhập từ
+   trước…" ngay ở bước này là giả định sai: Supabase không trả `email_not_confirmed` cho mật khẩu đúng.)
+2. Mở lại màn Nhân viên (form mới, không bấm F5), tạo lần nữa **cùng email đó**. Phải thấy "…đã có một tài
+   khoản đăng nhập từ trước lần bấm này… CHƯA tạo nhân viên ở lần bấm này", không có mật khẩu tạm mới, danh
+   sách vẫn đúng một dòng cho email đó. (Thấy "Đã tạo tài khoản…" hay "CHƯA nối được…" là giả định sai:
+   Supabase không trả `invalid_credentials` cho mật khẩu sai của tài khoản chưa xác nhận.)
+3. Bấm link xác nhận trong thư, đăng nhập `/noi-bo` bằng mật khẩu tạm của **bước 1**: vào được.
+
+Một trong ba bước không như trên thì báo lại kèm câu màn hình hiện — đừng tắt kiểm thử, đừng bỏ bước thử.
 
 Khóa = `kho_khoa_nhan_su` (`dang_lam = false`, gỡ khỏi mọi máy); không khóa được chính mình. Lỗi
 Supabase (đăng ký bị tắt, email đã có, cần xác nhận email, giới hạn gửi thư, captcha…) thành câu tiếng
