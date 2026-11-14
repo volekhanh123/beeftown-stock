@@ -217,4 +217,30 @@ await nhom('6 · Khách đọc câu từ chối bằng đúng thứ tiếng củ
   }
 });
 
+// ===========================================================================
+await nhom('7 · Database đang có dòng cũ vượt trần → 0121 dừng ngay, chưa đổi gì; dọn xong thì chạy lại được', async () => {
+  // Database dừng ở migration ngay trước 0121, như production lúc sắp chạy file này.
+  const { dungDatabaseTrong } = await import('./kho-chung.mjs');
+  const { readFileSync } = await import('node:fs');
+  const { db: truoc, daNap } = await dungDatabaseTrong({ den: 120 });
+  const sql0121 = readFileSync(new URL('../supabase/migrations/0121_do_dai_van_ban_cong_khai.sql', import.meta.url), 'utf8');
+  ok('Dựng được database dừng ngay trước 0121', daNap.length > 90 && !daNap.some(f => f.startsWith('0121')), `${daNap.length} file, cuối: ${daNap.at(-1)}`);
+
+  const coRangBuoc = async () => (await truoc.query(`select count(*)::int as so from pg_constraint where conname in ('dat_ban_chu_ngan', 'khach_hang_chu_ngan', 'ho_so_chu_ngan')`)).rows[0].so;
+  const thanCoTran = async () => (await truoc.query(`select pg_get_functiondef(p.oid) like '%Dịp dài quá 100 ký tự%' as co from pg_proc p where p.proname = 'tao_dat_ban'`)).rows.some(r => r.co);
+
+  await truoc.query(`insert into khach_hang (sdt, ho_ten) values ('0912345678', $1)`, ['Tên'.repeat(70)]);   // 210 ký tự > 200
+  let loi = null;
+  try { await truoc.exec(sql0121); } catch (e) { loi = String(e?.message ?? e); }
+  ok('RÀ SOÁT 14/11: có một khách tên dài 210 ký tự → file dừng với câu "0121 DỪNG", nói rõ bảng nào',
+     typeof loi === 'string' && /0121 DỪNG: 0 đặt bàn, 1 khách, 0 hồ sơ đang có ô chữ vượt trần mới\. Chưa đổi gì\./.test(loi), loi ?? 'CHẠY ĐƯỢC');
+  ok('…đúng là chưa đổi gì: chưa ràng buộc nào được thêm, tao_dat_ban vẫn là thân cũ', await coRangBuoc() === 0 && await thanCoTran() === false,
+     `${await coRangBuoc()} ràng buộc, thân mới: ${await thanCoTran()}`);
+
+  await truoc.query(`update khach_hang set ho_ten = left(ho_ten, 200) where char_length(ho_ten) > 200`);
+  loi = null;
+  try { await truoc.exec(sql0121); } catch (e) { loi = String(e?.message ?? e); }
+  ok('Dọn dòng đó xong, chạy lại nguyên cả file → xong, đủ ba ràng buộc, tao_dat_ban có trần', loi === null && await coRangBuoc() === 3 && await thanCoTran() === true, loi ?? '');
+});
+
 process.exit(ketThuc('giới hạn độ dài văn bản của các hàm công khai'));
