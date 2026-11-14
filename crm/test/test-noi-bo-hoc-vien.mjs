@@ -12,8 +12,9 @@
  *      đăng nhập được; quét MỌI bảng, view của schema public: ngoài video_dao_tao chỉ thấy dòng nhan_su của chính nó;
  *      MỌI hàm security definer authenticated gọi được (trừ hàm công khai của anon), gọi hai lượt — tham số null rồi
  *      tham số thật của chi nhánh Q1: bị từ chối hoặc trả rỗng, trừ đúng ba hàm "tôi là ai" và ba hàm lịch trống công
- *      khai; hàm kho, CRM chính gọi bằng tham số thật: từ chối; sau cả loạt không bảng nào đổi số dòng. Chủ tạo / khóa /
- *      mở lại được; quản lý, thủ kho, chính học viên, tài khoản không có nhan_su, anon thì không.
+ *      khai; hàm kho, CRM chính gọi bằng tham số thật: từ chối; sau cả loạt không bảng nào đổi số dòng; thêm / sửa /
+ *      xóa thẳng MỌI bảng không chạm dòng nào, không tự nâng vai được. Chủ tạo / khóa / mở lại được; quản lý, thủ kho,
+ *      chính học viên, tài khoản không có nhan_su, anon thì không.
  *   2. bam-hai-lan — tạo hai lần cùng tài khoản đăng nhập: lần hai bị từ chối, vẫn một dòng nhan_su; khóa hai lần vẫn
  *      khóa, một dòng (màn Nhân viên còn chặn F5 bằng ma_gui — test-kho-may-chung.mjs).
  *   3. gio-vn — không áp dụng: không có ngày giờ nào.
@@ -284,6 +285,37 @@ await nhom('3 · MỌI HÀM — bị từ chối hoặc trả rỗng; không ghi
   const sau = await demMoiBang();
   const doi = Object.keys(sau).filter(t => sau[t] !== truoc[t]).map(t => `${t}: ${truoc[t]} → ${sau[t]}`);
   ok('Sau cả loạt gọi hàm (hai lượt, mọi hàm, cả hàm security invoker): không bảng nào đổi số dòng', doi.length === 0, doi.join(', '));
+});
+
+// ===========================================================================
+// Đường ghi của PostgREST là insert / update / delete dưới RLS (TRUNCATE không có trên REST). Thử cả ba trên MỌI bảng.
+await nhom('3b · GHI THẲNG MỌI BẢNG — thêm, sửa, xóa đều không được', async () => {
+  const truoc = await demMoiBang();
+  const { rows: bangCot } = await db.query(`
+    select c.relname as ten, (select a.attname from pg_attribute a
+                              where a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped order by a.attnum limit 1) as cot
+    from pg_class c join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and c.relkind in ('r', 'p') order by 1`);
+  const lot = [];
+  for (const { ten, cot } of bangCot) {
+    for (const [viec, sql] of [
+      ['xóa', `with x as (delete from ${ten} returning 1) select count(*)::int n from x`],
+      ['sửa', `with x as (update ${ten} set ${cot} = ${cot} returning 1) select count(*)::int n from x`],
+      ['thêm', `with x as (insert into ${ten} default values returning 1) select count(*)::int n from x`],
+    ]) {
+      const r = await duoi(UID_HV, sql);
+      if (r.loi === null && r.rows[0].n > 0) lot.push(`${viec} ${ten} (${r.rows[0].n})`);
+    }
+  }
+  ok(`${bangCot.length} bảng × thêm / sửa / xóa dưới vai học viên: không câu nào chạm được dòng nào`, bangCot.length >= 90 && lot.length === 0,
+    lot.join(', ') || `${bangCot.length} bảng`);
+  const len = await duoi(UID_HV, `with x as (update nhan_su set vai_tro = 'chu_so_huu', chi_nhanh_id = null where auth_uid = $1 returning 1)
+                                  select count(*)::int n from x`, [UID_HV]);
+  ok('Học viên KHÔNG tự nâng mình lên chủ (sửa dòng nhan_su của chính mình: 0 dòng)', len.loi !== null || len.rows[0].n === 0, vi(len));
+  const sau = await demMoiBang();
+  const doi = Object.keys(sau).filter(t => sau[t] !== truoc[t]).map(t => `${t}: ${truoc[t]} → ${sau[t]}`);
+  ok('…không bảng nào đổi số dòng, vai của học viên vẫn là hoc_vien', doi.length === 0
+    && (await db.query(`select vai_tro::text v from nhan_su where auth_uid = $1`, [UID_HV])).rows[0].v === 'hoc_vien', doi.join(', '));
 });
 
 // ===========================================================================
