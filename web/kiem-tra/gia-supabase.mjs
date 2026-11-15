@@ -77,6 +77,10 @@
  *   mua-thit-dat-loi    như mua-thit-mo; tao_don_mua_thit trả 400 P0001 "Giá vừa đổi…" (database từ chối — CHƯA ghi)
  *   mua-thit-dat-dut    như mua-thit-mo; tao_don_mua_thit cắt kết nối không trả lời (KHÔNG CHẮC đã ghi)
  *
+ * Supabase Auth (trang đăng nhập nội bộ — thu-day-du.mjs nhóm 14): POST /auth/v1/token?grant_type=password, mọi kịch
+ * bản, chỉ các kiểu KHÔNG đăng nhập được — email ban@… → 429 quá hạn mức, dut@… → cắt kết nối, còn lại → 400
+ * invalid_credentials (sai email hoặc mật khẩu). Đếm dưới tên 'auth:dang_nhap'.
+ *
  * GET /__dem → { tên hàm: số lần gọi } — để kiểm "bấm đúp → tao_dat_ban đúng một lần".
  * GET /__nhat-ky → 200 lần gọi gần nhất { ham, thamSo }.
  *
@@ -626,6 +630,9 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
       if (url.pathname === '/__dem') return tra(200, dem);
       if (url.pathname === '/__nhat-ky') return tra(200, nhatKy);
 
+      // --- Supabase Auth: đăng nhập bằng mật khẩu, chỉ các kiểu KHÔNG đăng nhập được (thu-day-du.mjs nhóm 14) ---
+      if (url.pathname === '/auth/v1/token') return dangNhapGia();
+
       // --- PostgREST: POST /rest/v1/rpc/<hàm> -------------------------------
       const m = url.pathname.match(/^\/rest\/v1\/rpc\/([a-z0-9_]+)$/);
       if (!m) return tra(404, loiPostgrest('PGRST125', 'Invalid path specified in request URL'));
@@ -728,6 +735,29 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
         const don = { ma_don: maDatBan(1000 + soDonMuaThit), tam_tinh: tamTinh };
         donTheoMaGui.set(ts.p_ma_gui, don);
         return tra(200, { ...don, da_co: false });
+      }
+
+      // Trả lời POST /auth/v1/token?grant_type=password (signInWithPassword của supabase-js) — bất kể kịch bản, email
+      // quyết định: ban@… → 429 over_request_rate_limit; dut@… → cắt kết nối, không một byte (mất mạng giữa chừng);
+      // còn lại → 400 invalid_credentials, đúng câu Supabase thật trả khi sai email hoặc mật khẩu. Không có đường đăng
+      // nhập ĐƯỢC: trang khi đó còn đọc nhan_su — phần đó kiểm ở crm/test. Nhật ký không ghi mật khẩu.
+      function dangNhapGia() {
+        let than = {};
+        try { than = JSON.parse(duLieu || '{}'); } catch { /* thân hỏng: coi như rỗng */ }
+        const email = String(than?.email ?? '');
+        dem['auth:dang_nhap'] = (dem['auth:dang_nhap'] ?? 0) + 1;
+        nhatKy.push({ ham: 'auth:dang_nhap', thamSo: { grant_type: url.searchParams.get('grant_type'), email } });
+        if (nhatKy.length > 200) nhatKy.shift();
+        const traAuth = (status, body) => {
+          res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'x-supabase-api-version': '2024-01-01' });
+          res.end(JSON.stringify(body));
+        };
+        if (req.method !== 'POST' || url.searchParams.get('grant_type') !== 'password') {
+          return traAuth(400, { code: 'validation_failed', message: 'Unsupported grant type' });
+        }
+        if (email.startsWith('ban@')) return traAuth(429, { code: 'over_request_rate_limit', message: 'Request rate limit reached' });
+        if (email.startsWith('dut@')) { req.socket.destroy(); return; }
+        return traAuth(400, { code: 'invalid_credentials', message: 'Invalid login credentials' });
       }
 
       // Trả lời tao_dat_ban theo kịch bản. Tách thành hàm để chờ được ("cham").

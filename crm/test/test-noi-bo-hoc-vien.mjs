@@ -498,10 +498,12 @@ await nhom('6 · WEB — học viên chỉ ở trang Video đào tạo; vai khá
   ok('middleware: so trên đường dẫn đã bỏ "/" cuối, và đăng nhập / đăng xuất mở cho mọi người TRƯỚC khi đọc phiên (học viên đăng xuất được)',
     /const duong = context\.url\.pathname\.replace\(\/\\\/\$\/, ''\) \|\| '\/';/.test(mw)
     && /const MO_CHO_MOI_NGUOI = \['\/noi-bo\/dang-nhap', '\/noi-bo\/dang-xuat'\];/.test(mw));
-  // Đăng nhập xong mọi vai về /noi-bo/kho; middleware chuyển học viên tiếp sang trang Video đào tạo.
+  // Đăng nhập xong mọi vai về /noi-bo/kho; middleware chuyển học viên tiếp sang trang Video đào tạo. (Từ đợt sửa lịch
+  // sử của trang đăng nhập — test-noi-bo-dang-nhap.mjs — lượt POST trả 303, không còn 302: khớp nguyên văn dòng mới.)
   const dn = doc('web/src/pages/noi-bo/dang-nhap.astro');
   ok('Đăng nhập xong: trang đăng nhập về /noi-bo/kho (hoặc /noi-bo nếu đã có phiên) — với học viên cả hai chuyển tiếp tới /noi-bo/dao-tao',
-    /if \(!loi\) return Astro\.redirect\('\/noi-bo\/kho', 302\)/.test(dn) && /return Astro\.redirect\('\/noi-bo', 302\)/.test(dn)
+    /if \(await guiFormDangNhap\(Astro\.cookies, Astro\.request\)\) return Astro\.redirect\('\/noi-bo\/kho', 303\)/.test(dn)
+    && /return Astro\.redirect\('\/noi-bo', 302\)/.test(dn)
     && chuyenHuongHocVien('hoc_vien', '/noi-bo/kho') === DUONG_DAO_TAO && chuyenHuongHocVien('hoc_vien', '/noi-bo') === DUONG_DAO_TAO);
 
   // Thanh menu: chỉ Đào tạo. Một mục thì khung NoiBo không vẽ thanh nào; đầu trang còn đổi tiếng và Đăng xuất.

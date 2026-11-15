@@ -79,6 +79,10 @@
  *       địa chỉ trang sau khi gửi không mang họ tên hay số điện thoại. Bấm số điện thoại, link Zalo đã công bố →
  *       Contact. Back về thẻ "đã nhận" lấy từ bộ nhớ đệm → không Lead thứ hai. Mua thịt về: Đặt hàng có giỏ → đúng một
  *       InitiateCheckout trước khi chuyển trang, giỏ rỗng thì không; không lời gọi nào mang dữ liệu khách hay mã đơn.
+ *  14. Trang đăng nhập nội bộ, đăng nhập KHÔNG thành thật (Supabase Auth giả của gia-supabase.mjs: sai mật khẩu, quá
+ *       hạn mức, cắt kết nối; vi và en): lượt POST trả 303, trang báo lỗi là lượt GET không vào bộ đệm, câu lỗi đúng
+ *       từng chữ (câu bận nói rõ không phải do sai mật khẩu), email điền lại, ô mật khẩu trống; F5, Quay lại + F5, Tiến
+ *       + F5 không gửi lượt POST nào và Supabase không nhận thêm lượt đăng nhập nào; F5 trên trang lỗi là form trống.
  *
  * Hỏng thì ảnh chụp nằm ở kiem-tra/anh-loi/day-du/ (CI tải lên cùng artifact của
  * trinh-duyet.mjs).
@@ -1870,6 +1874,80 @@ try {
       ok(`${mua}: không lời gọi fbq nào mang họ tên, số điện thoại, địa chỉ, mã đơn`,
          !/Khách Thử|0912345678|Nguyễn Huệ/.test(JSON.stringify(lenh))
            && !JSON.stringify(lenh).includes(await p.locator('[data-ket-qua="da-nhan"]').getAttribute('data-ma').catch(() => 'x') ?? 'x'));
+      await c.close();
+    }
+    mayGia.datKichBan('day-du');
+  });
+
+  // =========================================================================
+  await nhom('14 · ĐĂNG NHẬP NỘI BỘ KHÔNG THÀNH (Supabase Auth giả): CÂU LỖI SAU MỘT LƯỢT GET, EMAIL ĐIỀN LẠI, LỊCH SỬ KHÔNG CÒN MỤC POST', async () => {
+    // Rà soát vòng bốn của PR #188: trang đăng nhập báo lỗi ngay trong trả lời của lượt gửi form thì mục lịch sử đó
+    // là một lượt POST giữ nguyên thân form (email, mật khẩu). Nay mọi lượt gửi trả 303 về GET /noi-bo/dang-nhap; câu
+    // lỗi và email đã gõ đi qua cookie ngắn hạn (lib/phien.ts, guiFormDangNhap). Ở đây là đăng nhập không thành THẬT:
+    // đã nối database nên trang hiện form thật, gõ và bấm như nhân viên; Supabase Auth giả trả sai mật khẩu / quá hạn
+    // mức / cắt kết nối (gia-supabase.mjs, dangNhapGia) và ĐẾM số lượt đăng nhập nó nhận — F5, Quay lại, Tiến không
+    // được thêm lượt nào. Bản build, bfcache, đo ở tầng mạng: trinh-duyet.mjs nhóm 4.
+    const { CAU_DANG_NHAP_TAM } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'qua-tai.ts')).href);
+    // "Sai mật khẩu" chép tay (câu cũ của trang, phải giữ nguyên chữ); hai câu bận lấy từ nguồn duy nhất của chúng.
+    const CAU = { sai: { vi: 'Email hoặc mật khẩu không đúng.', en: 'Wrong email or password.' }, ...CAU_DANG_NHAP_TAM };
+    for (const [nn, dauEmail, loai] of [['vi', 'sai', 'sai'], ['vi', 'ban', 'qua_tai'], ['vi', 'dut', 'mat_ket_noi'], ['en', 'sai', 'sai'], ['en', 'ban', 'qua_tai']]) {
+      const ten = `${nn} · ${loai}`;
+      const email = `${dauEmail}@beeftown.test`;
+      const matKhau = `Mk-${loai}-${Date.now()}-bi-mat`;
+      mayGia.datKichBan('day-du');   // xóa bộ đếm
+      const c = await trinhDuyet.newContext({ viewport: { width: 390, height: 844 } });
+      const p = await c.newPage();
+      const luot = [];
+      p.on('request', r => {
+        const u = new URL(r.url());
+        if (u.origin === goc) luot.push({ cach: r.method(), duong: u.pathname + u.search, trang: r.isNavigationRequest(), than: r.postData() ?? '' });
+      });
+      const traLoiTrang = [];
+      p.on('response', r => { if (r.request().isNavigationRequest() && new URL(r.url()).origin === goc) traLoiTrang.push({ cach: r.request().method(), duong: new URL(r.url()).pathname, ma: r.status(), dem: r.headers()['cache-control'] ?? '' }); });
+      const hopThoai = [];
+      p.on('dialog', d => { hopThoai.push(d.message()); d.dismiss().catch(() => {}); });
+      const soLanDangNhap = () => mayGia.dem()['auth:dang_nhap'] ?? 0;
+      const docTrang = () => p.evaluate(() => ({
+        loi: document.querySelector('.nb-bao.loi')?.textContent?.trim() ?? null,
+        email: document.querySelector('input[name="email"]')?.value ?? null,
+        mk: document.querySelector('input[name="mat_khau"]')?.value ?? null,
+      })).catch(() => ({}));
+      const choYen = async () => { await p.waitForLoadState('load').catch(() => {}); await cho(400); };
+
+      await p.goto(goc + `/noi-bo/dang-nhap?nn=${nn}`, { waitUntil: 'load' });   // đặt cookie ngôn ngữ, về /noi-bo/dang-nhap
+      if (!ok(`${ten}: trang đăng nhập (đã nối database) hiện form thật`, await p.locator('form.nb-the input[name="mat_khau"]').count() === 1, p.url())) {
+        await chupLoi(`dang-nhap-${nn}-${loai}`); await c.close(); continue;
+      }
+      await p.fill('input[name="email"]', email);
+      await p.fill('input[name="mat_khau"]', matKhau);
+      const moc = luot.length;
+      await Promise.all([p.waitForNavigation({ timeout: 20_000 }), p.click('form.nb-the button[type="submit"]')]);
+      await choYen();
+      const sauGui = await docTrang();
+      const post = luot.slice(moc).filter(l => l.trang && l.cach === 'POST');
+      ok(`${ten}: Supabase Auth giả nhận đúng MỘT lượt đăng nhập; trình duyệt gửi đúng một lượt POST`, soLanDangNhap() === 1 && post.length === 1,
+         `đăng nhập: ${soLanDangNhap()} · ${JSON.stringify(luot.slice(moc).filter(l => l.trang).map(l => `${l.cach} ${l.duong}`))}`);
+      ok(`${ten}: RÀ SOÁT VÒNG BỐN — lượt POST trả 303, trang báo lỗi là lượt GET /noi-bo/dang-nhap (không no-store thì không đạt)`,
+         JSON.stringify(traLoiTrang.slice(-2).map(t => `${t.cach} ${t.duong} ${t.ma}`)) === JSON.stringify(['POST /noi-bo/dang-nhap 303', 'GET /noi-bo/dang-nhap 200'])
+         && /no-store/.test(traLoiTrang.at(-1)?.dem ?? '') && p.url() === goc + '/noi-bo/dang-nhap', `${JSON.stringify(traLoiTrang)} · ${p.url()}`);
+      ok(`${ten}: câu lỗi đúng từng chữ (${nn})${loai === 'sai' ? '' : ' — nói rõ không phải do sai mật khẩu'}`, sauGui.loi === CAU[loai][nn], JSON.stringify(sauGui.loi));
+      ok(`${ten}: email đã gõ được điền lại, ô mật khẩu trống; mật khẩu không nằm ở đâu trong trang`,
+         sauGui.email === email && sauGui.mk === '' && !(await p.content()).includes(matKhau), JSON.stringify({ ...sauGui, mk: sauGui.mk === matKhau ? '(mật khẩu)' : sauGui.mk }));
+
+      // F5 trên trang báo lỗi, Quay lại + F5, Tiến + F5: không lượt POST nào, Supabase không nhận thêm lượt đăng nhập nào.
+      const moc2 = luot.length;
+      await p.reload({ waitUntil: 'load' }).catch(() => {}); await choYen();
+      const sauF5 = await docTrang();
+      await p.evaluate(() => history.back()).catch(() => {}); await choYen();
+      await p.reload({ waitUntil: 'load' }).catch(() => {}); await choYen();
+      await p.evaluate(() => history.forward()).catch(() => {}); await choYen();
+      await p.reload({ waitUntil: 'load' }).catch(() => {}); await choYen();
+      const sau = luot.slice(moc2);
+      ok(`${ten}: RÀ SOÁT VÒNG BỐN — F5, Quay lại + F5, Tiến + F5: không lượt POST nào, Supabase không nhận thêm lượt đăng nhập nào, không hộp thoại`,
+         sau.filter(l => l.trang).length >= 3 && sau.every(l => l.cach !== 'POST' && !l.than.includes(matKhau)) && soLanDangNhap() === 1 && hopThoai.length === 0,
+         `đăng nhập: ${soLanDangNhap()} · ${JSON.stringify(sau.filter(l => l.trang).map(l => `${l.cach} ${l.duong}`))} · hộp thoại: ${JSON.stringify(hopThoai)}`);
+      ok(`${ten}: F5 trên trang báo lỗi là form trống — câu lỗi chỉ hiện một lần, email không còn`,
+         sauF5.loi === null && sauF5.email === '' && sauF5.mk === '', JSON.stringify(sauF5));
       await c.close();
     }
     mayGia.datKichBan('day-du');
