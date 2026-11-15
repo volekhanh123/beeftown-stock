@@ -13,21 +13,27 @@
  * (locals.cfContext); không giao thì Worker cắt nó ngay lúc trả lời.
  *
  * NÚT QUAY LẠI SAU KHI ĐĂNG XUẤT — trình duyệt giữ trang vừa rời trong bộ nhớ
- * quay lại (bfcache) và đưa nó trở lại mà không hỏi máy chủ. Hai lớp, thử bằng
- * Chromium 156 và Chrome 153 bản đầy đủ có bfcache (14/11/2026):
+ * quay lại (bfcache) và đưa nó trở lại mà không hỏi máy chủ. Hai lớp. Lớp thứ
+ * nhất thử bằng Chromium 156 và Chrome 153 bản đầy đủ có bfcache (14/11/2026,
+ * vòng hai); lớp dấu phiên thử bằng Chromium 156 trên bản build thật
+ * (kiem-tra/trinh-duyet.mjs nhóm 4):
  *
  *   · Trả lời mang Clear-Site-Data: "cache" — trình duyệt bỏ bản lưu đệm HTTP
- *     và các trang ĐÃ nằm trong bộ nhớ quay lại của tên miền này. Lệnh đó KHÔNG
+ *     và các trang ĐÃ nằm trong bộ nhớ quay lại của tên miền này. (Middleware
+ *     gắn cùng lệnh đó cho mọi trả lời khác kết thúc một phiên — phiên bị
+ *     Supabase từ chối, tài khoản bị khóa; dòng set ở dưới giữ cho trang này
+ *     đúng cả khi được gọi thẳng.) Lệnh đó KHÔNG
  *     gỡ được chính trang vừa bấm Đăng xuất (trang đó vào bộ nhớ sau khi lệnh
  *     được xử lý, và nằm đó khoảng 10 phút).
  *   · dangXuat đổi cookie "dấu phiên" bt_dau_phien (lib/phien.ts, xoaToken). Mỗi
  *     trang nội bộ mang dấu máy chủ thấy lúc dựng nó và một đoạn mã nhỏ in ngay
- *     trong trang (components/SauDangXuat.astro): rời trang mà dấu đã khác thì
- *     giấu trang, hiện lại từ bộ nhớ mà dấu đã khác thì tải lại — máy chủ đưa
- *     về trang đăng nhập. Bấm Quay lại mà trình duyệt dựng lại trang từ bản lưu
- *     đệm cũ thì bản đó cũng bị giấu và tải lại: lớp này không trông vào lệnh
- *     Clear-Site-Data ở trên (trình duyệt nào không nghe lệnh đó thì vẫn còn
- *     bản lưu đệm).
+ *     trong trang (components/SauDangXuat.astro): bấm Đăng xuất thì giấu trang
+ *     ngay, rời trang thì giấu; hiện lại từ bộ nhớ mà dấu đã khác thì xin lại
+ *     trang bằng một lượt GET (không reload: trang kết quả gửi form mà reload là
+ *     gửi lại form) — máy chủ đưa về trang đăng nhập; dấu không đổi thì cho hiện.
+ *     Bấm Quay lại mà trình duyệt dựng lại trang từ bản lưu đệm cũ thì bản đó
+ *     cũng bị giấu và xin lại: lớp này không trông vào lệnh Clear-Site-Data ở
+ *     trên (trình duyệt nào không nghe lệnh đó thì vẫn còn bản lưu đệm).
  *
  * Bản đầu của đợt vá ghi "có header thì Quay lại về trang đăng nhập": phép thử
  * đó chạy bằng bản Chromium rút gọn của Playwright, bản không có bfcache.
