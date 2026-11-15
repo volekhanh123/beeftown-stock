@@ -12,6 +12,10 @@
  *
  * Context cần thấy lời gọi qua những lần chuyển trang (bấm "Xem đơn" là chuyển trang): ghiPixel() thay fbevents.js bằng
  * FBEVENTS_GIA — làm đúng việc của thư viện thật với hàng đợi nhưng không gửi gì, báo từng lời gọi về Node.
+ *
+ * Chặn bằng route có một cái giá: context có route thì Playwright TẮT bộ nhớ đệm HTTP của trình duyệt (nó gọi
+ * Network.setCacheDisabled khi bật chặn lượt gọi). Phép thử cần bộ nhớ đệm thật — nút Quay lại về trang kết quả của
+ * một form — mở Chromium bằng moChromiumKhongRoute(): chặn mọi tên miền ngoài ở tầng mạng của chính trình duyệt.
  */
 
 /** Mọi địa chỉ của Meta mà Pixel gọi tới: connect.facebook.net (fbevents.js), www.facebook.com/tr (lượt đo). */
@@ -30,6 +34,27 @@ export async function moChromium(chromium, tuyChon) {
     return ctx;
   };
   return trinhDuyet;
+}
+
+/**
+ * Mở Chromium mà mọi tên miền NGOÀI máy này không phân giải được — chặn ở tầng mạng của trình duyệt, KHÔNG bằng route.
+ *
+ * Vì sao không route: context có route thì Playwright tắt bộ nhớ đệm HTTP, và Chromium lúc đó xử khác hẳn trình duyệt
+ * của người dùng. Bấm Quay lại về trang kết quả của một form (lượt POST): trình duyệt thật dựng lại trang từ bộ nhớ đệm,
+ * không gửi gì; có route thì CHÍNH trình duyệt gửi lại form lên máy chủ (thử bằng Chromium 156 bản đầy đủ, 15/11/2026).
+ * Phép thử nút Quay lại đo đúng chuyện "có lượt POST nào ra mạng không" (thu-day-du.mjs nhóm 14), nên phải chạy trên bộ
+ * nhớ đệm thật.
+ *
+ * Chặn hết, không chỉ Meta: trang nội bộ còn tải phông Google, khung YouTube — phép thử không cần chúng, mạng ngoài
+ * chập chờn thì phép thử không chập chờn theo, và trang thật phải chạy đủ khi thiếu chúng. --proxy-server=direct:// bỏ
+ * proxy của máy (biến HTTPS_PROXY…): đi qua proxy thì proxy phân giải tên miền, luật phân giải dưới không có tác dụng.
+ */
+export async function moChromiumKhongRoute(chromium, tuyChon = {}) {
+  return chromium.launch({
+    ...tuyChon,
+    args: [...(tuyChon.args ?? []), '--proxy-server=direct://',
+      '--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1, EXCLUDE localhost'],
+  });
 }
 
 /**

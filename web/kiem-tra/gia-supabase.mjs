@@ -77,8 +77,43 @@
  *   mua-thit-dat-loi    như mua-thit-mo; tao_don_mua_thit trả 400 P0001 "Giá vừa đổi…" (database từ chối — CHƯA ghi)
  *   mua-thit-dat-dut    như mua-thit-mo; tao_don_mua_thit cắt kết nối không trả lời (KHÔNG CHẮC đã ghi)
  *
- * GET /__dem → { tên hàm: số lần gọi } — để kiểm "bấm đúp → tao_dat_ban đúng một lần".
+ * GET /__dem → { tên hàm: số lần gọi } — để kiểm "bấm đúp → tao_dat_ban đúng một lần". Lượt đọc / ghi bảng đếm theo
+ * "<cách> <bảng>" ("GET nhan_su", "PATCH video_dao_tao").
  * GET /__nhat-ky → 200 lần gọi gần nhất { ham, thamSo }.
+ *
+ * /noi-bo — ĐĂNG NHẬP THẬT (thu-day-du.mjs nhóm 14). Server này còn đóng vai Supabase Auth và vài bảng, đủ để
+ * lib/phien.ts đăng nhập, mở trang nội bộ và đăng xuất như với Supabase thật — trước đây mỗi vòng rà soát nút Quay
+ * lại sau khi đăng xuất phải tự dựng một Auth giả ngoài repo:
+ *
+ *   POST /auth/v1/token?grant_type=password        email + mật khẩu của NHAN_VIEN_THU → phiên mới: access token hạn
+ *                                                   một giờ, refresh token dùng một lần; sai → 400 invalid_credentials
+ *   POST /auth/v1/token?grant_type=refresh_token   đổi refresh token lấy cặp mới. Phiên đã thu hồi → 400
+ *                                                   refresh_token_not_found; token đã dùng rồi → 400
+ *                                                   refresh_token_already_used và phiên đó bị thu hồi luôn (Supabase bật
+ *                                                   xoay refresh token; khoảng 10 giây cho dùng lại của bản thật KHÔNG làm)
+ *   GET  /auth/v1/user                              người của access token. Hết hạn → 403 bad_jwt; phiên đã thu hồi →
+ *                                                   403 session_not_found (supabase-js đổi thành AuthSessionMissingError)
+ *   POST /auth/v1/logout?scope=local|global|others  thu hồi phiên của token gửi lên / mọi phiên của người đó / mọi phiên
+ *                                                   trừ phiên này (bỏ trống = global); 204. Token hỏng → như /user
+ *
+ *   Trả lời mang X-Supabase-Api-Version: 2024-01-01 và thân { code, message } như Supabase Auth trả cho supabase-js
+ *   (mã nguồn công khai: internal/api/token.go, user.go, logout.go) — cùng bộ giả định với Auth giả của
+ *   crm/test/test-noi-bo-dang-xuat.mjs.
+ *
+ *   Bảng (PostgREST, GET: lọc eq / neq, chọn cột, sắp xếp; PATCH: chỉ video_dao_tao): nhan_su (NHAN_VIEN_THU — một
+ *   quản lý đang làm), chi_nhanh (CHI_NHANH_THU), video_dao_tao (VIDEO_THU), v_viec_dich (rỗng — middleware.ts dịch
+ *   bù cho vai biên tập). Hàm kho_dem_viec (số đỏ trên menu kho, lib/kho/trang.ts). Bảng lạ → 404 PGRST205, cột lạ →
+ *   400 42703, như PostgREST. Quyền đọc như RLS, rút gọn: chỉ người đăng nhập đọc được bảng (anon → []), chủ và quản
+ *   lý sửa được video. Như PostgREST thật, access token của một phiên ĐÃ thu hồi vẫn đọc được bảng tới khi tự hết
+ *   hạn: PostgREST chỉ kiểm chữ ký và hạn của JWT, không hỏi Auth (đầu dangXuat, lib/phien.ts).
+ *
+ *   POST /__thu-hoi → { da_thu_hoi: số phiên }: thu hồi MỌI phiên đang sống — như khi người đó đăng xuất mọi máy từ
+ *   một máy khác, hay người quản trị xóa phiên trong Supabase. Website không được báo gì: nó chỉ biết ở lượt mở trang
+ *   kế tiếp. GET /__auth → { phien, nhat_ky }: các phiên và 200 lượt gọi Auth gần nhất, mỗi lượt một số thứ tự `so`
+ *   tăng dần (đặt mốc bằng số đó, không bằng vị trí trong mảng); không bao giờ chép mật khẩu hay token.
+ *   Dùng như module: thuHoiPhien(accessToken?) — có token thì chỉ phiên của token đó; phienAuth(), nhatKyAuth(),
+ *   bang(ten), suaBang(ten, id, giaTri) (sửa một dòng như người khác vừa sửa: updated_at đổi theo). Đổi kịch bản
+ *   (/__kich-ban) không đụng tới phiên đăng nhập.
  *
  * Dùng như module: import { batMayGia } from './gia-supabase.mjs' (thu-day-du.mjs). cong: 0 → hệ điều hành chọn
  * cổng trống (crm/test/test-cong-khai-quet-gia.mjs); goc và cong trả về là cổng thật.
@@ -86,6 +121,7 @@
  */
 
 import { createServer } from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 // Giờ Việt Nam lấy từ chính thư viện của trang (Node ≥ 22.18 đọc thẳng file .ts) — không tự cộng 7 tiếng.
 import { homNayVn } from '../src/lib/gio-vn.ts';
@@ -547,6 +583,92 @@ function tinTuyenDung(kichBan, nn) {
 }
 
 // ---------------------------------------------------------------------------
+// /noi-bo — SUPABASE AUTH GIẢ VÀ MỘT NHÂN VIÊN (đầu file, mục "/noi-bo — ĐĂNG NHẬP THẬT")
+// ---------------------------------------------------------------------------
+/** Chi nhánh duy nhất. Mã q1 như mã mặc định của trang (lib/noi-dung.ts, maChiNhanh). */
+export const CHI_NHANH_THU = { id: 'c1000000-0000-4000-8000-000000000001', ma: 'q1', ten: 'Chi nhánh Thử' };
+
+/**
+ * Nhân viên duy nhất: một quản lý đang làm ở CHI_NHANH_THU — mở được cả trang CRM lẫn kho, sửa được video đào tạo.
+ * Email (tên miền .test, không gửi thư được) và mật khẩu thử, chỉ có ở server này.
+ */
+export const NHAN_VIEN_THU = {
+  email: 'quan-ly.thu@beeftown.test', matKhau: 'mat-khau-thu-14',
+  uid: 'a1000000-0000-4000-8000-000000000001', nhanSuId: 'b1000000-0000-4000-8000-000000000001',
+  hoTen: 'Quản Lý Thử', vaiTro: 'quan_ly', chiNhanhId: CHI_NHANH_THU.id,
+};
+
+/**
+ * Một video đào tạo (video_dao_tao, 0117) — trang /noi-bo/dao-tao chỉ có form sửa khi có video. youtube_id là mã
+ * giả đúng dạng 11 ký tự (ràng buộc của bảng), không phải video thật: mã thật không được nằm trong repo công khai.
+ */
+export const VIDEO_THU = {
+  id: 'd1000000-0000-4000-8000-000000000001', youtube_id: 'thuVideo014', tieu_de: 'Xếp khay thịt ở quầy',
+  mo_ta: 'Video thử của Supabase giả.', tao_boi: NHAN_VIEN_THU.nhanSuId,
+  created_at: '2026-11-01T03:00:00+00:00', updated_at: '2026-11-01T03:00:00+00:00',
+};
+
+/** Hạn của access token, như mặc định của Supabase (JWT expiry 3600 giây). */
+const HAN_TOKEN_GIAY = 3600;
+
+/** Cột của từng bảng giả, đúng bảng thật (0001, 0117; view v_viec_dich của 0099) — chọn hay lọc cột khác là 42703. */
+const COT_BANG = {
+  nhan_su: ['id', 'auth_uid', 'chi_nhanh_id', 'ho_ten', 'email', 'vai_tro', 'dang_lam', 'created_at', 'updated_at'],
+  chi_nhanh: ['id', 'ma', 'ten', 'khu_vuc', 'dia_chi', 'dien_thoai', 'trua_bat_dau', 'trua_ket_thuc', 'toi_bat_dau',
+    'toi_ket_thuc', 'buoc_khung_gio_phut', 'thoi_luong_bua_phut', 'giu_ban_phut', 'dang_hoat_dong', 'created_at', 'updated_at'],
+  video_dao_tao: ['id', 'youtube_id', 'tieu_de', 'mo_ta', 'tao_boi', 'created_at', 'updated_at'],
+  v_viec_dich: ['bang', 'dong_id', 'cot', 'ngon_ngu', 'nguon', 'bam', 'ly_do'],
+};
+
+/** Dữ liệu của các bảng giả — mỗi server một bản, sửa được (PATCH, suaBang). Dòng đủ mọi cột của COT_BANG. */
+function taoBang() {
+  const luc = '2026-10-01T03:00:00+00:00';
+  return {
+    nhan_su: [{
+      id: NHAN_VIEN_THU.nhanSuId, auth_uid: NHAN_VIEN_THU.uid, chi_nhanh_id: NHAN_VIEN_THU.chiNhanhId,
+      ho_ten: NHAN_VIEN_THU.hoTen, email: NHAN_VIEN_THU.email, vai_tro: NHAN_VIEN_THU.vaiTro, dang_lam: true,
+      created_at: luc, updated_at: luc,
+    }],
+    chi_nhanh: [{
+      ...CHI_NHANH_THU, khu_vuc: null, dia_chi: null, dien_thoai: null,
+      trua_bat_dau: '11:00:00', trua_ket_thuc: '14:00:00', toi_bat_dau: '17:00:00', toi_ket_thuc: '22:00:00',
+      buoc_khung_gio_phut: 30, thoi_luong_bua_phut: 120, giu_ban_phut: 15, dang_hoat_dong: true, created_at: luc, updated_at: luc,
+    }],
+    video_dao_tao: [{ ...VIDEO_THU }],
+    v_viec_dich: [],
+  };
+}
+
+/** Vai đọc được video đào tạo: bảy vai người (policy video_dao_tao_doc, 0117) và học viên (0119); chủ và quản lý sửa được. */
+const VAI_XEM_VIDEO = ['chu_so_huu', 'quan_ly', 'thu_ngan', 'marketing', 'thu_kho', 'nhan_vien_quay', 'ke_toan', 'hoc_vien'];
+const VAI_SUA_VIDEO = ['chu_so_huu', 'quan_ly'];
+
+const b64url = o => Buffer.from(JSON.stringify(o)).toString('base64url');
+
+/** Người dùng Supabase Auth của NHAN_VIEN_THU — hình dạng /auth/v1/user trả về. */
+function nguoiDungAuth() {
+  const luc = '2026-10-01T03:00:00.000000Z';
+  return {
+    id: NHAN_VIEN_THU.uid, aud: 'authenticated', role: 'authenticated', email: NHAN_VIEN_THU.email,
+    email_confirmed_at: luc, phone: '', confirmed_at: luc, last_sign_in_at: luc,
+    app_metadata: { provider: 'email', providers: ['email'] }, user_metadata: {}, identities: [],
+    created_at: luc, updated_at: luc, is_anonymous: false,
+  };
+}
+
+/** Hai giá trị của một ô có bằng nhau không, như Postgres so: timestamptz so thời điểm, không so chữ. */
+function cungGiaTri(cot, giaTri, chu) {
+  if (giaTri === null || giaTri === undefined) return false;   // SQL: null không bằng, cũng không khác, gì cả
+  if (String(giaTri) === chu) return true;
+  if (!/_at$/.test(cot)) return false;
+  const a = Date.parse(giaTri), b = Date.parse(chu);
+  return !Number.isNaN(a) && a === b;
+}
+
+/** Thời điểm hiện tại theo cách PostgREST in timestamptz (micro giây, +00:00). */
+const thoiDiemMoi = () => new Date().toISOString().replace(/\.(\d{3})Z$/, '.$1000+00:00');
+
+// ---------------------------------------------------------------------------
 // Hàm và tham số — đúng chữ ký trong migration. batBuoc = tham số không có default.
 // ---------------------------------------------------------------------------
 const THAM_SO_DAT_BAN = [
@@ -570,6 +692,8 @@ const HAM = {
   mua_thit_ve_cong_khai: { thamSo: ['p_ngon_ngu', 'p_chi_nhanh_ma'], batBuoc: [] },
   bo_tai_quay_theo_gu: { thamSo: ['p_ngon_ngu'], batBuoc: [] },
   tao_don_mua_thit: { thamSo: THAM_SO_DAT_HANG, batBuoc: THAM_SO_DAT_HANG.slice(0, 8) },
+  // /noi-bo (0092): số đỏ trên menu kho. Chỉ người đăng nhập, đúng chi nhánh của mình.
+  kho_dem_viec: { thamSo: ['p_chi_nhanh_id'], batBuoc: ['p_chi_nhanh_id'] },
 };
 
 const loiPostgrest = (code, message, details = null, hint = null) => ({ code, message, details, hint });
@@ -584,7 +708,8 @@ function maDatBan(n) {
 }
 
 /**
- * Bật server giả. Trả về { goc, cong, datKichBan(ten), kichBan(), dem(), nhatKy(), dong() }.
+ * Bật server giả. Trả về { goc, cong, datKichBan(ten), kichBan(), dem(), nhatKy(), dong() } và phần /noi-bo:
+ * thuHoiPhien(accessToken?), phienAuth(), nhatKyAuth(), bang(ten), suaBang(ten, id, giaTri) (đầu file).
  * im: true thì không in gì ra màn hình.
  */
 export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im = false } = {}) {
@@ -602,6 +727,90 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
   const datKichBan = (ten, { cham: ms = 0 } = {}) => {
     if (!KICH_BAN.includes(ten)) throw new Error(`Kịch bản lạ: ${ten}`);
     hienTai = ten; cham = Math.max(0, Number(ms) || 0); dem = {}; nhatKy = [];
+  };
+
+  // --- Supabase Auth giả và bảng (/noi-bo) — đầu file, mục "/noi-bo — ĐĂNG NHẬP THẬT" -------------------------
+  const cacPhien = new Map();   // session_id → { conSong, lyDo }
+  const truyCap = new Map();    // access token → { phienId, het (giây) }
+  const lamMoi = new Map();     // refresh token → { phienId, daDung }
+  const bang = taoBang();
+  let nhatKyAuth = [];
+  let soLuotAuth = 0;   // số thứ tự lượt gọi Auth, tăng mãi — nhật ký chỉ giữ 200 lượt gần nhất
+  let soToken = 0;
+  const giayBayGio = () => Math.floor(Date.now() / 1000);
+
+  /** Cặp token mới cho một phiên — đúng hình dạng trả lời /token của Supabase Auth. */
+  function capToken(phienId) {
+    const n = ++soToken;
+    const luc = giayBayGio();
+    const access_token = [b64url({ alg: 'HS256', typ: 'JWT' }), b64url({
+      aud: 'authenticated', exp: luc + HAN_TOKEN_GIAY, iat: luc, sub: NHAN_VIEN_THU.uid, email: NHAN_VIEN_THU.email,
+      role: 'authenticated', session_id: phienId, n,
+    }), 'chu-ky-gia'].join('.');
+    const refresh_token = `rt-thu-${n}`;
+    truyCap.set(access_token, { phienId, het: luc + HAN_TOKEN_GIAY });
+    lamMoi.set(refresh_token, { phienId, daDung: false });
+    return { access_token, token_type: 'bearer', expires_in: HAN_TOKEN_GIAY, expires_at: luc + HAN_TOKEN_GIAY, refresh_token, user: nguoiDungAuth() };
+  }
+  const thuHoi = (phienId, lyDo) => {
+    const p = cacPhien.get(phienId);
+    if (!p?.conSong) return 0;
+    p.conSong = false; p.lyDo = lyDo;
+    return 1;
+  };
+  /** Thu hồi ở Auth giả: phiên của `accessToken`, hoặc (không truyền) mọi phiên đang sống. Trả số phiên vừa thu hồi. */
+  const thuHoiPhien = accessToken => {
+    if (accessToken !== undefined) return truyCap.has(accessToken) ? thuHoi(truyCap.get(accessToken).phienId, 'thu-hoi') : 0;
+    let n = 0;
+    for (const id of cacPhien.keys()) n += thuHoi(id, 'thu-hoi');
+    return n;
+  };
+  const phienAuth = () => [...cacPhien].map(([id, p]) => ({ id, conSong: p.conSong, lyDo: p.lyDo }));
+  /**
+   * requireAuthentication của Supabase Auth: token có thật, còn hạn, phiên còn sống. Trả { a } (a = phiên của token)
+   * hoặc { loi: [mã HTTP, thân] }.
+   */
+  function kiemToken(the) {
+    if (!the) return { loi: [401, { code: 'no_authorization', message: 'This endpoint requires a valid Bearer token' }] };
+    const a = truyCap.get(the);
+    if (!a) return { loi: [403, { code: 'bad_jwt', message: 'invalid JWT: unable to parse or verify signature, token is malformed' }] };
+    if (a.het <= giayBayGio()) {
+      return { loi: [403, { code: 'bad_jwt', message: 'invalid JWT: unable to parse or verify signature, token has invalid claims: token is expired' }] };
+    }
+    if (!cacPhien.get(a.phienId)?.conSong) {
+      return { loi: [403, { code: 'session_not_found', message: 'Session from session_id claim in JWT does not exist' }] };
+    }
+    return { a };
+  }
+  /**
+   * Vai của một lượt gọi PostgREST, như PostgREST đọc JWT: access token còn hạn → người đăng nhập (KỂ CẢ khi phiên đã
+   * bị thu hồi ở Auth — PostgREST không hỏi Auth); token trùng khóa apikey → anon; token hết hạn → 401 PGRST303;
+   * chuỗi lạ → 401 PGRST301.
+   */
+  function vaiCua(req) {
+    const the = String(req.headers.authorization ?? '').replace(/^Bearer\s+/i, '');
+    if (!the || the === String(req.headers.apikey ?? '')) return { vai: 'anon' };
+    const a = truyCap.get(the);
+    if (!a) return { loi: [401, loiPostgrest('PGRST301', 'JWSError JWSInvalidSignature')] };
+    if (a.het <= giayBayGio()) return { loi: [401, loiPostgrest('PGRST303', 'JWT expired')] };
+    return { vai: 'authenticated', uid: NHAN_VIEN_THU.uid };
+  }
+  /** Dòng nhan_su đang làm của một tài khoản (nhan_su_hien_tai() của database), hoặc null. */
+  const nhanSuCua = uid => bang.nhan_su.find(n => n.auth_uid === uid && n.dang_lam) ?? null;
+  /** Các dòng một vai đọc được, như RLS (rút gọn): anon không đọc được bảng nội bộ nào. */
+  function dongDocDuoc(ten, v) {
+    if (v.vai !== 'authenticated') return [];
+    const ns = nhanSuCua(v.uid);
+    if (ten === 'nhan_su') return bang.nhan_su.filter(n => n.auth_uid === v.uid || (ns && ns.chi_nhanh_id === n.chi_nhanh_id));
+    if (ten === 'video_dao_tao') return ns && VAI_XEM_VIDEO.includes(ns.vai_tro) ? bang.video_dao_tao : [];
+    return ns ? bang[ten] : [];
+  }
+  /** Sửa một dòng như một người khác vừa sửa (vd quản lý khác sửa tên video): updated_at đổi theo. Trả bản sao dòng. */
+  const suaBang = (ten, id, giaTri) => {
+    const d = bang[ten]?.find(x => x.id === id);
+    if (!d) throw new Error(`Supabase giả: không có dòng ${id} trong ${ten}`);
+    Object.assign(d, giaTri, COT_BANG[ten].includes('updated_at') ? { updated_at: thoiDiemMoi() } : {});
+    return { ...d };
   };
 
   const server = createServer((req, res) => {
@@ -625,6 +834,15 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
       }
       if (url.pathname === '/__dem') return tra(200, dem);
       if (url.pathname === '/__nhat-ky') return tra(200, nhatKy);
+      if (url.pathname === '/__thu-hoi' && req.method === 'POST') return tra(200, { da_thu_hoi: thuHoiPhien() });
+      if (url.pathname === '/__auth') return tra(200, { phien: phienAuth(), nhat_ky: nhatKyAuth });
+
+      // --- Supabase Auth: /auth/v1/… (/noi-bo) -------------------------------
+      if (url.pathname.startsWith('/auth/v1/')) return traLoiAuth();
+
+      // --- PostgREST: bảng /rest/v1/<bảng> (/noi-bo) -------------------------
+      const mb = url.pathname.match(/^\/rest\/v1\/([a-z0-9_]+)$/);
+      if (mb) return traLoiBang(mb[1]);
 
       // --- PostgREST: POST /rest/v1/rpc/<hàm> -------------------------------
       const m = url.pathname.match(/^\/rest\/v1\/rpc\/([a-z0-9_]+)$/);
@@ -670,6 +888,18 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
           return taoDonMuaThit(thamSo);
         }
         case 'bo_tai_quay_theo_gu': return tra(200, boTaiQuayTheoGu(hienTai, nn));
+        case 'kho_dem_viec': {
+          const v = vaiCua(req);
+          if (v.loi) return tra(...v.loi);
+          // Hàm thật không cấp cho anon: PostgREST trả 401 khi người chưa đăng nhập thiếu quyền.
+          if (v.vai !== 'authenticated') return tra(401, loiPostgrest('42501', 'permission denied for function kho_dem_viec'));
+          const ns = nhanSuCua(v.uid);
+          if (!ns || (ns.vai_tro !== 'chu_so_huu' && ns.chi_nhanh_id !== thamSo.p_chi_nhanh_id)) {
+            return tra(400, loiPostgrest('P0001', 'Tài khoản của bạn không xem được kho của chi nhánh này'));
+          }
+          // Kho đã khởi tạo, không việc nào, không thông báo chưa đọc: menu không có số đỏ.
+          return tra(200, { khoi_tao: true, chua_doc: 0, thong_bao_xem_luc: null, viec_dong: 0 });
+        }
         case 'mua_thit_ve_cong_khai': {
           if (hienTai === 'mua-thit-loi') return tra(500, loiPostgrest('XX000', 'upstream request timeout'));
           if (hienTai === 'mua-thit-dut') { req.socket.destroy(); return; }   // mất mạng giữa chừng: không một byte
@@ -687,6 +917,145 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
         }
       }
       return tra(500, loiPostgrest('XX000', 'unreachable'));
+
+      /** Supabase Auth giả: đúng bốn cửa lib/phien.ts gọi (đầu file, mục "/noi-bo — ĐĂNG NHẬP THẬT"). */
+      function traLoiAuth() {
+        const traAuth = (status, than) => {
+          res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'X-Supabase-Api-Version': '2024-01-01' });
+          res.end(JSON.stringify(than));
+        };
+        const cua = url.pathname.slice('/auth/v1/'.length);
+        const the = String(req.headers.authorization ?? '').replace(/^Bearer\s+/i, '');
+        // Nhật ký không bao giờ chép mật khẩu hay token.
+        const ghi = dong => { nhatKyAuth.push({ so: ++soLuotAuth, ...dong }); if (nhatKyAuth.length > 200) nhatKyAuth.shift(); };
+
+        if (cua === 'token' && req.method === 'POST') {
+          const loai = url.searchParams.get('grant_type');
+          let than = null;
+          try { than = JSON.parse(duLieu || '{}'); } catch { /* thân hỏng: trả lời ngay dưới */ }
+          if (!than || typeof than !== 'object') {
+            ghi({ cua, loai, status: 400 });
+            return traAuth(400, { code: 'bad_json', message: 'Could not parse request body as JSON' });
+          }
+          if (loai === 'password') {
+            const email = String(than.email ?? '').trim().toLowerCase();
+            if (email !== NHAN_VIEN_THU.email || than.password !== NHAN_VIEN_THU.matKhau) {
+              ghi({ cua, loai, email, status: 400 });
+              return traAuth(400, { code: 'invalid_credentials', message: 'Invalid login credentials' });
+            }
+            const phienId = randomUUID();
+            cacPhien.set(phienId, { conSong: true, lyDo: null });
+            ghi({ cua, loai, email, phien: phienId, status: 200 });
+            return traAuth(200, capToken(phienId));
+          }
+          if (loai === 'refresh_token') {
+            const r = lamMoi.get(than.refresh_token);
+            if (!r || !cacPhien.get(r.phienId)?.conSong) {
+              ghi({ cua, loai, phien: r?.phienId ?? null, status: 400 });
+              return traAuth(400, { code: 'refresh_token_not_found', message: 'Invalid Refresh Token: Refresh Token Not Found' });
+            }
+            if (r.daDung) {
+              // Refresh token đã xoay mà bị dùng lại: Supabase coi là token bị lộ, thu hồi cả phiên.
+              thuHoi(r.phienId, 'dung-lai-refresh-token');
+              ghi({ cua, loai, phien: r.phienId, status: 400 });
+              return traAuth(400, { code: 'refresh_token_already_used', message: 'Invalid Refresh Token: Already Used' });
+            }
+            r.daDung = true;
+            ghi({ cua, loai, phien: r.phienId, status: 200 });
+            return traAuth(200, capToken(r.phienId));
+          }
+          ghi({ cua, loai, status: 400 });
+          return traAuth(400, { code: 'validation_failed', message: 'unsupported_grant_type' });
+        }
+
+        if (cua === 'user' && req.method === 'GET') {
+          const k = kiemToken(the);
+          ghi({ cua, phien: truyCap.get(the)?.phienId ?? null, status: k.loi ? k.loi[0] : 200 });
+          return k.loi ? traAuth(...k.loi) : traAuth(200, nguoiDungAuth());
+        }
+
+        if (cua === 'logout' && req.method === 'POST') {
+          const phamVi = url.searchParams.get('scope') || 'global';
+          if (!['global', 'local', 'others'].includes(phamVi)) {
+            ghi({ cua, pham_vi: phamVi, status: 400 });
+            return traAuth(400, { code: 'validation_failed', message: `Unsupported logout scope "${phamVi}"` });
+          }
+          const k = kiemToken(the);
+          if (k.loi) {
+            ghi({ cua, pham_vi: phamVi, phien: truyCap.get(the)?.phienId ?? null, status: k.loi[0] });
+            return traAuth(...k.loi);
+          }
+          // Phạm vi như Supabase Auth (internal/api/logout.go). Mọi phiên ở đây là của cùng một người.
+          if (phamVi === 'local') thuHoi(k.a.phienId, 'logout-local');
+          else for (const id of cacPhien.keys()) { if (phamVi === 'global' || id !== k.a.phienId) thuHoi(id, `logout-${phamVi}`); }
+          ghi({ cua, pham_vi: phamVi, phien: k.a.phienId, status: 204 });
+          res.writeHead(204, { 'X-Supabase-Api-Version': '2024-01-01' });
+          return res.end();
+        }
+
+        ghi({ cua, cach: req.method, status: 404 });
+        return traAuth(404, { code: 'not_found', message: `Supabase giả chưa làm ${req.method} ${url.pathname}` });
+      }
+
+      /** PostgREST giả cho bảng (đầu file): GET lọc eq / neq, chọn cột, sắp xếp; PATCH chỉ video_dao_tao. */
+      function traLoiBang(ten) {
+        let than = null;
+        if (req.method === 'PATCH') {
+          try { than = JSON.parse(duLieu || 'null'); } catch { return tra(400, loiPostgrest('PGRST102', 'Empty or invalid json')); }
+        }
+        const khoaDem = `${req.method} ${ten}`;
+        dem[khoaDem] = (dem[khoaDem] ?? 0) + 1;
+        nhatKy.push({ ham: khoaDem, thamSo: Object.fromEntries(url.searchParams), ...(than ? { than } : {}) });
+        if (nhatKy.length > 200) nhatKy.shift();
+
+        const cot = COT_BANG[ten];
+        if (!cot) return tra(404, loiPostgrest('PGRST205', `Could not find the table 'public.${ten}' in the schema cache`));
+        const v = vaiCua(req);
+        if (v.loi) return tra(...v.loi);
+        const loc = [];
+        for (const [k, gt] of url.searchParams) {
+          if (['select', 'order', 'limit', 'offset'].includes(k)) continue;
+          const phep = /^(eq|neq)\.(.*)$/s.exec(gt);
+          if (!phep) return tra(400, loiPostgrest('PGRST100', `"failed to parse filter (${gt})" (line 1, column 1)`, 'Supabase giả chỉ hiểu eq. và neq.'));
+          if (!cot.includes(k)) return tra(400, loiPostgrest('42703', `column ${ten}.${k} does not exist`));
+          loc.push([k, phep[1], phep[2]]);
+        }
+        const chon = (url.searchParams.get('select') ?? '*').split(',').map(s => s.trim()).filter(Boolean);
+        const thuTu = (url.searchParams.get('order') ?? '').split(',').filter(Boolean)
+          .map(s => { const [c, chieu] = s.split('.'); return [c, chieu === 'desc' ? -1 : 1]; });
+        const cotLa = [...chon.filter(c => c !== '*'), ...thuTu.map(([c]) => c)].find(c => !cot.includes(c));
+        if (cotLa) return tra(400, loiPostgrest('42703', `column ${ten}.${cotLa} does not exist`));
+
+        // null không bằng, cũng không khác gì (SQL) — eq và neq đều bỏ dòng có ô null.
+        const khop = dongDocDuoc(ten, v).filter(d => loc.every(([k, phep, gt]) =>
+          d[k] !== null && d[k] !== undefined && (phep === 'eq') === cungGiaTri(k, d[k], gt)));
+        // Như Postgres: tăng dần thì null xếp cuối, giảm dần thì null xếp đầu.
+        khop.sort((a, b) => {
+          for (const [c, huong] of thuTu) {
+            if (a[c] === b[c]) continue;
+            if (a[c] === null || a[c] === undefined) return huong;
+            if (b[c] === null || b[c] === undefined) return -huong;
+            return (a[c] < b[c] ? -1 : 1) * huong;
+          }
+          return 0;
+        });
+        const chieu = d => (chon.includes('*') ? { ...d } : Object.fromEntries(chon.map(c => [c, d[c] ?? null])));
+        if (req.method === 'GET') return tra(200, khop.map(chieu));
+
+        if (req.method === 'PATCH' && ten === 'video_dao_tao') {
+          const cotSai = Object.keys(than ?? {}).find(c => !cot.includes(c));
+          if (!than || typeof than !== 'object' || cotSai) {
+            return tra(400, loiPostgrest('PGRST204', `Could not find the '${cotSai ?? '?'}' column of '${ten}' in the schema cache`));
+          }
+          // RLS video_dao_tao_sua: chỉ chủ và quản lý. Vai khác: 0 dòng, không lỗi — như PostgREST.
+          const ns = v.vai === 'authenticated' ? nhanSuCua(v.uid) : null;
+          const sua = ns && VAI_SUA_VIDEO.includes(ns.vai_tro) ? khop : [];
+          for (const d of sua) Object.assign(d, than, { updated_at: thoiDiemMoi() });
+          if (!/return=representation/.test(String(req.headers.prefer ?? ''))) { res.writeHead(204); return res.end(); }
+          return tra(200, sua.map(chieu));
+        }
+        return tra(405, loiPostgrest('PGRST117', `Supabase giả chưa làm ${req.method} trên bảng ${ten}`));
+      }
 
       // Trả lời nop_ho_so_ung_tuyen theo kịch bản: chuỗi mã hồ sơ, như hàm thật (returns text).
       function nopHoSo() {
@@ -773,6 +1142,12 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
     kichBan: () => hienTai,
     dem: () => ({ ...dem }),
     nhatKy: () => [...nhatKy],
+    // /noi-bo: Supabase Auth giả và bảng (đầu file, mục "/noi-bo — ĐĂNG NHẬP THẬT").
+    thuHoiPhien,
+    phienAuth,
+    nhatKyAuth: () => nhatKyAuth.map(d => ({ ...d })),
+    bang: ten => (bang[ten] ? bang[ten].map(d => ({ ...d })) : null),
+    suaBang,
     dong: () => new Promise(xong => {
       for (const h of henGio) clearTimeout(h);
       henGio.clear();
@@ -788,5 +1163,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const may = await batMayGia({ cong: Number(lay('--cong', CONG_MAC_DINH)), kichBan: lay('--kich-ban', 'day-du') });
   console.log(`Kịch bản: ${KICH_BAN.join(' | ')} — đổi bằng: curl -X POST ${may.goc}/__kich-ban -d '{"ten":"rong"}'`);
   console.log(`Bật web: PUBLIC_SUPABASE_URL=${may.goc} PUBLIC_SUPABASE_ANON_KEY=khoa-thu npx astro dev --ignore-lock`);
+  console.log(`Đăng nhập /noi-bo: ${NHAN_VIEN_THU.email} · mật khẩu ${NHAN_VIEN_THU.matKhau} (${NHAN_VIEN_THU.hoTen}, quản lý)`);
+  console.log(`Thu hồi mọi phiên: curl -X POST ${may.goc}/__thu-hoi · xem phiên: curl ${may.goc}/__auth`);
   for (const tin of ['SIGINT', 'SIGTERM']) process.on(tin, async () => { await may.dong(); process.exit(0); });
 }
