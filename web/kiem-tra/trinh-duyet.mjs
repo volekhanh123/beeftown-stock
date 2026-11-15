@@ -1284,7 +1284,8 @@ try {
           const viTriSauGui = lichSu.currentIndex;
           const moc1 = luotDn.length;
           let soLanTaiLai = 0;
-          const taiLai = async () => { await tabDn.reload({ waitUntil: 'load', timeout: 15_000 }).catch(() => {}); soLanTaiLai++; await choYen(); };
+          // Chỉ đếm lần tải lại thật sự xong: hết giờ mà vẫn đếm thì phép đối chứng đạt dù có mục chưa được tải lại.
+          const taiLai = async () => { if (await tabDn.reload({ waitUntil: 'load', timeout: 15_000 }).then(() => true, () => false)) soLanTaiLai++; await choYen(); };
           await taiLai();
           await trongTrang(tabDn, () => { history.back(); }); await choYen();
           const daLui = (await viTri()) === viTriSauGui - 1 && tabDn.url().includes('buoc=70');
@@ -1301,7 +1302,7 @@ try {
           const sau = luotDn.slice(moc1);
           const coMatKhau = sau.filter(l => l.than.includes(MK_THU) || l.than.includes(encodeURIComponent(MK_THU)));
           ok('Đối chứng: lịch sử có đủ hai mục (trang đã gõ, trang sau khi gửi); Quay lại và Tiến tới đúng từng mục; mỗi lần tải lại là một lượt xin trang',
-             cacMuc.length === 2 && daLui && daTien && taiLieu(sau).length >= soLanTaiLai,
+             cacMuc.length === 2 && daLui && daTien && soLanTaiLai === 3 + cacMuc.length && taiLieu(sau).length >= soLanTaiLai,
              `${cacMuc.length} mục · lùi: ${daLui} · tiến: ${daTien} · tải lại ${soLanTaiLai} lần · ${tomDn(sau)}`);
           ok('RÀ SOÁT VÒNG BỐN: lịch sử không còn mục POST nào — F5, Quay lại / Tiến + F5, tải lại từng mục: không lượt POST nào đi ra (kể cả lấy từ bộ đệm), không hộp thoại "gửi lại biểu mẫu"',
              sau.every(l => l.cach !== 'POST') && hopThoaiDn.length === 0, `${tomDn(sau)} · hộp thoại: ${JSON.stringify(hopThoaiDn)}`);

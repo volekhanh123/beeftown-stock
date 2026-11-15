@@ -1890,7 +1890,7 @@ try {
     const { CAU_DANG_NHAP_TAM } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'qua-tai.ts')).href);
     // "Sai mật khẩu" chép tay (câu cũ của trang, phải giữ nguyên chữ); hai câu bận lấy từ nguồn duy nhất của chúng.
     const CAU = { sai: { vi: 'Email hoặc mật khẩu không đúng.', en: 'Wrong email or password.' }, ...CAU_DANG_NHAP_TAM };
-    for (const [nn, dauEmail, loai] of [['vi', 'sai', 'sai'], ['vi', 'ban', 'qua_tai'], ['vi', 'dut', 'mat_ket_noi'], ['en', 'sai', 'sai'], ['en', 'ban', 'qua_tai']]) {
+    for (const [nn, dauEmail, loai] of [['vi', 'sai', 'sai'], ['vi', 'ban', 'qua_tai'], ['vi', 'dut', 'mat_ket_noi'], ['en', 'sai', 'sai'], ['en', 'ban', 'qua_tai'], ['en', 'dut', 'mat_ket_noi']]) {
       const ten = `${nn} · ${loai}`;
       const email = `${dauEmail}@beeftown.test`;
       const matKhau = `Mk-${loai}-${Date.now()}-bi-mat`;
