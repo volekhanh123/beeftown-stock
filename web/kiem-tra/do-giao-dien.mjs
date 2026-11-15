@@ -50,8 +50,9 @@ export const PHEP_DO = {
  *      — xong chuyển màu này có thể lộ ra chuyển màu khác. Hoạt cảnh lặp mãi không có hồi kết nên không chờ.
  * Đồng hồ là hoạt cảnh rỗng (không keyframe — không đổi gì trên trang), không phải requestAnimationFrame hay setTimeout:
  * trong page.evaluate của trang TẮT JavaScript (trinh-duyet.mjs nhóm 5) hai thứ đó không bao giờ chạy, còn
- * Animation.finished vẫn về. Hạn 5 giây — gần ba mươi lần một lần chuyển màu: quá hạn thì ném lỗi kể tên hoạt cảnh còn
- * chạy, không bao giờ đo đại trên trang chưa đứng yên.
+ * Animation.finished vẫn về. Hạn 5 giây — gần ba mươi lần một lần chuyển màu. Trả về [] khi trang đã đứng yên; quá hạn
+ * thì trả về các hoạt cảnh còn chạy (chuỗi 'không có khung hình mới' nếu trang không vẽ khung hình nào) — doGiaoDien ghi
+ * chúng thành chỗ sai ở MỌI phép đo, nên trang chưa đứng yên không bao giờ đạt, mà các kiểm tra sau vẫn chạy tiếp.
  */
 export async function choDungYen() {
   const HAN_MS = 5000, TEN = 'choDungYen';
@@ -62,29 +63,26 @@ export async function choDungYen() {
   const hetHan = han.finished.then(() => true, () => true);
   /** true nếu tới hạn trước khi `viec` xong. */
   const quaHan = viec => Promise.race([viec.then(() => false), hetHan]);
-  const moTa = a => {
-    const el = a.effect?.target;
-    const lop = el && typeof el.className === 'string' && el.className.trim() ? `.${el.className.trim().split(/\s+/).join('.')}` : '';
-    return `${el ? `<${el.tagName.toLowerCase()}${lop}>${a.effect.pseudoElement ?? ''}` : '(không rõ phần tử)'} ${a.transitionProperty ?? a.animationName ?? 'hoạt cảnh'}`;
-  };
-  const loiQuaHan = conChay => new Error(`choDungYen: sau ${HAN_MS / 1000} giây trang vẫn chưa đứng yên — ${
-    conChay.length ? `còn chạy: ${conChay.slice(0, 5).map(moTa).join(' · ')}` : 'không có khung hình mới'}`);
   try {
+    // Hai khung hình chỉ cần ở lượt đầu: chuyển màu xong không đổi bố cục, nên không sinh :hover mới phải chờ tính lại.
+    goc.getBoundingClientRect();
+    if (await quaHan(dongHo(1).finished) || await quaHan(dongHo(1).finished)) return ['không có khung hình mới'];
     for (;;) {
-      goc.getBoundingClientRect();
-      if (await quaHan(dongHo(1).finished) || await quaHan(dongHo(1).finished)) throw loiQuaHan([]);
       const dangChay = document.getAnimations().filter(a => a.id !== TEN && a.playState === 'running'
         && a.timeline === document.timeline && Number.isFinite(a.effect?.getComputedTiming().endTime));
-      if (!dangChay.length) return;
-      if (await quaHan(Promise.allSettled(dangChay.map(a => a.finished)))) throw loiQuaHan(dangChay);
+      if (!dangChay.length) return [];
+      if (await quaHan(Promise.allSettled(dangChay.map(a => a.finished)))) return dangChay;
     }
   } finally {
     han.cancel();
   }
 }
 
-/** Mọi phép đo, đồng bộ — chạy trong trang ngay sau choDungYen (doGiaoDien ở cuối file ghép hai hàm). */
-function doKhiDungYen() {
+/**
+ * Mọi phép đo, đồng bộ — chạy trong trang ngay sau choDungYen (doGiaoDien ở cuối file ghép hai hàm). `conChay`: thứ
+ * choDungYen trả về; không rỗng thì mọi phép đo ghi thêm một chỗ sai "trang chưa đứng yên" (mô tả bằng moTa bên dưới).
+ */
+function doKhiDungYen(conChay = []) {
   const RONG = innerWidth;
   const DIEN_THOAI = RONG < 600, MAY_TINH = RONG >= 1024;
   // Lề hai bên của khung trang — chép tay từ THIET-KE.md mục 4 (`--le`): clamp(20px, 5vw, 40px). Tới màn 400px
@@ -946,6 +944,12 @@ function doKhiDungYen() {
   // Nền / mặt nạ trỏ /thuong-hieu/: gom ở vòng duyệt của mục 4 (nenTroThuongHieu).
   kq.logoDungNen.push(...nenTroThuongHieu);
 
+  if (conChay.length) {
+    const ten = a => (typeof a === 'string' ? a
+      : `${a.effect?.target ? moTa(a.effect.target).slice(0, 50) : '(không rõ phần tử)'}${a.effect?.pseudoElement ?? ''} ${a.transitionProperty ?? a.animationName ?? 'hoạt cảnh'}`);
+    const chuaYen = `trang chưa đứng yên sau hạn chờ của choDungYen — còn chạy: ${conChay.slice(0, 5).map(ten).join(' · ')}; số đo có thể là màu nửa chừng`;
+    for (const khoa of Object.keys(kq)) kq[khoa].unshift(chuaYen);
+  }
   return kq;
 }
 
@@ -955,4 +959,4 @@ function doKhiDungYen() {
  * thức chứ không phải hàm: hàm đưa vào page.evaluate chỉ mang theo thân của chính nó, không gọi được hàm khác của file
  * này — ghép mã của hai hàm tự đủ thành một biểu thức thì được. Trả về { tên phép đo: [chỗ sai…] }.
  */
-export const doGiaoDien = `(async () => { await (${choDungYen})(); return (${doKhiDungYen})(); })()`;
+export const doGiaoDien = `(async () => (${doKhiDungYen})(await (${choDungYen})()))()`;

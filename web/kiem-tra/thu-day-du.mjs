@@ -1522,7 +1522,7 @@ try {
         const nut = p.locator('[data-mtv-mo-hop]').first();
         await p.addStyleTag({ content: '.ck .nut { transition-duration: 1500ms !important; }' });
         await nut.hover();
-        await p.evaluate(choDungYen);   // nền đã sang xám E2: nút đang được di chuột
+        await p.evaluate(choDungYen);   // nền đã sang màu di chuột (không còn trắng): nút đang được di chuột
         const lucDiChuot = await nut.evaluate(n => `${n.matches(':hover')} ${getComputedStyle(n).backgroundColor}`);
         await p.mouse.move(0, 0);       // con trỏ rời nút: nền bắt đầu về trắng, mất 1,5 giây
         const giuaChung = await saiGd();
@@ -1530,7 +1530,9 @@ try {
         const nenDungYen = await saiGd();
         const tot = [
           ok(`${nhan}: nút "Chọn gói" vừa hết di chuột, nền đang về trắng (chuyển màu kéo dài 1,5 giây) — phép đo chờ xong rồi mới đo, đủ ${Object.keys(PHEP_DO).length} phép đo`,
-             lucDiChuot === 'true rgb(226, 226, 226)' && giuaChung.length === 0,
+             // Tiền đề: con trỏ thật sự đang trên nút và nền đã rời màu trắng — không thì lượt chuyển về trắng không có gì
+             // để chờ. Không ghi cứng màu di chuột: đổi token màu di chuột không được làm kiểm tra này đỏ.
+             lucDiChuot.startsWith('true ') && lucDiChuot !== 'true rgb(255, 255, 255)' && giuaChung.length === 0,
              `lúc di chuột: ${lucDiChuot} · ${giuaChung.slice(0, 3).join(' | ')}`),
           ok(`${nhan}: nền nút đứng yên ở rgb(253, 253, 253) — phép đo vẫn báo ở nenTrongBang và nut (chờ không làm cùn phép kiểm)`,
              nenDungYen.some(x => x.startsWith('[nenTrongBang] rgb(253, 253, 253) ở <button.nut.nut-vien.mtv-mo-hop>'))
