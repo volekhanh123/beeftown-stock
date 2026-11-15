@@ -2,6 +2,8 @@
 import Trang from '../../layouts/Trang.astro';
 import TrangVanBan from '../../components/TrangVanBan.astro';
 import { docNoiDung } from '../../lib/noi-dung';
+import { PHAP_NHAN } from '../../lib/chu';
+import { CHO_TRONG } from '../../lib/cho-trong';
 const nd = await docNoiDung('en');
 ---
 <Trang ngonNgu="en" noiDung={nd} duongDan="/en/privacy"
@@ -88,8 +90,12 @@ const nd = await docNoiDung('en');
         form that no longer identifies you, so the restaurant knows how many
         people applied in each round.</p>
       <p>Booking details are kept so the restaurant can see your history with us.
-        Take-home orders are kept so we can check orders we delivered. You can
+        Take-home orders are kept for {CHO_TRONG.THOI_GIAN_GIU_DON.en} so we can check orders we delivered. You can
         ask us to delete them at any time.</p>
+
+      <h2>Who holds your information</h2>
+      <p>Your information is collected and held by <span lang="vi">{PHAP_NHAN.ten}</span> (tax code {PHAP_NHAN.maSoThue}); the company's registered address is at the foot of this page.{' '}
+        To see, correct or delete your information, or to ask how it is used: call {PHAP_NHAN.dienThoai}, email {CHO_TRONG.EMAIL}, or use the <a href="/en/data-deletion">Data deletion</a> page.</p>
 
       <h2>Your rights</h2>
       <p>You can ask to see, correct or delete your information, and you can opt out

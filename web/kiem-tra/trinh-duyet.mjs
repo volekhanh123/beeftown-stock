@@ -120,10 +120,15 @@ async function nhom(ten, fn) {
 // ---------------------------------------------------------------------------
 const batMayChu = () => batMayChuBanBuild({ cong: CONG, khongBuild: process.argv.includes('--khong-build') });
 
+// Danh sách cố định có đủ mọi trang của CAP_DUONG_DAN, gồm tám trang chính sách (lib/chinh-sach.ts): sitemap hỏng
+// thì vẫn thử đủ (crm/test/test-cong-khai-quet-gia.mjs nhóm 5 giữ).
 async function danhSachTrang(goc) {
   const bo = new Set(['/', '/thuc-don', '/mua-thit-ve', '/den-beeftown', '/dat-ban', '/tuyen-dung', '/quyen-rieng-tu', '/xoa-du-lieu',
+    '/dieu-khoan', '/chinh-sach-gia', '/thanh-toan', '/giao-hang', '/doi-tra-hoan-tien', '/khieu-nai', '/dieu-kien-ban-hang', '/ho-tro',
     '/en', '/en/menu', '/en/buy-meat', '/en/visit', '/en/book', '/en/jobs', '/en/privacy', '/en/data-deletion',
-    '/ko', '/ko/menu', '/ko/buy-meat', '/ko/visit', '/ko/book', '/ko/jobs', '/ko/privacy', '/ko/data-deletion']);
+    '/en/terms', '/en/pricing', '/en/payment', '/en/delivery', '/en/returns', '/en/complaints', '/en/conditions', '/en/support',
+    '/ko', '/ko/menu', '/ko/buy-meat', '/ko/visit', '/ko/book', '/ko/jobs', '/ko/privacy', '/ko/data-deletion',
+    '/ko/terms', '/ko/pricing', '/ko/payment', '/ko/delivery', '/ko/returns', '/ko/complaints', '/ko/conditions', '/ko/support']);
   try {
     const xml = await (await fetch(new URL('/sitemap.xml', goc))).text();
     for (const m of xml.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/g)) bo.add(new URL(m[1]).pathname);
@@ -147,6 +152,14 @@ const dongPhapNhan = nn => [
   '53 Võ Trường Toản, Phường An Khánh, Thành phố Hồ Chí Minh',
   `${NHAN_DIEN_THOAI[nn]}: 0961 245 124`,
 ];
+// Dòng thứ tư dưới dòng ©: email (Khánh giao 16/11/2026; địa chỉ email còn chờ trả lời — chỉ so nhãn).
+const NHAN_EMAIL = { vi: 'Email', en: 'Email', ko: '이메일' };
+// Nhóm CHÍNH SÁCH của chân trang: tám trang chính sách rồi Quyền riêng tư, đúng thứ tự, đúng thứ tiếng. Chép tay.
+const LINK_CHINH_SACH = {
+  vi: ['/dieu-khoan', '/chinh-sach-gia', '/thanh-toan', '/giao-hang', '/doi-tra-hoan-tien', '/khieu-nai', '/dieu-kien-ban-hang', '/ho-tro', '/quyen-rieng-tu'],
+  en: ['/en/terms', '/en/pricing', '/en/payment', '/en/delivery', '/en/returns', '/en/complaints', '/en/conditions', '/en/support', '/en/privacy'],
+  ko: ['/ko/terms', '/ko/pricing', '/ko/payment', '/ko/delivery', '/ko/returns', '/ko/complaints', '/ko/conditions', '/ko/support', '/ko/privacy'],
+};
 /** Ba dòng ngay dưới dòng ©, đúng thứ tự. */
 const coPhapNhan = (dongChan, iBanQuyen, phapNhan) =>
   iBanQuyen > -1 && phapNhan.every((dong, i) => dongChan[iBanQuyen + 1 + i] === dong);
@@ -334,6 +347,7 @@ try {
             // innerText: chỉ chữ thật sự hiện ra (ảnh, chữ bị ẩn không có ở đây), mỗi khối một dòng.
             dongChan: (chan?.innerText ?? '').split('\n').map(s => s.trim()).filter(Boolean),
             coChan: !!chan,
+            linkChinhSach: [...(chan?.querySelectorAll('nav[aria-labelledby="ct-chinh-sach"] a') ?? [])].map(a => a.getAttribute('href')),
             // Có chữ trong HTML mà không đọc được thì cũng như không: bị ẩn, khung rỗng, chữ dưới 14px.
             chanAn: !!chan && [...chan.querySelectorAll('p')].some(p => {
               const k = p.getBoundingClientRect();
@@ -363,6 +377,10 @@ try {
              kq.coChan && !kq.chanAn && coPhapNhan(kq.dongChan, iBanQuyen, phapNhan),
              !kq.coChan ? 'trang không có <footer>'
                : kq.chanAn ? 'một dòng chân trang bị ẩn hoặc chữ dưới 14px' : JSON.stringify(kq.dongChan)),
+          ok(`${nhan}: chân trang — dòng "${NHAN_EMAIL[ngonNguCua(duong)]}: …" ngay dưới số điện thoại pháp nhân; nhóm Chính sách đủ 9 link đúng thứ tự, đúng thứ tiếng`,
+             iBanQuyen > -1 && (kq.dongChan[iBanQuyen + 4] ?? '').startsWith(`${NHAN_EMAIL[ngonNguCua(duong)]}: `)
+               && JSON.stringify(kq.linkChinhSach) === JSON.stringify(LINK_CHINH_SACH[ngonNguCua(duong)]),
+             `${kq.dongChan[iBanQuyen + 4] ?? '(không có dòng)'} · ${kq.linkChinhSach.join(' ')}`),
           ok(`${nhan}: đúng một <h1>`, them.soH1 === 1, `${them.soH1} thẻ h1`),
           ok(`${nhan}: mọi <img> có width, height, alt`, !them.anhThieu.length, them.anhThieu.slice(0, 3).join(' | ')),
           ok(`${nhan}: ảnh minh họa dưới màn hình đầu có loading="lazy"`, !them.anhKhongLazy.length, them.anhKhongLazy.slice(0, 3).join(' | ')),

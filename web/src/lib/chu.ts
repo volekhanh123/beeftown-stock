@@ -262,6 +262,10 @@ const VI = {
   // Nhãn trước mã số thuế và số điện thoại ở chân trang. Tên công ty, địa chỉ và số không dịch — PHAP_NHAN.
   maSoThue: 'Mã số thuế',
   dienThoai: 'Điện thoại',
+  // Dòng email ngay dưới số điện thoại pháp nhân ở chân trang (email: CHO_TRONG.EMAIL, lib/cho-trong.ts).
+  email: 'Email',
+  // Nhóm link tới tám trang chính sách và Quyền riêng tư ở chân trang (lib/chinh-sach.ts).
+  chinhSach: 'Chính sách',
   boQuaToiNoiDung: 'Bỏ qua, tới nội dung chính',
 };
 
@@ -379,6 +383,8 @@ const EN: Bo = {
   banQuyen: 'Beeftown',
   maSoThue: 'Tax code',
   dienThoai: 'Phone',
+  email: 'Email',
+  chinhSach: 'Policies',
   boQuaToiNoiDung: 'Skip to main content',
 };
 
@@ -494,6 +500,8 @@ const KO: Bo = {
   // là số đăng ký kinh doanh của Hàn Quốc.
   maSoThue: '세금 코드',
   dienThoai: '전화',
+  email: '이메일',
+  chinhSach: '정책',
   boQuaToiNoiDung: '본문으로 바로가기',
 };
 
@@ -550,6 +558,15 @@ export const CAP_DUONG_DAN: ReadonlyArray<readonly [vi: string, en: string, ko: 
   ['/dat-ban',        '/en/book',    '/ko/book'],
   ['/quyen-rieng-tu', '/en/privacy', '/ko/privacy'],
   ['/xoa-du-lieu',    '/en/data-deletion', '/ko/data-deletion'],
+  // Tám trang chính sách (lib/chinh-sach.ts, Khánh giao 16/11/2026 cho hồ sơ thông báo website thương mại điện tử).
+  ['/dieu-khoan',         '/en/terms',       '/ko/terms'],
+  ['/chinh-sach-gia',     '/en/pricing',     '/ko/pricing'],
+  ['/thanh-toan',         '/en/payment',     '/ko/payment'],
+  ['/giao-hang',          '/en/delivery',    '/ko/delivery'],
+  ['/doi-tra-hoan-tien',  '/en/returns',     '/ko/returns'],
+  ['/khieu-nai',          '/en/complaints',  '/ko/complaints'],
+  ['/dieu-kien-ban-hang', '/en/conditions',  '/ko/conditions'],
+  ['/ho-tro',             '/en/support',     '/ko/support'],
 ] as const;
 
 /**

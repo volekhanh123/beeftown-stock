@@ -25,7 +25,7 @@ export const PHEP_DO = {
   cauHoi: 'câu hỏi thường gặp: mỗi hàng cao ≥ 56px, bấm được trên toàn chiều rộng, có biểu tượng mở/đóng',
   bieuTuong: 'biểu tượng: 24px, nét 1,5px, đỏ trên nền sáng, trắng trên đỏ, trắng hoặc đỏ trên đen, đi kèm nhãn chữ',
   chu: 'chữ và lưới: chỉ Montserrat, chữ chạy 16/24px, h1 32/38 → 48/56px (tiếng Hàn cùng cỡ, dòng 1,28: 32/41 → 48/61px), lề điện thoại clamp(20px, 5vw, 40px) — 20px tới màn 400px, khung ≤ 1200px, khoảng cách khối 48–64 / 72–96px',
-  chanTrang: 'chân trang: hai dải đen (dải chính và dải pháp nhân), logo chính trắng logo-ngang-trang ≥ 160px đúng tỷ lệ, không hoa văn chữ, không tem, chữ ≥ 14px, điện thoại chia link 2 cột',
+  chanTrang: 'chân trang: hai dải đen (dải chính và dải pháp nhân), logo chính trắng logo-ngang-trang ≥ 160px đúng tỷ lệ, không hoa văn chữ, không tem, chữ ≥ 14px, điện thoại chia link 2 cột; nhóm Chính sách đủ 9 link, từ 360px ít nhất 2 cột',
   anh: 'ảnh: ảnh AI nào cũng có nhãn "Ảnh minh họa" nhìn thấy, đọc được; nhãn của ảnh tách nền không che món (0 điểm ảnh đặc dưới nhãn); không bóng đổ; đúng tỷ lệ khung; không chữ, logo hay phần tử nào đè lên ảnh; chỉ ảnh màn đầu tải ngay',
   nhanKhay: 'thẻ "Cách đọc nhãn khay": đặt thẳng, không bóng đổ, nền trắng hoặc F4, đủ 5 trường theo thứ tự, chỉ tên trường (không giá trị mẫu), đủ lớn để đọc; logo chính đỏ ≥ 160px đúng tỷ lệ',
   trangChu: 'trang chủ: đủ 8 khối theo thứ tự, dải đen và dải đỏ giữ nguyên, khối sáng trắng / F4; màn đầu có ảnh, không logo trong khối hình, câu chính đứng trước ảnh trên điện thoại, hai cột cân nhau trên máy tính, tagline "Pick it, grill it, love it!" là một dải đỏ gọn không đè lên ảnh; ba bước, cả bữa, đi nhóm đúng bố cục',
@@ -443,6 +443,14 @@ export function doGiaoDien() {
     else if (DIEN_THOAI) {
       const [a, b] = cot.map(c => c.getBoundingClientRect());
       if (Math.abs(a.top - b.top) > 1 || b.left - a.left < 100) kq.chanTrang.push('điện thoại: hai nhóm link phải đứng cạnh nhau thành 2 cột');
+    }
+    // Nhóm CHÍNH SÁCH (Khánh giao 16/11/2026): chín link — tám trang chính sách và Quyền riêng tư — không thành một
+    // cột dài 9 × 48px: từ 360px ít nhất hai cột (link chỉ được một cột ở 320px, lề 20px còn 280px).
+    const cs = chan.querySelector('nav.ct-chinh-sach');
+    const linkCs = cs ? [...cs.querySelectorAll('a')].filter(hien) : [];
+    if (!cs || !hien(cs) || linkCs.length !== 9) kq.chanTrang.push(`nhóm Chính sách (nav.ct-chinh-sach) cần 9 link hiện ra, thấy ${linkCs.length}`);
+    else if (RONG >= 360 && new Set(linkCs.map(a => Math.round(a.getBoundingClientRect().left))).size < 2) {
+      kq.chanTrang.push('nhóm Chính sách: từ 360px chín link phải xếp ít nhất 2 cột');
     }
   }
 
