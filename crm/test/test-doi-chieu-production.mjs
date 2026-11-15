@@ -21,7 +21,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { taoBoDem } from './kho-chung.mjs';
 import {
-  chuanHoaThan, dungMau, docPglite, docCauTruc, soSanh, tongKhacBiet, baoCao, timTep, docThamSo,
+  chuanHoaThan, dungMau, docPglite, docCauTruc, soSanh, tongKhacBiet, baoCao, timTep, lapChiMucTep, docThamSo,
 } from './doi-chieu-production.mjs';
 
 const THU_MUC = dirname(fileURLToPath(import.meta.url));
@@ -221,10 +221,35 @@ await nhom('7 · THỪA: TẠO TAY, HAY CÂU DROP CHƯA CHẠY', async () => {
 
 // ===========================================================================
 await nhom('7b · GỢI Ý FILE: CHỈ CÂU CREATE / DROP THẬT, KHÔNG PHẢI GRANT / ALTER NHẮC TÊN', async () => {
-  // tao_dat_ban: tạo lại ở 0004, 0008, 0010, 0013, 0062, 0084 (giới hạn tần suất); các file khác chỉ grant / revoke nó
-  // trong khối chốt quyền.
-  ok('Hàm tạo nhiều lần → file CUỐI có create (tao_dat_ban → 0084), không phải file chỉ grant nó',
-    timTep(chiMuc, 'ham', 'tao_dat_ban(p_chi_nhanh_ma text)') === '0084_gioi_han_cong_khai.sql', timTep(chiMuc, 'ham', 'tao_dat_ban()'));
+  // ghi_su_kien_web: tạo ở 0013, tạo lại ở 0084 (giới hạn tần suất); 0086, 0090, 0093, 0099, 0101 chỉ grant nó trong
+  // khối chốt quyền. Kiểm tra này chỉ có nghĩa khi SAU bản cuối của hàm còn file "chỉ grant" — chọn hàm khác thì
+  // phải kiểm điều đó. (Trước 0121 nó dùng tao_dat_ban; 0121 viết lại hàm đó nên không còn file "chỉ grant" nào đứng
+  // sau. Bản đầu của đợt vá đổi sang tra_cuu_dat_ban — sau 0084 không file nào grant / revoke hàm ấy, nên kiểm tra
+  // không còn bắt được lỗi nó sinh ra để bắt; vòng hai của rà soát 14/11 phát hiện.)
+  ok('Hàm tạo nhiều lần → file CUỐI có create (ghi_su_kien_web → 0084), không phải file chỉ grant nó',
+    timTep(chiMuc, 'ham', 'ghi_su_kien_web(p_loai text)') === '0084_gioi_han_cong_khai.sql', timTep(chiMuc, 'ham', 'ghi_su_kien_web()'));
+  // …và điều kiện để kiểm tra trên có răng: sau 0084 vẫn còn file nhắc ghi_su_kien_web trong CÂU LỆNH (grant) mà
+  // không tạo nó. Migration sau này viết lại hàm này thì dòng dưới đỏ — lúc đó đổi sang hàm khác, đừng bỏ.
+  const thuMucMigration = join(GOC, 'crm', 'supabase', 'migrations');
+  const vanBan = readdirSync(thuMucMigration).filter(f => /^\d{4}_.*\.sql$/.test(f)).sort()
+    .map(f => [f, readFileSync(join(thuMucMigration, f), 'utf8')]);
+  const sauBanCuoi = vanBan.filter(([f, sql]) => f > '0084_gioi_han_cong_khai.sql'
+    && /\bghi_su_kien_web\b/.test(sql.replace(/--[^\n]*/g, '')));
+  ok(`…sau 0084 còn file chỉ grant ghi_su_kien_web (${sauBanCuoi.length}) — kiểm tra trên phân biệt được create với grant`,
+    sauBanCuoi.length >= 1 && sauBanCuoi.every(([, sql]) => !/create\s+(or\s+replace\s+)?function\s+(public\.)?ghi_su_kien_web\s*\(/i.test(sql.replace(/--[^\n]*/g, ''))),
+    sauBanCuoi.map(([f]) => f).join(', '));
+  // Cùng luật trên một bộ migration GIẢ — không phụ thuộc migration thật nào còn "file chỉ grant" đứng sau.
+  const gia = lapChiMucTep(new Map([
+    ['0001_a.sql', 'create function f_thu(x int) returns int language sql as $$ select 1 $$;'],
+    ['0002_b.sql', 'create or replace function public.f_thu(x int) returns int language sql as $$ select 2 $$;'],
+    ['0003_c.sql', "grant execute on function f_thu(int) to anon;\nrevoke execute on function public.f_thu(int) from public;\n"
+      + "alter function f_thu(int) set search_path = public;\ncomment on function f_thu(int) is 'x';\n-- create or replace function f_thu(x int)"],
+  ]));
+  ok('File chỉ grant / revoke / alter / comment (hay chú thích nhắc "create function") không được tính là file tạo hàm (migration giả)',
+    timTep(gia, 'ham', 'f_thu()') === '0002_b.sql', String(timTep(gia, 'ham', 'f_thu()')));
+  // tao_dat_ban: tạo lại ở 0004, 0008, 0010, 0013, 0062, 0084, 0121 (trần độ dài chữ).
+  ok('Hàm vừa được viết lại → file mới nhất có create (tao_dat_ban → 0121)',
+    timTep(chiMuc, 'ham', 'tao_dat_ban(p_chi_nhanh_ma text)') === '0121_do_dai_van_ban_cong_khai.sql', timTep(chiMuc, 'ham', 'tao_dat_ban()'));
   ok('Bảng → file create table (chi_nhanh → 0001, khach_hang → 0002), không phải file alter / bật RLS',
     timTep(chiMuc, 'bang', 'chi_nhanh') === '0001_nen_mong.sql' && timTep(chiMuc, 'bang', 'khach_hang') === '0002_khach_hang.sql',
     `${timTep(chiMuc, 'bang', 'chi_nhanh')}, ${timTep(chiMuc, 'bang', 'khach_hang')}`);

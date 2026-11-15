@@ -36,7 +36,7 @@ const git = args => execFileSync('git', args, { cwd: GOC, encoding: 'utf8' });
 const CHUA_CO_TEST = [
   'chuan_ban_dich', 'ghi_so_ban_dich', 'khach_hang_chuan_hoa_sdt',
   'mon_an_kiem_tra_nhom',
-  'nhat_ky_ho_so_chan_sua_xoa', 'noi_dung_cong_bo_kiem_tra',
+  'nhat_ky_ho_so_chan_sua_xoa',
   'so_cai_diem_chan_sua_xoa', 'so_cai_diem_tinh_so_du', 'tep_anh_kiem_tra_cong_bo',
   'vi_tri_kiem_tra',
   // tu_dong_cap_nhat_updated_at: test-ban-le.mjs nhóm 7 kiểm nhánh thoát sớm khi máy dịch ghi (0036).

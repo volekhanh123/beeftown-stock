@@ -182,7 +182,11 @@ export async function dungDatabase() {
     nsId[uid] = r.id;
   }
 
-  /** Chạy dưới danh nghĩa một nhân sự (uid null = đăng nhập nhưng không phải ai). */
+  /**
+   * Chạy dưới danh nghĩa một nhân sự. uid null = vai authenticated nhưng KHÔNG có auth.uid() (co_phien_dang_nhap()
+   * là false) — các trigger "không phiên thì bỏ qua" bỏ qua lời gọi đó. Muốn thử "tài khoản đã đăng nhập nhưng không
+   * có dòng nhan_su" thì truyền một uuid không có trong nhan_su (crypto.randomUUID()).
+   */
   async function duoi(uid, sql, params = []) {
     await db.query(`delete from auth._phien`);
     if (uid) await db.query(`insert into auth._phien (uid) values ($1)`, [uid]);
