@@ -33,30 +33,36 @@ type BaThuTieng = Readonly<Record<NgonNgu, string>>;
 /* Mỗi chỗ trống viết thẳng thành chữ trong mã, ở cả ba thứ tiếng (không dựng bằng hàm): bước kiểm trước
    deploy đọc mã nguồn, nên chỗ nào chưa điền thì chữ của nó phải nằm ngay trong file. */
 export const CHO_TRONG = {
-  /** Email ghi lên web và tờ khai. Hỏi: Khánh. */
-  EMAIL: '{{EMAIL}}',
-  /** Giao tới đâu (cụm chữ, ghép sau "Khu vực giao:"). Hỏi: Sang. */
-  VUNG_GIAO: { vi: '{{VUNG_GIAO}}', en: '{{VUNG_GIAO}}', ko: '{{VUNG_GIAO}}' },
-  /** Khung giờ giao trong ngày; đơn trả sau mấy giờ thì giao hôm sau (ghép sau "Giờ giao:"). Hỏi: Sang. */
-  GIO_GIAO: { vi: '{{GIO_GIAO}}', en: '{{GIO_GIAO}}', ko: '{{GIO_GIAO}}' },
+  /** Email ghi lên web và tờ khai. Khánh trả lời 16/11/2026. */
+  EMAIL: 'cskh@beeftown.vn',
+  /** Giao tới đâu (cụm chữ, ghép sau "Khu vực giao:"). Khánh trả lời 16/11/2026: nội thành TP.HCM. */
+  VUNG_GIAO: { vi: 'nội thành TP.HCM', en: 'central Ho Chi Minh City', ko: '호치민시 시내' },
+  /** Khung giờ giao trong ngày (ghép sau "Giờ giao:"). Khánh trả lời 16/11/2026: như giờ làm việc. Đơn trả sau
+      mấy giờ thì giao hôm sau: chưa trả lời — có thì ghép thêm vào cụm này. */
+  GIO_GIAO: { vi: 'trong giờ làm việc của quán', en: 'during our working hours', ko: '매장 영업시간 중' },
   /** Ai giao: nhân viên quán, Ahamove… (ghép sau "Người giao:"). Hỏi: Sang. */
   DON_VI_GIAO: { vi: '{{DON_VI_GIAO}}', en: '{{DON_VI_GIAO}}', ko: '{{DON_VI_GIAO}}' },
   /** Đóng gói giữ lạnh thế nào, tối đa bao lâu trên đường (ghép sau "Giữ lạnh:"). Hỏi: Sang. */
   GIU_LANH: { vi: '{{GIU_LANH}}', en: '{{GIU_LANH}}', ko: '{{GIU_LANH}}' },
-  /** Gói "khoảng 150 g": thu đúng giá ghi trên web hay tính lại theo tem cân. Hỏi: Sang. */
-  CACH_TINH_GOI: { vi: '{{CACH_TINH_GOI}}', en: '{{CACH_TINH_GOI}}', ko: '{{CACH_TINH_GOI}}' },
+  /** Gói ghi 150 g: thu đúng giá ghi trên web hay tính lại theo tem cân. Khánh trả lời 16/11/2026: ghi 150 g, bỏ chữ
+      "khoảng" (nhãn gói ở trang Mua thịt về cũng bỏ — lib/don-mua-thit.ts) — giá gói là giá ghi trên web. */
+  CACH_TINH_GOI: {
+    vi: 'bạn trả đúng giá ghi trên web, không tính lại theo cân',
+    en: 'you pay the price shown on the website, with no reweighing',
+    ko: '웹사이트에 표시된 가격 그대로 결제하시며, 다시 계량해 가격을 바꾸지 않아요',
+  },
   /** Giá gói đã gồm VAT chưa (ghép sau "VAT:" ở trang Chính sách giá và trang Mua thịt về). Hỏi: Sang, John. */
   VAT: { vi: '{{VAT}}', en: '{{VAT}}', ko: '{{VAT}}' },
-  /** Khách hẹn lại, giao lần 2 có tính thêm phí không, bao nhiêu. Hỏi: Sang. */
-  GIAO_LAI: { vi: '{{GIAO_LAI}}', en: '{{GIAO_LAI}}', ko: '{{GIAO_LAI}}' },
-  /** Số giờ khách được báo hàng lỗi, kể từ lúc nhận — chỉ con số. Hỏi: Sang. */
-  GIO_BAO_LOI: '{{GIO_BAO_LOI}}',
-  /** Số ngày làm việc để hoàn tiền về thẻ / ví — chỉ con số. Hỏi: Sang. */
-  NGAY_HOAN: '{{NGAY_HOAN}}',
+  /** Khách hẹn lại, giao lần 2 có tính thêm phí không. Khánh trả lời 16/11/2026: không tính phí. */
+  GIAO_LAI: { vi: 'không tính thêm phí', en: 'no extra charge', ko: '추가 요금 없음' },
+  /** Số giờ khách được báo hàng lỗi, kể từ lúc nhận — chỉ con số. Khánh trả lời 16/11/2026: 1 ngày. */
+  GIO_BAO_LOI: '24',
+  /** Số ngày làm việc để hoàn tiền về thẻ / ví — chỉ con số. Khánh trả lời 16/11/2026. */
+  NGAY_HOAN: '2',
   /** Trả lời khiếu nại trong bao lâu, giải quyết xong trong bao lâu (ghép sau "Beeftown trả lời trong"). Hỏi: Khánh. */
   GIO_TRA_LOI: { vi: '{{GIO_TRA_LOI}}', en: '{{GIO_TRA_LOI}}', ko: '{{GIO_TRA_LOI}}' },
-  /** Giờ nhận điện thoại, tin nhắn (ghép sau "Giờ nhận điện thoại, tin nhắn:"). Hỏi: Khánh. */
-  GIO_HO_TRO: { vi: '{{GIO_HO_TRO}}', en: '{{GIO_HO_TRO}}', ko: '{{GIO_HO_TRO}}' },
+  /** Giờ nhận điện thoại, tin nhắn (ghép sau "Giờ nhận điện thoại, tin nhắn:"). Khánh trả lời 16/11/2026: như giờ làm việc. */
+  GIO_HO_TRO: { vi: 'trong giờ làm việc của quán', en: 'during our working hours', ko: '매장 영업시간 중' },
   /** Giữ đơn mua thịt bao lâu rồi xóa thông tin khách (ghép sau "Đơn mua thịt được giữ"). Hỏi: Khánh. */
   THOI_GIAN_GIU_DON: { vi: '{{THOI_GIAN_GIU_DON}}', en: '{{THOI_GIAN_GIU_DON}}', ko: '{{THOI_GIAN_GIU_DON}}' },
 } as const satisfies Record<string, string | BaThuTieng>;

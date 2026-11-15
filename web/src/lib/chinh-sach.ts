@@ -194,9 +194,10 @@ export const CHINH_SACH: Readonly<Record<KhoaChinhSach, TrangChinhSach>> = {
       ] },
       { tieuDe: { vi: 'Gói theo trọng lượng', en: 'Packs sold by weight', ko: '중량으로 표시된 팩' }, khoi: [
         {
-          vi: `Gói ghi "khoảng 150 g" (hoặc 200 g, 400 g): ${CACH_TINH_GOI.vi}.`,
-          en: `Packs marked "about 150 g" (or 200 g, 400 g): ${CACH_TINH_GOI.en}.`,
-          ko: `"약 150 g"(또는 200 g, 400 g)으로 표시된 팩: ${CACH_TINH_GOI.ko}.`,
+          // Khánh 16/11/2026: nhãn gói ghi đúng số gam, không "khoảng" (lib/don-mua-thit.ts).
+          vi: `Gói ghi 150 g (hoặc 200 g, 400 g): ${CACH_TINH_GOI.vi}.`,
+          en: `Packs marked 150 g (or 200 g, 400 g): ${CACH_TINH_GOI.en}.`,
+          ko: `150 g(또는 200 g, 400 g)으로 표시된 팩: ${CACH_TINH_GOI.ko}.`,
         },
       ] },
       { tieuDe: { vi: 'Khi giá đổi', en: 'When prices change', ko: '가격이 바뀔 때' }, khoi: [
@@ -486,7 +487,7 @@ export const CHINH_SACH: Readonly<Record<KhoaChinhSach, TrangChinhSach>> = {
     muc: [
       { tieuDe: { vi: 'Liên hệ', en: 'Contact', ko: '연락처' }, khoi: [{ danhSach: LIEN_HE }] },
       { tieuDe: { vi: 'Giờ hỗ trợ', en: 'Hours', ko: '응대 시간' }, khoi: [
-        { vi: `Giờ nhận điện thoại, tin nhắn: ${GIO_HO_TRO.vi}.`, en: `Calls and messages are answered: ${GIO_HO_TRO.en}.`, ko: `전화와 메시지 응대 시간: ${GIO_HO_TRO.ko}.` },
+        { vi: `Giờ nhận điện thoại, tin nhắn: ${GIO_HO_TRO.vi}.`, en: `We answer calls and messages ${GIO_HO_TRO.en}.`, ko: `전화와 메시지는 ${GIO_HO_TRO.ko} 응대해요.` },
         {
           vi: 'Tin nhắn ngoài giờ được trả lời trong giờ làm việc kế tiếp.',
           en: 'Messages sent outside these hours are answered during the next working hours.',
