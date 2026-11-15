@@ -251,9 +251,9 @@ export const CHINH_SACH: Readonly<Record<KhoaChinhSach, TrangChinhSach>> = {
       ] },
       { tieuDe: { vi: 'Trả không xong', en: 'If the payment does not go through', ko: '결제가 끝나지 않았을 때' }, khoi: [
         {
-          vi: 'Bạn hủy trên trang VNPay, nhập sai mã OTP hay tài khoản không đủ tiền: tiền không bị trừ, đơn chưa được trả và chưa được giao. Bạn trả lại bằng nút Trả tiền qua VNPay ở trang kết quả, hoặc gọi Beeftown.',
-          en: 'If you cancel on the VNPay page, enter a wrong OTP or do not have enough money: nothing is charged, and the order stays unpaid and is not delivered. Pay again with the Pay with VNPay button on the result page, or call Beeftown.',
-          ko: 'VNPay 페이지에서 취소하셨거나, OTP를 잘못 입력하셨거나, 잔액이 부족하면 돈은 빠져나가지 않고 주문은 결제되지 않은 채 배달되지 않아요. 결과 페이지의 VNPay로 결제하기 버튼으로 다시 결제하시거나 Beeftown에 전화해 주세요.',
+          vi: 'Bạn hủy trên trang VNPay, nhập sai mã OTP hay tài khoản không đủ tiền: tiền không bị trừ, đơn chưa được trả và chưa được giao. Bạn trả lại ngay bằng nút Trả tiền qua VNPay ở trang kết quả, trên điện thoại hay máy tính vừa đặt đơn; hoặc gọi Beeftown.',
+          en: 'If you cancel on the VNPay page, enter a wrong OTP or do not have enough money: nothing is charged, and the order stays unpaid and is not delivered. Pay again straight away with the Pay with VNPay button on the result page, on the phone or computer you ordered from; or call Beeftown.',
+          ko: 'VNPay 페이지에서 취소하셨거나, OTP를 잘못 입력하셨거나, 잔액이 부족하면 돈은 빠져나가지 않고 주문은 결제되지 않은 채 배달되지 않아요. 주문하신 휴대폰이나 컴퓨터에서 결과 페이지의 VNPay로 결제하기 버튼으로 바로 다시 결제하시거나, Beeftown에 전화해 주세요.',
         },
       ] },
       { tieuDe: { vi: 'Đã bị trừ tiền mà chưa thấy đơn', en: 'Charged but no order', ko: '돈이 빠져나갔는데 주문이 보이지 않을 때' }, khoi: [
