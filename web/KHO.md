@@ -456,7 +456,7 @@ bắt gắn lại / đăng ký lại máy.
 |---|---|---|
 | `/noi-bo/kho/may` | Máy (vai `may_chung`) | "Ai đang dùng máy?": nút tên người đã gắn → ô PIN → đổi phiên sang người đó |
 | `/noi-bo/kho/may/dang-ky` | Quản lý, trên tablet | Nhập email + mật khẩu của **tài khoản máy** → `kho_dang_ky_may` → cookie `bt_may_tb` |
-| `/noi-bo/kho/may/gan` | Từng nhân viên, trên tablet | Đăng nhập đầy đủ một lần, đặt PIN 4–6 số → `kho_may_gan_nguoi` |
+| `/noi-bo/kho/may/gan` | Từng nhân viên, trên tablet | Đăng nhập đầy đủ một lần, đặt PIN 4–6 số → `kho_may_gan_nguoi`. Đang dùng máy: "Đổi PIN của tôi" → `kho_may_dat_pin` |
 | `/noi-bo/kho/cai-dat/nhan-vien` | Chủ (phần nhân viên); quản lý, chủ (phần máy — `duyet`) | Thêm nhân viên, khóa / mở lại; máy: người đã gắn, mở khóa máy / người, khóa hẳn, tắt máy, gỡ người |
 | `/noi-bo/kho/cai-dat` | Quản lý, chủ | Thẻ "Máy dùng chung": đã bật chưa + cách bật |
 
@@ -495,22 +495,76 @@ Trang CRM ngoài `/noi-bo/kho` (và file CSV báo cáo) **không** qua `moTrangK
 menu ở chế độ máy đã ẩn CRM; quản lý/chủ đừng mở CRM trên tablet dùng chung.
 Chế độ máy: menu người dùng đổi "Đăng xuất" thành "Khóa máy" và "Gỡ tôi khỏi máy này".
 
+**Đổi PIN cần mật khẩu tài khoản** (rà soát 14/11/2026, `doiPin`). Máy đang mở không chứng minh người cầm máy là
+chủ của phiên: người trước rời máy chưa bấm "Khóa máy" thì ai cầm máy trong khoảng tự khóa đặt được PIN mới, rồi
+về sau mở máy dưới tên người kia. Nên form "Đổi PIN của tôi" đòi mật khẩu, máy chủ đăng nhập thử bằng **email của
+phiên đang dùng** (không đọc email từ form) bằng client riêng rồi thu hồi phiên thử ngay; sai mật khẩu thì "PIN
+chưa đổi", Supabase bận thì "đợi rồi thử lại — không phải do sai mật khẩu". Mỗi lần đổi PIN tốn một lượt của hạn
+mức đăng nhập chung — PIN mới sai dạng bị từ chối trước khi tốn lượt đó. Kiểm thử: `test-kho-may-doi-pin.mjs`.
+
 **Sai PIN**: 5 lần liền → khóa người đó 15 phút; 15 lần / 30 phút hoặc 30 lần / 24 giờ (chặn dò chậm) trên một máy (mọi người cộng lại) →
 khóa máy, quản lý mở ở màn Nhân viên & máy. Mọi sự kiện ghi `kho_may_nhat_ky`. `kho_may_nguoi`
 **không có policy SELECT** — PIN băm không đọc được kể cả bằng quyền quản lý.
 
 ### Chủ tự tạo tài khoản (`lib/kho/nhan-vien.ts`)
 
-1. Kiểm form trước (`docFormNhanVien`) — tạo xong tài khoản đăng nhập mà bước 3 hỏng thì email bị chiếm.
+1. Kiểm form trước (`docFormNhanVien`) — tạo xong tài khoản đăng nhập mà bước sau hỏng thì email bị chiếm.
 2. `auth.signUp` bằng **client anon riêng** (`persistSession: false`), mật khẩu tạm `taoMatKhauTam()`
    (`crypto.getRandomValues`, 12 chữ không dễ nhầm, dạng `Xk7m-4Rtq-9wPa`). Phiên của người mới
    **không bao giờ vào cookie** (chủ không bị đăng xuất) và bị thu hồi ngay.
-3. `kho_them_nhan_su(p_auth_uid, p_ho_ten, p_vai_tro, p_chi_nhanh_id)` bằng **client của chủ** — chỉ chủ;
+3. **Đăng nhập thử bằng mật khẩu tạm** (`thuMatKhauTam`, cũng client anon đó) — chỉ nối khi mật khẩu tạm
+   đúng là mật khẩu của tài khoản vừa nhận về. Xem "Email đã bị đăng ký trước" bên dưới.
+4. `kho_them_nhan_su(p_auth_uid, p_ho_ten, p_vai_tro, p_chi_nhanh_id)` bằng **client của chủ** — chỉ chủ;
    chỉ vai `thu_kho | nhan_vien_quay | ke_toan | may_chung | may_ipos | hoc_vien` (web không cho chọn `may_ipos`
    tới GĐ7a; `hoc_vien` từ 0119 — tài khoản demo của buổi đào tạo, chỉ mở trang Video đào tạo, `web/README.md`
-   mục "Video đào tạo"); uid phải có trong `auth.users` và chưa gắn nhân sự nào.
-4. Mật khẩu tạm hiện **một lần** trên màn trả lời POST (không chuyển hướng, `Cache-Control: no-store`),
+   mục "Video đào tạo"); uid phải có trong `auth.users`, chưa gắn nhân sự nào và **tạo trong 10 phút gần nhất**
+   (trigger của `nhan_su`, `0123`).
+5. Mật khẩu tạm hiện **một lần** trên màn trả lời POST (không chuyển hướng, `Cache-Control: no-store`),
    không lưu ở đâu. F5 gửi lại → `ma_gui` trùng cookie `bt_kho_nv_gui` (chỉ chứa `ma_gui`) → không tạo lần hai.
+
+**Email đã bị đăng ký trước** (rà soát 14/11/2026). Đăng ký bằng khóa anon là việc ai cũng làm được. Khi
+Supabase bật "Confirm email" và email đã có một tài khoản **chưa xác nhận**, lần đăng ký sau không báo lỗi
+và không đổi mật khẩu: Supabase trả lại chính tài khoản cũ. Bản trước nối tài khoản đó thành nhân viên —
+nhân viên mới mang mật khẩu của người đã đăng ký trước. Hai lớp chặn, độc lập nhau:
+
+| Lớp | Ở đâu | Làm gì |
+|---|---|---|
+| Web | `thuMatKhauTam` | Đăng nhập thử bằng mật khẩu tạm. Vào được hoặc `email_not_confirmed` → nối. `invalid_credentials` (hay 4xx khác) → tài khoản có từ trước, **không nối**, bảo chủ xóa trong Supabase rồi tạo lại. 429 / 5xx / mất mạng → chưa biết, **không nối** |
+| Database | trigger `nhan_su_kiem_tai_khoan_vua_tao` trên `nhan_su` (`0123`) | Dưới một phiên đăng nhập, từ chối gắn tài khoản `auth.users` tạo quá 10 phút trước hoặc không rõ tạo lúc nào — qua `kho_them_nhan_su` hay chủ ghi thẳng bảng đều vậy. Không phiên (SQL Editor, Table Editor — cách tạo chủ, quản lý, thu ngân, marketing) thì bỏ qua. Là trigger chứ không thay thân `kho_them_nhan_su`, để migration khác viết lại hàm đó không làm mất luật này |
+
+Giả định: Supabase Auth kiểm mật khẩu **trước** khi xét email đã xác nhận chưa (mã nguồn công khai,
+`internal/api/token.go`) — đọc mã, chưa chạy với Supabase thật. Kiểm thử dùng Supabase Auth giả viết theo
+đúng các nhánh đó: `crm/test/test-kho-nhan-vien-tai-khoan.mjs`. **Thử tay một lần trên project Beeftown-thu**
+(Authentication → Sign In / Providers → Email, bật "Confirm email" và **giữ nó bật suốt ba bước** — kể cả khi
+một câu trên màn hình gợi ý tắt).
+
+Chuẩn bị một địa chỉ email thử: (a) chưa có tài khoản nào trong Authentication → Users của Beeftown-thu, và
+(b) nhận được thư của Supabase — máy gửi thư có sẵn của Supabase chỉ gửi cho địa chỉ của thành viên dự án, và
+theo tài liệu của Supabase chỉ khoảng **2 thư mỗi giờ cho cả project** (vừa đủ cho bước 1 và bước 2 — đừng
+làm việc gì khác gửi thư ở Beeftown-thu trong giờ đó); không có địa chỉ nào như vậy thì cài SMTP riêng cho
+Beeftown-thu trước. Hai điều dưới đây về Supabase (một thư xác nhận mỗi 60 giây cho một địa chỉ, thư mới thay
+link của thư cũ) cũng là đọc mã nguồn công khai và tài liệu của Supabase, chưa chạy thật.
+
+1. Ở màn Nhân viên, tạo một nhân viên với email thử. Phải thấy "Đã tạo tài khoản…" kèm mật khẩu tạm — chép
+   lại. **Chưa** bấm link trong thư. (Thấy câu "…đã có một tài khoản đăng nhập từ trước…" ngay ở bước này là
+   giả định sai: Supabase không trả `email_not_confirmed` cho mật khẩu đúng. Thấy "Supabase không gửi được
+   thư xác nhận tới email này…" thì chỉ là địa chỉ thử không nhận được thư của Supabase: đổi địa chỉ hoặc cài
+   SMTP — không phải giả định sai.)
+2. **Chờ hơn một phút** (Supabase chỉ gửi một thư xác nhận mỗi 60 giây cho một địa chỉ), rồi mở lại màn Nhân
+   viên (form mới, không bấm F5), tạo lần nữa **cùng email đó**. Phải thấy "…đã có một tài khoản đăng nhập từ
+   trước lần bấm này… CHƯA tạo nhân viên ở lần bấm này", không có mật khẩu tạm mới, danh sách vẫn đúng một
+   dòng cho email đó. (Thấy "Đã tạo tài khoản…" hay "CHƯA nối được…" là giả định sai: Supabase không trả
+   `invalid_credentials` cho mật khẩu sai của tài khoản chưa xác nhận. Thấy "Supabase đã gửi quá số thư xác
+   nhận…" hay "Tạo quá nhiều tài khoản liền nhau…" thì chỉ là bấm lại quá sớm; đã chờ hơn một phút mà vẫn gặp
+   thì là hết lượt thư của giờ đó — chờ tới một giờ rồi làm lại bước 2. Không phải giả định sai, và đừng tắt
+   "Confirm email" như câu đó gợi ý.)
+3. Bước 2 làm Supabase gửi thêm một thư xác nhận, và link của thư trước hết dùng được. Bấm link trong thư
+   **mới nhất**, rồi đăng nhập `/noi-bo` bằng mật khẩu tạm của **bước 1**: vào được.
+
+Một trong ba bước không như trên (ngoài mấy câu "chờ rồi làm lại" đã kể) thì báo lại kèm câu màn hình hiện —
+đừng tắt kiểm thử, đừng bỏ bước thử. Kiểm thử tự động có cả nhánh "bấm lại trong 60 giây" (nhóm 5).
+**Thử xong thì tắt lại "Confirm email"** ở Beeftown-thu (cài đặt đúng của hệ thống là tắt — mục ngay dưới) và
+khóa nhân viên thử ở màn Nhân viên.
 
 Khóa = `kho_khoa_nhan_su` (`dang_lam = false`, gỡ khỏi mọi máy); không khóa được chính mình. Lỗi
 Supabase (đăng ký bị tắt, email đã có, cần xác nhận email, giới hạn gửi thư, captcha…) thành câu tiếng
@@ -1544,9 +1598,11 @@ dùng ở:
 | `public/kho/js/ean13.js` | (GĐ5b) Giải mã EAN-13 bằng JS thuần cho iPhone — Safari không có `BarcodeDetector` |
 | `public/kho/js/may-chung.js` | (GĐ5d) Đếm giờ tự khóa máy dùng chung |
 | `public/kho/js/in-an.js` | Hiện nút "In phiếu" và gọi `window.print()` (GĐ4b); nút "Chia sẻ" `[data-chia-se]` của đơn đặt hàng gọi Web Share API khi máy có (GĐ8a) |
+| `components/SauDangXuat.astro` (in thẳng vào `<head>` của hai khung `Kho.astro` và `NoiBo.astro`; mã ở `lib/sau-dang-xuat.js`) | Sau khi đăng xuất, bấm Quay lại không hiện lại trang cũ từ bộ nhớ hay bản lưu đệm của trình duyệt: dấu phiên (cookie `bt_dau_phien`) đã đổi thì giấu trang lúc rời, tải lại lúc hiện lại. Không gọi mạng, không tải file riêng (rà soát 14/11/2026 — `web/README.md`, "Giao diện nội bộ") |
 
 Không thêm thư viện npm cho phía trình duyệt. `test-kho-giao-dien.mjs` hỏng nếu có `<script>`,
-`onclick=…` hay file JS ngoài danh sách này.
+`onclick=…` hay file JS ngoài danh sách này (đoạn của `SauDangXuat.astro` nằm ở khung chung, có kiểm thử
+riêng: `test-noi-bo-dang-xuat.mjs` nhóm 9).
 
 **Chưa làm:** thu nhỏ ảnh hóa đơn trước khi tải (≤ 1600px). Bảng này từng ghi file `anh-nho.js` (GĐ5a)
 nhưng file chưa bao giờ được viết — ảnh chụp bằng điện thoại vẫn lên nguyên cỡ (tối đa 10 MB mỗi ảnh).

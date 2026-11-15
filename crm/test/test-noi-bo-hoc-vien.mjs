@@ -321,7 +321,9 @@ await nhom('3b · GHI THẲNG MỌI BẢNG — thêm, sửa, xóa đều không 
 // ===========================================================================
 await nhom('4 · CHỦ TẠO, KHÓA, MỞ LẠI TÀI KHOẢN HỌC VIÊN — người khác không làm được', async () => {
   // Supabase có auth.users; khung test chưa có — bản tối thiểu kho_them_nhan_su cần (id, email), như test-kho-may-chung.mjs.
-  await db.exec(`create table if not exists auth.users (id uuid primary key, email text)`);
+  // created_at: trigger nhan_su_kiem_tai_khoan_vua_tao (0123) chỉ cho nối tài khoản tạo trong 10 phút gần nhất —
+  // tài khoản học viên ở đây vừa được thêm, đúng như web làm (auth.signUp rồi kho_them_nhan_su trong cùng một lần bấm).
+  await db.exec(`create table if not exists auth.users (id uuid primary key, email text, created_at timestamptz default now())`);
   const UID_MOI = '00000000-0000-4000-8000-0000000000cb';
   await db.query(`insert into auth.users (id, email) values ($1, 'daotao@beeftown.vn')`, [UID_MOI]);
   const dongMoi = async () => (await db.query(`select count(*)::int n from nhan_su where auth_uid = $1`, [UID_MOI])).rows[0].n;

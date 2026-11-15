@@ -648,7 +648,10 @@ await nhom('7 · CÀI NHƯ APP (manifest + biểu tượng)', async () => {
 // ===========================================================================
 await nhom('8 · JAVASCRIPT CHỈ Ở CHỖ ĐÃ CHO PHÉP', async () => {
   // Trang kho phải chạy đủ khi tắt JavaScript. JS chỉ để "tăng cường": camera
-  // quét nhãn, khóa máy dùng chung, in đơn đặt hàng.
+  // quét nhãn, khóa máy dùng chung, in đơn đặt hàng. Một ngoại lệ nữa nằm ngoài ba
+  // thư mục quét ở đây: components/SauDangXuat.astro — đoạn mã khung Kho và khung
+  // NoiBo in vào đầu mọi trang để phiên đã kết thúc mà bấm Quay lại thì trang được
+  // tải lại; nó có kiểm thử riêng (test-noi-bo-dang-xuat.mjs nhóm 9).
   const DUOC_SCRIPT = new Set(['web/src/components/kho/QuetMa.astro']);
   const DUOC_JS = new Set(['ean13.js', 'may-chung.js', 'in-an.js']);
   const nguon = [
