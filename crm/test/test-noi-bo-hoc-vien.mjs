@@ -347,6 +347,15 @@ await nhom('4 · CHỦ TẠO, KHÓA, MỞ LẠI TÀI KHOẢN HỌC VIÊN — ng�
   ok('Tạo lần hai cùng tài khoản đăng nhập (bấm đúp): từ chối "đã gắn", vẫn MỘT dòng nhan_su',
     lai.loi !== null && /đã gắn với một nhân sự khác/.test(lai.loi) && (await dongMoi()) === 1, vi(lai));
   ok('Tài khoản vừa tạo đọc được video ngay', (await docDuoc(UID_MOI)) === 2);
+  // Tài khoản đăng nhập CÓ TỪ TRƯỚC (một giờ trước) — ai đó đã đăng ký sẵn email đó: chủ gắn nó làm học viên cũng bị
+  // trigger 0123 từ chối, như mọi vai khác (vòng bốn 14/11: các tài khoản ở trên đều vừa tạo, nên một lối tắt riêng
+  // cho vai học viên trong trigger vẫn xanh).
+  const UID_CU = '00000000-0000-4000-8000-0000000000cc';
+  await db.query(`insert into auth.users (id, email, created_at) values ($1, 'dangkysan@beeftown.vn', now() - interval '1 hour')`, [UID_CU]);
+  const cu = await duoi(UID.chu, `select kho_them_nhan_su($1, 'Học viên đăng ký sẵn', 'hoc_vien', $2) as r`, [UID_CU, cnA.id]);
+  ok('RÀ SOÁT 14/11 (vòng bốn): chủ gắn một tài khoản đăng nhập CÓ TỪ TRƯỚC làm học viên → bị từ chối "có từ trước" (0123), không dòng nhan_su nào',
+    cu.loi !== null && /Tài khoản đăng nhập này có từ trước, không phải vừa tạo ở màn Nhân viên/.test(cu.loi)
+    && (await db.query(`select count(*)::int n from nhan_su where auth_uid = $1`, [UID_CU])).rows[0].n === 0, vi(cu));
 
   // Màn Nhân viên gọi qua lib/kho/nhan-vien.ts — client giả mang phiên từng người.
   const chu = clientCua(UID.chu);
