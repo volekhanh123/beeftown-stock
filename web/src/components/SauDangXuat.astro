@@ -1,0 +1,22 @@
+---
+/**
+ * NÚT "QUAY LẠI" SAU KHI ĐĂNG XUẤT — đoạn mã nhỏ ở đầu MỌI trang nội bộ (hai khung NoiBo và Kho)
+ *
+ * Việc nó làm và vì sao: đầu file lib/sau-dang-xuat.js. Ở đây chỉ có hai việc:
+ *
+ *   · IN THẲNG mã vào trang (không phải <script src>). Vòng rà soát ba (14/11/2026) thử trên trình duyệt thật: bản
+ *     tải file riêng mà lượt tải đó hỏng (mạng chập chờn) thì trang vẫn hiện bình thường nhưng không còn gì che —
+ *     bấm Đăng xuất rồi Quay lại là thấy trang cũ. In thẳng thì có trang là có mã, và đỡ một lượt hỏi máy chủ mỗi
+ *     lần mở trang.
+ *   · Ghi vào thẻ dấu phiên MÁY CHỦ đang thấy ở lượt xin trang này (cookie bt_dau_phien; chưa có thì chuỗi rỗng).
+ *     Mã so dấu đó với dấu trình duyệt đang giữ — không so đồng hồ.
+ *
+ * Đặt trong <head> để chạy trước khi thân trang hiện ra. Phần chú thích đầu file mã không in ra trang.
+ */
+import ma from '../lib/sau-dang-xuat.js?raw';
+import { COOKIE_DAU_PHIEN } from '../lib/phien.ts';
+
+const dau = Astro.cookies.get(COOKIE_DAU_PHIEN)?.value ?? '';
+const MA = ma.slice(ma.indexOf('(function'));
+---
+<script is:inline data-dau-phien={dau} set:html={MA}></script>

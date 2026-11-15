@@ -6,7 +6,9 @@
  *     ngay trên máy và đặt PIN 4–6 số. Máy chủ đăng nhập bằng client riêng,
  *     băm PIN (HMAC, database không thấy PIN thô), gọi kho_may_gan_nguoi
  *     bằng phiên của chính người đó, rồi cho người đó dùng máy luôn.
- *   · Đang dùng máy: đổi PIN của mình (kho_may_dat_pin), không cần mật khẩu.
+ *   · Đang dùng máy: đổi PIN của mình (kho_may_dat_pin) — phải nhập mật khẩu
+ *     tài khoản. Máy đang mở không chứng minh người cầm máy là chủ của phiên
+ *     (người trước rời máy chưa bấm Khóa máy); xem doiPin trong may-chung.ts.
  *
  * Lỗi thì hiện lại form (không giữ mật khẩu, không giữ PIN).
  */
@@ -51,6 +53,8 @@ const t = dichNB(nn, {
     vi: (ten: string) => `PIN chỉ dùng trên máy${ten ? ` "${ten}"` : ' này'}. Không cho ai biết PIN — ai mở máy bằng PIN của bạn thì việc họ làm ghi tên bạn.`,
     en: (ten: string) => `The PIN only works on ${ten ? `the tablet "${ten}"` : 'this tablet'}. Do not tell anyone your PIN — whatever someone does after unlocking with your PIN is recorded under your name.`,
   },
+  matKhauCuaBan: { vi: 'Mật khẩu tài khoản của bạn', en: 'Your account password' },
+  viSaoMatKhau: { vi: 'Để chắc người đổi PIN là chính bạn.', en: 'To make sure it is really you changing the PIN.' },
   pinMoi: { vi: 'PIN mới (4 đến 6 số)', en: 'New PIN (4 to 6 digits)' },
   nhapLaiPinMoi: { vi: 'Nhập lại PIN mới', en: 'Enter the new PIN again' },
   quayLai: { vi: 'Quay lại', en: 'Back' },
@@ -83,6 +87,11 @@ const t = dichNB(nn, {
       <p class="nb-dan">{t.pinChiDung(k.may?.tenMay ?? '')}</p>
       <form method="POST" class="nb-the gan-form">
         <input type="hidden" name="viec" value="doi_pin" />
+        <label class="nb-o">
+          <span>{t.matKhauCuaBan}</span>
+          <small>{t.viSaoMatKhau}</small>
+          <input type="password" name="mat_khau" required autocomplete="off" />
+        </label>
         <label class="nb-o">
           <span>{t.pinMoi}</span>
           <input type="password" name="pin" inputmode="numeric" pattern="[0-9]*" autocomplete="off" minlength="4" maxlength="6" required />

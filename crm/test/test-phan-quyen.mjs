@@ -81,6 +81,10 @@ async function duoiDanhNghia(uid, sql, params = []) {
     return { rows: null, loi: e.message };
   } finally {
     await db.exec(`reset role`);
+    // Dọn phiên, như duoi() của kho-chung.mjs: câu lệnh superuser chạy sau đó (dựng thêm nhân sự, đọc lại bảng)
+    // không được mang danh ai. Trước 0122 / 0123 không trigger nào để ý, nên phiên sót không lộ ra; từ 0123, thêm
+    // một dòng nhan_su có auth_uid DƯỚI MỘT PHIÊN là việc trigger nhan_su_kiem_tai_khoan_vua_tao xét.
+    await db.query(`delete from auth._phien`);
   }
 }
 

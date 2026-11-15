@@ -362,7 +362,7 @@ const t = dich(ngonNgu, {
 
             <div class="o">
               <label for="hb-ho-ten">{t.hoTen} <em>({t.batBuoc})</em></label>
-              <input type="text" id="hb-ho-ten" name="ho_ten" required autocomplete="name" autocapitalize="words"
+              <input type="text" id="hb-ho-ten" name="ho_ten" required maxlength="120" autocomplete="name" autocapitalize="words"
                      aria-describedby="loi-ho_ten" />
               <p class="loi-o" data-loi="ho_ten" id="loi-ho_ten" hidden></p>
             </div>
@@ -377,12 +377,12 @@ const t = dich(ngonNgu, {
 
             <div class="o">
               <label for="hb-dip">{t.dip} <em>({t.khongBatBuoc})</em></label>
-              <input type="text" id="hb-dip" name="dip" autocapitalize="sentences" />
+              <input type="text" id="hb-dip" name="dip" maxlength="100" autocapitalize="sentences" />
             </div>
 
             <div class="o">
               <label for="hb-ghi-chu">{t.ghiChu} <em>({t.khongBatBuoc})</em></label>
-              <textarea id="hb-ghi-chu" name="ghi_chu" rows="3"></textarea>
+              <textarea id="hb-ghi-chu" name="ghi_chu" rows="3" maxlength="500"></textarea>
             </div>
 
             {/* KHÔNG required, KHÔNG chọn sẵn. Xem lý do trong lib/dat-ban.ts. */}
