@@ -79,7 +79,7 @@
  *       địa chỉ trang sau khi gửi không mang họ tên hay số điện thoại. Bấm số điện thoại, link Zalo đã công bố →
  *       Contact. Back về thẻ "đã nhận" lấy từ bộ nhớ đệm → không Lead thứ hai. Mua thịt về: Đặt hàng có giỏ → đúng một
  *       InitiateCheckout trước khi chuyển trang, giỏ rỗng thì không; không lời gọi nào mang dữ liệu khách hay mã đơn.
- *  14. Khu nội bộ với ĐĂNG NHẬP THẬT qua Supabase Auth giả (gia-supabase.mjs: đăng nhập, /user, làm mới token, /logout
+ *  15. Khu nội bộ với ĐĂNG NHẬP THẬT qua Supabase Auth giả (gia-supabase.mjs: đăng nhập, /user, làm mới token, /logout
  *       có phạm vi, phiên thu hồi được; bảng nhan_su có một quản lý). Chromium BẢN ĐẦY ĐỦ có bfcache như nhóm 4 của
  *       trinh-duyet.mjs, nhưng không route nào (route tắt bộ nhớ đệm HTTP, và lúc đó chính trình duyệt gửi lại form khi
  *       bấm Quay lại — chan-meta.mjs, moChromiumKhongRoute). Đăng nhập bằng form; trang NoiBo (/noi-bo/dao-tao) và trang
@@ -131,7 +131,7 @@ const { CHU_DON, dinhDangTien, docGio, nhanGoi, tinhDon } =
   await import(pathToFileURL(join(WEB, 'src', 'lib', 'don-mua-thit.ts')).href);
 const { CAU_DAT_HANG } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'dat-hang-mua-thit.ts')).href);
 const { TEN_GU } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'chon-theo-gu.ts')).href);
-// Khu nội bộ (nhóm 14): câu báo của form sửa video, đọc từ chính thư viện của trang.
+// Khu nội bộ (nhóm 15): câu báo của form sửa video, đọc từ chính thư viện của trang.
 const { CAU: CAU_VIDEO } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'video-dao-tao.ts')).href);
 
 /** Playwright của web/; máy không cài thì dùng bản cài chung của máy. */
@@ -1890,7 +1890,7 @@ try {
   });
 
   // =========================================================================
-  await nhom('14 · NỘI BỘ: ĐĂNG NHẬP THẬT QUA AUTH GIẢ, BẤM ĐĂNG XUẤT RỒI QUAY LẠI; PHIÊN BỊ THU HỒI RỒI QUAY LẠI VỀ TRANG KẾT QUẢ CỦA FORM', async () => {
+  await nhom('15 · NỘI BỘ: ĐĂNG NHẬP THẬT QUA AUTH GIẢ, BẤM ĐĂNG XUẤT RỒI QUAY LẠI; PHIÊN BỊ THU HỒI RỒI QUAY LẠI VỀ TRANG KẾT QUẢ CỦA FORM', async () => {
     // Cùng phép đo với nhóm 4 của trinh-duyet.mjs (bản build, không database: form Đăng xuất dựng tay trên trang đăng
     // nhập), ở đây với đăng nhập thật và trang nội bộ thật. Chromium BẢN ĐẦY ĐỦ (channel 'chromium', bỏ cờ
     // --disable-back-forward-cache của Playwright): bản rút gọn không có bfcache. KHÔNG route nào (moChromiumKhongRoute):
@@ -2269,7 +2269,7 @@ try {
         thuNoiBo().then(() => 'xong'),
         new Promise(xong => { henKhoi = setTimeout(() => xong('het-han'), 240_000); }),
       ]);
-      if (ketCuc !== 'xong') ok('Nhóm 14 chạy xong trong 4 phút (không treo)', false, 'một lời gọi vào trình duyệt không trả lời');
+      if (ketCuc !== 'xong') ok('Nhóm 15 chạy xong trong 4 phút (không treo)', false, 'một lời gọi vào trình duyệt không trả lời');
     } finally {
       clearTimeout(henKhoi);
       await coHan(trinhDuyetBoNho.close(), 10_000);

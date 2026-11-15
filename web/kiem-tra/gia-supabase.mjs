@@ -81,7 +81,7 @@
  * "<cách> <bảng>" ("GET nhan_su", "PATCH video_dao_tao").
  * GET /__nhat-ky → 200 lần gọi gần nhất { ham, thamSo }.
  *
- * /noi-bo — ĐĂNG NHẬP THẬT (thu-day-du.mjs nhóm 14). Server này còn đóng vai Supabase Auth và vài bảng, đủ để
+ * /noi-bo — ĐĂNG NHẬP THẬT (thu-day-du.mjs nhóm 15). Server này còn đóng vai Supabase Auth và vài bảng, đủ để
  * lib/phien.ts đăng nhập, mở trang nội bộ và đăng xuất như với Supabase thật — trước đây mỗi vòng rà soát nút Quay
  * lại sau khi đăng xuất phải tự dựng một Auth giả ngoài repo:
  *
