@@ -90,7 +90,9 @@
  *   POST /auth/v1/token?grant_type=refresh_token   đổi refresh token lấy cặp mới. Phiên đã thu hồi → 400
  *                                                   refresh_token_not_found; token đã dùng rồi → 400
  *                                                   refresh_token_already_used và phiên đó bị thu hồi luôn (Supabase bật
- *                                                   xoay refresh token; khoảng 10 giây cho dùng lại của bản thật KHÔNG làm)
+ *                                                   xoay refresh token). Trong 10 giây đầu sau lần dùng, dùng lại được trả
+ *                                                   đúng cặp mới đã cấp — như khoảng cho dùng lại của bản thật, để hai lượt
+ *                                                   mở trang song song cùng làm mới không thành đăng xuất
  *   GET  /auth/v1/user                              người của access token. Hết hạn → 403 bad_jwt; phiên đã thu hồi →
  *                                                   403 session_not_found (supabase-js đổi thành AuthSessionMissingError)
  *   POST /auth/v1/logout?scope=local|global|others  thu hồi phiên của token gửi lên / mọi phiên của người đó / mọi phiên
@@ -732,7 +734,8 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
   // --- Supabase Auth giả và bảng (/noi-bo) — đầu file, mục "/noi-bo — ĐĂNG NHẬP THẬT" -------------------------
   const cacPhien = new Map();   // session_id → { conSong, lyDo }
   const truyCap = new Map();    // access token → { phienId, het (giây) }
-  const lamMoi = new Map();     // refresh token → { phienId, daDung }
+  const lamMoi = new Map();     // refresh token → { phienId, daDung, luc (giây lúc dùng), con (cặp đã cấp khi dùng) }
+  const KHOANG_DUNG_LAI_GIAY = 10;   // GOTRUE_SECURITY_REFRESH_TOKEN_REUSE_INTERVAL mặc định
   const bang = taoBang();
   let nhatKyAuth = [];
   let soLuotAuth = 0;   // số thứ tự lượt gọi Auth, tăng mãi — nhật ký chỉ giữ 200 lượt gần nhất
@@ -954,6 +957,10 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
               ghi({ cua, loai, phien: r?.phienId ?? null, status: 400 });
               return traAuth(400, { code: 'refresh_token_not_found', message: 'Invalid Refresh Token: Refresh Token Not Found' });
             }
+            if (r.daDung && giayBayGio() - r.luc <= KHOANG_DUNG_LAI_GIAY) {
+              ghi({ cua, loai, phien: r.phienId, status: 200, dung_lai: true });
+              return traAuth(200, r.con);
+            }
             if (r.daDung) {
               // Refresh token đã xoay mà bị dùng lại: Supabase coi là token bị lộ, thu hồi cả phiên.
               thuHoi(r.phienId, 'dung-lai-refresh-token');
@@ -961,8 +968,10 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
               return traAuth(400, { code: 'refresh_token_already_used', message: 'Invalid Refresh Token: Already Used' });
             }
             r.daDung = true;
+            r.luc = giayBayGio();
+            r.con = capToken(r.phienId);
             ghi({ cua, loai, phien: r.phienId, status: 200 });
-            return traAuth(200, capToken(r.phienId));
+            return traAuth(200, r.con);
           }
           ghi({ cua, loai, status: 400 });
           return traAuth(400, { code: 'validation_failed', message: 'unsupported_grant_type' });
