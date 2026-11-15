@@ -150,6 +150,8 @@ export const CAU_EN: Readonly<Record<string, string>> = {
     'Only the owner or a manager can add a dish, approve its price and spice level, change its raw, alcohol or group setting, or change any field other than its text, order, status and proposals',
   'Không có quyền đổi lịch hiện của nội dung đã công bố': 'You are not allowed to change the display schedule of published content',
   'Không có quyền sửa nội dung đã công bố hoặc đã gỡ': 'You are not allowed to edit content that is published or has been removed from the site',
+  // 0124 — trigger tep_anh_da_len_trang_kiem_tra (câu có % ở MAU_EN)
+  'Không có quyền sửa ảnh của nội dung đã công bố hoặc đã gỡ': 'You are not allowed to edit the photo of content that is published or has been removed from the site',
   'p_muc phải là một mảng': 'p_muc must be an array',
   'Ngôn ngữ dịch phải là en hoặc ko': 'The translation language must be en or ko',
   'Thiếu bam của câu gốc': 'The source sentence hash (bam) is missing',
@@ -424,6 +426,8 @@ export const MAU_EN: ReadonlyArray<readonly [RegExp, (m: RegExpMatchArray) => st
   // 0122
   [/^Khóa (.+?) chỉ chủ sở hữu mới được đổi lịch hiện trên trang$/, m => `Only the owner can change the display schedule of the key ${m[1]}`],
   [/^Khóa (.+?) chỉ chủ sở hữu mới được sửa dòng đã công bố hoặc đã gỡ$/, m => `Only the owner can edit a published or removed entry of the key ${m[1]}`],
+  // 0124
+  [/^Khóa (.+?) chỉ chủ sở hữu mới được sửa ảnh của nội dung đã công bố hoặc đã gỡ$/, m => `Only the owner can edit the photo of a published or removed entry of the key ${m[1]}`],
   [/^Bảng (.+?) không nhận bản dịch qua hàm này$/, m => `Table ${m[1]} does not accept translations through this function`],
   [/^Ô (.+?) không nằm trong danh sách dịch của bảng (.+)$/, m => `Field ${m[1]} is not in the translation list of table ${m[2]}`],
   [/^Trạng thái bản dịch không hợp lệ: (.+)$/, m => `Invalid translation status: ${m[1]}`],
