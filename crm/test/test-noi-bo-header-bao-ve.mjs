@@ -17,9 +17,10 @@
  * KHÔNG ép "no-store" cho cả khu, và đó là cố ý (rà soát mã 14/11, đã thử trong Chromium): trang "hệ thống đang
  * bận" bảo người vừa gửi form hỏng "bấm Quay lại rồi gửi lại" — với no-store, bấm Quay lại là xin lại trang từ máy
  * chủ đang bận, và form đang gõ biến mất. Chỗ cần "người sau không thấy trang của người trước" được làm đúng lúc:
- * Đăng xuất gửi Clear-Site-Data: "cache" và đổi cookie dấu phiên; đoạn mã ở đầu mọi trang nội bộ tải lại trang hiện
- * lại từ bộ nhớ quay lại của trình duyệt khi dấu đã đổi (test-noi-bo-dang-xuat.mjs nhóm 8, 8b, 9); máy dùng chung đã
- * tự đặt no-store từ trước.
+ * mọi trả lời kết thúc một phiên (đăng xuất, phiên bị từ chối, tài khoản bị khóa) gửi Clear-Site-Data: "cache" (nhóm
+ * 4b) và đổi cookie dấu phiên; đoạn mã ở đầu mọi trang nội bộ xin lại từ máy chủ — một lượt GET — trang hiện lại từ
+ * bộ nhớ quay lại của trình duyệt khi dấu đã đổi (test-noi-bo-dang-xuat.mjs nhóm 8, 8b, 9); máy dùng chung đã tự đặt
+ * no-store từ trước.
  *
  * Trang công khai không bị đụng. Kiểm trên bản build thật, qua trình duyệt: web/kiem-tra/trinh-duyet.mjs nhóm 4.
  */
@@ -115,12 +116,35 @@ await nhom('4 · Trả lời có header bị khóa (không sửa được) → d
 });
 
 // ===========================================================================
+await nhom('4b · Lượt trả lời vừa kết thúc một phiên → kèm lệnh bảo trình duyệt bỏ bản lưu đệm', async () => {
+  // Vòng bốn 14/11. Clear-Site-Data: "cache" trước đây chỉ đi kèm trả lời của nút Đăng xuất. Phiên bị Supabase từ chối
+  // hay tài khoản bị khóa thì trả lời là một lệnh chuyển hướng trơn: bản lưu đệm và các trang đã nằm trong bộ nhớ quay
+  // lại còn nguyên — trang cũ hiện ra một khung hình trước khi đoạn mã ở đầu trang kịp giấu, và trang kết quả của một
+  // lần gửi form còn bản để trình duyệt dựng lại.
+  const chuyen = datHeaderNoiBo(new Response(null, { status: 302, headers: { location: '/noi-bo/dang-nhap' } }), { xoaBoDem: true });
+  ok('RÀ SOÁT 14/11 (vòng bốn): xoaBoDem → trả lời mang Clear-Site-Data: "cache", vẫn đủ header chống nhúng',
+     chuyen.headers.get('clear-site-data') === '"cache"' && chuyen.headers.get('x-frame-options') === 'DENY' && chuyen.status === 302
+     && chuyen.headers.get('location') === '/noi-bo/dang-nhap', JSON.stringify([...chuyen.headers]));
+  const thuong = datHeaderNoiBo(new Response('<html>…</html>', { headers: { 'content-type': 'text/html' } }));
+  const tat = datHeaderNoiBo(new Response('<html>…</html>'), { xoaBoDem: false });
+  ok('Không có xoaBoDem (mọi trả lời thường) → KHÔNG có Clear-Site-Data: xóa bộ đệm ở mỗi trang là mất form đang gõ khi bấm Quay lại',
+     thuong.headers.get('clear-site-data') === null && tat.headers.get('clear-site-data') === null);
+  const daCo = datHeaderNoiBo(new Response(null, { status: 302, headers: { location: '/noi-bo/dang-nhap', 'clear-site-data': '"cache"' } }), { xoaBoDem: true });
+  ok('Trả lời đã tự mang lệnh đó (trang Đăng xuất) → giữ nguyên, không thành hai lần', daCo.headers.get('clear-site-data') === '"cache"', String(daCo.headers.get('clear-site-data')));
+  const khoa = Response.redirect('https://beeftown.vn/noi-bo/dang-nhap', 302);
+  let loi = null, ra = null;
+  try { ra = datHeaderNoiBo(khoa, { xoaBoDem: true }); } catch (e) { loi = String(e?.message ?? e); }
+  ok('Trả lời có header bị khóa + xoaBoDem → dựng lại, có cả lệnh xóa bộ đệm lẫn header chống nhúng, không ném lỗi',
+     loi === null && ra?.headers.get('clear-site-data') === '"cache"' && ra.headers.get('x-frame-options') === 'DENY' && ra.status === 302, loi ?? '');
+});
+
+// ===========================================================================
 await nhom('5 · middleware.ts: mọi lối ra của /noi-bo đều qua datHeaderNoiBo; trang công khai đi thẳng', async () => {
   const mw = readFileSync(join(GOC, 'web/src/middleware.ts'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   const cua = mw.slice(mw.indexOf('export const onRequest'));
   const than = cua.slice(0, cua.indexOf('\n});') + 4);
-  ok('RÀ SOÁT 14/11: onRequest — ngoài /noi-bo thì return next(); còn lại trả datHeaderNoiBo(await canhNoiBo(…))',
-     /if\s*\(\s*!\s*duong\.startsWith\('\/noi-bo'\)\s*\)\s*return\s+next\(\);\s*return\s+datHeaderNoiBo\(\s*await\s+canhNoiBo\(context,\s*next,\s*duong\)\s*\);\s*\}\);/.test(than), than.slice(0, 400));
+  ok('RÀ SOÁT 14/11: onRequest — ngoài /noi-bo thì return next(); còn lại trả datHeaderNoiBo(await canhNoiBo(…), …)',
+     /if\s*\(\s*!\s*duong\.startsWith\('\/noi-bo'\)\s*\)\s*return\s+next\(\);\s*return\s+datHeaderNoiBo\(\s*await\s+canhNoiBo\(context,\s*next,\s*duong\)\s*,\s*\{\s*xoaBoDem:\s*phienVuaKetThuc\(context\.cookies\)\s*\}\s*\);\s*\}\);/.test(than), than.slice(0, 400));
   ok('…onRequest không còn lối ra nào khác (đúng hai câu return)', (than.match(/\breturn\b/g) ?? []).length === 2, `${(than.match(/\breturn\b/g) ?? []).length} câu return`);
   ok('…canhNoiBo là hàm riêng trong cùng file, không export (không ai gọi tắt qua nó)',
      /\nasync function canhNoiBo\(/.test(mw) && !/export\s+(async\s+)?function\s+canhNoiBo/.test(mw));

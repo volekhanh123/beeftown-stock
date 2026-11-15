@@ -5,9 +5,10 @@
  *     node test/test-noi-bo-dang-xuat.mjs
  *
  * Rà soát bảo mật 14/11/2026. /noi-bo/dang-xuat chỉ xóa cookie bt_phien trên trình duyệt đang bấm. Phiên ở
- * Supabase vẫn sống tới 7 ngày: ai đã chép được cookie đó từ trước (máy dùng chung, ảnh chụp công cụ lập trình,
- * bản sao lưu trình duyệt) vẫn vào được /noi-bo dưới tên người vừa đăng xuất. "Đăng xuất" phải có nghĩa là phiên
- * đó hết dùng được ở MỌI nơi.
+ * Supabase vẫn sống — theo mặc định Supabase không cho phiên một hạn nào (7 ngày chỉ là tuổi của cookie trên trình
+ * duyệt đã đăng nhập): ai đã chép được cookie đó từ trước (máy dùng chung, ảnh chụp công cụ lập trình, bản sao lưu
+ * trình duyệt) vẫn vào được /noi-bo dưới tên người vừa đăng xuất. "Đăng xuất" phải có nghĩa là phiên đó hết dùng
+ * được ở MỌI nơi.
  *
  * Bản sửa: dangXuat (web/src/lib/phien.ts) gọi Supabase thu hồi phiên rồi mới xóa cookie:
  *   · access token còn hạn        → một lượt /logout?scope=local, không đụng cửa /token;
@@ -36,6 +37,20 @@
  *     và so lại ở ba lúc — rời trang, hiện lại từ bộ nhớ quay lại, và lúc tải khi trình duyệt dựng lại trang từ bản
  *     lưu đệm cũ vì bấm Quay lại (web/src/lib/sau-dang-xuat.js, in thẳng vào trang qua
  *     web/src/components/SauDangXuat.astro). Lúc thứ ba để lớp này không phải trông vào Clear-Site-Data.
+ *
+ * Vòng bốn của rà soát (14/11/2026) thêm:
+ *   · nhóm 9 phần k: bản trước "tải lại" trang bằng location.reload() — với trang KẾT QUẢ của một lần gửi form (trang
+ *     nội bộ báo lỗi tại chỗ, trong trả lời của POST, kể cả form đăng nhập) thì đó là gửi lại form mà không hỏi: đo được
+ *     một lần ghi dưới quyền người đăng nhập sau và một lần đăng nhập lại dưới tên người trước. Nay xin lại bằng một lượt
+ *     GET về địa chỉ đầy đủ của trang (lỗi mức cao của chính bản trước — có phép thử trên trình duyệt thật);
+ *   · nhóm 8b: dấu phiên Path=/ (trang nội bộ mở được qua //noi-bo/…); Clear-Site-Data cho MỌI trả lời kết thúc một
+ *     phiên, không chỉ nút Đăng xuất (phienVuaKetThuc); tài khoản bị khóa giữa chừng cũng qua xoaToken; lệnh xóa cookie
+ *     phiên mang đúng Path=/; dấu chỉ đổi ở một chỗ (đăng nhập, làm mới token không đổi);
+ *   · nhóm 9 phần a, c, m, n, o: trang rời đi là giấu, lúc nào cũng vậy, và giấu ngay lúc GỬI form Đăng xuất (Chromium
+ *     đưa trang ra từ bộ nhớ bằng khung hình cuối nó đã vẽ — đo bằng quay màn hình, web/kiem-tra/trinh-duyet.mjs); hiện
+ *     lại mà dấu không đổi thì cho hiện; dự phòng visibilitychange và hẹn giờ để trang không kẹt ở dạng trống; hai
+ *     cookie dấu cùng tên coi như đã đổi; không CSS nào được tự đặt "visibility: visible";
+ *   · nhóm 9 cuối: thẻ <SauDangXuat /> phải là dòng cuối của <head> — bọc trong điều kiện là đỏ.
  */
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
@@ -44,7 +59,7 @@ import { join, dirname, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { taoBoDem } from './kho-chung.mjs';
-import { dangXuat, xoaToken, COOKIE_DAU_PHIEN } from '../../web/src/lib/phien.ts';
+import { dangXuat, xoaToken, phienVuaKetThuc, COOKIE_DAU_PHIEN } from '../../web/src/lib/phien.ts';
 
 const GOC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — ĐĂNG XUẤT THU HỒI PHIÊN Ở SUPABASE');
@@ -141,11 +156,14 @@ const taoTam = () => createClient(URL_GIA, 'khoa-anon-gia', { auth: { persistSes
 function hopCookie(giaTri, { datHong = false } = {}) {
   const kho = new Map(giaTri === undefined ? [] : [['bt_phien', giaTri]]);
   const tuyChon = new Map();
+  const tuyChonXoa = new Map();
   return {
     get: ten => (kho.has(ten) ? { value: kho.get(ten) } : undefined),
     set: (ten, v, tc) => { if (datHong) throw new Error('cookies.set hỏng'); kho.set(ten, v); tuyChon.set(ten, tc); },
-    delete: ten => { kho.delete(ten); },
+    delete: (ten, tc) => { kho.delete(ten); tuyChonXoa.set(ten, tc); },
     con: () => kho.has('bt_phien'),
+    /** Tùy chọn của lệnh xóa cookie phiên gần nhất (undefined = chưa có lệnh xóa nào). */
+    tuyChonXoaPhien: () => tuyChonXoa.get('bt_phien'),
     /** Dấu phiên (cookie bt_dau_phien) đang nằm trong hộp, và tùy chọn nó được đặt cùng. */
     dau: () => kho.get('bt_dau_phien'),
     tuyChonDau: () => tuyChon.get('bt_dau_phien'),
@@ -408,8 +426,13 @@ await nhom('7b · Supabase treo (không trả lời) → đăng xuất vẫn xon
       daThuHoiLucVe = auth.phien.get(giaoHongCham.phienId) === false;
     });
     const matGiao = Date.now() - lucGiao;
-    ok('RÀ SOÁT 14/11 (vòng ba): …giao việc hỏng thì vẫn đợi lượt thu hồi trong hạn — lúc dangXuat về, phiên đã thu hồi, không dòng nhật ký nào',
-       daThuHoiLucVe === true && matGiao >= 250 && matGiao < 2500 && dongGiao.length === 0, `${matGiao} ms · đã thu hồi lúc về: ${daThuHoiLucVe} · ${dongGiao.join(' | ')}`);
+    ok('RÀ SOÁT 14/11 (vòng ba): …giao việc hỏng thì vẫn đợi lượt thu hồi trong hạn — lúc dangXuat về, phiên đã thu hồi',
+       daThuHoiLucVe === true && matGiao >= 250 && matGiao < 2500, `${matGiao} ms · đã thu hồi lúc về: ${daThuHoiLucVe}`);
+    // Vòng bốn 14/11: bản trước nuốt lỗi này không một dòng nào — waitUntil mà hỏng trên Worker thật thì mọi lượt thu hồi
+    // chậm hơn hạn đợi bị cắt, và nhật ký chỉ có dòng "chưa xong trong hạn đợi" giống hệt lúc mọi thứ bình thường.
+    ok('RÀ SOÁT 14/11 (vòng bốn): …và có đúng một dòng nhật ký nói KHÔNG GIAO ĐƯỢC việc chạy nền — không token, không chữ của lỗi',
+       dongGiao.length === 1 && dongGiao[0].startsWith('[qua-tai] đăng xuất · không giao được việc chạy nền') && khongLoBiMat(dongGiao, giaoHongCham)
+       && !/Illegal invocation/.test(dongGiao.join(' ')), dongGiao.join(' | ') || '(không dòng nào)');
   } finally {
     globalThis.fetch = fetchGoc;
   }
@@ -493,14 +516,16 @@ await nhom('8b · Dấu phiên: mỗi lần cookie phiên bị xóa, máy chủ 
 
   auth.datLai();
   const t = auth.dangNhap();
-  const cookies = cookieCua(t);
-  ok('Đang đăng nhập: chưa có dấu phiên nào (phiên có từ trước bản này vẫn chạy)', cookies.dau() === undefined);
+  const cookies = cookieCua(t);   // hộp chỉ có cookie phiên, chưa có dấu nào — như phiên có từ trước bản này
   await bamDangXuat(cookies);
   const dau1 = cookies.dau();
   ok('RÀ SOÁT 14/11 (vòng ba): đăng xuất đặt dấu phiên mới — một chuỗi ngẫu nhiên', UUID.test(dau1 ?? ''), String(dau1));
   const tc = cookies.tuyChonDau() ?? {};
-  ok('…cookie đó JavaScript đọc được (không httpOnly), chỉ gửi dưới /noi-bo, SameSite=Lax, sống đủ lâu',
-     tc.httpOnly === false && tc.path === '/noi-bo' && tc.sameSite === 'lax' && tc.maxAge >= 60 * 60 * 24 * 30, JSON.stringify(tc));
+  // Path=/ (vòng bốn 14/11): trang nội bộ còn mở được qua địa chỉ viết khác (//noi-bo/…, /noi%2Dbo/…). Trình duyệt so
+  // Path của cookie với đường dẫn THÔ, nên cookie đặt Path=/noi-bo thì ở các địa chỉ đó cả máy chủ lẫn đoạn mã đều
+  // không thấy dấu — hai bên cùng đọc ra chuỗi rỗng, luôn "khớp", và lớp này tắt.
+  ok('RÀ SOÁT 14/11 (vòng bốn): cookie đó JavaScript đọc được (không httpOnly), Path=/ (địa chỉ nội bộ viết kiểu nào cũng thấy), SameSite=Lax, sống đủ lâu',
+     tc.httpOnly === false && tc.path === '/' && tc.sameSite === 'lax' && tc.maxAge >= 60 * 60 * 24 * 30, JSON.stringify(tc));
   ok('…và không mang gì của phiên: không access token, không refresh token, không mã phiên',
      !dau1.includes(t.access_token) && !dau1.includes(t.refresh_token) && dau1 !== t.phienId && !t.access_token.includes(dau1));
   await bamDangXuat(cookies);
@@ -512,6 +537,18 @@ await nhom('8b · Dấu phiên: mỗi lần cookie phiên bị xóa, máy chủ 
   const hop = hopCookie(JSON.stringify({ access_token: 'a', refresh_token: 'b' }));
   xoaToken(hop);
   ok('xoaToken: xóa cookie phiên VÀ đổi dấu phiên', hop.con() === false && UUID.test(hop.dau() ?? ''), String(hop.dau()));
+  // Vòng bốn 14/11: trình duyệt chỉ bỏ một cookie khi lệnh xóa mang ĐÚNG Path của lúc đặt. Cookie phiên được đặt với
+  // Path=/ ở hai chỗ (ghiToken ở đây, ghiPhien của máy dùng chung). Lệnh xóa mang Path khác thì trả lời đăng xuất
+  // trông vẫn đúng ("bt_phien=deleted") mà cookie còn nguyên trong trình duyệt — bấm Đăng xuất xong vẫn là đang đăng
+  // nhập. Hộp cookie giả cũ bỏ qua tùy chọn của lệnh xóa nên đổi Path ở đây không phép kiểm nào đỏ.
+  ok('RÀ SOÁT 14/11 (vòng bốn): xoaToken xóa cookie phiên với đúng Path=/ của lúc đặt — lệnh xóa mang Path khác thì trình duyệt giữ nguyên cookie',
+     hop.tuyChonXoaPhien()?.path === '/', JSON.stringify(hop.tuyChonXoaPhien() ?? null));
+  const libNguon = readFileSync(join(GOC, 'web/src/lib/phien.ts'), 'utf8');
+  const mayChung = readFileSync(join(GOC, 'web/src/lib/kho/may-chung.ts'), 'utf8');
+  const thanHam = (nguon, dau) => nguon.slice(nguon.indexOf(dau), nguon.indexOf('\n}\n', nguon.indexOf(dau)));
+  ok('…và hai chỗ ĐẶT cookie phiên (ghiToken, ghiPhien của máy dùng chung) cùng dùng Path=/',
+     /cookies\.set\(COOKIE_PHIEN, JSON\.stringify\(t\), \{[^}]*\bpath: '\/',/.test(thanHam(libNguon, 'function ghiToken'))
+     && /cookies\.set\('bt_phien', JSON\.stringify\(t\), \{[^}]*\bpath: '\/',/.test(thanHam(mayChung, 'function ghiPhien')));
   // Không đặt được dấu (hộp cookie hỏng) thì việc xóa cookie phiên vẫn phải xong, không ném lỗi ra trang.
   const hong = hopCookie(JSON.stringify({ access_token: 'a', refresh_token: 'b' }), { datHong: true });
   let loi = null;
@@ -522,6 +559,44 @@ await nhom('8b · Dấu phiên: mỗi lần cookie phiên bị xóa, máy chủ 
   const thanGhi = lib.slice(lib.indexOf('function ghiToken'), lib.indexOf('\n}\n', lib.indexOf('function ghiToken')));
   ok('Làm mới token (ghiToken) KHÔNG đổi dấu — không thì mỗi giờ một lần, bấm Quay lại là mất chữ đang gõ',
      thanGhi.length > 0 && !/doiDauPhien|COOKIE_DAU_PHIEN/.test(thanGhi), thanGhi.slice(0, 200));
+  // Vòng bốn 14/11: phép kiểm trên chỉ nhìn thân ghiToken. Đăng nhập và nhánh làm mới token của layPhien gọi
+  // doiDauPhien NGAY SAU ghiToken thì nó vẫn xanh, mà dấu đổi mỗi giờ. Hai hàm đó đọc import.meta.env nên không chạy
+  // được ở đây — ghim trên mã nguồn (đã bỏ chú thích): ngoài chỗ định nghĩa, doiDauPhien chỉ được gọi ĐÚNG MỘT lần,
+  // trong xoaToken; và dấu chỉ được đặt ở đúng một chỗ.
+  const maPhien = lib.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const thanXoa = maPhien.slice(maPhien.indexOf('export function xoaToken'), maPhien.indexOf('\n}\n', maPhien.indexOf('export function xoaToken')));
+  ok('RÀ SOÁT 14/11 (vòng bốn): dấu phiên chỉ đổi ở MỘT chỗ — doiDauPhien được gọi đúng một lần, trong xoaToken; đăng nhập và làm mới token không gọi nó',
+     (maPhien.match(/\bdoiDauPhien\(/g) ?? []).length === 2 && /function doiDauPhien\(/.test(maPhien)
+     && (thanXoa.match(/\bdoiDauPhien\(cookies\)/g) ?? []).length === 1
+     && (maPhien.match(/cookies\.set\(COOKIE_DAU_PHIEN\b/g) ?? []).length === 1,
+     `doiDauPhien( xuất hiện ${(maPhien.match(/\bdoiDauPhien\(/g) ?? []).length} lần · cookies.set(COOKIE_DAU_PHIEN ${(maPhien.match(/cookies\.set\(COOKIE_DAU_PHIEN\b/g) ?? []).length} lần`);
+  // Vòng bốn 14/11: lệnh Clear-Site-Data chỉ đi kèm trả lời của nút Đăng xuất. Phiên kết thúc theo đường khác (Supabase
+  // từ chối token, tài khoản bị khóa) thì bản lưu đệm và các trang đã nằm trong bộ nhớ quay lại còn nguyên. xoaToken
+  // ghi nhớ "lượt trả lời này vừa kết thúc một phiên" để middleware gắn lệnh đó vào MỌI trả lời như vậy.
+  const ckKetThuc = cookieCua(auth.dangNhap());
+  const truocKhiXoa = typeof phienVuaKetThuc === 'function' && phienVuaKetThuc(ckKetThuc);
+  xoaToken(ckKetThuc);
+  ok('RÀ SOÁT 14/11 (vòng bốn): xoaToken ghi nhớ "phiên vừa kết thúc" cho đúng hộp cookie của lượt đó, không cho lượt khác',
+     typeof phienVuaKetThuc === 'function' && truocKhiXoa === false && phienVuaKetThuc(ckKetThuc) === true && phienVuaKetThuc(cookieCua(auth.dangNhap())) === false);
+  const mwNguon = readFileSync(join(GOC, 'web/src/middleware.ts'), 'utf8');
+  ok('RÀ SOÁT 14/11 (vòng bốn): middleware gắn header của khu nội bộ kèm lệnh xóa bộ đệm khi lượt đó vừa kết thúc một phiên',
+     /return datHeaderNoiBo\(await canhNoiBo\(context, next, duong\), \{ xoaBoDem: phienVuaKetThuc\(context\.cookies\) \}\);/.test(mwNguon)
+     && /import \{[^}]*\bphienVuaKetThuc\b[^}]*\} from '\.\/lib\/phien'/.test(mwNguon));
+  // Tài khoản bị KHÓA (nhan_su.dang_lam = false) giữa lúc đang đăng nhập: với người dùng thì phiên đã hết, nhưng bản
+  // trước chỉ trả null — cookie còn, dấu không đổi, trang cũ của họ hiện lại khi bấm Quay lại, kể cả cho người đăng
+  // nhập sau. layPhien đọc import.meta.env nên không chạy được ở đây: kiểm trên mã nguồn, như test-qua-tai.mjs.
+  const libPhien = readFileSync(join(GOC, 'web/src/lib/phien.ts'), 'utf8');
+  const lay = libPhien.slice(libPhien.indexOf('export async function layPhien'), libPhien.indexOf('export async function dangNhap'));
+  const iBan = lay.indexOf("ghiQuaTai('đọc nhân sự', status); return QUA_TAI;");
+  const iKhong = lay.indexOf('if (!error && !ns) xoaToken(cookies);');
+  const iNull = lay.indexOf('if (error || !ns) return null;');
+  ok('RÀ SOÁT 14/11 (vòng bốn): layPhien — hỏi được database mà KHÔNG có dòng nhân sự đang làm (tài khoản bị khóa, tài khoản lạ) → xoaToken rồi mới trả null',
+     iKhong > 0 && iNull > iKhong, lay.slice(lay.indexOf("const { data: ns"), lay.indexOf("const { data: ns") + 900));
+  // Chỉ đúng nhánh đó: database bận → QUA_TAI (đứng trước, đã trả về), database báo lỗi khác → null mà KHÔNG xóa cookie.
+  // Sau câu đọc nhan_su, xoaToken chỉ xuất hiện đúng một lần và luôn kèm điều kiện "không lỗi".
+  const sauDocNhanSu = lay.slice(lay.indexOf("const { data: ns"));
+  ok('…database bận thì vẫn QUA_TAI, database báo lỗi khác thì trả null — cả hai KHÔNG xóa cookie',
+     iBan > 0 && iKhong > iBan && (sauDocNhanSu.match(/xoaToken\(/g) ?? []).length === 1 && !/if \(!ns\) (?:\{\s*)?xoaToken/.test(sauDocNhanSu));
   ok('Cookie phiên vẫn httpOnly', /cookies\.set\(COOKIE_PHIEN, JSON\.stringify\(t\), \{\s*httpOnly: true,/.test(lib));
 });
 
@@ -544,13 +619,18 @@ await nhom('9 · Nút Quay lại sau khi đăng xuất: trang của phiên đã 
    */
   function moTrang(dauLucDung, hop) {
     const nghe = {};
-    const tt = { taiLai: 0 };
-    const goc = { style: {} };
+    const tt = { thay: [], reload: 0, lichSu: [], hen: [] };
+    const ngheTL = {};
+    // style.visibility ghi lại MỌI lần được đặt — để biết trang có lúc nào trở lại "hiện" sau khi đã giấu không.
+    const kieu0 = { giaTri: '' };
+    const goc = { style: { get visibility() { return kieu0.giaTri; }, set visibility(v) { kieu0.giaTri = v; tt.lichSu.push(v === '' ? 'hien' : v); } } };
     const document = {
       documentElement: goc,
       currentScript: dauLucDung === undefined ? null : { getAttribute: ten => (ten === 'data-dau-phien' ? dauLucDung : null) },
       get cookie() { if (hop.hong) throw new Error('SecurityError'); return hop.cookie; },
       set cookie(v) { tt.ghiCookie = v; },
+      visibilityState: 'visible',
+      addEventListener: (ten, ham) => { (ngheTL[ten] ??= []).push(ham); },
     };
     const kieu = hop.kieuTai;
     const performance = kieu === undefined ? undefined
@@ -558,36 +638,82 @@ await nhom('9 · Nút Quay lại sau khi đăng xuất: trang của phiên đã 
       : kieu.startsWith('cu:') ? { navigation: { type: Number(kieu.slice(3)) } }
       : { getEntriesByType: loai => (loai === 'navigation' ? [{ type: kieu }] : []) };
     const window = {
-      location: { reload: () => { tt.taiLai += 1; } },
+      // Trang thử nằm ở một địa chỉ có cả tham số lẫn phần sau dấu #. reload() và replace() ghi RIÊNG: mã chỉ được
+      // dùng replace (một lượt GET) — reload của một trang kết quả gửi form là gửi lại form (phần k bên dưới).
+      location: { href: hop.diaChi ?? DIA_CHI_THU, pathname: new URL(hop.diaChi ?? DIA_CHI_THU).pathname,
+                  search: new URL(hop.diaChi ?? DIA_CHI_THU).search, hash: new URL(hop.diaChi ?? DIA_CHI_THU).hash,
+                  reload: () => { tt.reload += 1; }, replace: dich => { tt.thay.push(String(dich)); } },
       addEventListener: (ten, ham) => { (nghe[ten] ??= []).push(ham); },
+      // Hẹn giờ giả: ghi lại, chỉ chạy khi phép kiểm gọi chayHen() — không có đồng hồ thật nào.
+      setTimeout: (ham, ms) => { tt.hen.push({ ham, ms }); return tt.hen.length; },
       performance,
     };
     let loi = null;
     try { vm.runInNewContext(ma, { window, document }); } catch (e) { loi = String(e?.message ?? e); }
-    // Ngay sau khi mã chạy xong trong <head>, trước mọi sự kiện: trang đã bị giấu chưa, đã gọi tải lại mấy lần.
+    // Ngay sau khi mã chạy xong trong <head>, trước mọi sự kiện: trang đã bị giấu chưa, đã xin lại mấy lần.
     const giauLucTai = goc.style.visibility === 'hidden';
-    const taiLaiLucTai = tt.taiLai;
+    const taiLaiLucTai = tt.thay.length;
     const ban = (ten, suKien) => { for (const ham of nghe[ten] ?? []) ham(suKien); };
-    return {
+    const trang = {
       loi, giauLucTai, taiLaiLucTai,
       roiTrang: () => ban('pagehide', { persisted: true }),
+      /** Gửi một form: thuộc tính action của nó, và có handler nào đã chặn (preventDefault) chưa. */
+      guiForm: (action, { daChan = false, khongCoThuocTinh = false } = {}) => ban('submit', {
+        defaultPrevented: daChan,
+        target: khongCoThuocTinh ? {} : { getAttribute: ten => (ten === 'action' ? action : null) },
+      }),
+      /** Thẻ trình duyệt hiện lại (đổi tab, mở lại ứng dụng) — visibilitychange, không có pageshow. */
+      hienTab: () => { document.visibilityState = 'visible'; for (const ham of ngheTL.visibilitychange ?? []) ham({}); },
+      /** Thẻ bị che (chuyển trang, đổi tab) — visibilitychange với visibilityState 'hidden'. */
+      anTab: () => { document.visibilityState = 'hidden'; for (const ham of ngheTL.visibilitychange ?? []) ham({}); },
+      /** Các hẹn giờ mã đã đặt: [{ ms }]. chayHen() chạy hết, theo thứ tự. */
+      hen: () => tt.hen.map(h => ({ ms: h.ms })),
+      chayHen: () => { const ds = tt.hen.splice(0); for (const h of ds) h.ham(); },
       /** Trang hiện ra: tuBoNho = true là lấy từ bộ nhớ quay lại (pageshow, persisted). */
       hienRa: tuBoNho => ban('pageshow', { persisted: tuBoNho }),
-      taiLai: () => tt.taiLai,
+      /** Số lần mã xin lại trang từ máy chủ — bằng location.replace, một lượt GET (không bao giờ reload: phần k). */
+      taiLai: () => tt.thay.length,
+      dich: () => tt.thay,
+      soReload: () => tt.reload,
       biGiau: () => goc.style.visibility === 'hidden',
+      /** Giá trị style.visibility hiện tại của <html> ('' = không còn kiểu nào do mã đặt). */
+      kieuGiau: () => goc.style.visibility,
+      /** Mọi lần mã đặt style.visibility, theo thứ tự: 'hidden' hoặc 'hien'. */
+      lichSuGiau: () => tt.lichSu,
+      doiCookie: chuoi => { hop.cookie = chuoi; },
       daGhiCookie: () => tt.ghiCookie !== undefined,
     };
+    MOI_TRANG.push(trang);
+    return trang;
   }
+  const MOI_TRANG = [];   // mọi trang dựng trong nhóm này — phần k kiểm một lượt cho tất cả
+  const DIA_CHI_THU = 'https://beeftown.vn/noi-bo/dat-ban?loc=tat_ca&p=2#cuoi-trang';
   const DAU_X = '11111111-1111-4111-8111-111111111111', DAU_Y = '22222222-2222-4222-8222-222222222222';
   const ck = dau => `nb_ngon_ngu=vi; ${dau === null ? '' : `bt_dau_phien=${dau}; `}khac=1`;
 
-  // a) Không ai đăng xuất.
+  // a) Không ai đăng xuất. Trang RỜI ĐI LÀ GIẤU, lúc nào cũng vậy (vòng bốn 14/11): lúc rời, trang không biết phiên
+  //    của nó có kết thúc trước khi nó được đưa trở lại hay không, nên bản trình duyệt cất vào bộ nhớ quay lại luôn
+  //    là bản đã giấu. Hiện lại mà dấu không đổi thì cho hiện ngay — không xin lại trang, chữ đang gõ dở còn nguyên.
   const hopA = { cookie: ck(DAU_X) };
   const a = moTrang(DAU_X, hopA);
   ok('File chạy được với cửa sổ giả', a.loi === null, a.loi ?? '');
-  a.roiTrang(); a.hienRa(true);
-  ok('Dấu phiên không đổi: rời trang không bị giấu, Quay lại từ bộ nhớ KHÔNG tải lại (chữ đang gõ dở còn nguyên)',
-     a.taiLai() === 0 && !a.biGiau());
+  a.hienRa(false);
+  ok('Trang vừa mở (lần hiện đầu, không từ bộ nhớ): không giấu, không xin lại', a.taiLai() === 0 && !a.biGiau());
+  a.roiTrang();
+  const aGiauLucRoi = a.biGiau();
+  a.hienRa(true);
+  ok('RÀ SOÁT 14/11 (vòng bốn): dấu phiên CHƯA đổi mà rời trang → vẫn giấu: bản trình duyệt cất vào bộ nhớ quay lại luôn là bản đã giấu',
+     aGiauLucRoi === true);
+  ok('Dấu phiên không đổi: Quay lại từ bộ nhớ thì trang HIỆN LẠI, KHÔNG xin lại trang (chữ đang gõ dở còn nguyên)',
+     a.taiLai() === 0 && !a.biGiau() && a.kieuGiau() === '', `xin lại ${a.taiLai()} lần · visibility: «${a.kieuGiau()}»`);
+  a.roiTrang(); a.hienRa(true); a.roiTrang(); a.hienRa(true);
+  ok('…rời rồi quay lại nhiều lần: lần nào cũng hiện lại, không lần nào xin lại trang', a.taiLai() === 0 && !a.biGiau() && a.kieuGiau() === '');
+  // Trình duyệt báo persisted = false cho một trang nó vừa đưa trở lại (không đúng chuẩn, nhưng nếu có): trang đã giấu
+  // lúc rời vẫn phải được xét lại — không thì nằm lại ở trạng thái bị giấu mãi.
+  const a2 = moTrang(DAU_X, { cookie: ck(DAU_X) });
+  a2.roiTrang(); a2.hienRa(false);
+  ok('RÀ SOÁT 14/11 (vòng bốn): trang đã giấu lúc rời mà hiện lại — trình duyệt có báo "từ bộ nhớ" hay không — đều được xét lại: dấu không đổi thì hiện, không bao giờ nằm lại ở trạng thái bị giấu',
+     a2.taiLai() === 0 && !a2.biGiau());
 
   // b) Bấm Đăng xuất ở chính trang này: trả lời đăng xuất đổi dấu TRƯỚC khi trang rời đi.
   const hopB = { cookie: ck(DAU_X) };
@@ -596,19 +722,33 @@ await nhom('9 · Nút Quay lại sau khi đăng xuất: trang của phiên đã 
   b.roiTrang();
   ok('RÀ SOÁT 14/11 (vòng ba): đăng xuất rồi rời trang → trang bị giấu NGAY lúc rời (bản trình duyệt cất đi là bản đã giấu, không lóe ra khi Quay lại)',
      b.biGiau() && b.taiLai() === 0);
-  b.hienRa(false);
-  ok('…trang hiện theo lối thường (không từ bộ nhớ) thì không tải lại', b.taiLai() === 0);
   b.hienRa(true);
-  ok('RÀ SOÁT 14/11 (vòng ba): …Quay lại từ bộ nhớ → tải lại đúng một lần, trang vẫn giấu', b.taiLai() === 1 && b.biGiau(), `tải lại ${b.taiLai()} lần`);
+  ok('RÀ SOÁT 14/11 (vòng ba): …Quay lại từ bộ nhớ → xin lại đúng một lần, trang vẫn giấu', b.taiLai() === 1 && b.biGiau(), `xin lại ${b.taiLai()} lần`);
+  // Lần hiện ĐẦU của một trang vừa tải (chưa rời lần nào, persisted = false) không xin lại trang, kể cả khi dấu đã
+  // lệch ngay từ lúc tải: nhánh "lúc tải" đã xét rồi, xin lại ở đây là xin lại mãi.
+  const b2 = moTrang(DAU_X, { cookie: ck(DAU_Y) });
+  b2.hienRa(false);
+  ok('…trang hiện theo lối thường (lần hiện đầu, không từ bộ nhớ) thì không xin lại, kể cả khi dấu đã lệch', b2.taiLai() === 0 && !b2.biGiau());
+  const b3 = moTrang(DAU_X, { cookie: ck(DAU_X) });
+  b3.roiTrang();
+  b3.doiCookie(ck(DAU_Y));
+  b3.hienRa(false);
+  ok('…trang đã giấu lúc rời, dấu đổi trong lúc nó nằm trong bộ nhớ, trình duyệt lại báo persisted = false → vẫn xin lại trang, không hiện',
+     b3.taiLai() === 1 && b3.biGiau());
 
   // c) Tab khác đăng xuất khi trang này ĐÃ nằm trong bộ nhớ quay lại.
   const hopC = { cookie: ck(DAU_X) };
   const c = moTrang(DAU_X, hopC);
   c.roiTrang();
-  ok('Rời trang lúc dấu chưa đổi: không giấu', !c.biGiau());
+  const cGiauLucRoi = c.biGiau();
   hopC.cookie = ck(DAU_Y);
   c.hienRa(true);
-  ok('RÀ SOÁT 14/11 (vòng ba): tab khác đăng xuất khi trang đang nằm trong bộ nhớ → Quay lại thì giấu và tải lại', c.taiLai() === 1 && c.biGiau());
+  // Bản trước chỉ giấu lúc rời khi dấu ĐÃ đổi, nên trang này được cất nguyên dạng: trình duyệt nào không gỡ nó khỏi
+  // bộ nhớ theo lệnh Clear-Site-Data thì vẽ ra một khung hình của nó trước khi đoạn mã kịp giấu (đo được bằng quay
+  // màn hình ở vòng bốn). Nay nó nằm trong bộ nhớ ở dạng đã giấu và không lúc nào được hiện.
+  ok('RÀ SOÁT 14/11 (vòng bốn): tab khác đăng xuất khi trang ĐÃ nằm trong bộ nhớ quay lại → trang đó đã được giấu từ lúc rời, Quay lại thì vẫn giấu và xin lại trang — không lúc nào hiện ra',
+     cGiauLucRoi === true && c.taiLai() === 1 && c.biGiau(), `giấu lúc rời: ${cGiauLucRoi} · xin lại ${c.taiLai()} lần`);
+  ok('…và lịch sử trạng thái của trang đó không có lần nào trở lại "hiện" sau khi đã giấu', c.lichSuGiau().join(',') === 'hidden,hidden', c.lichSuGiau().join(','));
 
   // d) Phiên có từ trước bản này: trang không có dấu ('') — đăng xuất đặt dấu đầu tiên.
   const hopD = { cookie: ck(null) };
@@ -617,12 +757,12 @@ await nhom('9 · Nút Quay lại sau khi đăng xuất: trang của phiên đã 
   ok('Trang không có dấu, cookie cũng không có dấu: coi là không đổi', d.taiLai() === 0 && !d.biGiau());
   hopD.cookie = ck(DAU_Y);
   d.roiTrang(); d.hienRa(true);
-  ok('…đăng xuất đặt dấu đầu tiên → trang đó được tải lại', d.taiLai() === 1 && d.biGiau());
+  ok('…đăng xuất đặt dấu đầu tiên → trang đó được xin lại', d.taiLai() === 1 && d.biGiau());
 
   // e) Tab khác đăng xuất trong lúc trang này còn đang tải: máy chủ đã dựng trang dưới dấu cũ, cookie đã là dấu mới.
   const e = moTrang(DAU_X, { cookie: ck(DAU_Y) });
   e.roiTrang(); e.hienRa(true);
-  ok('RÀ SOÁT 14/11 (vòng ba): dấu máy chủ in vào trang khác dấu trình duyệt đang giữ ngay từ lúc tải → vẫn là trang cũ: giấu, tải lại',
+  ok('RÀ SOÁT 14/11 (vòng ba): dấu máy chủ in vào trang khác dấu trình duyệt đang giữ ngay từ lúc tải → vẫn là trang cũ: giấu, xin lại',
      e.taiLai() === 1 && e.biGiau());
 
   // f) Đã biết là trang cũ thì luôn là trang cũ — kể cả khi cookie sau đó trở về đúng giá trị cũ (bị xóa tay…).
@@ -630,13 +770,13 @@ await nhom('9 · Nút Quay lại sau khi đăng xuất: trang của phiên đã 
   const f = moTrang('', hopF);
   hopF.cookie = ck(DAU_Y); f.roiTrang();
   hopF.cookie = ck(null); f.hienRa(true);
-  ok('Trang đã bị giấu lúc rời thì khi hiện lại luôn tải lại, dù cookie đã trở về như cũ (không để lại một trang trắng)', f.taiLai() === 1);
+  ok('Trang đã bị giấu lúc rời thì khi hiện lại luôn được xin lại, dù cookie đã trở về như cũ (không để lại một trang trắng)', f.taiLai() === 1);
 
-  // g) Không đọc được cookie, hay thiếu thẻ / thuộc tính: coi như đã đổi — thà tải lại thừa còn hơn hiện trang cũ.
+  // g) Không đọc được cookie, hay thiếu thẻ / thuộc tính: coi như đã đổi — thà xin lại thừa còn hơn hiện trang cũ.
   const g = moTrang(DAU_X, { cookie: ck(DAU_X), hong: true });
   let loiG = null;
   try { g.roiTrang(); g.hienRa(true); } catch (loi) { loiG = String(loi?.message ?? loi); }
-  ok('Đọc cookie ném lỗi → không ném lỗi ra trang; trang được giấu và tải lại', g.loi === null && loiG === null && g.taiLai() === 1 && g.biGiau(), loiG ?? '');
+  ok('Đọc cookie ném lỗi → không ném lỗi ra trang; trang được giấu và xin lại', g.loi === null && loiG === null && g.taiLai() === 1 && g.biGiau(), loiG ?? '');
   const h = moTrang(undefined, { cookie: ck(DAU_X) });
   h.roiTrang(); h.hienRa(true);
   ok('Không tìm thấy thẻ script của chính nó → coi như đã đổi', h.loi === null && h.taiLai() === 1);
@@ -646,7 +786,7 @@ await nhom('9 · Nút Quay lại sau khi đăng xuất: trang của phiên đã 
   h2.roiTrang();
   const h2Giau = h2.biGiau();
   h2.hienRa(true);
-  ok('…kể cả khi trình duyệt chưa có dấu nào: vẫn giấu lúc rời và tải lại', h2.loi === null && h2Giau && h2.taiLai() === 1, `giấu lúc rời: ${h2Giau} · tải lại ${h2.taiLai()} lần`);
+  ok('…kể cả khi trình duyệt chưa có dấu nào: vẫn giấu lúc rời và xin lại', h2.loi === null && h2Giau && h2.taiLai() === 1, `giấu lúc rời: ${h2Giau} · xin lại ${h2.taiLai()} lần`);
 
   // h) Chỉ khớp ĐÚNG tên cookie.
   for (const [ten, chuoi] of [
@@ -661,33 +801,142 @@ await nhom('9 · Nút Quay lại sau khi đăng xuất: trang của phiên đã 
   }
 
   // i) Bấm Quay lại mà trình duyệt DỰNG LẠI trang từ bản lưu đệm của nó — không lấy nguyên trang từ bộ nhớ quay lại,
-  //    cũng không hỏi máy chủ. Bản đó mang dấu cũ. Mã chạy ngay trong <head> phải giấu và tải lại, không trông vào
+  //    cũng không hỏi máy chủ. Bản đó mang dấu cũ. Mã chạy ngay trong <head> phải giấu và xin lại, không trông vào
   //    việc trình duyệt có nghe lệnh Clear-Site-Data của trả lời đăng xuất hay không (Chrome nghe; trình duyệt khác
   //    chưa thử).
   const i1 = moTrang(DAU_X, { cookie: ck(DAU_Y), kieuTai: 'back_forward' });
-  ok('RÀ SOÁT 14/11 (vòng ba): bấm Quay lại, trình duyệt dựng lại trang từ bản lưu đệm mang dấu cũ → giấu NGAY lúc tải và tải lại đúng một lần',
-     i1.loi === null && i1.giauLucTai && i1.taiLaiLucTai === 1, `giấu lúc tải: ${i1.giauLucTai} · tải lại ${i1.taiLaiLucTai} lần`);
+  ok('RÀ SOÁT 14/11 (vòng ba): bấm Quay lại, trình duyệt dựng lại trang từ bản lưu đệm mang dấu cũ → giấu NGAY lúc tải và xin lại đúng một lần',
+     i1.loi === null && i1.giauLucTai && i1.taiLaiLucTai === 1, `giấu lúc tải: ${i1.giauLucTai} · xin lại ${i1.taiLaiLucTai} lần`);
   const i2 = moTrang(DAU_X, { cookie: ck(DAU_X), kieuTai: 'back_forward' });
-  ok('…dấu không đổi (không ai đăng xuất): bấm Quay lại không giấu, không tải lại — chữ trình duyệt điền lại vào form vẫn còn',
+  ok('…dấu không đổi (không ai đăng xuất): bấm Quay lại không giấu, không xin lại — chữ trình duyệt điền lại vào form vẫn còn',
      !i2.giauLucTai && i2.taiLaiLucTai === 0);
   const i3 = moTrang(DAU_X, { cookie: ck(DAU_Y), kieuTai: 'reload' });
-  ok('RÀ SOÁT 14/11 (vòng ba): …trang VỪA được tải lại mà dấu vẫn lệch → không tải lại nữa (không bao giờ thành vòng lặp)',
-     !i3.giauLucTai && i3.taiLaiLucTai === 0, `tải lại ${i3.taiLaiLucTai} lần`);
+  ok('RÀ SOÁT 14/11 (vòng ba): …trang VỪA được tải lại (kiểu tải "reload", như bấm F5) mà dấu vẫn lệch → không xin lại nữa (không bao giờ thành vòng lặp)',
+     !i3.giauLucTai && i3.taiLaiLucTai === 0, `xin lại ${i3.taiLaiLucTai} lần`);
   i3.roiTrang();
-  ok('…nhưng trang đó vẫn bị giấu lúc rời, như mọi trang lệch dấu', i3.biGiau());
+  ok('…nhưng trang đó vẫn bị giấu lúc rời, như mọi trang', i3.biGiau());
   const i4 = moTrang(DAU_X, { cookie: ck(DAU_Y), kieuTai: 'navigate' });
-  ok('…mở trang theo lối thường (bấm link, gõ địa chỉ) → không tải lại lúc tải', !i4.giauLucTai && i4.taiLaiLucTai === 0);
+  ok('…mở trang theo lối thường (bấm link, gõ địa chỉ — cũng là kiểu của lượt xin lại) → không xin lại lúc tải', !i4.giauLucTai && i4.taiLaiLucTai === 0);
   const i5 = moTrang(DAU_X, { cookie: ck(DAU_Y) });
-  ok('…trình duyệt không cho biết kiểu tải → không tải lại lúc tải (thiếu lớp này còn hơn tải lại vô hạn)',
+  ok('…trình duyệt không cho biết kiểu tải → không xin lại lúc tải (thiếu lớp này còn hơn xin lại vô hạn)',
      i5.loi === null && !i5.giauLucTai && i5.taiLaiLucTai === 0);
   const i6 = moTrang(DAU_X, { cookie: ck(DAU_Y), kieuTai: 'cu:2' });
-  ok('…trình duyệt cũ chỉ có performance.navigation: kiểu 2 (lùi / tiến) → giấu và tải lại một lần', i6.giauLucTai && i6.taiLaiLucTai === 1);
+  ok('…trình duyệt cũ chỉ có performance.navigation: kiểu 2 (lùi / tiến) → giấu và xin lại một lần', i6.giauLucTai && i6.taiLaiLucTai === 1);
   const i7 = moTrang(DAU_X, { cookie: ck(DAU_Y), kieuTai: 'cu:1' });
-  ok('…performance.navigation kiểu 1 (vừa tải lại) → không tải lại nữa', !i7.giauLucTai && i7.taiLaiLucTai === 0);
+  ok('…performance.navigation kiểu 1 (vừa tải lại) → không xin lại nữa', !i7.giauLucTai && i7.taiLaiLucTai === 0);
   const i8 = moTrang(DAU_X, { cookie: ck(DAU_Y), kieuTai: 'nem' });
-  ok('…hỏi kiểu tải mà ném lỗi → không ném lỗi ra trang, không tải lại lúc tải', i8.loi === null && !i8.giauLucTai && i8.taiLaiLucTai === 0, i8.loi ?? '');
+  ok('…hỏi kiểu tải mà ném lỗi → không ném lỗi ra trang, không xin lại lúc tải', i8.loi === null && !i8.giauLucTai && i8.taiLaiLucTai === 0, i8.loi ?? '');
   const i9 = moTrang(undefined, { cookie: ck(null), kieuTai: 'back_forward' });
-  ok('…không thấy thẻ của chính mình, bấm Quay lại → giấu và tải lại một lần (rồi là trang kiểu "reload": dừng)', i9.giauLucTai && i9.taiLaiLucTai === 1);
+  ok('…không thấy thẻ của chính mình, bấm Quay lại → giấu và xin lại một lần (trang xin về là một lượt mở thường: dừng)', i9.giauLucTai && i9.taiLaiLucTai === 1);
+
+  // k) KHÔNG BAO GIỜ location.reload() — vòng bốn 14/11, lỗi mức cao của chính bản trước. Trang nội bộ báo lỗi của một
+  //    lần gửi form ngay tại chỗ, trong trả lời của POST — kể cả form đăng nhập. Bấm Quay lại, trình duyệt dựng lại
+  //    trang đó từ bản lưu đệm; reload() do MÃ gọi làm nó gửi lại form mà không hỏi (đã đo: lượt POST đi ra mạng). Kết
+  //    quả: ghi ngoài ý muốn dưới quyền người đăng nhập sau, hoặc đăng nhập lại dưới tên người trước. Xin lại trang
+  //    phải là một lượt GET về chính địa chỉ đó.
+  const coXinLai = MOI_TRANG.filter(tr => tr.dich().length > 0);
+  ok('RÀ SOÁT 14/11 (vòng bốn): không cảnh nào gọi location.reload() — reload một trang kết quả gửi form là gửi lại form không hỏi',
+     coXinLai.length >= 8 && MOI_TRANG.every(tr => tr.soReload() === 0),
+     `${coXinLai.length}/${MOI_TRANG.length} cảnh có xin lại trang · reload() được gọi ${MOI_TRANG.reduce((tong, tr) => tong + tr.soReload(), 0)} lần`);
+  ok('RÀ SOÁT 14/11 (vòng bốn): …xin lại trang luôn là một lượt GET về đúng địa chỉ ĐẦY ĐỦ của trang (tên miền, đường dẫn, tham số), bỏ phần sau dấu #',
+     coXinLai.length >= 8 && coXinLai.every(tr => tr.dich().every(d => d === 'https://beeftown.vn/noi-bo/dat-ban?loc=tat_ca&p=2')),
+     JSON.stringify([...new Set(coXinLai.flatMap(tr => tr.dich()))]));
+  // Địa chỉ bắt đầu bằng hai dấu gạch chéo vẫn ra trang nội bộ (//noi-bo/…). Ghép "đường dẫn + tham số" ở đó cho ra
+  // "//noi-bo/dat-ban?p=1" — với trình duyệt, đó là địa chỉ của MÁY CHỦ tên "noi-bo". Phải xin lại bằng địa chỉ đầy đủ.
+  const haiGach = moTrang(DAU_X, { cookie: ck(DAU_Y), diaChi: 'https://beeftown.vn//noi-bo/dat-ban?p=1#x' });
+  haiGach.roiTrang(); haiGach.hienRa(true);
+  MOI_TRANG.splice(MOI_TRANG.indexOf(haiGach), 1);       // địa chỉ riêng — không tính vào phép kiểm chung ở trên
+  ok('RÀ SOÁT 14/11 (vòng bốn): trang mở qua //noi-bo/… xin lại đúng chính nó trên đúng tên miền — không thành địa chỉ của một máy chủ khác',
+     haiGach.dich().length === 1 && haiGach.dich()[0] === 'https://beeftown.vn//noi-bo/dat-ban?p=1' && haiGach.soReload() === 0, JSON.stringify(haiGach.dich()));
+  const khongThang = moTrang(DAU_X, { cookie: ck(DAU_Y), diaChi: 'https://beeftown.vn/noi-bo/kho' });
+  khongThang.roiTrang(); khongThang.hienRa(true);
+  MOI_TRANG.splice(MOI_TRANG.indexOf(khongThang), 1);
+  ok('…địa chỉ không có dấu # thì xin lại nguyên địa chỉ đó', khongThang.dich().length === 1 && khongThang.dich()[0] === 'https://beeftown.vn/noi-bo/kho', JSON.stringify(khongThang.dich()));
+  ok('…và trong mã không còn lời gọi reload() nào', ma.length > 0 && !/\.reload\s*\(/.test(ma.slice(ma.indexOf('(function'))));
+
+  // l) Hai cookie cùng tên bt_dau_phien — một cái ai đó đặt sẵn với Path dài hơn thì đứng trước cái thật. Máy chủ và
+  //    đoạn mã đều đọc cái đứng trước, nên cái thật có đổi cũng không ai thấy. Thấy hai cái thì coi như dấu đã đổi.
+  const l1 = moTrang(DAU_X, { cookie: `bt_dau_phien=${DAU_X}; khac=1; bt_dau_phien=${DAU_Y}` });
+  l1.roiTrang();
+  const l1Giau = l1.biGiau();
+  l1.hienRa(true);
+  ok('RÀ SOÁT 14/11 (vòng bốn): hai cookie dấu phiên cùng tên → coi như dấu đã đổi: giấu lúc rời, xin lại trang khi hiện lại từ bộ nhớ',
+     l1.loi === null && l1Giau && l1.taiLai() === 1, `giấu lúc rời: ${l1Giau} · xin lại ${l1.taiLai()} lần`);
+  const l2 = moTrang(DAU_X, { cookie: `bt_dau_phien=${DAU_X}; bt_dau_phien=${DAU_X}` });
+  l2.roiTrang();
+  ok('…kể cả khi hai cái mang cùng một giá trị', l2.biGiau());
+
+  // m) BẤM ĐĂNG XUẤT: GIẤU NGAY LÚC GỬI (vòng bốn 14/11, đo bằng quay màn hình). Chromium đưa một trang ra từ bộ nhớ
+  //    quay lại bằng khung hình CUỐI nó đã vẽ cho trang đó, trước khi dựng lại trang. Giấu lúc rời trang (pagehide) thì
+  //    không còn lượt vẽ nào sau đó: khung hình cuối vẫn là trang đầy đủ, và 6/8 lần bấm Quay lại sau khi đăng xuất
+  //    thấy một khung hình của trang cũ. Giấu ngay lúc gửi form Đăng xuất thì trong lúc chờ máy chủ, trang vẽ lại ở
+  //    dạng đã giấu (0/8).
+  const m1 = moTrang(DAU_X, { cookie: ck(DAU_X) });
+  m1.guiForm('/noi-bo/dang-xuat');
+  ok('RÀ SOÁT 14/11 (vòng bốn): gửi form Đăng xuất → trang bị giấu NGAY, trước khi máy chủ trả lời; không xin lại gì, không tải lại',
+     m1.biGiau() && m1.taiLai() === 0 && m1.soReload() === 0);
+  const m2 = moTrang(DAU_X, { cookie: ck(DAU_X) });
+  m2.guiForm('/noi-bo/dat-ban');
+  m2.guiForm(null);
+  ok('…gửi form khác (không phải Đăng xuất) thì không giấu gì', !m2.biGiau() && m2.hen().length === 0);
+  const m3 = moTrang(DAU_X, { cookie: ck(DAU_X) });
+  m3.guiForm('/noi-bo/dang-xuat', { daChan: true });
+  ok('…form Đăng xuất mà một handler khác đã chặn lần gửi (preventDefault) thì không giấu', !m3.biGiau());
+  const m4 = moTrang(DAU_X, { cookie: ck(DAU_X) });
+  let loiM4 = null;
+  try { m4.guiForm('/noi-bo/dang-xuat', { khongCoThuocTinh: true }); } catch (loi) { loiM4 = String(loi?.message ?? loi); }
+  ok('…sự kiện gửi lạ (đích không có getAttribute) → không ném lỗi ra trang', loiM4 === null && !m4.biGiau(), loiM4 ?? '');
+  // Đăng xuất không đi tới đâu (bấm Dừng giữa chừng): trang không được kẹt ở dạng trống — sau một lúc thì hiện lại.
+  const m5 = moTrang(DAU_X, { cookie: ck(DAU_X) });
+  m5.guiForm('/noi-bo/dang-xuat');
+  const henM5 = m5.hen();
+  m5.chayHen();
+  ok('RÀ SOÁT 14/11 (vòng bốn): …lần đăng xuất không rời được trang (bấm Dừng) → có đúng một hẹn giờ dự phòng, 5–15 giây, chạy xong thì trang HIỆN LẠI',
+     henM5.length === 1 && henM5[0].ms >= 5000 && henM5[0].ms <= 15000 && !m5.biGiau() && m5.taiLai() === 0, JSON.stringify(henM5));
+  // Trang đã rời đi (pagehide) thì hẹn giờ dự phòng — trình duyệt dừng nó lúc trang nằm trong bộ nhớ, chạy tiếp khi
+  // trang được đưa ra — không được làm trang hiện lại: trang của phiên đã kết thúc phải nằm giấu tới khi trang mới về.
+  const m6 = moTrang(DAU_X, { cookie: ck(DAU_X) });
+  m6.guiForm('/noi-bo/dang-xuat');
+  m6.doiCookie(ck(DAU_Y));      // trả lời đăng xuất đổi dấu
+  m6.roiTrang();
+  m6.hienRa(true);
+  m6.chayHen();
+  ok('RÀ SOÁT 14/11 (vòng bốn): …đăng xuất xong, trang rời đi rồi được đưa ra từ bộ nhớ → vẫn giấu, xin lại đúng một lần; hẹn giờ dự phòng chạy muộn cũng không làm nó hiện lại',
+     m6.biGiau() && m6.taiLai() === 1, `xin lại ${m6.taiLai()} lần · giấu: ${m6.biGiau()}`);
+  const m7 = moTrang(DAU_X, { cookie: ck(DAU_X) });
+  m7.guiForm('/noi-bo/dang-xuat');
+  m7.roiTrang();                 // đăng xuất hỏng phía máy chủ (dấu không đổi), trình duyệt hiện trang lỗi
+  m7.hienRa(true);
+  m7.chayHen();
+  ok('…đăng xuất không thành (dấu không đổi), bấm Quay lại về trang đó → trang hiện lại như cũ, không xin lại', !m7.biGiau() && m7.taiLai() === 0);
+
+  // n) Trang đã giấu lúc rời mà được hiện lại KHÔNG kèm pageshow (đổi tab, mở lại ứng dụng — trình duyệt nào làm vậy):
+  //    xét lại khi thẻ hiện ra (visibilitychange), để trang không kẹt ở dạng trống; và chỉ xét MỘT lần cho mỗi lần rời.
+  const n1 = moTrang(DAU_X, { cookie: ck(DAU_X) });
+  n1.roiTrang(); n1.hienTab();
+  ok('RÀ SOÁT 14/11 (vòng bốn): trang đã giấu lúc rời, thẻ hiện lại mà không có pageshow, dấu không đổi → trang hiện lại', !n1.biGiau() && n1.taiLai() === 0);
+  const n2 = moTrang(DAU_X, { cookie: ck(DAU_X) });
+  n2.roiTrang(); n2.doiCookie(ck(DAU_Y)); n2.hienTab(); n2.hienRa(true);
+  ok('…dấu đã đổi → vẫn giấu, xin lại đúng MỘT lần dù sau đó còn có pageshow', n2.biGiau() && n2.taiLai() === 1, `xin lại ${n2.taiLai()} lần`);
+  const n3 = moTrang(DAU_X, { cookie: ck(DAU_Y) });
+  n3.hienTab();
+  ok('…thẻ hiện ra (đổi tab qua lại) khi trang CHƯA rời đi lần nào → không làm gì, kể cả khi dấu đã lệch', !n3.biGiau() && n3.taiLai() === 0);
+  // Rời trang thì trình duyệt cũng báo thẻ bị che (visibilitychange, 'hidden') — quanh lúc pagehide. Lúc đó không được
+  // xét lại: xét lại là cho trang HIỆN trở lại ngay trước khi nó bị cất vào bộ nhớ, và trạng thái cất đi thành "đang hiện".
+  const n4 = moTrang(DAU_X, { cookie: ck(DAU_X) });
+  n4.roiTrang(); n4.anTab();
+  ok('RÀ SOÁT 14/11 (vòng bốn): rời trang rồi thẻ báo bị che (visibilitychange, hidden) → trang VẪN giấu, chờ lần hiện lại mới xét', n4.biGiau() && n4.taiLai() === 0);
+  n4.hienTab();
+  ok('…thẻ hiện lại sau đó (dấu không đổi) → trang hiện lại', !n4.biGiau() && n4.taiLai() === 0);
+
+  // o) Giấu bằng visibility của <html>: một phần tử con tự đặt "visibility: visible" thì vẫn hiện. Không CSS nào của
+  //    web được làm vậy (không thì phần đó lộ ra cả khi trang đã bị giấu).
+  const moiTepKieu = [join(GOC, 'web/src'), join(GOC, 'web/public')].flatMap(thuMuc => readdirSync(thuMuc, { withFileTypes: true, recursive: true })
+    .filter(f => f.isFile() && /\.(astro|css|js|ts)$/.test(f.name)).map(f => join(f.parentPath ?? f.path, f.name)));
+  const datLaiHien = moiTepKieu.filter(f => !f.endsWith('sau-dang-xuat.js') && /(?<![-\w])visibility\s*:\s*visible/i.test(readFileSync(f, 'utf8')));
+  ok('RÀ SOÁT 14/11 (vòng bốn): không CSS nào của web tự đặt "visibility: visible" (phần tử đó sẽ lộ ra khi trang bị giấu)',
+     moiTepKieu.length > 50 && datLaiHien.length === 0, datLaiHien.map(f => relative(GOC, f)).join(', '));
+  ok('…chuỗi đường dẫn Đăng xuất mã dùng để nhận form trùng đúng action của mọi form Đăng xuất', ma.includes("'/noi-bo/dang-xuat'"));
 
   ok('File chỉ ĐỌC cookie: không ghi cookie, không gọi mạng, không dùng localStorage hay sessionStorage, không dựa vào đồng hồ',
      ma.length > 0 && !a.daGhiCookie() && !/document\.cookie\s*=[^=]|fetch\(|XMLHttpRequest|localStorage|sessionStorage|Date\.now|new Date|performance\.now|timeOrigin/.test(ma.slice(ma.indexOf('(function'))));
@@ -697,15 +946,36 @@ await nhom('9 · Nút Quay lại sau khi đăng xuất: trang của phiên đã 
   // In thẳng vào trang qua một component dùng chung — không phải thẻ <script src> (lượt tải riêng hỏng là mất lớp này).
   let tp = '';
   try { tp = readFileSync(join(GOC, 'web/src/components/SauDangXuat.astro'), 'utf8'); } catch { /* chưa có */ }
+  // Ghim cả dòng cắt mã (vòng bốn 14/11: `const MA = ''` — một thẻ script RỖNG — từng qua được phép kiểm này): MA là
+  // phần mã của file, tính từ "(function", và phần đó phải là chính đoạn vừa chạy ở trên.
+  const MA_IN_RA = ma.slice(ma.indexOf('(function'));
   ok('RÀ SOÁT 14/11 (vòng ba): components/SauDangXuat.astro in mã vào trang kèm dấu phiên máy chủ đang thấy',
-     /import ma from '\.\.\/lib\/sau-dang-xuat\.js\?raw';/.test(tp) && /Astro\.cookies\.get\(COOKIE_DAU_PHIEN\)\?\.value \?\? ''/.test(tp)
-     && /<script is:inline data-dau-phien=\{dau\} set:html=\{MA\}><\/script>/.test(tp), tp.slice(0, 300));
+     /^import ma from '\.\.\/lib\/sau-dang-xuat\.js\?raw';$/m.test(tp) && /^import \{ COOKIE_DAU_PHIEN \} from '\.\.\/lib\/phien\.ts';$/m.test(tp)
+     && !/COOKIE_DAU_PHIEN\s*=/.test(tp) && /^const dau = Astro\.cookies\.get\(COOKIE_DAU_PHIEN\)\?\.value \?\? '';$/m.test(tp)
+     && /^const MA = ma\.slice\(ma\.indexOf\('\(function'\)\);$/m.test(tp)
+     && /\n---\n<script is:inline data-dau-phien=\{dau\} set:html=\{MA\}><\/script>\s*$/.test(tp)
+     && ma.indexOf('(function') > 0 && MA_IN_RA.includes("addEventListener('pagehide'") && MA_IN_RA.includes(`${COOKIE_DAU_PHIEN}=`), tp.slice(-300));
   for (const khung of ['web/src/layouts/NoiBo.astro', 'web/src/layouts/Kho.astro']) {
     const nguon = readFileSync(join(GOC, khung), 'utf8');
     const dauTrang = nguon.slice(nguon.indexOf('<head>'), nguon.indexOf('</head>'));
+    // Thẻ phải là dòng CUỐI của <head>, đứng ngay trước </head> (vòng bốn 14/11): bản lỏng hơn chỉ đòi "có thẻ trên
+    // một dòng riêng trong <head>", nên bọc thẻ trong một điều kiện nhiều dòng — {!nhanSu && ( … )} — vẫn xanh, mà lớp
+    // này biến mất khỏi mọi trang đã đăng nhập. Thứ gì bọc thẻ cũng phải đóng lại SAU thẻ, tức chen vào giữa thẻ và </head>.
+    const DAT_DUNG = /\n[ \t]*<SauDangXuat \/>\n[ \t]*<\/head>/;
     ok(`RÀ SOÁT 14/11 (vòng ba): ${khung} đặt <SauDangXuat /> trong <head>, không điều kiện, và không còn thẻ script tải file riêng`,
-       /import SauDangXuat from '\.\.\/components\/SauDangXuat\.astro';/.test(nguon) && /\n\s*<SauDangXuat \/>\n/.test(dauTrang)
-       && (nguon.match(/<SauDangXuat \/>/g) ?? []).length === 1 && !/sau-dang-xuat\.js/.test(nguon));
+       /^import SauDangXuat from '\.\.\/components\/SauDangXuat\.astro';$/m.test(nguon) && /\n\s*<SauDangXuat \/>\n/.test(dauTrang)
+       && DAT_DUNG.test(nguon) && (nguon.match(/<SauDangXuat\b/g) ?? []).length === 1 && (nguon.match(/<\/head>/g) ?? []).length === 1
+       && !/sau-dang-xuat\.js/.test(nguon));
+    for (const [ten, bien] of [
+      ['bọc trong điều kiện nhiều dòng', m => m.replace(/\n([ \t]*)<SauDangXuat \/>\n/, '\n$1{!nhanSu && (\n$1  <SauDangXuat />\n$1)}\n')],
+      ['bọc trong điều kiện một dòng', m => m.replace('<SauDangXuat />', '{coDau && <SauDangXuat />}')],
+      ['nằm trong chú thích nhiều dòng', m => m.replace(/\n([ \t]*)<SauDangXuat \/>\n/, '\n$1{/*\n$1<SauDangXuat />\n$1*/}\n')],
+      ['bọc trong <noscript>', m => m.replace(/\n([ \t]*)<SauDangXuat \/>\n/, '\n$1<noscript>\n$1<SauDangXuat />\n$1</noscript>\n')],
+      ['đưa xuống <body>', m => m.replace(/\n[ \t]*<SauDangXuat \/>\n/, '\n').replace('</body>', '<SauDangXuat />\n</body>')],
+    ]) {
+      const hong = bien(nguon);
+      ok(`RÀ SOÁT 14/11 (vòng bốn): …mẫu kiểm vị trí của ${khung.split('/').pop()} đỏ khi thẻ ${ten}`, hong !== nguon && !DAT_DUNG.test(hong));
+    }
   }
   ok('Không còn file tải riêng public/kho/js/sau-dang-xuat.js', !existsSync(join(GOC, 'web/public/kho/js/sau-dang-xuat.js')));
   const moiAstro = thuMuc => readdirSync(thuMuc, { withFileTypes: true, recursive: true })

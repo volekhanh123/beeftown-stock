@@ -85,6 +85,48 @@ await nhom('1 · Marketing gọi thẳng không tự duyệt được giá, mứ
   ok('RÀ SOÁT 14/11: cột thêm vào bảng sau này mặc định bị chặn với marketing (không phải nhớ thêm vào danh sách cấm)', biChan(cotMoi, CAU_MON), ketQua(cotMoi));
   const qlCotMoi = await duoi(UID.qlA, `update mon_an set thu_cot_them_sau = 'quản lý ghi' where ma = $1 returning ma`, [thuong.ma]);
   ok('…quản lý thì ghi được cột đó', duocMot(qlCotMoi), ketQua(qlCotMoi));
+  // MỌI cột ngoài danh sách được sửa, TỪNG cột một, trên một món ĐÃ có giá và mức cay được duyệt (vòng bốn 14/11:
+  // các phép thử trên đổi cột theo cặp — giá cùng cờ duyệt — nên thêm riêng 'gia' vào danh sách được sửa, để marketing
+  // đổi giá đã duyệt đang hiện cho khách, vẫn xanh). Danh sách cột đọc từ database; cột thêm sau cũng nằm trong đó.
+  const DUOC_SUA = new Set(['ten_vi', 'ten_en', 'ten_ko', 'mo_ta_vi', 'mo_ta_en', 'mo_ta_ko', 'khau_phan', 'khau_phan_en', 'khau_phan_ko',
+    'canh_bao', 'canh_bao_en', 'canh_bao_ko', 'thu_tu', 'trang_thai', 'gia_de_xuat', 'muc_cay_de_xuat', 'ban_dich', 'updated_at']);
+  const monDuyet = await mot(`select ma from mon_an where ma <> all($1::text[]) and not co_con and not la_mon_song order by ma limit 1`, [[thuong.ma, coCon.ma, song.ma]]);
+  await db.query(`update mon_an set gia = 185000, gia_da_duyet = true, gia_nguoi_duyet = $2, gia_duyet_luc = now() - interval '1 day',
+                  muc_cay = 1, muc_cay_da_duyet = true where ma = $1`, [monDuyet.ma, nsId[UID.qlA]]);
+  const cotMon = (await db.query(
+    `select column_name as cot, data_type as kieu, udt_name as loai from information_schema.columns
+      where table_schema = 'public' and table_name = 'mon_an' order by ordinal_position`)).rows;
+  /** Một giá trị KHÁC hẳn giá trị đang có, hợp kiểu của cột. null = kiểu chưa có ở đây (phép kiểm ngay dưới đỏ). */
+  const khacMon = c => {
+    switch (c.kieu) {
+      case 'uuid': return 'gen_random_uuid()';
+      case 'text': return `coalesce(${c.cot}, '') || 'z'`;
+      case 'boolean': return `not coalesce(${c.cot}, false)`;
+      case 'integer': case 'smallint': case 'bigint': case 'numeric': return `coalesce(${c.cot}, 0) + 1`;
+      case 'date': return `coalesce(${c.cot}, date '2000-01-01') + 1`;
+      case 'timestamp with time zone': return `coalesce(${c.cot}, timestamptz '2000-01-01') - interval '1 day'`;
+      case 'jsonb': return `coalesce(${c.cot}, '{}'::jsonb) || '{"thu_sua": 1}'::jsonb`;
+      case 'ARRAY': return c.loai === '_text' ? `array_append(coalesce(${c.cot}, '{}'::text[]), 'thu')` : null;
+      case 'USER-DEFINED': return `(select e from unnest(enum_range(null::${c.loai})) e where e is distinct from ${c.cot} limit 1)`;
+      default: return null;
+    }
+  };
+  const cotCam = cotMon.filter(c => !DUOC_SUA.has(c.cot));
+  ok('Vòng lặp mọi cột của món: có cột thêm sau, đủ các cột được bảo vệ (giá, mức cay, cờ, nhóm, người và giờ duyệt), cột nào cũng có giá trị thử hợp kiểu',
+     cotCam.some(c => c.cot === 'thu_cot_them_sau') && ['gia', 'gia_da_duyet', 'muc_cay', 'muc_cay_da_duyet', 'co_con', 'la_mon_song', 'nhom_mon_id', 'gia_nguoi_duyet', 'gia_duyet_luc', 'copy_nhap', 'cong_bo_luc']
+       .every(t => cotCam.some(c => c.cot === t)) && cotCam.every(c => khacMon(c) !== null) && cotMon.every(c => DUOC_SUA.has(c.cot) || cotCam.includes(c)),
+     cotCam.filter(c => khacMon(c) === null).map(c => `${c.cot}: ${c.kieu}/${c.loai}`).join(', ') || cotCam.map(c => c.cot).join(', '));
+  const nguyenMon = () => mot(`select to_jsonb(m) - 'updated_at' as d from mon_an m where ma = $1`, [monDuyet.ma]).then(r => JSON.stringify(r?.d));
+  const monTruoc = await nguyenMon();
+  const lot = [];
+  for (const c of cotCam) {
+    const r = await duoi(UID.mktA, `update mon_an set ${c.cot} = ${khacMon(c)} where ma = $1 returning ma`, [monDuyet.ma]);
+    if (!biChan(r, CAU_MON)) lot.push(`${c.cot} → ${ketQua(r)}`);
+  }
+  ok(`RÀ SOÁT 14/11 (vòng bốn): marketing đổi TỪNG cột ngoài phần chữ (${cotCam.length} cột, kể cả cột thêm sau) của món đã duyệt giá và mức cay → cột nào cũng bị từ chối, món không đổi`,
+     lot.length === 0 && (await nguyenMon()) === monTruoc, lot.join(' | ').slice(0, 600) || 'món đã bị đổi');
+  const giaLe = await duoi(UID.mktA, `update mon_an set gia = 1000 where ma = $1 returning ma`, [monDuyet.ma]);
+  ok('RÀ SOÁT 14/11 (vòng bốn): marketing đổi riêng GIÁ của món đã duyệt giá (giữ nguyên cờ đã duyệt) → bị từ chối', biChan(giaLe, CAU_MON), ketQua(giaLe));
   await db.query(`update mon_an set thu_cot_them_sau = null`);
 
   const sau = await docMon(thuong.ma);
@@ -225,6 +267,12 @@ await nhom('4b · Dòng ĐÃ CÔNG BỐ hoặc ĐÃ GỠ: người không đư�
   const nhap = await duoi(UID.mktA, `insert into noi_dung_cong_bo (khoa, kieu, gia_tri_bool, trang_thai) values ('hien_thuc_don', 'bool', false, 'nhap') returning id`);
   const suaNhap = nhap.loi ? nhap : await duoi(UID.mktA, `update noi_dung_cong_bo set gia_tri_bool = true, ly_do = 'bản nháp của marketing' where id = $1 returning id`, [nhap.rows[0].id]);
   ok('Marketing vẫn sửa giá trị và lý do của bản NHÁP', duocMot(suaNhap), ketQua(suaNhap));
+  // …và của bản ĐÃ DUYỆT chưa công bố (vòng bốn 14/11: bản hỏng giữ cả dòng đã duyệt vẫn xanh). Chuyển nháp → đã duyệt
+  // là đường marketing được đi (trigger cũ); lịch hiện đặt sẵn ở đây do người công bố quyết lúc công bố.
+  const duyet = nhap.loi ? nhap : await duoi(UID.mktA, `update noi_dung_cong_bo set trang_thai = 'da_duyet' where id = $1 returning id`, [nhap.rows[0].id]);
+  const suaDuyet = duyet.loi ? duyet : await duoi(UID.mktA,
+    `update noi_dung_cong_bo set gia_tri_bool = false, ly_do = 'marketing sửa bản đã duyệt', hien_tu = now() + interval '1 day' where id = $1 returning id`, [nhap.rows[0].id]);
+  ok('Marketing vẫn sửa giá trị, lý do và lịch hiện của bản ĐÃ DUYỆT chưa công bố — 0122 chỉ giữ dòng đã lên trang', duocMot(duyet) && duocMot(suaDuyet), `${ketQua(duyet)} · ${ketQua(suaDuyet)}`);
 
   // d) Đường chuyển trạng thái giữ nguyên câu cũ của trigger noi_dung_cong_bo_kiem_tra — kể cả khi kèm lý do.
   const mktGo = await duoi(UID.mktA, `select thu_hoi_noi_dung('form_dat_ban_dang_mo', 'marketing muốn gỡ') as kq`);
@@ -276,6 +324,87 @@ await nhom('4b · Dòng ĐÃ CÔNG BỐ hoặc ĐÃ GỠ: người không đư�
   ok('Quản lý chuyển dòng đã gỡ giữa hai khóa THƯỜNG → được', duocMot(qlHaiThuong) && qlHaiThuong.rows[0].khoa === 'hien_tiec_nhom', ketQua(qlHaiThuong));
   const chuNhet = await duoi(UID.chu, `update noi_dung_cong_bo set khoa = 'form_dat_ban_dang_mo' where id = $1 returning khoa`, [idCu]);
   ok('Chủ chuyển dòng đã gỡ sang khóa chỉ chủ → được', duocMot(chuNhet) && chuNhet.rows[0].khoa === 'form_dat_ban_dang_mo', ketQua(chuNhet));
+
+  // h) MỌI cột, không phải vài cột chọn tay. Vòng bốn 14/11 làm hỏng thử 0122 ở những chỗ các phép thử trên không chạm
+  //    tới (thêm một cột vào danh sách bỏ qua, khai trigger theo vài cột, cho quản lý sửa tại chỗ dòng đã gỡ của khóa
+  //    chỉ chủ) và bảy bản hỏng vẫn xanh. Danh sách cột đọc từ chính database, nên cột thêm vào bảng sau này tự vào
+  //    vòng lặp — ở đây thêm luôn một cột để chắc điều đó.
+  await db.query(`alter table noi_dung_cong_bo add column thu_cot_them_sau text`);
+  const cotBang = (await db.query(
+    `select column_name as cot, data_type as kieu from information_schema.columns
+      where table_schema = 'public' and table_name = 'noi_dung_cong_bo' order by ordinal_position`)).rows;
+  /** Một giá trị KHÁC hẳn giá trị đang có, hợp kiểu của cột. null = kiểu chưa có ở đây (phép kiểm ngay dưới đỏ). */
+  const giaTriKhac = c => {
+    if (c.cot === 'khoa') return `'hien_tiec_nhom'`;                          // một khóa thường khác, cùng kiểu bool
+    if (c.cot === 'kieu') return `(select e from unnest(enum_range(null::kieu_cong_bo)) e where e <> kieu limit 1)`;
+    switch (c.kieu) {
+      case 'uuid': return 'gen_random_uuid()';
+      case 'text': return `coalesce(${c.cot}, '') || ' đã sửa'`;
+      case 'boolean': return `not coalesce(${c.cot}, false)`;
+      case 'date': return `coalesce(${c.cot}, date '2000-01-01') + 1`;
+      case 'numeric': case 'integer': case 'bigint': return `coalesce(${c.cot}, 0) + 1`;
+      case 'timestamp with time zone': return `coalesce(${c.cot}, timestamptz '2000-01-01') - interval '1 day'`;
+      case 'jsonb': return `coalesce(${c.cot}, '{}'::jsonb) || '{"thu_sua": 1}'::jsonb`;
+      default: return null;
+    }
+  };
+  const cotThu = cotBang.filter(c => c.cot !== 'trang_thai');      // đổi trạng thái là đường của trigger cũ — phần (d)
+  ok('Vòng lặp mọi cột: bảng có cột thêm sau, và cột nào cũng có giá trị thử hợp kiểu',
+     cotThu.some(c => c.cot === 'thu_cot_them_sau') && cotThu.length >= 20 && cotThu.every(c => giaTriKhac(c) !== null),
+     cotBang.filter(c => c.cot !== 'trang_thai' && giaTriKhac(c) === null).map(c => `${c.cot}: ${c.kieu}`).join(', '));
+  // Mười cột trigger cũ giữ bất biến ở dòng ĐANG công bố (0036) — ở đó câu trả về vẫn phải là câu cũ.
+  const COT_GIA_TRI = new Set(['khoa', 'kieu', 'gia_tri_text', 'gia_tri_text_en', 'gia_tri_text_ko', 'gia_tri_ngay', 'gia_tri_so', 'gia_tri_bool', 'gia_tri_tep_id', 'ban_dich']);
+  const CAU_GIA_TRI = 'Không sửa được giá trị đã công bố. Hãy thu hồi rồi thêm dòng mới.';
+  const nguyenDong = id => mot(`select to_jsonb(n)::text as d from noi_dung_cong_bo n where id = $1`, [id]).then(r => r?.d);
+  /** `uid` đổi TỪNG cột của dòng `id`; trả danh sách cột KHÔNG bị từ chối đúng câu, và dòng có còn nguyên không. */
+  const thuMoiCot = async (uid, id, { dangCongBo, khoa, chiChu }) => {
+    const truoc = await nguyenDong(id);
+    const sai = [];
+    for (const c of cotThu) {
+      const mong = dangCongBo && COT_GIA_TRI.has(c.cot) ? CAU_GIA_TRI
+        : dangCongBo && (c.cot === 'hien_tu' || c.cot === 'hien_den') ? (chiChu ? CAU_LICH_CHU(khoa) : CAU_LICH)
+        : chiChu ? CAU_SUA_CHU(khoa) : CAU_SUA;
+      const r = await duoi(uid, `update noi_dung_cong_bo set ${c.cot} = ${giaTriKhac(c)} where id = $1 returning id`, [id]);
+      if (!biChan(r, mong)) sai.push(`${c.cot} → ${ketQua(r)}`);
+    }
+    return { sai, nguyen: (await nguyenDong(id)) === truoc };
+  };
+  // Bốn loại dòng. Dòng đã gỡ của khóa thường: quản lý công bố thêm một bản, bản đang chạy thành dòng đã gỡ.
+  const idThuongGo = (await dongSong('hien_thuc_don')).id;
+  const qlBanNua = await duoi(UID.qlA, `select dat_noi_dung('hien_thuc_don', p_bool => false, p_ly_do => 'bản nữa của quản lý', p_cong_bo => true) as id`);
+  const loaiDong = await mot(
+    `select (select trang_thai from noi_dung_cong_bo where id = $1) as thuong_go, (select khoa from noi_dung_cong_bo where id = $1) as khoa_thuong_go,
+            (select trang_thai from noi_dung_cong_bo where id = $2) as chu_go, (select khoa from noi_dung_cong_bo where id = $2) as khoa_chu_go`, [idThuongGo, idChuCu]);
+  ok('Có đủ bốn loại dòng để thử: đang công bố và đã gỡ, của khóa chỉ chủ và của khóa thường',
+     qlBanNua.loi === null && loaiDong?.thuong_go === 'da_thu_hoi' && loaiDong.khoa_thuong_go === 'hien_thuc_don'
+     && loaiDong.chu_go === 'da_thu_hoi' && loaiDong.khoa_chu_go === 'form_dat_ban_dang_mo', `${ketQua(qlBanNua)} · ${JSON.stringify(loaiDong)}`);
+  const idChuSong = (await dongSong('form_dat_ban_dang_mo')).id;
+  const idThuongSong = (await dongSong('hien_thuc_don')).id;
+  for (const [ten, uid, id, loai] of [
+    ['marketing · dòng ĐANG công bố của khóa chỉ chủ', UID.mktA, idChuSong, { dangCongBo: true, khoa: 'form_dat_ban_dang_mo', chiChu: true }],
+    ['quản lý · dòng ĐANG công bố của khóa chỉ chủ', UID.qlA, idChuSong, { dangCongBo: true, khoa: 'form_dat_ban_dang_mo', chiChu: true }],
+    ['marketing · dòng ĐANG công bố của khóa thường', UID.mktA, idThuongSong, { dangCongBo: true, khoa: 'hien_thuc_don', chiChu: false }],
+    ['marketing · dòng ĐÃ GỠ của khóa thường', UID.mktA, idThuongGo, { dangCongBo: false, khoa: 'hien_thuc_don', chiChu: false }],
+    ['marketing · dòng ĐÃ GỠ của khóa chỉ chủ', UID.mktA, idChuCu, { dangCongBo: false, khoa: 'form_dat_ban_dang_mo', chiChu: true }],
+    ['quản lý · dòng ĐÃ GỠ của khóa chỉ chủ (sửa tại chỗ, không đổi khóa)', UID.qlA, idChuCu, { dangCongBo: false, khoa: 'form_dat_ban_dang_mo', chiChu: true }],
+  ]) {
+    const kq = await thuMoiCot(uid, id, loai);
+    ok(`RÀ SOÁT 14/11 (vòng bốn): ${ten} — đổi TỪNG cột (${cotThu.length} cột, kể cả cột thêm sau): cột nào cũng bị từ chối đúng câu, dòng không đổi`,
+       kq.sai.length === 0 && kq.nguyen, kq.sai.length ? kq.sai.join(' | ').slice(0, 600) : 'dòng đã bị đổi');
+  }
+  // Nhiều cột một lượt, như người rà soát vòng bốn đã thử: quản lý viết lại "vì sao, lúc nào" và giá trị của bản đã gỡ.
+  const qlTaiCho = await duoi(UID.qlA, `update noi_dung_cong_bo set ly_do = 'quản lý viết lại', thu_hoi_luc = '2001-01-01', gia_tri_bool = not gia_tri_bool where id = $1 returning id`, [idChuCu]);
+  ok('RÀ SOÁT 14/11 (vòng bốn): quản lý viết lại lý do, giờ gỡ và giá trị của dòng ĐÃ GỠ thuộc khóa chỉ chủ → bị từ chối',
+     biChan(qlTaiCho, CAU_SUA_CHU('form_dat_ban_dang_mo')), ketQua(qlTaiCho));
+  // Khóa mới không có trong sổ khóa: coi như khóa chỉ chủ (hỏng thì đóng). Khóa ngoại đằng nào cũng chặn câu lệnh,
+  // nhưng người gọi phải nhận câu về quyền của trigger này — không phải được đi tiếp tới ràng buộc phía sau.
+  const qlKhoaLa = await duoi(UID.qlA, `update noi_dung_cong_bo set khoa = 'khong_co_khoa_nay' where id = $1 returning id`, [idThuongGo]);
+  ok('Quản lý chuyển dòng đã gỡ sang một khóa KHÔNG có trong sổ → từ chối bằng câu "chỉ chủ sở hữu", không đi tiếp tới khóa ngoại',
+     biChan(qlKhoaLa, CAU_SUA_CHU('khong_co_khoa_nay')), ketQua(qlKhoaLa));
+  // Chiều ngược lại: người được công bố khóa đó vẫn sửa được cột bất kỳ — ở đây là cột vừa thêm.
+  const chuCotMoi = await duoi(UID.chu, `update noi_dung_cong_bo set thu_cot_them_sau = 'chủ ghi' where id = $1 returning id`, [idChuCu]);
+  const qlCotMoi = await duoi(UID.qlA, `update noi_dung_cong_bo set thu_cot_them_sau = 'quản lý ghi' where id = $1 returning id`, [idThuongGo]);
+  ok('…chủ (khóa chỉ chủ) và quản lý (khóa thường) thì ghi được cột thêm sau của dòng đã gỡ', duocMot(chuCotMoi) && duocMot(qlCotMoi), `${ketQua(chuCotMoi)} · ${ketQua(qlCotMoi)}`);
 });
 
 // ===========================================================================
