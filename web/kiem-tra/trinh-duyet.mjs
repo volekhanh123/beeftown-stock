@@ -97,7 +97,7 @@ import { setTimeout as cho } from 'node:timers/promises';
 import { chromium } from 'playwright';
 import { MAU_META, moChromium, ghiPixel, docHangDoi, suKienTrong } from './chan-meta.mjs';
 import { TEN_DIA_CHI_KHAC, SO_NHA_KHAC, PHUONG_QUAN, CAU_THANG, boPhapNhan } from './mau-dia-diem.mjs';
-import { doGiaoDien, PHEP_DO } from './do-giao-dien.mjs';
+import { choDungYen, doGiaoDien, PHEP_DO } from './do-giao-dien.mjs';
 import { WEB, batMayChuBanBuild, tatMayChu } from './may-chu-ban-build.mjs';
 
 // Meta Pixel (nhóm 12): ID và mã gốc đọc từ chính thư viện của trang — crm/test/test-cong-khai-meta-pixel.mjs so mã gốc
@@ -120,6 +120,16 @@ function ok(ten, dieuKien, chiTiet = '') {
     console.log(`  \x1b[31m✗ ${ten}\x1b[0m${chiTiet ? ` — ${chiTiet}` : ''}`);
   }
   return dieuKien;
+}
+/**
+ * Chờ trang đứng yên trước khi tự đọc màu sau một cú di chuột, chạm, bấm (do-giao-dien.mjs: choDungYen — chờ có điều
+ * kiện, không chờ cứng). Quá hạn mà còn chuyển màu chạy thì báo đỏ ngay, kể tên thuộc tính còn chạy: đọc màu nửa chừng
+ * có thể vẫn "khác màu trước" và lọt qua phép kiểm. Đứng yên thì không thêm dòng nào.
+ */
+const LAY_CON_CHAY = `(async () => (await (${choDungYen})()).map(a => typeof a === 'string' ? a : a.transitionProperty ?? a.animationName ?? 'hoạt cảnh'))()`;
+async function dungYen(page, nhan) {
+  const conChay = await page.evaluate(LAY_CON_CHAY);
+  if (conChay.length) ok(`${nhan}: trang đứng yên trong hạn chờ trước khi đọc màu`, false, `còn chạy: ${conChay.slice(0, 5).join(', ')}`);
 }
 async function nhom(ten, fn) {
   console.log(`\n\x1b[1m${ten}\x1b[0m`);
@@ -1420,7 +1430,8 @@ try {
             continue;
           }
           await nut.click();
-          await cho(300);   // nút đổi màu trong 180ms — đo sau khi chuyển màu xong
+          // Nút đổi màu trong 180ms: doGiaoDien bên dưới tự chờ chuyển màu xong (choDungYen); mấy phép đọc trước nó (đang
+          // mở, thấy mục, chữ trên nút) không phụ thuộc màu — không chờ cứng.
           const tot = [
             ok(`${nhan}: bấm nút danh mục → mở, thấy các mục`, await mo() === true && await thayMuc()),
             ok(`${nhan}: đang mở thì nút là nút đóng, ghi "${NHAN_MENU[nn].dong}"`, await chuNut() === NHAN_MENU[nn].dong, await chuNut()),
@@ -1603,10 +1614,11 @@ try {
           if (!ok(`${nhan}: thấy ${ten} (${chon})`, await el.count() > 0 && await el.isVisible())) continue;
           await page.mouse.move(0, 0);
           await el.scrollIntoViewIfNeeded();
-          await cho(250);
+          // Phần tử vừa rời con trỏ, trang vừa cuộn: chờ mọi chuyển màu (180ms) xong rồi mới đọc — choDungYen, không chờ cứng.
+          await dungYen(page, nhan);
           const truoc = await el.evaluate(kieu);
           await el.hover();
-          await cho(300);   // chuyển màu 180ms
+          await dungYen(page, nhan);   // chuyển sang màu di chuột xong (máy có chuột) rồi mới đọc
           const [dangTren, sau] = [await el.evaluate(e => e.matches(':hover')), await el.evaluate(kieu)];
           if (camUng) {
             ok(`${nhan}: ${ten} — con trỏ đang ở trên (:hover) mà kiểu không đổi`, dangTren && sau === truoc, `:hover ${dangTren} · trước «${truoc}» · sau «${sau}»`);
@@ -1617,15 +1629,20 @@ try {
         if (camUng && rong === 390) {
           // Đúng lỗi được báo: chạm mở rồi chạm đóng nút danh mục, nút phải về màu lúc đóng.
           const nut = page.locator('details.menu-gon summary');
+          // Cú chạm thành cú bấm do trình duyệt tự dựng sau tap() — chờ đúng việc đó (danh mục mở / đóng, có hạn), rồi
+          // chờ nút đổi màu xong (choDungYen). Không chờ cứng: hết hạn mà danh mục chưa đổi thì phép kiểm dưới đỏ.
+          const choDanhMuc = mo => page.waitForFunction(m => document.querySelector('details.menu-gon')?.open === m, mo, { timeout: 5000 }).catch(() => {});
           await page.mouse.move(0, 0);
           await veDau(page);
-          await cho(250);
+          await dungYen(page, nhan);
           const truoc = await nut.evaluate(kieu);
           await nut.tap();
-          await cho(300);
+          await choDanhMuc(true);
+          await dungYen(page, nhan);
           const daMo = await nut.evaluate(s => s.parentElement.open);
           await nut.tap();
-          await cho(400);
+          await choDanhMuc(false);
+          await dungYen(page, nhan);
           const sau = await nut.evaluate(kieu);
           ok(`${nhan}: chạm mở rồi chạm đóng nút danh mục → nút về đúng kiểu lúc đóng`,
              daMo && await nut.evaluate(s => !s.parentElement.open) && sau === truoc, `trước «${truoc}» · sau «${sau}»`);
@@ -1638,12 +1655,12 @@ try {
           if (!(await el.isVisible().catch(() => false))) continue;
           await page.mouse.move(0, 0);
           await el.scrollIntoViewIfNeeded();
-          await cho(250);
+          await dungYen(page, nhan);
           const truoc = await el.evaluate(e => getComputedStyle(e).backgroundColor);
           const hop = await el.boundingBox();
           await page.mouse.move(hop.x + hop.width / 2, hop.y + hop.height / 2);
           await page.mouse.down();
-          await cho(300);
+          await dungYen(page, nhan);   // đang giữ chuột: chuyển sang màu nhấn xong rồi mới đọc
           const [dangNhan, luc] = [await el.evaluate(e => e.matches(':active')), await el.evaluate(e => getComputedStyle(e).backgroundColor)];
           await page.mouse.up();
           ok(`${nhan}: ${ten} — đang nhấn (:active) thì nền đổi màu`, dangNhan && luc !== truoc, `:active ${dangNhan} · trước ${truoc} · lúc nhấn ${luc}`);
@@ -1686,8 +1703,9 @@ try {
                truoc.tranNgang <= 0 && truoc.leTrai !== null && Math.abs(truoc.leTrai - truoc.lePhai) <= 1, JSON.stringify(truoc)),
           ];
           if (rong < 1080) {
+            // Bù thanh cuộn và khoá cuộn chạy ngay trong cú bấm (DauTrang.astro); chờ trang đứng yên rồi mới đo vị trí.
             await page.locator('details.menu-gon summary').click();
-            await cho(300);
+            await dungYen(page, nhan);
             const sau = await do_(page);
             const khoa = await page.evaluate(() => getComputedStyle(document.documentElement).overflowY === 'hidden');
             tot.push(ok(`${nhan}: mở danh mục (trang đã khoá cuộn) — logo, cụm nút bên phải và khung nội dung đứng nguyên chỗ`,
@@ -1696,7 +1714,7 @@ try {
             tot.push(ok(`${nhan}: mở danh mục không sinh cuộn ngang; phần bù bằng đúng bề rộng thanh cuộn vừa mất (${truoc.thanhCuon}px)`,
               sau.tranNgang <= 0 && sau.bu === truoc.thanhCuon, `tràn ${sau.tranNgang}px, bù ${sau.bu}px`));
             await page.keyboard.press('Escape');
-            await cho(200);
+            await dungYen(page, nhan);
             const dongLai = await do_(page);
             tot.push(ok(`${nhan}: đóng danh mục — thanh cuộn trở lại, hết phần bù, mọi thứ vẫn đứng nguyên chỗ`,
               dongLai.thanhCuon === truoc.thanhCuon && dongLai.bu === 0 && dongLai.logo === truoc.logo && dongLai.cumPhai === truoc.cumPhai
