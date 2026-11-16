@@ -14,10 +14,14 @@
  *
  * Sai PIN: câu dễ hiểu (còn N lần / đã khóa tới HH:MM). Không có token nào
  * trong HTML hay URL — ?chon= chỉ là mã nhân sự để hiện ô PIN.
+ *
+ * Mọi lượt POST kết thúc bằng 303 (issue #194, lib/kho/trang.ts guiRoiChuyen):
+ * không lượt nào dựng trang ngay trong trả lời — mục lịch sử như vậy giữ
+ * nguyên PIN vừa gõ trên một máy nhiều người dùng.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
-import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import { moTrangKho, guiRoiChuyen, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import {
   giuMay, khoaMay, moKhoaNguoi, goToiKhoiMay, docManKhoa, layKhoaMay, laVaiMay, gioPhut, DUONG_MAY,
   type ManKhoa,
@@ -36,21 +40,21 @@ const batMay = !!(await layKhoaMay());
 const laMay = laVaiMay(k.nhanSu.vai_tro);
 const dangDung = !!k.may?.nhanSuId && k.may.nhanSuId === k.nhanSu.id;
 
-let bao: KetQua | null = k.bao;
-const form = await docFormGui(Astro);
-if (form) {
+if (Astro.request.method === 'POST') return await guiRoiChuyen(Astro, DUONG_MAY, async form => {
   const viec = String(form.get('viec') ?? '');
   if (viec === 'mo' && laMay) {
     const ns = String(form.get('nhan_su_id') ?? '');
     const kq = await moKhoaNguoi(Astro, ns, String(form.get('pin') ?? '').trim());
-    return chuyenHuong(Astro, kq.ok ? '/noi-bo/kho' : `${DUONG_MAY}${laUuid(ns) ? `?chon=${ns}` : ''}`, kq);
+    return { kq, toi: kq.ok ? '/noi-bo/kho' : `${DUONG_MAY}${laUuid(ns) ? `?chon=${ns}` : ''}` };
   }
-  if (viec === 'khoa' && dangDung) return chuyenHuong(Astro, DUONG_MAY, await khoaMay(Astro, 'bam'));
-  if (viec === 'go' && dangDung) return chuyenHuong(Astro, DUONG_MAY, await goToiKhoiMay(Astro, k.may!));
-  bao = kqHai(false, { vi: 'Việc không hợp lệ. Tải lại trang.', en: 'Invalid action. Reload the page.' });
-} else if (Astro.url.searchParams.get('khoa') === '1' && dangDung) {
+  if (viec === 'khoa' && dangDung) return { kq: await khoaMay(Astro, 'bam') };
+  if (viec === 'go' && dangDung) return { kq: await goToiKhoiMay(Astro, k.may!) };
+  return { kq: kqHai(false, { vi: 'Việc không hợp lệ. Tải lại trang.', en: 'Invalid action. Reload the page.' }) };
+});
+if (Astro.url.searchParams.get('khoa') === '1' && dangDung) {
   return chuyenHuong(Astro, DUONG_MAY, await khoaMay(Astro, 'het_gio'));
 }
+const bao: KetQua | null = k.bao;
 
 // Màn khóa: đọc máy và người đã gắn bằng phiên máy.
 let man: ManKhoa | null = null;

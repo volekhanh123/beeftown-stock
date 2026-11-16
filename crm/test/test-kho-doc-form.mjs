@@ -41,7 +41,9 @@ const { CAU_DOC_FORM_HONG } = await nap('gui-noi-bo.ts').catch(() => ({}));
 const moiFile = d => readdirSync(d, { withFileTypes: true })
   .flatMap(x => x.isDirectory() ? moiFile(join(d, x.name)) : [join(d, x.name)]);
 const trangKho = moiFile(join(SRC, 'pages', 'noi-bo', 'kho')).filter(f => f.endsWith('.astro'));
-const goiDocForm = trangKho.filter(f => /docFormGui\(/.test(readFileSync(f, 'utf8')));
+// Trang đọc thân POST bằng bộ đọc của kho: gọi thẳng docFormGui, hoặc qua guiRoiChuyen (lib/kho/trang.ts — ba trang
+// của máy dùng chung từ đợt 2 của #194: đọc hỏng thì câu báo đi theo bt_kho_bao sang lượt GET, BaoKho hiện nó).
+const goiDocForm = trangKho.filter(f => /docFormGui\(|guiRoiChuyen\(/.test(readFileSync(f, 'utf8')));
 const ten = f => relative(SRC, f);
 
 // ===========================================================================
@@ -87,8 +89,12 @@ await nhom('3 · BaoKho hiện câu đó, không trùng', async () => {
 });
 
 // ===========================================================================
-await nhom(`4 · ${goiDocForm.length} trang gọi docFormGui: đều có BaoKho, không trang nào tự đặt câu`, async () => {
-  ok('Có ít nhất 41 trang kho gọi docFormGui', goiDocForm.length >= 41, String(goiDocForm.length));
+await nhom(`4 · ${goiDocForm.length} trang gọi docFormGui (thẳng hoặc qua guiRoiChuyen): đều có BaoKho, không trang nào tự đặt câu`, async () => {
+  ok('Có ít nhất 41 trang kho gọi docFormGui (thẳng hoặc qua guiRoiChuyen)', goiDocForm.length >= 41, String(goiDocForm.length));
+  const nguonTrang = readFileSync(join(SRC, 'lib', 'kho', 'trang.ts'), 'utf8');
+  const gui = nguonTrang.slice(nguonTrang.indexOf('export async function guiRoiChuyen'));
+  ok('guiRoiChuyen đọc thân bằng docFormGui và đọc hỏng thì báo đúng câu CAU_DOC_FORM_HONG',
+     /const form = await docFormGui\(Astro\);/.test(gui) && /if \(!form\) \{\s*kq = kqHai\(false, CAU_DOC_FORM_HONG\);/.test(gui));
   const thieuBao = goiDocForm.filter(f => !/<BaoKho\b/.test(readFileSync(f, 'utf8')));
   ok('Mọi trang gọi docFormGui đều dựng <BaoKho (nên câu "không đọc được" hiện ra)', thieuBao.length === 0, thieuBao.map(ten).join(', '));
   const tuDat = trangKho.filter(f => /Không đọc được dữ liệu gửi lên/.test(readFileSync(f, 'utf8')));

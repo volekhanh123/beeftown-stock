@@ -502,6 +502,15 @@ phiên đang dùng** (không đọc email từ form) bằng client riêng rồi 
 chưa đổi", Supabase bận thì "đợi rồi thử lại — không phải do sai mật khẩu". Mỗi lần đổi PIN tốn một lượt của hạn
 mức đăng nhập chung — PIN mới sai dạng bị từ chối trước khi tốn lượt đó. Kiểm thử: `test-kho-may-doi-pin.mjs`.
 
+**Lượt gửi form không bao giờ dựng trang tại chỗ** (issue #194, đợt 2). Ba trang của máy — mở máy bằng PIN, gắn
+người / đổi PIN, đăng ký máy — xử lý lượt POST bằng `guiRoiChuyen` (`lib/kho/trang.ts`): lưu được hay không, thân form
+hỏng, việc không hợp lệ, lỗi bất ngờ — đều là 303 sang GET, câu báo qua `bt_kho_bao`. Trang dựng trong trả lời của lượt
+POST là một mục lịch sử giữ nguyên mật khẩu, PIN vừa gõ trên một máy nhiều người dùng. Chữ điền lại (email, tên máy, số
+phút) đi qua cookie `bt_kho_nhap_lai` — dùng một lần, chỉ của đúng trang, sống 60 giây (`ghiNhapLai` / `docNhapLai` trong
+`lib/kho/bao.ts`); ô mật khẩu, PIN không bao giờ. Rời trang nội bộ nào cũng xóa mọi ô mật khẩu / PIN
+(`lib/sau-dang-xuat.js`). Còn lại cho đợt sau: Supabase bận ngay lúc kiểm phiên thì trang "hệ thống đang bận" vẫn là trả
+lời của lượt POST (#194). Kiểm thử: `crm/test/test-kho-may-lich-su.mjs`.
+
 **Sai PIN**: 5 lần liền → khóa người đó 15 phút; 15 lần / 30 phút hoặc 30 lần / 24 giờ (chặn dò chậm) trên một máy (mọi người cộng lại) →
 khóa máy, quản lý mở ở màn Nhân viên & máy. Mọi sự kiện ghi `kho_may_nhat_ky`. `kho_may_nguoi`
 **không có policy SELECT** — PIN băm không đọc được kể cả bằng quyền quản lý.

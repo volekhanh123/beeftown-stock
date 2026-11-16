@@ -309,10 +309,17 @@ await nhom('4 · TRANG ĐĂNG NHẬP (mã nguồn): POST CHỈ CHUYỂN HƯỚNG
   ok('Ô email điền lại email của lần gửi trước (value lấy từ cookie lỗi)', /\bvalue=\{[^}]*email[^}]*\}/.test(oEmail), oEmail.replace(/\s+/g, ' '));
   ok('Ô mật khẩu KHÔNG BAO GIỜ có value', oMatKhau.length > 0 && !/\bvalue=/.test(oMatKhau), oMatKhau.replace(/\s+/g, ' '));
   ok('Câu lỗi vẫn hiện trong khung nb-bao loi', /\{loi && <div class="nb-bao loi"><p>\{loi\}<\/p><\/div>\}/.test(html));
-  const maXoa = html.match(/<script is:inline>([\s\S]*?)<\/script>\s*<\/NoiBo>\s*$/)?.[1] ?? '';
-  ok('RÀ SOÁT VÒNG BỐN: rời trang (pagehide) là xóa mọi ô mật khẩu — đoạn mã đứng cuối trang, ngoài nhánh "có database" (bản build không database cũng có)',
-     /addEventListener\('pagehide'/.test(maXoa) && /querySelectorAll\('input\[type="password"\]'\)/.test(maXoa) && /\.value = ''/.test(maXoa)
-     && !VIET.test(maXoa), maXoa.trim().slice(0, 200) || '(không thấy)');
+  // Rời trang là xóa mọi ô mật khẩu. Đợt 2 của #194 đưa việc này về đoạn mã dùng chung của mọi trang nội bộ
+  // (lib/sau-dang-xuat.js) — khung NoiBo in nó vào <head> ở mọi lượt dựng trang, kể cả bản build không database.
+  // Chạy thật đoạn mã: test-kho-may-lich-su.mjs nhóm 4; trình duyệt thật: trinh-duyet.mjs nhóm 4.
+  const sdx = readFileSync(join(WEB, 'lib', 'sau-dang-xuat.js'), 'utf8');
+  const roi = sdx.slice(sdx.indexOf("window.addEventListener('pagehide'"));
+  const thanRoi = roi.slice(0, roi.indexOf('});') + 3);
+  ok('RÀ SOÁT VÒNG BỐN: rời trang (pagehide) là xóa mọi ô mật khẩu — đoạn mã dùng chung lib/sau-dang-xuat.js; trang đăng nhập dùng khung NoiBo, khung in đoạn mã đó',
+     /<NoiBo\b/.test(html) && /<SauDangXuat \/>/.test(readFileSync(join(WEB, 'layouts', 'NoiBo.astro'), 'utf8'))
+     && /xoaMatKhau\(\);\s*\}\);$/.test(thanRoi)
+     && /querySelectorAll\('input\[type="password"\]'\);\s*for \(var i = 0; i < o\.length; i\+\+\) o\[i\]\.value = '';/.test(sdx),
+     thanRoi.slice(0, 200) || '(không thấy)');
 });
 
 // ===========================================================================
