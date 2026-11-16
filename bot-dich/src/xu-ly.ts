@@ -106,6 +106,16 @@ export function canDich(noiDung: string): boolean {
 
 const CO: Record<NgonNgu, string> = { ko: '🇰🇷', en: '🇬🇧', vi: '🇻🇳' };
 
+/**
+ * Tin trông như do chính bot gửi: bắt đầu bằng cờ của câu trả lời, hoặc là câu báo dịch hỏng. Chốt thứ hai sau
+ * from.is_bot — tài liệu Zalo chưa nói rõ tin bot tự gửi có bị gửi ngược về webhook không, có thì phải chặn
+ * kẻo bot dịch lại bản dịch của mình mãi.
+ */
+export function laTinCuaBot(noiDung: string): boolean {
+  const dau = noiDung.trimStart();
+  return Object.values(CO).some(co => dau.startsWith(`${co} `)) || dau.startsWith(CAU_DICH_HONG.slice(0, 10));
+}
+
 export function dungCauTraLoi(tenNguoiGui: string, dich: NgonNgu, banDich: string): string {
   const ten = tenNguoiGui ? `${tenNguoiGui}: ` : '';
   return `${CO[dich]} ${ten}${banDich.trim()}`;

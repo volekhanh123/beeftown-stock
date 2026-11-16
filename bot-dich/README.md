@@ -42,7 +42,8 @@ Chi phí Claude ước tính (tin chat ngắn: ~250 token vào, ~100 token ra k�
 
 - **Ngôn ngữ nguồn**: chữ Hàn chiếm ≥ 30% số chữ cái → tiếng Hàn; có dấu tiếng Việt → tiếng Việt; còn lại → tiếng Anh.
 - **Ngôn ngữ đích**: tiếng Hàn → `DICH_TIENG_HAN_SANG`; tiếng Anh, tiếng Việt → tiếng Hàn.
-- **Bỏ qua**: sticker, ảnh, tin chỉ có link / số / biểu tượng, tin do bot gửi (tránh vòng lặp).
+- **Bỏ qua**: sticker, ảnh, tin chỉ có link / số / biểu tượng, tin do bot gửi và tin bắt đầu bằng cờ 🇰🇷 / 🇬🇧 / 🇻🇳
+  như bản dịch của bot (tránh bot dịch lại bản dịch của mình nếu Zalo gửi ngược tin của bot về).
 - **Dịch hỏng** (mạng, Claude lỗi, từ chối, trả rỗng): bot gửi "⚠️ Bot chưa dịch được tin này…" bằng hai thứ tiếng —
   không bao giờ gửi bản dịch giả.
 

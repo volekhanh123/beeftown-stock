@@ -223,6 +223,14 @@ test('quyen: không dịch tin do chính bot (hoặc bot khác) gửi — tránh
   assert.equal(goi.length, 0);
 });
 
+test('quyen: không dịch lại tin trông như bản dịch hay câu báo hỏng của bot — chặn vòng lặp kể cả khi Zalo không gắn is_bot', async () => {
+  const { fetchGia, goi } = taoFetchGia();
+  for (const noiDung of ['🇰🇷 Khánh: 내일 봐요!', '🇬🇧 Minho: See you', CAU_DICH_HONG]) {
+    assert.equal(await xuLyTin(docTinZalo(thanWebhook(noiDung))!, ENV_CLAUDE, fetchGia), 'bo-qua');
+  }
+  assert.equal(goi.length, 0);
+});
+
 test('quyen: thân không phải JSON trả 400; đường lạ trả 404', async () => {
   const { fetchGia } = taoFetchGia();
   const hong = await xuLyYeuCau(

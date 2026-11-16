@@ -10,7 +10,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { NgonNgu } from './xu-ly.ts';
 
 export const MO_HINH_MAC_DINH = 'claude-opus-5-5';
-const HET_GIO_MS = 25_000;
+// Worker được chạy tiếp tối đa 30 giây sau khi trả lời Zalo: 12 giây × (1 lần + 1 lần thử lại) còn dư để gửi tin.
+const HET_GIO_MS = 12_000;
 
 const TEN_NGON_NGU: Record<NgonNgu, string> = { en: 'English', ko: 'Korean', vi: 'Vietnamese' };
 

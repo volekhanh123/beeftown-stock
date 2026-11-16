@@ -19,6 +19,7 @@ import {
   doanNgonNgu,
   dungCauTraLoi,
   khoaWebhook,
+  laTinCuaBot,
   ngonNguDich,
   soBiMat,
   type TinZalo,
@@ -59,7 +60,7 @@ export async function xuLyTin(
   fetchFn: HamFetch = fetch,
 ): Promise<'bo-qua' | 'da-dich' | 'dich-hong' | 'gui-hong'> {
   const token = env.ZALO_BOT_TOKEN?.trim();
-  if (!token || tin.laBot) return 'bo-qua';
+  if (!token || tin.laBot || laTinCuaBot(tin.noiDung)) return 'bo-qua';
   const { conLai, coTag } = boTagBot(tin.noiDung, env.TEN_BOT?.trim() || TEN_BOT_MAC_DINH);
   if (tin.laNhom && env.CHI_DICH_KHI_TAG?.trim() === '1' && !coTag) return 'bo-qua';
   if (!canDich(conLai)) return 'bo-qua';
