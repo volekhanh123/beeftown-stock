@@ -75,6 +75,9 @@ await nhom(`2 · ${SAU_TRANG.length} TRANG CRM KHÔNG ĐIỀN LẠI CHỮ: MỌI
     ok(`#194: ${tep} — mọi câu return trong khối POST là chuyển hướng 303 (${cacReturn.length})`,
        cacReturn.length > 0 && cacReturn.every(r => /^return chuyenHuongNoiBo\(/.test(r) || /^return Astro\.redirect\([^;]*, 303\);$/.test(r)),
        cacReturn.filter(r => !/^return chuyenHuongNoiBo\(|^return Astro\.redirect\(/.test(r)).join(' | '));
+    ok(`${tep}: không câu "if (… POST …)" nào khác ngoài khối đó, trừ dòng chuyển hướng 303 một câu`,
+       (docTrang(tep).match(/if \([^)\n]*Astro\.request\.method === 'POST'[^)\n]*\)/g) ?? []).length
+       === 1 + (docTrang(tep).match(/if \([^)\n]*Astro\.request\.method === 'POST'[^)\n]*\) return Astro\.redirect\([^;]*, 303\);/g) ?? []).length);
     ok(`${tep}: không dựng lại form từ chữ của lượt gửi (không form.get trong phần HTML) — nên chuyển hướng không làm mất chữ nào`,
        !/form\??\.get\(/.test(docTrang(tep).slice(docTrang(tep).indexOf('\n---', 4) + 4)));
   }
