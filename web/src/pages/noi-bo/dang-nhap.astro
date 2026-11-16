@@ -10,9 +10,19 @@
  * Khi chưa nối database thì trang này KHÔNG hiện form. Một ô đăng nhập không
  * thể đăng nhập là lời nói dối có thêm bước — cùng lý do đã rút quy tắc 4
  * trong README gốc.
+ *
+ * LƯỢT POST KHÔNG BAO GIỜ DỰNG TRANG (rà soát vòng bốn của PR #188): mọi kết
+ * cục là một lệnh chuyển hướng 303 — vào trong, hoặc về chính trang này bằng
+ * GET; câu lỗi và email đã gõ đi qua một cookie ngắn hạn (lib/phien.ts,
+ * guiFormDangNhap). Trang dựng trong trả lời của lượt POST thì mục lịch sử của
+ * nó giữ nguyên thân form, cả mật khẩu. Cùng lý do: ô mật khẩu không bao giờ
+ * được điền lại, và đoạn mã cuối trang xóa nó lúc rời trang — trình duyệt giữ
+ * trang vừa rời trong bộ nhớ quay lại (bfcache) cùng chữ đã gõ, bấm Quay lại là
+ * hiện lại nguyên ô đó. Đoạn mã đứng ngoài nhánh "có database" để bản build
+ * không database (kiem-tra/trinh-duyet.mjs) cũng có mà thử.
  */
 import NoiBo from '../../layouts/NoiBo.astro';
-import { dangNhap, layPhien, coDatabase } from '../../lib/phien';
+import { layPhien, coDatabase, guiFormDangNhap, docLoiDangNhap, LOI_DANG_NHAP } from '../../lib/phien';
 import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo';
 import { dichCau } from '../../lib/cau-noi-bo';
 
@@ -20,7 +30,6 @@ const nn = nnCua(Astro);
 const t = dichNB(nn, {
   tieuDe:     { vi: 'Đăng nhập',                        en: 'Log in' },
   h1:         { vi: 'Đăng nhập nội bộ',                 en: 'Staff login' },
-  thieu:      { vi: 'Vui lòng điền email và mật khẩu.', en: 'Please enter your email and password.' },
   chuaNoi:    { vi: 'Chưa nối database.',               en: 'No database connected.' },
   chuaNoi1:   { vi: 'Giao diện nội bộ cần một project Supabase đã chạy xong toàn bộ migration trong ',
                 en: 'The internal app needs a Supabase project with every migration in ' },
@@ -39,7 +48,18 @@ const t = dichNB(nn, {
   veCongKhai: { vi: '← Về trang công khai',             en: '← Back to the public site' },
 });
 
-let loi: string | null = null;
+if (Astro.request.method === 'POST') {
+  // Kho là việc hằng ngày của quản lý và chủ (chủ nhà hàng chọn): vào thẳng
+  // "Hôm nay" của kho. Vai chỉ kho đã được /noi-bo chuyển tiếp như cũ.
+  if (await guiFormDangNhap(Astro.cookies, Astro.request)) return Astro.redirect('/noi-bo/kho', 303);
+  return Astro.redirect('/noi-bo/dang-nhap', 303);
+}
+
+// Câu lỗi của lần gửi vừa rồi — đọc một lần (đọc là xóa), kể cả khi ngay dưới
+// đây chuyển thẳng vào trong. Trang mang câu lỗi và email của MỘT lần gửi thì
+// không để bộ đệm giữ: Quay lại / Tiến về đây là xin lại form trống.
+const daGui = Astro.request.method === 'GET' ? docLoiDangNhap(Astro.cookies) : null;
+if (daGui) Astro.response.headers.set('cache-control', 'no-store');
 
 // Đã đăng nhập rồi thì đi thẳng vào trong, không hiện lại form. Supabase bận
 // (layPhien trả QUA_TAI) cũng vào trong: phiên còn nguyên, và trang trong tự
@@ -48,22 +68,7 @@ if (Astro.request.method === 'GET' && coDatabase()) {
   if (await layPhien(Astro.cookies)) return Astro.redirect('/noi-bo', 302);
 }
 
-if (Astro.request.method === 'POST') {
-  const form = await Astro.request.formData();
-  const email = String(form.get('email') ?? '').trim();
-  const matKhau = String(form.get('mat_khau') ?? '');
-
-  if (!email || !matKhau) {
-    loi = t.thieu;
-  } else {
-    const loiDangNhap = await dangNhap(Astro.cookies, email, matKhau);
-    loi = loiDangNhap && dichCau(nn, loiDangNhap);
-    // Kho là việc hằng ngày của quản lý và chủ (chủ nhà hàng chọn): vào thẳng
-    // "Hôm nay" của kho. Vai chỉ kho đã được /noi-bo chuyển tiếp như cũ.
-    if (!loi) return Astro.redirect('/noi-bo/kho', 302);
-  }
-}
-
+const loi = daGui && dichCau(nn, LOI_DANG_NHAP[daGui.ma]);
 const noiDuoc = coDatabase();
 ---
 <NoiBo tieuDe={t.tieuDe}>
@@ -94,7 +99,7 @@ const noiDuoc = coDatabase();
           <input
             type="email" name="email" required autocomplete="username"
             autocapitalize="off" autocorrect="off" spellcheck="false"
-            inputmode="email"
+            inputmode="email" value={daGui?.email || undefined}
           />
         </label>
         <label class="nb-o">
@@ -109,4 +114,10 @@ const noiDuoc = coDatabase();
   <p class="nb-dan" style="margin-top:2rem">
     <a href="/">{t.veCongKhai}</a>
   </p>
+  <script is:inline>
+    window.addEventListener('pagehide', function () {
+      var o = document.querySelectorAll('input[type="password"]');
+      for (var i = 0; i < o.length; i++) o[i].value = '';
+    });
+  </script>
 </NoiBo>

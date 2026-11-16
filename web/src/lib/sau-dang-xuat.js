@@ -35,7 +35,8 @@
  *
  * XIN LẠI TRANG LÀ MỘT LƯỢT GET — location.replace(địa chỉ của trang, bỏ phần sau dấu #) — KHÔNG BAO GIỜ
  * location.reload(). Trang nội
- * bộ báo lỗi của một lần gửi form ngay tại chỗ, trong trả lời của POST (kể cả form đăng nhập); trình duyệt dựng lại
+ * bộ báo lỗi của một lần gửi form ngay tại chỗ, trong trả lời của POST (form đăng nhập thì không còn: lượt POST của
+ * nó luôn trả 303 — lib/phien.ts, guiFormDangNhap; các form khác vẫn vậy); trình duyệt dựng lại
  * trang đó từ bản lưu đệm khi bấm Quay lại, và reload() do MÃ gọi làm nó GỬI LẠI form mà không hỏi (người tự bấm tải
  * lại thì được hỏi). Vòng rà soát bốn (14/11) đo được trên Chromium thật, với bản đầu của lớp "lúc tải": một lần ghi
  * ngoài ý muốn dưới quyền người đăng nhập sau, và một lần đăng nhập lại dưới tên người trước — chỉ bằng nút Quay lại.

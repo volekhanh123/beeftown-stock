@@ -29,7 +29,7 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { AstroCookies } from 'astro';
-import { phanLoaiLoiAuth, laTraLoiTamThoi, ghiQuaTai, QUA_TAI } from './qua-tai.ts';
+import { phanLoaiLoiAuth, laTraLoiTamThoi, ghiQuaTai, QUA_TAI, CAU_DANG_NHAP_TAM } from './qua-tai.ts';
 
 const COOKIE_PHIEN = 'bt_phien';
 const COOKIE_KET_QUA = 'bt_kq';
@@ -219,7 +219,10 @@ export async function layPhien(cookies: AstroCookies): Promise<Phien | null | ty
   return { client, nhanSu: { ...(ns as Omit<NhanSu, 'email'>), email } };
 }
 
-/** Đăng nhập. Trả về câu lỗi tiếng Việt, hoặc null nếu thành công. */
+/**
+ * Đăng nhập. Trả về câu lỗi tiếng Việt, hoặc null nếu thành công. Trang đăng nhập không gọi thẳng hàm này mà qua
+ * guiFormDangNhap ngay dưới — câu trả về phải có mã trong LOI_DANG_NHAP.
+ */
 export async function dangNhap(
   cookies: AstroCookies, email: string, matKhau: string,
 ): Promise<string | null> {
@@ -263,6 +266,115 @@ export async function dangNhap(
     return 'Tài khoản này chưa được nối với nhân sự nào. Liên hệ chủ nhà hàng.';
   }
   return null;
+}
+
+// -----------------------------------------------------------------------------
+// GỬI FORM ĐĂNG NHẬP: POST → 303 → GET (rà soát vòng bốn của PR #188, 14/11/2026)
+// -----------------------------------------------------------------------------
+// Trang báo lỗi dựng ngay trong trả lời của lượt POST thì mục lịch sử của nó là chính lượt POST đó, giữ nguyên thân
+// form — email VÀ mật khẩu — trong trình duyệt; tải lại mục đó là gửi lại form. Nên lượt POST nào của trang đăng nhập
+// cũng kết thúc bằng một lệnh chuyển hướng 303 sang GET: vào trong khi đăng nhập được, về /noi-bo/dang-nhap khi không.
+//
+// Câu lỗi đi qua cookie bt_loi_dang_nhap, KHÔNG qua địa chỉ: HttpOnly, sống 60 giây, chỉ gửi kèm trang đăng nhập, đọc
+// một lần là xóa. Cookie mang MÃ của câu — đọc ra mã lạ thì bỏ, không ai cài được chữ lạ vào trang — và email đã gõ để
+// điền lại; KHÔNG BAO GIỜ mang mật khẩu. Trang đọc được cookie thì đặt no-store: bản có email và câu lỗi của một lần
+// gửi không nằm lại trong bộ đệm.
+//
+// Kiểm: crm/test/test-noi-bo-dang-nhap.mjs; trình duyệt thật: web/kiem-tra/trinh-duyet.mjs nhóm 4 (bản build),
+// web/kiem-tra/thu-day-du.mjs nhóm 14 (đăng nhập sai thật, Supabase Auth giả).
+// -----------------------------------------------------------------------------
+export const COOKIE_LOI_DANG_NHAP = 'bt_loi_dang_nhap';
+const DUONG_DANG_NHAP = '/noi-bo/dang-nhap';
+/** Supabase không nhận email dài hơn thế. Dài hơn thì không điền lại — cookie không phình quá cỡ trình duyệt nhận. */
+const EMAIL_TOI_DA = 254;
+
+/**
+ * Mọi câu trang đăng nhập có thể báo, theo mã: "thieu" của chính trang, còn lại đúng các câu dangNhap trả (kiểm thử đỏ
+ * khi dangNhap trả một câu chưa có mã ở đây). Câu tiếng Việt nguyên văn; bản tiếng Anh ở lib/cau-noi-bo.ts (CAU_EN).
+ */
+export const LOI_DANG_NHAP = {
+  thieu: 'Vui lòng điền email và mật khẩu.',
+  chua_noi_database: 'Chưa nối database. Xem hướng dẫn trong web/README.md.',
+  qua_tai: CAU_DANG_NHAP_TAM.qua_tai.vi,
+  mat_ket_noi: CAU_DANG_NHAP_TAM.mat_ket_noi.vi,
+  sai: 'Email hoặc mật khẩu không đúng.',
+  chua_noi_nhan_su: 'Tài khoản này chưa được nối với nhân sự nào. Liên hệ chủ nhà hàng.',
+} as const satisfies Record<string, string>;
+export type MaLoiDangNhap = keyof typeof LOI_DANG_NHAP;
+
+const MA_CUA_CAU = new Map<string, MaLoiDangNhap>(
+  (Object.keys(LOI_DANG_NHAP) as MaLoiDangNhap[]).map(ma => [LOI_DANG_NHAP[ma], ma]));
+
+function laMaLoiDangNhap(v: unknown): v is MaLoiDangNhap {
+  return typeof v === 'string' && Object.prototype.hasOwnProperty.call(LOI_DANG_NHAP, v);
+}
+
+function ghiLoiDangNhap(cookies: AstroCookies, ma: MaLoiDangNhap, email: string) {
+  try {
+    cookies.set(COOKIE_LOI_DANG_NHAP, JSON.stringify({ ma, email: email.length <= EMAIL_TOI_DA ? email : '' }), {
+      httpOnly: true,
+      secure: (import.meta.env as { PROD?: boolean } | undefined)?.PROD === true,
+      sameSite: 'lax',
+      path: DUONG_DANG_NHAP,
+      maxAge: 60,
+    });
+  } catch { /* không đặt được cookie thì trang sau không có câu lỗi — vẫn là một lượt GET, vẫn không gửi lại gì */ }
+}
+
+/**
+ * Lượt gửi form của trang đăng nhập. Không bao giờ ném lỗi: mọi kết cục là một lệnh chuyển hướng 303 của trang. Trả
+ * true khi đã đăng nhập (trang chuyển vào trong); false khi chưa — câu lỗi và email đã gõ đã nằm trong cookie lỗi, trang
+ * chuyển về GET /noi-bo/dang-nhap để đọc. Mật khẩu chỉ đi tới Supabase.
+ *
+ * `thuDangNhap`: chỗ kiểm thử thay hàm đăng nhập (máy chạy kiểm thử không có database).
+ */
+export async function guiFormDangNhap(
+  cookies: AstroCookies, request: Request,
+  { thuDangNhap = dangNhap }: { thuDangNhap?: typeof dangNhap } = {},
+): Promise<boolean> {
+  let email = '';
+  let matKhau = '';
+  try {
+    const form = await request.formData();
+    email = String(form.get('email') ?? '').trim();
+    matKhau = String(form.get('mat_khau') ?? '');
+  } catch { /* thân form không đọc được: như form trống */ }
+
+  let ma: MaLoiDangNhap = 'thieu';
+  if (email && matKhau) {
+    try {
+      const cau = await thuDangNhap(cookies, email, matKhau);
+      if (cau === null) {
+        // Cookie lỗi cũ còn sót (lượt GET trước không về tới): xóa, để lần sau mở trang đăng nhập không hiện câu cũ.
+        if (cookies.has(COOKIE_LOI_DANG_NHAP)) cookies.delete(COOKIE_LOI_DANG_NHAP, { path: DUONG_DANG_NHAP });
+        return true;
+      }
+      // Câu chưa có mã thì không thể có (kiểm thử chặn); nếu có thì vẫn không nói "sai mật khẩu".
+      ma = MA_CUA_CAU.get(cau) ?? 'mat_ket_noi';
+    } catch (e) {
+      // Lỗi bất ngờ (dựng client hỏng…): như không tới được máy chủ đăng nhập. Nhật ký chỉ ghi loại lỗi, không chữ.
+      ghiQuaTai('đăng nhập', e);
+      ma = 'mat_ket_noi';
+    }
+  }
+  ghiLoiDangNhap(cookies, ma, email);
+  return false;
+}
+
+/**
+ * Câu lỗi của lần gửi form vừa rồi. Đọc MỘT lần: đọc là xóa cookie, tải lại trang là form trống. null = không có, hoặc
+ * giá trị không phải do trang này ghi (không đọc được, mã lạ).
+ */
+export function docLoiDangNhap(cookies: AstroCookies): { ma: MaLoiDangNhap; email: string } | null {
+  let tho: string | undefined;
+  try { tho = cookies.get(COOKIE_LOI_DANG_NHAP)?.value; } catch { return null; }
+  if (tho === undefined) return null;
+  try { cookies.delete(COOKIE_LOI_DANG_NHAP, { path: DUONG_DANG_NHAP }); } catch { /* tự hết hạn sau 60 giây */ }
+  try {
+    const v = JSON.parse(tho) as { ma?: unknown; email?: unknown } | null;
+    if (!v || typeof v !== 'object' || !laMaLoiDangNhap(v.ma)) return null;
+    return { ma: v.ma, email: typeof v.email === 'string' && v.email.length <= EMAIL_TOI_DA ? v.email : '' };
+  } catch { return null; }
 }
 
 /** Đăng xuất không được treo theo Supabase: đợi lượt thu hồi tối đa chừng này rồi trả lời. */

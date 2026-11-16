@@ -6,7 +6,8 @@
  * nhập, biểu tượng, cỡ chữ và lưới) đo NGAY TRÊN TRANG ĐÃ DỰNG, không đọc CSS: một quy tắc CSS viết
  * đúng mà bị quy tắc khác đè thì đọc mã vẫn thấy đúng, còn khách thì thấy sai.
  *
- * doGiaoDien() chạy TRONG trang (page.evaluate) nên phải tự đủ: mọi hằng nằm trong thân hàm. Trả về
+ * page.evaluate(doGiaoDien) chờ trang đứng yên (choDungYen: không đo giữa lúc nút, link đang chuyển màu) rồi đo
+ * (doKhiDungYen). Hai hàm chạy TRONG trang nên phải tự đủ: mọi hằng nằm trong thân hàm. Trả về
  * { tên phép đo: [chỗ sai…] } — mảng rỗng là đạt. PHEP_DO ghi tên từng phép đo cho dòng ok(…).
  *
  * PR 3 (trang chủ và thực đơn) thêm bốn phép đo: anh (ảnh và nhãn "Ảnh minh họa"), nhanKhay (thẻ "Cách đọc
@@ -33,7 +34,55 @@ export const PHEP_DO = {
   logoDungNen: 'logo bộ 21/10/2026 đúng bản cho nền (bản trắng trên đen / đỏ, bản đỏ / đen trên nền sáng), không đặt trên ảnh, không kéo giãn; lockup ≥ 160px, brandmark ≥ 48px; không còn hình của bộ cũ (lớp nen-van-mo, net, trang-tri, net-goc; nền hay mặt nạ trỏ /thuong-hieu/)',
 };
 
-export function doGiaoDien() {
+/**
+ * CHỜ TRANG ĐỨNG YÊN — chạy TRONG trang (page.evaluate), tự đủ. doGiaoDien chờ bằng hàm này ngay trước khi đo; phép
+ * thử nào tự đọc màu ngay sau khi bấm (ô chọn giờ vừa chọn, câu lỗi vừa hiện) thì gọi page.evaluate(choDungYen) trước.
+ *
+ * Nút, link, ô chọn của trang công khai đổi màu bằng chuyển màu (transition 180ms, --nhanh của cong-khai.css). Đọc màu
+ * giữa lúc đang chuyển thì được màu nửa chừng, ngoài bảng — rgb(253, 253, 253) là khung hình đầu của nút phụ đổi từ
+ * trắng sang xám E2 khi con trỏ vừa tới: phép đo đỏ mà trang không sai (thu-day-du.mjs nhóm 12 khi máy bận, 15/11/2026).
+ * Chờ cứng một khoảng cũng không chắc: máy càng bận, chuyển màu càng bắt đầu muộn. Hàm này chờ có điều kiện:
+ *   1. Qua hai khung hình. Bố cục đổi dưới con trỏ đứng yên (hộp chọn vừa mở phủ lên chỗ con trỏ, trang vừa cuộn)
+ *      thì trình duyệt chỉ tính lại :hover ở khung hình kế tiếp — chuyển màu do việc đó sinh ra chưa có trước khung
+ *      hình ấy. Ép bố cục trước, để khung hình đầu tiên đã tính lại được.
+ *   2. Hỏi document.getAnimations() (hàm này tự cập nhật kiểu, nên thấy cả chuyển màu vừa sinh ra): còn hoạt cảnh có hồi
+ *      kết nào đang chạy (chuyển màu, hoạt cảnh CSS không lặp mãi) thì chờ nó xong (Animation.finished), rồi lại bước 1
+ *      — xong chuyển màu này có thể lộ ra chuyển màu khác. Hoạt cảnh lặp mãi không có hồi kết nên không chờ.
+ * Đồng hồ là hoạt cảnh rỗng (không keyframe — không đổi gì trên trang), không phải requestAnimationFrame hay setTimeout:
+ * trong page.evaluate của trang TẮT JavaScript (trinh-duyet.mjs nhóm 5) hai thứ đó không bao giờ chạy, còn
+ * Animation.finished vẫn về. Hạn 5 giây — gần ba mươi lần một lần chuyển màu. Trả về [] khi trang đã đứng yên; quá hạn
+ * thì trả về các hoạt cảnh còn chạy (chuỗi 'không có khung hình mới' nếu trang không vẽ khung hình nào) — doGiaoDien ghi
+ * chúng thành chỗ sai ở MỌI phép đo, nên trang chưa đứng yên không bao giờ đạt, mà các kiểm tra sau vẫn chạy tiếp.
+ */
+export async function choDungYen() {
+  const HAN_MS = 5000, TEN = 'choDungYen';
+  const goc = document.documentElement;
+  const dongHo = ms => Object.assign(goc.animate([], { duration: ms }), { id: TEN });
+  const han = dongHo(HAN_MS);
+  // finally hủy đồng hồ hạn — finished của nó bị từ chối (AbortError): coi như hết hạn, không để lỗi đó lọt ra ngoài.
+  const hetHan = han.finished.then(() => true, () => true);
+  /** true nếu tới hạn trước khi `viec` xong. */
+  const quaHan = viec => Promise.race([viec.then(() => false), hetHan]);
+  try {
+    // Hai khung hình chỉ cần ở lượt đầu: chuyển màu xong không đổi bố cục, nên không sinh :hover mới phải chờ tính lại.
+    goc.getBoundingClientRect();
+    if (await quaHan(dongHo(1).finished) || await quaHan(dongHo(1).finished)) return ['không có khung hình mới'];
+    for (;;) {
+      const dangChay = document.getAnimations().filter(a => a.id !== TEN && a.playState === 'running'
+        && a.timeline === document.timeline && Number.isFinite(a.effect?.getComputedTiming().endTime));
+      if (!dangChay.length) return [];
+      if (await quaHan(Promise.allSettled(dangChay.map(a => a.finished)))) return dangChay;
+    }
+  } finally {
+    han.cancel();
+  }
+}
+
+/**
+ * Mọi phép đo, đồng bộ — chạy trong trang ngay sau choDungYen (doGiaoDien ở cuối file ghép hai hàm). `conChay`: thứ
+ * choDungYen trả về; không rỗng thì mọi phép đo ghi thêm một chỗ sai "trang chưa đứng yên" (mô tả bằng moTa bên dưới).
+ */
+function doKhiDungYen(conChay = []) {
   const RONG = innerWidth;
   const DIEN_THOAI = RONG < 600, MAY_TINH = RONG >= 1024;
   // Lề hai bên của khung trang — chép tay từ THIET-KE.md mục 4 (`--le`): clamp(20px, 5vw, 40px). Tới màn 400px
@@ -903,5 +952,19 @@ export function doGiaoDien() {
   // Nền / mặt nạ trỏ /thuong-hieu/: gom ở vòng duyệt của mục 4 (nenTroThuongHieu).
   kq.logoDungNen.push(...nenTroThuongHieu);
 
+  if (conChay.length) {
+    const ten = a => (typeof a === 'string' ? a
+      : `${a.effect?.target ? moTa(a.effect.target).slice(0, 50) : '(không rõ phần tử)'}${a.effect?.pseudoElement ?? ''} ${a.transitionProperty ?? a.animationName ?? 'hoạt cảnh'}`);
+    const chuaYen = `trang chưa đứng yên sau hạn chờ của choDungYen — còn chạy: ${conChay.slice(0, 5).map(ten).join(' · ')}; số đo có thể là màu nửa chừng`;
+    for (const khoa of Object.keys(kq)) kq[khoa].unshift(chuaYen);
+  }
   return kq;
 }
+
+/**
+ * page.evaluate(doGiaoDien): chờ trang đứng yên rồi đo trong CÙNG một lượt chạy — từ lúc choDungYen thấy không còn gì
+ * chạy tới lúc đo xong không có khung hình nào chen vào, nên không chuyển màu nào kịp bắt đầu giữa chừng. Là chuỗi biểu
+ * thức chứ không phải hàm: hàm đưa vào page.evaluate chỉ mang theo thân của chính nó, không gọi được hàm khác của file
+ * này — ghép mã của hai hàm tự đủ thành một biểu thức thì được. Trả về { tên phép đo: [chỗ sai…] }.
+ */
+export const doGiaoDien = `(async () => (${doKhiDungYen})(await (${choDungYen})()))()`;

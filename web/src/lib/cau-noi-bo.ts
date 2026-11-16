@@ -31,7 +31,9 @@ import { CAU_DANG_NHAP_TAM } from './qua-tai.ts';
 
 /** Câu cố định: đúng từng chữ, kể cả dấu chấm cuối. */
 export const CAU_EN: Readonly<Record<string, string>> = {
-  // lib/phien.ts — đăng nhập
+  // lib/phien.ts — đăng nhập (LOI_DANG_NHAP)
+  'Vui lòng điền email và mật khẩu.':
+    'Please enter your email and password.',
   'Chưa nối database. Xem hướng dẫn trong web/README.md.':
     'No database connected. See web/README.md.',
   'Email hoặc mật khẩu không đúng.':
