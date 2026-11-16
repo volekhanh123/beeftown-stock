@@ -127,6 +127,8 @@ if (duocXem && Astro.request.method === 'POST') {
     if (!error && data === 'da_o_san') return chuyenHuongNoiBo(Astro, { ok: true, cau: t.daO(ten) });
     bao = !error && data === 'nguoi_khac' ? { ok: false, cau: t.daXuLy } : { ok: false, cau: dichCau(nn, error?.message ?? t.khongDoc) };
   }
+  // Không chuyển được cũng 303 về chính trang (issue #194): trang báo lỗi là lượt GET — F5 không gửi lại.
+  return chuyenHuongNoiBo(Astro, bao);
 }
 
 const LOC = ['cho', 'dang', 'xong', 'tat_ca'] as const;

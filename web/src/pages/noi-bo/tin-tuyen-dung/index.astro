@@ -72,28 +72,30 @@ let bao: KetQua | null = docBaoNoiBo(Astro.cookies, Astro.url.pathname);
 
 if (Astro.request.method === 'POST') {
   const form = await docFormNoiBo(Astro.request);
-  if (!form) bao = { ok: false, cau: CAU_DOC_FORM_HONG[nn] };
+  if (!form) return chuyenHuongNoiBo(Astro, { ok: false, cau: CAU_DOC_FORM_HONG[nn] });
 
-  if (form) {
-    const viec = String(form.get('viec') ?? '');
-    const cn = (chonChiNhanh ? String(form.get('chi_nhanh_id') ?? '') : '') || chiNhanhMacDinh;
+  const viec = String(form.get('viec') ?? '');
+  const cn = (chonChiNhanh ? String(form.get('chi_nhanh_id') ?? '') : '') || chiNhanhMacDinh;
 
-    if (!cn) {
-      bao = { ok: false, cau: t.chuaChiNhanh };
-    } else if (viec === 'tao') {
-      const kq = await taoTin(client, form, cn, nn);
-      // Chuyển hướng sau khi tạo: bấm F5 ở màn soạn không tạo thêm tin trùng.
-      if (kq.ok) return Astro.redirect(`/noi-bo/tin-tuyen-dung/${kq.id}?moi=1`, 303);
-      bao = kq;
-    } else if (viec === 'tin_mau') {
-      // Tạo xong thì chuyển hướng 303 (lib/gui-noi-bo.ts): F5 không chạy lại việc tạo tin mẫu.
-      const kq = await taoTinMau(client, cn, nn);
-      if (kq.ok) return chuyenHuongNoiBo(Astro, kq);
-      bao = kq;
-    } else {
-      bao = { ok: false, cau: t.viecSai };
-    }
+  if (!cn) {
+    bao = { ok: false, cau: t.chuaChiNhanh };
+  } else if (viec === 'tao') {
+    const kq = await taoTin(client, form, cn, nn);
+    // Chuyển hướng sau khi tạo: bấm F5 ở màn soạn không tạo thêm tin trùng.
+    if (kq.ok) return Astro.redirect(`/noi-bo/tin-tuyen-dung/${kq.id}?moi=1`, 303);
+    bao = kq;
+  } else if (viec === 'tin_mau') {
+    // Tạo xong thì chuyển hướng 303 (lib/gui-noi-bo.ts): F5 không chạy lại việc tạo tin mẫu.
+    const kq = await taoTinMau(client, cn, nn);
+    if (kq.ok) return chuyenHuongNoiBo(Astro, kq);
+    bao = kq;
+  } else {
+    bao = { ok: false, cau: t.viecSai };
   }
+
+  // Không tạo được cũng 303 về chính trang (issue #194): form tạo tin không điền lại chữ của lượt
+  // gửi — chuyển hướng không làm mất gì, F5 không gửi lại.
+  return chuyenHuongNoiBo(Astro, bao);
 }
 
 let ds: DongTin[] = [];

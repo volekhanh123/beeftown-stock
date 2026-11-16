@@ -93,33 +93,33 @@ const t = dichNB(nn, {
   chayNgay:     { vi: 'Chạy ngay', en: 'Run now' },
 });
 
-// Lưu được thì chuyển hướng 303 về chính trang này (lib/gui-noi-bo.ts): F5 không thêm
-// bàn lần nữa, không chạy lại việc dọn dữ liệu. Không lưu được thì dựng lại trang ngay.
+// Mọi lượt gửi chuyển hướng 303 về chính trang này (lib/gui-noi-bo.ts): F5 không thêm bàn lần
+// nữa, không chạy lại việc dọn dữ liệu. Không lưu được cũng vậy (issue #194) — form của trang dựng
+// lại từ database, không điền lại chữ của lượt gửi, nên chuyển hướng không làm mất gì.
 let bao: KetQua | null = docBaoNoiBo(Astro.cookies, Astro.url.pathname);
 
 if (Astro.request.method === 'POST') {
   const form = await docFormNoiBo(Astro.request);
-  if (!form) bao = { ok: false, cau: CAU_DOC_FORM_HONG[nn] };
+  if (!form) return chuyenHuongNoiBo(Astro, { ok: false, cau: CAU_DOC_FORM_HONG[nn] });
 
-  if (form) {
-    const viec = String(form.get('viec') ?? '');
-    try {
-      const cn = await docChiNhanh(client);
-      if (viec === 'chi_nhanh')        bao = await luuChiNhanh(client, form, cn, nn);
-      else if (viec === 'nhan_dat_ban') bao = await datNhanDatBan(client, form, nn);
-      else if (viec === 'don')         bao = await chayViecDon(client, String(form.get('ham')), nn, laChu);
-      else if (!cn)                    bao = { ok: false, cau: t.chuaCN };
-      else if (viec === 'them_nhieu')  bao = await themNhieuBan(client, form, cn.id, nn);
-      else if (viec === 'them_mot')    bao = await themMotBan(client, form, cn.id, nn);
-      else if (viec === 'ngung')       bao = await doiTrangThaiBan(client, String(form.get('id')), false, nn);
-      else if (viec === 'dung_lai')    bao = await doiTrangThaiBan(client, String(form.get('id')), true, nn);
-      else if (viec === 'xoa')         bao = await xoaBan(client, String(form.get('id')), nn);
-      else                             bao = { ok: false, cau: t.viecSai };
-    } catch (e) {
-      bao = { ok: false, cau: e instanceof Error ? dichCau(nn, e.message) : t.khongLam };
-    }
-    if (bao.ok) return chuyenHuongNoiBo(Astro, bao);
+  const viec = String(form.get('viec') ?? '');
+  try {
+    const cn = await docChiNhanh(client);
+    if (viec === 'chi_nhanh')        bao = await luuChiNhanh(client, form, cn, nn);
+    else if (viec === 'nhan_dat_ban') bao = await datNhanDatBan(client, form, nn);
+    else if (viec === 'don')         bao = await chayViecDon(client, String(form.get('ham')), nn, laChu);
+    else if (!cn)                    bao = { ok: false, cau: t.chuaCN };
+    else if (viec === 'them_nhieu')  bao = await themNhieuBan(client, form, cn.id, nn);
+    else if (viec === 'them_mot')    bao = await themMotBan(client, form, cn.id, nn);
+    else if (viec === 'ngung')       bao = await doiTrangThaiBan(client, String(form.get('id')), false, nn);
+    else if (viec === 'dung_lai')    bao = await doiTrangThaiBan(client, String(form.get('id')), true, nn);
+    else if (viec === 'xoa')         bao = await xoaBan(client, String(form.get('id')), nn);
+    else                             bao = { ok: false, cau: t.viecSai };
+  } catch (e) {
+    bao = { ok: false, cau: e instanceof Error ? dichCau(nn, e.message) : t.khongLam };
   }
+
+  return chuyenHuongNoiBo(Astro, bao);
 }
 
 let chiNhanh: ChiNhanh | null = null;
