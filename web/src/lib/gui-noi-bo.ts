@@ -11,7 +11,7 @@
  *     nó, hay Quay lại / Tiến tới rồi F5, là gửi lại. Sáu trang dựng lại form từ database, không
  *     điền lại chữ nào của lượt gửi, nên chuyển hướng không làm mất gì: dat-ban, don-mua-thit,
  *     tuyen-dung, cai-dat, noi-dung, tin-tuyen-dung/index. Còn dựng tại chỗ khi lỗi — vì điền lại
- *     chữ đã gõ (dài, không vừa một cookie; #194, câu hỏi mở về chỗ giữ chữ đã gõ): thuc-don/[id],
+ *     chữ đã gõ (dài, không vừa một cookie; Khánh quyết 16/11/2026 giữ cách này, #194): thuc-don/[id],
  *     tin-tuyen-dung/[id], ban-le/[id], ban-le/cai-dat, ban-le/index, dao-tao, zalo/chien-dich/moi.
  *     Kiểm thử: crm/test/test-noi-bo-loi-chuyen-huong.mjs.
  *   · Bấm đúp: lần hai tới máy chủ SAU khi lần một đã ghi, và trình duyệt bỏ câu trả lời

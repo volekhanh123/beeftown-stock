@@ -12,7 +12,7 @@
  * câu báo — lỗi cũng vậy — đi theo cookie dùng một lần như câu "đã lưu".
  *
  * Bảy trang CRM có điền lại chữ đã gõ (thực đơn, tin tuyển dụng, bán lẻ, video đào tạo, chiến dịch Zalo) vẫn dựng
- * tại chỗ khi lỗi — chữ dài, không vừa một cookie (#194, câu hỏi mở về chỗ giữ chữ đã gõ).
+ * tại chỗ khi lỗi — chữ dài, không vừa một cookie. Khánh quyết 16/11/2026 giữ cách này (#194).
  *
  * Bất biến:
  *   1. ghiBaoNoiBo: câu báo dài (câu lỗi của database có thể dài) được cắt để cookie luôn vừa giới hạn của trình
