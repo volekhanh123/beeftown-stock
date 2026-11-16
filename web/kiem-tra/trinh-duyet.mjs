@@ -5,6 +5,8 @@
  *     npm run thu-trinh-duyet                    ← build lại, bật wrangler dev trên bản build, chạy thử
  *     npm run thu-trinh-duyet -- --khong-build   ← dùng dist/ có sẵn (CI: bước trước vừa build)
  *     npm run thu-trinh-duyet -- --url https://… ← chạy trên một trang đang chạy thật (chỉ phần xem trang)
+ *     npm run thu-trinh-duyet -- --khong-build --chi 5,7   ← chỉ nhóm 5 và 7 (sửa nhanh một chỗ — CI chạy hết;
+ *                                                            gõ sai số nhóm thì đỏ: kiem-tra/chon-nhom.mjs)
  *
  * Các phép thử khác đọc mã hoặc HTML. File này mở trang trong Chromium thật, ở ba cỡ
  * màn hình, giống khách đứng trước bạt cầm điện thoại — và chạy trên BẢN BUILD qua
@@ -99,6 +101,7 @@ import { MAU_META, moChromium, ghiPixel, docHangDoi, suKienTrong } from './chan-
 import { TEN_DIA_CHI_KHAC, SO_NHA_KHAC, PHUONG_QUAN, CAU_THANG, boPhapNhan } from './mau-dia-diem.mjs';
 import { choDungYen, doGiaoDien, PHEP_DO } from './do-giao-dien.mjs';
 import { WEB, batMayChuBanBuild, tatMayChu } from './may-chu-ban-build.mjs';
+import { taoChonNhom } from './chon-nhom.mjs';
 
 // Meta Pixel (nhóm 12): ID và mã gốc đọc từ chính thư viện của trang — crm/test/test-cong-khai-meta-pixel.mjs so mã gốc
 // đó với bản Meta đưa, đúng từng chữ. Tên trang thì chép quy tắc tay (bản tiếng Việt của đường dẫn, bỏ "/").
@@ -131,7 +134,10 @@ async function dungYen(page, nhan) {
   const conChay = await page.evaluate(LAY_CON_CHAY);
   if (conChay.length) ok(`${nhan}: trang đứng yên trong hạn chờ trước khi đọc màu`, false, `còn chạy: ${conChay.slice(0, 5).join(', ')}`);
 }
+// --chi 5,7: chỉ chạy các nhóm này (chon-nhom.mjs) — sửa nhanh một chỗ; CI chạy hết.
+const CHON_NHOM = taoChonNhom(process.argv);
 async function nhom(ten, fn) {
+  if (!CHON_NHOM.chay(ten)) return;
   console.log(`\n\x1b[1m${ten}\x1b[0m`);
   try { await fn(); } catch (e) { ok(`${ten} chạy được đến cuối`, false, e.stack || e.message); }
 }
@@ -327,6 +333,8 @@ function doTrang() {
 // ---------------------------------------------------------------------------
 const i = process.argv.indexOf('--url');
 const URL_NGOAI = i > -1 ? process.argv[i + 1] : null;
+// --chi gõ sai (thiếu số, có mục không phải số): dừng ngay, chưa build, chưa bật máy chủ.
+if (CHON_NHOM.loi) { console.error(`\x1b[31m${CHON_NHOM.loi}\x1b[0m`); process.exit(1); }
 
 rmSync(ANH_LOI, { recursive: true, force: true });
 // Ctrl+C giữa chừng: may-chu-ban-build.mjs tự tắt wrangler dev (nhóm tiến trình riêng) trước khi thoát.
@@ -2141,12 +2149,16 @@ try {
   await trinhDuyet?.close().catch(() => {});
   tatMayChu(mayChu?.p);
 }
+// --chi xin một số mà không nhóm nào mang số đó được chạy (gõ nhầm, nhóm bị --url bỏ qua): đỏ, không bao giờ đạt suông.
+for (const so of CHON_NHOM.khongCo()) {
+  ok(`--chi: nhóm ${so} được chạy`, false, 'không nhóm nào mang số này được chạy — gõ nhầm số, hay nhóm bị --url bỏ qua');
+}
 
 console.log('\n' + '='.repeat(60));
 if (hong === 0) {
-  console.log(`\x1b[32m\x1b[1mTẤT CẢ ${dat} KIỂM TRA TRÌNH DUYỆT ĐỀU ĐẠT\x1b[0m`);
+  console.log(`\x1b[32m\x1b[1mTẤT CẢ ${dat} KIỂM TRA TRÌNH DUYỆT ĐỀU ĐẠT${CHON_NHOM.ghiChu}\x1b[0m`);
 } else {
-  console.log(`\x1b[31m\x1b[1m${hong} HỎNG / ${dat + hong} KIỂM TRA\x1b[0m`);
+  console.log(`\x1b[31m\x1b[1m${hong} HỎNG / ${dat + hong} KIỂM TRA${CHON_NHOM.ghiChu}\x1b[0m`);
   for (const l of loi) console.log(`  \x1b[31m· ${l}\x1b[0m`);
   if (existsSync(ANH_LOI)) console.log(`Ảnh chụp lúc hỏng: ${ANH_LOI}`);
 }
