@@ -5,7 +5,8 @@
  *     npm run thu-day-du                 ← bật Supabase giả + astro dev, chạy thử
  *     npm run thu-day-du -- --chup       ← chụp thêm toàn trang mọi route × 5 cỡ × (rong, day-du)
  *                                          vào kiem-tra/anh-chup/<kịch bản>/ (không commit)
- *     npm run thu-day-du -- --chi 2,3    ← chỉ chạy nhóm 2 và 3 (sửa nhanh một chỗ)
+ *     npm run thu-day-du -- --chi 2,3    ← chỉ chạy nhóm 2 và 3 (sửa nhanh một chỗ — nhóm 0 luôn chạy, CI chạy
+ *                                          hết; gõ sai số nhóm thì đỏ: kiem-tra/chon-nhom.mjs)
  *
  * trinh-duyet.mjs chạy KHÔNG có database — trạng thái CI giữ đúng nhất. Nhưng phần
  * lớn chỗ hỏng thật nằm ở trạng thái còn lại: Facebook / Maps đã công bố, thực đơn
@@ -105,6 +106,7 @@ import { batMayGia, LIEN_HE_THU, MON_MAU, MON_THU_SUC, DIA_CHI_CONG_BO_THU, NGAY
   menuMuaThitVe, boTaiQuayTheoGu, GIO_NHAN_THU, GIAO_HANG_THU } from './gia-supabase.mjs';
 import { timChuoiCam } from '../src/lib/chuoi-cam.js';
 import { chuHienRa, boTienDaChot } from './chu-hien-ra.mjs';
+import { taoChonNhom } from './chon-nhom.mjs';
 import { choDungYen, doGiaoDien, PHEP_DO } from './do-giao-dien.mjs';
 import { moChromium, ghiPixel, docHangDoi, suKienTrong } from './chan-meta.mjs';
 
@@ -150,12 +152,12 @@ function ok(ten, dieuKien, chiTiet = '') {
   }
   return dieuKien;
 }
-// --chi 1,3: chỉ chạy các nhóm này (nhóm 0 luôn chạy) — để sửa nhanh một chỗ; CI chạy hết.
-const iChi = process.argv.indexOf('--chi');
-const CHI = iChi > -1 ? new Set(process.argv[iChi + 1].split(',').map(s => s.trim())) : null;
+// --chi 1,3: chỉ chạy các nhóm này (chon-nhom.mjs; nhóm 0 luôn chạy) — để sửa nhanh một chỗ; CI chạy hết.
+// Gõ sai (thiếu số, có mục không phải số): dừng ngay, chưa bật Supabase giả hay astro dev.
+const CHON_NHOM = taoChonNhom(process.argv, { luonChay: ['0'] });
+if (CHON_NHOM.loi) { console.error(`\x1b[31m${CHON_NHOM.loi}\x1b[0m`); process.exit(1); }
 async function nhom(ten, fn) {
-  const so = ten.match(/^(\d+)/)?.[1];
-  if (CHI && so !== '0' && !CHI.has(so)) return;
+  if (!CHON_NHOM.chay(ten)) return;
   console.log(`\n\x1b[1m${ten}\x1b[0m`);
   try { await fn(); } catch (e) { ok(`${ten} chạy được đến cuối`, false, e.stack || e.message); }
 }
@@ -2163,12 +2165,14 @@ try {
   tatAstro(mayWeb);
   await mayGia?.dong();
 }
+// --chi xin một số mà không nhóm nào mang số đó được chạy (gõ nhầm, nhóm 6 thiếu --chup): đỏ, không bao giờ đạt suông.
+CHON_NHOM.baoNhomThieu(ok, 'nhóm chỉ chạy kèm cờ khác (nhóm 6: --chup)');
 
 console.log('\n' + '='.repeat(60));
 if (hong === 0) {
-  console.log(`\x1b[32m\x1b[1mTẤT CẢ ${dat} KIỂM TRA TRẠNG THÁI ĐẦY ĐỦ ĐỀU ĐẠT\x1b[0m`);
+  console.log(`\x1b[32m\x1b[1mTẤT CẢ ${dat} KIỂM TRA TRẠNG THÁI ĐẦY ĐỦ ĐỀU ĐẠT${CHON_NHOM.ghiChu}\x1b[0m`);
 } else {
-  console.log(`\x1b[31m\x1b[1m${hong} HỎNG / ${dat + hong} KIỂM TRA\x1b[0m`);
+  console.log(`\x1b[31m\x1b[1m${hong} HỎNG / ${dat + hong} KIỂM TRA${CHON_NHOM.ghiChu}\x1b[0m`);
   for (const l of loi) console.log(`  \x1b[31m· ${l}\x1b[0m`);
   if (existsSync(ANH_LOI)) console.log(`Ảnh chụp lúc hỏng: ${ANH_LOI}`);
   if (mayWeb?.nhatKy?.length) console.log(`\nNhật ký astro dev (cuối):\n${mayWeb.nhatKy.join('').slice(-2000)}`);
