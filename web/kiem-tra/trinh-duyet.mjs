@@ -1377,11 +1377,142 @@ try {
           await coHan(ctxB.close(), 10_000);
         };
 
+        // HỆ THỐNG BẬN LÚC GỬI FORM (issue #194, đợt 3). Supabase bận đúng lúc bấm Lưu thì trả lời của lượt POST là
+        // trang 503 "hệ thống đang bận" (lib/qua-tai.ts, trangQuaTai) — một mục lịch sử giữ nguyên thân form. Trang đó
+        // vẫn là 503 (lượt POST nhận trả lời lỗi thì Chromium GIỮ bản lưu đệm của trang form; trả 303 thì nó bỏ, và
+        // bấm Quay lại phải hỏi máy chủ đang bận — đo 16/11/2026, có và không có bfcache), nhưng tự thay mục của nó bằng
+        // GET /noi-bo/chua-ghi (trangChuaGhi). Bản build không có database nên không bao giờ "bận": cảnh này dựng một máy
+        // chủ nhỏ trả ĐÚNG hai trang mà mã của website dựng (nhập thẳng lib/qua-tai.ts), và một trang form nội bộ mang
+        // đúng đoạn mã của khung (lib/sau-dang-xuat.js). Lời dặn của trang là "bấm Quay lại rồi gửi lại": phải về đúng
+        // form, còn chữ đã gõ (trừ mật khẩu), không hỏi máy chủ. Qua middleware thật, Supabase Auth giả bận:
+        // thu-day-du.mjs nhóm 15.
+        const thuBanLucGui = async () => {
+          // Trang báo trên CHÍNH bản build (Worker): middleware trả nó trước khi hỏi Supabase, nên bản không database
+          // cũng có — 503, no-store, header bảo vệ của /noi-bo, nút "Tải lại trang" về trang trong cookie (lạ → /noi-bo).
+          const bao = await fetch(goc + '/noi-bo/chua-ghi', { redirect: 'manual', headers: { cookie: 'bt_chua_ghi=%2Fnoi-bo%2Fkho%2Fxuat%3Floc%3Da' } });
+          const thanBao = await bao.text();
+          ok('#194: bản build — GET /noi-bo/chua-ghi là trang báo "CHƯA ghi" (503, no-store, không cho nhúng), nút về trang trong cookie',
+             bao.status === 503 && /no-store/.test(bao.headers.get('cache-control') ?? '') && bao.headers.get('x-frame-options') === 'DENY'
+             && thanBao.includes('CHƯA được ghi') && thanBao.includes('<a href="/noi-bo/kho/xuat?loc=a">') && !/<script/i.test(thanBao),
+             `HTTP ${bao.status} · ${bao.headers.get('cache-control')} · ${(thanBao.match(/<a href="[^"]*"/) ?? [''])[0]}`);
+          const baoLa = await (await fetch(goc + '/noi-bo/chua-ghi', { redirect: 'manual', headers: { cookie: 'bt_chua_ghi=%2F%2Fke-la.example%2Fx' } })).text();
+          ok('…cookie lạ (//máy-khác) → nút về /noi-bo', baoLa.includes('<a href="/noi-bo">') && !baoLa.includes('ke-la'));
+          const QT = await import(pathToFileURL(join(WEB, 'src', 'lib', 'qua-tai.ts')).href);
+          const { readFileSync } = await import('node:fs');
+          const maKhung = readFileSync(join(WEB, 'src', 'lib', 'sau-dang-xuat.js'), 'utf8');
+          const MA = maKhung.slice(maKhung.indexOf('(function'));
+          const DUONG_FORM = '/noi-bo/thu-ban';
+          const CHU_GO = 'Thùng 1.000 g — đã cân, 1,5 kg vụn';
+          const MK = 'Mk-thu-ban-' + Date.now();
+          const nhatKyMay = [];   // mọi lượt máy chủ nhận: { cach, duong, than }
+          const { createServer } = await import('node:http');
+          const guiTraLoi = async (res, tl) => {
+            const dau = {};
+            tl.headers.forEach((v, k) => { if (k !== 'set-cookie') dau[k] = v; });
+            const datCookie = tl.headers.getSetCookie();
+            if (datCookie.length) dau['set-cookie'] = datCookie;
+            res.writeHead(tl.status, dau);
+            res.end(Buffer.from(await tl.arrayBuffer()));
+          };
+          const may = createServer((req, res) => {
+            let than = '';
+            req.setEncoding('utf8');
+            req.on('data', c => { than += c; });
+            req.on('end', async () => {
+              try {
+                const u = new URL(req.url, 'http://127.0.0.1');
+                nhatKyMay.push({ cach: req.method, duong: u.pathname + u.search, than });
+                const url = new URL(req.url, `http://${req.headers.host}`);
+                if (u.pathname === DUONG_FORM && req.method === 'POST') return await guiTraLoi(res, QT.trangQuaTai('vi', true, url));
+                if (u.pathname === DUONG_FORM) {
+                  res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'private' });
+                  return res.end(`<!doctype html><html lang="vi"><head><meta charset="utf-8"><script data-dau-phien="">${MA}</script>`
+                    + `<title>Form nội bộ thử</title></head><body><h1 id="form-thu">Form nội bộ thử</h1><form method="POST">`
+                    + `<input name="ghi_chu" id="ghi_chu" type="text"><input name="mat_khau" id="mat_khau" type="password" autocomplete="off">`
+                    + `<button id="nut-luu" type="submit">Lưu</button></form></body></html>`);
+                }
+                if (u.pathname === '/noi-bo/chua-ghi') {
+                  // Như middleware: Astro đọc cookie đã giải mã (decodeURIComponent) rồi mới đưa cho trangChuaGhi.
+                  const tho = (req.headers.cookie ?? '').split(/;\s*/).find(x => x.startsWith('bt_chua_ghi='))?.slice('bt_chua_ghi='.length);
+                  let giaTri; try { giaTri = tho === undefined ? undefined : decodeURIComponent(tho); } catch { giaTri = undefined; }
+                  return await guiTraLoi(res, QT.trangChuaGhi('vi', giaTri));
+                }
+                res.writeHead(404); res.end();
+              } catch (e) { res.writeHead(500, { 'content-type': 'text/plain' }); res.end(String(e?.message ?? e)); }
+            });
+          });
+          await new Promise(xong => may.listen(0, '127.0.0.1', xong));
+          const gocBan = `http://127.0.0.1:${may.address().port}`;
+          const ctxBan = await khongChan.newContext();
+          try {
+            const tab = await ctxBan.newPage();
+            const cdp = await ctxBan.newCDPSession(tab);
+            const hopThoai = [];
+            tab.on('dialog', d => { hopThoai.push(`${d.type()}: ${d.message()}`); d.dismiss().catch(() => {}); });
+            await tab.goto(gocBan + DUONG_FORM, { waitUntil: 'load' });
+            await tab.fill('#ghi_chu', CHU_GO);
+            await tab.fill('#mat_khau', MK);
+            const moc = nhatKyMay.length;
+            await Promise.all([tab.waitForURL(gocBan + '/noi-bo/chua-ghi', { timeout: 15_000 }).catch(() => {}), tab.click('#nut-luu')]);
+            await tab.waitForLoadState('load', { timeout: 10_000 }).catch(() => {});
+            await nghi(500);
+            const guiDi = nhatKyMay.slice(moc);
+            const tom = ds => JSON.stringify(ds.map(l => `${l.cach} ${l.duong}`));
+            ok('Đối chứng: lượt gửi là đúng MỘT lượt POST tới máy chủ, mang chữ đã gõ và mật khẩu (form thật sự được gửi)',
+               guiDi.filter(l => l.cach === 'POST').length === 1 && guiDi[0]?.cach === 'POST' && guiDi[0].than.includes(encodeURIComponent(MK)),
+               tom(guiDi));
+            ok('#194: hệ thống bận lúc gửi — trang 503 của lượt POST tự thay bằng GET /noi-bo/chua-ghi; trang báo nói CHƯA ghi, nút "Tải lại trang" về đúng form',
+               tab.url() === gocBan + '/noi-bo/chua-ghi' && guiDi.at(-1)?.cach === 'GET' && guiDi.at(-1)?.duong === '/noi-bo/chua-ghi'
+               && (await trongTrang(tab, () => document.body.innerText.includes('CHƯA được ghi') && document.querySelector('main a')?.getAttribute('href'))) === DUONG_FORM,
+               `${tab.url()} · ${tom(guiDi)}`);
+            const ls = await coHan(cdp.send('Page.getNavigationHistory')) ?? { entries: [] };
+            ok('#194: …lịch sử không còn mục nào của lượt POST (CDP: không mục form_submit) — F5 trên trang báo không thể gửi lại form',
+               ls.entries.length >= 2 && ls.entries.every(e => e.transitionType !== 'form_submit')
+               && new URL(ls.entries.at(-1).url).pathname === '/noi-bo/chua-ghi' && new URL(ls.entries.at(-2).url).pathname === DUONG_FORM,
+               JSON.stringify(ls.entries.map(e => `${e.url.replace(gocBan, '')} ${e.transitionType}`)));
+
+            // Lời dặn của trang: bấm Quay lại rồi gửi lại.
+            const moc2 = nhatKyMay.length;
+            await trongTrang(tab, () => { history.back(); });
+            await choDen(() => tab.url() === gocBan + DUONG_FORM);
+            await tab.waitForLoadState('load', { timeout: 10_000 }).catch(() => {});
+            await nghi(800);
+            const lui = nhatKyMay.slice(moc2);
+            const oForm = await trongTrang(tab, () => ({
+              form: !!document.getElementById('form-thu'),
+              chu: document.getElementById('ghi_chu')?.value ?? null,
+              mk: document.getElementById('mat_khau')?.value ?? null,
+              hien: document.documentElement.style.visibility,
+            }));
+            ok('#194: bấm Quay lại (lời dặn của trang) — về đúng form, KHÔNG hỏi máy chủ đang bận (bản lưu đệm của trang form còn nguyên)',
+               tab.url() === gocBan + DUONG_FORM && oForm?.form === true && oForm?.hien === '' && lui.length === 0,
+               `${tab.url()} · máy chủ nhận: ${tom(lui)} · ${JSON.stringify({ ...oForm, mk: oForm?.mk === MK ? '(mật khẩu)' : oForm?.mk })}`);
+            ok('#194: …chữ đã gõ còn nguyên (gửi lại không phải gõ lại), ô mật khẩu trống',
+               oForm?.chu === CHU_GO && oForm?.mk === '', JSON.stringify({ ...oForm, mk: oForm?.mk === MK ? '(mật khẩu)' : oForm?.mk }));
+
+            // Tiến tới, F5: chỉ là lượt GET trang báo — không lượt POST nào, mật khẩu không đi ra lần nữa, không hộp thoại.
+            await trongTrang(tab, () => { history.forward(); });
+            await choDen(() => tab.url() === gocBan + '/noi-bo/chua-ghi');
+            await tab.waitForLoadState('load', { timeout: 10_000 }).catch(() => {});
+            await coHan(tab.reload({ waitUntil: 'load' }), 10_000);
+            await nghi(500);
+            const sau = nhatKyMay.slice(moc2);
+            ok('#194: Tiến tới, F5 — không lượt POST nào, mật khẩu không đi ra lần nữa, không hộp thoại "gửi lại biểu mẫu"',
+               sau.length >= 1 && sau.every(l => l.cach === 'GET' && l.duong === '/noi-bo/chua-ghi' && !l.than.includes(MK) && !l.duong.includes(MK))
+               && hopThoai.length === 0 && tab.url() === gocBan + '/noi-bo/chua-ghi',
+               `${tom(sau)} · hộp thoại: ${JSON.stringify(hopThoai)} · ${tab.url()}`);
+          } finally {
+            await coHan(ctxBan.close(), 10_000);
+            await coHan(new Promise(xong => { may.closeAllConnections?.(); may.close(() => xong()); }), 5000);
+          }
+        };
+
         try {
           await chayCoHan('Khối thử trang kết quả gửi form', thuGuiLaiForm, 120_000);
           await chayCoHan('Khối thử trả lời của lượt đăng nhập không thành', thuTraLoiDangNhap, 60_000);
           await chayCoHan('Khối thử lịch sử sau khi đăng nhập không thành', thuLichSuDangNhap, 150_000);
           await chayCoHan('Khối thử xóa ô mật khẩu khi rời trang đăng nhập', thuXoaMatKhau, 60_000);
+          await chayCoHan('Khối thử hệ thống bận lúc gửi form', thuBanLucGui, 90_000);
         } finally {
           await coHan(khongChan.close(), 10_000);
         }

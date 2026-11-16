@@ -21,7 +21,7 @@
 import { defineMiddleware } from 'astro:middleware';
 import type { APIContext, MiddlewareNext } from 'astro';
 import { layPhien, coDatabase, phienVuaKetThuc } from './lib/phien';
-import { QUA_TAI, trangQuaTai } from './lib/qua-tai';
+import { QUA_TAI, trangQuaTai, trangChuaGhi, DUONG_CHUA_GHI, COOKIE_CHUA_GHI } from './lib/qua-tai';
 import { datHeaderNoiBo } from './lib/header-noi-bo';
 import { dichBu, chayNen, denLuotDichBu, VAI_BIEN_TAP } from './lib/ban-dich';
 import { docNgonNguNB, ghiNgonNguNB, laNgonNguNB } from './lib/ngon-ngu-noi-bo';
@@ -53,6 +53,11 @@ async function canhNoiBo(context: APIContext, next: MiddlewareNext, duong: strin
   context.locals.nn = docNgonNguNB(context.cookies);
 
   context.locals.coDatabase = coDatabase();
+
+  // Trang báo "thao tác vừa gửi CHƯA được ghi" (lib/qua-tai.ts): trang "hệ thống đang bận" của một lượt POST tự thay
+  // mục lịch sử của nó bằng trang này (issue #194). Không hỏi Supabase — nó hiện ra đúng lúc Supabase bận — và không
+  // mang gì của phiên hay của form; cookie chỉ cho biết trang vừa gửi, để nút "Tải lại trang" về đúng chỗ.
+  if (duong === DUONG_CHUA_GHI) return trangChuaGhi(context.locals.nn ?? 'vi', context.cookies.get(COOKIE_CHUA_GHI)?.value);
 
   if (MO_CHO_MOI_NGUOI.includes(duong)) return next();
 

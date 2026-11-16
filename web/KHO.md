@@ -510,8 +510,9 @@ POST là một mục lịch sử giữ nguyên mật khẩu, PIN vừa gõ trên
 phút) đi qua cookie `bt_kho_nhap_lai` — dùng một lần, chỉ của đúng trang, sống 60 giây (`ghiNhapLai` / `docNhapLai` trong
 `lib/kho/bao.ts`); ô bí mật không bao giờ — tên ô có một phần là `mat_khau`, `pin` hay `token` bị bỏ cả lúc ghi lẫn
 lúc đọc. Rời trang nội bộ nào cũng xóa mọi ô mật khẩu / PIN
-(`lib/sau-dang-xuat.js`). Còn lại cho đợt sau: Supabase bận ngay lúc kiểm phiên thì trang "hệ thống đang bận" vẫn là trả
-lời của lượt POST (#194). Kiểm thử: `crm/test/test-kho-may-lich-su.mjs`.
+(`lib/sau-dang-xuat.js`). Supabase bận ngay lúc kiểm phiên (`kiemMayChung` gặp `TAM_LOI`) thì trang "hệ thống đang bận"
+của lượt POST tự thay mục lịch sử của nó bằng trang báo GET `/noi-bo/chua-ghi` (`lib/qua-tai.ts`, `trangQuaTai`; #194
+đợt 3). Kiểm thử: `crm/test/test-kho-may-lich-su.mjs`.
 
 **Sai PIN**: 5 lần liền → khóa người đó 15 phút; 15 lần / 30 phút hoặc 30 lần / 24 giờ (chặn dò chậm) trên một máy (mọi người cộng lại) →
 khóa máy, quản lý mở ở màn Nhân viên & máy. Mọi sự kiện ghi `kho_may_nhat_ky`. `kho_may_nguoi`

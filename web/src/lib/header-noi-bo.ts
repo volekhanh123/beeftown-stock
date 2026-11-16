@@ -19,7 +19,9 @@
  * KHÔNG ép "no-store" cho cả khu — cố ý. Trang "hệ thống đang bận" (lib/qua-tai.ts) bảo người vừa gửi form hỏng
  * "bấm nút Quay lại của trình duyệt rồi gửi lại". Thử trong Chromium 14/11/2026: không có no-store thì bấm Quay
  * lại hiện lại đúng form với chữ đang gõ, không hỏi máy chủ; có no-store thì trình duyệt xin lại trang từ máy chủ
- * đang bận, nhận trang "đang bận", form biến mất. Việc "người đến sau không thấy trang của người trước" làm ở đúng
+ * đang bận, nhận trang "đang bận", form biến mất. Trang "đang bận" của lượt POST tự thay mục lịch sử của nó bằng
+ * GET /noi-bo/chua-ghi (issue #194 — mục POST giữ nguyên thân form) nhưng VẪN là 503: trả 303 thì trình duyệt bỏ bản
+ * lưu đệm của trang form, như no-store (đo 16/11/2026). Việc "người đến sau không thấy trang của người trước" làm ở đúng
  * lúc cần: mọi trả lời KẾT THÚC một phiên (đăng xuất, phiên bị từ chối, tài khoản bị khóa — tham số xoaBoDem bên
  * dưới) gửi Clear-Site-Data: "cache" VÀ đổi cookie dấu phiên — mọi trang
  * nội bộ mang một đoạn mã nhỏ (components/SauDangXuat.astro) so dấu đó: phiên đã kết thúc mà trang hiện lại từ bộ
