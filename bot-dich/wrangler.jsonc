@@ -14,7 +14,8 @@
   "vars": {
     "TEN_BOT": "Bot Beeftown Translate",
     "CHI_DICH_KHI_TAG": "0",
-    "DICH_TIENG_HAN_SANG": "en"
+    // Tin tiếng Hàn dịch sang tiếng Việt (Khánh chốt 16/11/2026); "en" để dịch sang tiếng Anh.
+    "DICH_TIENG_HAN_SANG": "vi"
   },
   "observability": { "enabled": true }
 }
