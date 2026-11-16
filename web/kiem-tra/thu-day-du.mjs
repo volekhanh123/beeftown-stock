@@ -1945,7 +1945,7 @@ try {
     // là một lượt POST giữ nguyên thân form (email, mật khẩu). Nay mọi lượt gửi trả 303 về GET /noi-bo/dang-nhap; câu
     // lỗi và email đã gõ đi qua cookie ngắn hạn (lib/phien.ts, guiFormDangNhap). Ở đây là đăng nhập không thành THẬT:
     // đã nối database nên trang hiện form thật, gõ và bấm như nhân viên; Supabase Auth giả trả sai mật khẩu / quá hạn
-    // mức / cắt kết nối (gia-supabase.mjs, dangNhapGia) và ĐẾM số lượt đăng nhập nó nhận — F5, Quay lại, Tiến không
+    // mức / cắt kết nối (gia-supabase.mjs, traLoiAuth) và ĐẾM số lượt đăng nhập nó nhận — F5, Quay lại, Tiến không
     // được thêm lượt nào. Bản build, bfcache, đo ở tầng mạng: trinh-duyet.mjs nhóm 4.
     const { CAU_DANG_NHAP_TAM } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'qua-tai.ts')).href);
     // "Sai mật khẩu" chép tay (câu cũ của trang, phải giữ nguyên chữ); hai câu bận lấy từ nguồn duy nhất của chúng.
