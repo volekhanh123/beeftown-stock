@@ -1379,6 +1379,16 @@ try {
         // form, còn chữ đã gõ (trừ mật khẩu), không hỏi máy chủ. Qua middleware thật, Supabase Auth giả bận:
         // thu-day-du.mjs nhóm 15.
         const thuBanLucGui = async () => {
+          // Trang báo trên CHÍNH bản build (Worker): middleware trả nó trước khi hỏi Supabase, nên bản không database
+          // cũng có — 503, no-store, header bảo vệ của /noi-bo, nút "Tải lại trang" về trang trong cookie (lạ → /noi-bo).
+          const bao = await fetch(goc + '/noi-bo/chua-ghi', { redirect: 'manual', headers: { cookie: 'bt_chua_ghi=%2Fnoi-bo%2Fkho%2Fxuat%3Floc%3Da' } });
+          const thanBao = await bao.text();
+          ok('#194: bản build — GET /noi-bo/chua-ghi là trang báo "CHƯA ghi" (503, no-store, không cho nhúng), nút về trang trong cookie',
+             bao.status === 503 && /no-store/.test(bao.headers.get('cache-control') ?? '') && bao.headers.get('x-frame-options') === 'DENY'
+             && thanBao.includes('CHƯA được ghi') && thanBao.includes('<a href="/noi-bo/kho/xuat?loc=a">') && !/<script/i.test(thanBao),
+             `HTTP ${bao.status} · ${bao.headers.get('cache-control')} · ${(thanBao.match(/<a href="[^"]*"/) ?? [''])[0]}`);
+          const baoLa = await (await fetch(goc + '/noi-bo/chua-ghi', { redirect: 'manual', headers: { cookie: 'bt_chua_ghi=%2F%2Fke-la.example%2Fx' } })).text();
+          ok('…cookie lạ (//máy-khác) → nút về /noi-bo', baoLa.includes('<a href="/noi-bo">') && !baoLa.includes('ke-la'));
           const QT = await import(pathToFileURL(join(WEB, 'src', 'lib', 'qua-tai.ts')).href);
           const { readFileSync } = await import('node:fs');
           const maKhung = readFileSync(join(WEB, 'src', 'lib', 'sau-dang-xuat.js'), 'utf8');

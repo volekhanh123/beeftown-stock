@@ -150,9 +150,12 @@ export function duongNoiBoAnToan(s: unknown): string | null {
   return s;
 }
 
+/** Một câu của trang bận theo ngôn ngữ đang xem, đã thoát HTML. */
+const cauTrang = (nn: NgonNguNB, x: HaiThuTieng) => thoatHtml(x[nn]);
+
 /** Hai đoạn chữ của trang bận: lượt POST (CHƯA ghi — cũng là chữ của trang báo) và lượt GET (tự tải lại). */
 function thanTrang(nn: NgonNguNB, laPost: boolean): string {
-  const c = (x: HaiThuTieng) => thoatHtml(x[nn]);
+  const c = (x: HaiThuTieng) => cauTrang(nn, x);
   return laPost
     ? `<p><strong>${c(CAU_TRANG.chuaGhi)}</strong> ${c(CAU_TRANG.lyDo)}</p>
 <p>${c(CAU_TRANG.khongDangXuat)} ${c(CAU_TRANG.guiLai)}</p>`
@@ -162,7 +165,7 @@ function thanTrang(nn: NgonNguNB, laPost: boolean): string {
 
 /** Khung HTML chung của trang bận và trang báo. `taiLai` đã qua duongNoiBoAnToan; `dauTrang`: dòng thêm vào <head>. */
 function dungTrang(nn: NgonNguNB, than: string, taiLai: string, dauTrang = '', lamMoiSauGiay?: number): string {
-  const c = (x: HaiThuTieng) => thoatHtml(x[nn]);
+  const c = (x: HaiThuTieng) => cauTrang(nn, x);
   return `<!doctype html>
 <html lang="${nn}">
 <head>
