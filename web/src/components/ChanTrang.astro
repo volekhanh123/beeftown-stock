@@ -9,11 +9,16 @@
  *     bò khoét lộ nền đen; guideline trang 4 vẽ bản trắng trên đỏ), các mục điều hướng,
  *     địa chỉ + câu chỉ đường. Một bề mặt một dấu thương hiệu: không tem, không hoa văn
  *     chữ BEEFTOWN chìm sau chữ. Điện thoại: hai nhóm link đứng cạnh nhau thành 2 cột.
+ *     Dưới cùng dải đen: nhóm CHÍNH SÁCH rộng hết hàng — link tới tám trang chính sách (lib/chinh-sach.ts) và
+ *     Quyền riêng tư. Nghị định 248/2026, Điều 17 khoản 1 điểm a: nội dung chính sách phải có link ở màn hình
+ *     chính — chân trang có mặt ở mọi trang công khai (Khánh giao 16/11/2026).
  *  3. Pháp nhân, cùng nền đen, ngăn với dải trên bằng một vạch mảnh (--vien: trắng 22 %).
  *     web/kiem-tra/trinh-duyet.mjs đọc chữ của <footer> ĐẦU
  *     TIÊN trên trang: ngay dưới dòng "© … Beeftown · Beef Specialty Restaurant" phải
  *     là ba dòng pháp nhân (tên · mã số thuế, địa chỉ, điện thoại), đúng từng ký tự —
- *     khớp Thông tin doanh nghiệp trên Meta; mọi <p> trong chân trang phải hiện.
+ *     khớp Thông tin doanh nghiệp trên Meta; mọi <p> trong chân trang phải hiện. Dòng thứ tư là
+ *     email (CHO_TRONG.EMAIL — còn chờ Khánh trả lời). Biểu tượng xác nhận của cơ quan quản lý
+ *     (XAC_NHAN_CO_QUAN) chỉ in khi đã có mã.
  *     Mỗi dòng viết liền trên một dòng mã: compressHTML bỏ dấu cách có xuống dòng
  *     giữa hai nút ("·Beef").
  *
@@ -24,6 +29,8 @@ import { THUONG_HIEU, PHAP_NHAN, chu, dich, duongDanTuongUng } from '../lib/chu'
 import { cumDiaChi, dieuHuong, diaChi, lienHe } from '../lib/trang-cong-khai';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import { namVn } from '../lib/gio-vn';
+import { CHINH_SACH, THU_TU_CHINH_SACH, XAC_NHAN_CO_QUAN } from '../lib/chinh-sach';
+import { CHO_TRONG } from '../lib/cho-trong';
 import BieuTuong from './BieuTuong.astro';
 
 interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; duongDan?: string; }
@@ -40,6 +47,11 @@ const mangXaHoi = [
   { url: lh.tiktok, ten: 'TikTok' },
   { url: lh.zalo, ten: 'Zalo' },
 ].filter((m): m is { url: string; ten: string } => !!m.url);
+// Nhóm CHÍNH SÁCH: tám trang theo THU_TU_CHINH_SACH, Quyền riêng tư đứng cuối.
+const chinhSach = [
+  ...THU_TU_CHINH_SACH.map(k => ({ url: duongDanTuongUng(CHINH_SACH[k].duong, ngonNgu), chu: CHINH_SACH[k].ten[ngonNgu] })),
+  { url: duongDanTuongUng('/quyen-rieng-tu', ngonNgu), chu: t.quyenRiengTu },
+];
 
 const c = dich(ngonNgu, {
   tuyenDungNgan: {
@@ -77,7 +89,6 @@ const c = dich(ngonNgu, {
         <h2 class="ct-tieu-de" id="ct-thong-tin">{t.thongTin}</h2>
         <ul>
           <li><a href={duongDanTuongUng('/tuyen-dung', ngonNgu)}>{t.tuyenDung}</a></li>
-          <li><a href={duongDanTuongUng('/quyen-rieng-tu', ngonNgu)}>{t.quyenRiengTu}</a></li>
           <li><a href={duongDanTuongUng('/xoa-du-lieu', ngonNgu)}>{t.xoaDuLieu}</a></li>
         </ul>
       </nav>
@@ -94,6 +105,13 @@ const c = dich(ngonNgu, {
           </ul>
         )}
       </div>
+
+      <nav class="ct-chinh-sach" aria-labelledby="ct-chinh-sach">
+        <h2 class="ct-tieu-de" id="ct-chinh-sach">{t.chinhSach}</h2>
+        <ul>
+          {chinhSach.map(m => <li><a href={m.url}>{m.chu}</a></li>)}
+        </ul>
+      </nav>
     </div>
   </div>
 
@@ -110,8 +128,12 @@ const c = dich(ngonNgu, {
           <p class="chan-dong"><span class="lien" lang="vi">{PHAP_NHAN.ten}</span> · <span class="lien">{t.maSoThue}: {PHAP_NHAN.maSoThue}</span></p>
           <p class="chan-dong" lang="vi">{PHAP_NHAN.diaChi}</p>
           <p class="chan-dong">{t.dienThoai}: <span class="lien">{PHAP_NHAN.dienThoai}</span></p>
+          <p class="chan-dong">{t.email}: <span class="lien">{CHO_TRONG.EMAIL}</span></p>
         </div>
       </div>
+      {XAC_NHAN_CO_QUAN && (
+        <a class="ct-xac-nhan" href={XAC_NHAN_CO_QUAN.url} rel="noopener"><img src={XAC_NHAN_CO_QUAN.anh} width={XAC_NHAN_CO_QUAN.rong} height={XAC_NHAN_CO_QUAN.cao} alt={XAC_NHAN_CO_QUAN.alt[ngonNgu]} loading="lazy" decoding="async" /></a>
+      )}
       <a href={duongDanTuongUng('/quyen-rieng-tu', ngonNgu)}>{t.quyenRiengTu}</a>
     </div>
   </div>
@@ -150,11 +172,11 @@ const c = dich(ngonNgu, {
     font-size: 14px; line-height: 1.4; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
   }
   .ct-tieu-de:lang(ko) { letter-spacing: .04em; }   /* chữ Hangul không giãn như chữ in hoa Latin */
-  .ct-cot a {
+  .ct-cot a, .ct-chinh-sach a {
     display: inline-flex; align-items: center; min-height: var(--cham);
     font-weight: 600; text-decoration: none;
   }
-  @media (hover: hover) { .ct-cot a:hover { text-decoration: underline; text-underline-offset: .3em; } }
+  @media (hover: hover) { .ct-cot a:hover, .ct-chinh-sach a:hover { text-decoration: underline; text-underline-offset: .3em; } }
   address { font-style: normal; }
   address p { margin: 0 0 var(--k-3); max-width: 36ch; }
   .ct-loi-len { display: flex; gap: var(--k-2); align-items: flex-start; font-size: 15px; }
@@ -162,6 +184,13 @@ const c = dich(ngonNgu, {
   address .lien { white-space: nowrap; }
   .ct-loi-len :global(svg) { width: 24px; height: 24px; flex: none; margin-top: -1px; }
   .ct-mxh { display: flex; flex-wrap: wrap; gap: 0 var(--k-5); }
+  /* Nhóm CHÍNH SÁCH: rộng hết hàng dưới bốn cột, ngăn bằng vạch --vien. Chín link xếp lưới: hai cột từ 360px,
+     nhiều cột trên màn rộng — không thành một cột dài 9 × 48px. Lớp riêng, không phải .ct-cot: phép đo
+     "hai nhóm link đứng cạnh nhau" của do-giao-dien.mjs chỉ nói về hai nhóm Beeftown và Thông tin. */
+  .ct-chinh-sach { grid-column: 1 / -1; padding-top: var(--k-5); border-top: 1px solid var(--vien); }
+  .ct-chinh-sach ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); column-gap: var(--k-5); }
+  /* Máy tính: mỗi link rộng theo chữ, một đến hai hàng — lưới cột đều làm tên dài ("Returns and refunds") gãy dòng. */
+  @media (min-width: 900px) { .ct-chinh-sach ul { display: flex; flex-wrap: wrap; column-gap: var(--k-5); } }
 
   /* --- 3. Pháp nhân -------------------------------------------------------- */
   /* Nền đen, chữ 14px ở mọi dòng; dải cao theo nội dung; ngăn với dải trên bằng vạch --vien. */
@@ -179,4 +208,5 @@ const c = dich(ngonNgu, {
   .phap-nhan { margin-top: var(--k-2); }
   .phap-nhan .chan-dong { color: var(--chu-phu); }
   .phap-nhan .lien { white-space: nowrap; }
+  .ct-xac-nhan img { display: block; height: auto; max-width: 160px; }
 </style>

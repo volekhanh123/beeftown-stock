@@ -235,10 +235,13 @@ export function cauLoiDangKy(e: unknown, nn: NgonNguNB = 'vi'): string {
       en: `Supabase could not send a confirmation email to this address (Supabase's built-in mailer only sends to project members). To fix it: go to ${CHO_EMAIL}, turn off "Confirm email", then create the account again.`,
     });
   }
+  // Cùng một mã (429) cho hai giới hạn của Supabase Auth (internal/api/mail.go): một thư xác nhận mỗi 60 giây cho
+  // một địa chỉ, và số thư mỗi giờ của cả project (máy gửi thư có sẵn: khoảng 2 thư). Câu phải đúng cho cả hai, và
+  // không bảo tắt "Confirm email" — bước thử tay ở web/KHO.md mục 3f giữ nó bật.
   if (la(['over_email_send_rate_limit'], /email rate limit|rate limit.*email/i)) {
     return c({
-      vi: `Supabase đã gửi quá số thư xác nhận cho phép trong một giờ. Cách sửa: vào ${CHO_EMAIL}, tắt "Confirm email", rồi tạo lại (hoặc chờ một giờ).`,
-      en: `Supabase has sent more confirmation emails than allowed in one hour. To fix it: go to ${CHO_EMAIL}, turn off "Confirm email", then create the account again (or wait an hour).`,
+      vi: 'Supabase chưa gửi thư xác nhận vì chạm giới hạn gửi thư. Nếu vừa tạo cùng email này chưa tới một phút thì chờ hơn một phút rồi tạo lại. Đã chờ mà vẫn gặp câu này thì Supabase đã hết lượt gửi thư của giờ này: chờ tới một giờ, hoặc cài SMTP riêng ở Supabase → Authentication → Emails → SMTP Settings.',
+      en: 'Supabase did not send the confirmation email because it hit an email sending limit. If you created an account with this email less than a minute ago, wait more than a minute, then create it again. If you already waited and still see this, Supabase has used up its emails for this hour: wait up to an hour, or set up your own SMTP in Supabase → Authentication → Emails → SMTP Settings.',
     });
   }
   if (la(['over_request_rate_limit'], /rate limit|too many requests/i) || o.status === 429) {
