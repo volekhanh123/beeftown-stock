@@ -5,7 +5,8 @@
  *     npm run thu-day-du                 ← bật Supabase giả + astro dev, chạy thử
  *     npm run thu-day-du -- --chup       ← chụp thêm toàn trang mọi route × 5 cỡ × (rong, day-du)
  *                                          vào kiem-tra/anh-chup/<kịch bản>/ (không commit)
- *     npm run thu-day-du -- --chi 2,3    ← chỉ chạy nhóm 2 và 3 (sửa nhanh một chỗ)
+ *     npm run thu-day-du -- --chi 2,3    ← chỉ chạy nhóm 2 và 3 (sửa nhanh một chỗ — nhóm 0 luôn chạy, CI chạy
+ *                                          hết; gõ sai số nhóm thì đỏ: kiem-tra/chon-nhom.mjs)
  *
  * trinh-duyet.mjs chạy KHÔNG có database — trạng thái CI giữ đúng nhất. Nhưng phần
  * lớn chỗ hỏng thật nằm ở trạng thái còn lại: Facebook / Maps đã công bố, thực đơn
@@ -85,7 +86,11 @@
  *       hạn mức, cắt kết nối; vi và en): lượt POST trả 303, trang báo lỗi là lượt GET không vào bộ đệm, câu lỗi đúng
  *       từng chữ (câu bận nói rõ không phải do sai mật khẩu), email điền lại, ô mật khẩu trống; F5, Quay lại + F5, Tiến
  *       + F5 không gửi lượt POST nào và Supabase không nhận thêm lượt đăng nhập nào; F5 trên trang lỗi là form trống.
- *  15. Khu nội bộ với ĐĂNG NHẬP THẬT qua Supabase Auth giả (gia-supabase.mjs: đăng nhập, /user, làm mới token, /logout
+ *  15. "Hệ thống đang bận" ĐÚNG LÚC GỬI FORM (Supabase Auth giả trả 429 cho lượt kiểm phiên — gia-supabase.mjs,
+ *       traLoiAuth; vi và en): gửi refresh token ở form Cài đặt Zalo → lượt POST nhận trang 503 như cũ, trang đó tự
+ *       thay mục lịch sử của nó bằng GET /noi-bo/chua-ghi (cùng chữ, nút về trang vừa gửi); lịch sử không còn mục nào
+ *       của lượt POST; F5, Quay lại, Tiến + F5 không gửi lại token, trang báo không hỏi Supabase (issue #194, đợt 3).
+ *  16. Khu nội bộ với ĐĂNG NHẬP THẬT qua Supabase Auth giả (gia-supabase.mjs: đăng nhập, /user, làm mới token, /logout
  *       có phạm vi, phiên thu hồi được; bảng nhan_su có một quản lý). Chromium BẢN ĐẦY ĐỦ có bfcache như nhóm 4 của
  *       trinh-duyet.mjs, nhưng không route nào (route tắt bộ nhớ đệm HTTP, và lúc đó chính trình duyệt gửi lại form khi
  *       bấm Quay lại — chan-meta.mjs, moChromiumKhongRoute). Đăng nhập bằng form; trang NoiBo (/noi-bo/dao-tao) và trang
@@ -113,6 +118,7 @@ import { batMayGia, LIEN_HE_THU, MON_MAU, MON_THU_SUC, DIA_CHI_CONG_BO_THU, NGAY
   menuMuaThitVe, boTaiQuayTheoGu, GIO_NHAN_THU, GIAO_HANG_THU, NHAN_VIEN_THU, VIDEO_THU } from './gia-supabase.mjs';
 import { timChuoiCam } from '../src/lib/chuoi-cam.js';
 import { chuHienRa, boTienDaChot } from './chu-hien-ra.mjs';
+import { taoChonNhom } from './chon-nhom.mjs';
 import { choDungYen, doGiaoDien, PHEP_DO } from './do-giao-dien.mjs';
 import { moChromium, moChromiumKhongRoute, ghiPixel, docHangDoi, suKienTrong } from './chan-meta.mjs';
 
@@ -137,7 +143,7 @@ const { CHU_DON, dinhDangTien, docGio, nhanGoi, tinhDon } =
   await import(pathToFileURL(join(WEB, 'src', 'lib', 'don-mua-thit.ts')).href);
 const { CAU_DAT_HANG } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'dat-hang-mua-thit.ts')).href);
 const { TEN_GU } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'chon-theo-gu.ts')).href);
-// Khu nội bộ (nhóm 15): câu báo của form sửa video, đọc từ chính thư viện của trang.
+// Khu nội bộ (nhóm 16): câu báo của form sửa video, đọc từ chính thư viện của trang.
 const { CAU: CAU_VIDEO } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'video-dao-tao.ts')).href);
 
 /** Playwright của web/; máy không cài thì dùng bản cài chung của máy. */
@@ -160,12 +166,12 @@ function ok(ten, dieuKien, chiTiet = '') {
   }
   return dieuKien;
 }
-// --chi 1,3: chỉ chạy các nhóm này (nhóm 0 luôn chạy) — để sửa nhanh một chỗ; CI chạy hết.
-const iChi = process.argv.indexOf('--chi');
-const CHI = iChi > -1 ? new Set(process.argv[iChi + 1].split(',').map(s => s.trim())) : null;
+// --chi 1,3: chỉ chạy các nhóm này (chon-nhom.mjs; nhóm 0 luôn chạy) — để sửa nhanh một chỗ; CI chạy hết.
+// Gõ sai (thiếu số, có mục không phải số): dừng ngay, chưa bật Supabase giả hay astro dev.
+const CHON_NHOM = taoChonNhom(process.argv, { luonChay: ['0'] });
+if (CHON_NHOM.loi) { console.error(`\x1b[31m${CHON_NHOM.loi}\x1b[0m`); process.exit(1); }
 async function nhom(ten, fn) {
-  const so = ten.match(/^(\d+)/)?.[1];
-  if (CHI && so !== '0' && !CHI.has(so)) return;
+  if (!CHON_NHOM.chay(ten)) return;
   console.log(`\n\x1b[1m${ten}\x1b[0m`);
   try { await fn(); } catch (e) { ok(`${ten} chạy được đến cuối`, false, e.stack || e.message); }
 }
@@ -1313,6 +1319,17 @@ try {
   // Trang Mua thịt về khi đã nối database — khách đặt thẳng trên website (0113). Supabase giả trả menu thử MENU_THU
   // (giá THỬ) theo kịch bản mua-thit-* và ghi đơn (tao_don_mua_thit). Đơn mong đợi tính bằng CHÍNH lib của trang
   // (don-mua-thit.ts); câu "đã nhận" đọc từ dat-hang-mua-thit.ts. "Hiện / không hiện" đo bằng isVisible().
+  // Câu cạnh nút Đặt hàng (Khánh giao 16/11/2026, hồ sơ thông báo website thương mại điện tử): ba link, chép tay.
+  const LINK_DAT_HANG = {
+    vi: [['/quyen-rieng-tu', 'Quyền riêng tư'], ['/dieu-khoan', 'Điều khoản'], ['/doi-tra-hoan-tien', 'Đổi trả và hoàn tiền']],
+    en: [['/en/privacy', 'Privacy'], ['/en/terms', 'Terms'], ['/en/returns', 'Returns and refunds']],
+    ko: [['/ko/privacy', '개인정보 처리방침'], ['/ko/terms', '이용약관'], ['/ko/returns', '교환·환불']],
+  };
+  const CAU_CHINH_SACH = {
+    vi: { duoi: 'Xem Quyền riêng tư, Điều khoản, Đổi trả và hoàn tiền.' },
+    en: { duoi: 'See Privacy, Terms, Returns and refunds.' },
+    ko: { duoi: '자세한 내용: 개인정보 처리방침, 이용약관, 교환·환불.' },
+  };
   await nhom('12 · MUA THỊT VỀ: CHỌN GÓI, ĐẶT HÀNG, BẤM ĐÚP, TẮT JAVASCRIPT, DATABASE TỪ CHỐI, MẤT MẠNG, BỀ RỘNG', async () => {
     const ba = (vi, en, ko) => ({ vi, en, ko });
     const TAM_HET = ba('Tạm hết ở quầy', 'Sold out at the counter for now', '지금은 매장에 재고가 없어요');
@@ -1479,6 +1496,14 @@ try {
           const phuGio = motDong(await p.locator('.mtv-ba-dieu li').nth(2).locator('.mtv-dieu-phu').innerText().catch(() => ''));
           tot.push(ok(`${nhan}: dải ba điều — ${BA_DIEU[nn].join(' · ')}; dòng phụ thứ ba là giờ giao đã công bố`,
                       JSON.stringify(dieu) === JSON.stringify(BA_DIEU[nn]) && phuGio === motDong(GIO_NHAN_THU[nn]), `${JSON.stringify(dieu)} · ${phuGio}`));
+          // Khánh giao 16/11/2026 · câu cạnh nút Đặt hàng: "Xem Quyền riêng tư, Điều khoản, Đổi trả và hoàn tiền." — ba link
+          // đúng thứ tiếng, chữ liền (không dính ở chỗ ghép). Chép tay, không đọc lib/chinh-sach.ts.
+          const cauCs = p.locator('.mtv-don [data-chinh-sach]');
+          const linkCs = await cauCs.locator('a').evaluateAll(as => as.map(a => [a.getAttribute('href'), a.textContent.trim()]));
+          const chuCs = motDong(await cauCs.innerText().catch(() => ''));
+          tot.push(ok(`${nhan}: câu cạnh nút Đặt hàng kết bằng "${CAU_CHINH_SACH[nn].duoi}", ba link ${LINK_DAT_HANG[nn].map(l => l[0]).join(', ')}`,
+                      JSON.stringify(linkCs) === JSON.stringify(LINK_DAT_HANG[nn]) && chuCs.endsWith(CAU_CHINH_SACH[nn].duoi),
+                      `${chuCs.slice(-120)} · ${JSON.stringify(linkCs)}`));
           // Đợt 3 · nút lọc nhóm (chạy nhờ script): "Kim chi" chỉ còn thẻ kim chi; "Tất cả" hiện lại hết.
           const nutLoc = p.locator('[data-mtv-loc] button');
           const chuLoc = (await nutLoc.allInnerTexts()).map(motDong);
@@ -2014,7 +2039,91 @@ try {
   });
 
   // =========================================================================
-  await nhom('15 · NỘI BỘ: ĐĂNG NHẬP THẬT QUA AUTH GIẢ, BẤM ĐĂNG XUẤT RỒI QUAY LẠI; PHIÊN BỊ THU HỒI RỒI QUAY LẠI VỀ TRANG KẾT QUẢ CỦA FORM', async () => {
+  await nhom('15 · HỆ THỐNG BẬN ĐÚNG LÚC GỬI FORM (Supabase Auth giả bận): LỊCH SỬ KHÔNG CÒN MỤC POST, TOKEN KHÔNG BỊ GỬI LẠI', async () => {
+    // Issue #194, đợt 3. Supabase bận đúng lúc bấm Lưu thì middleware trả trang 503 "hệ thống đang bận" làm trả lời của
+    // lượt POST (lib/qua-tai.ts, trangQuaTai): mục lịch sử đó giữ nguyên thân form — ở đây là refresh token của Zalo
+    // OA. Trang 503 vẫn giữ (lượt POST nhận trả lời lỗi nên trình duyệt còn bản lưu đệm của trang form — lời dặn "bấm
+    // Quay lại rồi gửi lại" đúng; phần đó đo ở trinh-duyet.mjs nhóm 4), nhưng tự thay mục của nó bằng GET
+    // /noi-bo/chua-ghi. Form gửi đi được dựng trên một trang công khai của chính website (trang 404 — không Meta Pixel,
+    // không hỏi Supabase): lúc Supabase bận thì không trang nội bộ nào mở ra được để có form mà bấm. Cookie phiên đặt
+    // thẳng, access token "ban-…" để Supabase Auth giả trả 429 cho lượt kiểm phiên (gia-supabase.mjs, traLoiAuth).
+    const CAU = {
+      vi: { chuaGhi: 'Thao tác vừa gửi CHƯA được ghi.', khongDangXuat: 'Bạn KHÔNG bị đăng xuất.', guiLai: 'Đợi vài giây, bấm nút Quay lại của trình duyệt rồi gửi lại.', taiLai: 'Tải lại trang' },
+      en: { chuaGhi: 'What you just sent was NOT saved.', khongDangXuat: 'You have NOT been logged out.', guiLai: 'Wait a few seconds, press the browser Back button, then send it again.', taiLai: 'Reload the page' },
+    };
+    const DICH = '/noi-bo/zalo/cai-dat';
+    for (const nn of ['vi', 'en']) {
+      const ten = `${nn} · Cài đặt Zalo`;
+      const token = `rt-zalo-thu-${nn}-${Date.now()}-bi-mat-AbCdEf0123456789`;
+      mayGia.datKichBan('day-du');   // xóa bộ đếm
+      const c = await trinhDuyet.newContext({ viewport: { width: 390, height: 844 } });
+      await c.addCookies([
+        { name: 'bt_phien', value: encodeURIComponent(JSON.stringify({ access_token: `ban-${nn}-${Date.now()}`, refresh_token: 'rt-phien-thu' })), url: goc },
+        { name: 'nb_ngon_ngu', value: nn, url: goc + '/noi-bo' },
+      ]);
+      const p = await c.newPage();
+      const cdp = await c.newCDPSession(p);
+      const luot = [];
+      p.on('request', r => {
+        const u = new URL(r.url());
+        if (u.origin === goc) luot.push({ cach: r.method(), duong: u.pathname + u.search, trang: r.isNavigationRequest(), than: r.postData() ?? '' });
+      });
+      const traLoiTrang = [];
+      p.on('response', r => { if (r.request().isNavigationRequest() && new URL(r.url()).origin === goc) traLoiTrang.push({ cach: r.request().method(), duong: new URL(r.url()).pathname, ma: r.status(), dem: r.headers()['cache-control'] ?? '' }); });
+      const hopThoai = [];
+      p.on('dialog', d => { hopThoai.push(d.message()); d.dismiss().catch(() => {}); });
+      const soLanKiemPhien = () => mayGia.dem()['auth:kiem_phien'] ?? 0;
+      const choYen = async () => { await p.waitForLoadState('load').catch(() => {}); await cho(500); };
+
+      const DAU = '/khong-co-trang-nay-thu-ban';
+      await p.goto(goc + DAU, { waitUntil: 'load' });
+      await p.evaluate(({ dich, token }) => {
+        document.body.innerHTML = `<form id="form-thu" method="POST" action="${dich}"><input type="hidden" name="viec" value="token">`
+          + `<input type="password" name="refresh_token" value="${token}"><button id="nut-thu" type="submit">Lưu token</button></form>`;
+      }, { dich: DICH, token });
+      const moc = luot.length;
+      await Promise.all([p.waitForURL(goc + '/noi-bo/chua-ghi', { timeout: 15_000 }).catch(() => {}), p.click('#nut-thu')]);
+      await choYen();
+      const post = luot.slice(moc).filter(l => l.trang && l.cach === 'POST');
+      ok(`${ten}: Supabase Auth giả nhận đúng MỘT lượt kiểm phiên (của lượt POST); trình duyệt gửi đúng một lượt POST, mang token`,
+         soLanKiemPhien() === 1 && post.length === 1 && post[0].duong === DICH && post[0].than.includes(token),
+         `kiểm phiên: ${soLanKiemPhien()} · ${JSON.stringify(luot.slice(moc).filter(l => l.trang).map(l => `${l.cach} ${l.duong}`))}`);
+      if (!ok(`${ten}: #194 — lượt POST nhận trang 503 như cũ, rồi trang đó tự thay bằng GET /noi-bo/chua-ghi (503, no-store)`,
+         JSON.stringify(traLoiTrang.slice(-2).map(t => `${t.cach} ${t.duong} ${t.ma}`)) === JSON.stringify([`POST ${DICH} 503`, 'GET /noi-bo/chua-ghi 503'])
+         && /no-store/.test(traLoiTrang.at(-1)?.dem ?? '') && p.url() === goc + '/noi-bo/chua-ghi', `${JSON.stringify(traLoiTrang)} · ${p.url()}`)) {
+        await chupLoi(`ban-luc-gui-${nn}`);
+      }
+      const trang = await p.evaluate(() => ({ chu: document.body?.innerText ?? '', link: document.querySelector('main a')?.getAttribute('href') ?? null, lang: document.documentElement.lang })).catch(() => ({}));
+      ok(`${ten}: trang báo nói đúng từng chữ (${nn}): CHƯA ghi, KHÔNG bị đăng xuất, bấm Quay lại rồi gửi lại; nút "${CAU[nn].taiLai}" về ${DICH}`,
+         Object.values(CAU[nn]).every(x => (trang.chu ?? '').includes(x)) && trang.link === DICH && trang.lang === nn, JSON.stringify(trang));
+      ok(`${ten}: token không nằm ở đâu trong trang báo`, !(await p.content().catch(() => token)).includes(token));
+      const ls = await cdp.send('Page.getNavigationHistory').catch(() => ({ entries: [] }));
+      ok(`${ten}: #194 — lịch sử không còn mục nào của lượt POST (không mục form_submit, không mục ${DICH}): Quay lại là về trang trước, F5 không gửi lại form`,
+         ls.entries.length >= 2 && ls.entries.every(e => e.transitionType !== 'form_submit' && new URL(e.url).pathname !== DICH)
+         && new URL(ls.entries.at(-1).url).pathname === '/noi-bo/chua-ghi',
+         JSON.stringify(ls.entries.map(e => `${e.url.replace(goc, '')} ${e.transitionType}`)));
+
+      // F5 trên trang báo, Quay lại, Tiến + F5: không lượt POST nào, token không đi ra lần nữa, Supabase không bị hỏi thêm.
+      const moc2 = luot.length;
+      await p.reload({ waitUntil: 'load' }).catch(() => {}); await choYen();
+      await p.evaluate(() => history.back()).catch(() => {}); await choYen();
+      const sauLui = p.url();
+      await p.evaluate(() => history.forward()).catch(() => {}); await choYen();
+      await p.reload({ waitUntil: 'load' }).catch(() => {}); await choYen();
+      const sau = luot.slice(moc2);
+      ok(`${ten}: #194 — F5, Quay lại, Tiến + F5: không lượt POST nào, token không đi ra lần nào nữa, trang báo không hỏi Supabase, không hộp thoại`,
+         sau.filter(l => l.trang).length >= 3 && sau.every(l => l.cach !== 'POST' && !l.than.includes(token) && !l.duong.includes(token))
+         && soLanKiemPhien() === 1 && hopThoai.length === 0,
+         `kiểm phiên: ${soLanKiemPhien()} · ${JSON.stringify(sau.filter(l => l.trang).map(l => `${l.cach} ${l.duong}`))} · hộp thoại: ${JSON.stringify(hopThoai)}`);
+      ok(`${ten}: Quay lại từ trang báo về đúng trang có form (${DAU}), Tiến tới lại là trang báo`,
+         sauLui === goc + DAU && p.url() === goc + '/noi-bo/chua-ghi', `${sauLui} → ${p.url()}`);
+      await c.close();
+    }
+    mayGia.datKichBan('day-du');
+  });
+
+  // =========================================================================
+  await nhom('16 · NỘI BỘ: ĐĂNG NHẬP THẬT QUA AUTH GIẢ, BẤM ĐĂNG XUẤT RỒI QUAY LẠI; PHIÊN BỊ THU HỒI RỒI QUAY LẠI VỀ TRANG KẾT QUẢ CỦA FORM', async () => {
     // Cùng phép đo với nhóm 4 của trinh-duyet.mjs (bản build, không database: form Đăng xuất dựng tay trên trang đăng
     // nhập), ở đây với đăng nhập thật và trang nội bộ thật. Chromium BẢN ĐẦY ĐỦ (channel 'chromium', bỏ cờ
     // --disable-back-forward-cache của Playwright): bản rút gọn không có bfcache. KHÔNG route nào (moChromiumKhongRoute):
@@ -2393,7 +2502,7 @@ try {
         thuNoiBo().then(() => 'xong'),
         new Promise(xong => { henKhoi = setTimeout(() => xong('het-han'), 240_000); }),
       ]);
-      if (ketCuc !== 'xong') ok('Nhóm 15 chạy xong trong 4 phút (không treo)', false, 'một lời gọi vào trình duyệt không trả lời');
+      if (ketCuc !== 'xong') ok('Nhóm 16 chạy xong trong 4 phút (không treo)', false, 'một lời gọi vào trình duyệt không trả lời');
     } finally {
       clearTimeout(henKhoi);
       await coHan(trinhDuyetBoNho.close(), 10_000);
@@ -2457,12 +2566,14 @@ try {
   tatAstro(mayWeb);
   await mayGia?.dong();
 }
+// --chi xin một số mà không nhóm nào mang số đó được chạy (gõ nhầm, nhóm 6 thiếu --chup): đỏ, không bao giờ đạt suông.
+CHON_NHOM.baoNhomThieu(ok, 'nhóm chỉ chạy kèm cờ khác (nhóm 6: --chup)');
 
 console.log('\n' + '='.repeat(60));
 if (hong === 0) {
-  console.log(`\x1b[32m\x1b[1mTẤT CẢ ${dat} KIỂM TRA TRẠNG THÁI ĐẦY ĐỦ ĐỀU ĐẠT\x1b[0m`);
+  console.log(`\x1b[32m\x1b[1mTẤT CẢ ${dat} KIỂM TRA TRẠNG THÁI ĐẦY ĐỦ ĐỀU ĐẠT${CHON_NHOM.ghiChu}\x1b[0m`);
 } else {
-  console.log(`\x1b[31m\x1b[1m${hong} HỎNG / ${dat + hong} KIỂM TRA\x1b[0m`);
+  console.log(`\x1b[31m\x1b[1m${hong} HỎNG / ${dat + hong} KIỂM TRA${CHON_NHOM.ghiChu}\x1b[0m`);
   for (const l of loi) console.log(`  \x1b[31m· ${l}\x1b[0m`);
   if (existsSync(ANH_LOI)) console.log(`Ảnh chụp lúc hỏng: ${ANH_LOI}`);
   if (mayWeb?.nhatKy?.length) console.log(`\nNhật ký astro dev (cuối):\n${mayWeb.nhatKy.join('').slice(-2000)}`);

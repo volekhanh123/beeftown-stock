@@ -30,7 +30,7 @@ import Kho from '../../../layouts/Kho.astro';
 import BaoKho from '../../../components/kho/BaoKho.astro';
 import QuetMa from '../../../components/kho/QuetMa.astro';
 import BieuTuong from '../../../components/kho/BieuTuong.astro';
-import { moTrangKho, docFormGui, chuyenHuong } from '../../../lib/kho/trang.ts';
+import { moTrangKho, docFormGui, ketThucPost } from '../../../lib/kho/trang.ts';
 import { docCaiDat, docMatHang, type MatHang } from '../../../lib/kho/danh-muc.ts';
 import { docTon, viecVoiLo, type DongTon } from '../../../lib/kho/ton.ts';
 import { docPhienPhaMo, linkTheKho, themNhanVaoPhienPha, type PhienPhaMo } from '../../../lib/kho/the-kho.ts';
@@ -40,8 +40,8 @@ import { docGiaoOMaCan, docMaTrenNhan, type GiaoOMa } from '../../../lib/kho/o-m
 import { chuTang, docLoTang, soTangChu } from '../../../lib/kho/tang.ts';
 import { viecChoNhan } from '../../../lib/kho/quet-nhan.ts';
 import {
-  cauLoiKho, chuTinhTrangHan, dinhDangKg, dinhDangNgay, homNayVn, kqHai, laUuid, nhanKho, TEN_LOAI_VI_TRI_NB,
-  type HaiThuTieng, type KetQua,
+  cauLoiKho, chuTinhTrangHan, dinhDangKg, dinhDangNgay, homNayVn, kqHai, laUuid, LOI_KHO_CHUNG, nhanKho, TEN_LOAI_VI_TRI_NB,
+  type HaiThuTieng,
 } from '../../../lib/kho/chung.ts';
 import { dichNB } from '../../../lib/ngon-ngu-noi-bo.ts';
 
@@ -102,17 +102,18 @@ const maNhap = tachDanhSachMa(String(q.get('ma') ?? q.get('ma_quet') ?? ''))[0] 
 const vanHanh = k.duoc('van_hanh');
 const laQuay = k.nhanSu.vai_tro === 'nhan_vien_quay';
 
-// "Thêm vào phiên pha": POST về chính trang này (giữ ?ma=), thành công thì mở phiên.
-let bao: KetQua | null = k.bao;
+// "Thêm vào phiên pha": POST về chính trang này (giữ ?ma=), thành công thì mở phiên. Lượt gửi nào cũng kết thúc bằng 303
+// (#194, đợt 5): không thêm được thì câu lỗi đi theo cookie về chính trang (giữ ?ma=) — trang dựng lại từ ?ma= và
+// database, không điền lại chữ nào của lượt gửi. Vai không pha lóc mà vẫn gửi (trang cũ còn mở): nói rõ không có quyền.
 const form = await docFormGui(Astro);
-if (form && k.duoc('pha_loc')) {
+if (Astro.request.method === 'POST') return ketThucPost(Astro, form, Astro.url.pathname + Astro.url.search, async form => {
+  if (!k.duoc('pha_loc')) return { kq: kqHai(false, LOI_KHO_CHUNG.quyen) };
   const phienId = String(form.get('phien_id') ?? '');
   const kq = String(form.get('viec') ?? '') === 'them_pha'
     ? await themNhanVaoPhienPha(k.client, phienId, String(form.get('ma_gui') ?? ''), String(form.get('ma') ?? ''))
     : kqHai(false, CAU.viecSai);
-  if (kq.ok && laUuid(phienId)) return chuyenHuong(Astro, `/noi-bo/kho/pha-loc/${phienId}`, kq);
-  bao = kq;
-}
+  return { kq, toi: kq.ok && laUuid(phienId) ? `/noi-bo/kho/pha-loc/${phienId}` : undefined };
+});
 
 let loiDoc = k.loiDoc;
 let phienMo: PhienPhaMo[] = [];
@@ -209,7 +210,7 @@ const maGui = crypto.randomUUID();
 ---
 <Kho k={k} tieuDe={t.tieuDe} huongDan="quet-nhan">
   <h1>{t.tieuDe}</h1>
-  <BaoKho bao={bao} loiDoc={loiDoc} />
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   <form method="GET" class="nb-the">
     <QuetMa nhan={t.xemMon} goiY={t.goiY} tuFocus />

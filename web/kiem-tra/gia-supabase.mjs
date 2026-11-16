@@ -79,12 +79,14 @@
  *
  * GET /__dem → { tên hàm: số lần gọi } — để kiểm "bấm đúp → tao_dat_ban đúng một lần". Lượt đọc / ghi bảng đếm theo
  * "<cách> <bảng>" ("GET nhan_su", "PATCH video_dao_tao"); mọi lượt gọi /auth/v1/token (đăng nhập, cả đổi refresh
- * token) đếm dưới tên 'auth:dang_nhap' — lượt đó vào /__nhat-ky chỉ kèm grant_type và email.
+ * token) đếm dưới tên 'auth:dang_nhap' — lượt đó vào /__nhat-ky chỉ kèm grant_type và email; mọi lượt gọi
+ * /auth/v1/user (kiểm phiên) đếm dưới tên 'auth:kiem_phien' — vào /__nhat-ky chỉ kèm token có phải "ban-…" không.
  * GET /__nhat-ky → 200 lần gọi gần nhất { ham, thamSo }.
  *
- * /noi-bo — ĐĂNG NHẬP (thu-day-du.mjs nhóm 14: đăng nhập không thành; nhóm 15: đăng nhập thật). Server này còn đóng
- * vai Supabase Auth và vài bảng, đủ để lib/phien.ts đăng nhập, mở trang nội bộ và đăng xuất như với Supabase thật —
- * trước đây mỗi vòng rà soát nút Quay lại sau khi đăng xuất phải tự dựng một Auth giả ngoài repo:
+ * /noi-bo — ĐĂNG NHẬP (thu-day-du.mjs nhóm 14: đăng nhập không thành; nhóm 15: Supabase bận đúng lúc gửi form; nhóm
+ * 16: đăng nhập thật). Server này còn đóng vai Supabase Auth và vài bảng, đủ để lib/phien.ts đăng nhập, mở trang nội
+ * bộ và đăng xuất như với Supabase thật — trước đây mỗi vòng rà soát nút Quay lại sau khi đăng xuất phải tự dựng một
+ * Auth giả ngoài repo:
  *
  *   POST /auth/v1/token?grant_type=password        email + mật khẩu của NHAN_VIEN_THU → phiên mới: access token hạn
  *                                                   một giờ, refresh token dùng một lần; sai → 400 invalid_credentials.
@@ -97,8 +99,11 @@
  *                                                   xoay refresh token). Trong 10 giây đầu sau lần dùng, dùng lại được trả
  *                                                   đúng cặp mới đã cấp — như khoảng cho dùng lại của bản thật, để hai lượt
  *                                                   mở trang song song cùng làm mới không thành đăng xuất
- *   GET  /auth/v1/user                              người của access token. Hết hạn → 403 bad_jwt; phiên đã thu hồi →
- *                                                   403 session_not_found (supabase-js đổi thành AuthSessionMissingError)
+ *   GET  /auth/v1/user                              người của access token. Hết hạn hay token lạ → 403 bad_jwt; phiên đã
+ *                                                   thu hồi → 403 session_not_found (supabase-js đổi thành
+ *                                                   AuthSessionMissingError). Mọi kịch bản, token bắt đầu bằng "ban-" →
+ *                                                   429 over_request_rate_limit (Supabase bận đúng lúc kiểm phiên: layPhien
+ *                                                   trả QUA_TAI)
  *   POST /auth/v1/logout?scope=local|global|others  thu hồi phiên của token gửi lên / mọi phiên của người đó / mọi phiên
  *                                                   trừ phiên này (bỏ trống = global); 204. Token hỏng → như /user
  *
@@ -1002,7 +1007,22 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
           return traAuth(400, { code: 'validation_failed', message: 'unsupported_grant_type' });
         }
 
+        if (cua === 'user') {
+          // Mọi lượt kiểm phiên (auth.getUser của layPhien — mọi lượt xin trang nội bộ) đếm dưới tên 'auth:kiem_phien' và
+          // vào nhật ký chung chỉ kèm "token có phải ban-… không": thu-day-du.mjs nhóm 15 kiểm "trang báo bận không hỏi
+          // Supabase". Không bao giờ ghi token.
+          dem['auth:kiem_phien'] = (dem['auth:kiem_phien'] ?? 0) + 1;
+          nhatKy.push({ ham: 'auth:kiem_phien', thamSo: { ban: the.startsWith('ban-') } });
+          if (nhatKy.length > 200) nhatKy.shift();
+        }
+
         if (cua === 'user' && req.method === 'GET') {
+          // Supabase bận đúng lúc kiểm phiên (nhóm 15) — mọi kịch bản, access token "ban-…" quyết định: layPhien trả
+          // QUA_TAI, middleware trả trang "hệ thống đang bận".
+          if (the.startsWith('ban-')) {
+            ghi({ cua, phien: null, status: 429 });
+            return traAuth(429, { code: 'over_request_rate_limit', message: 'Request rate limit reached' });
+          }
           const k = kiemToken(the);
           ghi({ cua, phien: truyCap.get(the)?.phienId ?? null, status: k.loi ? k.loi[0] : 200 });
           return k.loi ? traAuth(...k.loi) : traAuth(200, nguoiDungAuth());

@@ -5,6 +5,8 @@
  *     npm run thu-trinh-duyet                    ← build lại, bật wrangler dev trên bản build, chạy thử
  *     npm run thu-trinh-duyet -- --khong-build   ← dùng dist/ có sẵn (CI: bước trước vừa build)
  *     npm run thu-trinh-duyet -- --url https://… ← chạy trên một trang đang chạy thật (chỉ phần xem trang)
+ *     npm run thu-trinh-duyet -- --khong-build --chi 5,7   ← chỉ nhóm 5 và 7 (sửa nhanh một chỗ — CI chạy hết;
+ *                                                            gõ sai số nhóm thì đỏ: kiem-tra/chon-nhom.mjs)
  *
  * Các phép thử khác đọc mã hoặc HTML. File này mở trang trong Chromium thật, ở ba cỡ
  * màn hình, giống khách đứng trước bạt cầm điện thoại — và chạy trên BẢN BUILD qua
@@ -97,8 +99,9 @@ import { setTimeout as cho } from 'node:timers/promises';
 import { chromium } from 'playwright';
 import { MAU_META, moChromium, ghiPixel, docHangDoi, suKienTrong } from './chan-meta.mjs';
 import { TEN_DIA_CHI_KHAC, SO_NHA_KHAC, PHUONG_QUAN, CAU_THANG, boPhapNhan } from './mau-dia-diem.mjs';
-import { doGiaoDien, PHEP_DO } from './do-giao-dien.mjs';
+import { choDungYen, doGiaoDien, PHEP_DO } from './do-giao-dien.mjs';
 import { WEB, batMayChuBanBuild, tatMayChu } from './may-chu-ban-build.mjs';
+import { taoChonNhom } from './chon-nhom.mjs';
 
 // Meta Pixel (nhóm 12): ID và mã gốc đọc từ chính thư viện của trang — crm/test/test-cong-khai-meta-pixel.mjs so mã gốc
 // đó với bản Meta đưa, đúng từng chữ. Tên trang thì chép quy tắc tay (bản tiếng Việt của đường dẫn, bỏ "/").
@@ -121,7 +124,20 @@ function ok(ten, dieuKien, chiTiet = '') {
   }
   return dieuKien;
 }
+/**
+ * Chờ trang đứng yên trước khi tự đọc màu sau một cú di chuột, chạm, bấm (do-giao-dien.mjs: choDungYen — chờ có điều
+ * kiện, không chờ cứng). Quá hạn mà còn chuyển màu chạy thì báo đỏ ngay, kể tên thuộc tính còn chạy: đọc màu nửa chừng
+ * có thể vẫn "khác màu trước" và lọt qua phép kiểm. Đứng yên thì không thêm dòng nào.
+ */
+const LAY_CON_CHAY = `(async () => (await (${choDungYen})()).map(a => typeof a === 'string' ? a : a.transitionProperty ?? a.animationName ?? 'hoạt cảnh'))()`;
+async function dungYen(page, nhan) {
+  const conChay = await page.evaluate(LAY_CON_CHAY);
+  if (conChay.length) ok(`${nhan}: trang đứng yên trong hạn chờ trước khi đọc màu`, false, `còn chạy: ${conChay.slice(0, 5).join(', ')}`);
+}
+// --chi 5,7: chỉ chạy các nhóm này (chon-nhom.mjs) — sửa nhanh một chỗ; CI chạy hết.
+const CHON_NHOM = taoChonNhom(process.argv);
 async function nhom(ten, fn) {
+  if (!CHON_NHOM.chay(ten)) return;
   console.log(`\n\x1b[1m${ten}\x1b[0m`);
   try { await fn(); } catch (e) { ok(`${ten} chạy được đến cuối`, false, e.stack || e.message); }
 }
@@ -131,10 +147,15 @@ async function nhom(ten, fn) {
 // ---------------------------------------------------------------------------
 const batMayChu = () => batMayChuBanBuild({ cong: CONG, khongBuild: process.argv.includes('--khong-build') });
 
+// Danh sách cố định có đủ mọi trang của CAP_DUONG_DAN, gồm tám trang chính sách (lib/chinh-sach.ts): sitemap hỏng
+// thì vẫn thử đủ (crm/test/test-cong-khai-quet-gia.mjs nhóm 5 giữ).
 async function danhSachTrang(goc) {
   const bo = new Set(['/', '/thuc-don', '/mua-thit-ve', '/den-beeftown', '/dat-ban', '/tuyen-dung', '/quyen-rieng-tu', '/xoa-du-lieu',
+    '/dieu-khoan', '/chinh-sach-gia', '/thanh-toan', '/giao-hang', '/doi-tra-hoan-tien', '/khieu-nai', '/dieu-kien-ban-hang', '/ho-tro',
     '/en', '/en/menu', '/en/buy-meat', '/en/visit', '/en/book', '/en/jobs', '/en/privacy', '/en/data-deletion',
-    '/ko', '/ko/menu', '/ko/buy-meat', '/ko/visit', '/ko/book', '/ko/jobs', '/ko/privacy', '/ko/data-deletion']);
+    '/en/terms', '/en/pricing', '/en/payment', '/en/delivery', '/en/returns', '/en/complaints', '/en/conditions', '/en/support',
+    '/ko', '/ko/menu', '/ko/buy-meat', '/ko/visit', '/ko/book', '/ko/jobs', '/ko/privacy', '/ko/data-deletion',
+    '/ko/terms', '/ko/pricing', '/ko/payment', '/ko/delivery', '/ko/returns', '/ko/complaints', '/ko/conditions', '/ko/support']);
   try {
     const xml = await (await fetch(new URL('/sitemap.xml', goc))).text();
     for (const m of xml.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/g)) bo.add(new URL(m[1]).pathname);
@@ -158,6 +179,14 @@ const dongPhapNhan = nn => [
   '53 Võ Trường Toản, Phường An Khánh, Thành phố Hồ Chí Minh',
   `${NHAN_DIEN_THOAI[nn]}: 0961 245 124`,
 ];
+// Dòng thứ tư dưới dòng ©: email (Khánh giao 16/11/2026; địa chỉ email còn chờ trả lời — chỉ so nhãn).
+const NHAN_EMAIL = { vi: 'Email', en: 'Email', ko: '이메일' };
+// Nhóm CHÍNH SÁCH của chân trang: tám trang chính sách rồi Quyền riêng tư, đúng thứ tự, đúng thứ tiếng. Chép tay.
+const LINK_CHINH_SACH = {
+  vi: ['/dieu-khoan', '/chinh-sach-gia', '/thanh-toan', '/giao-hang', '/doi-tra-hoan-tien', '/khieu-nai', '/dieu-kien-ban-hang', '/ho-tro', '/quyen-rieng-tu'],
+  en: ['/en/terms', '/en/pricing', '/en/payment', '/en/delivery', '/en/returns', '/en/complaints', '/en/conditions', '/en/support', '/en/privacy'],
+  ko: ['/ko/terms', '/ko/pricing', '/ko/payment', '/ko/delivery', '/ko/returns', '/ko/complaints', '/ko/conditions', '/ko/support', '/ko/privacy'],
+};
 /** Ba dòng ngay dưới dòng ©, đúng thứ tự. */
 const coPhapNhan = (dongChan, iBanQuyen, phapNhan) =>
   iBanQuyen > -1 && phapNhan.every((dong, i) => dongChan[iBanQuyen + 1 + i] === dong);
@@ -304,6 +333,8 @@ function doTrang() {
 // ---------------------------------------------------------------------------
 const i = process.argv.indexOf('--url');
 const URL_NGOAI = i > -1 ? process.argv[i + 1] : null;
+// --chi gõ sai (thiếu số, có mục không phải số): dừng ngay, chưa build, chưa bật máy chủ.
+if (CHON_NHOM.loi) { console.error(`\x1b[31m${CHON_NHOM.loi}\x1b[0m`); process.exit(1); }
 
 rmSync(ANH_LOI, { recursive: true, force: true });
 // Ctrl+C giữa chừng: may-chu-ban-build.mjs tự tắt wrangler dev (nhóm tiến trình riêng) trước khi thoát.
@@ -345,6 +376,7 @@ try {
             // innerText: chỉ chữ thật sự hiện ra (ảnh, chữ bị ẩn không có ở đây), mỗi khối một dòng.
             dongChan: (chan?.innerText ?? '').split('\n').map(s => s.trim()).filter(Boolean),
             coChan: !!chan,
+            linkChinhSach: [...(chan?.querySelectorAll('nav[aria-labelledby="ct-chinh-sach"] a') ?? [])].map(a => a.getAttribute('href')),
             // Có chữ trong HTML mà không đọc được thì cũng như không: bị ẩn, khung rỗng, chữ dưới 14px.
             chanAn: !!chan && [...chan.querySelectorAll('p')].some(p => {
               const k = p.getBoundingClientRect();
@@ -374,6 +406,10 @@ try {
              kq.coChan && !kq.chanAn && coPhapNhan(kq.dongChan, iBanQuyen, phapNhan),
              !kq.coChan ? 'trang không có <footer>'
                : kq.chanAn ? 'một dòng chân trang bị ẩn hoặc chữ dưới 14px' : JSON.stringify(kq.dongChan)),
+          ok(`${nhan}: chân trang — dòng "${NHAN_EMAIL[ngonNguCua(duong)]}: …" ngay dưới số điện thoại pháp nhân; nhóm Chính sách đủ 9 link đúng thứ tự, đúng thứ tiếng`,
+             iBanQuyen > -1 && (kq.dongChan[iBanQuyen + 4] ?? '').startsWith(`${NHAN_EMAIL[ngonNguCua(duong)]}: `)
+               && JSON.stringify(kq.linkChinhSach) === JSON.stringify(LINK_CHINH_SACH[ngonNguCua(duong)]),
+             `${kq.dongChan[iBanQuyen + 4] ?? '(không có dòng)'} · ${kq.linkChinhSach.join(' ')}`),
           ok(`${nhan}: đúng một <h1>`, them.soH1 === 1, `${them.soH1} thẻ h1`),
           ok(`${nhan}: mọi <img> có width, height, alt`, !them.anhThieu.length, them.anhThieu.slice(0, 3).join(' | ')),
           ok(`${nhan}: ảnh minh họa dưới màn hình đầu có loading="lazy"`, !them.anhKhongLazy.length, them.anhKhongLazy.slice(0, 3).join(' | ')),
@@ -1341,11 +1377,281 @@ try {
           await coHan(ctxB.close(), 10_000);
         };
 
+        // HỆ THỐNG BẬN LÚC GỬI FORM (issue #194, đợt 3). Supabase bận đúng lúc bấm Lưu thì trả lời của lượt POST là
+        // trang 503 "hệ thống đang bận" (lib/qua-tai.ts, trangQuaTai) — một mục lịch sử giữ nguyên thân form. Trang đó
+        // vẫn là 503 (lượt POST nhận trả lời lỗi thì Chromium GIỮ bản lưu đệm của trang form; trả 303 thì nó bỏ, và
+        // bấm Quay lại phải hỏi máy chủ đang bận — đo 16/11/2026, có và không có bfcache), nhưng tự thay mục của nó bằng
+        // GET /noi-bo/chua-ghi (trangChuaGhi). Bản build không có database nên không bao giờ "bận": cảnh này dựng một máy
+        // chủ nhỏ trả ĐÚNG hai trang mà mã của website dựng (nhập thẳng lib/qua-tai.ts), và một trang form nội bộ mang
+        // đúng đoạn mã của khung (lib/sau-dang-xuat.js). Lời dặn của trang là "bấm Quay lại rồi gửi lại": phải về đúng
+        // form, còn chữ đã gõ (trừ mật khẩu), không hỏi máy chủ. Qua middleware thật, Supabase Auth giả bận:
+        // thu-day-du.mjs nhóm 15.
+        const thuBanLucGui = async () => {
+          // Trang báo trên CHÍNH bản build (Worker): middleware trả nó trước khi hỏi Supabase, nên bản không database
+          // cũng có — 503, no-store, header bảo vệ của /noi-bo, nút "Tải lại trang" về trang trong cookie (lạ → /noi-bo).
+          const bao = await fetch(goc + '/noi-bo/chua-ghi', { redirect: 'manual', headers: { cookie: 'bt_chua_ghi=%2Fnoi-bo%2Fkho%2Fxuat%3Floc%3Da' } });
+          const thanBao = await bao.text();
+          ok('#194: bản build — GET /noi-bo/chua-ghi là trang báo "CHƯA ghi" (503, no-store, không cho nhúng), nút về trang trong cookie',
+             bao.status === 503 && /no-store/.test(bao.headers.get('cache-control') ?? '') && bao.headers.get('x-frame-options') === 'DENY'
+             && thanBao.includes('CHƯA được ghi') && thanBao.includes('<a href="/noi-bo/kho/xuat?loc=a">') && !/<script/i.test(thanBao),
+             `HTTP ${bao.status} · ${bao.headers.get('cache-control')} · ${(thanBao.match(/<a href="[^"]*"/) ?? [''])[0]}`);
+          const baoLa = await (await fetch(goc + '/noi-bo/chua-ghi', { redirect: 'manual', headers: { cookie: 'bt_chua_ghi=%2F%2Fke-la.example%2Fx' } })).text();
+          ok('…cookie lạ (//máy-khác) → nút về /noi-bo', baoLa.includes('<a href="/noi-bo">') && !baoLa.includes('ke-la'));
+          const QT = await import(pathToFileURL(join(WEB, 'src', 'lib', 'qua-tai.ts')).href);
+          const { readFileSync } = await import('node:fs');
+          const maKhung = readFileSync(join(WEB, 'src', 'lib', 'sau-dang-xuat.js'), 'utf8');
+          const MA = maKhung.slice(maKhung.indexOf('(function'));
+          const DUONG_FORM = '/noi-bo/thu-ban';
+          const CHU_GO = 'Thùng 1.000 g — đã cân, 1,5 kg vụn';
+          const MK = 'Mk-thu-ban-' + Date.now();
+          const nhatKyMay = [];   // mọi lượt máy chủ nhận: { cach, duong, than }
+          const { createServer } = await import('node:http');
+          const guiTraLoi = async (res, tl) => {
+            const dau = {};
+            tl.headers.forEach((v, k) => { if (k !== 'set-cookie') dau[k] = v; });
+            const datCookie = tl.headers.getSetCookie();
+            if (datCookie.length) dau['set-cookie'] = datCookie;
+            res.writeHead(tl.status, dau);
+            res.end(Buffer.from(await tl.arrayBuffer()));
+          };
+          const may = createServer((req, res) => {
+            let than = '';
+            req.setEncoding('utf8');
+            req.on('data', c => { than += c; });
+            req.on('end', async () => {
+              try {
+                const u = new URL(req.url, 'http://127.0.0.1');
+                nhatKyMay.push({ cach: req.method, duong: u.pathname + u.search, than });
+                const url = new URL(req.url, `http://${req.headers.host}`);
+                if (u.pathname === DUONG_FORM && req.method === 'POST') return await guiTraLoi(res, QT.trangQuaTai('vi', true, url));
+                if (u.pathname === DUONG_FORM) {
+                  res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'private' });
+                  return res.end(`<!doctype html><html lang="vi"><head><meta charset="utf-8"><script data-dau-phien="">${MA}</script>`
+                    + `<title>Form nội bộ thử</title></head><body><h1 id="form-thu">Form nội bộ thử</h1><form method="POST">`
+                    + `<input name="ghi_chu" id="ghi_chu" type="text"><input name="mat_khau" id="mat_khau" type="password" autocomplete="off">`
+                    + `<button id="nut-luu" type="submit">Lưu</button></form></body></html>`);
+                }
+                if (u.pathname === '/noi-bo/chua-ghi') {
+                  // Như middleware: Astro đọc cookie đã giải mã (decodeURIComponent) rồi mới đưa cho trangChuaGhi.
+                  const tho = (req.headers.cookie ?? '').split(/;\s*/).find(x => x.startsWith('bt_chua_ghi='))?.slice('bt_chua_ghi='.length);
+                  let giaTri; try { giaTri = tho === undefined ? undefined : decodeURIComponent(tho); } catch { giaTri = undefined; }
+                  return await guiTraLoi(res, QT.trangChuaGhi('vi', giaTri));
+                }
+                res.writeHead(404); res.end();
+              } catch (e) { res.writeHead(500, { 'content-type': 'text/plain' }); res.end(String(e?.message ?? e)); }
+            });
+          });
+          await new Promise(xong => may.listen(0, '127.0.0.1', xong));
+          const gocBan = `http://127.0.0.1:${may.address().port}`;
+          const ctxBan = await khongChan.newContext();
+          try {
+            const tab = await ctxBan.newPage();
+            const cdp = await ctxBan.newCDPSession(tab);
+            const hopThoai = [];
+            tab.on('dialog', d => { hopThoai.push(`${d.type()}: ${d.message()}`); d.dismiss().catch(() => {}); });
+            await tab.goto(gocBan + DUONG_FORM, { waitUntil: 'load' });
+            await tab.fill('#ghi_chu', CHU_GO);
+            await tab.fill('#mat_khau', MK);
+            const moc = nhatKyMay.length;
+            await Promise.all([tab.waitForURL(gocBan + '/noi-bo/chua-ghi', { timeout: 15_000 }).catch(() => {}), tab.click('#nut-luu')]);
+            await tab.waitForLoadState('load', { timeout: 10_000 }).catch(() => {});
+            await nghi(500);
+            const guiDi = nhatKyMay.slice(moc);
+            const tom = ds => JSON.stringify(ds.map(l => `${l.cach} ${l.duong}`));
+            ok('Đối chứng: lượt gửi là đúng MỘT lượt POST tới máy chủ, mang chữ đã gõ và mật khẩu (form thật sự được gửi)',
+               guiDi.filter(l => l.cach === 'POST').length === 1 && guiDi[0]?.cach === 'POST' && guiDi[0].than.includes(encodeURIComponent(MK)),
+               tom(guiDi));
+            ok('#194: hệ thống bận lúc gửi — trang 503 của lượt POST tự thay bằng GET /noi-bo/chua-ghi; trang báo nói CHƯA ghi, nút "Tải lại trang" về đúng form',
+               tab.url() === gocBan + '/noi-bo/chua-ghi' && guiDi.at(-1)?.cach === 'GET' && guiDi.at(-1)?.duong === '/noi-bo/chua-ghi'
+               && (await trongTrang(tab, () => document.body.innerText.includes('CHƯA được ghi') && document.querySelector('main a')?.getAttribute('href'))) === DUONG_FORM,
+               `${tab.url()} · ${tom(guiDi)}`);
+            const ls = await coHan(cdp.send('Page.getNavigationHistory')) ?? { entries: [] };
+            ok('#194: …lịch sử không còn mục nào của lượt POST (CDP: không mục form_submit) — F5 trên trang báo không thể gửi lại form',
+               ls.entries.length >= 2 && ls.entries.every(e => e.transitionType !== 'form_submit')
+               && new URL(ls.entries.at(-1).url).pathname === '/noi-bo/chua-ghi' && new URL(ls.entries.at(-2).url).pathname === DUONG_FORM,
+               JSON.stringify(ls.entries.map(e => `${e.url.replace(gocBan, '')} ${e.transitionType}`)));
+
+            // Lời dặn của trang: bấm Quay lại rồi gửi lại.
+            const moc2 = nhatKyMay.length;
+            await trongTrang(tab, () => { history.back(); });
+            await choDen(() => tab.url() === gocBan + DUONG_FORM);
+            await tab.waitForLoadState('load', { timeout: 10_000 }).catch(() => {});
+            await nghi(800);
+            const lui = nhatKyMay.slice(moc2);
+            const oForm = await trongTrang(tab, () => ({
+              form: !!document.getElementById('form-thu'),
+              chu: document.getElementById('ghi_chu')?.value ?? null,
+              mk: document.getElementById('mat_khau')?.value ?? null,
+              hien: document.documentElement.style.visibility,
+            }));
+            ok('#194: bấm Quay lại (lời dặn của trang) — về đúng form, KHÔNG hỏi máy chủ đang bận (bản lưu đệm của trang form còn nguyên)',
+               tab.url() === gocBan + DUONG_FORM && oForm?.form === true && oForm?.hien === '' && lui.length === 0,
+               `${tab.url()} · máy chủ nhận: ${tom(lui)} · ${JSON.stringify({ ...oForm, mk: oForm?.mk === MK ? '(mật khẩu)' : oForm?.mk })}`);
+            ok('#194: …chữ đã gõ còn nguyên (gửi lại không phải gõ lại), ô mật khẩu trống',
+               oForm?.chu === CHU_GO && oForm?.mk === '', JSON.stringify({ ...oForm, mk: oForm?.mk === MK ? '(mật khẩu)' : oForm?.mk }));
+
+            // Tiến tới, F5: chỉ là lượt GET trang báo — không lượt POST nào, mật khẩu không đi ra lần nữa, không hộp thoại.
+            await trongTrang(tab, () => { history.forward(); });
+            await choDen(() => tab.url() === gocBan + '/noi-bo/chua-ghi');
+            await tab.waitForLoadState('load', { timeout: 10_000 }).catch(() => {});
+            await coHan(tab.reload({ waitUntil: 'load' }), 10_000);
+            await nghi(500);
+            const sau = nhatKyMay.slice(moc2);
+            ok('#194: Tiến tới, F5 — không lượt POST nào, mật khẩu không đi ra lần nữa, không hộp thoại "gửi lại biểu mẫu"',
+               sau.length >= 1 && sau.every(l => l.cach === 'GET' && l.duong === '/noi-bo/chua-ghi' && !l.than.includes(MK) && !l.duong.includes(MK))
+               && hopThoai.length === 0 && tab.url() === gocBan + '/noi-bo/chua-ghi',
+               `${tom(sau)} · hộp thoại: ${JSON.stringify(hopThoai)} · ${tab.url()}`);
+          } finally {
+            await coHan(ctxBan.close(), 10_000);
+            await coHan(new Promise(xong => { may.closeAllConnections?.(); may.close(() => xong()); }), 5000);
+          }
+        };
+
+        // TRANG KHO DỰNG TẠI CHỖ TỰ XÓA THÂN FORM KHỎI LỊCH SỬ (issue #194, đợt 5 — Khánh chọn cách 2 ngày 16/11/2026). 31
+        // trang kho báo lỗi (hay hiện bước xem trước, thêm dòng) ngay trong trả lời của lượt POST: chữ đã gõ theo từng dòng,
+        // mã gửi, ảnh đã tải còn nguyên. Mục lịch sử của trả lời đó giữ thân form — F5, hay rời đi rồi Quay lại / Tiến tới
+        // và F5, là gửi lại cả form. Khung Kho in vào <head> của trả lời lượt POST một đoạn mã (components/kho/
+        // XoaThanPost.astro, mã ở lib/kho/xoa-than-post.js) thay mục đó bằng một mục cùng địa chỉ, không thân form. Trang
+        // kho cần đăng nhập, bản build không có database: cảnh này dựng một máy chủ nhỏ trả trang form và trang báo lỗi tại
+        // chỗ mang ĐÚNG đoạn mã đó, cùng đoạn mã của khung (lib/sau-dang-xuat.js) đúng thứ tự trong <head>, form gửi về
+        // chính địa chỉ của nó, header như /noi-bo (private). Đối chứng: cùng trang không có đoạn mã — F5 là gửi lại (cảnh
+        // này thấy được lỗi). Thẻ chỉ in ở lượt POST, khung in nó trước thẻ phông chữ: crm/test/test-kho-loi-chuyen-huong.mjs
+        // nhóm 5.
+        const thuLoiTaiChoKho = async () => {
+          const { readFileSync, existsSync } = await import('node:fs');
+          const TEP_XOA = join(WEB, 'src', 'lib', 'kho', 'xoa-than-post.js');
+          ok('#194: có đoạn mã lib/kho/xoa-than-post.js (khung Kho in nó vào trả lời của lượt POST)', existsSync(TEP_XOA));
+          if (!existsSync(TEP_XOA)) return;
+          const maXoa = readFileSync(TEP_XOA, 'utf8');
+          const MA_XOA = maXoa.slice(maXoa.indexOf('(function'));
+          const maKhung = readFileSync(join(WEB, 'src', 'lib', 'sau-dang-xuat.js'), 'utf8');
+          const MA_KHUNG = maKhung.slice(maKhung.indexOf('(function'));
+          const DUONG = '/noi-bo/kho/thu-loi-tai-cho';
+          const DUONG_DC = '/noi-bo/kho/thu-doi-chung';   // đối chứng: cùng trang, không có đoạn mã
+          const DUONG_KHAC = '/noi-bo/kho/thu-trang-khac';
+          const SO_GO = '1.250,5';
+          const nhatKyMay = [];   // mọi lượt máy chủ nhận: { cach, duong, than }
+          const trangKho = ({ laPost, coMa, so, maGui }) => '<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Phiếu thử</title>'
+            + (laPost && coMa ? `<script>${MA_XOA}</script>` : '')
+            + `<script data-dau-phien="">${MA_KHUNG}</script></head><body>`
+            + `<p id="bao">${laPost ? 'Chưa lưu được: dòng 2 chưa có giá nhập.' : ''}</p>`
+            + `<form method="POST"><input name="so_luong" id="so_luong" value="${so}"><input type="hidden" name="ma_gui" value="${maGui}">`
+            + `<button id="nut-luu" type="submit">Lưu</button></form><a id="sang-khac" href="${DUONG_KHAC}">Mặt hàng</a></body></html>`;
+          const { createServer } = await import('node:http');
+          const may = createServer((req, res) => {
+            let than = '';
+            req.setEncoding('utf8');
+            req.on('data', c => { than += c; });
+            req.on('end', () => {
+              try {
+                const u = new URL(req.url, 'http://127.0.0.1');
+                nhatKyMay.push({ cach: req.method, duong: u.pathname + u.search, than });
+                const dau = { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'private' };
+                if (u.pathname === DUONG || u.pathname === DUONG_DC) {
+                  // Như trang kho: lỗi thì dựng lại form ngay trong trả lời, với số vừa gửi và CÙNG mã gửi.
+                  const laPost = req.method === 'POST';
+                  const f = new URLSearchParams(than);
+                  res.writeHead(200, dau);
+                  return res.end(trangKho({ laPost, coMa: u.pathname === DUONG,
+                    so: laPost ? (f.get('so_luong') ?? '').replace(/[<>"&]/g, '') : '',
+                    maGui: laPost ? (f.get('ma_gui') ?? '').replace(/[^\w-]/g, '') : globalThis.crypto.randomUUID() }));
+                }
+                if (u.pathname === DUONG_KHAC) {
+                  res.writeHead(200, dau);
+                  return res.end('<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Mặt hàng</title></head><body><h1 id="khac">Mặt hàng</h1></body></html>');
+                }
+                res.writeHead(404); res.end();
+              } catch (e) { res.writeHead(500, { 'content-type': 'text/plain' }); res.end(String(e?.message ?? e)); }
+            });
+          });
+          await new Promise(xong => may.listen(0, '127.0.0.1', xong));
+          const gocKho = `http://127.0.0.1:${may.address().port}`;
+          const ctxKho = await khongChan.newContext();
+          try {
+            const tab = await ctxKho.newPage();
+            const hopThoai = [];
+            tab.on('dialog', d => { hopThoai.push(`${d.type()}: ${d.message()}`); d.dismiss().catch(() => {}); });
+            const tom = ds => JSON.stringify(ds.map(l => `${l.cach} ${l.duong}`));
+            const coPost = ds => ds.some(l => l.cach === 'POST');
+            const oTrang = async () => (await trongTrang(tab, () => ({
+              duong: location.pathname + location.search, bao: document.getElementById('bao')?.textContent ?? null,
+              so: document.getElementById('so_luong')?.value ?? null,
+            }))) ?? { khongDocDuoc: true };
+            /** Một bước (gửi form, F5, Quay lại…) và mọi lượt máy chủ nhận trong lúc đó. */
+            const buoc = async lam => {
+              const moc = nhatKyMay.length;
+              await coHan(lam(), 15_000);
+              await tab.waitForLoadState('load', { timeout: 10_000 }).catch(() => {});
+              await nghi(400);
+              return nhatKyMay.slice(moc);
+            };
+            /** Mở form, gõ số, bấm Lưu: trả lời là trang báo lỗi dựng tại chỗ (HTTP 200 của lượt POST). */
+            const guiLoi = async duong => {
+              await coHan(tab.goto(gocKho + duong + '?loc=a', { waitUntil: 'load' }), 15_000);
+              await coHan(tab.fill('#so_luong', SO_GO));
+              return buoc(() => Promise.all([tab.waitForNavigation({ timeout: 15_000 }), tab.click('#nut-luu')]));
+            };
+            const f5 = () => buoc(() => tab.reload({ waitUntil: 'load' }));
+            const guiLai = ds => ds.some(l => l.cach === 'POST' && l.than.includes(encodeURIComponent(SO_GO)));
+
+            // Đối chứng trước: không có đoạn mã thì F5 trên trang báo lỗi — và rời đi, Quay lại, F5 — gửi lại thân form.
+            const guiDc = await guiLoi(DUONG_DC);
+            const f5Dc = await f5();
+            await guiLoi(DUONG_DC);
+            await buoc(() => tab.click('#sang-khac'));
+            const luiDc = await buoc(() => tab.goBack({ waitUntil: 'load' }));
+            const luiF5Dc = await f5();
+            ok('Đối chứng: trang báo lỗi tại chỗ KHÔNG có đoạn mã — F5 gửi lại nguyên thân form; rời đi, Quay lại, F5 cũng vậy (cảnh thử thấy được lỗi)',
+               guiDc.filter(l => l.cach === 'POST').length === 1 && guiLai(f5Dc) && guiLai([...luiDc, ...luiF5Dc]),
+               `gửi: ${tom(guiDc)} · F5: ${tom(f5Dc)} · Quay lại: ${tom(luiDc)} · F5: ${tom(luiF5Dc)}`);
+
+            // Có đoạn mã (như trả lời của lượt POST trong khung Kho).
+            const moc = nhatKyMay.length;
+            const gui = await guiLoi(DUONG);
+            const sauGui = await oTrang();
+            ok('#194: trang báo lỗi vẫn dựng tại chỗ — đúng MỘT lượt POST, câu lỗi hiện, số vừa gõ còn nguyên trong ô',
+               gui.filter(l => l.cach === 'POST').length === 1 && guiLai(gui) && sauGui.bao?.startsWith('Chưa lưu được') && sauGui.so === SO_GO,
+               `${tom(gui)} · ${JSON.stringify(sauGui)}`);
+            const f5Co = await f5();
+            ok('#194: F5 trên trang báo lỗi — một lượt GET của chính trang, không gửi lại form',
+               f5Co.length >= 1 && !coPost(f5Co) && f5Co.every(l => l.duong === DUONG + '?loc=a'), tom(f5Co));
+
+            // Rời trang báo lỗi (bấm một link) rồi Quay lại về đó, F5; Tiến tới, Quay lại, F5.
+            await guiLoi(DUONG);
+            await buoc(() => tab.click('#sang-khac'));
+            const lui = await buoc(() => tab.goBack({ waitUntil: 'load' }));
+            const sauLui = await oTrang();
+            const luiF5 = await f5();
+            const tienLui = [...await buoc(() => tab.goForward({ waitUntil: 'load' })), ...await buoc(() => tab.goBack({ waitUntil: 'load' }))];
+            const tienLuiF5 = await f5();
+            ok('#194: rời trang báo lỗi, Quay lại về đó, F5 — rồi Tiến tới, Quay lại, F5 — không lượt POST nào, vẫn đúng địa chỉ của trang',
+               !coPost([...lui, ...luiF5, ...tienLui, ...tienLuiF5]) && sauLui.duong === DUONG + '?loc=a',
+               `Quay lại: ${tom(lui)} ${JSON.stringify(sauLui)} · F5: ${tom(luiF5)} · Tiến, Quay lại: ${tom(tienLui)} · F5: ${tom(tienLuiF5)}`);
+
+            // Tiến tới về một trang báo lỗi (Quay lại về form trước nó, rồi Tiến), F5.
+            await guiLoi(DUONG);
+            await buoc(() => tab.goBack({ waitUntil: 'load' }));
+            const tien = await buoc(() => tab.goForward({ waitUntil: 'load' }));
+            const tienF5 = await f5();
+            ok('#194: Quay lại về form rồi Tiến tới về trang báo lỗi, F5 — không lượt POST nào',
+               !coPost([...tien, ...tienF5]), `Tiến: ${tom(tien)} · F5: ${tom(tienF5)}`);
+            const tatCa = nhatKyMay.slice(moc);
+            ok('#194: cả cảnh có đoạn mã: máy chủ nhận đúng ba lượt POST — ba lần bấm Lưu — không hộp thoại "gửi lại biểu mẫu"',
+               tatCa.filter(l => l.cach === 'POST').length === 3 && hopThoai.length === 0,
+               `${tom(tatCa.filter(l => l.cach === 'POST'))} · hộp thoại: ${JSON.stringify(hopThoai)}`);
+          } finally {
+            await coHan(ctxKho.close(), 10_000);
+            await coHan(new Promise(xong => { may.closeAllConnections?.(); may.close(() => xong()); }), 5000);
+          }
+        };
+
         try {
           await chayCoHan('Khối thử trang kết quả gửi form', thuGuiLaiForm, 120_000);
           await chayCoHan('Khối thử trả lời của lượt đăng nhập không thành', thuTraLoiDangNhap, 60_000);
           await chayCoHan('Khối thử lịch sử sau khi đăng nhập không thành', thuLichSuDangNhap, 150_000);
           await chayCoHan('Khối thử xóa ô mật khẩu khi rời trang đăng nhập', thuXoaMatKhau, 60_000);
+          await chayCoHan('Khối thử hệ thống bận lúc gửi form', thuBanLucGui, 90_000);
+          await chayCoHan('Khối thử trang kho dựng tại chỗ tự xóa thân form', thuLoiTaiChoKho, 120_000);
         } finally {
           await coHan(khongChan.close(), 10_000);
         }
@@ -1420,7 +1726,8 @@ try {
             continue;
           }
           await nut.click();
-          await cho(300);   // nút đổi màu trong 180ms — đo sau khi chuyển màu xong
+          // Nút đổi màu trong 180ms: doGiaoDien bên dưới tự chờ chuyển màu xong (choDungYen); mấy phép đọc trước nó (đang
+          // mở, thấy mục, chữ trên nút) không phụ thuộc màu — không chờ cứng.
           const tot = [
             ok(`${nhan}: bấm nút danh mục → mở, thấy các mục`, await mo() === true && await thayMuc()),
             ok(`${nhan}: đang mở thì nút là nút đóng, ghi "${NHAN_MENU[nn].dong}"`, await chuNut() === NHAN_MENU[nn].dong, await chuNut()),
@@ -1603,10 +1910,11 @@ try {
           if (!ok(`${nhan}: thấy ${ten} (${chon})`, await el.count() > 0 && await el.isVisible())) continue;
           await page.mouse.move(0, 0);
           await el.scrollIntoViewIfNeeded();
-          await cho(250);
+          // Phần tử vừa rời con trỏ, trang vừa cuộn: chờ mọi chuyển màu (180ms) xong rồi mới đọc — choDungYen, không chờ cứng.
+          await dungYen(page, nhan);
           const truoc = await el.evaluate(kieu);
           await el.hover();
-          await cho(300);   // chuyển màu 180ms
+          await dungYen(page, nhan);   // chuyển sang màu di chuột xong (máy có chuột) rồi mới đọc
           const [dangTren, sau] = [await el.evaluate(e => e.matches(':hover')), await el.evaluate(kieu)];
           if (camUng) {
             ok(`${nhan}: ${ten} — con trỏ đang ở trên (:hover) mà kiểu không đổi`, dangTren && sau === truoc, `:hover ${dangTren} · trước «${truoc}» · sau «${sau}»`);
@@ -1617,15 +1925,20 @@ try {
         if (camUng && rong === 390) {
           // Đúng lỗi được báo: chạm mở rồi chạm đóng nút danh mục, nút phải về màu lúc đóng.
           const nut = page.locator('details.menu-gon summary');
+          // Cú chạm thành cú bấm do trình duyệt tự dựng sau tap() — chờ đúng việc đó (danh mục mở / đóng, có hạn), rồi
+          // chờ nút đổi màu xong (choDungYen). Không chờ cứng: hết hạn mà danh mục chưa đổi thì phép kiểm dưới đỏ.
+          const choDanhMuc = mo => page.waitForFunction(m => document.querySelector('details.menu-gon')?.open === m, mo, { timeout: 5000 }).catch(() => {});
           await page.mouse.move(0, 0);
           await veDau(page);
-          await cho(250);
+          await dungYen(page, nhan);
           const truoc = await nut.evaluate(kieu);
           await nut.tap();
-          await cho(300);
+          await choDanhMuc(true);
+          await dungYen(page, nhan);
           const daMo = await nut.evaluate(s => s.parentElement.open);
           await nut.tap();
-          await cho(400);
+          await choDanhMuc(false);
+          await dungYen(page, nhan);
           const sau = await nut.evaluate(kieu);
           ok(`${nhan}: chạm mở rồi chạm đóng nút danh mục → nút về đúng kiểu lúc đóng`,
              daMo && await nut.evaluate(s => !s.parentElement.open) && sau === truoc, `trước «${truoc}» · sau «${sau}»`);
@@ -1638,12 +1951,12 @@ try {
           if (!(await el.isVisible().catch(() => false))) continue;
           await page.mouse.move(0, 0);
           await el.scrollIntoViewIfNeeded();
-          await cho(250);
+          await dungYen(page, nhan);
           const truoc = await el.evaluate(e => getComputedStyle(e).backgroundColor);
           const hop = await el.boundingBox();
           await page.mouse.move(hop.x + hop.width / 2, hop.y + hop.height / 2);
           await page.mouse.down();
-          await cho(300);
+          await dungYen(page, nhan);   // đang giữ chuột: chuyển sang màu nhấn xong rồi mới đọc
           const [dangNhan, luc] = [await el.evaluate(e => e.matches(':active')), await el.evaluate(e => getComputedStyle(e).backgroundColor)];
           await page.mouse.up();
           ok(`${nhan}: ${ten} — đang nhấn (:active) thì nền đổi màu`, dangNhan && luc !== truoc, `:active ${dangNhan} · trước ${truoc} · lúc nhấn ${luc}`);
@@ -1686,8 +1999,9 @@ try {
                truoc.tranNgang <= 0 && truoc.leTrai !== null && Math.abs(truoc.leTrai - truoc.lePhai) <= 1, JSON.stringify(truoc)),
           ];
           if (rong < 1080) {
+            // Bù thanh cuộn và khoá cuộn chạy ngay trong cú bấm (DauTrang.astro); chờ trang đứng yên rồi mới đo vị trí.
             await page.locator('details.menu-gon summary').click();
-            await cho(300);
+            await dungYen(page, nhan);
             const sau = await do_(page);
             const khoa = await page.evaluate(() => getComputedStyle(document.documentElement).overflowY === 'hidden');
             tot.push(ok(`${nhan}: mở danh mục (trang đã khoá cuộn) — logo, cụm nút bên phải và khung nội dung đứng nguyên chỗ`,
@@ -1696,7 +2010,7 @@ try {
             tot.push(ok(`${nhan}: mở danh mục không sinh cuộn ngang; phần bù bằng đúng bề rộng thanh cuộn vừa mất (${truoc.thanhCuon}px)`,
               sau.tranNgang <= 0 && sau.bu === truoc.thanhCuon, `tràn ${sau.tranNgang}px, bù ${sau.bu}px`));
             await page.keyboard.press('Escape');
-            await cho(200);
+            await dungYen(page, nhan);
             const dongLai = await do_(page);
             tot.push(ok(`${nhan}: đóng danh mục — thanh cuộn trở lại, hết phần bù, mọi thứ vẫn đứng nguyên chỗ`,
               dongLai.thanhCuon === truoc.thanhCuon && dongLai.bu === 0 && dongLai.logo === truoc.logo && dongLai.cumPhai === truoc.cumPhai
@@ -2105,12 +2419,14 @@ try {
   await trinhDuyet?.close().catch(() => {});
   tatMayChu(mayChu?.p);
 }
+// --chi xin một số mà không nhóm nào mang số đó được chạy (gõ nhầm, nhóm bị --url bỏ qua): đỏ, không bao giờ đạt suông.
+CHON_NHOM.baoNhomThieu(ok, 'nhóm bị --url bỏ qua');
 
 console.log('\n' + '='.repeat(60));
 if (hong === 0) {
-  console.log(`\x1b[32m\x1b[1mTẤT CẢ ${dat} KIỂM TRA TRÌNH DUYỆT ĐỀU ĐẠT\x1b[0m`);
+  console.log(`\x1b[32m\x1b[1mTẤT CẢ ${dat} KIỂM TRA TRÌNH DUYỆT ĐỀU ĐẠT${CHON_NHOM.ghiChu}\x1b[0m`);
 } else {
-  console.log(`\x1b[31m\x1b[1m${hong} HỎNG / ${dat + hong} KIỂM TRA\x1b[0m`);
+  console.log(`\x1b[31m\x1b[1m${hong} HỎNG / ${dat + hong} KIỂM TRA${CHON_NHOM.ghiChu}\x1b[0m`);
   for (const l of loi) console.log(`  \x1b[31m· ${l}\x1b[0m`);
   if (existsSync(ANH_LOI)) console.log(`Ảnh chụp lúc hỏng: ${ANH_LOI}`);
 }

@@ -55,8 +55,14 @@
  * cookie; không gọi mạng; không thư viện nào. Máy tính bảng dùng chung có thêm file đếm giờ tự khóa, tải lại ở MỌI
  * lần trang hiện lại từ bộ nhớ.
  *
- * Kiểm: crm/test/test-noi-bo-dang-xuat.mjs nhóm 8b, 9 (chạy chính file này với cửa sổ giả); trên bản build thật,
- * Chromium bản đầy đủ có bfcache: web/kiem-tra/trinh-duyet.mjs nhóm 4.
+ * RỜI TRANG LÀ XÓA MỌI Ô MẬT KHẨU / PIN (input type="password"; issue #194). Việc này không đợi dấu phiên đổi: ô mật
+ * khẩu đáng giấu nhất là ở trang CHƯA có ai đăng nhập — trang đăng nhập, máy dùng chung đang khóa (ô PIN, gắn người,
+ * đăng ký máy) — nơi dấu phiên không bao giờ đổi. Trình duyệt giữ trang vừa rời trong bộ nhớ quay lại cùng chữ đã gõ
+ * (đo trên Chromium 156: gõ mật khẩu, bấm một link, Quay lại là thấy nguyên ô đó). Lượt gửi form đã lấy chữ trước lúc
+ * này nên không mất gì; bấm nhầm link rồi Quay lại thì gõ lại mật khẩu. Không tìm được ô thì thôi — trang vẫn được giấu.
+ *
+ * Kiểm: crm/test/test-noi-bo-dang-xuat.mjs nhóm 8b, 9 (chạy chính file này với cửa sổ giả), crm/test/test-kho-may-lich-
+ * su.mjs nhóm 4 (xóa ô mật khẩu); trên bản build thật, Chromium bản đầy đủ có bfcache: web/kiem-tra/trinh-duyet.mjs nhóm 4.
  */
 (function () {
   var the = document.currentScript;
@@ -91,6 +97,14 @@
 
   function hienLai() {
     document.documentElement.style.visibility = '';
+  }
+
+  /** Xóa chữ trong mọi ô mật khẩu / PIN của trang — xem đầu file. */
+  function xoaMatKhau() {
+    try {
+      var o = document.querySelectorAll('input[type="password"]');
+      for (var i = 0; i < o.length; i++) o[i].value = '';
+    } catch (loi) { /* không tìm được ô thì thôi: trang vẫn được giấu */ }
   }
 
   /**
@@ -147,6 +161,7 @@
     dangChoDangXuat = false;
     choXetLai = true;
     giau();
+    xoaMatKhau();
   });
 
   /** Trang đã giấu lúc rời nay hiện lại: so dấu rồi mới cho hiện. Mỗi lần rời chỉ xét MỘT lần. */

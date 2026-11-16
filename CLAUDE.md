@@ -17,6 +17,7 @@ bảng CI ở `.github/CLAUDE.md` — cả hai tự nạp khi phiên đọc file
 | `mini-app/` | Mini App Zalo (React, zmp-cli): khách chọn khay thịt mang về. **Tạm ngưng từ 13/11/2026** — giữ mã, không làm thêm khi Khánh chưa bật lại. Không database, `package.json` và lệnh đưa lên riêng | `mini-app/CLAUDE.md` |
 | `may-chu-don/` | Máy chủ đơn của Mini App (Bun, SQLite), chạy ở Việt Nam: đơn trả trước, VNPay, ZNS, màn hình đơn cho quầy, gọi xe Ahamove. **Tạm ngưng cùng Mini App** | `may-chu-don/CLAUDE.md` |
 | `mo-rong-fabi/` | Extension Chrome: đưa món mới của kho vào FABi CMS, người dùng tự bấm Lưu. Không `package.json` | `mo-rong-fabi/README.md` |
+| `bot-dich/` | Bot Zalo dịch tin nhắn Anh/Việt ↔ Hàn trong nhóm chat (Worker Cloudflare riêng, Claude dịch). Không database, `package.json` và lệnh đưa lên riêng | `bot-dich/README.md` |
 
 Quy ước chung:
 - Tên hàm, biến, chú thích, tài liệu viết **tiếng Việt không tắt**, giống mã đang có.

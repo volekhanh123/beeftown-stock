@@ -16,6 +16,7 @@ Khi hai file nói khác nhau thì làm theo `CLAUDE.md` và báo chỗ lệch tr
 | `mini-app/CLAUDE.md`, `mini-app/TINH-TRANG.md` | Mini App Zalo: lệnh, cách app chạy, quy tắc, việc được làm và phải hỏi Khánh; tình trạng trên Zalo và việc tiếp theo ở `TINH-TRANG.md` (không đọc hay commit `mini-app/.env`; đổi chữ khách thấy phải hỏi trước) |
 | `crm/CLAUDE.md`, `web/CLAUDE.md`, `can-app/CLAUDE.md`, `may-chu-don/CLAUDE.md` | Bản đồ của từng thư mục: việc gì đọc mục nào, sửa file nào, thêm hàm SQL thì đụng những chỗ nào, chạy kiểm thử nào. Làm trong thư mục nào thì đọc file của thư mục đó trước — đừng đọc cả README |
 | `mo-rong-fabi/README.md` | Mở rộng FABi (extension Chrome): cách cài, giả định về giao diện FABi CMS, việc Khánh phải thử trên FABi thật |
+| `bot-dich/README.md` | Bot dịch Zalo (Worker Cloudflare): cách cài, giả định về Zalo Bot API, việc Khánh phải thử trong nhóm thật |
 | `.github/CLAUDE.md` | Khi nào CI chạy gì: từng workflow, lúc chạy, thời gian, nơi xem kết quả |
 
 ## Khi viết mã

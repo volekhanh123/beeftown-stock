@@ -10,41 +10,48 @@
  *     tài khoản. Máy đang mở không chứng minh người cầm máy là chủ của phiên
  *     (người trước rời máy chưa bấm Khóa máy); xem doiPin trong may-chung.ts.
  *
- * Lỗi thì hiện lại form (không giữ mật khẩu, không giữ PIN).
+ * Lỗi thì chuyển về chính trang này bằng GET (303, issue #194 — lib/kho/trang.ts
+ * guiRoiChuyen): không dựng form ngay trong trả lời của lượt POST, mục lịch sử
+ * như vậy giữ nguyên mật khẩu và PIN vừa gõ. Chỉ email được điền lại (cookie
+ * dùng một lần — lib/kho/bao.ts ghiNhapLai); mật khẩu, PIN thì không bao giờ.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
-import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import { moTrangKho, guiRoiChuyen } from '../../../../lib/kho/trang.ts';
+import { docNhapLai } from '../../../../lib/kho/bao.ts';
 import { ganNguoi, doiPin, layKhoaMay, laVaiMay, DUONG_MAY } from '../../../../lib/kho/may-chung.ts';
-import { kqHai, type KetQua } from '../../../../lib/kho/chung.ts';
+import { kqHai, LOI_KHO_CHUNG, type KetQua } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 const nn = k.nn;
 
+const DUONG_GAN = `${DUONG_MAY}/gan`;
+/** Ô điền lại khi gắn không thành: chỉ email. */
+const O_GIU = ['email'] as const;
 const batMay = !!(await layKhoaMay());
 const dangKhoa = batMay && laVaiMay(k.nhanSu.vai_tro) && !!k.may && !k.may.nhanSuId;
 const dangDung = batMay && !!k.may?.nhanSuId && k.may.nhanSuId === k.nhanSu.id;
 
-let bao: KetQua | null = k.bao;
-let email = '';
-const form = await docFormGui(Astro);
-if (form) {
+if (Astro.request.method === 'POST') return await guiRoiChuyen(Astro, DUONG_GAN, async form => {
   const viec = String(form.get('viec') ?? '');
-  let kq: KetQua;
   if (viec === 'gan' && dangKhoa) {
-    email = String(form.get('email') ?? '').trim();
-    kq = await ganNguoi(Astro, form);
-    if (kq.ok) return chuyenHuong(Astro, '/noi-bo/kho', kq);
-  } else if (viec === 'doi_pin' && dangDung) {
-    kq = await doiPin(Astro, form, k.may!);
-    if (kq.ok) return chuyenHuong(Astro, DUONG_MAY, kq);
-  } else {
-    kq = kqHai(false, { vi: 'Việc không hợp lệ. Tải lại trang.', en: 'Invalid action. Reload the page.' });
+    const kq = await ganNguoi(Astro, form);
+    return kq.ok ? { kq, toi: '/noi-bo/kho' } : { kq, nhapLai: { email: String(form.get('email') ?? '').trim() } };
   }
-  bao = kq;
-}
+  if (viec === 'doi_pin' && dangDung) {
+    const kq = await doiPin(Astro, form, k.may!);
+    return kq.ok ? { kq, toi: DUONG_MAY } : { kq };
+  }
+  return { kq: kqHai(false, LOI_KHO_CHUNG.viecLa) };
+}, O_GIU);
+
+const bao: KetQua | null = k.bao;
+const nhapLai = docNhapLai(Astro.cookies, DUONG_GAN, O_GIU);
+// Trang mang email của lần gửi trước không vào bộ đệm (ở chế độ máy, kiemMayChung đã đặt sẵn no-store).
+if (nhapLai) Astro.response.headers.set('cache-control', 'no-store');
+const email = nhapLai?.email ?? '';
 const t = dichNB(nn, {
   doiPin: { vi: 'Đổi PIN', en: 'Change PIN' },
   ganVaoMay: { vi: 'Gắn vào máy', en: 'Add to tablet' },

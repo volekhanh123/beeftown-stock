@@ -34,9 +34,9 @@
 import Kho from '../../../../layouts/Kho.astro';
 import TheTrangCon from '../../../../components/kho/TheTrangCon.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
-import { chuyenHuong, docFormGui, moTrangKho } from '../../../../lib/kho/trang.ts';
+import { docFormGui, ketThucPost, moTrangKho } from '../../../../lib/kho/trang.ts';
 import {
-  cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangPhanTram, homNayVn, kqHai, laUuid, nhanKho, phoBienNhat, type KetQua,
+  cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangPhanTram, homNayVn, kqHai, laUuid, LOI_KHO_CHUNG, nhanKho, phoBienNhat,
 } from '../../../../lib/kho/chung.ts';
 import {
   cauConU, cauKhongThayTang, docBaoCaoTang, docMonTrim, docSoNgayU, docTangTon, ghiNgayU, soTangChu, timTangTheoSo,
@@ -122,22 +122,21 @@ const t = dichNB(nn, {
 });
 
 const DS = '/noi-bo/kho/tang';
-let bao: KetQua | null = k.bao;
 const duocGhiU = k.duoc('pha_loc');
 const fd = await docFormGui(Astro);
-if (fd && fd.get('viec') === 'ghi_u') {
+// Lượt gửi nào cũng kết thúc bằng 303 (#194, đợt 5): ghi ủ hỏng thì câu lỗi đi theo cookie về chính trang — ô số ngày
+// dựng lại từ database (số gõ sai vốn đã không được điền lại), mỗi dòng một ma_gui mới.
+if (Astro.request.method === 'POST') return ketThucPost(Astro, fd, Astro.url.pathname + Astro.url.search, async fd => {
+  if (fd.get('viec') !== 'ghi_u') return { kq: kqHai(false, LOI_KHO_CHUNG.viecLa) };
   const loId = String(fd.get('lo_id') ?? '');
   const maGui = String(fd.get('ma_gui') ?? '');
   const soNgay = docSoNgayU(fd.get('so_ngay_u'));
-  if (!duocGhiU) bao = kqHai(false, { vi: t.khongDuocGhiU, en: t.khongDuocGhiU });
-  else if (!laUuid(loId) || !laUuid(maGui)) bao = kqHai(false, { vi: 'Thiếu mã gửi — tải lại trang rồi làm lại', en: 'Missing submission code — reload the page and try again' });
-  else if (soNgay === null) bao = kqHai(false, { vi: t.soNgayUSai, en: t.soNgayUSai });
-  else {
-    const kq = await ghiNgayU(k.client, { loId, soNgay, maGui });
-    if (kq.ok) return chuyenHuong(Astro, DS, kq);
-    bao = kq;
-  }
-}
+  if (!duocGhiU) return { kq: kqHai(false, { vi: t.khongDuocGhiU, en: t.khongDuocGhiU }) };
+  if (!laUuid(loId) || !laUuid(maGui)) return { kq: kqHai(false, { vi: 'Thiếu mã gửi — tải lại trang rồi làm lại', en: 'Missing submission code — reload the page and try again' }) };
+  if (soNgay === null) return { kq: kqHai(false, { vi: t.soNgayUSai, en: t.soNgayUSai }) };
+  const kq = await ghiNgayU(k.client, { loId, soNgay, maGui });
+  return { kq, toi: kq.ok ? DS : undefined };
+});
 
 let ds: TangTon[] = [];
 let daLoc: DongTang[] = [];
@@ -193,7 +192,7 @@ const noiChinh = phoBienNhat(ds.map(x => x.vi_tri));
     <a href="/noi-bo/kho/bao-cao/theo-tang">{t.baoCao}</a> ·{' '}
     <a href={`/noi-bo/kho/bao-cao/nhat-ky-u.csv?${new URLSearchParams({ tu: congNgay(homNay, -365), den: homNay }).toString()}`}>{t.taiNhatKyU}</a>
   </p>
-  <BaoKho bao={bao} loiDoc={loiDoc} />
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
   {/* Ô tìm chỉ tìm trong lô (có sau khi duyệt); số tảng cấp lúc nhận hàng (0097) có trước đó — câu nói rõ điều này.
       Đọc danh sách hỏng (BaoKho đã báo) hay chưa có chi nhánh thì không nói "không thấy": đọc lỗi khác không có. */}
   {tim && cn && !loiDoc && (

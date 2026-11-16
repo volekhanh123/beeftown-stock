@@ -20,9 +20,11 @@
 import type { APIContext, AstroGlobal } from 'astro';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NhanSu } from '../phien';
-import { duoc as vaiDuoc, cauLoiKho, kqHai, kqLoi, type KetQua, type ViecKho, type HaiThuTieng, type NgonNguNB } from './chung.ts';
-import { docBao, ghiBao } from './bao.ts';
-import { docFormNoiBo } from '../gui-noi-bo.ts';
+import {
+  duoc as vaiDuoc, cauLoiKho, kqHai, kqLoi, LOI_KHO_CHUNG, type KetQua, type ViecKho, type HaiThuTieng, type NgonNguNB,
+} from './chung.ts';
+import { docBao, ghiBao, ghiNhapLai } from './bao.ts';
+import { docFormNoiBo, CAU_DOC_FORM_HONG } from '../gui-noi-bo.ts';
 import type { SoViec } from './dieu-huong.ts';
 import { kiemMayChung, laVaiMay, laDuongMay, DUONG_MAY, type CheDoMay } from './may-chung.ts';
 
@@ -216,9 +218,76 @@ export async function docFormGui(Astro: Pick<AstroGlobal, 'request' | 'locals'>)
 }
 
 /** Ghi câu báo rồi chuyển hướng 303 sang GET — F5 không gửi lại lệnh cũ. */
-export function chuyenHuong(Astro: AstroGlobal, url: string, bao: KetQua): Response {
+export function chuyenHuong(Astro: Pick<AstroGlobal, 'cookies' | 'redirect'>, url: string, bao: KetQua): Response {
   ghiBao(Astro.cookies, bao);
   return Astro.redirect(url, 303);
+}
+
+/** Kết cục của một lượt POST: câu báo, trang đích (mặc định: về chính trang), chữ cần điền lại. */
+export interface KetQuaGui { kq: KetQua; toi?: string; nhapLai?: Record<string, unknown> }
+
+/** Trang đích của guiRoiChuyen phải là một trang kho của chính website (không địa chỉ máy khác, không trang ngoài kho). */
+const laDuongKho = (u: string) => u === '/noi-bo/kho' || u.startsWith('/noi-bo/kho/') || u.startsWith('/noi-bo/kho?');
+
+/**
+ * Đường dẫn của một địa chỉ trong trang — làm Path cho cookie điền lại: bỏ ?… và #… (Path mang "?" thì không bao giờ
+ * khớp) và dấu / cuối (trang trả lời cả /x lẫn /x/; Path /x khớp cả hai, và trang đọc / xóa cookie bằng /x).
+ */
+const duongCua = (u: string) => u.split(/[?#]/)[0].replace(/(.)\/+$/, '$1');
+
+/** Lượt POST tới một trang kho khi tài khoản chưa có chi nhánh nào (trang cũ còn mở, hay nhà hàng chưa tạo chi nhánh). */
+export const LOI_CHUA_CO_CN: HaiThuTieng = { vi: 'Chưa có chi nhánh — chưa ghi gì.', en: 'No branch yet — nothing was saved.' };
+
+/** ketThucPost (bên dưới) cho trang đọc form ngay ở đầu khối POST (ba trang của máy dùng chung, đợt 2 của #194). */
+export async function guiRoiChuyen(
+  Astro: Pick<AstroGlobal, 'request' | 'locals' | 'cookies' | 'redirect'>, veKhiLoi: string,
+  xuLy: (form: FormData) => Promise<KetQuaGui>, cacO: readonly string[] = [],
+): Promise<Response> {
+  const form = await docFormGui(Astro);
+  return ketThucPost(Astro, form, veKhiLoi, xuLy, cacO);
+}
+
+/**
+ * LƯỢT POST CỦA TRANG KHO KẾT THÚC BẰNG 303, MỌI KẾT CỤC (issue #194; đợt 2: ba trang của máy dùng chung — qua
+ * guiRoiChuyen; đợt 5: chín trang không điền lại chữ của lượt gửi — danh sách và các trang còn dựng tại chỗ:
+ * crm/test/test-kho-loi-chuyen-huong.mjs; trả lời lượt POST của các trang đó tự xóa thân form khỏi lịch sử —
+ * components/kho/XoaThanPost.astro, Khánh chọn 16/11/2026).
+ *
+ * Trang dựng ngay trong trả lời của lượt POST thì mục lịch sử của nó là chính lượt POST đó, giữ nguyên thân form —
+ * trên máy dùng chung là mật khẩu, PIN của người vừa dùng; tải lại mục đó là gửi lại form. Hàm này dành cho trang đã
+ * đọc form (docFormGui) trước khi biết việc gì — cần biết để chọn đọc gì từ database; trang gọi nó cho MỌI lượt POST
+ * (`if (Astro.request.method === 'POST') return ketThucPost(Astro, form, …)`) và trả luôn kết quả. Câu báo đi qua
+ * bt_kho_bao (chuyenHuong):
+ *   · `xuLy` trả { kq, toi } — `toi` là trang đích, phải là trang kho; không có, hay lạ, thì về `veKhiLoi` (địa chỉ
+ *     của chính trang, giữ ?… để bộ lọc còn nguyên);
+ *   · trả thêm `nhapLai` — chữ cần điền lại trên trang `veKhiLoi` (ghiNhapLai: chỉ các ô `cacO`, không ô mật khẩu /
+ *     PIN; cookie theo đường dẫn trang, không kèm ?…);
+ *   · `form` null (thân form không đọc được) — không chạy `xuLy`, câu CAU_DOC_FORM_HONG;
+ *   · `xuLy` ném lỗi bất ngờ — câu LOI_KHO_CHUNG.batNgo ("chưa chắc đã ghi", không phải "chưa ghi được": việc có thể
+ *     ném sau khi đã ghi database và cookie) và một dòng nhật ký (loại lỗi, đường dẫn trang — không chép chữ của lỗi
+ *     hay phần ?… của địa chỉ: chúng có thể mang email). Không để thành trang 500: trang đó cũng là trả lời của POST.
+ * Kiểm: crm/test/test-kho-loi-chuyen-huong.mjs, crm/test/test-kho-may-lich-su.mjs.
+ */
+export async function ketThucPost(
+  Astro: Pick<AstroGlobal, 'cookies' | 'redirect'>, form: FormData | null, veKhiLoi: string,
+  xuLy: (form: FormData) => Promise<KetQuaGui>, cacO: readonly string[] = [],
+): Promise<Response> {
+  let kq: KetQua;
+  let toi = veKhiLoi;
+  if (!form) {
+    kq = kqHai(false, CAU_DOC_FORM_HONG);
+  } else {
+    try {
+      const r = await xuLy(form);
+      kq = r.kq;
+      if (r.toi && laDuongKho(r.toi)) toi = r.toi;
+      if (r.nhapLai) ghiNhapLai(Astro.cookies, duongCua(veKhiLoi), cacO, r.nhapLai);
+    } catch (e) {
+      try { console.error(`[kho] ${duongCua(veKhiLoi)}: POST handler threw (${e instanceof Error ? e.name : typeof e})`); } catch { /* */ }
+      kq = kqHai(false, LOI_KHO_CHUNG.batNgo);
+    }
+  }
+  return chuyenHuong(Astro, toi, kq);
 }
 
 /** Họ tên người lập / duyệt chứng từ. Không đọc được thì trả Map rỗng. */

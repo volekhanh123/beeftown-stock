@@ -648,11 +648,13 @@ await nhom('7 · CÀI NHƯ APP (manifest + biểu tượng)', async () => {
 // ===========================================================================
 await nhom('8 · JAVASCRIPT CHỈ Ở CHỖ ĐÃ CHO PHÉP', async () => {
   // Trang kho phải chạy đủ khi tắt JavaScript. JS chỉ để "tăng cường": camera
-  // quét nhãn, khóa máy dùng chung, in đơn đặt hàng. Một ngoại lệ nữa nằm ngoài ba
-  // thư mục quét ở đây: components/SauDangXuat.astro — đoạn mã khung Kho và khung
-  // NoiBo in vào đầu mọi trang để phiên đã kết thúc mà bấm Quay lại thì trang được
+  // quét nhãn, khóa máy dùng chung, in đơn đặt hàng, và components/kho/XoaThanPost.astro
+  // — một dòng mã khung Kho in vào trả lời của lượt POST để F5 không gửi lại form
+  // (issue #194; kiểm thử riêng: test-kho-loi-chuyen-huong.mjs nhóm 5). Một ngoại lệ nữa
+  // nằm ngoài ba thư mục quét ở đây: components/SauDangXuat.astro — đoạn mã khung Kho và
+  // khung NoiBo in vào đầu mọi trang để phiên đã kết thúc mà bấm Quay lại thì trang được
   // tải lại; nó có kiểm thử riêng (test-noi-bo-dang-xuat.mjs nhóm 9).
-  const DUOC_SCRIPT = new Set(['web/src/components/kho/QuetMa.astro']);
+  const DUOC_SCRIPT = new Set(['web/src/components/kho/QuetMa.astro', 'web/src/components/kho/XoaThanPost.astro']);
   const DUOC_JS = new Set(['ean13.js', 'may-chung.js', 'in-an.js']);
   const nguon = [
     ...moiFile(join(TRANG, 'noi-bo/kho')),
@@ -1252,9 +1254,11 @@ await nhom('20 · GỌN PHẦN TIỀN VÀ BÁO CÁO (Khánh duyệt 23/10/2026)'
 
   const misa = doc(join(TRANG, 'noi-bo/kho/cong-no/misa.astro'));
   ok('MISA: xem trước 10 dòng, chữ không xuống dòng', /const XEM = 10;/.test(misa) && /\.misa-xem th, \.misa-xem td \{ white-space: nowrap; \}/.test(misa));
-  ok('MISA: "Mã MISA còn thiếu" là mục gập (id thieu-ma), mở sẵn khi vừa lưu mã hay gõ sai',
+  // #194 (đợt 5): gõ sai mã không còn dựng trang tại chỗ — cũng 303 về ?mo=thieu_ma như khi lưu được (câu lỗi qua cookie).
+  ok('MISA: "Mã MISA còn thiếu" là mục gập (id thieu-ma), mở sẵn khi vừa lưu mã hay gõ sai (cả hai lối 303 về ?mo=thieu_ma#thieu-ma)',
     /<details id="thieu-ma" class="nb-the misa-thieu" open=\{moThieu\}>/.test(misa)
-    && /&mo=thieu_ma#thieu-ma`, await luuMaMisaMatHang/.test(misa) && /bao = kqHai\(false, CAU\.maSai\); moThieu = true;/.test(misa));
+    && /const moThieu = sp\.get\('mo'\) === 'thieu_ma';/.test(misa)
+    && /const toi = `\$\{giuQ\}&mo=thieu_ma#thieu-ma`;\n\s*if \(ma === undefined\) return \{ kq: kqHai\(false, CAU\.maSai\), toi \};\n\s*return \{ kq: await luuMaMisaMatHang\([^\n]*\), toi \};/.test(misa));
   ok('MISA: mỗi mặt hàng thiếu mã một hàng, ô mã vẫn có nhãn cho trình đọc màn hình',
     /<form method="POST" class="misa-ma">/.test(misa) && /<span class="an">\{t\.maMisa\} — \{m\.ten\}<\/span>/.test(misa));
 

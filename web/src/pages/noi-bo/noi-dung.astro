@@ -101,8 +101,10 @@ if (Astro.request.method === 'POST') {
     } catch (e) {
       bao = { ok: false, cau: e instanceof Error ? dichCau(nn, e.message) : t.khongDoc };
     }
-    if (bao.ok) return chuyenHuongNoiBo(Astro, bao);
   }
+  // Lưu được hay không đều 303 về chính trang (issue #194): form dựng lại từ database (giaTriHienTai),
+  // không điền lại chữ của lượt gửi — chuyển hướng không làm mất gì, F5 không gửi lại.
+  return chuyenHuongNoiBo(Astro, bao);
 }
 
 let bang: HangCongTac[] = [];

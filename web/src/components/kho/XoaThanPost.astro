@@ -1,0 +1,16 @@
+---
+/**
+ * TRANG CỦA LƯỢT POST TỰ XÓA THÂN FORM KHỎI LỊCH SỬ — đoạn mã nhỏ ở đầu trang kho, CHỈ trong trả lời của lượt POST
+ * (issue #194, đợt 5; Khánh chọn cách 2 ngày 16/11/2026). Việc nó làm và vì sao: đầu file lib/kho/xoa-than-post.js.
+ *
+ *   · IN THẲNG mã vào trang (không <script src>): lượt tải file riêng hỏng thì mất lớp này — cùng lý do với
+ *     SauDangXuat.astro.
+ *   · Lượt GET không in gì: mục lịch sử của nó không mang thân form.
+ *
+ * Khung Kho đặt thẻ này ngay sau <title>, trước thẻ phông chữ của Google. Phần chú thích đầu file mã không in ra trang.
+ */
+import ma from '../../lib/kho/xoa-than-post.js?raw';
+
+const MA = ma.slice(ma.indexOf('(function'));
+---
+{Astro.request.method === 'POST' && <script is:inline set:html={MA}></script>}

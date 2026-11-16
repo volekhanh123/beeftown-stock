@@ -502,6 +502,24 @@ phiên đang dùng** (không đọc email từ form) bằng client riêng rồi 
 chưa đổi", Supabase bận thì "đợi rồi thử lại — không phải do sai mật khẩu". Mỗi lần đổi PIN tốn một lượt của hạn
 mức đăng nhập chung — PIN mới sai dạng bị từ chối trước khi tốn lượt đó. Kiểm thử: `test-kho-may-doi-pin.mjs`.
 
+**Lượt gửi form không bao giờ dựng trang tại chỗ** (issue #194, đợt 2). Ba trang của máy — mở máy bằng PIN, gắn
+người / đổi PIN, đăng ký máy — xử lý lượt POST bằng `guiRoiChuyen` (`lib/kho/trang.ts`): lưu được hay không, thân form
+hỏng, việc không hợp lệ, lỗi bất ngờ — đều là 303 sang GET, câu báo qua `bt_kho_bao` (lỗi bất ngờ: câu "chưa chắc đã
+ghi", không phải "chưa ghi được" — việc có thể ném sau khi đã ghi). Đợt 5: chín trang kho khác không điền lại chữ của
+lượt gửi cũng vậy, qua `ketThucPost` (danh sách: `crm/test/test-kho-loi-chuyen-huong.mjs`); câu báo dài được cắt theo
+số byte để cookie không quá cỡ (`ghiBao`, `lib/kho/bao.ts`). Các trang còn lại giữ số theo từng dòng, mã gửi, ảnh
+đã tải — không vừa một cookie — nên vẫn báo lỗi ngay trong trả lời của lượt POST; khung Kho in vào trả lời đó một
+dòng mã thay mục lịch sử của trang bằng một mục cùng địa chỉ, không có thân form (`components/kho/XoaThanPost.astro`,
+mã ở `lib/kho/xoa-than-post.js`; Khánh chọn 16/11/2026): F5, hay Quay lại / Tiến tới rồi F5, là một lượt GET — form
+như lúc mới mở. Trang dựng trong trả lời của lượt
+POST là một mục lịch sử giữ nguyên mật khẩu, PIN vừa gõ trên một máy nhiều người dùng. Chữ điền lại (email, tên máy, số
+phút) đi qua cookie `bt_kho_nhap_lai` — dùng một lần, chỉ của đúng trang, sống 60 giây (`ghiNhapLai` / `docNhapLai` trong
+`lib/kho/bao.ts`); ô bí mật không bao giờ — tên ô có một phần là `mat_khau`, `pin` hay `token` bị bỏ cả lúc ghi lẫn
+lúc đọc. Rời trang nội bộ nào cũng xóa mọi ô mật khẩu / PIN
+(`lib/sau-dang-xuat.js`). Supabase bận ngay lúc kiểm phiên (`kiemMayChung` gặp `TAM_LOI`) thì trang "hệ thống đang bận"
+của lượt POST tự thay mục lịch sử của nó bằng trang báo GET `/noi-bo/chua-ghi` (`lib/qua-tai.ts`, `trangQuaTai`; #194
+đợt 3). Kiểm thử: `crm/test/test-kho-may-lich-su.mjs`.
+
 **Sai PIN**: 5 lần liền → khóa người đó 15 phút; 15 lần / 30 phút hoặc 30 lần / 24 giờ (chặn dò chậm) trên một máy (mọi người cộng lại) →
 khóa máy, quản lý mở ở màn Nhân viên & máy. Mọi sự kiện ghi `kho_may_nhat_ky`. `kho_may_nguoi`
 **không có policy SELECT** — PIN băm không đọc được kể cả bằng quyền quản lý.
@@ -554,15 +572,16 @@ link của thư cũ) cũng là đọc mã nguồn công khai và tài liệu c�
    viên (form mới, không bấm F5), tạo lần nữa **cùng email đó**. Phải thấy "…đã có một tài khoản đăng nhập từ
    trước lần bấm này… CHƯA tạo nhân viên ở lần bấm này", không có mật khẩu tạm mới, danh sách vẫn đúng một
    dòng cho email đó. (Thấy "Đã tạo tài khoản…" hay "CHƯA nối được…" là giả định sai: Supabase không trả
-   `invalid_credentials` cho mật khẩu sai của tài khoản chưa xác nhận. Thấy "Supabase đã gửi quá số thư xác
-   nhận…" hay "Tạo quá nhiều tài khoản liền nhau…" thì chỉ là bấm lại quá sớm; đã chờ hơn một phút mà vẫn gặp
-   thì là hết lượt thư của giờ đó — chờ tới một giờ rồi làm lại bước 2. Không phải giả định sai, và đừng tắt
-   "Confirm email" như câu đó gợi ý.)
+   `invalid_credentials` cho mật khẩu sai của tài khoản chưa xác nhận. Thấy "Supabase chưa gửi thư xác nhận vì
+   chạm giới hạn gửi thư…" thì làm đúng như câu đó: bấm lại quá sớm thì chờ hơn một phút rồi làm lại bước 2; đã
+   chờ mà vẫn gặp thì là hết lượt thư của giờ đó — chờ tới một giờ. Thấy "Tạo quá nhiều tài khoản liền nhau…"
+   thì chờ vài phút rồi làm lại bước 2. Cả hai đều không phải giả định sai.)
 3. Bước 2 làm Supabase gửi thêm một thư xác nhận, và link của thư trước hết dùng được. Bấm link trong thư
    **mới nhất**, rồi đăng nhập `/noi-bo` bằng mật khẩu tạm của **bước 1**: vào được.
 
 Một trong ba bước không như trên (ngoài mấy câu "chờ rồi làm lại" đã kể) thì báo lại kèm câu màn hình hiện —
-đừng tắt kiểm thử, đừng bỏ bước thử. Kiểm thử tự động có cả nhánh "bấm lại trong 60 giây" (nhóm 5).
+đừng tắt kiểm thử, đừng bỏ bước thử. Kiểm thử tự động có cả nhánh "bấm lại trong 60 giây" (nhóm 5) và
+"hết lượt thư của giờ" (nhóm 5b).
 **Thử xong thì tắt lại "Confirm email"** ở Beeftown-thu (cài đặt đúng của hệ thống là tắt — mục ngay dưới) và
 khóa nhân viên thử ở màn Nhân viên.
 
@@ -1598,6 +1617,7 @@ dùng ở:
 | `public/kho/js/ean13.js` | (GĐ5b) Giải mã EAN-13 bằng JS thuần cho iPhone — Safari không có `BarcodeDetector` |
 | `public/kho/js/may-chung.js` | (GĐ5d) Đếm giờ tự khóa máy dùng chung |
 | `public/kho/js/in-an.js` | Hiện nút "In phiếu" và gọi `window.print()` (GĐ4b); nút "Chia sẻ" `[data-chia-se]` của đơn đặt hàng gọi Web Share API khi máy có (GĐ8a) |
+| `components/kho/XoaThanPost.astro` (in thẳng vào `<head>` của `Kho.astro`, CHỈ ở trả lời của lượt POST, trước thẻ phông chữ; mã ở `lib/kho/xoa-than-post.js`) | Trang báo lỗi dựng ngay trong trả lời của lượt POST (phiếu nhiều dòng, xem trước, thêm dòng) tự thay mục lịch sử của nó bằng một mục cùng địa chỉ không có thân form (`history.replaceState`): F5, Quay lại / Tiến tới rồi F5 không gửi lại form. Không tải lại, không chuyển trang, không gọi mạng. Tắt JavaScript thì như trước: F5 làm trình duyệt hỏi "gửi lại biểu mẫu" (issue #194, Khánh chọn 16/11/2026; kiểm: `test-kho-loi-chuyen-huong.mjs` nhóm 5, `kiem-tra/trinh-duyet.mjs` nhóm 4) |
 | `components/SauDangXuat.astro` (in thẳng vào `<head>` của hai khung `Kho.astro` và `NoiBo.astro`; mã ở `lib/sau-dang-xuat.js`) | Sau khi đăng xuất, bấm Quay lại không hiện lại trang cũ từ bộ nhớ hay bản lưu đệm của trình duyệt: giấu trang lúc bấm Đăng xuất và ở mọi lần rời trang; lúc trang hiện lại, dấu phiên (cookie `bt_dau_phien`) đã đổi thì xin lại trang từ máy chủ bằng một lượt GET — không bao giờ tải lại (tải lại trang kết quả của một lần gửi form là gửi lại form đó) — còn không đổi thì cho hiện ngay. Không gọi mạng, không tải file riêng (rà soát 14/11/2026 — `web/README.md`, "Giao diện nội bộ") |
 
 Không thêm thư viện npm cho phía trình duyệt. `test-kho-giao-dien.mjs` hỏng nếu có `<script>`,
@@ -1623,10 +1643,18 @@ Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa th
    rồi một dòng chặn quyền `if (!k.duoc('…')) return Astro.redirect('/noi-bo/kho', 302);`.
 2. Bọc trong `<Kho k={k} tieuDe="…" huongDan="…">`, có `<h1>` và `<BaoKho>`. Chưa có mục hướng dẫn
    hợp thì thêm vào `lib/kho/huong-dan.ts` (mục 3i).
-3. Form: POST + ô ẩn `viec`; đọc thân bằng `docFormGui(Astro)`; thành công → `chuyenHuong(Astro, url, kq)`.
-   Form tạo chứng từ có `ma_gui`; form sửa có `phien_ban`. Không đọc được thân (mạng đứt giữa chừng):
-   `docFormGui` trả null và đánh dấu lượt xem, `<BaoKho>` tự hiện câu "Không đọc được dữ liệu gửi lên…"
-   (`CAU_DOC_FORM_HONG`, `lib/gui-noi-bo.ts`) — trang không tự đặt câu đó (`crm/test/test-kho-doc-form.mjs`).
+3. Form: POST + ô ẩn `viec`; đọc thân bằng `docFormGui(Astro)`. Lượt POST nào cũng kết thúc bằng 303 — lỗi cũng
+   vậy (issue #194): `if (Astro.request.method === 'POST') return ketThucPost(Astro, form, url, async f => ({ kq, toi }))`
+   (`lib/kho/trang.ts`) — câu báo, cả câu lỗi, đi theo cookie; thân form hỏng, việc lạ, lỗi ném ra bất ngờ cũng 303.
+   Vài ô ngắn cần hiện lại sau lỗi: trả thêm `nhapLai` và đọc bằng `docNhapLai` (`lib/kho/bao.ts`, mẫu: Thiết lập kho,
+   năm ô ngưỡng). Trang mới phải được xếp nhóm ở `crm/test/test-kho-loi-chuyen-huong.mjs`. Trang cũ có phiếu nhiều dòng,
+   bước xem trước, thêm dòng còn dựng tại chỗ khi lỗi (`chuyenHuong` khi lưu được, `bao = kq` khi không): khung Kho tự in
+   vào trả lời của lượt POST một dòng mã xóa thân form khỏi lịch sử (`components/kho/XoaThanPost.astro`, mục 5; Khánh
+   chọn 16/11/2026, #194) — trang không phải làm gì thêm, miễn là dựng trong `<Kho>`.
+   Form tạo chứng từ có `ma_gui`; form sửa có `phien_ban`. Không đọc được thân (mạng đứt giữa chừng): `docFormGui`
+   trả null; `ketThucPost` báo câu "Không đọc được dữ liệu gửi lên…" (`CAU_DOC_FORM_HONG`, `lib/gui-noi-bo.ts`) qua
+   cookie, trang còn dựng tại chỗ thì `<BaoKho>` tự hiện câu đó — trang không tự đặt câu đó
+   (`crm/test/test-kho-doc-form.mjs`).
 4. Chữ cho nhân viên: tiếng Việt đơn giản, không thuật ngữ ("hạn gần bán trước", không "FEFO").
    Nút ≥ 48px, ô nhập cỡ chữ 16px (iPhone không tự phóng to).
 5. Nếu có ô menu: thêm vào `MUC_KHO` với đúng quyền của dòng chặn; nếu có số đỏ thì ghi `dem`.

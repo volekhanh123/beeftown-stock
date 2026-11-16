@@ -42,7 +42,7 @@ export async function moChromium(chromium, tuyChon) {
  * Vì sao không route: context có route thì Playwright tắt bộ nhớ đệm HTTP, và Chromium lúc đó xử khác hẳn trình duyệt
  * của người dùng. Bấm Quay lại về trang kết quả của một form (lượt POST): trình duyệt thật dựng lại trang từ bộ nhớ đệm,
  * không gửi gì; có route thì CHÍNH trình duyệt gửi lại form lên máy chủ (thử bằng Chromium 156 bản đầy đủ, 15/11/2026).
- * Phép thử nút Quay lại đo đúng chuyện "có lượt POST nào ra mạng không" (thu-day-du.mjs nhóm 15), nên phải chạy trên bộ
+ * Phép thử nút Quay lại đo đúng chuyện "có lượt POST nào ra mạng không" (thu-day-du.mjs nhóm 16), nên phải chạy trên bộ
  * nhớ đệm thật.
  *
  * Chặn hết, không chỉ Meta: trang nội bộ còn tải phông Google, khung YouTube — phép thử không cần chúng, mạng ngoài

@@ -84,10 +84,12 @@ const DEM = {
 
 export const CHU_DON = {
   /** Nhãn cỡ gói: thịt "khoảng" (quyết định 2), hộp ghi khối lượng tịnh. Số gam không dấu ngăn. */
+  // Khánh 16/11/2026 (hồ sơ thông báo website thương mại điện tử): bỏ chữ "khoảng" — gói ghi đúng số gam, khách trả
+  // đúng giá ghi trên web (trang Chính sách giá, lib/chinh-sach.ts). Mỗi gói phải cân đủ số gam ghi trên nhãn.
   goiChu: {
-    vi: (donVi: DonVi, n: number) => (donVi === 'hop' ? `Hộp ${n} g` : `Gói khoảng ${n} g`),
-    en: (donVi: DonVi, n: number) => (donVi === 'hop' ? `${n} g box` : `Pack of about ${n} g`),
-    ko: (donVi: DonVi, n: number) => (donVi === 'hop' ? `${n} g 통` : `약 ${n} g 팩`),
+    vi: (donVi: DonVi, n: number) => (donVi === 'hop' ? `Hộp ${n} g` : `Gói ${n} g`),
+    en: (donVi: DonVi, n: number) => (donVi === 'hop' ? `${n} g box` : `${n} g pack`),
+    ko: (donVi: DonVi, n: number) => (donVi === 'hop' ? `${n} g 통` : `${n} g 팩`),
   },
   /** "3 gói · 1 hộp"; vế bằng 0 bỏ; cả hai bằng 0 → chuỗi rỗng (trang hiện câu giỏ rỗng). */
   dem: DEM,
@@ -117,7 +119,7 @@ function noi(phan: ReadonlyArray<string | 0 | false>): string {
   return phan.filter(Boolean).join(' · ');
 }
 
-/** Nhãn gói theo thứ tiếng của trang: "Gói khoảng 200 g", "Pack of about 200 g", "약 200 g 팩"; hộp "Hộp 500 g"… */
+/** Nhãn gói theo thứ tiếng của trang: "Gói 200 g", "200 g pack", "200 g 팩"; hộp "Hộp 500 g"… */
 export function nhanGoi(donVi: DonVi, soGam: number, nn: NgonNgu): string {
   return CHU_DON.goiChu[nnHopLe(nn)](donVi, soGam);
 }

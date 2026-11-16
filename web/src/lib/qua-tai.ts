@@ -131,33 +131,48 @@ function thoatHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+/** Trang báo "thao tác vừa gửi CHƯA được ghi" (GET). middleware.ts trả nó TRƯỚC khi hỏi Supabase. */
+export const DUONG_CHUA_GHI = '/noi-bo/chua-ghi';
+/** Cookie mang đường dẫn của trang vừa gửi — để nút "Tải lại trang" của trang báo về đúng trang đó. */
+export const COOKIE_CHUA_GHI = 'bt_chua_ghi';
+const CHUA_GHI_SONG_GIAY = 300;
+
 /**
- * Trang 503 "hệ thống đang bận". GET: tự tải lại sau 5–10 giây — NGẪU NHIÊN,
- * để mấy chục máy gặp bận cùng lúc không thử lại cùng một giây (đúng lúc hạn
- * mức đang cạn). POST: nói thẳng thao tác CHƯA được ghi (trang chưa chạy) —
- * không tự gửi lại gì.
- *
- * Không dùng khung NoiBo: trang này phải hiện được cả khi chính việc dựng
- * trang đang là thứ có vấn đề. Không JavaScript, không tài nguyên ngoài.
- * Vì không nạp file CSS nào, màu của bảng 22/10/2026 viết thẳng: nền trắng, chữ
- * đen, nút đỏ chữ trắng (6,64 : 1), chữ phụ #555555 (7,46 : 1).
+ * Đường dẫn dùng được làm đích của nút "Tải lại trang": một trang nội bộ của chính website. null khi không bắt đầu
+ * bằng /noi-bo — kể cả "//máy-khác/…" (trang mở qua //noi-bo/… có đường dẫn như vậy, và href="//…" là sang máy
+ * khác) — hoặc có khoảng trắng, \, ", <, >, ký tự điều khiển, hoặc dài quá 1024 (cookie bt_chua_ghi phải vừa 4 KB
+ * kể cả khi mọi ký tự phải mã hóa). Hàm thuần.
  */
-export function trangQuaTai(nn: NgonNguNB, laPost: boolean, url: URL): Response {
-  const c = (x: HaiThuTieng) => thoatHtml(x[nn]);
-  const taiLai = thoatHtml(url.pathname + url.search);
-  const giay = 5 + Math.floor(Math.random() * 6);
-  const than = laPost
+export function duongNoiBoAnToan(s: unknown): string | null {
+  if (typeof s !== 'string' || s.length > 1024) return null;
+  if (!/^\/noi-bo(?:[/?#]|$)/.test(s)) return null;
+  if (/[\s\\"<>\u0000-\u001f\u007f]/.test(s)) return null;
+  return s;
+}
+
+/** Một câu của trang bận theo ngôn ngữ đang xem, đã thoát HTML. */
+const cauTrang = (nn: NgonNguNB, x: HaiThuTieng) => thoatHtml(x[nn]);
+
+/** Hai đoạn chữ của trang bận: lượt POST (CHƯA ghi — cũng là chữ của trang báo) và lượt GET (tự tải lại). */
+function thanTrang(nn: NgonNguNB, laPost: boolean): string {
+  const c = (x: HaiThuTieng) => cauTrang(nn, x);
+  return laPost
     ? `<p><strong>${c(CAU_TRANG.chuaGhi)}</strong> ${c(CAU_TRANG.lyDo)}</p>
 <p>${c(CAU_TRANG.khongDangXuat)} ${c(CAU_TRANG.guiLai)}</p>`
     : `<p>${c(CAU_TRANG.lyDo)} <strong>${c(CAU_TRANG.khongDangXuat)}</strong></p>
 <p>${c(CAU_TRANG.tuTaiLai)}</p>`;
-  const html = `<!doctype html>
+}
+
+/** Khung HTML chung của trang bận và trang báo. `taiLai` đã qua duongNoiBoAnToan; `dauTrang`: dòng thêm vào <head>. */
+function dungTrang(nn: NgonNguNB, than: string, taiLai: string, dauTrang = '', lamMoiSauGiay?: number): string {
+  const c = (x: HaiThuTieng) => cauTrang(nn, x);
+  return `<!doctype html>
 <html lang="${nn}">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+${dauTrang}<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-${laPost ? '' : `<meta http-equiv="refresh" content="${giay}">`}
+${lamMoiSauGiay === undefined ? '' : `<meta http-equiv="refresh" content="${lamMoiSauGiay}">`}
 <title>${c(CAU_TRANG.tieuDe)} · Beeftown</title>
 <style>
   body { margin: 0; background: #FFFFFF; color: #000000; font: 16px/1.55 system-ui, -apple-system, 'Segoe UI', sans-serif; }
@@ -172,17 +187,69 @@ ${laPost ? '' : `<meta http-equiv="refresh" content="${giay}">`}
 <main>
 <h1>${c(CAU_TRANG.tieuDe)}</h1>
 ${than}
-<p><a href="${taiLai}">${c(CAU_TRANG.taiLai)}</a></p>
+<p><a href="${thoatHtml(taiLai)}">${c(CAU_TRANG.taiLai)}</a></p>
 <p class="phu">${c(CAU_TRANG.keoDai)}</p>
 </main>
 </body>
 </html>`;
-  return new Response(html, {
+}
+
+/**
+ * Trang 503 "hệ thống đang bận". GET: tự tải lại sau 5–10 giây — NGẪU NHIÊN,
+ * để mấy chục máy gặp bận cùng lúc không thử lại cùng một giây (đúng lúc hạn
+ * mức đang cạn). POST: nói thẳng thao tác CHƯA được ghi (trang chưa chạy) —
+ * không tự gửi lại gì.
+ *
+ * POST: trang này là trả lời của lượt gửi form, tức là một mục lịch sử giữ
+ * nguyên thân form (mật khẩu, PIN, refresh token Zalo) — F5 trên nó, hay người
+ * dùng sau bấm Quay lại / Tiến tới rồi F5, là gửi lại (issue #194). Nên trang
+ * có ĐÚNG MỘT dòng mã: location.replace sang trang báo GET /noi-bo/chua-ghi
+ * (trangChuaGhi — cùng từng chữ), thay chính mục lịch sử đó; đường dẫn trang
+ * vừa gửi đi theo cookie bt_chua_ghi (cho nút "Tải lại trang"), không theo địa
+ * chỉ. KHÔNG trả 303: lượt POST nhận trả lời KHÔNG phải lỗi thì trình duyệt bỏ
+ * bản lưu đệm của trang form, và lời dặn "bấm Quay lại rồi gửi lại" thành sai —
+ * Quay lại phải hỏi máy chủ đang bận, form đang gõ mất (đo trên Chromium 156,
+ * 16/11/2026: 303 thì mất khi không có bfcache; 503 + location.replace thì cả
+ * có lẫn không có bfcache, Quay lại vẫn hiện đúng form, còn chữ đã gõ, không
+ * hỏi máy chủ). JavaScript tắt thì như trước: trang vẫn đọc được, mục POST còn.
+ *
+ * Không dùng khung NoiBo: trang này phải hiện được cả khi chính việc dựng
+ * trang đang là thứ có vấn đề. Không tài nguyên ngoài; JavaScript chỉ có dòng
+ * location.replace ở trên. Nút "Tải lại trang" chỉ về trang nội bộ
+ * (duongNoiBoAnToan), không thì về /noi-bo.
+ * Vì không nạp file CSS nào, màu của bảng 22/10/2026 viết thẳng: nền trắng, chữ
+ * đen, nút đỏ chữ trắng (6,64 : 1), chữ phụ #555555 (7,46 : 1).
+ *
+ * Kiểm: crm/test/test-qua-tai.mjs nhóm 4, crm/test/test-noi-bo-qua-tai-post.mjs; trình duyệt thật:
+ * web/kiem-tra/trinh-duyet.mjs nhóm 4 ("hệ thống bận lúc gửi form"), web/kiem-tra/thu-day-du.mjs nhóm 15.
+ */
+export function trangQuaTai(nn: NgonNguNB, laPost: boolean, url: URL): Response {
+  const duong = duongNoiBoAnToan(url.pathname + url.search);
+  const giay = 5 + Math.floor(Math.random() * 6);
+  const html = laPost
+    ? dungTrang(nn, thanTrang(nn, true), duong ?? '/noi-bo', `<script>location.replace(${JSON.stringify(DUONG_CHUA_GHI)})</script>\n`)
+    : dungTrang(nn, thanTrang(nn, false), duong ?? '/noi-bo', '', giay);
+  const dau = new Headers({
+    'content-type': 'text/html; charset=utf-8',
+    'cache-control': 'no-store',
+    'retry-after': String(giay),
+  });
+  if (laPost && duong) {
+    dau.append('set-cookie', [`${COOKIE_CHUA_GHI}=${encodeURIComponent(duong)}`, `Path=${DUONG_CHUA_GHI}`, `Max-Age=${CHUA_GHI_SONG_GIAY}`,
+      'HttpOnly', 'SameSite=Lax', ...(url.protocol === 'https:' ? ['Secure'] : [])].join('; '));
+  }
+  return new Response(html, { status: 503, headers: dau });
+}
+
+/**
+ * Trang báo "thao tác vừa gửi CHƯA được ghi" — GET /noi-bo/chua-ghi, nơi trang bận của lượt POST tự chuyển tới (xem
+ * trangQuaTai). Đúng từng chữ của trang đó; không mã, không tự tải lại: F5 ở đây chỉ là một lượt GET. `duongVe`: giá
+ * trị cookie bt_chua_ghi (Astro đã giải mã) — trang vừa gửi; không có, hay không phải trang nội bộ, thì nút về /noi-bo.
+ * Không đọc phiên, không hỏi Supabase: trang này hiện ra đúng lúc Supabase bận.
+ */
+export function trangChuaGhi(nn: NgonNguNB, duongVe: string | undefined): Response {
+  return new Response(dungTrang(nn, thanTrang(nn, true), duongNoiBoAnToan(duongVe) ?? '/noi-bo'), {
     status: 503,
-    headers: {
-      'content-type': 'text/html; charset=utf-8',
-      'cache-control': 'no-store',
-      'retry-after': String(giay),
-    },
+    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
   });
 }

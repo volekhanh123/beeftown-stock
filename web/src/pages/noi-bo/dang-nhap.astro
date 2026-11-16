@@ -16,10 +16,10 @@
  * GET; câu lỗi và email đã gõ đi qua một cookie ngắn hạn (lib/phien.ts,
  * guiFormDangNhap). Trang dựng trong trả lời của lượt POST thì mục lịch sử của
  * nó giữ nguyên thân form, cả mật khẩu. Cùng lý do: ô mật khẩu không bao giờ
- * được điền lại, và đoạn mã cuối trang xóa nó lúc rời trang — trình duyệt giữ
+ * được điền lại, và rời trang là ô đó bị xóa — đoạn mã dùng chung của mọi trang
+ * nội bộ (lib/sau-dang-xuat.js, khung NoiBo in nó vào <head>): trình duyệt giữ
  * trang vừa rời trong bộ nhớ quay lại (bfcache) cùng chữ đã gõ, bấm Quay lại là
- * hiện lại nguyên ô đó. Đoạn mã đứng ngoài nhánh "có database" để bản build
- * không database (kiem-tra/trinh-duyet.mjs) cũng có mà thử.
+ * hiện lại nguyên ô đó.
  */
 import NoiBo from '../../layouts/NoiBo.astro';
 import { layPhien, coDatabase, guiFormDangNhap, docLoiDangNhap, LOI_DANG_NHAP } from '../../lib/phien';
@@ -114,10 +114,4 @@ const noiDuoc = coDatabase();
   <p class="nb-dan" style="margin-top:2rem">
     <a href="/">{t.veCongKhai}</a>
   </p>
-  <script is:inline>
-    window.addEventListener('pagehide', function () {
-      var o = document.querySelectorAll('input[type="password"]');
-      for (var i = 0; i < o.length; i++) o[i].value = '';
-    });
-  </script>
 </NoiBo>

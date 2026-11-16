@@ -23,7 +23,10 @@
  * (vai may_*) chỉ thấy khung trống, không chuông, không menu.
  * Và một đoạn mã nhỏ in thẳng vào đầu mọi trang (components/SauDangXuat.astro, rà soát
  * 14/11/2026): phiên đã kết thúc mà bấm Quay lại thì trang được xin lại từ máy chủ thay
- * vì hiện lại từ bộ nhớ của trình duyệt. Tắt JavaScript thì mọi trang vẫn chạy đủ.
+ * vì hiện lại từ bộ nhớ của trình duyệt. Trả lời của lượt POST (trang báo lỗi dựng tại
+ * chỗ) có thêm một dòng mã xóa thân form khỏi lịch sử, để F5 không gửi lại form
+ * (components/kho/XoaThanPost.astro, issue #194 — Khánh chọn cách 2 ngày 16/11/2026); đặt
+ * trước thẻ phông chữ để không phải chờ thẻ đó. Tắt JavaScript thì mọi trang vẫn chạy đủ.
  *
  * Hai thứ tiếng (lib/ngon-ngu-noi-bo.ts): nút "English" / "Tiếng Việt" trên thanh
  * trên, cùng cookie với phần CRM. Menu, thanh đáy đọc tên { vi, en } của
@@ -43,6 +46,7 @@ import { TEN_VAI_KHO_NB } from '../lib/kho/chung.ts';
 import { laVaiMay, laCheDoMay, DUONG_MAY } from '../lib/kho/may-chung.ts';
 import { dichNB, nhanNB, nnCua, linkDoiNgonNgu, type HaiThuTieng } from '../lib/ngon-ngu-noi-bo.ts';
 import SauDangXuat from '../components/SauDangXuat.astro';
+import XoaThanPost from '../components/kho/XoaThanPost.astro';
 
 interface Props {
   k: Pick<TrangKho, 'nhanSu' | 'chiNhanh' | 'cacChiNhanh' | 'viec'> & Partial<Pick<TrangKho, 'may'>>;
@@ -114,6 +118,7 @@ const doiChiNhanh = (vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{tieuDe} — {t.tenApp}</title>
+    <XoaThanPost />
     <meta name="robots" content="noindex, nofollow" />
     <link rel="icon" href="/bieu-tuong.svg" type="image/svg+xml" />
     <link rel="manifest" href="/kho/manifest.json" />

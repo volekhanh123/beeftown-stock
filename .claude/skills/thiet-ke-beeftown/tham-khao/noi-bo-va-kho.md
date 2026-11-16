@@ -196,9 +196,11 @@ Thao tác xóa / hủy: đặt trong `<details class="nb-the">` đóng sẵn, c�
   được ghi. Mất mạng giữa chừng: "có thể đã ghi hoặc chưa — tải lại trang để kiểm".
 - Không có chế độ ngoại tuyến.
 - **JavaScript chỉ được phép** ở: `QuetMa`, `/kho/js/ean13.js`, `/kho/js/may-chung.js` (khóa máy dùng
-  chung), `/kho/js/in-an.js`, và đoạn nhỏ `web/src/components/SauDangXuat.astro` in vào `<head>` của hai
-  khung `NoiBo.astro`, `Kho.astro` (sau đăng xuất, bấm Quay lại không hiện lại trang cũ). Không thư viện npm
-  trong trình duyệt; `<script>`, `onclick` ngoài danh sách là kiểm thử đỏ.
+  chung), `/kho/js/in-an.js`, đoạn nhỏ `web/src/components/SauDangXuat.astro` in vào `<head>` của hai
+  khung `NoiBo.astro`, `Kho.astro` (sau đăng xuất, bấm Quay lại không hiện lại trang cũ), và một dòng
+  `web/src/components/kho/XoaThanPost.astro` khung `Kho.astro` in vào trả lời của lượt POST (trang báo lỗi
+  dựng tại chỗ: F5 không gửi lại form — issue #194). Không thư viện npm trong trình duyệt; `<script>`,
+  `onclick` ngoài danh sách là kiểm thử đỏ.
 - Số: `dinhDangKg`, `dinhDangTien`, `dinhDangPhanTram` (`web/src/lib/kho/chung.ts`) — tiếng Việt
   `450.000 đ`, tiếng Anh `450,000 ₫`. Ô kg nhận "1,5" lẫn "1.5". `—` nghĩa là không đọc được hoặc
   không có quyền, **không phải số 0**.
