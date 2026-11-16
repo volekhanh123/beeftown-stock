@@ -22,6 +22,9 @@ Tách hẳn khỏi web Beeftown: Worker riêng (`beeftown-bot-dich`), không đ�
    - `GEMINI_API_KEY` — khóa Gemini từ aistudio.google.com (dùng lại được khóa web Beeftown đang dùng). Tùy chọn.
    - `ANTHROPIC_API_KEY` — khóa Claude từ console.anthropic.com (cần nạp tiền). Tùy chọn; có thì được dùng trước Gemini.
    - Không cài khóa nào thì bot dịch bằng Workers AI.
+
+   **Phải chọn loại Secret, không chọn Text**: biến Text bị mỗi lần `npm run deploy` xóa và thay bằng giá trị trong
+   `wrangler.jsonc` (đã xảy ra 16/11/2026: khóa Gemini cài dạng Text mất sau lần deploy kế tiếp). Secret thì được giữ.
 4. **Mở** `https://beeftown-bot-dich.<tên-tài-khoản>.workers.dev/cai-dat` trên trình duyệt. Trang báo
    "Đã đăng ký webhook …" là xong; báo "Chưa đăng ký được" thì kiểm lại token.
 5. **Thử**: nhắn "hello" vào nhóm — bot trả "🇰🇷 Tên: 안녕하세요" sau vài giây.
