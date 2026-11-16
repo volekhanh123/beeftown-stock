@@ -80,6 +80,9 @@
  * Supabase Auth (trang đăng nhập nội bộ — thu-day-du.mjs nhóm 14): POST /auth/v1/token?grant_type=password, mọi kịch
  * bản, chỉ các kiểu KHÔNG đăng nhập được — email ban@… → 429 quá hạn mức, dut@… → cắt kết nối, còn lại → 400
  * invalid_credentials (sai email hoặc mật khẩu). Đếm dưới tên 'auth:dang_nhap'.
+ * Kiểm phiên (layPhien — thu-day-du.mjs nhóm 15): GET /auth/v1/user, mọi kịch bản — access token bắt đầu bằng "ban-"
+ * → 429 quá hạn mức (Supabase bận đúng lúc kiểm phiên), còn lại → 403 bad_jwt (phiên không còn). Không có đường kiểm
+ * phiên ĐƯỢC. Đếm dưới tên 'auth:kiem_phien'.
  *
  * GET /__dem → { tên hàm: số lần gọi } — để kiểm "bấm đúp → tao_dat_ban đúng một lần".
  * GET /__nhat-ky → 200 lần gọi gần nhất { ham, thamSo }.
@@ -632,6 +635,8 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
 
       // --- Supabase Auth: đăng nhập bằng mật khẩu, chỉ các kiểu KHÔNG đăng nhập được (thu-day-du.mjs nhóm 14) ---
       if (url.pathname === '/auth/v1/token') return dangNhapGia();
+      // --- Supabase Auth: kiểm phiên, chỉ các kiểu KHÔNG kiểm được (thu-day-du.mjs nhóm 15) ---
+      if (url.pathname === '/auth/v1/user') return kiemPhienGia();
 
       // --- PostgREST: POST /rest/v1/rpc/<hàm> -------------------------------
       const m = url.pathname.match(/^\/rest\/v1\/rpc\/([a-z0-9_]+)$/);
@@ -758,6 +763,22 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
         if (email.startsWith('ban@')) return traAuth(429, { code: 'over_request_rate_limit', message: 'Request rate limit reached' });
         if (email.startsWith('dut@')) { req.socket.destroy(); return; }
         return traAuth(400, { code: 'invalid_credentials', message: 'Invalid login credentials' });
+      }
+
+      // Trả lời GET /auth/v1/user (auth.getUser(jwt) của supabase-js — layPhien gọi ở MỌI lượt xin trang nội bộ) — bất
+      // kể kịch bản, access token quyết định: "ban-…" → 429 over_request_rate_limit (Supabase bận: layPhien trả QUA_TAI,
+      // middleware trả trang "hệ thống đang bận"); còn lại → 403 bad_jwt. Nhật ký không ghi token.
+      function kiemPhienGia() {
+        const token = String(req.headers.authorization ?? '').replace(/^Bearer\s+/i, '');
+        dem['auth:kiem_phien'] = (dem['auth:kiem_phien'] ?? 0) + 1;
+        nhatKy.push({ ham: 'auth:kiem_phien', thamSo: { ban: token.startsWith('ban-') } });
+        if (nhatKy.length > 200) nhatKy.shift();
+        const traAuth = (status, body) => {
+          res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'x-supabase-api-version': '2024-01-01' });
+          res.end(JSON.stringify(body));
+        };
+        if (token.startsWith('ban-')) return traAuth(429, { code: 'over_request_rate_limit', message: 'Request rate limit reached' });
+        return traAuth(403, { code: 'bad_jwt', message: 'invalid JWT: unable to parse or verify signature' });
       }
 
       // Trả lời tao_dat_ban theo kịch bản. Tách thành hàm để chờ được ("cham").
