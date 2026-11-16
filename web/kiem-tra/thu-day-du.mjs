@@ -73,6 +73,8 @@
  *       (mua-thit-dat-loi) → câu lỗi đúng thứ tiếng, giỏ và ô liên hệ điền lại. Mất mạng (mua-thit-dat-dut) → "không
  *       chắc", không form. Thanh giỏ dính đáy khi có gói. mua-thit-het-quay, -loi / -dut / -treo (trả lời trong 6 giây),
  *       chưa mở (rong, day-du, mua-thit-rong, -lech): không form, không giá. mua-thit-khong-zalo: vẫn mở (0113).
+ *       Kiểm cả chính phép đo giao diện: nút vừa hết di chuột mà còn đang chuyển màu (kéo dài 1,5 giây cho chắc) thì
+ *       phép đo chờ xong rồi mới đo (do-giao-dien.mjs: choDungYen); nền nút đứng yên ở màu ngoài bảng vẫn bị báo.
  *  13. Meta Pixel (src/lib/meta-pixel.ts; Meta bị chặn ở mọi context — chan-meta.mjs). Hỏi bàn: Lead đúng một lần,
  *       chỉ sau khi database trả mã (cả khi bấm đúp), chỉ kèm content_name và language — không họ tên, số điện thoại,
  *       mã; tải lại thẻ "đã nhận" không thành Lead thứ hai; database 500, mạng đứt, database từ chối → không Lead;
@@ -107,7 +109,7 @@ import { batMayGia, LIEN_HE_THU, MON_MAU, MON_THU_SUC, DIA_CHI_CONG_BO_THU, NGAY
   menuMuaThitVe, boTaiQuayTheoGu, GIO_NHAN_THU, GIAO_HANG_THU, NHAN_VIEN_THU, VIDEO_THU } from './gia-supabase.mjs';
 import { timChuoiCam } from '../src/lib/chuoi-cam.js';
 import { chuHienRa, boTienDaChot } from './chu-hien-ra.mjs';
-import { doGiaoDien, PHEP_DO } from './do-giao-dien.mjs';
+import { choDungYen, doGiaoDien, PHEP_DO } from './do-giao-dien.mjs';
 import { moChromium, moChromiumKhongRoute, ghiPixel, docHangDoi, suKienTrong } from './chan-meta.mjs';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -829,10 +831,9 @@ try {
     for (const rong of [390, 1440]) {
       await page.setViewportSize({ width: rong, height: 900 });
       const doTheoQuyTac = async nhan => {
-        // Con trỏ còn nằm ở chỗ vừa bấm trên trang trước: đưa nó ra góc và chờ hết chuyển màu (180ms),
-        // không thì nút nằm dưới con trỏ đang ở màu "di chuột" và bị đo nhầm.
+        // Con trỏ còn nằm ở chỗ vừa bấm trên trang trước: đưa nó ra góc, không thì nút nằm dưới con trỏ đứng yên ở
+        // màu "di chuột" và bị đo nhầm. Chuyển màu về màu thường (180ms) thì doGiaoDien tự chờ xong (choDungYen).
         await page.mouse.move(0, 0);
-        await cho(300);
         const gd = await page.evaluate(doGiaoDien);
         return Object.entries(PHEP_DO).map(([khoa, ten]) =>
           ok(`${nhan}: ${ten}`, gd[khoa]?.length === 0, (gd[khoa] ?? ['không đo được']).slice(0, 4).join(' | ')));
@@ -863,15 +864,15 @@ try {
         });
         const truoc = await doChip();
         await chip.click();
-        await cho(300);   // chuyển màu 180ms
+        await page.evaluate(choDungYen);   // ô đổi màu trong 180ms: đọc khi đã đổi xong, không chờ cứng
         const sau = await doChip();
         tot.push(ok(`${nhan}: ô giờ cao ≥ 48px, chữ 16px; chưa chọn nền trắng, đang chọn nền đỏ chữ trắng`,
           truoc.cao >= 47.5 && truoc.co === '16px' && truoc.nen === MAU.trang && sau.nen === MAU.do && sau.chu === MAU.trang,
           JSON.stringify({ truoc, sau })));
 
-        // Gửi khi họ tên và số điện thoại còn trống: lỗi bằng chữ, sát ô, màu #8F0000.
+        // Gửi khi họ tên và số điện thoại còn trống: lỗi bằng chữ, sát ô, màu #8F0000 — đọc màu khi trang đã đứng yên.
         await nutGui().click();
-        await cho(300);
+        await page.evaluate(choDungYen);
         const loi = await page.evaluate(() => ({
           cau: [...document.querySelectorAll('form[data-hoi-ban] .loi-o')].filter(p => !p.hidden)
             .map(p => ({ chu: p.textContent.trim(), mau: getComputedStyle(p).color })),
@@ -1120,10 +1121,9 @@ try {
               rongTrang: document.documentElement.scrollWidth, khung: innerWidth,
             };
           });
-          // Như nhóm 8: con trỏ còn nằm ở chỗ nhóm trước vừa bấm — đưa ra góc, chờ hết chuyển màu (180ms),
-          // không thì nút nằm dưới con trỏ bị đo ở màu "di chuột" (đo được màu giữa chừng, ngoài bảng).
+          // Như nhóm 8: con trỏ còn nằm ở chỗ nhóm trước vừa bấm — đưa ra góc, không thì nút nằm dưới con trỏ bị đo ở
+          // màu "di chuột". Chuyển màu về màu thường thì doGiaoDien tự chờ xong (choDungYen), không chờ cứng.
           await page.mouse.move(0, 0);
-          await cho(300);
           const gd = await page.evaluate(doGiaoDien);
           const saiGd = Object.keys(PHEP_DO).flatMap(khoa => (gd[khoa] ?? ['không đo được']).map(c => `[${khoa}] ${c}`));
           const ngayMong = ngay ? `${ngay <= homNay ? t.moCuaTu : t.donBanTu} ${dinhDangNgay(ngay, nn)}` : null;
@@ -1164,7 +1164,8 @@ try {
     const moTab = async (p, phan) => {
       await p.locator(`#td-tab-${phan}`).click();
       // Chuột rời khỏi trang trước khi cuộn: chuột đứng yên ở chỗ tab trong lúc trang cuộn bên dưới thì "di chuột"
-      // lên nút Hỏi bàn của dải đỏ — phép đo màu nút bắt đúng lúc nút đang đổi màu (180ms), không phải lỗi giao diện.
+      // lên nút Hỏi bàn của dải đỏ, và nút dừng lại dưới con trỏ thì giữ màu di chuột — không phải lỗi giao diện.
+      // Chuyển màu của tab vừa bấm, của phần tử vừa đi qua thì doGiaoDien tự chờ xong (choDungYen).
       await p.mouse.move(0, 0);
       return p.evaluate(async phan => {
         const khoi = document.getElementById(phan);
@@ -1176,7 +1177,6 @@ try {
           await new Promise(r => setTimeout(r, 100));
         }
         scrollTo({ top: 0, behavior: 'instant' });
-        await new Promise(r => setTimeout(r, 250));   // hết chuyển màu (--nhanh 180ms) của phần tử vừa đi qua
         const anhCua = f => f && {
           src: f.querySelector('img')?.getAttribute('src') ?? '', alt: f.querySelector('img')?.getAttribute('alt') ?? '',
           nhan: f.querySelector('figcaption')?.checkVisibility() ? f.querySelector('figcaption').textContent.trim() : '',
@@ -1460,6 +1460,11 @@ try {
           tot.push(ok(`${nhan}: thẻ gọn đúng ${Object.keys(PHEP_DO).length} phép đo của do-giao-dien.mjs`, saiThe.length === 0, saiThe.slice(0, 5).join(' | ')));
           await p.locator('[data-mtv-mo-hop]').first().click();
           await p.locator('[data-mtv-hop]:popover-open').waitFor({ timeout: 5000 });
+          // Nền mờ sau hộp không giữ con trỏ (popover không chặn trang phía sau): từ 600px hộp nằm giữa màn, không phủ lên
+          // nút vừa bấm, nên con trỏ để lại trên "Chọn gói" giữ nút ở màu di chuột (xám E2) — đưa con trỏ ra góc rồi đo;
+          // doGiaoDien chờ nút chuyển màu về trắng xong (choDungYen). Trước đây phép đo chạy ngay sau cú bấm: máy rảnh thì
+          // đạt nhờ chuyển màu sang xám chưa kịp chạy, máy bận thì đo được màu đang chuyển dở (rgb(253, 253, 253)).
+          await p.mouse.move(0, 0);
           const saiHop = await saiGd();
           const tranHop = await tranNgang(p);
           tot.push(ok(`${nhan}: hộp chọn đang mở đúng ${Object.keys(PHEP_DO).length} phép đo, không tràn ngang`, saiHop.length === 0 && tranHop <= 0,
@@ -1510,6 +1515,47 @@ try {
         } finally {
           await c.close();
         }
+      }
+    }
+
+    // ---- Phép đo giao diện chờ trang đứng yên (do-giao-dien.mjs: choDungYen) ------------------------------------------
+    // Lỗi chập chờn 15/11/2026: máy bận, "hộp chọn đang mở" ở trên đỏ với nền nút rgb(253, 253, 253) — phép đo bắt đúng
+    // khung hình đầu của chuyển màu trắng → xám E2 (180ms) lúc con trỏ còn trên nút "Chọn gói"; trang không sai. Ở đây
+    // kiểm chính phép đo, không phụ thuộc máy nhanh hay chậm: chuyển màu của nút kéo dài 1,5 giây, nên lúc gọi phép đo
+    // nút CHẮC CHẮN đang giữa chừng — phép đo phải chờ xong rồi mới đo. Rồi nền nút đứng yên ở rgb(253, 253, 253): phép đo
+    // vẫn phải báo — chờ không được làm cùn phép kiểm.
+    {
+      mayGia.datKichBan('mua-thit-mo');
+      const { c, p } = await mo(duongMua('vi'), { rong: 1440 });
+      const nhan = `mua-thit-mo ${duongMua('vi')} · 1440px · phép đo chờ trang đứng yên`;
+      try {
+        const saiGd = async () => {
+          const gd = await p.evaluate(doGiaoDien);
+          return Object.keys(PHEP_DO).flatMap(khoa => (gd[khoa] ?? ['không đo được']).map(x => `[${khoa}] ${x}`));
+        };
+        const nut = p.locator('[data-mtv-mo-hop]').first();
+        await p.addStyleTag({ content: '.ck .nut { transition-duration: 1500ms !important; }' });
+        await nut.hover();
+        await p.evaluate(choDungYen);   // nền đã sang màu di chuột (không còn trắng): nút đang được di chuột
+        const lucDiChuot = await nut.evaluate(n => `${n.matches(':hover')} ${getComputedStyle(n).backgroundColor}`);
+        await p.mouse.move(0, 0);       // con trỏ rời nút: nền bắt đầu về trắng, mất 1,5 giây
+        const giuaChung = await saiGd();
+        await p.addStyleTag({ content: '.ck .mtv-mo-hop { background-color: rgb(253, 253, 253) !important; transition: none !important; }' });
+        const nenDungYen = await saiGd();
+        const tot = [
+          ok(`${nhan}: nút "Chọn gói" vừa hết di chuột, nền đang về trắng (chuyển màu kéo dài 1,5 giây) — phép đo chờ xong rồi mới đo, đủ ${Object.keys(PHEP_DO).length} phép đo`,
+             // Tiền đề: con trỏ thật sự đang trên nút và nền đã rời màu trắng — không thì lượt chuyển về trắng không có gì
+             // để chờ. Không ghi cứng màu di chuột: đổi token màu di chuột không được làm kiểm tra này đỏ.
+             lucDiChuot.startsWith('true ') && lucDiChuot !== 'true rgb(255, 255, 255)' && giuaChung.length === 0,
+             `lúc di chuột: ${lucDiChuot} · ${giuaChung.slice(0, 3).join(' | ')}`),
+          ok(`${nhan}: nền nút đứng yên ở rgb(253, 253, 253) — phép đo vẫn báo ở nenTrongBang và nut (chờ không làm cùn phép kiểm)`,
+             nenDungYen.some(x => x.startsWith('[nenTrongBang] rgb(253, 253, 253) ở <button.nut.nut-vien.mtv-mo-hop>'))
+               && nenDungYen.some(x => x.startsWith('[nut] <button.nut.nut-vien.mtv-mo-hop>') && x.includes('nền rgb(253, 253, 253)')),
+             nenDungYen.slice(0, 3).join(' | ')),
+        ];
+        if (tot.includes(false)) await chupP(p, 'phep-do-cho-dung-yen');
+      } finally {
+        await c.close();
       }
     }
 
