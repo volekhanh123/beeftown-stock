@@ -130,6 +130,16 @@
 !/mo-rong-fabi/_locales/en/messages.json
 !/mo-rong-fabi/thu/thu-trinh-duyet.mjs
 
+# --- ĐƯỢC PHÉP: Bot dịch Zalo (Worker Cloudflare riêng: dịch Anh/Việt ↔ Hàn trong nhóm chat) ---
+# Mở từng file. Bí mật (token bot, khóa Claude) chỉ nằm trong Cloudflare, không bao giờ ở thư mục này.
+!/bot-dich/README.md
+!/bot-dich/package.json
+!/bot-dich/package-lock.json
+!/bot-dich/tsconfig.json
+!/bot-dich/wrangler.jsonc
+!/bot-dich/src/*.ts
+!/bot-dich/test/*.ts
+
 # --- ĐƯỢC PHÉP: ứng dụng web (Astro + Cloudflare Workers) ---
 # Mở theo ĐUÔI FILE chứ không mở cả thư mục. Nhờ vậy file mật thêm vào web/
 # sau này (xlsx, pdf, ảnh chụp) vẫn tự động bị chặn ở mục bên dưới — đúng
