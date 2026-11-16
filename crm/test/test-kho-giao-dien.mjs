@@ -1252,9 +1252,11 @@ await nhom('20 · GỌN PHẦN TIỀN VÀ BÁO CÁO (Khánh duyệt 23/10/2026)'
 
   const misa = doc(join(TRANG, 'noi-bo/kho/cong-no/misa.astro'));
   ok('MISA: xem trước 10 dòng, chữ không xuống dòng', /const XEM = 10;/.test(misa) && /\.misa-xem th, \.misa-xem td \{ white-space: nowrap; \}/.test(misa));
-  ok('MISA: "Mã MISA còn thiếu" là mục gập (id thieu-ma), mở sẵn khi vừa lưu mã hay gõ sai',
+  // #194 (đợt 5): gõ sai mã không còn dựng trang tại chỗ — cũng 303 về ?mo=thieu_ma như khi lưu được (câu lỗi qua cookie).
+  ok('MISA: "Mã MISA còn thiếu" là mục gập (id thieu-ma), mở sẵn khi vừa lưu mã hay gõ sai (cả hai lối 303 về ?mo=thieu_ma#thieu-ma)',
     /<details id="thieu-ma" class="nb-the misa-thieu" open=\{moThieu\}>/.test(misa)
-    && /&mo=thieu_ma#thieu-ma`, await luuMaMisaMatHang/.test(misa) && /bao = kqHai\(false, CAU\.maSai\); moThieu = true;/.test(misa));
+    && /const moThieu = sp\.get\('mo'\) === 'thieu_ma';/.test(misa)
+    && /const toi = `\$\{giuQ\}&mo=thieu_ma#thieu-ma`;\n\s*if \(ma === undefined\) return \{ kq: kqHai\(false, CAU\.maSai\), toi \};\n\s*return \{ kq: await luuMaMisaMatHang\([^\n]*\), toi \};/.test(misa));
   ok('MISA: mỗi mặt hàng thiếu mã một hàng, ô mã vẫn có nhãn cho trình đọc màn hình',
     /<form method="POST" class="misa-ma">/.test(misa) && /<span class="an">\{t\.maMisa\} — \{m\.ten\}<\/span>/.test(misa));
 

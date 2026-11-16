@@ -505,7 +505,9 @@ mức đăng nhập chung — PIN mới sai dạng bị từ chối trước khi
 **Lượt gửi form không bao giờ dựng trang tại chỗ** (issue #194, đợt 2). Ba trang của máy — mở máy bằng PIN, gắn
 người / đổi PIN, đăng ký máy — xử lý lượt POST bằng `guiRoiChuyen` (`lib/kho/trang.ts`): lưu được hay không, thân form
 hỏng, việc không hợp lệ, lỗi bất ngờ — đều là 303 sang GET, câu báo qua `bt_kho_bao` (lỗi bất ngờ: câu "chưa chắc đã
-ghi", không phải "chưa ghi được" — việc có thể ném sau khi đã ghi). Trang dựng trong trả lời của lượt
+ghi", không phải "chưa ghi được" — việc có thể ném sau khi đã ghi). Đợt 5: chín trang kho khác không điền lại chữ của
+lượt gửi cũng vậy, qua `ketThucPost` (danh sách: `crm/test/test-kho-loi-chuyen-huong.mjs`); câu báo dài được cắt theo
+số byte để cookie không quá cỡ (`ghiBao`, `lib/kho/bao.ts`). Trang dựng trong trả lời của lượt
 POST là một mục lịch sử giữ nguyên mật khẩu, PIN vừa gõ trên một máy nhiều người dùng. Chữ điền lại (email, tên máy, số
 phút) đi qua cookie `bt_kho_nhap_lai` — dùng một lần, chỉ của đúng trang, sống 60 giây (`ghiNhapLai` / `docNhapLai` trong
 `lib/kho/bao.ts`); ô bí mật không bao giờ — tên ô có một phần là `mat_khau`, `pin` hay `token` bị bỏ cả lúc ghi lẫn
@@ -1636,10 +1638,16 @@ Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa th
    rồi một dòng chặn quyền `if (!k.duoc('…')) return Astro.redirect('/noi-bo/kho', 302);`.
 2. Bọc trong `<Kho k={k} tieuDe="…" huongDan="…">`, có `<h1>` và `<BaoKho>`. Chưa có mục hướng dẫn
    hợp thì thêm vào `lib/kho/huong-dan.ts` (mục 3i).
-3. Form: POST + ô ẩn `viec`; đọc thân bằng `docFormGui(Astro)`; thành công → `chuyenHuong(Astro, url, kq)`.
-   Form tạo chứng từ có `ma_gui`; form sửa có `phien_ban`. Không đọc được thân (mạng đứt giữa chừng):
-   `docFormGui` trả null và đánh dấu lượt xem, `<BaoKho>` tự hiện câu "Không đọc được dữ liệu gửi lên…"
-   (`CAU_DOC_FORM_HONG`, `lib/gui-noi-bo.ts`) — trang không tự đặt câu đó (`crm/test/test-kho-doc-form.mjs`).
+3. Form: POST + ô ẩn `viec`; đọc thân bằng `docFormGui(Astro)`. Lượt POST nào cũng kết thúc bằng 303 — lỗi cũng
+   vậy (issue #194): `if (Astro.request.method === 'POST') return ketThucPost(Astro, form, url, async f => ({ kq, toi }))`
+   (`lib/kho/trang.ts`) — câu báo, cả câu lỗi, đi theo cookie; thân form hỏng, việc lạ, lỗi ném ra bất ngờ cũng 303.
+   Vài ô ngắn cần hiện lại sau lỗi: trả thêm `nhapLai` và đọc bằng `docNhapLai` (`lib/kho/bao.ts`, mẫu: Thiết lập kho,
+   năm ô ngưỡng). Trang mới phải được xếp nhóm ở `crm/test/test-kho-loi-chuyen-huong.mjs`. Trang cũ có phiếu nhiều dòng
+   còn dựng tại chỗ khi lỗi (`chuyenHuong` khi lưu được, `bao = kq` khi không) — chờ Khánh quyết cách giữ chữ (#194).
+   Form tạo chứng từ có `ma_gui`; form sửa có `phien_ban`. Không đọc được thân (mạng đứt giữa chừng): `docFormGui`
+   trả null; `ketThucPost` báo câu "Không đọc được dữ liệu gửi lên…" (`CAU_DOC_FORM_HONG`, `lib/gui-noi-bo.ts`) qua
+   cookie, trang còn dựng tại chỗ thì `<BaoKho>` tự hiện câu đó — trang không tự đặt câu đó
+   (`crm/test/test-kho-doc-form.mjs`).
 4. Chữ cho nhân viên: tiếng Việt đơn giản, không thuật ngữ ("hạn gần bán trước", không "FEFO").
    Nút ≥ 48px, ô nhập cỡ chữ 16px (iPhone không tự phóng to).
 5. Nếu có ô menu: thêm vào `MUC_KHO` với đúng quyền của dòng chặn; nếu có số đỏ thì ghi `dem`.

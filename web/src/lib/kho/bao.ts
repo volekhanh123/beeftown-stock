@@ -15,14 +15,46 @@
 import type { AstroCookies } from 'astro';
 import { kqHai, type KetQua } from './chung.ts';
 import { CAU_DOC_FORM_HONG } from '../gui-noi-bo.ts';
+import { dichCau } from '../cau-noi-bo.ts';
 
 const COOKIE_BAO = 'bt_kho_bao';
 
 /** Bản chạy thật (HTTPS) thì cookie chỉ đi qua HTTPS. Ngoài Astro (kiểm thử Node) import.meta.env không có. */
 const banThat = () => (import.meta.env as Record<string, unknown> | undefined)?.PROD === true;
 
+// Câu báo dài — câu lỗi ghép từng dòng của một phiếu, bản tiếng Anh đi kèm — có thể làm cookie quá cỡ: trình duyệt BỎ
+// cả cookie (tên + giá trị + thuộc tính quá 4 KB), trang sau chuyển hướng không báo gì và người bấm tưởng đã lưu. Từ đợt 5
+// của #194 cả câu lỗi cũng đi qua đây. Astro mã hóa giá trị bằng encodeURIComponent (một chữ có dấu thành tới 9 byte),
+// nên cắt theo SỐ BYTE SAU MÃ HÓA, từng ký tự trọn vẹn, có dấu "…": tiếng Việt tối đa 2.400 byte, tiếng Anh 1.100 byte
+// — cả cookie dưới 3.800 byte. Kiểm: crm/test/test-kho-loi-chuyen-huong.mjs nhóm 1.
+const BYTE_CAU_VI = 2400;
+const BYTE_CAU_EN = 1100;
+/** Số byte của chuỗi trong giá trị cookie (một chuỗi JSON, sau encodeURIComponent) — gồm hai dấu ngoặc kép (6 byte). */
+const soByte = (s: string) => encodeURIComponent(JSON.stringify(s)).length;
+function catTheoByte(s: string, toiDa: number): string {
+  if (soByte(s) <= toiDa) return s;
+  const DAU_CAT = '…';
+  let ra = '';
+  let dem = soByte(DAU_CAT);   // hai dấu ngoặc kép và dấu "…"
+  for (const kyTu of s) {      // từng ký tự trọn vẹn (kể cả ký tự ngoài BMP); JSON thoát từng ký tự riêng nên cộng dồn được
+    const b = soByte(kyTu) - 6;
+    if (dem + b > toiDa) break;
+    ra += kyTu;
+    dem += b;
+  }
+  return `${ra.trimEnd()}${DAU_CAT}`;
+}
+
 export function ghiBao(cookies: AstroCookies, bao: KetQua) {
-  cookies.set(COOKIE_BAO, JSON.stringify(bao), {
+  const gon: KetQua = { ok: bao.ok, cau: catTheoByte(bao.cau, BYTE_CAU_VI) };
+  if (typeof bao.cauEn === 'string') gon.cauEn = catTheoByte(bao.cauEn, BYTE_CAU_EN);
+  else if (gon.cau !== bao.cau) {
+    // Câu database chưa có bản tiếng Anh: BaoKho tra dichCau theo NGUYÊN câu lúc hiện — câu đã cắt thì không khớp, màn
+    // tiếng Anh hiện tiếng Việt cụt. Dịch bản đầy đủ trước khi cắt (dịch không được thì để BaoKho tra như cũ).
+    const en = dichCau('en', bao.cau);
+    if (en !== bao.cau) gon.cauEn = catTheoByte(en, BYTE_CAU_EN);
+  }
+  cookies.set(COOKIE_BAO, JSON.stringify(gon), {
     httpOnly: true,
     secure: banThat(),
     sameSite: 'lax',

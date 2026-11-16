@@ -29,7 +29,8 @@
 import Kho from '../../../../layouts/Kho.astro';
 import TheTrangCon from '../../../../components/kho/TheTrangCon.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
-import { moTrangKho, docFormGui, chuyenHuong, khoiTaoKho } from '../../../../lib/kho/trang.ts';
+import { moTrangKho, docFormGui, ketThucPost, khoiTaoKho, LOI_CHUA_CO_CN } from '../../../../lib/kho/trang.ts';
+import { docNhapLai } from '../../../../lib/kho/bao.ts';
 import { docCaiDat, docViTri, luuCaiDat, luuCaiDatGoc, type CaiDat, type ViTri } from '../../../../lib/kho/danh-muc.ts';
 import { docCaiDatQuay, luuCongTacNhan, type CaiDatQuay } from '../../../../lib/kho/quay.ts';
 import { cauLoiKho, dinhDangThoiDiem, kqHai, type KetQua } from '../../../../lib/kho/chung.ts';
@@ -145,29 +146,32 @@ const t = dichNB(nn, {
   quanLyDoi: { vi: 'Quản lý hoặc chủ đổi được các ngưỡng này.', en: 'A manager or the owner can change these thresholds.' },
 });
 
-let bao: KetQua | null = k.bao;
-// Lưu ngưỡng hỏng thì hiện lại đúng số vừa gõ.
-let nguongLai: FormData | null = null;
+/** Năm ô ngưỡng cảnh báo (thong-bao.ts). Lưu hỏng thì hiện lại đúng số vừa gõ — qua cookie điền lại, không qua thân form. */
+const O_NGUONG = Object.keys(TEN_NGUONG_NB);
 const form = await docFormGui(Astro);
-if (form && k.chiNhanh) {
+// Lượt gửi nào cũng kết thúc bằng 303 (#194, đợt 5): lưu được thì về trang Thiết lập như trước (Bỏ qua: về mục của bước
+// đó); hỏng thì về đúng trang đang mở, câu lỗi đi theo cookie. Các mục cài đặt khác dựng lại từ database (chữ gõ sai vốn
+// đã không được điền lại); riêng năm ô ngưỡng điền lại qua docNhapLai.
+if (Astro.request.method === 'POST') return ketThucPost(Astro, form, Astro.url.pathname + Astro.url.search, async form => {
+  if (!k.chiNhanh) return { kq: kqHai(false, LOI_CHUA_CO_CN) };
   const viec = String(form.get('viec') ?? '');
-  let kq: KetQua;
   let ve = '/noi-bo/kho/cai-dat';
+  let kq: KetQua;
   if (viec === 'khoi_tao') kq = await khoiTaoKho(k.client, k.chiNhanh.id);
   else if (viec === 'chung') kq = await luuCaiDat(k.client, form, k.chiNhanh.id);
   else if (viec === 'goc') kq = await luuCaiDatGoc(k.client, form, k.chiNhanh.id);
   else if (viec === 'nhan_quay') kq = await luuCongTacNhan(k.client, k.chiNhanh.id, form.get('chuyen_quay_can_nhan') === 'co');
   else if (viec === 'nguong') {
     kq = await luuNguong(k.client, k.chiNhanh.id, form);
-    if (!kq.ok) nguongLai = form;
+    if (!kq.ok) return { kq, nhapLai: Object.fromEntries(O_NGUONG.map(o => [o, String(form.get(o) ?? '')])) };
   } else if (viec === 'bo_qua') {
     const buoc = String(form.get('buoc') ?? '');
     kq = await danhDauBuoc(k.client, k.chiNhanh.id, buoc, form.get('bo_qua') === 'co');
     ve = `/noi-bo/kho/cai-dat?mo=xong#buoc-${buoc.replace(/[^a-z_]/g, '')}`;
   } else kq = kqHai(false, { vi: 'Việc không hợp lệ.', en: 'Invalid action.' });
-  if (kq.ok) return chuyenHuong(Astro, ve, kq);
-  bao = kq;
-}
+  return { kq, toi: kq.ok ? ve : undefined };
+}, O_NGUONG);
+const nguongLai = docNhapLai(Astro.cookies, '/noi-bo/kho/cai-dat', O_NGUONG);
 
 let caiDat: CaiDat | null = null;
 let viTri: ViTri[] = [];
@@ -190,7 +194,7 @@ if (k.chiNhanh && k.daKhoiTao) {
   catch (e) { loiTienDo = cauLoiKho(e, t.khongDocTienDo); }
 }
 /** Giá trị trong ô ngưỡng: số vừa gõ (khi lưu hỏng) hoặc số đang dùng. */
-const oNguong = (khoa: string) => nguongLai ? String(nguongLai.get(khoa) ?? '') : hienSoNguong(nguong?.gia_tri[khoa], nn);
+const oNguong = (khoa: string) => nguongLai ? String(nguongLai[khoa] ?? '') : hienSoNguong(nguong?.gia_tri[khoa], nn);
 
 const MUC: { link: string; ten: HaiThuTieng; mo_ta: HaiThuTieng; hien: boolean }[] = [
   { link: '/noi-bo/kho/cai-dat/mat-hang', ten: { vi: 'Mặt hàng', en: 'Items' },
@@ -255,7 +259,7 @@ const mayChung: { bat: boolean; cau: string; cauEn?: string } | null =
   <TheTrangCon k={k} cha="cai_dat" />
   <h1>{t.tieuDe}</h1>
   <p class="kho-phu" style="margin-top:0">{t.gioiThieu}</p>
-  <BaoKho bao={bao} loiDoc={loiDoc} />
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   {k.chiNhanh && !k.daKhoiTao && k.duoc('danh_muc') && (
     <form method="POST" class="nb-the">

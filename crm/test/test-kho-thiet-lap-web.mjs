@@ -408,7 +408,10 @@ await nhom('9 · TRANG THIẾT LẬP VÀ TỒN ĐẦU KỲ', async () => {
   for (const [ten, s] of [['Thiết lập', idx], ['Tồn đầu kỳ', td]]) {
     ok(`${ten}: không <script>, không onclick`, !/<script|onclick=/i.test(s));
     ok(`${ten}: bọc <Kho>, có <h1> và <BaoKho>`, /<Kho k=\{k\}/.test(s) && /<h1>/.test(s) && /<BaoKho/.test(s));
-    ok(`${ten}: thành công thì chuyenHuong`, /chuyenHuong\(Astro,/.test(s));
+    // #194 (đợt 5): trang Thiết lập — MỌI lượt POST (lỗi cũng vậy) kết thúc bằng ketThucPost, 303; Tồn đầu kỳ còn
+    // dựng tại chỗ khi lỗi (chờ Khánh quyết), thành công vẫn chuyenHuong.
+    ok(`${ten}: thành công thì chuyển hướng 303${ten === 'Thiết lập' ? ' — mọi lượt POST, lỗi cũng vậy (ketThucPost)' : ' (chuyenHuong)'}`,
+       ten === 'Thiết lập' ? /\nif \(Astro\.request\.method === 'POST'\) return ketThucPost\(Astro, form,/.test(s) : /chuyenHuong\(Astro,/.test(s));
     ok(`${ten}: không bẫy {x && …} với số`, !/\{\s*[a-zA-Z_.]+\.length\s*&&/.test(s));
   }
   ok('Thiết lập: có thanh tiến độ và nút Bỏ qua', /cauConLai\(tienDo, nn\)/.test(idx) && /name="viec" value="bo_qua"/.test(idx));

@@ -230,24 +230,47 @@ export interface KetQuaGui { kq: KetQua; toi?: string; nhapLai?: Record<string, 
 const laDuongKho = (u: string) => u === '/noi-bo/kho' || u.startsWith('/noi-bo/kho/') || u.startsWith('/noi-bo/kho?');
 
 /**
- * LƯỢT POST CỦA TRANG KHO KẾT THÚC BẰNG 303, MỌI KẾT CỤC (issue #194; đợt 2: ba trang của máy dùng chung).
- *
- * Trang dựng ngay trong trả lời của lượt POST thì mục lịch sử của nó là chính lượt POST đó, giữ nguyên thân form —
- * trên máy dùng chung là mật khẩu, PIN của người vừa dùng; tải lại mục đó là gửi lại form. Trang gọi hàm này ở đầu
- * khối POST và trả luôn kết quả của nó; câu báo đi qua bt_kho_bao (chuyenHuong):
- *   · `xuLy` trả { kq, toi } — `toi` là trang đích, phải là trang kho; không có, hay lạ, thì về `veKhiLoi`;
- *   · trả thêm `nhapLai` — chữ cần điền lại trên trang `veKhiLoi` (ghiNhapLai: chỉ các ô `cacO`, không ô mật khẩu / PIN);
- *   · thân form không đọc được — không chạy `xuLy`, câu CAU_DOC_FORM_HONG;
- *   · `xuLy` ném lỗi bất ngờ — câu LOI_KHO_CHUNG.batNgo ("chưa chắc đã ghi", không phải "chưa ghi được": việc có thể
- *     ném sau khi đã ghi database và cookie) và một dòng nhật ký (loại lỗi, không chép chữ của lỗi — chữ đó có thể
- *     mang email). Không để thành trang 500: trang đó cũng là trả lời của lượt POST.
- * Kiểm: crm/test/test-kho-may-lich-su.mjs.
+ * Đường dẫn của một địa chỉ trong trang — làm Path cho cookie điền lại: bỏ ?… và #… (Path mang "?" thì không bao giờ
+ * khớp) và dấu / cuối (trang trả lời cả /x lẫn /x/; Path /x khớp cả hai, và trang đọc / xóa cookie bằng /x).
  */
+const duongCua = (u: string) => u.split(/[?#]/)[0].replace(/(.)\/+$/, '$1');
+
+/** Lượt POST tới một trang kho khi tài khoản chưa có chi nhánh nào (trang cũ còn mở, hay nhà hàng chưa tạo chi nhánh). */
+export const LOI_CHUA_CO_CN: HaiThuTieng = { vi: 'Chưa có chi nhánh — chưa ghi gì.', en: 'No branch yet — nothing was saved.' };
+
+/** ketThucPost (bên dưới) cho trang đọc form ngay ở đầu khối POST (ba trang của máy dùng chung, đợt 2 của #194). */
 export async function guiRoiChuyen(
   Astro: Pick<AstroGlobal, 'request' | 'locals' | 'cookies' | 'redirect'>, veKhiLoi: string,
   xuLy: (form: FormData) => Promise<KetQuaGui>, cacO: readonly string[] = [],
 ): Promise<Response> {
   const form = await docFormGui(Astro);
+  return ketThucPost(Astro, form, veKhiLoi, xuLy, cacO);
+}
+
+/**
+ * LƯỢT POST CỦA TRANG KHO KẾT THÚC BẰNG 303, MỌI KẾT CỤC (issue #194; đợt 2: ba trang của máy dùng chung — qua
+ * guiRoiChuyen; đợt 5: chín trang không điền lại chữ của lượt gửi — danh sách và các trang còn dựng tại chỗ:
+ * crm/test/test-kho-loi-chuyen-huong.mjs).
+ *
+ * Trang dựng ngay trong trả lời của lượt POST thì mục lịch sử của nó là chính lượt POST đó, giữ nguyên thân form —
+ * trên máy dùng chung là mật khẩu, PIN của người vừa dùng; tải lại mục đó là gửi lại form. Hàm này dành cho trang đã
+ * đọc form (docFormGui) trước khi biết việc gì — cần biết để chọn đọc gì từ database; trang gọi nó cho MỌI lượt POST
+ * (`if (Astro.request.method === 'POST') return ketThucPost(Astro, form, …)`) và trả luôn kết quả. Câu báo đi qua
+ * bt_kho_bao (chuyenHuong):
+ *   · `xuLy` trả { kq, toi } — `toi` là trang đích, phải là trang kho; không có, hay lạ, thì về `veKhiLoi` (địa chỉ
+ *     của chính trang, giữ ?… để bộ lọc còn nguyên);
+ *   · trả thêm `nhapLai` — chữ cần điền lại trên trang `veKhiLoi` (ghiNhapLai: chỉ các ô `cacO`, không ô mật khẩu /
+ *     PIN; cookie theo đường dẫn trang, không kèm ?…);
+ *   · `form` null (thân form không đọc được) — không chạy `xuLy`, câu CAU_DOC_FORM_HONG;
+ *   · `xuLy` ném lỗi bất ngờ — câu LOI_KHO_CHUNG.batNgo ("chưa chắc đã ghi", không phải "chưa ghi được": việc có thể
+ *     ném sau khi đã ghi database và cookie) và một dòng nhật ký (loại lỗi, đường dẫn trang — không chép chữ của lỗi
+ *     hay phần ?… của địa chỉ: chúng có thể mang email). Không để thành trang 500: trang đó cũng là trả lời của POST.
+ * Kiểm: crm/test/test-kho-loi-chuyen-huong.mjs, crm/test/test-kho-may-lich-su.mjs.
+ */
+export async function ketThucPost(
+  Astro: Pick<AstroGlobal, 'cookies' | 'redirect'>, form: FormData | null, veKhiLoi: string,
+  xuLy: (form: FormData) => Promise<KetQuaGui>, cacO: readonly string[] = [],
+): Promise<Response> {
   let kq: KetQua;
   let toi = veKhiLoi;
   if (!form) {
@@ -257,9 +280,9 @@ export async function guiRoiChuyen(
       const r = await xuLy(form);
       kq = r.kq;
       if (r.toi && laDuongKho(r.toi)) toi = r.toi;
-      if (r.nhapLai) ghiNhapLai(Astro.cookies, veKhiLoi, cacO, r.nhapLai);
+      if (r.nhapLai) ghiNhapLai(Astro.cookies, duongCua(veKhiLoi), cacO, r.nhapLai);
     } catch (e) {
-      try { console.error(`[kho] ${veKhiLoi}: POST handler threw (${e instanceof Error ? e.name : typeof e})`); } catch { /* */ }
+      try { console.error(`[kho] ${duongCua(veKhiLoi)}: POST handler threw (${e instanceof Error ? e.name : typeof e})`); } catch { /* */ }
       kq = kqHai(false, LOI_KHO_CHUNG.batNgo);
     }
   }

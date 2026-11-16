@@ -23,7 +23,7 @@
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
-import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import { moTrangKho, docFormGui, ketThucPost } from '../../../../lib/kho/trang.ts';
 import { docCongThuc, type CongThuc } from '../../../../lib/kho/danh-muc.ts';
 import { docTon, type DongTon } from '../../../../lib/kho/ton.ts';
 import {
@@ -31,7 +31,7 @@ import {
   type PhienPhaTom,
 } from '../../../../lib/kho/pha-loc.ts';
 import { cauConU, docTangTon, soTangChu, type TangTon } from '../../../../lib/kho/tang.ts';
-import { cauLoiKho, dinhDangKg, dinhDangNgay, kqHai, laUuid, type HaiThuTieng, type KetQua } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangKg, dinhDangNgay, kqHai, laUuid, type HaiThuTieng } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
@@ -74,28 +74,44 @@ const ch = dichNB(nn, {
   },
 });
 
-let bao: KetQua | null = k.bao;
 const form = await docFormGui(Astro);
 const viec = form ? String(form.get('viec') ?? '') : '';
+// Lượt gửi nào cũng kết thúc bằng 303 (#194, đợt 5): không ghi được thì câu lỗi đi theo cookie về chính trang — trang
+// dựng lại từ database, không điền lại chữ nào của lượt gửi (mỗi nút một ma_gui mới).
+const VE = Astro.url.pathname + Astro.url.search;
 // "Lóc #0142" (mục Tảng lóc được ở đây, nút Lóc ở Tảng · ủ): locMotTang tự đọc lại đúng tảng đó, công thức, ô mã và
 // phiên nháp ngay lúc bấm — không dùng danh sách trang đọc để hiện; đọc hỏng thì không ghi gì. Có id phiên (kể cả khi
 // giao ô hỏng: câu đỏ) → vào thẳng bước 2. Không thì báo ở trang đã bấm: ve chỉ nhận đúng "tang" (Tảng · ủ).
-if (form && viec === 'loc_tang') {
+if (form && viec === 'loc_tang') return ketThucPost(Astro, form, VE, async form => {
   const kq = await locMotTang(k.client, cn.id, { maGui: String(form.get('ma_gui') ?? ''), loId: String(form.get('lo_id') ?? '') });
-  if (kq.id) return chuyenHuong(Astro, `/noi-bo/kho/pha-loc/${kq.id}`, kq);
-  if (form.get('ve') === 'tang') return chuyenHuong(Astro, '/noi-bo/kho/tang', kq);
-  bao = kq;
-}
+  if (kq.id) return { kq, toi: `/noi-bo/kho/pha-loc/${kq.id}` };
+  return { kq, toi: form.get('ve') === 'tang' ? '/noi-bo/kho/tang' : undefined };
+});
+
+// Mọi lượt POST khác (tạo phiên theo loại tảng, việc lạ, thân form hỏng): ketThucPost ngay, trước mọi lượt đọc chỉ để hiện
+// trang.
+if (Astro.request.method === 'POST') return ketThucPost(Astro, form, VE, async form => {
+  const mhId = String(form.get('mat_hang_vao_id') ?? '');
+  if (viec !== 'tao' || !laUuid(mhId)) return { kq: kqHai(false, CAU.viecSai) };
+  // Tồn và công thức chỉ để chọn sẵn công thức, lượng vào (như lúc trang hiện); đọc hỏng thì gửi trống — database tự
+  // chọn, như trước.
+  const [ton, congThuc] = await Promise.all([docTon(k.client, cn.id), docCongThuc(k.client)])
+    .catch((): [DongTon[], CongThuc[]] => [[], []]);
+  // Đúng một công thức đang dùng → gắn luôn. Nhiều công thức: để trống,
+  // database tự lấy công thức đầu tiên khi tính thu hồi dự kiến.
+  const kq = await taoPhienPha(k.client, cn.id, String(form.get('ma_gui') ?? ''), mhId,
+    congThucMot(congThuc, mhId), vaoMacDinh(ton, mhId));
+  return { kq, toi: kq.ok && kq.id ? `/noi-bo/kho/pha-loc/${kq.id}` : undefined };
+});
 
 let loiDoc = k.loiDoc;
 let ton: DongTon[] = [];
-let congThuc: CongThuc[] = [];
 let dangDo: PhienPhaTom[] = [];
 // Tảng lóc được: đọc hỏng (null) thì không hiện nút nào, có câu "chưa đọc được" — nút theo loại tảng vẫn dùng được.
 let tangTon: TangTon[] | null = null;
 try {
-  [ton, congThuc, dangDo, tangTon] = await Promise.all([
-    docTon(k.client, cn.id), docCongThuc(k.client), docDanhSachPhienPha(k.client, cn.id, 'nhap'),
+  [ton, dangDo, tangTon] = await Promise.all([
+    docTon(k.client, cn.id), docDanhSachPhienPha(k.client, cn.id, 'nhap'),
     docTangTon(k.client, cn.id).catch(() => null),
   ]);
 } catch (e) {
@@ -107,24 +123,11 @@ const loNhap = tangTon && !loiDoc ? await docLoCuaPhien(k.client, dangDo).catch(
 const tangLoc = tangTon && loNhap ? tangLocDuoc(tangTon, choLocTheoLo(ton), loNhap) : [];
 const loiTangLoc = !loiDoc && (!tangTon || !loNhap);
 
-if (form && viec !== 'loc_tang') {
-  const mhId = String(form.get('mat_hang_vao_id') ?? '');
-  if (viec !== 'tao' || !laUuid(mhId)) {
-    bao = kqHai(false, CAU.viecSai);
-  } else {
-    // Đúng một công thức đang dùng → gắn luôn. Nhiều công thức: để trống,
-    // database tự lấy công thức đầu tiên khi tính thu hồi dự kiến.
-    const kq = await taoPhienPha(k.client, cn.id, String(form.get('ma_gui') ?? ''), mhId,
-      congThucMot(congThuc, mhId), vaoMacDinh(ton, mhId));
-    if (kq.ok && kq.id) return chuyenHuong(Astro, `/noi-bo/kho/pha-loc/${kq.id}`, kq);
-    bao = kq;
-  }
-}
 ---
 <Kho k={k} tieuDe={ch.tieuDe} huongDan="pha-loc">
   <p class="pl-buoc">{ch.buoc1}</p>
   <h1>{ch.tieuDe}</h1>
-  <BaoKho bao={bao} loiDoc={loiDoc} />
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   {dangDo.length > 0 && (
     <section class="nb-the">

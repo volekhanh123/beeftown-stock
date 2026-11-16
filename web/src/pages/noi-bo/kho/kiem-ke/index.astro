@@ -16,13 +16,13 @@
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
-import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import { moTrangKho, docFormGui, ketThucPost, LOI_CHUA_CO_CN } from '../../../../lib/kho/trang.ts';
 import { docViTri, docCaiDat, type ViTri, type CaiDat } from '../../../../lib/kho/danh-muc.ts';
 import { docDanhSachKiemKe, batDauKiemKe, kieuTheoViTri, type KiemKeTom } from '../../../../lib/kho/kiem-ke.ts';
 import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
 import PhanTrang from '../../../../components/kho/PhanTrang.astro';
 import { docTimDs, catTrang, dangTim } from '../../../../lib/kho/tim-ds.ts';
-import { cauLoiKho, dinhDangNgay, trangThaiKho, type KetQua } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangNgay, kqHai, LOI_KHO_CHUNG, trangThaiKho } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
@@ -75,16 +75,18 @@ const t = dichNB(nn, {
 const LOC = [['', t.tatCa], ['cho_duyet', t.choDuyet], ['dang_dem', t.dangDem], ['da_duyet', t.daDuyet], ['da_huy', t.daHuy]] as const;
 const loc = LOC.some(([v]) => v === Astro.url.searchParams.get('loc')) ? Astro.url.searchParams.get('loc')! : '';
 
-let bao: KetQua | null = k.bao;
 const form = await docFormGui(Astro);
-if (form && k.chiNhanh && String(form.get('viec')) === 'bat_dau') {
+// Lượt gửi nào cũng kết thúc bằng 303 (#194, đợt 5): không mở được phiếu thì câu lỗi đi theo cookie về chính trang, giữ
+// bộ lọc — thẻ vị trí dựng lại từ database, mỗi thẻ một ma_gui mới, không điền lại chữ nào của lượt gửi.
+if (Astro.request.method === 'POST') return ketThucPost(Astro, form, Astro.url.pathname + Astro.url.search, async form => {
+  if (!k.chiNhanh) return { kq: kqHai(false, LOI_CHUA_CO_CN) };
+  if (String(form.get('viec')) !== 'bat_dau') return { kq: kqHai(false, LOI_KHO_CHUNG.viecLa) };
   // Thẻ nào cũng gửi "kieu": ô ẩn (nhân viên quầy) hoặc ô chọn trong "Tùy chọn"
   // — đóng lại vẫn gửi, mặc định đúng theo loại vị trí.
   const kq = await batDauKiemKe(k.client, k.chiNhanh.id, String(form.get('vi_tri_id') ?? ''),
     String(form.get('kieu') ?? 'theo_mat_hang'), String(form.get('ma_gui') ?? ''));
-  if (kq.ok && kq.id) return chuyenHuong(Astro, `/noi-bo/kho/kiem-ke/${kq.id}`, kq);
-  bao = kq;
-}
+  return { kq, toi: kq.ok && kq.id ? `/noi-bo/kho/kiem-ke/${kq.id}` : undefined };
+});
 
 const tim = docTimDs(Astro.url.searchParams);
 let ds: KiemKeTom[] = [];
@@ -118,7 +120,7 @@ const DEM_QUAY = '/noi-bo/kho/quay/dem';
 ---
 <Kho k={k} tieuDe={t.tieuDe} huongDan="kiem-ke">
   <h1>{t.tieuDe}</h1>
-  <BaoKho bao={bao} loiDoc={loiDoc} />
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   {!k.daKhoiTao ? (
     <p class="nb-rong">{t.chuaBatDau1}<a href="/noi-bo/kho">{t.tongQuan}</a>.</p>

@@ -611,9 +611,11 @@ await nhom('14 · TRANG (đọc mã nguồn)', async () => {
      /docLoCuaPhien\(k\.client, dangDo\)/.test(moi) && /loiTangLoc &&/.test(moi) && /class="nb-bao luu-y"/.test(moi));
   ok('Pha lóc mới: một chạm gọi locMotTang chỉ với ma_gui và lo_id (hàm tự đọc lại tảng, công thức, ô mã, phiên nháp — lỗi đọc thì không gọi hàm ghi nào)',
      /locMotTang\(k\.client, cn\.id, \{ maGui: String\(form\.get\('ma_gui'\) \?\? ''\), loId: String\(form\.get\('lo_id'\) \?\? ''\) \}\)/.test(moi));
+  // #194 (đợt 5): lượt "Lóc" kết thúc bằng ketThucPost — trang chỉ trả trang đích (toi), ketThucPost chuyển hướng 303 và
+  // chỉ nhận trang đích trong kho; không có id, ve lạ → về chính trang với câu báo (không còn dựng trang tại chỗ).
   ok('Pha lóc mới: có id phiên (kể cả giao ô hỏng) → vào thẳng bước 2; ve chỉ nhận đúng "tang"',
-     /if \(kq\.id\) return chuyenHuong\(Astro, `\/noi-bo\/kho\/pha-loc\/\$\{kq\.id\}`, kq\);/.test(moi)
-     && /form\.get\('ve'\) === 'tang'\) return chuyenHuong\(Astro, '\/noi-bo\/kho\/tang', kq\)/.test(moi)
+     /if \(kq\.id\) return \{ kq, toi: `\/noi-bo\/kho\/pha-loc\/\$\{kq\.id\}` \};/.test(moi)
+     && /toi: form\.get\('ve'\) === 'tang' \? '\/noi-bo\/kho\/tang' : undefined/.test(moi)
      && !/form\.get\('ve'\)\)/.test(moi));
   ok('Pha lóc mới: nút theo loại tảng giữ nguyên, gắn công thức bằng congThucMot',
      /congThucMot\(congThuc, mhId\)/.test(moi) && /value="tao" class="nb-nut phu pl-nut"/.test(moi));
