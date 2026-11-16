@@ -2077,10 +2077,8 @@ try {
   tatAstro(mayWeb);
   await mayGia?.dong();
 }
-// --chi xin một số mà không nhóm nào mang số đó được chạy (gõ nhầm): đỏ, không bao giờ đạt suông.
-for (const so of CHON_NHOM.khongCo()) {
-  ok(`--chi: nhóm ${so} được chạy`, false, 'không nhóm nào mang số này được chạy — gõ nhầm số?');
-}
+// --chi xin một số mà không nhóm nào mang số đó được chạy (gõ nhầm, nhóm 6 thiếu --chup): đỏ, không bao giờ đạt suông.
+CHON_NHOM.baoNhomThieu(ok, 'nhóm chỉ chạy kèm cờ khác (nhóm 6: --chup)');
 
 console.log('\n' + '='.repeat(60));
 if (hong === 0) {

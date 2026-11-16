@@ -9,11 +9,12 @@
  *   1. Không có --chi → mọi nhóm chạy, không ghi chú gì. `--chi 5,7` (hay `--chi=5,7`) → chỉ nhóm 5 và 7 (không nhầm
  *      5 với 15), cộng nhóm luôn chạy (thu-day-du nhóm 0: biến môi trường tới được trang); dòng tổng ghi rõ chỉ chạy
  *      một phần — dán vào mô tả PR không bị đọc nhầm thành cả bộ đã đạt.
- *   2. Gõ sai thì đỏ, không bao giờ "TẤT CẢ 0 KIỂM TRA ĐỀU ĐẠT": --chi thiếu số, có mục không phải số → lỗi trước khi
- *      chạy; số không ứng với nhóm nào đã chạy (gõ nhầm, nhóm bị --url bỏ qua) → khongCo() trả đúng số đó.
- *   3. Hai bộ thử dùng đúng bộ chọn này; CI (kiem-thu.yml) và lệnh npm của web không truyền --chi — CI luôn chạy hết.
+ *   2. Gõ sai thì đỏ, không bao giờ "TẤT CẢ 0 KIỂM TRA ĐỀU ĐẠT": --chi thiếu số, có mục không phải số, ghi hai lần → lỗi
+ *      trước khi chạy; số không ứng với nhóm nào đã chạy (gõ nhầm, nhóm bị --url bỏ qua) → khongCo() trả đúng số đó,
+ *      baoNhomThieu() in một dòng ✗ cho từng số qua ok() của bộ thử.
+ *   3. Hai bộ thử dùng đúng bộ chọn này; không workflow nào và không lệnh npm nào của web truyền --chi — CI luôn chạy hết.
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { taoBoDem } from './kho-chung.mjs';
@@ -63,6 +64,8 @@ await nhom('3 · NHÓM LUÔN CHẠY (thu-day-du nhóm 0)', async () => {
 });
 
 await nhom('4 · GÕ SAI THÌ ĐỎ, KHÔNG BAO GIỜ ĐẠT SUÔNG', async () => {
+  const chonDu = taoChonNhom(lenh('--chi', '5'));
+  chonDu.chay(ten('5'));
   const sai = [
     ['--chi đứng cuối, thiếu số', lenh('--khong-build', '--chi')],
     ['--chi theo sau là tham số khác', lenh('--chi', '--khong-build')],
@@ -82,6 +85,21 @@ await nhom('4 · GÕ SAI THÌ ĐỎ, KHÔNG BAO GIỜ ĐẠT SUÔNG', async () =
   const boQua = taoChonNhom(lenh('--chi', '3', '--url', 'https://beeftown.vn'));
   for (const so of ['1', '5', '6']) boQua.chay(ten(so));   // --url bỏ qua nhóm 2–4: nhóm 3 không bao giờ được gọi
   ok('nhóm đã xin mà bộ thử bỏ qua (--url bỏ nhóm 2–4) → cũng báo', JSON.stringify(boQua.khongCo()) === '["3"]', JSON.stringify(boQua.khongCo()));
+
+  // baoNhomThieu: bộ thử gọi ở cuối — mỗi số thiếu một dòng ✗ qua chính hàm ok() của bộ thử, kèm lý do bộ thử đưa.
+  const daGoi = [];
+  boQua.baoNhomThieu((ten, dieuKien, chiTiet) => { daGoi.push({ ten, dieuKien, chiTiet }); return dieuKien; }, 'nhóm bị --url bỏ qua');
+  ok('baoNhomThieu: một dòng ✗ cho nhóm 3, nêu số và lý do bộ thử đưa',
+     daGoi.length === 1 && daGoi[0].dieuKien === false && daGoi[0].ten.includes('3') && daGoi[0].chiTiet.includes('--url'),
+     JSON.stringify(daGoi));
+  const duGoi = [];
+  chonDu.baoNhomThieu((...a) => duGoi.push(a), 'không dùng');
+  ok('baoNhomThieu: đủ nhóm thì không gọi ok() lần nào', duGoi.length === 0, JSON.stringify(duGoi));
+
+  const haiLan = taoChonNhom(lenh('--chi', '5', '--chi', '7'));
+  ok('--chi ghi hai lần → lỗi (không lặng lẽ bỏ lần sau)', typeof haiLan.loi === 'string' && haiLan.loi.includes('--chi 5,7'), String(haiLan.loi));
+  const haiLanBang = taoChonNhom(lenh('--chi=5', '--chi', '7'));
+  ok('--chi=5 rồi --chi 7 → cũng lỗi', typeof haiLanBang.loi === 'string', String(haiLanBang.loi));
 });
 
 await nhom('5 · HAI BỘ THỬ DÙNG BỘ CHỌN NÀY; CI VÀ LỆNH npm KHÔNG TRUYỀN --chi', async () => {
@@ -89,16 +107,21 @@ await nhom('5 · HAI BỘ THỬ DÙNG BỘ CHỌN NÀY; CI VÀ LỆNH npm KHÔNG
     const ma = readFileSync(join(KIEM_TRA, tep), 'utf8');
     const dungChung = /import \{[^}]*\btaoChonNhom\b[^}]*\} from '\.\/chon-nhom\.mjs'/.test(ma);
     const loc = /async function nhom\(ten, fn\) \{\s*if \(!CHON_NHOM\.chay\(ten\)\) return;/.test(ma);
-    const cuoi = /CHON_NHOM\.khongCo\(\)/.test(ma) && /CHON_NHOM\.ghiChu/.test(ma) && /CHON_NHOM\.loi/.test(ma);
+    const cuoi = /CHON_NHOM\.baoNhomThieu\(ok, /.test(ma) && /CHON_NHOM\.ghiChu/.test(ma) && /CHON_NHOM\.loi/.test(ma);
     const nhom0 = !luonChay || /taoChonNhom\(process\.argv, \{ luonChay: \['0'\] \}\)/.test(ma);
     ok(`${tep}: đọc --chi bằng chon-nhom.mjs (nhom() lọc, sai tham số thì dừng, cuối bộ báo nhóm thiếu và ghi chú chạy một phần)${luonChay ? ', nhóm 0 luôn chạy' : ''}`,
        dungChung && loc && cuoi && nhom0 && !ma.includes("process.argv.indexOf('--chi')"),
        JSON.stringify({ dungChung, loc, cuoi, nhom0 }));
   }
-  const yml = readFileSync(join(GOC, '.github', 'workflows', 'kiem-thu.yml'), 'utf8');
-  const dongChay = yml.split('\n').filter(d => /\brun:/.test(d) && /thu-trinh-duyet|thu-day-du/.test(d));
-  ok(`kiem-thu.yml: ${dongChay.length} lệnh chạy bộ thử trình duyệt, không lệnh nào có --chi (CI chạy hết)`,
-     dongChay.length >= 2 && dongChay.every(d => !d.includes('--chi')), dongChay.join(' | '));
+  // Bước CI của hai bộ thử web gọi đúng lệnh npm (bước của Beeftown Cân, Mở rộng FABi cũng tên thu-trinh-duyet — không tính);
+  // không file workflow nào có --chi ở bất kỳ đâu (kể cả khối `run: |` nhiều dòng, biến môi trường).
+  const THU_MUC_CI = join(GOC, '.github', 'workflows');
+  const yml = readFileSync(join(THU_MUC_CI, 'kiem-thu.yml'), 'utf8');
+  for (const lenhWeb of ['npm run thu-trinh-duyet', 'npm run thu-day-du']) {
+    ok(`kiem-thu.yml có bước chạy «${lenhWeb}»`, yml.split('\n').some(d => /\brun:/.test(d) && d.includes(lenhWeb)));
+  }
+  const coChiCi = readdirSync(THU_MUC_CI).filter(t => /\.ya?ml$/.test(t) && readFileSync(join(THU_MUC_CI, t), 'utf8').includes('--chi'));
+  ok('không file workflow nào truyền --chi (CI chạy hết)', coChiCi.length === 0, coChiCi.join(', '));
   const goi = JSON.parse(readFileSync(join(GOC, 'web', 'package.json'), 'utf8'));
   const coChi = Object.entries(goi.scripts ?? {}).filter(([, l]) => l.includes('--chi'));
   ok('web/package.json: không lệnh npm nào tự gắn --chi', coChi.length === 0, coChi.map(([t]) => t).join(', '));

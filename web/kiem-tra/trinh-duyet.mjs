@@ -2150,9 +2150,7 @@ try {
   tatMayChu(mayChu?.p);
 }
 // --chi xin một số mà không nhóm nào mang số đó được chạy (gõ nhầm, nhóm bị --url bỏ qua): đỏ, không bao giờ đạt suông.
-for (const so of CHON_NHOM.khongCo()) {
-  ok(`--chi: nhóm ${so} được chạy`, false, 'không nhóm nào mang số này được chạy — gõ nhầm số, hay nhóm bị --url bỏ qua');
-}
+CHON_NHOM.baoNhomThieu(ok, 'nhóm bị --url bỏ qua');
 
 console.log('\n' + '='.repeat(60));
 if (hong === 0) {
