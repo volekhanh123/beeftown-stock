@@ -1,0 +1,24 @@
+{
+  "name": "beeftown-bot-dich",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Bot Zalo dịch tin nhắn Anh/Việt ↔ Hàn trong nhóm chat, chạy trên Cloudflare Workers",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "thu": "node --test \"test/*.test.ts\"",
+    "kiem-kieu": "tsc --noEmit -p .",
+    "chay-thu": "wrangler dev",
+    "deploy": "npm run kiem-kieu && npm run thu && wrangler deploy"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.8.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261116.1",
+    "typescript": "7.0.2",
+    "wrangler": "4.162.0"
+  }
+}
