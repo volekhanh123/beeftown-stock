@@ -47,6 +47,10 @@
  *      (bfcache) mà được xin lại từ máy chủ, và đã bị giấu từ lúc rời trang — thử bằng Chromium BẢN
  *      ĐẦY ĐỦ có bfcache bật, kèm một phép đối chứng là trình duyệt đó có bfcache thật; Quay lại bình
  *      thường thì vẫn giữ nguyên trang. Trả lời đăng xuất đổi cookie dấu phiên bt_dau_phien.
+ *      Đăng nhập không thành (bản build không database: lần nào cũng không thành): lượt POST trả 303 về GET
+ *      /noi-bo/dang-nhap, câu lỗi đi qua cookie bt_loi_dang_nhap (HttpOnly, Path=/noi-bo/dang-nhap, ≤ 60 giây, chỉ mã và
+ *      email — không mật khẩu), trang mang cookie đó là no-store; F5, Quay lại / Tiến + F5 và tải lại từng mục lịch sử
+ *      không gửi lượt POST nào, không lượt nào mang lại mật khẩu; bấm link rồi Quay lại thì ô mật khẩu đã trống.
  *   5. Menu gọn của màn hẹp (<details class="menu-gon">) mở / đóng được KHI TẮT
  *      JavaScript; có JavaScript thì Esc đóng nó và trả tiêu điểm về nút. Mở ra thì nút
  *      đổi thành nút đóng có nhãn chữ, có link "Hỏi bàn" là nút chính, có bộ chọn ngôn
@@ -1084,7 +1088,8 @@ try {
       }
 
       // TRANG KẾT QUẢ CỦA MỘT LẦN GỬI FORM KHÔNG BỊ GỬI LẠI (vòng bốn 14/11 — lỗi mức cao của chính bản trước). Trang nội bộ
-      // báo lỗi của một lần gửi form ngay tại chỗ, trong trả lời của POST — kể cả form đăng nhập. Bấm Quay lại, Chromium
+      // báo lỗi của một lần gửi form ngay tại chỗ, trong trả lời của POST (trừ form đăng nhập từ đợt sửa lịch sử của nó —
+      // cảnh "ĐĂNG NHẬP KHÔNG THÀNH" ngay dưới; trang kết quả ở đây vì vậy do batTrungGianPost dựng). Bấm Quay lại, Chromium
       // dựng lại trang đó từ bản lưu đệm HTTP (không phải bfcache, không hỏi máy chủ). Bản trước của đoạn mã thấy dấu
       // phiên đã đổi thì gọi location.reload() — và reload do MÃ gọi làm trình duyệt GỬI LẠI form mà không hỏi: đo được
       // một lần ghi dưới quyền người đăng nhập sau, và một lần đăng nhập lại dưới tên người trước. Nay đoạn mã xin lại
@@ -1101,7 +1106,36 @@ try {
         ok('Mở được Chromium bản đầy đủ (không chặn mạng) để thử trang kết quả gửi form', false, String(e.message).split('\n')[0]);
       }
       if (khongChan) {
+        /**
+         * Máy chủ nhỏ đứng trước Worker cho cảnh "trang kết quả gửi form": GET chuyển nguyên cho Worker; POST trả CHÍNH
+         * trang Worker dựng cho địa chỉ đó, HTTP 200 — đúng hình dạng trang kết quả của các form nội bộ còn báo lỗi tại
+         * chỗ. Cảnh này trước dùng thẳng form đăng nhập (trang duy nhất mở được khi chưa có database); nay lượt POST của
+         * trang đó luôn trả 303, còn các form khác thì cần đăng nhập. Mã của trang, kể cả đoạn mã cần thử, vẫn là của bản
+         * build; cookie không phân biệt cổng, nên dấu phiên trình duyệt giữ cho Worker cũng là dấu của máy chủ này.
+         */
+        const batTrungGianPost = async () => {
+          const { createServer } = await import('node:http');
+          const may = createServer(async (req, res) => {
+            try {
+              req.resume();
+              await new Promise(xong => req.on('end', xong));   // bỏ thân form: máy chủ thật dựng lại trang, không ghi gì
+              const tl = await fetch(goc + req.url, { redirect: 'manual', headers: req.headers.cookie ? { cookie: req.headers.cookie } : {} });
+              const dau = {};
+              tl.headers.forEach((v, k) => { if (!/^(content-encoding|content-length|transfer-encoding|connection|keep-alive|set-cookie)$/.test(k)) dau[k] = v; });
+              const datCookie = tl.headers.getSetCookie();
+              if (datCookie.length) dau['set-cookie'] = datCookie;
+              res.writeHead(tl.status, dau);
+              res.end(Buffer.from(await tl.arrayBuffer()));
+            } catch (e) { res.writeHead(502); res.end(String(e?.message ?? e)); }
+          });
+          await new Promise(xong => may.listen(0, '127.0.0.1', xong));
+          return { goc: `http://127.0.0.1:${may.address().port}`, dong: () => new Promise(xong => { may.closeAllConnections?.(); may.close(() => xong()); }) };
+        };
         const thuGuiLaiForm = async () => {
+          const trungGian = await batTrungGianPost();
+          try { await thuGuiLaiFormQua(trungGian.goc); } finally { await coHan(trungGian.dong(), 5000); }
+        };
+        const thuGuiLaiFormQua = async gocForm => {
           const ctxForm = await khongChan.newContext();
           const tabForm = await ctxForm.newPage();
           const cdp = await ctxForm.newCDPSession(tabForm);
@@ -1116,8 +1150,8 @@ try {
           tabForm.on('dialog', d => { hopThoai.push(d.message()); d.dismiss().catch(() => {}); });
           const tom = ds => JSON.stringify(ds.map(l => `${l.cach} ${l.duong}${l.tuDem ? ' (từ bộ đệm)' : ''}`));
 
-          await tabForm.goto(goc + '/noi-bo/dang-nhap?buoc=20');
-          // Một form POST về chính địa chỉ này: máy chủ dựng trang kết quả tại chỗ (HTTP 200), như mọi form nội bộ báo lỗi.
+          await tabForm.goto(gocForm + '/noi-bo/dang-nhap?buoc=20');
+          // Một form POST về chính địa chỉ này: máy chủ dựng trang kết quả tại chỗ (HTTP 200), như các form nội bộ báo lỗi.
           await trongTrang(tabForm, () => {
             const f = document.createElement('form');
             f.method = 'POST';
@@ -1127,8 +1161,8 @@ try {
           await Promise.all([tabForm.waitForNavigation({ timeout: 15_000 }), tabForm.click('#thu-gui')]);
           await trongTrang(tabForm, () => { window.__ketQuaGuiForm = true; });
           const guiLanDau = [...luot.values()].filter(l => l.cach === 'POST' && !l.tuDem).length;
-          await tabForm.goto(goc + '/noi-bo/dang-nhap?buoc=21');
-          await ctxForm.addCookies([{ name: 'bt_dau_phien', value: crypto.randomUUID(), url: goc + '/' }]);
+          await tabForm.goto(gocForm + '/noi-bo/dang-nhap?buoc=21');
+          await ctxForm.addCookies([{ name: 'bt_dau_phien', value: crypto.randomUUID(), url: gocForm + '/' }]);
           luot.clear();
           await trongTrang(tabForm, () => { history.back(); });
           // Bản sửa: sau lượt dựng lại từ bộ đệm là một lượt GET ra mạng. Bản lỗi: là một lượt POST ra mạng — chờ lượt nào tới trước.
@@ -1150,8 +1184,168 @@ try {
              && (await trongTrang(tabForm, () => document.documentElement.style.visibility)) === '', `sau khi lùi: ${tom(sau)} · ${JSON.stringify(dauForm)}`);
           await coHan(ctxForm.close(), 10_000);
         };
+
+        // ĐĂNG NHẬP KHÔNG THÀNH: LỊCH SỬ KHÔNG CÒN MỤC POST NÀO (rà soát vòng bốn của PR #188, đợt sửa trang đăng nhập).
+        // Trang đăng nhập báo lỗi ngay trong trả lời của lượt gửi form thì mục lịch sử đó là một lượt POST giữ nguyên
+        // thân form — email, mật khẩu: tải lại nó là gửi lại form. Nay lượt POST nào của trang cũng trả 303 về GET
+        // /noi-bo/dang-nhap, câu lỗi đi qua cookie ngắn hạn (lib/phien.ts, guiFormDangNhap), và trang xóa ô mật khẩu lúc
+        // rời đi. Bản build này không có database nên lần đăng nhập nào cũng không thành — đúng đường cần thử. Trang
+        // không hiện form khi chưa có database: form được dựng ngay trên trang, giống form thật (cùng tên ô, POST,
+        // không action — gửi về chính địa chỉ đang mở), rồi gõ và bấm như nhân viên. Cùng trình duyệt trần của cảnh
+        // trên (bộ đệm HTTP, bfcache); mọi lượt xin — có thân hay không — đo ở tầng mạng qua CDP. Đăng nhập sai THẬT
+        // (Supabase Auth giả, câu lỗi vi/en, email điền lại): thu-day-du.mjs nhóm 14.
+        const DUONG_DN = '/noi-bo/dang-nhap';
+        const EMAIL_THU = 'thu-lich-su@beeftown.test';
+        const MK_THU = `Mk-${crypto.randomUUID().slice(0, 8)}-bi-mat`;
+        /** Form giống form đăng nhập thật, dựng trên trang; `link`: thêm một link sang trang khác. */
+        const dungFormDangNhap = (t, link) => trongTrang(t, l => {
+          const f = document.createElement('form');
+          f.method = 'POST';
+          f.innerHTML = '<input type="email" name="email" required><input type="password" name="mat_khau" required>'
+            + '<button type="submit" id="thu-dang-nhap">Đăng nhập</button>' + (l ? `<a id="thu-link" href="${l}">đi trang khác</a>` : '');
+          document.body.appendChild(f);
+        }, link);
+
+        // Trả lời của máy chủ, đo thẳng bằng fetch của Node — không bộ cookie nào của trình duyệt xen vào.
+        const thuTraLoiDangNhap = async () => {
+          const r = await fetch(goc + DUONG_DN, {
+            method: 'POST', redirect: 'manual',
+            headers: { Origin: goc, 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ email: EMAIL_THU, mat_khau: MK_THU }).toString(),
+          });
+          const than = await r.text();
+          const loiDn = r.headers.getSetCookie().find(c => c.startsWith('bt_loi_dang_nhap=')) ?? '';
+          ok('RÀ SOÁT VÒNG BỐN: POST /noi-bo/dang-nhap không đăng nhập được → 303 về đúng /noi-bo/dang-nhap, không dựng trang; địa chỉ không mang email hay mật khẩu',
+             r.status === 303 && r.headers.get('location') === DUONG_DN && than === '', `HTTP ${r.status} → ${r.headers.get('location')} · thân ${than.length} byte`);
+          ok('RÀ SOÁT VÒNG BỐN: …câu lỗi đi qua cookie bt_loi_dang_nhap — HttpOnly, Secure, SameSite=Lax, Path=/noi-bo/dang-nhap, Max-Age ≤ 60 — không mang mật khẩu',
+             /;\s*HttpOnly(;|$)/i.test(loiDn) && /;\s*Secure(;|$)/i.test(loiDn) && /;\s*SameSite=Lax(;|$)/i.test(loiDn)
+             && /;\s*Path=\/noi-bo\/dang-nhap(;|$)/i.test(loiDn) && Number(loiDn.match(/;\s*Max-Age=(\d+)/i)?.[1] ?? 999) <= 60
+             && !loiDn.includes(MK_THU) && !decodeURIComponent(loiDn).includes(MK_THU), loiDn || '(không có cookie lỗi)');
+          const cap = loiDn.split(';')[0];
+          let giaTri = null;
+          try { giaTri = JSON.parse(decodeURIComponent(cap.slice('bt_loi_dang_nhap='.length))); } catch { /* để null */ }
+          ok('…cookie chỉ mang mã của câu (bản build không database: "chua_noi_database") và email đã gõ',
+             giaTri?.ma === 'chua_noi_database' && giaTri?.email === EMAIL_THU && Object.keys(giaTri).sort().join() === 'email,ma', JSON.stringify(giaTri));
+          const g = await fetch(goc + DUONG_DN, { redirect: 'manual', headers: cap ? { Cookie: cap } : {} });
+          await g.text();
+          const xoa = g.headers.getSetCookie().find(c => c.startsWith('bt_loi_dang_nhap=')) ?? '';
+          ok('RÀ SOÁT VÒNG BỐN: lượt GET mang cookie đó: 200, Cache-Control: no-store (trang lỗi của một lần gửi không vào bộ đệm), cookie bị xóa đúng Path',
+             g.status === 200 && /no-store/.test(g.headers.get('cache-control') ?? '') && /;\s*Path=\/noi-bo\/dang-nhap(;|$)/i.test(xoa)
+             && (/;\s*Max-Age=0(;|$)/i.test(xoa) || /Expires=Thu, 01 Jan 1970/i.test(xoa)), `HTTP ${g.status} · cache-control: ${g.headers.get('cache-control')} · ${xoa}`);
+          const g2 = await fetch(goc + DUONG_DN, { redirect: 'manual' });
+          await g2.text();
+          ok('…GET không cookie: trang đăng nhập thường — không no-store, không đụng cookie lỗi',
+             g2.status === 200 && !/no-store/.test(g2.headers.get('cache-control') ?? '') && !g2.headers.getSetCookie().some(c => c.startsWith('bt_loi_dang_nhap=')),
+             `cache-control: ${g2.headers.get('cache-control')}`);
+        };
+
+        // Trình duyệt: gõ, gửi, rồi F5, Quay lại / Tiến + F5, và đi tới TỪNG mục lịch sử rồi tải lại mục đó.
+        const thuLichSuDangNhap = async () => {
+          const ctxDn = await khongChan.newContext();
+          const tabDn = await ctxDn.newPage();
+          const cdpDn = await ctxDn.newCDPSession(tabDn);
+          await cdpDn.send('Network.enable');
+          const luotDn = [];   // MỌI lượt xin của trang: { id, cach, duong, loai, than, tuDem, ma, toi }
+          cdpDn.on('Network.requestWillBeSent', e => {
+            if (e.redirectResponse) {   // lượt chuyển hướng dùng lại requestId; redirectResponse là trả lời của lượt TRƯỚC
+              const truoc = luotDn.findLast(l => l.id === e.requestId);
+              if (truoc) { truoc.ma = e.redirectResponse.status; truoc.toi = e.redirectResponse.headers?.location ?? e.redirectResponse.headers?.Location; }
+            }
+            const u = new URL(e.request.url);
+            luotDn.push({ id: e.requestId, cach: e.request.method, duong: u.pathname + u.search, loai: e.type, than: e.request.postData ?? '', tuDem: false });
+          });
+          cdpDn.on('Network.responseReceived', e => { const l = luotDn.findLast(x => x.id === e.requestId); if (l) { l.ma ??= e.response.status; if (e.response.fromDiskCache) l.tuDem = true; } });
+          cdpDn.on('Network.requestServedFromCache', e => { const l = luotDn.findLast(x => x.id === e.requestId); if (l) l.tuDem = true; });
+          const hopThoaiDn = [];
+          tabDn.on('dialog', d => { hopThoaiDn.push(`${d.type()}: ${d.message()}`); d.dismiss().catch(() => {}); });
+          const taiLieu = ds => ds.filter(l => l.loai === 'Document');
+          const tomDn = ds => JSON.stringify(taiLieu(ds).map(l => `${l.cach} ${l.duong}${l.tuDem ? ' (từ bộ đệm)' : ''}${l.ma ? ` → ${l.ma}` : ''}`));
+          const choYen = async () => { await tabDn.waitForLoadState('load', { timeout: 10_000 }).catch(() => {}); await nghi(700); };
+
+          await tabDn.goto(goc + DUONG_DN + '?buoc=70');
+          await dungFormDangNhap(tabDn);
+          await tabDn.fill('input[name="email"]', EMAIL_THU);
+          await tabDn.fill('input[name="mat_khau"]', MK_THU);
+          const moc0 = luotDn.length;
+          await Promise.all([tabDn.waitForNavigation({ timeout: 15_000 }), tabDn.click('#thu-dang-nhap')]);
+          await choYen();
+          const gui = taiLieu(luotDn.slice(moc0));
+          const post = gui.filter(l => l.cach === 'POST');
+          ok('Đối chứng: lần gửi là đúng MỘT lượt POST ra mạng, mang email và mật khẩu đã gõ (form thật sự được gửi)',
+             post.length === 1 && !post[0].tuDem && post[0].than.includes(encodeURIComponent(EMAIL_THU)) && post[0].than.includes(MK_THU), tomDn(luotDn.slice(moc0)));
+          ok('RÀ SOÁT VÒNG BỐN: …máy chủ trả 303 về /noi-bo/dang-nhap, trình duyệt xin trang đó bằng GET; địa chỉ đang mở không mang email, mật khẩu',
+             post[0]?.ma === 303 && post[0]?.toi === DUONG_DN && gui.at(-1)?.cach === 'GET' && gui.at(-1)?.duong === DUONG_DN
+             && tabDn.url() === goc + DUONG_DN, `${tomDn(luotDn.slice(moc0))} · ${tabDn.url()}`);
+          ok('…trang đang hiện không chứa mật khẩu ở đâu cả', (await trongTrang(tabDn, mk => !document.documentElement.outerHTML.includes(mk), MK_THU)) === true);
+
+          const lichSu = await cdpDn.send('Page.getNavigationHistory');
+          const cacMuc = lichSu.entries.filter(m => m.url.startsWith(goc));
+          const viTri = async () => (await cdpDn.send('Page.getNavigationHistory').catch(() => ({}))).currentIndex;
+          const viTriSauGui = lichSu.currentIndex;
+          const moc1 = luotDn.length;
+          let soLanTaiLai = 0;
+          // Chỉ đếm lần tải lại thật sự xong: hết giờ mà vẫn đếm thì phép đối chứng đạt dù có mục chưa được tải lại.
+          const taiLai = async () => { if (await tabDn.reload({ waitUntil: 'load', timeout: 15_000 }).then(() => true, () => false)) soLanTaiLai++; await choYen(); };
+          await taiLai();
+          await trongTrang(tabDn, () => { history.back(); }); await choYen();
+          const daLui = (await viTri()) === viTriSauGui - 1 && tabDn.url().includes('buoc=70');
+          const sauLui = await trongTrang(tabDn, () => [...document.querySelectorAll('input[type="password"]')].map(o => o.value));
+          await taiLai();
+          await trongTrang(tabDn, () => { history.forward(); }); await choYen();
+          const daTien = (await viTri()) === viTriSauGui;
+          await taiLai();
+          for (const muc of cacMuc) {
+            await cdpDn.send('Page.navigateToHistoryEntry', { entryId: muc.id }).catch(() => {});
+            await choYen();
+            await taiLai();
+          }
+          const sau = luotDn.slice(moc1);
+          const coMatKhau = sau.filter(l => l.than.includes(MK_THU) || l.than.includes(encodeURIComponent(MK_THU)));
+          ok('Đối chứng: lịch sử có đủ hai mục (trang đã gõ, trang sau khi gửi); Quay lại và Tiến tới đúng từng mục; mỗi lần tải lại là một lượt xin trang',
+             cacMuc.length === 2 && daLui && daTien && soLanTaiLai === 3 + cacMuc.length && taiLieu(sau).length >= soLanTaiLai,
+             `${cacMuc.length} mục · lùi: ${daLui} · tiến: ${daTien} · tải lại ${soLanTaiLai} lần · ${tomDn(sau)}`);
+          ok('RÀ SOÁT VÒNG BỐN: lịch sử không còn mục POST nào — F5, Quay lại / Tiến + F5, tải lại từng mục: không lượt POST nào đi ra (kể cả lấy từ bộ đệm), không hộp thoại "gửi lại biểu mẫu"',
+             sau.every(l => l.cach !== 'POST') && hopThoaiDn.length === 0, `${tomDn(sau)} · hộp thoại: ${JSON.stringify(hopThoaiDn)}`);
+          ok('RÀ SOÁT VÒNG BỐN: …không lượt xin nào (mọi loại, không chỉ trang) mang lại mật khẩu đã gõ',
+             coMatKhau.length === 0, JSON.stringify(coMatKhau.map(l => `${l.cach} ${l.duong}`)));
+          ok('…Quay lại về trang đã gõ: không ô mật khẩu nào còn chữ', Array.isArray(sauLui) && sauLui.every(v => v === ''), JSON.stringify(sauLui));
+          await coHan(ctxDn.close(), 10_000);
+        };
+
+        // Rời trang là xóa ô mật khẩu: gõ rồi bấm một link, Quay lại — trang về từ bfcache với chữ đã gõ, trừ mật khẩu.
+        // (Sau lượt gửi form, Chromium 156 không giữ trang đã gõ trong bfcache; Safari, Firefox, bản Chromium sau thì
+        // chưa chắc — lớp này không trông vào chuyện đó.)
+        const thuXoaMatKhau = async () => {
+          const ctxB = await khongChan.newContext();
+          await phongChuTaiCho(ctxB);
+          const tabB = await ctxB.newPage();
+          await tabB.goto(goc + DUONG_DN + '?buoc=71');
+          await dungFormDangNhap(tabB, DUONG_DN + '?buoc=72');
+          await tabB.fill('input[name="email"]', EMAIL_THU);
+          await tabB.fill('input[name="mat_khau"]', MK_THU);
+          await trongTrang(tabB, () => { window.__trangCu = true; });
+          await Promise.all([tabB.waitForURL(u => u.search.includes('buoc=72'), { timeout: 15_000 }), tabB.click('#thu-link')]);
+          await tabB.waitForLoadState('load', { timeout: 10_000 }).catch(() => {});
+          await trongTrang(tabB, () => { history.back(); });
+          await choDen(() => tabB.url().includes('buoc=71'));
+          await nghi(800);
+          const ve = await trongTrang(tabB, () => ({
+            cu: window.__trangCu === true,
+            email: document.querySelector('input[name="email"]')?.value ?? null,
+            mk: document.querySelector('input[name="mat_khau"]')?.value ?? null,
+          }));
+          ok('Đối chứng: bấm link rồi Quay lại — trang đăng nhập về từ bfcache, còn nguyên ô email đã gõ (trình duyệt giữ chữ đã gõ)',
+             ve?.cu === true && ve?.email === EMAIL_THU, JSON.stringify(ve));
+          ok('RÀ SOÁT VÒNG BỐN: …nhưng ô mật khẩu đã trống — trang xóa nó lúc rời đi',
+             ve?.cu === true && ve?.mk === '', JSON.stringify({ ...ve, mk: ve?.mk === MK_THU ? '(mật khẩu đã gõ)' : ve?.mk }));
+          await coHan(ctxB.close(), 10_000);
+        };
+
         try {
           await chayCoHan('Khối thử trang kết quả gửi form', thuGuiLaiForm, 120_000);
+          await chayCoHan('Khối thử trả lời của lượt đăng nhập không thành', thuTraLoiDangNhap, 60_000);
+          await chayCoHan('Khối thử lịch sử sau khi đăng nhập không thành', thuLichSuDangNhap, 150_000);
+          await chayCoHan('Khối thử xóa ô mật khẩu khi rời trang đăng nhập', thuXoaMatKhau, 60_000);
         } finally {
           await coHan(khongChan.close(), 10_000);
         }

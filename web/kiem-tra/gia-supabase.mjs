@@ -78,15 +78,19 @@
  *   mua-thit-dat-dut    như mua-thit-mo; tao_don_mua_thit cắt kết nối không trả lời (KHÔNG CHẮC đã ghi)
  *
  * GET /__dem → { tên hàm: số lần gọi } — để kiểm "bấm đúp → tao_dat_ban đúng một lần". Lượt đọc / ghi bảng đếm theo
- * "<cách> <bảng>" ("GET nhan_su", "PATCH video_dao_tao").
+ * "<cách> <bảng>" ("GET nhan_su", "PATCH video_dao_tao"); mọi lượt gọi /auth/v1/token (đăng nhập, cả đổi refresh
+ * token) đếm dưới tên 'auth:dang_nhap' — lượt đó vào /__nhat-ky chỉ kèm grant_type và email.
  * GET /__nhat-ky → 200 lần gọi gần nhất { ham, thamSo }.
  *
- * /noi-bo — ĐĂNG NHẬP THẬT (thu-day-du.mjs nhóm 15). Server này còn đóng vai Supabase Auth và vài bảng, đủ để
- * lib/phien.ts đăng nhập, mở trang nội bộ và đăng xuất như với Supabase thật — trước đây mỗi vòng rà soát nút Quay
- * lại sau khi đăng xuất phải tự dựng một Auth giả ngoài repo:
+ * /noi-bo — ĐĂNG NHẬP (thu-day-du.mjs nhóm 14: đăng nhập không thành; nhóm 15: đăng nhập thật). Server này còn đóng
+ * vai Supabase Auth và vài bảng, đủ để lib/phien.ts đăng nhập, mở trang nội bộ và đăng xuất như với Supabase thật —
+ * trước đây mỗi vòng rà soát nút Quay lại sau khi đăng xuất phải tự dựng một Auth giả ngoài repo:
  *
  *   POST /auth/v1/token?grant_type=password        email + mật khẩu của NHAN_VIEN_THU → phiên mới: access token hạn
- *                                                   một giờ, refresh token dùng một lần; sai → 400 invalid_credentials
+ *                                                   một giờ, refresh token dùng một lần; sai → 400 invalid_credentials.
+ *                                                   Đăng nhập không thành kiểu khác, mọi kịch bản, email quyết định:
+ *                                                   ban@… → 429 over_request_rate_limit (quá hạn mức), dut@… → cắt kết
+ *                                                   nối, không một byte (mất mạng giữa chừng)
  *   POST /auth/v1/token?grant_type=refresh_token   đổi refresh token lấy cặp mới. Phiên đã thu hồi → 400
  *                                                   refresh_token_not_found; token đã dùng rồi → 400
  *                                                   refresh_token_already_used và phiên đó bị thu hồi luôn (Supabase bật
@@ -932,6 +936,17 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
         // Nhật ký không bao giờ chép mật khẩu hay token.
         const ghi = dong => { nhatKyAuth.push({ so: ++soLuotAuth, ...dong }); if (nhatKyAuth.length > 200) nhatKyAuth.shift(); };
 
+        if (cua === 'token') {
+          // Mọi lượt gọi cửa token — đăng nhập, cả đổi refresh token, cả lượt sai cách — đếm dưới tên 'auth:dang_nhap'
+          // và vào nhật ký chung (/__nhat-ky) chỉ kèm grant_type và email: thu-day-du.mjs nhóm 14 kiểm "F5, Quay lại,
+          // Tiến không gửi thêm lượt đăng nhập nào". datKichBan() xóa bộ đếm, không đụng phiên.
+          let emailGui = '';
+          try { emailGui = String(JSON.parse(duLieu || '{}')?.email ?? ''); } catch { /* thân hỏng: vẫn đếm */ }
+          dem['auth:dang_nhap'] = (dem['auth:dang_nhap'] ?? 0) + 1;
+          nhatKy.push({ ham: 'auth:dang_nhap', thamSo: { grant_type: url.searchParams.get('grant_type'), email: emailGui } });
+          if (nhatKy.length > 200) nhatKy.shift();
+        }
+
         if (cua === 'token' && req.method === 'POST') {
           const loai = url.searchParams.get('grant_type');
           let than = null;
@@ -942,6 +957,16 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
           }
           if (loai === 'password') {
             const email = String(than.email ?? '').trim().toLowerCase();
+            // Đăng nhập không thành vì Supabase bận hay mất mạng (nhóm 14) — mọi kịch bản, email quyết định.
+            if (email.startsWith('ban@')) {
+              ghi({ cua, loai, email, status: 429 });
+              return traAuth(429, { code: 'over_request_rate_limit', message: 'Request rate limit reached' });
+            }
+            if (email.startsWith('dut@')) {
+              ghi({ cua, loai, email, status: 0 });   // 0: cắt kết nối, không một byte trả lời
+              req.socket.destroy();
+              return;
+            }
             if (email !== NHAN_VIEN_THU.email || than.password !== NHAN_VIEN_THU.matKhau) {
               ghi({ cua, loai, email, status: 400 });
               return traAuth(400, { code: 'invalid_credentials', message: 'Invalid login credentials' });
