@@ -1507,12 +1507,151 @@ try {
           }
         };
 
+        // TRANG KHO DỰNG TẠI CHỖ TỰ XÓA THÂN FORM KHỎI LỊCH SỬ (issue #194, đợt 5 — Khánh chọn cách 2 ngày 16/11/2026). 31
+        // trang kho báo lỗi (hay hiện bước xem trước, thêm dòng) ngay trong trả lời của lượt POST: chữ đã gõ theo từng dòng,
+        // mã gửi, ảnh đã tải còn nguyên. Mục lịch sử của trả lời đó giữ thân form — F5, hay rời đi rồi Quay lại / Tiến tới
+        // và F5, là gửi lại cả form. Khung Kho in vào <head> của trả lời lượt POST một đoạn mã (components/kho/
+        // XoaThanPost.astro, mã ở lib/kho/xoa-than-post.js) thay mục đó bằng một mục cùng địa chỉ, không thân form. Trang
+        // kho cần đăng nhập, bản build không có database: cảnh này dựng một máy chủ nhỏ trả trang form và trang báo lỗi tại
+        // chỗ mang ĐÚNG đoạn mã đó, cùng đoạn mã của khung (lib/sau-dang-xuat.js) đúng thứ tự trong <head>, form gửi về
+        // chính địa chỉ của nó, header như /noi-bo (private). Đối chứng: cùng trang không có đoạn mã — F5 là gửi lại (cảnh
+        // này thấy được lỗi). Thẻ chỉ in ở lượt POST, khung in nó trước thẻ phông chữ: crm/test/test-kho-loi-chuyen-huong.mjs
+        // nhóm 5.
+        const thuLoiTaiChoKho = async () => {
+          const { readFileSync, existsSync } = await import('node:fs');
+          const TEP_XOA = join(WEB, 'src', 'lib', 'kho', 'xoa-than-post.js');
+          ok('#194: có đoạn mã lib/kho/xoa-than-post.js (khung Kho in nó vào trả lời của lượt POST)', existsSync(TEP_XOA));
+          if (!existsSync(TEP_XOA)) return;
+          const maXoa = readFileSync(TEP_XOA, 'utf8');
+          const MA_XOA = maXoa.slice(maXoa.indexOf('(function'));
+          const maKhung = readFileSync(join(WEB, 'src', 'lib', 'sau-dang-xuat.js'), 'utf8');
+          const MA_KHUNG = maKhung.slice(maKhung.indexOf('(function'));
+          const DUONG = '/noi-bo/kho/thu-loi-tai-cho';
+          const DUONG_DC = '/noi-bo/kho/thu-doi-chung';   // đối chứng: cùng trang, không có đoạn mã
+          const DUONG_KHAC = '/noi-bo/kho/thu-trang-khac';
+          const SO_GO = '1.250,5';
+          const nhatKyMay = [];   // mọi lượt máy chủ nhận: { cach, duong, than }
+          const trangKho = ({ laPost, coMa, so, maGui }) => '<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Phiếu thử</title>'
+            + (laPost && coMa ? `<script>${MA_XOA}</script>` : '')
+            + `<script data-dau-phien="">${MA_KHUNG}</script></head><body>`
+            + `<p id="bao">${laPost ? 'Chưa lưu được: dòng 2 chưa có giá nhập.' : ''}</p>`
+            + `<form method="POST"><input name="so_luong" id="so_luong" value="${so}"><input type="hidden" name="ma_gui" value="${maGui}">`
+            + `<button id="nut-luu" type="submit">Lưu</button></form><a id="sang-khac" href="${DUONG_KHAC}">Mặt hàng</a></body></html>`;
+          const { createServer } = await import('node:http');
+          const may = createServer((req, res) => {
+            let than = '';
+            req.setEncoding('utf8');
+            req.on('data', c => { than += c; });
+            req.on('end', () => {
+              try {
+                const u = new URL(req.url, 'http://127.0.0.1');
+                nhatKyMay.push({ cach: req.method, duong: u.pathname + u.search, than });
+                const dau = { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'private' };
+                if (u.pathname === DUONG || u.pathname === DUONG_DC) {
+                  // Như trang kho: lỗi thì dựng lại form ngay trong trả lời, với số vừa gửi và CÙNG mã gửi.
+                  const laPost = req.method === 'POST';
+                  const f = new URLSearchParams(than);
+                  res.writeHead(200, dau);
+                  return res.end(trangKho({ laPost, coMa: u.pathname === DUONG,
+                    so: laPost ? (f.get('so_luong') ?? '').replace(/[<>"&]/g, '') : '',
+                    maGui: laPost ? (f.get('ma_gui') ?? '').replace(/[^\w-]/g, '') : globalThis.crypto.randomUUID() }));
+                }
+                if (u.pathname === DUONG_KHAC) {
+                  res.writeHead(200, dau);
+                  return res.end('<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Mặt hàng</title></head><body><h1 id="khac">Mặt hàng</h1></body></html>');
+                }
+                res.writeHead(404); res.end();
+              } catch (e) { res.writeHead(500, { 'content-type': 'text/plain' }); res.end(String(e?.message ?? e)); }
+            });
+          });
+          await new Promise(xong => may.listen(0, '127.0.0.1', xong));
+          const gocKho = `http://127.0.0.1:${may.address().port}`;
+          const ctxKho = await khongChan.newContext();
+          try {
+            const tab = await ctxKho.newPage();
+            const hopThoai = [];
+            tab.on('dialog', d => { hopThoai.push(`${d.type()}: ${d.message()}`); d.dismiss().catch(() => {}); });
+            const tom = ds => JSON.stringify(ds.map(l => `${l.cach} ${l.duong}`));
+            const coPost = ds => ds.some(l => l.cach === 'POST');
+            const oTrang = async () => (await trongTrang(tab, () => ({
+              duong: location.pathname + location.search, bao: document.getElementById('bao')?.textContent ?? null,
+              so: document.getElementById('so_luong')?.value ?? null,
+            }))) ?? { khongDocDuoc: true };
+            /** Một bước (gửi form, F5, Quay lại…) và mọi lượt máy chủ nhận trong lúc đó. */
+            const buoc = async lam => {
+              const moc = nhatKyMay.length;
+              await coHan(lam(), 15_000);
+              await tab.waitForLoadState('load', { timeout: 10_000 }).catch(() => {});
+              await nghi(400);
+              return nhatKyMay.slice(moc);
+            };
+            /** Mở form, gõ số, bấm Lưu: trả lời là trang báo lỗi dựng tại chỗ (HTTP 200 của lượt POST). */
+            const guiLoi = async duong => {
+              await coHan(tab.goto(gocKho + duong + '?loc=a', { waitUntil: 'load' }), 15_000);
+              await coHan(tab.fill('#so_luong', SO_GO));
+              return buoc(() => Promise.all([tab.waitForNavigation({ timeout: 15_000 }), tab.click('#nut-luu')]));
+            };
+            const f5 = () => buoc(() => tab.reload({ waitUntil: 'load' }));
+            const guiLai = ds => ds.some(l => l.cach === 'POST' && l.than.includes(encodeURIComponent(SO_GO)));
+
+            // Đối chứng trước: không có đoạn mã thì F5 trên trang báo lỗi — và rời đi, Quay lại, F5 — gửi lại thân form.
+            const guiDc = await guiLoi(DUONG_DC);
+            const f5Dc = await f5();
+            await guiLoi(DUONG_DC);
+            await buoc(() => tab.click('#sang-khac'));
+            const luiDc = await buoc(() => tab.goBack({ waitUntil: 'load' }));
+            const luiF5Dc = await f5();
+            ok('Đối chứng: trang báo lỗi tại chỗ KHÔNG có đoạn mã — F5 gửi lại nguyên thân form; rời đi, Quay lại, F5 cũng vậy (cảnh thử thấy được lỗi)',
+               guiDc.filter(l => l.cach === 'POST').length === 1 && guiLai(f5Dc) && guiLai([...luiDc, ...luiF5Dc]),
+               `gửi: ${tom(guiDc)} · F5: ${tom(f5Dc)} · Quay lại: ${tom(luiDc)} · F5: ${tom(luiF5Dc)}`);
+
+            // Có đoạn mã (như trả lời của lượt POST trong khung Kho).
+            const moc = nhatKyMay.length;
+            const gui = await guiLoi(DUONG);
+            const sauGui = await oTrang();
+            ok('#194: trang báo lỗi vẫn dựng tại chỗ — đúng MỘT lượt POST, câu lỗi hiện, số vừa gõ còn nguyên trong ô',
+               gui.filter(l => l.cach === 'POST').length === 1 && guiLai(gui) && sauGui.bao?.startsWith('Chưa lưu được') && sauGui.so === SO_GO,
+               `${tom(gui)} · ${JSON.stringify(sauGui)}`);
+            const f5Co = await f5();
+            ok('#194: F5 trên trang báo lỗi — một lượt GET của chính trang, không gửi lại form',
+               f5Co.length >= 1 && !coPost(f5Co) && f5Co.every(l => l.duong === DUONG + '?loc=a'), tom(f5Co));
+
+            // Rời trang báo lỗi (bấm một link) rồi Quay lại về đó, F5; Tiến tới, Quay lại, F5.
+            await guiLoi(DUONG);
+            await buoc(() => tab.click('#sang-khac'));
+            const lui = await buoc(() => tab.goBack({ waitUntil: 'load' }));
+            const sauLui = await oTrang();
+            const luiF5 = await f5();
+            const tienLui = [...await buoc(() => tab.goForward({ waitUntil: 'load' })), ...await buoc(() => tab.goBack({ waitUntil: 'load' }))];
+            const tienLuiF5 = await f5();
+            ok('#194: rời trang báo lỗi, Quay lại về đó, F5 — rồi Tiến tới, Quay lại, F5 — không lượt POST nào, vẫn đúng địa chỉ của trang',
+               !coPost([...lui, ...luiF5, ...tienLui, ...tienLuiF5]) && sauLui.duong === DUONG + '?loc=a',
+               `Quay lại: ${tom(lui)} ${JSON.stringify(sauLui)} · F5: ${tom(luiF5)} · Tiến, Quay lại: ${tom(tienLui)} · F5: ${tom(tienLuiF5)}`);
+
+            // Tiến tới về một trang báo lỗi (Quay lại về form trước nó, rồi Tiến), F5.
+            await guiLoi(DUONG);
+            await buoc(() => tab.goBack({ waitUntil: 'load' }));
+            const tien = await buoc(() => tab.goForward({ waitUntil: 'load' }));
+            const tienF5 = await f5();
+            ok('#194: Quay lại về form rồi Tiến tới về trang báo lỗi, F5 — không lượt POST nào',
+               !coPost([...tien, ...tienF5]), `Tiến: ${tom(tien)} · F5: ${tom(tienF5)}`);
+            const tatCa = nhatKyMay.slice(moc);
+            ok('#194: cả cảnh có đoạn mã: máy chủ nhận đúng ba lượt POST — ba lần bấm Lưu — không hộp thoại "gửi lại biểu mẫu"',
+               tatCa.filter(l => l.cach === 'POST').length === 3 && hopThoai.length === 0,
+               `${tom(tatCa.filter(l => l.cach === 'POST'))} · hộp thoại: ${JSON.stringify(hopThoai)}`);
+          } finally {
+            await coHan(ctxKho.close(), 10_000);
+            await coHan(new Promise(xong => { may.closeAllConnections?.(); may.close(() => xong()); }), 5000);
+          }
+        };
+
         try {
           await chayCoHan('Khối thử trang kết quả gửi form', thuGuiLaiForm, 120_000);
           await chayCoHan('Khối thử trả lời của lượt đăng nhập không thành', thuTraLoiDangNhap, 60_000);
           await chayCoHan('Khối thử lịch sử sau khi đăng nhập không thành', thuLichSuDangNhap, 150_000);
           await chayCoHan('Khối thử xóa ô mật khẩu khi rời trang đăng nhập', thuXoaMatKhau, 60_000);
           await chayCoHan('Khối thử hệ thống bận lúc gửi form', thuBanLucGui, 90_000);
+          await chayCoHan('Khối thử trang kho dựng tại chỗ tự xóa thân form', thuLoiTaiChoKho, 120_000);
         } finally {
           await coHan(khongChan.close(), 10_000);
         }

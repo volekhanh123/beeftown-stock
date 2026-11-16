@@ -12,13 +12,13 @@
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
-import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import { moTrangKho, docFormGui, ketThucPost, LOI_CHUA_CO_CN } from '../../../../lib/kho/trang.ts';
 import { docCaiDat, docMatHang, luuCaiDat, type CaiDat, type MatHang } from '../../../../lib/kho/danh-muc.ts';
 import { docMaVach, MAU_MAC_DINH } from '../../../../lib/kho/ma-vach.ts';
 import { oDangGiao, taoBangTraMaCan, traMaCan } from '../../../../lib/kho/tra-ma-can.ts';
 import { docGiaoOMaCan, docMaTrenNhan, type GiaoOMa } from '../../../../lib/kho/o-ma.ts';
 import { chuTang } from '../../../../lib/kho/tang.ts';
-import { cauLoiKho, dinhDangKg, dinhDangTien, type KetQua } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangKg, dinhDangTien, kqHai } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
@@ -66,13 +66,12 @@ const t = dichNB(nn, {
   vaKhac: { vi: (n: number) => `… và ${n} phần khác — xem ở `, en: (n: number) => `… and ${n} more — see ` },
 });
 
-let bao: KetQua | null = k.bao;
 const form = await docFormGui(Astro);
-if (form && k.chiNhanh) {
-  const kq = await luuCaiDat(k.client, form, k.chiNhanh.id);
-  if (kq.ok) return chuyenHuong(Astro, '/noi-bo/kho/cai-dat/ma-vach', kq);
-  bao = kq;
-}
+// Lượt gửi nào cũng kết thúc bằng 303 về chính trang (#194, đợt 5): lưu hỏng thì câu lỗi đi theo cookie — mẫu mã vạch,
+// số lẻ dựng lại từ database, không điền lại chữ nào của lượt gửi.
+if (Astro.request.method === 'POST') return ketThucPost(Astro, form, '/noi-bo/kho/cai-dat/ma-vach', async form => ({
+  kq: k.chiNhanh ? await luuCaiDat(k.client, form, k.chiNhanh.id) : kqHai(false, LOI_CHUA_CO_CN),
+}));
 
 const thu = (Astro.url.searchParams.get('thu') ?? '').replace(/\s/g, '');
 let caiDat: CaiDat | null = null;
@@ -108,7 +107,7 @@ const HIEN_TOI_DA = 12;
 <Kho k={k} huongDan="ma-vach" tieuDe={t.tieuDe}>
   <h1>{t.tieuDe}</h1>
   <p><a href="/noi-bo/kho/cai-dat">{t.veThietLap}</a></p>
-  <BaoKho bao={bao} loiDoc={loiDoc} />
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   {!caiDat ? <p class="nb-rong">{t.chuaBatDau}</p> : (
     <>
