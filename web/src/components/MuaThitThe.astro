@@ -4,7 +4,7 @@
  *
  * Khánh 03/11/2026 ("phức tạp quá, làm như El Gaucho"), xem tận trang El Gaucho cùng ngày: thẻ chỉ còn khung ảnh,
  * tên, nhãn bảo quản bằng chữ, giá "Từ …" (gói rẻ nhất còn đặt được — một gói thì nhãn gói và giá) và MỘT nút
- * "Chọn gói". Bấm nút mở hộp chọn (popover) của sản phẩm: mô tả, rồi từng gói một hàng — nhãn gói ("Gói khoảng
+ * "Chọn gói". Bấm nút mở hộp chọn (popover) của sản phẩm: mô tả, rồi từng gói một hàng — nhãn gói ("Gói
  * 200 g", quyết định 2 của Khánh 26/10/2026), giá gói đã công bố (giá chủ đã chốt, quyết định 1), ô chọn số gói —
  * và nút Xong. Không giá theo cân hay theo trăm gam (quyết định 3).
  *
@@ -27,7 +27,7 @@
  *  · Số tiền chỉ qua dinhDangTien, chỉ trong phần tử có data-tien (bộ quét chữ cấm miễn đúng chỗ đó).
  *
  * MỘT KHUÔN THẺ (đợt 3 của đề xuất giao diện, Khánh duyệt 12/11/2026): gói đơn và sản phẩm nhiều cỡ cùng một chân
- * thẻ — dòng giá đậm (một gói: giá gói; nhiều cỡ: "Từ" + giá rẻ nhất), ngay dưới là cỡ gói ("Gói khoảng 200 g" hay
+ * thẻ — dòng giá đậm (một gói: giá gói; nhiều cỡ: "Từ" + giá rẻ nhất), ngay dưới là cỡ gói ("Gói 200 g" hay
  * "3 cỡ gói"), nút ở mép phải; chân thẻ luôn sát đáy nên các thẻ cùng hàng thẳng nhau. Phần thịt đã gắn gu ở
  * /noi-bo/ban-le (0116, cùng dữ liệu khối "Chọn theo gu" của trang Thực đơn) có thêm dòng "Gu: …" dưới nhãn bảo
  * quản. Cách dùng (cach_dung của menu bán lẻ) nằm trong hộp chọn, dưới mô tả. Không giá theo 100 g: quán bán theo gói.
@@ -58,7 +58,7 @@ const c = dich(ngonNgu, {
   tu: { vi: 'Từ', en: 'From', ko: '최저' },
   chonGoi: { vi: 'Chọn gói', en: 'Choose packs', ko: '팩 고르기' },
   chonHop: { vi: 'Chọn hộp', en: 'Choose boxes', ko: '통 고르기' },
-  // Cỡ gói dưới giá của sản phẩm nhiều cỡ (một cỡ: nhãn gói "Gói khoảng 200 g").
+  // Cỡ gói dưới giá của sản phẩm nhiều cỡ (một cỡ: nhãn gói "Gói 200 g").
   soCoGoi: { vi: (n: number) => `${n} cỡ gói`, en: (n: number) => `${n} pack sizes`, ko: (n: number) => `팩 크기 ${n}가지` },
   soCoHop: { vi: (n: number) => `${n} cỡ hộp`, en: (n: number) => `${n} box sizes`, ko: (n: number) => `통 크기 ${n}가지` },
   guLa: { vi: 'Gu:', en: 'Taste:', ko: '맛:' },

@@ -16,7 +16,7 @@
  *      tên (ten hoặc ten_vi) dính chữ cấm hay ngoặc vuông → bỏ cả sản phẩm; mô tả, cách dùng dính → null; gói
  *      trùng → giữ một; gom ba nhóm Thịt mát / Thịt đông lạnh / Kim chi.
  *   3. chu-va-so: "400.000 đ" (dấu cách thường) ở mọi thứ tiếng, đúng như toLocaleString('vi-VN'); số gam in không
- *      dấu ngăn ("1000 g"); "Gói khoảng 200 g" (quyết định 2 của Khánh, 26/10/2026); ô số gói chỉ nhận 0–10 viết đúng
+ *      dấu ngăn ("1000 g"); "Gói 200 g" (quyết định 2 của Khánh, 26/10/2026, bỏ chữ "khoảng" 16/11/2026); ô số gói chỉ nhận 0–10 viết đúng
  *      kiểu ("1.000", "1,5", "01" bị bỏ — không thành 1000 gói hay 1 gói); khóa gói ASCII; giỏ lên địa chỉ trang
  *      (gioThanhDiaChi, khi database từ chối đơn) chỉ có khóa gói và số gói.
  *   4. bam-hai-lan: cùng giỏ → cùng đơn, theo thứ tự menu (database chống ghi hai lần theo ma_gui — test-mua-thit-
@@ -323,10 +323,10 @@ await nhom('3 · TIỀN, SỐ GAM VÀ GIỎ (chu-va-so)', async () => {
   ok('Số gam in không dấu ngăn ở mọi thứ tiếng: 1000 → "1000 g"', gam.every(s => s.includes('1000 g') && !/1[.,]000/.test(s)), gam.join(' | '));
 
   const NHAN = {
-    vi: ['Gói khoảng 200 g', 'Hộp 500 g'], en: ['Pack of about 200 g', '500 g box'], ko: ['약 200 g 팩', '500 g 통'],
+    vi: ['Gói 200 g', 'Hộp 500 g'], en: ['200 g pack', '500 g box'], ko: ['200 g 팩', '500 g 통'],
   };
   const nhanSai = NGON_NGU.filter(nn => DON.nhanGoi('goi', 200, nn) !== NHAN[nn][0] || DON.nhanGoi('hop', 500, nn) !== NHAN[nn][1]);
-  ok('Nhãn gói thịt "Gói khoảng 200 g" / "Pack of about 200 g" / "약 200 g 팩"; hộp "Hộp 500 g" / "500 g box" / "500 g 통"',
+  ok('Nhãn gói thịt "Gói 200 g" / "200 g pack" / "200 g 팩" (Khánh 16/11/2026 bỏ chữ "khoảng"); hộp "Hộp 500 g" / "500 g box" / "500 g 통"',
      nhanSai.length === 0, nhanSai.map(nn => `${nn}: ${DON.nhanGoi('goi', 200, nn)} · ${DON.nhanGoi('hop', 500, nn)}`).join(' | '));
 
   const SAI_KIEU = ['1.000', '1,5', '-1', '11', '01', 'abc', '', ' 2', '2 ', '1e1', '0x2', '２', '2.0', '+2', '10.000'];
@@ -423,9 +423,9 @@ await nhom('7 · CHỮ CỦA KHỐI ĐƠN (CHU_DON)', async () => {
   ok('Bản en, ko không lẫn chữ Việt', lan.length === 0, lan.map(([nn, c]) => `${nn}: ${c}`).join(' | '));
 
   const CHU = {
-    vi: ['Tạm tính', 'Bạn chưa chọn gói nào', 'Ribeye with Cap · Gói khoảng 200 g × 2 = ', 'Ribeye with Cap, Gói khoảng 200 g: 2.'],
-    en: ['Subtotal', 'You have not chosen any packs yet', 'Ribeye with Cap · Pack of about 200 g × 2 = ', 'Ribeye with Cap, Pack of about 200 g: 2.'],
-    ko: ['소계', '아직 고른 팩이 없어요', 'Ribeye with Cap · 약 200 g 팩 × 2 = ', 'Ribeye with Cap 약 200 g 팩: 2개.'],
+    vi: ['Tạm tính', 'Bạn chưa chọn gói nào', 'Ribeye with Cap · Gói 200 g × 2 = ', 'Ribeye with Cap, Gói 200 g: 2.'],
+    en: ['Subtotal', 'You have not chosen any packs yet', 'Ribeye with Cap · 200 g pack × 2 = ', 'Ribeye with Cap, 200 g pack: 2.'],
+    ko: ['소계', '아직 고른 팩이 없어요', 'Ribeye with Cap · 200 g 팩 × 2 = ', 'Ribeye with Cap 200 g 팩: 2개.'],
   };
   const lech = NGON_NGU.filter(nn => JSON.stringify([C.tamTinh[nn], C.donTrong[nn],
     C.dongDau[nn]('Ribeye with Cap', DON.nhanGoi('goi', 200, nn), 2), C.vuaDoi[nn]('Ribeye with Cap', DON.nhanGoi('goi', 200, nn), 2)]) !== JSON.stringify(CHU[nn]));

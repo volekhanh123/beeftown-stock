@@ -6,6 +6,8 @@
 import Trang from '../../layouts/Trang.astro';
 import TrangVanBan from '../../components/TrangVanBan.astro';
 import { docNoiDung } from '../../lib/noi-dung';
+import { PHAP_NHAN } from '../../lib/chu';
+import { CHO_TRONG } from '../../lib/cho-trong';
 const nd = await docNoiDung('ko');
 ---
 <Trang ngonNgu="ko" noiDung={nd} duongDan="/ko/privacy"
@@ -85,8 +87,12 @@ const nd = await docNoiDung('ko');
         제출일과 지원 포지션은 누구인지 알아볼 수 없는 형태로 보관해, 매장에서 채용
         회차마다 몇 분이 관심을 가졌는지 알 수 있도록 해요.</p>
       <p>예약 정보는 매장에서 예약 이력을 확인할 수 있도록 보관해요. 포장 주문은
-        배달한 주문을 확인할 수 있도록 보관해요. 삭제는 언제든지 요청하실 수
+        배달한 주문을 확인할 수 있도록 {CHO_TRONG.THOI_GIAN_GIU_DON.ko} 동안 보관해요. 삭제는 언제든지 요청하실 수
         있어요.</p>
+
+      <h2>개인정보를 보관하는 곳</h2>
+      <p>고객님의 정보를 수집하고 보관하는 곳은 <span lang="vi">{PHAP_NHAN.ten}</span>(세금 코드 {PHAP_NHAN.maSoThue})이에요. 회사 등록 주소는 페이지 맨 아래에 있어요.{' '}
+        정보를 열람, 수정, 삭제하시거나 정보 이용에 대해 문의하시려면 {PHAP_NHAN.dienThoai}로 전화하시거나, {CHO_TRONG.EMAIL}로 이메일을 보내시거나, <a href="/ko/data-deletion">데이터 삭제</a> 페이지를 이용해 주세요.</p>
 
       <h2>이용자의 권리</h2>
       <p>본인 정보의 열람, 수정 또는 삭제를 요청하실 권리가 있고, 언제든지 소식

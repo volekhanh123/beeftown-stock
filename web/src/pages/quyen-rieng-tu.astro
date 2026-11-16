@@ -4,10 +4,15 @@
    nói rõ thu để làm gì, giữ bao lâu, ai giữ.
    Mục "Khi bạn xem trang web này": Meta Pixel (lib/meta-pixel.ts) — Khánh chốt
    27/10/2026 bật cho mọi người, không hỏi đồng ý, nên trang phải nói đúng Meta
-   nhận gì. Đổi sự kiện của pixel thì sửa danh sách nút ở đây, en/privacy, ko/privacy. */
+   nhận gì. Đổi sự kiện của pixel thì sửa danh sách nút ở đây, en/privacy, ko/privacy.
+   Mục "Ai giữ thông tin của bạn" (Khánh giao 16/11/2026, hồ sơ thông báo website thương mại điện tử): tên,
+   mã số thuế, số điện thoại lấy từ PHAP_NHAN; địa chỉ đăng ký chỉ in ở chân trang (đúng một lần mỗi trang —
+   web/kiem-tra/trinh-duyet.mjs); email và thời hạn giữ đơn mua thịt còn chờ trả lời (lib/cho-trong.ts). */
 import Trang from '../layouts/Trang.astro';
 import TrangVanBan from '../components/TrangVanBan.astro';
 import { docNoiDung } from '../lib/noi-dung';
+import { PHAP_NHAN } from '../lib/chu';
+import { CHO_TRONG } from '../lib/cho-trong';
 const nd = await docNoiDung('vi');
 ---
 <Trang ngonNgu="vi" noiDung={nd} duongDan="/quyen-rieng-tu"
@@ -88,8 +93,12 @@ const nd = await docNoiDung('vi');
         lại — ngày nộp và vị trí ứng tuyển — được giữ ở dạng không còn nhận ra
         bạn là ai, để nhà hàng biết mỗi đợt tuyển có bao nhiêu người quan tâm.</p>
       <p>Thông tin đặt bàn được giữ để nhà hàng đối chiếu lịch sử đặt chỗ của
-        bạn. Đơn mua thịt được giữ để quán đối chiếu đơn đã giao. Bạn yêu cầu
+        bạn. Đơn mua thịt được giữ {CHO_TRONG.THOI_GIAN_GIU_DON.vi} để quán đối chiếu đơn đã giao. Bạn yêu cầu
         xóa lúc nào cũng được.</p>
+
+      <h2>Ai giữ thông tin của bạn</h2>
+      <p>Bên thu thập và giữ thông tin của bạn là {PHAP_NHAN.ten} (mã số thuế {PHAP_NHAN.maSoThue}); địa chỉ đăng ký của công ty ghi ở cuối trang.{' '}
+        Muốn xem, sửa, xóa thông tin hoặc hỏi về việc dùng thông tin: gọi {PHAP_NHAN.dienThoai}, email {CHO_TRONG.EMAIL}, hoặc dùng trang <a href="/xoa-du-lieu">Xóa dữ liệu</a>.</p>
 
       <h2>Quyền của bạn</h2>
       <p>Bạn có quyền yêu cầu xem, sửa hoặc xóa thông tin của mình, và có quyền
