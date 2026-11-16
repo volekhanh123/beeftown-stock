@@ -409,7 +409,8 @@ await nhom('9 · TRANG THIẾT LẬP VÀ TỒN ĐẦU KỲ', async () => {
     ok(`${ten}: không <script>, không onclick`, !/<script|onclick=/i.test(s));
     ok(`${ten}: bọc <Kho>, có <h1> và <BaoKho>`, /<Kho k=\{k\}/.test(s) && /<h1>/.test(s) && /<BaoKho/.test(s));
     // #194 (đợt 5): trang Thiết lập — MỌI lượt POST (lỗi cũng vậy) kết thúc bằng ketThucPost, 303; Tồn đầu kỳ còn
-    // dựng tại chỗ khi lỗi (chờ Khánh quyết), thành công vẫn chuyenHuong.
+    // dựng tại chỗ khi lỗi (trả lời đó tự xóa thân form khỏi lịch sử — Khánh chọn cách 2, 16/11/2026), thành công vẫn
+    // chuyenHuong.
     ok(`${ten}: thành công thì chuyển hướng 303${ten === 'Thiết lập' ? ' — mọi lượt POST, lỗi cũng vậy (ketThucPost)' : ' (chuyenHuong)'}`,
        ten === 'Thiết lập' ? /\nif \(Astro\.request\.method === 'POST'\) return ketThucPost\(Astro, form,/.test(s) : /chuyenHuong\(Astro,/.test(s));
     ok(`${ten}: không bẫy {x && …} với số`, !/\{\s*[a-zA-Z_.]+\.length\s*&&/.test(s));

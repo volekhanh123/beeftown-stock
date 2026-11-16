@@ -1,5 +1,5 @@
 /**
- * BEEFTOWN KHO — GỬI FORM KHÔNG THÀNH CŨNG CHUYỂN HƯỚNG 303 (issue #194, đợt 5)
+ * BEEFTOWN KHO — GỬI FORM KHÔNG THÀNH CŨNG CHUYỂN HƯỚNG 303; TRANG CÒN DỰNG TẠI CHỖ TỰ XÓA THÂN FORM (issue #194, đợt 5)
  * ==============================================================================
  *
  *     node test/test-kho-loi-chuyen-huong.mjs
@@ -10,7 +10,8 @@
  * dựng lại trang từ database và địa chỉ, không điền lại chữ nào của lượt gửi (trừ năm ô ngưỡng của Thiết lập kho, vừa
  * một cookie). Ở chín trang này, MỌI lượt POST kết thúc bằng 303 — lỗi, việc lạ, thân form hỏng, lỗi ném ra bất ngờ.
  * Các trang còn lại điền lại số theo từng dòng, mã gửi, ảnh đã tải, phiên bản phiếu (không vừa một cookie) hoặc có
- * bước xem trước / thêm dòng: còn dựng tại chỗ, chờ Khánh quyết (#194).
+ * bước xem trước / thêm dòng: vẫn dựng tại chỗ, và trang đó tự thay mục lịch sử của nó bằng một mục không có thân form
+ * (Khánh chọn cách 2 ngày 16/11/2026 — lib/kho/xoa-than-post.js, in vào khung Kho chỉ ở trả lời của lượt POST).
  *
  * Bất biến:
  *   1. ghiBao: câu báo dài (câu lỗi ghép từng dòng, cả bản tiếng Anh) được cắt theo số byte sau mã hóa — cookie quá cỡ
@@ -21,9 +22,14 @@
  *   3. Chín trang: lượt POST nào cũng đi qua ketThucPost; không còn câu gán `bao = …` (lối dựng tại chỗ); phần HTML
  *      không đọc form.
  *   4. Mọi trang kho đọc thân POST được xếp vào đúng một nhóm — trang mới phải được xếp.
+ *   5. Trang còn dựng tại chỗ: khung Kho in đoạn mã xóa thân form vào <head> của trả lời lượt POST (chỉ lượt POST,
+ *      trước thẻ phông chữ); đoạn mã chỉ thay mục lịch sử (cùng địa chỉ, cùng history.state) — không tải lại, không
+ *      chuyển trang, không gọi mạng; trình duyệt từ chối thì thôi. Khung CRM không có. Trên Chromium thật (F5, Quay
+ *      lại / Tiến tới rồi F5 không gửi lại POST; đối chứng không có mã thì gửi lại): web/kiem-tra/trinh-duyet.mjs nhóm 4.
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import vm from 'node:vm';
 import { join, dirname, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { taoBoDem } from './kho-chung.mjs';
@@ -46,9 +52,10 @@ const CHIN_TRANG = ['cai-dat/ma-vach.astro', 'ban-ipos/index.astro', 'pha-loc/mo
 /** Đợt 2: ba trang của máy dùng chung (guiRoiChuyen) — test-kho-may-lich-su.mjs. */
 const BA_TRANG_MAY = ['may/dang-ky.astro', 'may/gan.astro', 'may/index.astro'];
 /**
- * Còn dựng tại chỗ khi lỗi, chờ Khánh quyết (#194): điền lại số theo từng dòng, mã gửi (ma_gui), ảnh đã tải, phiên bản
- * phiếu, chữ dài — không vừa một cookie — hoặc có bước gửi không ghi (xem trước, thêm dòng, đọc mã). Trang nhân viên còn
- * cố ý dựng tại chỗ khi TẠO ĐƯỢC (hiện mật khẩu tạm một lần, không qua cookie hay địa chỉ).
+ * Còn dựng tại chỗ khi lỗi: điền lại số theo từng dòng, mã gửi (ma_gui), ảnh đã tải, phiên bản phiếu, chữ dài — không
+ * vừa một cookie — hoặc có bước gửi không ghi (xem trước, thêm dòng, đọc mã). Trang nhân viên còn cố ý dựng tại chỗ khi
+ * TẠO ĐƯỢC (hiện mật khẩu tạm một lần, không qua cookie hay địa chỉ). Khánh chọn cách 2 (16/11/2026, #194): giữ trang
+ * tại chỗ, trang tự thay mục lịch sử của nó bằng một mục không có thân form — nhóm 5.
  */
 const CON_TAI_CHO = ['ban-ipos/ghep.astro', 'cai-dat/can.astro', 'cai-dat/cong-thuc.astro', 'cai-dat/dinh-luong.astro',
   'cai-dat/ipos.astro', 'cai-dat/mat-hang.astro', 'cai-dat/mat-hang/sua-nhanh.astro', 'cai-dat/nha-cung-cap.astro',
@@ -241,6 +248,106 @@ await nhom('4 · MỌI TRANG KHO ĐỌC THÂN POST ĐƯỢC XẾP VÀO ĐÚNG M�
   ok('Danh sách không có tên trang nào không còn đọc thân POST (đổi tên, bỏ trang thì sửa danh sách)', khongCo.length === 0, khongCo.join(', '));
   ok(`Đủ ${coPost.length} trang: ${CHIN_TRANG.length} + ${BA_TRANG_MAY.length} + ${CON_TAI_CHO.length}`,
      coPost.length === CHIN_TRANG.length + BA_TRANG_MAY.length + CON_TAI_CHO.length);
+});
+
+// ===========================================================================
+await nhom(`5 · ${CON_TAI_CHO.length} TRANG CÒN DỰNG TẠI CHỖ: TRẢ LỜI CỦA LƯỢT POST TỰ XÓA THÂN FORM KHỎI LỊCH SỬ (Khánh chọn cách 2, 16/11/2026)`, async () => {
+  const TEP_MA = join(SRC, 'lib', 'kho', 'xoa-than-post.js');
+  const TEP_THE = join(SRC, 'components', 'kho', 'XoaThanPost.astro');
+  ok('#194: có đoạn mã lib/kho/xoa-than-post.js và thẻ components/kho/XoaThanPost.astro in nó vào trang',
+     existsSync(TEP_MA) && existsSync(TEP_THE), `${existsSync(TEP_MA)} · ${existsSync(TEP_THE)}`);
+  if (!existsSync(TEP_MA) || !existsSync(TEP_THE)) return;
+  const nguonMa = readFileSync(TEP_MA, 'utf8');
+  // Phần được in ra trang: từ "(function" — như thẻ XoaThanPost cắt (chú thích đầu file không in ra).
+  const MA = nguonMa.slice(nguonMa.indexOf('(function'));
+
+  /** Chạy đoạn mã trong một cửa sổ giả; ghi lại MỌI việc nó làm với lịch sử, địa chỉ, cookie, bộ nhớ, mạng. */
+  const HREF = 'https://beeftown.vn/noi-bo/kho/nhan-hang/moi?ncc=11111111-1111-4111-8111-111111111111#dong-3';
+  const chayMa = ({ nemLoi = false, khongCoLichSu = false } = {}) => {
+    const viec = [];
+    const trangThai = { cuon: 120 };
+    const lichSu = khongCoLichSu ? undefined : {
+      get state() { return trangThai; },
+      replaceState: (...ts) => { viec.push(['replaceState', ...ts]); if (nemLoi) throw new Error('SecurityError'); },
+      pushState: (...ts) => { viec.push(['pushState', ...ts]); },
+      back: () => { viec.push(['back']); }, forward: () => { viec.push(['forward']); }, go: (...ts) => { viec.push(['go', ...ts]); },
+    };
+    const diaChi = {
+      get href() { return HREF; }, set href(v) { viec.push(['location.href =', v]); },
+      reload: () => { viec.push(['reload']); }, replace: v => { viec.push(['location.replace', v]); },
+      assign: v => { viec.push(['location.assign', v]); }, toString: () => HREF,
+    };
+    const ghiLai = ten => () => { viec.push([ten]); };
+    const taiLieu = {
+      get cookie() { viec.push(['document.cookie']); return ''; }, set cookie(v) { viec.push(['document.cookie =', v]); },
+      forms: [], querySelectorAll: () => { viec.push(['querySelectorAll']); return []; },
+    };
+    const boNho = { getItem: ghiLai('getItem'), setItem: ghiLai('setItem'), removeItem: ghiLai('removeItem') };
+    const cuaSo = {
+      history: lichSu, get location() { return diaChi; }, set location(v) { viec.push(['window.location =', v]); },
+      document: taiLieu, localStorage: boNho, sessionStorage: boNho,
+      fetch: ghiLai('fetch'), XMLHttpRequest: ghiLai('XMLHttpRequest'), navigator: { sendBeacon: ghiLai('sendBeacon') },
+      addEventListener: ghiLai('addEventListener'), setTimeout: ghiLai('setTimeout'),
+    };
+    let loi = null;
+    try {
+      vm.runInNewContext(MA, { window: cuaSo, history: lichSu, location: diaChi, document: taiLieu, localStorage: boNho,
+        sessionStorage: boNho, fetch: cuaSo.fetch, XMLHttpRequest: cuaSo.XMLHttpRequest, navigator: cuaSo.navigator,
+        addEventListener: cuaSo.addEventListener, setTimeout: cuaSo.setTimeout });
+    } catch (e) { loi = String(e?.message ?? e); }
+    return { viec, loi, trangThai };
+  };
+  const tomViec = ds => JSON.stringify(ds.map(v => v.map(x => (typeof x === 'object' && x !== null ? '{state}' : x))));
+
+  const thuong = chayMa();
+  ok('#194: đoạn mã thay mục lịch sử của trang bằng một mục CÙNG địa chỉ (cả ?… và #…), giữ nguyên history.state — đúng một lệnh replaceState, không gì khác',
+     thuong.loi === null && thuong.viec.length === 1 && thuong.viec[0][0] === 'replaceState'
+     && thuong.viec[0][1] === thuong.trangThai && thuong.viec[0][2] === '' && thuong.viec[0][3] === HREF,
+     thuong.loi ?? tomViec(thuong.viec));
+  const tuChoi = chayMa({ nemLoi: true });
+  ok('…trình duyệt từ chối (replaceState ném lỗi): không ném ra ngoài, không làm gì thêm (không tải lại, không chuyển trang)',
+     tuChoi.loi === null && tuChoi.viec.length === 1 && tuChoi.viec[0][0] === 'replaceState', tuChoi.loi ?? tomViec(tuChoi.viec));
+  const khongCo = chayMa({ khongCoLichSu: true });
+  ok('…trình duyệt không có history.replaceState: không ném ra ngoài, không làm gì', khongCo.loi === null && khongCo.viec.length === 0,
+     khongCo.loi ?? tomViec(khongCo.viec));
+  // Lệnh reload() do MÃ gọi trên trang của lượt POST là GỬI LẠI form mà không hỏi (lib/sau-dang-xuat.js, đầu file) —
+  // đoạn mã này chỉ được thay mục lịch sử. Kiểm cả chữ của mã (bỏ chú thích), không chỉ lần chạy ở trên.
+  const chuMa = MA.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  const cam = chuMa.match(/\b(?:reload|submit|requestSubmit|fetch|XMLHttpRequest|sendBeacon|localStorage|sessionStorage|indexedDB|setTimeout|setInterval|addEventListener)\b|\bhistory\s*\.\s*(?:pushState|back|forward|go)\b|\blocation\s*\.\s*(?:replace|assign)\b|\bdocument\s*\.\s*cookie\b|\b(?:location|href)\s*=(?!=)/g) ?? [];
+  ok('RÀ SOÁT: chữ của đoạn mã không tải lại, không chuyển trang, không gửi form, không gọi mạng, không đọc cookie hay bộ nhớ, không hẹn giờ',
+     cam.length === 0, cam.join(', '));
+
+  const the = readFileSync(TEP_THE, 'utf8');
+  ok('#194: XoaThanPost.astro in đúng đoạn mã đó — nhập lib/kho/xoa-than-post.js (?raw), bỏ chú thích đầu file',
+     /(?:^|\n)import ma from '\.\.\/\.\.\/lib\/kho\/xoa-than-post\.js\?raw';\n/.test(phanDau(the))
+     && /const MA = ma\.slice\(ma\.indexOf\('\(function'\)\);/.test(phanDau(the)));
+  ok('#194: …CHỈ ở trả lời của lượt POST (lượt GET không in gì: mục lịch sử của nó không mang thân form), in thẳng vào trang',
+     phanHtml(the).trim() === "{Astro.request.method === 'POST' && <script is:inline set:html={MA}></script>}", phanHtml(the).trim());
+
+  // Khung Kho: một lần, trong <head>, trước thẻ phông chữ của Google (mã đứng sau thẻ bảng kiểu phải chờ nó tải xong mới
+  // chạy — mạng tới Google chậm thì F5 trong lúc đó vẫn gửi lại form) và trước <SauDangXuat />.
+  const khung = readFileSync(join(SRC, 'layouts', 'Kho.astro'), 'utf8');
+  const dauHead = khung.indexOf('<head>'), cuoiHead = khung.indexOf('</head>');
+  const viTri = khung.indexOf('<XoaThanPost />');
+  const soLan = (khung.match(/<XoaThanPost\b/g) ?? []).length;
+  const theKieu = khung.slice(dauHead).search(/<link\s+rel="stylesheet"/);
+  ok('#194: khung Kho nhập components/kho/XoaThanPost.astro và in <XoaThanPost /> đúng một lần, trong <head>',
+     /\nimport XoaThanPost from '\.\.\/components\/kho\/XoaThanPost\.astro';\n/.test(khung) && soLan === 1
+     && dauHead > 0 && viTri > dauHead && viTri < cuoiHead, `${soLan} lần · vị trí ${viTri} · <head> ${dauHead}–${cuoiHead}`);
+  ok('…trước thẻ phông chữ (thẻ bảng kiểu đầu tiên của <head>) và trước <SauDangXuat />',
+     viTri > 0 && theKieu > 0 && viTri < dauHead + theKieu && viTri < khung.indexOf('<SauDangXuat />'),
+     `XoaThanPost ${viTri} · bảng kiểu ${dauHead + theKieu} · SauDangXuat ${khung.indexOf('<SauDangXuat />')}`);
+  const khungCrm = readFileSync(join(SRC, 'layouts', 'NoiBo.astro'), 'utf8');
+  ok('Khung CRM (NoiBo.astro) không có đoạn mã này — Khánh quyết để nguyên bảy màn CRM (#194)',
+     !/XoaThanPost|xoa-than-post/.test(khungCrm));
+
+  // Trả lời của lượt POST nào cũng mang đoạn mã: cả 31 trang dựng trong khung Kho.
+  const ngoaiKhung = CON_TAI_CHO.filter(t => {
+    const s = docTrang(t);
+    return !/\nimport Kho from '(?:\.\.\/)+layouts\/Kho\.astro';/.test(`\n${phanDau(s)}`) || !/^\s*<Kho[\s>]/.test(phanHtml(s).replace(/\{\/\*[\s\S]*?\*\/\}/g, ''));
+  });
+  ok(`#194: ${CON_TAI_CHO.length} trang còn dựng tại chỗ đều dựng trong khung Kho (thẻ ngoài cùng là <Kho …>) — trả lời của lượt POST nào cũng mang đoạn mã`,
+     ngoaiKhung.length === 0, ngoaiKhung.join(', '));
 });
 
 process.exit(ketThuc('KHO: GỬI KHÔNG THÀNH CŨNG CHUYỂN HƯỚNG'));

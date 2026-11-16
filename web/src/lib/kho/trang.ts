@@ -250,7 +250,8 @@ export async function guiRoiChuyen(
 /**
  * LƯỢT POST CỦA TRANG KHO KẾT THÚC BẰNG 303, MỌI KẾT CỤC (issue #194; đợt 2: ba trang của máy dùng chung — qua
  * guiRoiChuyen; đợt 5: chín trang không điền lại chữ của lượt gửi — danh sách và các trang còn dựng tại chỗ:
- * crm/test/test-kho-loi-chuyen-huong.mjs).
+ * crm/test/test-kho-loi-chuyen-huong.mjs; trả lời lượt POST của các trang đó tự xóa thân form khỏi lịch sử —
+ * components/kho/XoaThanPost.astro, Khánh chọn 16/11/2026).
  *
  * Trang dựng ngay trong trả lời của lượt POST thì mục lịch sử của nó là chính lượt POST đó, giữ nguyên thân form —
  * trên máy dùng chung là mật khẩu, PIN của người vừa dùng; tải lại mục đó là gửi lại form. Hàm này dành cho trang đã
