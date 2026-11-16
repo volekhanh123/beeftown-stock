@@ -554,15 +554,16 @@ link của thư cũ) cũng là đọc mã nguồn công khai và tài liệu c�
    viên (form mới, không bấm F5), tạo lần nữa **cùng email đó**. Phải thấy "…đã có một tài khoản đăng nhập từ
    trước lần bấm này… CHƯA tạo nhân viên ở lần bấm này", không có mật khẩu tạm mới, danh sách vẫn đúng một
    dòng cho email đó. (Thấy "Đã tạo tài khoản…" hay "CHƯA nối được…" là giả định sai: Supabase không trả
-   `invalid_credentials` cho mật khẩu sai của tài khoản chưa xác nhận. Thấy "Supabase đã gửi quá số thư xác
-   nhận…" hay "Tạo quá nhiều tài khoản liền nhau…" thì chỉ là bấm lại quá sớm; đã chờ hơn một phút mà vẫn gặp
-   thì là hết lượt thư của giờ đó — chờ tới một giờ rồi làm lại bước 2. Không phải giả định sai, và đừng tắt
-   "Confirm email" như câu đó gợi ý.)
+   `invalid_credentials` cho mật khẩu sai của tài khoản chưa xác nhận. Thấy "Supabase chưa gửi thư xác nhận vì
+   chạm giới hạn gửi thư…" thì làm đúng như câu đó: bấm lại quá sớm thì chờ hơn một phút rồi làm lại bước 2; đã
+   chờ mà vẫn gặp thì là hết lượt thư của giờ đó — chờ tới một giờ. Thấy "Tạo quá nhiều tài khoản liền nhau…"
+   thì chờ vài phút rồi làm lại bước 2. Cả hai đều không phải giả định sai.)
 3. Bước 2 làm Supabase gửi thêm một thư xác nhận, và link của thư trước hết dùng được. Bấm link trong thư
    **mới nhất**, rồi đăng nhập `/noi-bo` bằng mật khẩu tạm của **bước 1**: vào được.
 
 Một trong ba bước không như trên (ngoài mấy câu "chờ rồi làm lại" đã kể) thì báo lại kèm câu màn hình hiện —
-đừng tắt kiểm thử, đừng bỏ bước thử. Kiểm thử tự động có cả nhánh "bấm lại trong 60 giây" (nhóm 5).
+đừng tắt kiểm thử, đừng bỏ bước thử. Kiểm thử tự động có cả nhánh "bấm lại trong 60 giây" (nhóm 5) và
+"hết lượt thư của giờ" (nhóm 5b).
 **Thử xong thì tắt lại "Confirm email"** ở Beeftown-thu (cài đặt đúng của hệ thống là tắt — mục ngay dưới) và
 khóa nhân viên thử ở màn Nhân viên.
 

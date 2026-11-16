@@ -32,9 +32,19 @@
  *   · "Tài khoản lạ" là một người ĐÃ đăng nhập nhưng không có dòng nhan_su (auth.uid() có giá trị) — không phải
  *     duoi(null), thứ không có auth.uid() nên trigger 0123 bỏ qua. Nhóm 6.
  *
+ * Câu báo của 429 over_email_send_rate_limit (15/11/2026). Supabase trả CÙNG mã đó cho hai giới hạn khác nhau
+ * (internal/api/mail.go): một thư xác nhận mỗi 60 giây cho một địa chỉ (validateSentWithinFrequencyLimit, ở trên),
+ * và số thư mỗi giờ của cả project (sendEmail → EmailRateLimitExceeded; máy gửi thư có sẵn của Supabase khoảng 2
+ * thư mỗi giờ, theo tài liệu "Send emails with custom SMTP"). Câu cũ chỉ nói giới hạn thứ hai và bảo tắt "Confirm
+ * email" trước tiên — sai với giới hạn thứ nhất, và là điều bước thử tay ở web/KHO.md mục 3f dặn đừng làm. Nhóm 5
+ * (60 giây) và 5b (hết lượt thư của giờ). Tạo tài khoản mới và gửi thư nằm trong cùng một transaction
+ * (internal/api/signup.go): gửi thư bị từ chối thì tài khoản mới không được giữ lại, nên chờ rồi tạo lại là tạo
+ * được. Cũng là đọc mã, chưa chạy với Supabase thật.
+ *
  * Dòng "RÀ SOÁT 14/11" đỏ trước bản sửa. Dòng ghi thêm "(vòng hai)" / "(vòng ba)" là của các vòng rà soát
  * sau: có dòng là lỗi vòng đó tìm ra (đỏ trước bản sửa của nó), có dòng chỉ là phép kiểm chặt hơn cho mã đã đúng
- * từ bản sửa đầu — loại này chỉ đỏ khi cố tình làm hỏng đúng chỗ mã nó giữ.
+ * từ bản sửa đầu — loại này chỉ đỏ khi cố tình làm hỏng đúng chỗ mã nó giữ. Dòng "CÂU BÁO 15/11" đỏ trước bản sửa
+ * câu của 429 over_email_send_rate_limit.
  * Các dòng còn lại giữ cho việc tạo nhân viên bình thường vẫn chạy.
  * Cần web/node_modules (cd web && npm install) — như test-qua-tai.mjs.
  */
@@ -43,7 +53,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { dungDatabase, taoBoDem, taoClientPg, UID } from './kho-chung.mjs';
-import { themNhanVien } from '../../web/src/lib/kho/nhan-vien.ts';
+import { themNhanVien, cauLoiDangKy } from '../../web/src/lib/kho/nhan-vien.ts';
 import { dichCau } from '../../web/src/lib/cau-noi-bo.ts';
 
 const GOC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -84,12 +94,14 @@ const auth = {
   soPhienCap: 0,
   /** Đặt một hàm ở đây để cửa /token trả lời khác đi (429, 5xx, mất mạng). null = trả lời thật. */
   tokenHong: null,
+  /** true = cả project đã hết lượt thư của giờ này (máy gửi thư có sẵn của Supabase: khoảng 2 thư mỗi giờ). */
+  hetLuotThuGio: false,
   /** Đồng hồ của Auth giả = giờ thật + lech (mili-giây). troiQua() cho "chờ hơn một phút" mà không chờ thật. */
   lech: 0,
   gio() { return Date.now() + this.lech; },
   troiQua(ms) { this.lech += ms; },
 
-  datLai({ tuXacNhan }) { this.tuXacNhan = tuXacNhan; this.nhatKy = []; this.soPhienCap = 0; this.tokenHong = null; },
+  datLai({ tuXacNhan }) { this.tuXacNhan = tuXacNhan; this.nhatKy = []; this.soPhienCap = 0; this.tokenHong = null; this.hetLuotThuGio = false; },
   dem(cua) { return this.nhatKy.filter(n => n.cua === cua).length; },
 
   /** Một người (không phải chủ) đăng ký email từ trước, bằng mật khẩu của họ. */
@@ -146,6 +158,7 @@ globalThis.fetch = async (url, init) => {
       if (auth.tuXacNhan) return json(422, { code: 'user_already_exists', message: 'User already registered' });
       return json(200, nguoiDung({ id: crypto.randomUUID() }, email, { identity: false }));
     }
+    const moi = !tk;
     if (!tk) {
       tk = { id: crypto.randomUUID(), matKhau: than.password, daXacNhan: false, guiThuLuc: null, soThu: 0 };
       auth.taiKhoan.set(email, tk);
@@ -157,6 +170,12 @@ globalThis.fetch = async (url, init) => {
     // (internal/api/mail.go: sentAt.Add(MaxFrequency).After(now) → 429). Thư mới thay link của thư cũ.
     if (tk.guiThuLuc !== null && tk.guiThuLuc + 60_000 > auth.gio()) {
       return json(429, { code: 'over_email_send_rate_limit', message: 'For security purposes, you can only request this after 42 seconds.' });
+    }
+    // Cả project hết lượt thư của giờ (internal/api/mail.go: sendEmail → EmailRateLimitExceeded) → 429 CÙNG mã.
+    // Tạo tài khoản và gửi thư chung một transaction (internal/api/signup.go): tài khoản MỚI không được giữ lại.
+    if (auth.hetLuotThuGio) {
+      if (moi) { auth.taiKhoan.delete(email); await db.query(`delete from auth.users where id = $1`, [tk.id]); }
+      return json(429, { code: 'over_email_send_rate_limit', message: 'email rate limit exceeded' });
     }
     tk.guiThuLuc = auth.gio(); tk.soThu += 1;
     return json(200, nguoiDung(tk, email));
@@ -340,12 +359,20 @@ await nhom('5 · Bấm tạo hai lần cùng một email → chỉ một nhân v
   ok('Lần hai (bật "Confirm email") không tạo thêm, không báo thành công', hai.kq.ok === false && hai.kq.moi === undefined, tom(hai.kq));
   ok('…vẫn đúng một dòng nhân sự', await soNhanSu(email) === 1);
   // Vòng hai 14/11: bấm lại NGAY (trong 60 giây) thì Supabase thật trả 429 ở chính bước đăng ký — chưa tới bước đăng
-  // nhập thử. Màn hình hiện câu về số thư xác nhận; bước thử tay 2 của web/KHO.md mục 3f dặn chờ hơn một phút.
+  // nhập thử. Màn hình hiện câu "chạm giới hạn gửi thư"; câu đó, và bước thử tay 2 của web/KHO.md mục 3f, dặn chờ
+  // hơn một phút.
   ok('RÀ SOÁT 14/11 (vòng hai): bấm lại trong 60 giây → Supabase từ chối ở bước đăng ký (429): không đăng nhập thử, không gọi kho_them_nhan_su',
      JSON.stringify(cuaHai) === '["signup"]' && !hai.daGoi.includes('kho_them_nhan_su'),
      `Supabase: ${cuaHai.join(', ')} · database: ${hai.daGoi.join(', ') || '(không)'}`);
-  ok('…câu hiện ra là câu về số thư xác nhận (nghĩa là "bấm lại quá sớm"), không phải câu "tài khoản có từ trước"',
-     /đã gửi quá số thư xác nhận/.test(hai.kq.cau) && !/từ trước/.test(hai.kq.cau), tom(hai.kq));
+  ok('CÂU BÁO 15/11: …câu hiện ra là câu về giới hạn gửi thư xác nhận (nghĩa là "bấm lại quá sớm"), không phải câu "tài khoản có từ trước"',
+     /thư xác nhận/.test(hai.kq.cau) && /chạm giới hạn gửi thư/.test(hai.kq.cau) && !/từ trước/.test(hai.kq.cau), tom(hai.kq));
+  // Câu báo 15/11: giới hạn gặp ở đây là một thư mỗi 60 giây cho một địa chỉ — cách sửa là chờ hơn một phút. Tắt
+  // "Confirm email" không phải cách sửa, và bước thử tay ở web/KHO.md mục 3f phải giữ nó bật.
+  ok('CÂU BÁO 15/11: …câu đó bảo chờ hơn một phút rồi tạo lại, không bảo tắt "Confirm email"',
+     /chờ hơn một phút rồi tạo lại/.test(hai.kq.cau) && !/Confirm email/.test(hai.kq.cau), tom(hai.kq));
+  ok('CÂU BÁO 15/11: …bản tiếng Anh nói cùng điều đó, không lẫn chữ Việt',
+     typeof hai.kq.cauEn === 'string' && /wait more than a minute, then create it again/.test(hai.kq.cauEn)
+     && !/Confirm email/.test(hai.kq.cauEn) && !VIET.test(hai.kq.cauEn), hai.kq.cauEn ?? '(thiếu)');
   // Chờ hơn một phút rồi bấm lại: Supabase trả lại tài khoản cũ (mật khẩu của lần một) và gửi thư thứ hai.
   auth.troiQua(61_000);
   const mocBa = auth.nhatKy.length;
@@ -366,6 +393,34 @@ await nhom('5 · Bấm tạo hai lần cùng một email → chỉ một nhân v
   const bon = await chuTao(email2);
   ok('Tắt "Confirm email": lần hai báo email đã có tài khoản, vẫn một nhân sự',
      ba.kq.ok === true && bon.kq.ok === false && /Email này đã có tài khoản đăng nhập/.test(bon.kq.cau) && await soNhanSu(email2) === 1, tom(bon.kq));
+});
+
+// ===========================================================================
+await nhom('5b · Cả project hết lượt thư của giờ → không tạo gì; câu bảo chờ tới một giờ hoặc cài SMTP riêng', async () => {
+  // Cùng mã 429 over_email_send_rate_limit với nhóm 5, nhưng là giới hạn số thư mỗi giờ của cả project: chờ một
+  // phút không đủ. Màn hình không phân biệt được hai giới hạn (cùng mã), nên một câu phải đúng cho cả hai.
+  auth.datLai({ tuXacNhan: false });
+  auth.hetLuotThuGio = true;
+  const email = 'het.luot.thu@beeftown.test';
+  const { kq, daGoi } = await chuTao(email, { hoTen: 'Hết lượt thư' });
+  ok('Hết lượt thư của giờ → KHÔNG tạo nhân viên, không báo thành công, không đăng nhập thử',
+     kq.ok === false && kq.moi === undefined && await soNhanSu(email) === 0 && !daGoi.includes('kho_them_nhan_su')
+     && JSON.stringify(auth.nhatKy.map(n => n.cua)) === '["signup"]', tom(kq));
+  ok('CÂU BÁO 15/11: …câu nói hết lượt thư của giờ: chờ tới một giờ, hoặc cài SMTP riêng (kèm chỗ bấm); không bảo tắt "Confirm email"',
+     /hết lượt gửi thư của giờ này/.test(kq.cau) && /chờ tới một giờ/.test(kq.cau)
+     && kq.cau.includes('cài SMTP riêng ở Supabase → Authentication → Emails → SMTP Settings') && !/Confirm email/.test(kq.cau), tom(kq));
+  ok('CÂU BÁO 15/11: …bản tiếng Anh nói cùng điều đó, không lẫn chữ Việt',
+     typeof kq.cauEn === 'string' && /used up its emails for this hour/.test(kq.cauEn) && /wait up to an hour/.test(kq.cauEn)
+     && kq.cauEn.includes('your own SMTP in Supabase → Authentication → Emails → SMTP Settings')
+     && !/Confirm email/.test(kq.cauEn) && !VIET.test(kq.cauEn), kq.cauEn ?? '(thiếu)');
+  // Supabase bản cũ chỉ trả câu "Email rate limit exceeded", không có mã: cauLoiDangKy nhận ra bằng chữ — cùng câu.
+  const cu = cauLoiDangKy({ status: 429, message: 'Email rate limit exceeded' });
+  ok('…Supabase bản cũ (chỉ câu "Email rate limit exceeded", không mã) → cùng câu đó', cu === kq.cau && cauLoiDangKy({ status: 429, message: 'Email rate limit exceeded' }, 'en') === kq.cauEn, cu);
+  // Chờ hết giờ đó rồi tạo lại, như câu báo nói: Supabase không giữ tài khoản mới của lần bị từ chối, nên tạo được.
+  auth.hetLuotThuGio = false;
+  const sau = await chuTao(email, { hoTen: 'Hết lượt thư' });
+  ok('…chờ hết giờ đó rồi tạo lại cùng email → tạo được, có mật khẩu tạm, đúng một dòng nhân sự',
+     sau.kq.ok === true && MAT_KHAU_TAM.test(sau.kq.moi?.mat_khau ?? '') && await soNhanSu(email) === 1, tom(sau.kq));
 });
 
 // ===========================================================================

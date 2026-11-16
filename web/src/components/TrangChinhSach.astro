@@ -1,0 +1,57 @@
+---
+/**
+ * TRANG CHÍNH SÁCH — Điều khoản, Chính sách giá, Thanh toán, Giao hàng, Đổi trả hoàn tiền, Khiếu nại,
+ * Điều kiện bán hàng, Hỗ trợ (vi / en / ko)
+ *
+ * Chữ của cả tám trang nằm ở lib/chinh-sach.ts, ba thứ tiếng cạnh nhau; file này chỉ dựng: khung chữ
+ * TrangVanBan như trang Quyền riêng tư, mỗi mục một <h2>, đoạn văn hoặc danh sách, dòng ngày cập nhật ở
+ * cuối. Mỗi trang (pages/dieu-khoan.astro, pages/en/terms.astro…) chỉ gọi component này với một khóa.
+ *
+ * Link trong câu ("[chữ](/duong)") đi qua tachLienKet: đường dẫn nội bộ đổi sang đúng thứ tiếng của trang
+ * (duongDanTuongUng), link https mở trang ngoài với rel="noopener". Mỗi câu là một chuỗi, in trong một
+ * biểu thức — compressHTML không làm dính chữ.
+ *
+ * Trang chữ tĩnh: không đọc gì ngoài noi_dung_cong_khai (đầu trang, chân trang — docNoiDung không bao giờ
+ * ném lỗi), đúng và đủ khi chưa nối database.
+ */
+import Trang from '../layouts/Trang.astro';
+import TrangVanBan from './TrangVanBan.astro';
+import { docNoiDung, type NgonNgu } from '../lib/noi-dung';
+import { duongDanTuongUng } from '../lib/chu';
+import { CHINH_SACH, CAU_CAP_NHAT, tachLienKet, type Cau, type Khoi, type KhoaChinhSach } from '../lib/chinh-sach';
+
+interface Props { ngonNgu: NgonNgu; khoa: KhoaChinhSach; }
+const { ngonNgu: nn, khoa } = Astro.props;
+const trang = CHINH_SACH[khoa];
+const nd = await docNoiDung(nn);
+const duong = duongDanTuongUng(trang.duong, nn);
+
+/** Mẩu của một câu, link nội bộ đã đổi sang đúng thứ tiếng. */
+const mauCua = (cau: string) => tachLienKet(cau).map(m => (m.dich === undefined ? { chu: m.chu }
+  : { chu: m.chu, url: m.dich.startsWith('/') ? duongDanTuongUng(m.dich, nn) : m.dich, ngoai: m.dich.startsWith('https:') }));
+const laDanhSach = (k: Khoi): k is { readonly danhSach: readonly Cau[] } => 'danhSach' in k;
+---
+<Trang ngonNgu={nn} noiDung={nd} duongDan={duong} tieuDe={`${trang.ten[nn]} — Beeftown`} moTa={trang.moTa[nn]}>
+  <TrangVanBan hieu={trang.ten[nn]} tieuDe={trang.tieuDe[nn]}>
+    {trang.muc.map(muc => (
+      <>
+        <h2>{muc.tieuDe[nn]}</h2>
+        {muc.khoi.map(k => laDanhSach(k) ? (
+          <ul class="cs-ds">
+            {k.danhSach.map(c => <li>{mauCua(c[nn]).map(m => m.url ? <a href={m.url} rel={m.ngoai ? 'noopener' : undefined}>{m.chu}</a> : m.chu)}</li>)}
+          </ul>
+        ) : (
+          <p>{mauCua(k[nn]).map(m => m.url ? <a href={m.url} rel={m.ngoai ? 'noopener' : undefined}>{m.chu}</a> : m.chu)}</p>
+        ))}
+      </>
+    ))}
+    <p class="nho">{CAU_CAP_NHAT[nn]}</p>
+  </TrangVanBan>
+</Trang>
+
+<style>
+  /* Danh sách gạch đầu dòng trong cột chữ: thụt vừa một dấu, dòng cao như đoạn văn. */
+  .cs-ds { margin: 0 0 var(--k-4); padding-left: 1.25em; }
+  .cs-ds li { line-height: 1.7; }
+  .cs-ds li + li { margin-top: var(--k-1); }
+</style>

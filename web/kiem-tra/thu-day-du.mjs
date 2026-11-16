@@ -1299,6 +1299,17 @@ try {
   // Trang Mua thịt về khi đã nối database — khách đặt thẳng trên website (0113). Supabase giả trả menu thử MENU_THU
   // (giá THỬ) theo kịch bản mua-thit-* và ghi đơn (tao_don_mua_thit). Đơn mong đợi tính bằng CHÍNH lib của trang
   // (don-mua-thit.ts); câu "đã nhận" đọc từ dat-hang-mua-thit.ts. "Hiện / không hiện" đo bằng isVisible().
+  // Câu cạnh nút Đặt hàng (Khánh giao 16/11/2026, hồ sơ thông báo website thương mại điện tử): ba link, chép tay.
+  const LINK_DAT_HANG = {
+    vi: [['/quyen-rieng-tu', 'Quyền riêng tư'], ['/dieu-khoan', 'Điều khoản'], ['/doi-tra-hoan-tien', 'Đổi trả và hoàn tiền']],
+    en: [['/en/privacy', 'Privacy'], ['/en/terms', 'Terms'], ['/en/returns', 'Returns and refunds']],
+    ko: [['/ko/privacy', '개인정보 처리방침'], ['/ko/terms', '이용약관'], ['/ko/returns', '교환·환불']],
+  };
+  const CAU_CHINH_SACH = {
+    vi: { duoi: 'Xem Quyền riêng tư, Điều khoản, Đổi trả và hoàn tiền.' },
+    en: { duoi: 'See Privacy, Terms, Returns and refunds.' },
+    ko: { duoi: '자세한 내용: 개인정보 처리방침, 이용약관, 교환·환불.' },
+  };
   await nhom('12 · MUA THỊT VỀ: CHỌN GÓI, ĐẶT HÀNG, BẤM ĐÚP, TẮT JAVASCRIPT, DATABASE TỪ CHỐI, MẤT MẠNG, BỀ RỘNG', async () => {
     const ba = (vi, en, ko) => ({ vi, en, ko });
     const TAM_HET = ba('Tạm hết ở quầy', 'Sold out at the counter for now', '지금은 매장에 재고가 없어요');
@@ -1465,6 +1476,14 @@ try {
           const phuGio = motDong(await p.locator('.mtv-ba-dieu li').nth(2).locator('.mtv-dieu-phu').innerText().catch(() => ''));
           tot.push(ok(`${nhan}: dải ba điều — ${BA_DIEU[nn].join(' · ')}; dòng phụ thứ ba là giờ giao đã công bố`,
                       JSON.stringify(dieu) === JSON.stringify(BA_DIEU[nn]) && phuGio === motDong(GIO_NHAN_THU[nn]), `${JSON.stringify(dieu)} · ${phuGio}`));
+          // Khánh giao 16/11/2026 · câu cạnh nút Đặt hàng: "Xem Quyền riêng tư, Điều khoản, Đổi trả và hoàn tiền." — ba link
+          // đúng thứ tiếng, chữ liền (không dính ở chỗ ghép). Chép tay, không đọc lib/chinh-sach.ts.
+          const cauCs = p.locator('.mtv-don [data-chinh-sach]');
+          const linkCs = await cauCs.locator('a').evaluateAll(as => as.map(a => [a.getAttribute('href'), a.textContent.trim()]));
+          const chuCs = motDong(await cauCs.innerText().catch(() => ''));
+          tot.push(ok(`${nhan}: câu cạnh nút Đặt hàng kết bằng "${CAU_CHINH_SACH[nn].duoi}", ba link ${LINK_DAT_HANG[nn].map(l => l[0]).join(', ')}`,
+                      JSON.stringify(linkCs) === JSON.stringify(LINK_DAT_HANG[nn]) && chuCs.endsWith(CAU_CHINH_SACH[nn].duoi),
+                      `${chuCs.slice(-120)} · ${JSON.stringify(linkCs)}`));
           // Đợt 3 · nút lọc nhóm (chạy nhờ script): "Kim chi" chỉ còn thẻ kim chi; "Tất cả" hiện lại hết.
           const nutLoc = p.locator('[data-mtv-loc] button');
           const chuLoc = (await nutLoc.allInnerTexts()).map(motDong);

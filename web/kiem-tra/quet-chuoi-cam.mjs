@@ -73,11 +73,14 @@ import { chuHienRa, boTienDaChot } from './chu-hien-ra.mjs';
 const TRANG_KHONG_CO = ['/khong-co-trang-nay', '/en/khong-co-trang-nay', '/ko/khong-co-trang-nay'];
 
 async function danhSachTrang(goc) {
-  // Đủ 24 trang công khai (8 trang × vi/en/ko) — sitemap hỏng thì vẫn quét hết.
+  // Đủ 48 trang công khai (16 trang × vi/en/ko, gồm tám trang chính sách) — sitemap hỏng thì vẫn quét hết.
   const luon_co = [
     '/', '/thuc-don', '/mua-thit-ve', '/den-beeftown', '/dat-ban', '/tuyen-dung', '/quyen-rieng-tu', '/xoa-du-lieu',
+    '/dieu-khoan', '/chinh-sach-gia', '/thanh-toan', '/giao-hang', '/doi-tra-hoan-tien', '/khieu-nai', '/dieu-kien-ban-hang', '/ho-tro',
     '/en', '/en/menu', '/en/buy-meat', '/en/visit', '/en/book', '/en/jobs', '/en/privacy', '/en/data-deletion',
+    '/en/terms', '/en/pricing', '/en/payment', '/en/delivery', '/en/returns', '/en/complaints', '/en/conditions', '/en/support',
     '/ko', '/ko/menu', '/ko/buy-meat', '/ko/visit', '/ko/book', '/ko/jobs', '/ko/privacy', '/ko/data-deletion',
+    '/ko/terms', '/ko/pricing', '/ko/payment', '/ko/delivery', '/ko/returns', '/ko/complaints', '/ko/conditions', '/ko/support',
   ];
   const bo = new Set([...luon_co, ...TRANG_KHONG_CO].map(d => new URL(d, goc).href));
   try {

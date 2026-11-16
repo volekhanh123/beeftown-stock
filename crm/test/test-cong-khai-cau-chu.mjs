@@ -20,6 +20,8 @@
  *   4. Trang hỏi bàn, form ứng tuyển, trang tuyển dụng, trang Mua thịt về không có "thành công" / "success" / "성공"
  *      — gửi yêu cầu là "đã nhận", không phải "xong".
  *   5. Bản tiếng Anh và tiếng Hàn không lẫn chữ Việt, trừ tên riêng (Hồ Tùng Mậu…).
+ *   Chữ của tám trang chính sách (web/src/lib/chinh-sach.ts — dữ liệu, không nằm trong file .astro) cũng
+ *   được đọc và chạy qua đủ các bất biến dưới đây, như một file công khai.
  *   7. Địa điểm: không câu nào kể chuyện đổi địa điểm, nhắc cầu thang bộ hay địa chỉ khác; không ghi
  *      tên phường, quận nào (phường của 63 Hồ Tùng Mậu chưa có giấy xác nhận); không bịa thứ chưa xác
  *      nhận (chỗ gửi xe, lối cho xe lăn, số phút, số mét). Điều đã biết chỉ có: Tầng 3, 63 Hồ Tùng
@@ -50,7 +52,8 @@ const CHU_REVIEW = /chờ duyệt|đang chờ duyệt|đang cập nhật|sắp r
 const CHU_THANH_CONG = /thành công|\bsuccess|성공/i;
 const CHU_VIET = /[ăâđêôơưàáạảãầấậẩẫằắặẳẵèéẹẻẽềếệểễìíịỉĩòóọỏõồốộổỗờớợởỡùúụủũừứựửữỳýỵỷỹ]/i;
 // Tên riêng giữ chữ Việt ở mọi bản: địa chỉ (khách đưa tài xế, gõ vào bản đồ), pháp nhân.
-const TEN_RIENG = [/Hồ Tùng Mậu/g, /TP\. Hồ Chí Minh/g, /Hồ Chí Minh/g,
+// Tên Zalo OA đứng trước "Hồ Tùng Mậu": bỏ cả tên một lần (trang chính sách ghi tên OA để khách gõ tìm).
+const TEN_RIENG = [/Nhà hàng Beeftown Hồ Tùng Mậu/g, /Hồ Tùng Mậu/g, /TP\. Hồ Chí Minh/g, /Hồ Chí Minh/g,
   /CÔNG TY TNHH SLK GROUP/g, /Tiếng Việt/g];
 const boTenRieng = s => TEN_RIENG.reduce((x, re) => x.replace(re, ''), s);
 // Trang Mua thịt về: gửi tin đơn qua Zalo là YÊU CẦU, quán còn liên hệ lại xác nhận — không phải "xong" (PR 2, 26/10/2026).
@@ -149,6 +152,22 @@ function docFile(f) {
 }
 
 const DOC = new Map(FILE.map(f => [f, docFile(f)]));
+
+// Tám trang chính sách: chữ là dữ liệu trong lib/chinh-sach.ts (TrangChinhSach.astro chỉ dựng). Mọi câu
+// { vi, en, ko } trong bảng CHINH_SACH và dòng ngày cập nhật vào cùng bộ quét, dưới dạng chữ khách đọc
+// (bỏ cú pháp link [chữ](đích)) — "dòng" là đường tới câu trong bảng.
+{
+  const { CHINH_SACH, CAU_CAP_NHAT, chuCuaCau } = await import(pathToFileURL(join(SRC, 'lib', 'chinh-sach.ts')).href);
+  const cap = [];
+  const laCau = x => x && typeof x === 'object' && ['vi', 'en', 'ko'].every(k => typeof x[k] === 'string');
+  const di = (x, duong) => {
+    if (laCau(x)) { cap.push({ dong: duong, vi: [chuCuaCau(x.vi)], en: [chuCuaCau(x.en)], ko: [chuCuaCau(x.ko)] }); return; }
+    if (x && typeof x === 'object') for (const [k, v] of Object.entries(x)) di(v, `${duong}.${k}`);
+  };
+  di(CHINH_SACH, 'CHINH_SACH');
+  di(CAU_CAP_NHAT, 'CAU_CAP_NHAT');
+  DOC.set(join(SRC, 'lib', 'chinh-sach.ts'), { cap, chuTemplate: [] });
+}
 const ten = f => tuGoc(f).replace(/^web\/src\//, '');
 
 // ===========================================================================

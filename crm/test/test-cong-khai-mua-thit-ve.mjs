@@ -261,9 +261,12 @@ await nhom('5 · Ô GIAO HÀNG, QUYỀN RIÊNG TƯ, KHÔNG <img>, VÙNG THÔNG B
   ok('Mỗi ô có <label for> riêng; không placeholder thay nhãn', id.length === 4 && id.every(i => TRANG.khuon.includes(`<label for="${i}">`))
      && !/placeholder=/.test(TRANG.khuon), id.join(', '));
   ok('Không ô đánh dấu, radio, email', HAI.every(([, f]) => !/type="(?:checkbox|radio|email)"/.test(f.khuon)));
-  ok('Câu cho biết họ tên, số điện thoại, địa chỉ dùng để gọi xác nhận và giao, kèm link Quyền riêng tư đúng thứ tiếng',
-     /\{traVnpay \? c\.dongYVnpay : c\.dongY\} <a href=\{duongQuyenRiengTu\}>\{c\.quyenRiengTu\}<\/a>/.test(TRANG.khuon)
+  // Khánh giao 16/11/2026 (hồ sơ thông báo website thương mại điện tử): sau câu đồng ý là ba link — Quyền riêng tư,
+  // Điều khoản, Đổi trả và hoàn tiền —, viết liền một dòng (compressHTML), đường dẫn đúng thứ tiếng.
+  ok('Câu cho biết họ tên, số điện thoại, địa chỉ dùng để gọi xác nhận và giao, kèm link Quyền riêng tư, Điều khoản, Đổi trả và hoàn tiền đúng thứ tiếng',
+     /\{traVnpay \? c\.dongYVnpay : c\.dongY\} \{c\.xemChinhSach\} <a href=\{duongQuyenRiengTu\}>\{c\.quyenRiengTu\}<\/a>, <a href=\{duongDieuKhoan\}>\{c\.dieuKhoan\}<\/a>, <a href=\{duongDoiTra\}>\{c\.doiTraHoanTien\}<\/a>\./.test(TRANG.khuon)
        && /duongDanTuongUng\('\/quyen-rieng-tu', nn\)/.test(TRANG.dau)
+       && /duongDanTuongUng\(CHINH_SACH\.dieuKhoan\.duong, nn\)/.test(TRANG.dau) && /duongDanTuongUng\(CHINH_SACH\.doiTra\.duong, nn\)/.test(TRANG.dau)
        && ['vi', 'en', 'ko'].every(nn => (cauCua('dongY')?.[nn]?.[0] ?? '').length > 20 && (cauCua('dongYVnpay')?.[nn]?.[0] ?? '').length > 20));
   // Ảnh tạm 10/11/2026 (Khánh quyết; ảnh, nhãn "Ảnh minh họa", chỗ dùng: test-cong-khai-anh.mjs nhóm 5): thẻ chọn
   // một trong ba ảnh theo loại sản phẩm qua <Anh>, hình thay khi chưa dựng cỡ vẫn là khay; trang không tự đặt ảnh.
@@ -466,8 +469,10 @@ await nhom('11 · ĐỢT 3: KHUÔN THẺ, GU, BA ĐIỀU, LỌC NHÓM, CỘT Đ�
   // Ba điều: chữ theo cách trả tiền; dòng phụ là chữ chủ đã công bố khi có.
   const baDieu = /const baDieu[\s\S]*?\n {4}\];/.exec(TRANG.dau)?.[0] ?? '';
   const [nhanhVnpay, nhanhKhong] = baDieu.split(/\n {2}: \[/);
-  ok('Ba điều khi có VNPay: giá gói đã gồm phí giao (phụ: khu vực giao đã công bố), trả trước qua VNPay, quán gọi hẹn giờ giao (phụ: giờ giao đã công bố, không thì "sau khi bạn trả tiền")',
-     /\{ bt: 'xe-giao', chu: c\.dieuGiaVnpay, phu: giaoHang \}/.test(nhanhVnpay ?? '') && /\{ bt: 'the-tra', chu: c\.dieuTraVnpay, phu: c\.dieuTraVnpayPhu \}/.test(nhanhVnpay ?? '')
+  // Khánh giao 16/11/2026: dưới "Giá gói đã gồm phí giao" thêm dòng VAT (them: c.vat — CHO_TRONG.VAT, lib/cho-trong.ts;
+  // test-cong-khai-chinh-sach.mjs nhóm 6 giữ chữ và chỗ in của dòng đó).
+  ok('Ba điều khi có VNPay: giá gói đã gồm phí giao (phụ: khu vực giao đã công bố; thêm: dòng VAT), trả trước qua VNPay, quán gọi hẹn giờ giao (phụ: giờ giao đã công bố, không thì "sau khi bạn trả tiền")',
+     /\{ bt: 'xe-giao', chu: c\.dieuGiaVnpay, phu: giaoHang, them: c\.vat \}/.test(nhanhVnpay ?? '') && /\{ bt: 'the-tra', chu: c\.dieuTraVnpay, phu: c\.dieuTraVnpayPhu \}/.test(nhanhVnpay ?? '')
        && /\{ bt: 'dien-thoai', chu: c\.dieuGoiVnpay, phu: gioGiao \?\? c\.dieuGoiVnpayPhu \}/.test(nhanhVnpay ?? ''), baDieu.slice(0, 300));
   ok('Ba điều khi chưa cài VNPay: giao tận nơi (phụ: phí giao đã công bố, không thì "quán báo phí giao khi gọi"), trả khi nhận hàng, quán gọi xác nhận đơn',
      /\{ bt: 'xe-giao', chu: c\.dieuGiao, phu: giaoHang \?\? c\.dieuGiaoPhu \}/.test(nhanhKhong ?? '') && /\{ bt: 'the-tra', chu: c\.dieuTra, phu: c\.dieuTraPhu \}/.test(nhanhKhong ?? '')
