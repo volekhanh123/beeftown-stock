@@ -4,6 +4,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   BoNhoTinDaNhan,
   boTagBot,
@@ -351,6 +352,26 @@ test('có GEMINI_API_KEY (không có khóa Claude): dịch bằng Gemini, khóa 
   assert.deepEqual(than.generationConfig.thinkingConfig, { thinkingLevel: 'LOW' });
   // Phần "suy nghĩ" (thought: true) không lọt vào bản dịch.
   assert.deepEqual(tinGui(), ['🇰🇷 Khánh: 내일 봐요!']);
+});
+
+test('cấu hình đang chạy (wrangler.jsonc): tin tiếng Hàn dịch sang tiếng Việt, tin tiếng Việt dịch sang tiếng Hàn', async () => {
+  const cauHinh = readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
+  const giaTri = cauHinh.match(/"DICH_TIENG_HAN_SANG":\s*"(\w+)"/)?.[1];
+  assert.equal(giaTri, 'vi');
+  const env = { ...ENV_GEMINI, DICH_TIENG_HAN_SANG: giaTri };
+
+  const han = taoFetchGia({ banDich: 'Hôm nay bạn làm gì?' });
+  const tinHan = docTinZalo(thanWebhook('오늘 뭐해요?', { from: { id: 'u-han', display_name: 'Minho' } }))!;
+  assert.equal(await xuLyTin(tinHan, env, han.fetchGia), 'da-dich');
+  const loiNhacHan = (han.goiGemini()[0].than as { systemInstruction: { parts: { text: string }[] } }).systemInstruction.parts[0].text;
+  assert.match(loiNhacHan, /from Korean into Vietnamese/);
+  assert.deepEqual(han.tinGui(), ['🇻🇳 Minho: Hôm nay bạn làm gì?']);
+
+  const viet = taoFetchGia({ banDich: '오늘 뭐 해요?' });
+  assert.equal(await xuLyTin(docTinZalo(thanWebhook('Hôm nay bạn làm gì?'))!, env, viet.fetchGia), 'da-dich');
+  const loiNhacViet = (viet.goiGemini()[0].than as { systemInstruction: { parts: { text: string }[] } }).systemInstruction.parts[0].text;
+  assert.match(loiNhacViet, /from Vietnamese into Korean/);
+  assert.deepEqual(viet.tinGui(), ['🇰🇷 Khánh: 오늘 뭐 해요?']);
 });
 
 test('GEMINI_MODEL đổi được model; model không nhận mức suy nghĩ thì gọi lại một lần không kèm', async () => {

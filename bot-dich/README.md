@@ -1,7 +1,7 @@
 # Bot dịch Zalo (Bot Beeftown Translate)
 
-Bot Zalo nằm trong nhóm chat: ai nhắn tiếng Anh hoặc tiếng Việt thì bot gửi bản tiếng Hàn ngay bên dưới; ai nhắn
-tiếng Hàn thì bot gửi bản tiếng Anh. Chạy trên Cloudflare Workers (gói miễn phí đủ dùng). Máy dịch chọn theo khóa
+Bot Zalo nằm trong nhóm chat: ai nhắn tiếng Việt hoặc tiếng Anh thì bot gửi bản tiếng Hàn ngay bên dưới; ai nhắn
+tiếng Hàn thì bot gửi bản tiếng Việt (đổi sang tiếng Anh được, xem `DICH_TIENG_HAN_SANG`). Chạy trên Cloudflare Workers (gói miễn phí đủ dùng). Máy dịch chọn theo khóa
 cài trên Worker, theo thứ tự: Claude (`ANTHROPIC_API_KEY`) → Gemini (`GEMINI_API_KEY`) → Workers AI của Cloudflare
 (không cần khóa, miễn phí, chất lượng kém hơn).
 
@@ -33,7 +33,7 @@ Reset token ở trang bot thì cập nhật `ZALO_BOT_TOKEN` rồi mở lại `/
 | Biến | Mặc định | Ý nghĩa |
 |---|---|---|
 | `CHI_DICH_KHI_TAG` | `0` | `1`: trong nhóm chỉ dịch tin có @tag bot. Chat riêng với bot luôn dịch. |
-| `DICH_TIENG_HAN_SANG` | `en` | `vi`: tin tiếng Hàn dịch sang tiếng Việt thay vì tiếng Anh. |
+| `DICH_TIENG_HAN_SANG` | `vi` | Tin tiếng Hàn dịch sang tiếng nào: `vi` tiếng Việt, `en` tiếng Anh. |
 | `GEMINI_MODEL` | `gemini-flash-latest` | Model Gemini (bí danh luôn trỏ bản Flash mới nhất, như web). |
 | `MO_HINH_CLAUDE` | `claude-opus-5-5` | Model Claude. `claude-haiku-5-5` rẻ hơn khoảng 40 lần, vẫn dịch tốt tin chat ngắn. |
 | `TEN_BOT` | `Bot Beeftown Translate` | Tên hiển thị của bot — để bỏ chữ "@tên bot" trước khi dịch. Đổi tên bot thì đổi theo. |
