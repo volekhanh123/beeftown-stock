@@ -752,8 +752,79 @@ nhom('16 · Đường /sepay/tien-ve và thông tin trả tiền trong /api/don'
 }
 
 // =====================================================================================================
+// Bật src/main.ts thật (nhóm 17, 21–24). CONG=0: hệ điều hành chọn một cổng trống, và main.ts in cổng thật trong dòng
+// "Máy chủ đơn đang nghe http://…:<cổng>" ngay sau khi Bun.serve mở cổng. Trước 16/11/2026 bộ thử tự bốc một cổng trong
+// khoảng 20000–40000 rồi chờ cố định 5 giây. Trong CI, bộ thử Beeftown Cân chạy ngay trước để lại vài trăm kết nối vừa
+// đóng (TIME_WAIT, sống 60 giây; đo 16/11/2026: 216 cái, 66 cái trong khoảng đó): cổng bốc trúng một cái thì main.ts thoát
+// ngay vì EADDRINUSE, còn kiểm tra đỏ sau 5 giây mà không nói vì sao. Nay chờ tới khi có dòng "đang nghe", hoặc main.ts
+// thoát, hoặc hết CHO_KHOI_DONG_MS; lyDo nói đúng trường hợp nào (mã thoát và stderr khi main.ts thoát trước khi mở cổng).
+const CHO_KHOI_DONG_MS = 30_000;
+const DONG_DANG_NGHE = /Máy chủ đơn đang nghe http:\/\/[^\s/]+:(\d+)/;
+type MayChuThat = {
+  /** Cổng main.ts đang nghe; 0 khi chưa mở được — lyDo nói vì sao. */
+  cong: number;
+  goc: string;
+  /** THU_MUC_DU_LIEU của lần chạy này (tat() xóa). */
+  thuMuc: string;
+  lyDo: string;
+  /** SIGTERM, chờ thoát (quá 10 giây thì SIGKILL), xóa thuMuc; trả mã thoát (null khi phải SIGKILL), stdout, stderr. */
+  tat: () => Promise<{ ma: number | null; ra: string; loi: string }>;
+};
+const gonNhatKy = (s: string) => {
+  const dong = s.split('\n').map(d => d.trim()).filter(Boolean);
+  const loi = dong.filter(d => /error|EADDR|code:/i.test(d));
+  return (loi.length ? loi : dong).slice(0, 4).join(' | ').slice(0, 400);
+};
+async function batMayChuThat(them: Record<string, string>, tienTo = 'may-chu-don-main-'): Promise<MayChuThat> {
+  const thuMuc = fs.mkdtempSync(path.join(os.tmpdir(), tienTo));
+  const p = Bun.spawn(['bun', 'src/main.ts'], {
+    cwd: path.join(import.meta.dir, '..'), stdout: 'pipe', stderr: 'pipe',
+    env: { ...process.env, MAT_KHAU_QUAY: MK, CONG: '0', THU_MUC_DU_LIEU: thuMuc, ...them },
+  });
+  let ra = '';
+  const giaiMa = new TextDecoder();
+  const docRa = (async () => { for await (const manh of p.stdout) ra += giaiMa.decode(manh, { stream: true }); ra += giaiMa.decode(); })();
+  const docLoi = new Response(p.stderr).text();
+  let daThoat = false;
+  void p.exited.then(() => { daThoat = true; });
+  const batDau = performance.now();
+  const msDaCho = () => Math.round(performance.now() - batDau);
+  let cong = 0;
+  for (;;) {
+    cong = Number(DONG_DANG_NGHE.exec(ra)?.[1] ?? 0);
+    if (cong || daThoat || performance.now() - batDau >= CHO_KHOI_DONG_MS) break;
+    await Bun.sleep(20);
+  }
+  let lyDo = `đang nghe cổng ${cong} sau ${msDaCho()} ms`;
+  if (!cong && daThoat) {
+    await docRa;
+    const daMoCong = DONG_DANG_NGHE.test(ra);   // mở cổng rồi mới thoát: vẫn coi là chưa chạy được (cong = 0)
+    lyDo = `main.ts thoát (mã ${p.exitCode}) sau ${msDaCho()} ms${daMoCong ? '' : ', chưa mở cổng'} · stderr: ${gonNhatKy(await docLoi)}`;
+  } else if (!cong) {
+    lyDo = `hết ${CHO_KHOI_DONG_MS / 1000} giây mà main.ts chưa in dòng "Máy chủ đơn đang nghe" (chưa thoát) · stdout: ${gonNhatKy(ra)}`;
+  }
+  const tat = async () => {
+    if (!daThoat) p.kill('SIGTERM');
+    const ma = await Promise.race([p.exited, Bun.sleep(10_000).then(() => null)]);
+    if (ma === null) { p.kill('SIGKILL'); await p.exited; }
+    await docRa;
+    const loi = await docLoi;
+    fs.rmSync(thuMuc, { recursive: true, force: true });
+    return { ma, ra, loi };
+  };
+  return { cong, goc: `http://127.0.0.1:${cong}`, thuMuc, lyDo, tat };
+}
+
+// =====================================================================================================
 nhom('17 · Chạy src/main.ts thật');
 {
+  // Bộ thử không tự bốc cổng: cổng bốc trúng một kết nối vừa đóng (TIME_WAIT) thì main.ts không mở được
+  // (EADDRINUSE) — mọi lần bật main.ts thật đi qua batMayChuThat, CONG=0 để hệ điều hành chọn cổng trống.
+  const maNguon = fs.readFileSync(import.meta.path, 'utf8');
+  const soLanBat = (maNguon.match(/Bun\.spawn\(\s*\[\s*['"]bun['"]\s*,\s*['"]src\/main\.ts['"]/g) ?? []).length;
+  const tuBocCong = /CONG:\s*String\(|Math\.random\(\)\s*\*\s*\d{4,}/.test(maNguon);
+  ok('Bộ thử không tự bốc cổng ngẫu nhiên cho main.ts thật; mọi lần bật đi qua batMayChuThat (CONG=0)',
+    !tuBocCong && soLanBat === 1, `số chỗ Bun.spawn main.ts: ${soLanBat} · còn chỗ tự bốc cổng: ${tuBocCong}`);
   const thieu = Bun.spawnSync(['bun', 'src/main.ts'], { cwd: path.join(import.meta.dir, '..'), env: { ...process.env, MAT_KHAU_QUAY: 'ngan' } });
   ok('Mật khẩu quầy dưới 8 ký tự → không mở máy chủ, báo rõ', thieu.exitCode === 1 && thieu.stderr.toString().includes('MAT_KHAU_QUAY'));
   const chayThu = (them: Record<string, string>) => Bun.spawnSync(['bun', 'src/main.ts'], { cwd: path.join(import.meta.dir, '..'),
@@ -766,20 +837,23 @@ nhom('17 · Chạy src/main.ts thật');
   const khoaKhongTk = chayThu({ SEPAY_KHOA_KY: KHOA_SEPAY });
   ok('Có khóa SePay mà chưa có tài khoản nhận → không mở máy chủ, báo rõ', khoaKhongTk.exitCode === 1
     && khoaKhongTk.stderr.toString().includes('SO_TAI_KHOAN'));
-  const tam = fs.mkdtempSync(path.join(os.tmpdir(), 'may-chu-don-main-'));
-  const cong = 20000 + Math.floor(Math.random() * 20000);
-  const p = Bun.spawn(['bun', 'src/main.ts'], {
-    cwd: path.join(import.meta.dir, '..'),
-    env: { ...process.env, MAT_KHAU_QUAY: MK, CONG: String(cong), THU_MUC_DU_LIEU: tam },
-    stdout: 'pipe', stderr: 'pipe',
-  });
-  let sk: Response | null = null;
-  for (let i = 0; i < 50 && !sk; i++) { await Bun.sleep(100); sk = await fetch(`http://127.0.0.1:${cong}/suc-khoe`).catch(() => null); }
-  ok('main.ts mở cổng, /suc-khoe trả 200', sk?.status === 200);
-  ok('Sổ đơn nằm trong THU_MUC_DU_LIEU', fs.existsSync(path.join(tam, 'don.sqlite')));
-  p.kill('SIGTERM');
-  ok('SIGTERM → tắt gọn', await Promise.race([p.exited.then(c => c === 0), Bun.sleep(5000).then(() => false)]));
-  fs.rmSync(tam, { recursive: true, force: true });
+  const may = await batMayChuThat({});
+  const sk = may.cong ? await fetch(`${may.goc}/suc-khoe`).catch(() => null) : null;
+  ok('main.ts mở cổng, /suc-khoe trả 200', sk?.status === 200, may.lyDo);
+  ok('main.ts nghe đúng CONG: CONG=0 → cổng do hệ điều hành chọn (không phải cổng mặc định 8787), nhật ký in đúng cổng đó',
+    may.cong > 0 && may.cong !== 8787 && sk?.status === 200, may.lyDo);
+  ok('Sổ đơn nằm trong THU_MUC_DU_LIEU', fs.existsSync(path.join(may.thuMuc, 'don.sqlite')));
+  const daTat = await may.tat();
+  ok('SIGTERM → tắt gọn', daTat.ma === 0, `mã thoát: ${daTat.ma}`);
+  // batMayChuThat: main.ts thoát trước khi mở cổng (ở đây vì mật khẩu quầy ngắn; trong CI từng là cổng bận) → lý do có
+  // ngay, kèm mã thoát và stderr — không im lặng chờ hết giờ.
+  const tBat = performance.now();
+  const khongMo = await batMayChuThat({ MAT_KHAU_QUAY: 'ngan' });
+  const msKhongMo = Math.round(performance.now() - tBat);
+  await khongMo.tat();
+  ok('batMayChuThat: main.ts thoát trước khi mở cổng → báo ngay mã thoát và stderr, không chờ hết giờ',
+    khongMo.cong === 0 && khongMo.lyDo.includes('thoát (mã 1)') && khongMo.lyDo.includes('MAT_KHAU_QUAY') && msKhongMo < 5_000,
+    `${msKhongMo} ms · ${khongMo.lyDo}`);
 }
 
 // =====================================================================================================
@@ -1227,18 +1301,12 @@ nhom('21 · Chế độ demo (Khánh 09/11/2026): QR tài khoản giả, quầy 
   ok('main.ts: CHE_DO_DEMO=1 cùng SePay thật → không mở máy chủ', voiKhoa.exitCode === 1 && voiKhoa.stderr.toString().includes('CHE_DO_DEMO'));
   const la = chay({ CHE_DO_DEMO: 'true' });
   ok('main.ts: CHE_DO_DEMO giá trị lạ ("true") → không mở máy chủ, nói cách bật / tắt', la.exitCode === 1 && la.stderr.toString().includes('chỉ nhận giá trị 1'));
-  const tam = fs.mkdtempSync(path.join(os.tmpdir(), 'may-chu-don-demo-'));
-  const cong = 20000 + Math.floor(Math.random() * 20000);
-  const p = Bun.spawn(['bun', 'src/main.ts'], { cwd: path.join(import.meta.dir, '..'),
-    env: { ...process.env, MAT_KHAU_QUAY: MK, CONG: String(cong), THU_MUC_DU_LIEU: tam, CHE_DO_DEMO: '1' }, stdout: 'pipe', stderr: 'pipe' });
-  let sk: Response | null = null;
-  for (let i = 0; i < 50 && !sk; i++) { await Bun.sleep(100); sk = await fetch(`http://127.0.0.1:${cong}/suc-khoe`).catch(() => null); }
+  const may = await batMayChuThat({ CHE_DO_DEMO: '1' }, 'may-chu-don-demo-');
+  const sk = may.cong ? await fetch(`${may.goc}/suc-khoe`).catch(() => null) : null;
   ok('main.ts: CHE_DO_DEMO=1 một mình → máy chủ chạy, /suc-khoe báo chế độ demo',
-    sk?.status === 200 && (await sk.json() as { cheDoDemo: boolean }).cheDoDemo === true);
-  p.kill('SIGTERM');
-  const ra = await new Response(p.stdout).text();
-  ok('main.ts: nhật ký khởi động nói rõ CHẾ ĐỘ DEMO, không có tiền thật', ra.includes('CHẾ ĐỘ DEMO'), ra.slice(0, 300));
-  fs.rmSync(tam, { recursive: true, force: true });
+    sk?.status === 200 && (await sk.json() as { cheDoDemo: boolean }).cheDoDemo === true, may.lyDo);
+  const { ra } = await may.tat();
+  ok('main.ts: nhật ký khởi động nói rõ CHẾ ĐỘ DEMO, không có tiền thật', ra.includes('CHẾ ĐỘ DEMO'), ra.slice(0, 300) || may.lyDo);
 }
 
 // =====================================================================================================
@@ -1549,20 +1617,14 @@ nhom('22 · VNPay qua Checkout SDK của Zalo (Khánh 11/11/2026): MAC tạo đ�
   const demoVnpay = chay({ CHE_DO_DEMO: '1', ZALO_MINI_APP_ID: MINI_APP, ZALO_CHECKOUT_KHOA_RIENG: KHOA_ZALO, ZALO_CHECKOUT_PHUONG_THUC: 'VNPAY_SANDBOX' });
   ok('main.ts: CHE_DO_DEMO=1 cùng VNPay → không mở máy chủ (quầy không phân biệt được tiền giả lập và tiền Zalo báo)',
     demoVnpay.exitCode === 1 && demoVnpay.stderr.toString().includes('CHE_DO_DEMO'));
-  const tam = fs.mkdtempSync(path.join(os.tmpdir(), 'may-chu-don-vnpay-'));
-  const cong = 20000 + Math.floor(Math.random() * 20000);
-  const p = Bun.spawn(['bun', 'src/main.ts'], { cwd: path.join(import.meta.dir, '..'), stdout: 'pipe', stderr: 'pipe',
-    env: { ...process.env, MAT_KHAU_QUAY: MK, CONG: String(cong), THU_MUC_DU_LIEU: tam,
-      ZALO_MINI_APP_ID: MINI_APP, ZALO_CHECKOUT_KHOA_RIENG: KHOA_ZALO, ZALO_CHECKOUT_PHUONG_THUC: 'VNPAY_SANDBOX' } });
-  let sk: Response | null = null;
-  for (let i = 0; i < 50 && !sk; i++) { await Bun.sleep(100); sk = await fetch(`http://127.0.0.1:${cong}/suc-khoe`).catch(() => null); }
+  const may = await batMayChuThat({ ZALO_MINI_APP_ID: MINI_APP, ZALO_CHECKOUT_KHOA_RIENG: KHOA_ZALO, ZALO_CHECKOUT_PHUONG_THUC: 'VNPAY_SANDBOX' },
+    'may-chu-don-vnpay-');
+  const sk = may.cong ? await fetch(`${may.goc}/suc-khoe`).catch(() => null) : null;
   ok('main.ts: đủ ba biến → máy chủ chạy, /suc-khoe báo phương thức VNPAY_SANDBOX',
-    sk?.status === 200 && (await sk.json() as { vnpay: { phuongThuc: string } }).vnpay?.phuongThuc === 'VNPAY_SANDBOX');
-  p.kill('SIGTERM');
-  const ra = await new Response(p.stdout).text();
+    sk?.status === 200 && (await sk.json() as { vnpay: { phuongThuc: string } }).vnpay?.phuongThuc === 'VNPAY_SANDBOX', may.lyDo);
+  const { ra } = await may.tat();
   ok('main.ts: nhật ký khởi động nói rõ MÔI TRƯỜNG THỬ và địa chỉ IPN khai với VNPay; không in Private key',
-    ra.includes('MÔI TRƯỜNG THỬ') && ra.includes(diaChiIpnVnpay(MINI_APP)) && !ra.includes(KHOA_ZALO), ra.slice(0, 400));
-  fs.rmSync(tam, { recursive: true, force: true });
+    ra.includes('MÔI TRƯỜNG THỬ') && ra.includes(diaChiIpnVnpay(MINI_APP)) && !ra.includes(KHOA_ZALO), ra.slice(0, 400) || may.lyDo);
 }
 
 // =====================================================================================================
@@ -1686,25 +1748,18 @@ nhom('23 · Trang thử VNPay trên web (Khánh 12/11/2026): chỉ sandbox, ký 
   const mot = chay({ VNPAY_THU_MA_TMN: 'SLKGTE22' });
   ok('main.ts: chỉ một biến trang thử → không mở máy chủ, nói đủ hai tên', mot.exitCode === 1 && mot.stderr.toString().includes('VNPAY_THU_KHOA_BI_MAT'));
   const chayNghe = async (them: Record<string, string>) => {
-    const tam = fs.mkdtempSync(path.join(os.tmpdir(), 'may-chu-don-vnpay-thu-'));
-    const cong = 20000 + Math.floor(Math.random() * 20000);
-    const p = Bun.spawn(['bun', 'src/main.ts'], { cwd: path.join(import.meta.dir, '..'), stdout: 'pipe', stderr: 'pipe',
-      env: { ...process.env, MAT_KHAU_QUAY: MK, CONG: String(cong), THU_MUC_DU_LIEU: tam, ...them } });
-    let r: Response | null = null;
-    for (let i = 0; i < 50 && !r; i++) { await Bun.sleep(100); r = await fetch(`http://127.0.0.1:${cong}/suc-khoe`).catch(() => null); }
-    const ketQua = await fetch(`http://127.0.0.1:${cong}/vnpay-thu/ket-qua?${veVnpay(ve())}`).then(x => x.status).catch(() => 0);
-    p.kill('SIGTERM');
-    const ra = await new Response(p.stdout).text();
-    fs.rmSync(tam, { recursive: true, force: true });
-    return { ra, ketQua };
+    const may = await batMayChuThat(them, 'may-chu-don-vnpay-thu-');
+    const ketQua = may.cong ? await fetch(`${may.goc}/vnpay-thu/ket-qua?${veVnpay(ve())}`).then(x => x.status).catch(() => 0) : 0;
+    const { ra } = await may.tat();
+    return { ra, ketQua, lyDo: may.lyDo };
   };
   const bat = await chayNghe({ VNPAY_THU_MA_TMN: 'SLKGTE22', VNPAY_THU_KHOA_BI_MAT: KHOA });
   ok('main.ts: đủ hai biến → trang thử bật, nhật ký ghi đường dẫn, không in khóa bí mật',
-    bat.ketQua === 200 && bat.ra.includes('Trang thử VNPay (sandbox, Terminal SLKGTE22)') && !bat.ra.includes(KHOA), bat.ra.slice(0, 300));
+    bat.ketQua === 200 && bat.ra.includes('Trang thử VNPay (sandbox, Terminal SLKGTE22)') && !bat.ra.includes(KHOA), `${bat.lyDo} · ${bat.ra.slice(0, 300)}`);
   const that = await chayNghe({ VNPAY_THU_MA_TMN: 'SLKGTE22', VNPAY_THU_KHOA_BI_MAT: KHOA,
     ZALO_MINI_APP_ID: '2858300068641327950', ZALO_CHECKOUT_KHOA_RIENG: 'khoa-rieng-checkout-thu-0123456789abcdef', ZALO_CHECKOUT_PHUONG_THUC: 'VNPAY' });
   ok('main.ts: máy chủ nhận tiền thật (VNPAY) → trang thử tự TẮT (404) nhưng máy chủ vẫn chạy, nhật ký báo',
-    that.ketQua === 404 && that.ra.includes('Trang thử VNPay: TẮT'), that.ra.slice(0, 300));
+    that.ketQua === 404 && that.ra.includes('Trang thử VNPay: TẮT'), `${that.lyDo} · ${that.ra.slice(0, 300)}`);
 }
 
 // =====================================================================================================
@@ -2156,17 +2211,11 @@ nhom('24 · Xe Ahamove (Khánh 12/11/2026): một chuyến mỗi lần bấm, kh
   const nua = chayAha({ AHAMOVE_API_KEY: API_KEY });
   ok('main.ts: Ahamove khai thiếu → không mở máy chủ, nói đủ biến thiếu', nua.exitCode === 1 && nua.stderr.toString().includes('AHAMOVE_SO_DIEN_THOAI')
     && nua.stderr.toString().includes('AHAMOVE_KHOA_WEBHOOK'));
-  const tam = fs.mkdtempSync(path.join(os.tmpdir(), 'may-chu-don-aha-'));
-  const cong = 20000 + Math.floor(Math.random() * 20000);
-  const pr = Bun.spawn(['bun', 'src/main.ts'], { cwd: path.join(import.meta.dir, '..'), stdout: 'pipe', stderr: 'pipe',
-    env: { ...process.env, MAT_KHAU_QUAY: MK, CONG: String(cong), THU_MUC_DU_LIEU: tam, ...env3 } });
-  let skr: Response | null = null;
-  for (let i = 0; i < 50 && !skr; i++) { await Bun.sleep(100); skr = await fetch(`http://127.0.0.1:${cong}/suc-khoe`).catch(() => null); }
-  pr.kill('SIGTERM');
-  const raAha = await new Response(pr.stdout).text();
-  fs.rmSync(tam, { recursive: true, force: true });
+  const mayAha = await batMayChuThat(env3, 'may-chu-don-aha-');
+  const skr = mayAha.cong ? await fetch(`${mayAha.goc}/suc-khoe`).catch(() => null) : null;
+  const { ra: raAha } = await mayAha.tat();
   ok('main.ts: đủ ba biến → chạy, nhật ký báo môi trường thử, không in api_key hay khóa webhook', skr?.status === 200 && raAha.includes('Ahamove: MÔI TRƯỜNG THỬ')
-    && !raAha.includes(API_KEY) && !raAha.includes(KHOA_WH), raAha.slice(0, 400));
+    && !raAha.includes(API_KEY) && !raAha.includes(KHOA_WH), `${mayAha.lyDo} · ${raAha.slice(0, 400)}`);
 }
 
 console.log(hong === 0 ? `\nTẤT CẢ ${dat} KIỂM TRA MÁY CHỦ ĐƠN ĐỀU ĐẠT` : `\n${hong} KIỂM TRA HỎNG / ${dat + hong}`);
