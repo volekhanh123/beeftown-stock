@@ -49,7 +49,10 @@ là điện thoại rộng nhất, nơi lề `--le` đã lớn hơn 20px):
 - HTTP 200, đúng `lang`, không lỗi JavaScript, **không tràn ngang**.
 - Đúng **một `h1`**; mọi `<img>` có `width`, `height`, `alt`; ảnh dưới màn đầu `loading="lazy"`.
 - **Thành phần và khung trang** — mười lăm phép đo của `web/kiem-tra/do-giao-dien.mjs`, chạy trong trang
-  (dùng chung với `thu-day-du.mjs`), bảng màu chép tay trong file đó, không ngoại lệ nào:
+  (dùng chung với `thu-day-du.mjs`), bảng màu chép tay trong file đó, không ngoại lệ nào. Phép đo chờ trang
+  **đứng yên** rồi mới đo (`choDungYen`: không còn chuyển màu 180ms nào đang chạy — không đọc màu nửa chừng của
+  nút đang đổi màu); phép thử tự đọc màu ngay sau cú bấm thì gọi `page.evaluate(choDungYen)` trước, không chờ
+  cứng; con trỏ còn đứng trên nút thì nút giữ màu di chuột — đưa con trỏ ra góc trước khi đo:
   - `vungCham`: `.nut`, `nav a`, link chân trang, `.doi-ngon-ngu`, `summary`, `.lien-ket`, logo đầu trang,
     tab, ô nhập, ô chọn, ô chọn giờ, hàng ô đánh dấu cao **≥ 48px**.
   - `dauTrang`: cao 64px (dưới 1080px) / 80px, rộng hết cửa sổ (trang không chừa dải trống bên phải);
