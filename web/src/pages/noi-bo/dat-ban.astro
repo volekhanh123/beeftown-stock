@@ -106,6 +106,8 @@ if (Astro.request.method === 'POST') {
     // cả — tức là chống được chuyện ghi đè, rồi nói dối về nó.
     bao = kq === 'nguoi_khac' ? { ok: false, cau: t.daXuLy } : { ok: false, cau: dichCau(nn, kq.loi) };
   }
+  // Không chuyển được cũng 303 về chính trang (issue #194): trang báo lỗi là lượt GET — F5 không gửi lại.
+  return chuyenHuongNoiBo(Astro, bao);
 }
 
 const homNay = homNayVn();

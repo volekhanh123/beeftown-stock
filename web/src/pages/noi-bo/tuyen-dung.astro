@@ -143,6 +143,8 @@ if (Astro.request.method === 'POST') {
     if (kq === 'da_o_san') return chuyenHuongNoiBo(Astro, { ok: true, cau: t.daO(ten) });
     bao = kq === 'nguoi_khac' ? { ok: false, cau: t.daXuLy } : { ok: false, cau: dichCau(nn, kq.loi) };
   }
+  // Không chuyển được cũng 303 về chính trang (issue #194): trang báo lỗi là lượt GET — F5 không gửi lại.
+  return chuyenHuongNoiBo(Astro, bao);
 }
 
 const loc = String(Astro.url.searchParams.get('loc') ?? 'moi');

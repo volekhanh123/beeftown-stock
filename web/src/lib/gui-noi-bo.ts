@@ -5,8 +5,15 @@
  *
  *   · Đọc thân trong try: mạng đứt giữa chừng thì báo CAU_DOC_FORM_HONG, không trang 500.
  *   · GHI ĐƯỢC THÌ CHUYỂN HƯỚNG 303 sang GET, câu báo đi qua cookie dùng một lần — F5 sau
- *     khi lưu không gửi lại lệnh cũ. KHÔNG ghi được thì dựng lại trang ngay, để chữ đã gõ
- *     còn nguyên (như kho).
+ *     khi lưu không gửi lại lệnh cũ.
+ *   · KHÔNG ghi được cũng chuyển hướng 303, câu lỗi cũng đi qua cookie (issue #194, đợt 4):
+ *     trang dựng trong trả lời của lượt POST là một mục lịch sử giữ nguyên thân form — F5 trên
+ *     nó, hay Quay lại / Tiến tới rồi F5, là gửi lại. Sáu trang dựng lại form từ database, không
+ *     điền lại chữ nào của lượt gửi, nên chuyển hướng không làm mất gì: dat-ban, don-mua-thit,
+ *     tuyen-dung, cai-dat, noi-dung, tin-tuyen-dung/index. Còn dựng tại chỗ khi lỗi — vì điền lại
+ *     chữ đã gõ (dài, không vừa một cookie; Khánh quyết 16/11/2026 giữ cách này, #194): thuc-don/[id],
+ *     tin-tuyen-dung/[id], ban-le/[id], ban-le/cai-dat, ban-le/index, dao-tao, zalo/chien-dich/moi.
+ *     Kiểm thử: crm/test/test-noi-bo-loi-chuyen-huong.mjs.
  *   · Bấm đúp: lần hai tới máy chủ SAU khi lần một đã ghi, và trình duyệt bỏ câu trả lời
  *     của lần một — người bấm chỉ thấy câu của lần hai. Chuyển hướng không chữa được ca
  *     này, nên mỗi chỗ ghi tự nhận ra "đã đúng như mình gửi" và nói đúng điều đó: "Yêu cầu
@@ -42,11 +49,21 @@ export async function docFormNoiBo(request: Request): Promise<FormData | null> {
 }
 
 /**
+ * Câu báo dài nhất giữ được trong cookie. Astro mã hóa giá trị bằng encodeURIComponent: một chữ
+ * có dấu thành tới 9 byte, mà trình duyệt BỎ cookie quá 4 KB — trang sau chuyển hướng khi đó không
+ * báo gì, người bấm tưởng đã lưu. 360 ký tự toàn chữ có dấu vẫn dưới 3,5 KB; câu dài hơn bị cắt.
+ */
+const CAU_TOI_DA = 360;
+
+/**
  * Ghi câu báo cho ĐÚNG trang sẽ đọc nó (cookie path = đường dẫn trang). Lần chuyển hướng bị bỏ
  * dở (bấm sang trang khác trước khi GET xong) thì câu không hiện nhầm ở một trang CRM khác.
  */
 export function ghiBaoNoiBo(cookies: AstroCookies, bao: BaoNoiBo, duong: string) {
-  cookies.set(COOKIE_BAO, JSON.stringify({ ok: bao.ok, cau: bao.cau }), {
+  // Cắt theo ký tự (không cắt đôi một ký tự ngoài BMP — nửa cặp surrogate làm encodeURIComponent ném lỗi).
+  const kyTu = Array.from(bao.cau);
+  const cau = kyTu.length > CAU_TOI_DA ? `${kyTu.slice(0, CAU_TOI_DA - 1).join('').trimEnd()}…` : bao.cau;
+  cookies.set(COOKIE_BAO, JSON.stringify({ ok: bao.ok, cau }), {
     httpOnly: true,
     secure: banThat(),
     sameSite: 'lax',

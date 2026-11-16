@@ -109,6 +109,10 @@ const duocXem = VAI_DON_MUA_THIT.includes(nhanSu.vai_tro);
 const congThu = /sandbox/.test(CONG_VNPAY);
 let bao: BaoNoiBo | null = docBaoNoiBo(Astro.cookies, Astro.url.pathname);
 
+// Vai không xem được hộp thư mà vẫn gửi form (tab cũ sau khi đổi vai): không làm gì, về chính trang bằng GET — trang
+// đó báo "không có quyền" — không dựng trang ngay trong trả lời của lượt POST (issue #194).
+if (!duocXem && Astro.request.method === 'POST') return Astro.redirect(Astro.url.pathname + Astro.url.search, 303);
+
 if (duocXem && Astro.request.method === 'POST') {
   const form = await docFormNoiBo(Astro.request);
   const id = String(form?.get('id') ?? '');
@@ -127,6 +131,8 @@ if (duocXem && Astro.request.method === 'POST') {
     if (!error && data === 'da_o_san') return chuyenHuongNoiBo(Astro, { ok: true, cau: t.daO(ten) });
     bao = !error && data === 'nguoi_khac' ? { ok: false, cau: t.daXuLy } : { ok: false, cau: dichCau(nn, error?.message ?? t.khongDoc) };
   }
+  // Không chuyển được cũng 303 về chính trang (issue #194): trang báo lỗi là lượt GET — F5 không gửi lại.
+  return chuyenHuongNoiBo(Astro, bao);
 }
 
 const LOC = ['cho', 'dang', 'xong', 'tat_ca'] as const;
