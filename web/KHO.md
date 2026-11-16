@@ -1599,7 +1599,7 @@ dùng ở:
 | `public/kho/js/ean13.js` | (GĐ5b) Giải mã EAN-13 bằng JS thuần cho iPhone — Safari không có `BarcodeDetector` |
 | `public/kho/js/may-chung.js` | (GĐ5d) Đếm giờ tự khóa máy dùng chung |
 | `public/kho/js/in-an.js` | Hiện nút "In phiếu" và gọi `window.print()` (GĐ4b); nút "Chia sẻ" `[data-chia-se]` của đơn đặt hàng gọi Web Share API khi máy có (GĐ8a) |
-| `components/SauDangXuat.astro` (in thẳng vào `<head>` của hai khung `Kho.astro` và `NoiBo.astro`; mã ở `lib/sau-dang-xuat.js`) | Sau khi đăng xuất, bấm Quay lại không hiện lại trang cũ từ bộ nhớ hay bản lưu đệm của trình duyệt: dấu phiên (cookie `bt_dau_phien`) đã đổi thì giấu trang lúc rời, tải lại lúc hiện lại. Không gọi mạng, không tải file riêng (rà soát 14/11/2026 — `web/README.md`, "Giao diện nội bộ") |
+| `components/SauDangXuat.astro` (in thẳng vào `<head>` của hai khung `Kho.astro` và `NoiBo.astro`; mã ở `lib/sau-dang-xuat.js`) | Sau khi đăng xuất, bấm Quay lại không hiện lại trang cũ từ bộ nhớ hay bản lưu đệm của trình duyệt: giấu trang lúc bấm Đăng xuất và ở mọi lần rời trang; lúc trang hiện lại, dấu phiên (cookie `bt_dau_phien`) đã đổi thì xin lại trang từ máy chủ bằng một lượt GET — không bao giờ tải lại (tải lại trang kết quả của một lần gửi form là gửi lại form đó) — còn không đổi thì cho hiện ngay. Không gọi mạng, không tải file riêng (rà soát 14/11/2026 — `web/README.md`, "Giao diện nội bộ") |
 
 Không thêm thư viện npm cho phía trình duyệt. `test-kho-giao-dien.mjs` hỏng nếu có `<script>`,
 `onclick=…` hay file JS ngoài danh sách này (đoạn của `SauDangXuat.astro` nằm ở khung chung, có kiểm thử
