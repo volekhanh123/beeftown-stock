@@ -20,7 +20,7 @@ import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, guiRoiChuyen } from '../../../../lib/kho/trang.ts';
 import { docNhapLai } from '../../../../lib/kho/bao.ts';
 import { ganNguoi, doiPin, layKhoaMay, laVaiMay, DUONG_MAY } from '../../../../lib/kho/may-chung.ts';
-import { kqHai, type KetQua } from '../../../../lib/kho/chung.ts';
+import { kqHai, LOI_KHO_CHUNG, type KetQua } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
@@ -44,7 +44,7 @@ if (Astro.request.method === 'POST') return await guiRoiChuyen(Astro, DUONG_GAN,
     const kq = await doiPin(Astro, form, k.may!);
     return kq.ok ? { kq, toi: DUONG_MAY } : { kq };
   }
-  return { kq: kqHai(false, { vi: 'Việc không hợp lệ. Tải lại trang.', en: 'Invalid action. Reload the page.' }) };
+  return { kq: kqHai(false, LOI_KHO_CHUNG.viecLa) };
 }, O_GIU);
 
 const bao: KetQua | null = k.bao;

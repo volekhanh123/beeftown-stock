@@ -129,13 +129,20 @@ await nhom('1 · guiRoiChuyen: MỌI KẾT CỤC CỦA LƯỢT GỬI LÀ 303', a
      && cookieBao(hong.astro)?.cau === CAU_DOC_FORM_HONG.vi && cookieBao(hong.astro)?.cauEn === CAU_DOC_FORM_HONG.en,
      JSON.stringify({ goi: hong.goiXuLy, st: hong.tl?.status, bao: cookieBao(hong.astro) }));
 
-  // Việc ném lỗi bất ngờ: không thành trang 500 (cũng là trả lời của lượt POST) — 303 về chính trang, câu "chưa ghi
-  // được", một dòng nhật ký không chép chữ của lỗi (có thể mang email).
+  // Việc ném lỗi bất ngờ: không thành trang 500 (cũng là trả lời của lượt POST) — 303 về chính trang, một dòng nhật ký
+  // không chép chữ của lỗi (có thể mang email). Câu báo KHÔNG nói "chưa ghi được": việc có thể ném SAU khi đã ghi
+  // (ganNguoi: database đã gắn người, cookie phiên đã đổi, rồi một bước thu hồi token ném) — nói "chưa chắc", bảo tải lại
+  // để kiểm tra (CLAUDE.md gốc, mục mat-mang và cau-chu: đúng sự thật).
   const nem = await gui({ email: 'a@b.vn', mat_khau: MK }, async () => { throw new TypeError('a@b.vn ' + MK); }, { cacO: ['email'] });
-  ok('#194: việc ném lỗi → không ném ra ngoài, 303 về chính trang, câu "chưa ghi được" của kho',
+  const cauNem = cookieBao(nem.astro);
+  ok('#194: việc ném lỗi → không ném ra ngoài, 303 về chính trang, câu báo lỗi đủ hai thứ tiếng',
      nem.loi === null && nem.tl?.status === 303 && nem.tl.headers.get('location') === DUONG_GAN
-     && cookieBao(nem.astro)?.ok === false && cookieBao(nem.astro)?.cau === LOI_KHO_CHUNG.macDinh.vi,
-     nem.loi ?? JSON.stringify(cookieBao(nem.astro)));
+     && cauNem?.ok === false && cauNem.cau === LOI_KHO_CHUNG.batNgo?.vi && cauNem.cauEn === LOI_KHO_CHUNG.batNgo?.en,
+     nem.loi ?? JSON.stringify(cauNem));
+  ok('RÀ SOÁT: …câu đó nói chưa chắc đã ghi, bảo tải lại để kiểm tra — không nói "chưa ghi được" (việc có thể đã ghi)',
+     /chưa chắc/.test(cauNem?.cau ?? '') && /[Tt]ải lại/.test(cauNem?.cau ?? '') && !/[Cc]hưa ghi được/.test(cauNem?.cau ?? '')
+     && /not certain|may or may not/i.test(cauNem?.cauEn ?? '') && !/^Not saved/.test(cauNem?.cauEn ?? ''),
+     JSON.stringify(cauNem));
   ok('…một dòng nhật ký, không chép chữ của lỗi', nem.canhBao.length === 1 && !/@|Mk-May/.test(nem.canhBao[0]), nem.canhBao.join(' | '));
 
   // Trang đích lạ (không thuộc /noi-bo/kho, địa chỉ máy khác): về chính trang — không bao giờ là một lối chuyển hướng mở.
@@ -177,6 +184,11 @@ await nhom('2 · CHỮ ĐIỀN LẠI: MỘT LẦN, MỘT TRANG, KHÔNG BAO GIỜ
     ['quá 254 ký tự', JSON.stringify({ email: dai, ten: 'ok' }), ['email', 'ten'], { ten: 'ok' }],
     ['ô mật khẩu / PIN dù trang lỡ hỏi', JSON.stringify({ mat_khau: MK, pin: PIN, mat_khau_ql: MK, email: 'a@b.vn' }),
       ['mat_khau', 'pin', 'mat_khau_ql', 'email'], { email: 'a@b.vn' }],
+    ['mọi ô bí mật theo TỪNG PHẦN của tên (mat_khau_may, pin_lai, pin_moi, refresh_token)',
+      JSON.stringify({ mat_khau_may: MK, pin_lai: PIN, pin_moi: PIN, refresh_token: MK, ten: 'ok' }),
+      ['mat_khau_may', 'pin_lai', 'pin_moi', 'refresh_token', 'ten'], { ten: 'ok' }],
+    ['RÀ SOÁT: ô thường mà tên có chuỗi "pin" lọt giữa chữ (phi_shipping, opinion) vẫn được giữ',
+      JSON.stringify({ phi_shipping: '30.000', opinion: 'ngon' }), ['phi_shipping', 'opinion'], { phi_shipping: '30.000', opinion: 'ngon' }],
   ]) {
     const j = hopCookie({ [COOKIE_NHAP_LAI]: giaTri });
     const ra = docNhapLai(j, DUONG_GAN, cacO);
@@ -210,6 +222,9 @@ await nhom('3 · BA TRANG MÁY DÙNG CHUNG (mã nguồn): LƯỢT POST CHỈ ĐI
     ok(`#194: ${tep} — không tự đọc form, không tự gán câu báo (không còn dựng trang trong trả lời của lượt POST)`,
        !/docFormGui\(/.test(fm) && !/\bbao\s*=(?!=)/.test(fm.replace(/const bao\b|let bao\b/g, '')) && !/\bformData\(/.test(fm),
        (fm.match(/docFormGui\(|\bbao\s*=[^=]/) ?? [''])[0]);
+    ok(`RÀ SOÁT: ${tep} — việc lạ báo bằng câu dùng chung LOI_KHO_CHUNG.viecLa (một bản, không chép câu vào trang)`,
+       /kqHai\(false, LOI_KHO_CHUNG\.viecLa\)/.test(fm) && !/Việc không hợp lệ/.test(fm),
+       (fm.match(/Việc không hợp lệ[^']*/) ?? ['(không dùng LOI_KHO_CHUNG.viecLa)'])[0]);
     const oMatKhau = [...html.matchAll(/<input\b[^>]*type="password"[^>]*>/g)].map(m => m[0]);
     ok(`${tep} — ô mật khẩu / PIN (${oMatKhau.length}) không bao giờ có value`, oMatKhau.length > 0 && oMatKhau.every(o => !/\bvalue=/.test(o)),
        oMatKhau.filter(o => /\bvalue=/.test(o)).join(' | '));

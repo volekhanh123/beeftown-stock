@@ -37,13 +37,15 @@ export function ghiBao(cookies: AstroCookies, bao: KetQua) {
 // Trang báo lỗi là một lượt GET (guiRoiChuyen, lib/kho/trang.ts), không còn dựng form ngay trong trả lời của lượt
 // POST: mục lịch sử của trang như vậy giữ nguyên thân form, kể cả mật khẩu, PIN. Chữ cần điền lại đi theo cookie dùng
 // một lần, chỉ của đúng trang (Path = đường dẫn trang), HttpOnly, sống 60 giây. Chỉ các ô trang liệt kê — và KHÔNG BAO
-// GIỜ ô mật khẩu / PIN: tên ô có "mat_khau" hay "pin" bị bỏ cả lúc ghi lẫn lúc đọc, kể cả khi trang lỡ liệt kê. Ô dài
+// GIỜ ô bí mật: tên ô mà một PHẦN (tách theo dấu _) là "mat_khau", "pin" hay "token" (mat_khau_ql, pin_lai,
+// refresh_token) bị bỏ cả lúc ghi lẫn lúc đọc, kể cả khi trang lỡ liệt kê. So theo phần chứ không theo chuỗi con: ô
+// thường như phi_shipping vẫn được giữ. Ô dài
 // hơn 254 ký tự (email dài nhất Supabase nhận) thì bỏ ô đó — cookie không phình quá cỡ trình duyệt nhận.
 // Kiểm: crm/test/test-kho-may-lich-su.mjs.
 // -----------------------------------------------------------------------------
 const COOKIE_NHAP_LAI = 'bt_kho_nhap_lai';
 const O_TOI_DA = 254;
-const laOBiMat = (o: string) => /mat_khau|pin/i.test(o);
+const laOBiMat = (o: string) => /(?:^|_)(?:mat_khau|pin|token)(?:_|$)/i.test(o);
 
 /** Các ô được giữ của `v`: có trong `cacO`, không phải ô bí mật, là chuỗi không quá dài. */
 function oDuocGiu(cacO: readonly string[], v: Record<string, unknown>): Record<string, string> {

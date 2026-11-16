@@ -26,7 +26,7 @@ import { moTrangKho, guiRoiChuyen } from '../../../../lib/kho/trang.ts';
 import { docNhapLai } from '../../../../lib/kho/bao.ts';
 import { dangKyMay, layKhoaMay, laVaiMay, DUONG_MAY } from '../../../../lib/kho/may-chung.ts';
 import { PHUT_KHOA_MAC_DINH } from '../../../../lib/kho/may-chung-ma-hoa.ts';
-import { kqHai, type KetQua } from '../../../../lib/kho/chung.ts';
+import { kqHai, LOI_KHO_CHUNG, type KetQua } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
@@ -46,7 +46,7 @@ if (Astro.request.method === 'POST') return await guiRoiChuyen(Astro, DUONG_DANG
     if (kq.ok) return { kq, toi: DUONG_MAY };
     return { kq, nhapLai: Object.fromEntries(O_GIU.map(o => [o, String(form.get(o) ?? '').trim()])) };
   }
-  return { kq: kqHai(false, { vi: 'Việc không hợp lệ. Tải lại trang.', en: 'Invalid action. Reload the page.' }) };
+  return { kq: kqHai(false, LOI_KHO_CHUNG.viecLa) };
 }, O_GIU);
 
 const bao: KetQua | null = k.bao;

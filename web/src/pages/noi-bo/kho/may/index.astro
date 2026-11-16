@@ -26,7 +26,7 @@ import {
   giuMay, khoaMay, moKhoaNguoi, goToiKhoiMay, docManKhoa, layKhoaMay, laVaiMay, gioPhut, DUONG_MAY,
   type ManKhoa,
 } from '../../../../lib/kho/may-chung.ts';
-import { kqHai, laUuid, TEN_VAI_KHO_NB, type HaiThuTieng, type KetQua } from '../../../../lib/kho/chung.ts';
+import { kqHai, LOI_KHO_CHUNG, laUuid, TEN_VAI_KHO_NB, type HaiThuTieng, type KetQua } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 // Nhịp "vẫn đang dùng" của may-chung.js: không cần đọc chi nhánh hay số đỏ.
@@ -49,7 +49,7 @@ if (Astro.request.method === 'POST') return await guiRoiChuyen(Astro, DUONG_MAY,
   }
   if (viec === 'khoa' && dangDung) return { kq: await khoaMay(Astro, 'bam') };
   if (viec === 'go' && dangDung) return { kq: await goToiKhoiMay(Astro, k.may!) };
-  return { kq: kqHai(false, { vi: 'Việc không hợp lệ. Tải lại trang.', en: 'Invalid action. Reload the page.' }) };
+  return { kq: kqHai(false, LOI_KHO_CHUNG.viecLa) };
 });
 if (Astro.url.searchParams.get('khoa') === '1' && dangDung) {
   return chuyenHuong(Astro, DUONG_MAY, await khoaMay(Astro, 'het_gio'));

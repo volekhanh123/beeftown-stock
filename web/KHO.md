@@ -504,10 +504,12 @@ mức đăng nhập chung — PIN mới sai dạng bị từ chối trước khi
 
 **Lượt gửi form không bao giờ dựng trang tại chỗ** (issue #194, đợt 2). Ba trang của máy — mở máy bằng PIN, gắn
 người / đổi PIN, đăng ký máy — xử lý lượt POST bằng `guiRoiChuyen` (`lib/kho/trang.ts`): lưu được hay không, thân form
-hỏng, việc không hợp lệ, lỗi bất ngờ — đều là 303 sang GET, câu báo qua `bt_kho_bao`. Trang dựng trong trả lời của lượt
+hỏng, việc không hợp lệ, lỗi bất ngờ — đều là 303 sang GET, câu báo qua `bt_kho_bao` (lỗi bất ngờ: câu "chưa chắc đã
+ghi", không phải "chưa ghi được" — việc có thể ném sau khi đã ghi). Trang dựng trong trả lời của lượt
 POST là một mục lịch sử giữ nguyên mật khẩu, PIN vừa gõ trên một máy nhiều người dùng. Chữ điền lại (email, tên máy, số
 phút) đi qua cookie `bt_kho_nhap_lai` — dùng một lần, chỉ của đúng trang, sống 60 giây (`ghiNhapLai` / `docNhapLai` trong
-`lib/kho/bao.ts`); ô mật khẩu, PIN không bao giờ. Rời trang nội bộ nào cũng xóa mọi ô mật khẩu / PIN
+`lib/kho/bao.ts`); ô bí mật không bao giờ — tên ô có một phần là `mat_khau`, `pin` hay `token` bị bỏ cả lúc ghi lẫn
+lúc đọc. Rời trang nội bộ nào cũng xóa mọi ô mật khẩu / PIN
 (`lib/sau-dang-xuat.js`). Còn lại cho đợt sau: Supabase bận ngay lúc kiểm phiên thì trang "hệ thống đang bận" vẫn là trả
 lời của lượt POST (#194). Kiểm thử: `crm/test/test-kho-may-lich-su.mjs`.
 

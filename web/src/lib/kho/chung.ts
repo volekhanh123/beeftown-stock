@@ -625,6 +625,14 @@ export const LOI_KHO_CHUNG = {
   trung: { vi: 'Đã có một mục trùng tên hoặc trùng mã.', en: 'Something with the same name or code already exists.' },
   khongHopLe: { vi: 'Dữ liệu chưa hợp lệ — kiểm tra lại các ô vừa nhập.', en: 'Some data is not valid — check the fields you just filled in.' },
   mang: CAU_MAT_MANG_GHI,
+  /** Lượt gửi form mà việc của trang ném lỗi bất ngờ (lib/kho/trang.ts guiRoiChuyen). Việc có thể ném SAU khi đã ghi
+   *  — nên không nói "chưa ghi được". */
+  batNgo: {
+    vi: 'Có lỗi bất ngờ — chưa chắc việc vừa bấm đã ghi hay chưa. Tải lại trang để kiểm tra trước khi làm lại.',
+    en: 'Something unexpected went wrong — it is not certain whether what you just did was saved. Reload the page to check before trying again.',
+  },
+  /** Form gửi lên một việc trang không làm (trang cũ còn mở, hoặc máy đã đổi trạng thái giữa chừng). */
+  viecLa: { vi: 'Việc không hợp lệ. Tải lại trang.', en: 'Invalid action. Reload the page.' },
   quaNhieuDong: {
     vi: 'Danh sách có hơn 100.000 dòng — không đọc hết được. Thu hẹp khoảng ngày hoặc bộ lọc rồi thử lại.',
     en: 'The list has more than 100,000 rows — it cannot all be read. Narrow the date range or filters and try again.',

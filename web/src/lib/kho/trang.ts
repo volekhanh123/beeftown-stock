@@ -238,8 +238,9 @@ const laDuongKho = (u: string) => u === '/noi-bo/kho' || u.startsWith('/noi-bo/k
  *   · `xuLy` trả { kq, toi } — `toi` là trang đích, phải là trang kho; không có, hay lạ, thì về `veKhiLoi`;
  *   · trả thêm `nhapLai` — chữ cần điền lại trên trang `veKhiLoi` (ghiNhapLai: chỉ các ô `cacO`, không ô mật khẩu / PIN);
  *   · thân form không đọc được — không chạy `xuLy`, câu CAU_DOC_FORM_HONG;
- *   · `xuLy` ném lỗi bất ngờ — câu "chưa ghi được" của kho và một dòng nhật ký (loại lỗi, không chép chữ của lỗi — chữ
- *     đó có thể mang email): trang 500 cũng là trả lời của lượt POST.
+ *   · `xuLy` ném lỗi bất ngờ — câu LOI_KHO_CHUNG.batNgo ("chưa chắc đã ghi", không phải "chưa ghi được": việc có thể
+ *     ném sau khi đã ghi database và cookie) và một dòng nhật ký (loại lỗi, không chép chữ của lỗi — chữ đó có thể
+ *     mang email). Không để thành trang 500: trang đó cũng là trả lời của lượt POST.
  * Kiểm: crm/test/test-kho-may-lich-su.mjs.
  */
 export async function guiRoiChuyen(
@@ -259,7 +260,7 @@ export async function guiRoiChuyen(
       if (r.nhapLai) ghiNhapLai(Astro.cookies, veKhiLoi, cacO, r.nhapLai);
     } catch (e) {
       try { console.error(`[kho] ${veKhiLoi}: POST handler threw (${e instanceof Error ? e.name : typeof e})`); } catch { /* */ }
-      kq = kqHai(false, LOI_KHO_CHUNG.macDinh);
+      kq = kqHai(false, LOI_KHO_CHUNG.batNgo);
     }
   }
   return chuyenHuong(Astro, toi, kq);
