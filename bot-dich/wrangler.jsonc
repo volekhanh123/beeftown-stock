@@ -1,4 +1,4 @@
-// Cấu hình Worker của bot dịch Zalo. Bí mật (ZALO_BOT_TOKEN, ANTHROPIC_API_KEY) KHÔNG khai ở đây:
+// Cấu hình Worker của bot dịch Zalo. Bí mật (ZALO_BOT_TOKEN, GEMINI_API_KEY, ANTHROPIC_API_KEY) KHÔNG khai ở đây:
 // cài trong Cloudflare → Workers & Pages → beeftown-bot-dich → Settings → Variables and Secrets (README, "Cài đặt").
 {
   "name": "beeftown-bot-dich",
@@ -7,9 +7,9 @@
   // Bot cần địa chỉ <tên>.workers.dev để Zalo gửi webhook về — giữ bật.
   "workers_dev": true,
   "preview_urls": false,
-  // Chạy ở trạm gần Singapore như web/: Claude không nhận lời gọi đi từ trạm Hồng Kông.
+  // Chạy ở trạm gần Singapore như web/: Gemini và Claude không nhận lời gọi đi từ trạm Hồng Kông.
   "placement": { "region": "aws:ap-southeast-1" },
-  // Workers AI: máy dịch dự phòng khi chưa có ANTHROPIC_API_KEY.
+  // Workers AI: máy dịch dự phòng khi chưa có khóa Claude hay Gemini.
   "ai": { "binding": "AI" },
   "vars": {
     "TEN_BOT": "Bot Beeftown Translate",

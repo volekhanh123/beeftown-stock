@@ -1,11 +1,12 @@
 # Bot dịch Zalo (Bot Beeftown Translate)
 
 Bot Zalo nằm trong nhóm chat: ai nhắn tiếng Anh hoặc tiếng Việt thì bot gửi bản tiếng Hàn ngay bên dưới; ai nhắn
-tiếng Hàn thì bot gửi bản tiếng Anh. Chạy trên Cloudflare Workers (gói miễn phí đủ dùng), dịch bằng Claude — chưa có
-khóa Claude thì dịch bằng Workers AI của Cloudflare (miễn phí, chất lượng kém hơn).
+tiếng Hàn thì bot gửi bản tiếng Anh. Chạy trên Cloudflare Workers (gói miễn phí đủ dùng). Máy dịch chọn theo khóa
+cài trên Worker, theo thứ tự: Claude (`ANTHROPIC_API_KEY`) → Gemini (`GEMINI_API_KEY`) → Workers AI của Cloudflare
+(không cần khóa, miễn phí, chất lượng kém hơn).
 
 ```
-Người trong nhóm ──tin──▶ Zalo ──webhook──▶ Worker (bot-dich) ──▶ Claude dịch ──▶ Zalo sendMessage ──▶ nhóm
+Người trong nhóm ──tin──▶ Zalo ──webhook──▶ Worker (bot-dich) ──▶ Claude / Gemini dịch ──▶ Zalo sendMessage ──▶ nhóm
 ```
 
 Tách hẳn khỏi web Beeftown: Worker riêng (`beeftown-bot-dich`), không đọc database, không dùng bí mật của web.
@@ -18,7 +19,9 @@ Tách hẳn khỏi web Beeftown: Worker riêng (`beeftown-bot-dich`), không đ�
 3. **Cài bí mật** trong Cloudflare → Workers & Pages → `beeftown-bot-dich` → Settings → Variables and Secrets →
    Add → loại **Secret**:
    - `ZALO_BOT_TOKEN` — token ở trang bot, mục Thiết lập chung → Bot Token. **Bắt buộc.**
-   - `ANTHROPIC_API_KEY` — khóa từ console.anthropic.com (cần nạp tiền). Tùy chọn; không có thì dịch bằng Workers AI.
+   - `GEMINI_API_KEY` — khóa Gemini từ aistudio.google.com (dùng lại được khóa web Beeftown đang dùng). Tùy chọn.
+   - `ANTHROPIC_API_KEY` — khóa Claude từ console.anthropic.com (cần nạp tiền). Tùy chọn; có thì được dùng trước Gemini.
+   - Không cài khóa nào thì bot dịch bằng Workers AI.
 4. **Mở** `https://beeftown-bot-dich.<tên-tài-khoản>.workers.dev/cai-dat` trên trình duyệt. Trang báo
    "Đã đăng ký webhook …" là xong; báo "Chưa đăng ký được" thì kiểm lại token.
 5. **Thử**: nhắn "hello" vào nhóm — bot trả "🇰🇷 Tên: 안녕하세요" sau vài giây.
@@ -31,12 +34,15 @@ Reset token ở trang bot thì cập nhật `ZALO_BOT_TOKEN` rồi mở lại `/
 |---|---|---|
 | `CHI_DICH_KHI_TAG` | `0` | `1`: trong nhóm chỉ dịch tin có @tag bot. Chat riêng với bot luôn dịch. |
 | `DICH_TIENG_HAN_SANG` | `en` | `vi`: tin tiếng Hàn dịch sang tiếng Việt thay vì tiếng Anh. |
+| `GEMINI_MODEL` | `gemini-flash-latest` | Model Gemini (bí danh luôn trỏ bản Flash mới nhất, như web). |
 | `MO_HINH_CLAUDE` | `claude-opus-5-5` | Model Claude. `claude-haiku-5-5` rẻ hơn khoảng 40 lần, vẫn dịch tốt tin chat ngắn. |
 | `TEN_BOT` | `Bot Beeftown Translate` | Tên hiển thị của bot — để bỏ chữ "@tên bot" trước khi dịch. Đổi tên bot thì đổi theo. |
 
 Chi phí Claude ước tính (tin chat ngắn: ~250 token vào, ~100 token ra kể cả phần suy nghĩ): Opus 5.5
 ($4 / $20 mỗi triệu token) khoảng 0,3 xu Mỹ một tin — 100 tin/ngày ≈ 9 USD/tháng; Haiku 5.5 ($0,10 / $0,50) dưới
-0,3 USD/tháng. Số thật xem ở console.anthropic.com → Usage.
+0,3 USD/tháng. Số thật xem ở console.anthropic.com → Usage. Gemini Flash có hạn mức miễn phí mỗi ngày ở
+aistudio.google.com — chat bạn bè thường nằm trong hạn mức đó; vượt thì Google báo lỗi 429 và bot gửi câu
+"chưa dịch được".
 
 ## Cách bot quyết định
 
@@ -44,7 +50,7 @@ Chi phí Claude ước tính (tin chat ngắn: ~250 token vào, ~100 token ra k�
 - **Ngôn ngữ đích**: tiếng Hàn → `DICH_TIENG_HAN_SANG`; tiếng Anh, tiếng Việt → tiếng Hàn.
 - **Bỏ qua**: sticker, ảnh, tin chỉ có link / số / biểu tượng, tin do bot gửi và tin bắt đầu bằng cờ 🇰🇷 / 🇬🇧 / 🇻🇳
   như bản dịch của bot (tránh bot dịch lại bản dịch của mình nếu Zalo gửi ngược tin của bot về).
-- **Dịch hỏng** (mạng, Claude lỗi, từ chối, trả rỗng): bot gửi "⚠️ Bot chưa dịch được tin này…" bằng hai thứ tiếng —
+- **Dịch hỏng** (mạng, Claude / Gemini lỗi, từ chối, hết hạn mức, trả rỗng): bot gửi "⚠️ Bot chưa dịch được tin này…" bằng hai thứ tiếng —
   không bao giờ gửi bản dịch giả.
 
 ## Giới hạn và giả định (dịch vụ ngoài)
@@ -57,6 +63,9 @@ Chi phí Claude ước tính (tin chat ngắn: ~250 token vào, ~100 token ra k�
   `@openclaw/zalo`. Zalo đổi cấu trúc thì `docTinZalo` trả null và bot im lặng — xem nhật ký Worker.
 - **Gửi lại webhook**: Worker trả 200 ngay rồi dịch chạy nền, và nhớ mã tin trong 10 phút để không dịch hai lần.
   Bộ nhớ nằm trong một máy chạy của Worker — Zalo gửi lại vào máy khác thì có thể ra hai bản dịch (hiếm).
+- **Gemini**: gọi `generativelanguage.googleapis.com/v1beta/models/<model>:generateContent`, khóa trong header
+  `x-goog-api-key`, mức suy nghĩ `LOW` — giống `web/src/lib/may-dich.ts`. Google không nhận lời gọi đi từ Hồng Kông,
+  nên Worker ghim chạy ở Singapore (`placement` trong `wrangler.jsonc`).
 - **Nhật ký**: Cloudflare → Workers & Pages → `beeftown-bot-dich` → Logs. Token không bao giờ được in ra.
 
 ## Lệnh

@@ -33,6 +33,10 @@ export interface Env {
   ANTHROPIC_API_KEY?: string;
   /** Tùy chọn: model Claude, ví dụ claude-haiku-5-5 cho rẻ hơn. */
   MO_HINH_CLAUDE?: string;
+  /** Bí mật, tùy chọn: khóa Gemini (aistudio.google.com). Dùng khi không có ANTHROPIC_API_KEY. */
+  GEMINI_API_KEY?: string;
+  /** Tùy chọn: model Gemini, mặc định gemini-flash-latest. */
+  GEMINI_MODEL?: string;
   /** Tên hiển thị của bot — để bỏ chữ "@tên bot" khỏi tin trước khi dịch. */
   TEN_BOT?: string;
   /** "1": trong nhóm chỉ dịch tin có @tag bot. Mặc định dịch mọi tin bot nhận được. */
@@ -44,6 +48,12 @@ export interface Env {
 
 interface NguCanh {
   waitUntil(viec: Promise<unknown>): void;
+}
+
+function tenMayDich(env: Env): string {
+  if (env.ANTHROPIC_API_KEY?.trim()) return 'Claude';
+  if (env.GEMINI_API_KEY?.trim()) return 'Gemini';
+  return env.AI ? 'Workers AI (chưa có khóa Claude hay Gemini)' : 'CHƯA CÓ';
 }
 
 const TEN_BOT_MAC_DINH = 'Bot Beeftown Translate';
@@ -74,6 +84,8 @@ export async function xuLyTin(
     banDich = await dichTin(conLai, nguon, dich, {
       khoaClaude: env.ANTHROPIC_API_KEY,
       moHinhClaude: env.MO_HINH_CLAUDE,
+      khoaGemini: env.GEMINI_API_KEY,
+      moHinhGemini: env.GEMINI_MODEL,
       ai: env.AI,
       fetchFn: fetchFn === fetch ? undefined : fetchFn,
     });
@@ -117,7 +129,7 @@ export async function xuLyYeuCau(yeuCau: Request, env: Env, nguCanh: NguCanh, fe
       const ten = [ketQua.account_name, ketQua.display_name, ketQua.name].find(t => typeof t === 'string') ?? '';
       return traChu(
         `Đã đăng ký webhook ${diaChi}${ten ? ` cho bot ${String(ten)}` : ''}.\n` +
-          `Máy dịch: ${env.ANTHROPIC_API_KEY?.trim() ? 'Claude' : env.AI ? 'Workers AI (chưa có ANTHROPIC_API_KEY)' : 'CHƯA CÓ'}.\n` +
+          `Máy dịch: ${tenMayDich(env)}.\n` +
           'Giờ nhắn thử vào nhóm có bot.',
       );
     } catch (loi) {

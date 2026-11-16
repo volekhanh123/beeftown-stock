@@ -26,12 +26,38 @@ interface LoiGoi {
 }
 
 /** fetch giả: Zalo trả ok; Claude trả bản dịch cho trước, hoặc lỗi theo kịch bản. */
-function taoFetchGia(kichBan: { claude?: 'ok' | 'loi-500' | 'tu-choi' | 'rong' | 'mat-mang'; banDich?: string; zalo?: 'ok' | 'loi' } = {}) {
+type CheGemini = 'ok' | 'loi-500' | 'mat-mang' | 'chan' | 'dung-giua' | 'rong' | 'khong-nhan-muc-nghi' | 'khoa-sai';
+
+function taoFetchGia(
+  kichBan: {
+    claude?: 'ok' | 'loi-500' | 'tu-choi' | 'rong' | 'mat-mang';
+    gemini?: CheGemini;
+    banDich?: string;
+    zalo?: 'ok' | 'loi';
+  } = {},
+) {
   const goi: LoiGoi[] = [];
+  const headerGemini: (string | null)[] = [];
   const fetchGia = (async (dauVao: RequestInfo | URL, tuyChon?: RequestInit) => {
     const url = typeof dauVao === 'string' ? dauVao : dauVao instanceof URL ? dauVao.href : dauVao.url;
     const thanChu = tuyChon?.body ? String(tuyChon.body) : '';
     goi.push({ url, than: thanChu ? JSON.parse(thanChu) : {} });
+    if (url.startsWith('https://generativelanguage.googleapis.com/')) {
+      headerGemini.push(new Headers(tuyChon?.headers).get('x-goog-api-key'));
+      const che = kichBan.gemini ?? 'ok';
+      const json = (du: unknown, trangThai = 200) => new Response(JSON.stringify(du), { status: trangThai });
+      if (che === 'mat-mang') throw new TypeError('fetch failed');
+      if (che === 'loi-500') return json({ error: { code: 500 } }, 500);
+      if (che === 'khoa-sai') return json({ error: { code: 400, message: 'API key not valid' } }, 400);
+      const kemMucNghi = JSON.parse(thanChu).generationConfig?.thinkingConfig !== undefined;
+      if (che === 'khong-nhan-muc-nghi' && kemMucNghi) {
+        return json({ error: { code: 400, message: 'Thinking level is not supported for this model.' } }, 400);
+      }
+      if (che === 'chan') return json({ promptFeedback: { blockReason: 'SAFETY' } });
+      if (che === 'dung-giua') return json({ candidates: [{ finishReason: 'SAFETY', content: { parts: [] } }] });
+      const phan = che === 'rong' ? [] : [{ text: 'suy nghĩ', thought: true }, { text: kichBan.banDich ?? '안녕하세요' }];
+      return json({ candidates: [{ finishReason: 'STOP', content: { parts: phan } }] });
+    }
     if (url.includes('api.anthropic.com')) {
       const che = kichBan.claude ?? 'ok';
       if (che === 'mat-mang') throw new TypeError('fetch failed');
@@ -68,7 +94,8 @@ function taoFetchGia(kichBan: { claude?: 'ok' | 'loi-500' | 'tu-choi' | 'rong' |
   const tinGui = () =>
     goi.filter(g => g.url.endsWith('/sendMessage')).map(g => String(g.than.text));
   const goiClaude = () => goi.filter(g => g.url.includes('api.anthropic.com'));
-  return { fetchGia, goi, tinGui, goiClaude };
+  const goiGemini = () => goi.filter(g => g.url.includes('generativelanguage.googleapis.com'));
+  return { fetchGia, goi, tinGui, goiClaude, goiGemini, headerGemini };
 }
 
 function thanWebhook(text: string, ghiDe: Record<string, unknown> = {}) {
@@ -306,7 +333,58 @@ test('CHI_DICH_KHI_TAG=1: trong nhóm bỏ qua tin không tag, vẫn dịch tin 
   assert.equal(await xuLyTin(rieng, env, c.fetchGia), 'da-dich');
 });
 
-test('chưa có ANTHROPIC_API_KEY: dịch bằng Workers AI', async () => {
+// ---------- Gemini ----------
+
+const ENV_GEMINI: Env = { ZALO_BOT_TOKEN: TOKEN, GEMINI_API_KEY: 'AIza-thu', AI: { run: async () => ({ translated_text: 'x' }) } };
+
+test('có GEMINI_API_KEY (không có khóa Claude): dịch bằng Gemini, khóa đi bằng header chứ không nằm trên URL', async () => {
+  const { fetchGia, tinGui, goiGemini, goiClaude, headerGemini } = taoFetchGia({ banDich: '내일 봐요!' });
+  assert.equal(await xuLyTin(docTinZalo(thanWebhook('See you tomorrow!'))!, ENV_GEMINI, fetchGia), 'da-dich');
+  assert.equal(goiClaude().length, 0);
+  assert.equal(goiGemini().length, 1);
+  const g = goiGemini()[0];
+  assert.match(g.url, /models\/gemini-flash-latest:generateContent$/);
+  assert.ok(!g.url.includes('AIza-thu'));
+  assert.deepEqual(headerGemini, ['AIza-thu']);
+  const than = g.than as { systemInstruction: { parts: { text: string }[] }; generationConfig: { thinkingConfig?: unknown } };
+  assert.match(than.systemInstruction.parts[0].text, /from English into Korean/);
+  assert.deepEqual(than.generationConfig.thinkingConfig, { thinkingLevel: 'LOW' });
+  // Phần "suy nghĩ" (thought: true) không lọt vào bản dịch.
+  assert.deepEqual(tinGui(), ['🇰🇷 Khánh: 내일 봐요!']);
+});
+
+test('GEMINI_MODEL đổi được model; model không nhận mức suy nghĩ thì gọi lại một lần không kèm', async () => {
+  const { fetchGia, goiGemini, tinGui } = taoFetchGia({ gemini: 'khong-nhan-muc-nghi' });
+  const env = { ...ENV_GEMINI, GEMINI_MODEL: 'gemini-2.5-flash' };
+  assert.equal(await xuLyTin(docTinZalo(thanWebhook('hello'))!, env, fetchGia), 'da-dich');
+  assert.equal(goiGemini().length, 2);
+  assert.match(goiGemini()[0].url, /gemini-2\.5-flash/);
+  assert.equal((goiGemini()[1].than as { generationConfig: { thinkingConfig?: unknown } }).generationConfig.thinkingConfig, undefined);
+  assert.equal(tinGui().length, 1);
+});
+
+test('có cả khóa Claude và Gemini: dùng Claude', async () => {
+  const { fetchGia, goiClaude, goiGemini } = taoFetchGia();
+  await xuLyTin(docTinZalo(thanWebhook('hello'))!, { ...ENV_GEMINI, ANTHROPIC_API_KEY: 'sk-ant-thu' }, fetchGia);
+  assert.equal(goiClaude().length, 1);
+  assert.equal(goiGemini().length, 0);
+});
+
+for (const che of ['loi-500', 'mat-mang', 'chan', 'dung-giua', 'rong', 'khoa-sai'] as const) {
+  test(`mat-mang: Gemini ${che} — gửi câu báo "chưa dịch được", không gửi bản dịch giả`, async () => {
+    const { fetchGia, tinGui } = taoFetchGia({ gemini: che });
+    assert.equal(await xuLyTin(docTinZalo(thanWebhook('hello'))!, ENV_GEMINI, fetchGia), 'dich-hong');
+    assert.deepEqual(tinGui(), [CAU_DICH_HONG]);
+  });
+}
+
+test('/cai-dat ghi rõ máy dịch đang dùng là Gemini', async () => {
+  const { fetchGia } = taoFetchGia();
+  const traVe = await xuLyYeuCau(new Request('https://bot.thu.workers.dev/cai-dat'), ENV_GEMINI, nguCanhGia(), fetchGia);
+  assert.match(await traVe.text(), /Máy dịch: Gemini\./);
+});
+
+test('chưa có khóa Claude hay Gemini: dịch bằng Workers AI', async () => {
   const { fetchGia, tinGui, goiClaude } = taoFetchGia();
   const goiAi: unknown[] = [];
   const env: Env = {
