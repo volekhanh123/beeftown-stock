@@ -190,8 +190,11 @@ await nhom('7 · NHÂN VIÊN NHẬN CHAT: LỆNH XEM, TIN NHÂN VIÊN KHÔNG DƯ
   ok('Câu hệ thống: "Minh, nhân viên Beeftown, đã vào chat." · không tên thì "Nhân viên Beeftown đã vào chat." · "Trang tiếp tục hỗ trợ anh/chị."',
     TL.CHU_TRO_LY.nhanVienVao.vi('Minh') === 'Minh, nhân viên Beeftown, đã vào chat.' && TL.CHU_TRO_LY.nhanVienVao.vi(null) === 'Nhân viên Beeftown đã vào chat.'
     && TL.CHU_TRO_LY.trangQuayLai.vi === 'Trang tiếp tục hỗ trợ anh/chị.');
-  ok('Hỏi lại nhanh khi nhân viên đang nhận (≤ 3 giây), chậm khi Trang trả lời (≥ 5 giây), lỗi thì giãn tới 30 giây',
-    TL.NHIP_XEM.nhanVien <= 3000 && TL.NHIP_XEM.trang >= 5000 && TL.NHIP_XEM.loiToiDa === 30000);
+  ok('Hỏi lại nhanh khi nhân viên đang nhận (≤ 3 giây), chậm khi Trang trả lời (≥ 5 giây), thưa khi chưa ai trực (30 giây), lỗi thì giãn tới 30 giây',
+    TL.NHIP_XEM.nhanVien <= 3000 && TL.NHIP_XEM.trang >= 5000 && TL.NHIP_XEM.khongTruc === 30000 && TL.NHIP_XEM.loiToiDa === 30000);
+  const tpx = docNguon('web', 'src', 'components', 'TroLyTrang.astro');
+  ok('Chưa ai trực thì hỏi thưa; mở lại khung thì hỏi lại kể cả sau khi công tắc từng tắt',
+    tpx.includes("const nhip = cheDo === 'nhan_vien' ? NHIP_XEM.nhanVien : truc ? NHIP_XEM.trang : NHIP_XEM.khongTruc;") && /tatXem = false;\s*void xem\(\);/.test(tpx));
   const tp = docNguon('web', 'src', 'components', 'TroLyTrang.astro');
   ok('Tin nhân viên là tin của nhân viên: lớp tlt-cua-nv, nhãn "Tên · Nhân viên Beeftown", không dưới tên Trang',
     /function tinNhanVien\(chu: string, ten: string \| null\) \{\s*const d = el\('div', 'tlt-dong-tin tlt-cua-nv'\);/.test(tp)

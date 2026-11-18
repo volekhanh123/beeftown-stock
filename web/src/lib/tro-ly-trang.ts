@@ -64,10 +64,11 @@ export function thoiGianGo(tin: string, ngauNhien: number): number {
 
 /**
  * Khung đang mở thì hỏi lại Edge Function (lệnh xem) chừng này mili giây một lần: nhân viên đang nhận cuộc thì nhanh
- * (tin nhân viên không đến theo nhịp hỏi–đáp), Trang đang trả lời thì chậm (chỉ để biết nhân viên có vào không). Lỗi
+ * (tin nhân viên không đến theo nhịp hỏi–đáp), Trang đang trả lời thì chậm (chỉ để biết nhân viên có vào không) — chưa
+ * nhân viên nào mở màn theo dõi thì không ai nhận được, chỉ hỏi 30 giây một lần (để biết khi có người trực). Lỗi
  * mạng thì giãn dần tới loiToiDa. Đóng khung hay ẩn thẻ trình duyệt thì thôi hỏi.
  */
-export const NHIP_XEM = { nhanVien: 2500, trang: 8000, loiToiDa: 30000 } as const;
+export const NHIP_XEM = { nhanVien: 2500, trang: 8000, khongTruc: 30000, loiToiDa: 30000 } as const;
 
 type CachDong = { dau: BaTieng<string>; gach: BaTieng<string>; canTruc: boolean };
 

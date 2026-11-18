@@ -129,7 +129,8 @@ await nhom('2 · QUYỀN: hai hàm của Edge Function chỉ service_role', asyn
   // Hàm nội bộ của 0126 (tên gọi, có người trực, tự trả lại, hạng lý do, quyền nhân viên) và lệnh xem của Edge Function:
   // không vai nào gọi thẳng được — chỉ hàm definer gọi.
   for (const ham of ["tro_ly_ten_goi('Nguyễn Văn Minh')", 'tro_ly_co_truc(null)', 'tro_ly_tu_tra_lai(gen_random_uuid())',
-    "tro_ly_hang_can_nguoi('gap_nguoi')", 'tro_ly_duoc_ho_tro()', 'tro_ly_thay_cuoc(null)', 'tro_ly_xem(gen_random_uuid(), 0, null)']) {
+    "tro_ly_hang_can_nguoi('gap_nguoi')", 'tro_ly_duoc_ho_tro()', 'tro_ly_thay_cuoc(null)', 'tro_ly_xem(gen_random_uuid(), 0, null)',
+    'tro_ly_don_dep()']) {
     for (const [ten, uid] of [['anon', 'anon'], ['chủ', UID.chu], ['thu ngân', UID.thuNganA]]) {
       const r = await goi(uid, `select ${ham} as r`);
       ok(`${ten} không gọi thẳng được ${ham.split('(')[0]}`, r.loi !== null && /permission denied/.test(r.loi), vi(r));
@@ -394,6 +395,14 @@ await nhom('11 · NHÂN VIÊN NHẬN CHAT: cuộc chat và tin lưu ở database
   await mo(C2, t2a, 'nhà 2 người', null);
   await ghi(C2, t2a, { tra_loi: TRA_LOI, doi_nguoi: false });
 
+  // Nhật ký tro_ly_luot: chủ mọi cuộc, quản lý cuộc của chi nhánh mình (policy qua tro_ly_luot_duoc_doc).
+  const docLuot = async uid => (await goi(uid, `select count(*)::int as r from tro_ly_luot where cuoc_id = $1`, [C1])).kq;
+  ok('Nhật ký của cuộc Q1: chủ và quản lý Q1 đọc được, quản lý Q7 không thấy dòng nào', (await docLuot(UID.chu)) === 1
+    && (await docLuot(UID.qlA)) === 1 && (await docLuot(UID.qlB)) === 0, `${await docLuot(UID.chu)} · ${await docLuot(UID.qlA)} · ${await docLuot(UID.qlB)}`);
+  const ddAnon = await goi('anon', `select tro_ly_luot_duoc_doc($1::uuid) as r`, [C1]);
+  const ddChu = await goi(UID.chu, `select tro_ly_luot_duoc_doc($1::uuid) as r`, [C1]);
+  ok('tro_ly_luot_duoc_doc: anon không gọi được; chủ → true cho cuộc Q1', ddAnon.loi !== null && ddChu.kq === true, `${vi(ddAnon)} · ${vi(ddChu)}`);
+
   // Không ai đọc / ghi thẳng ba bảng mới.
   for (const [ten, uid] of [['anon', 'anon'], ['chủ', UID.chu], ['quản lý', UID.qlA], ['thu ngân', UID.thuNganA]]) {
     for (const bang of ['tro_ly_cuoc', 'tro_ly_tin', 'tro_ly_truc']) {
@@ -516,6 +525,15 @@ await nhom('11 · NHÂN VIÊN NHẬN CHAT: cuộc chat và tin lưu ở database
   await goi(UID.qlA, `select tro_ly_nhan_cuoc($1::uuid) as r`, [C4]);
   ok('Vừa nhận (chưa quá 2 phút) thì không tự trả, dù chưa trực', (await mo(C4, crypto.randomUUID(), 'alo', null))?.ly_do === 'nhan_vien');
 
+  // Claude đang trả lời thì nhân viên nhận: tin Trang vẫn ghi (khách đã thấy), cuộc không bị gắn lại "cần người".
+  const C6 = crypto.randomUUID(), t6 = crypto.randomUUID();
+  await mo(C6, t6, 'cho chị gặp nhân viên', null);
+  ok('Thu ngân nhận cuộc C6 lúc Trang đang trả lời', (await goi(UID.thuNganA, `select tro_ly_nhan_cuoc($1::uuid) as r`, [C6])).kq === 'da_nhan');
+  await ghi(C6, t6, { tra_loi: { ...TRA_LOI, chuyen_nguoi: true }, doi_nguoi: true });
+  const c6 = await cuocCua(C6);
+  ok('Tin Trang vẫn vào cuộc chat, nhưng cuộc nhân viên đang nhận không bị gắn "cần người"',
+    (await tinCua(C6)).some(t => t.nguoi === 'trang') && c6.can_nguoi === null && c6.ai_tra_loi === 'nhan_vien', JSON.stringify(c6));
+
   // Giới hạn, công tắc.
   await thuHoi('hien_tro_ly_trang');
   ok('Công tắc tắt: khung của khách hỏi lại → tat; tin khách → tat', (await xem(C4))?.tat === true && (await mo(C4, crypto.randomUUID(), 'x', null))?.ly_do === 'tat');
@@ -530,6 +548,10 @@ await nhom('11 · NHÂN VIÊN NHẬN CHAT: cuộc chat và tin lưu ở database
   await mo(C2, t5, 'x', null); await ghi(C2, t5, { tra_loi: TRA_LOI });
   ok('Cuộc quá 180 ngày bị xóa cùng tin của nó', !(await cuocCua(C5)) && Number((await db.query(`select count(*) n from tro_ly_tin where cuoc_id = $1`, [C5])).rows[0].n) === 0);
   const che = (await db.query(`select noi_dung, da_che from tro_ly_tin where cuoc_id = $1 and nguoi = 'nhan_vien' order by id`, [C1])).rows;
+  await db.query(`insert into tro_ly_tin (cuoc_id, nguoi, noi_dung, ten_hien, created_at) values ($1, 'nhan_vien', 'Số em 0909 333 444', 'Q1', now() - interval '3 days')`, [C1]);
+  await goi(UID.thuNganA, `select tro_ly_dang_truc() as r`);
+  ok('Màn theo dõi đang mở cũng dọn (tro_ly_don_dep): chat chỉ có nhân viên vẫn được che số',
+    (await db.query(`select noi_dung from tro_ly_tin where cuoc_id = $1 and noi_dung like 'Số em%'`, [C1])).rows[0]?.noi_dung === 'Số em [số điện thoại]');
   ok('Tin nhân viên quá một ngày đã che số; tin hôm nay giữ nguyên', che.at(-1)?.noi_dung === 'Dạ chị gọi em [số điện thoại] nhé' && che.at(-1)?.da_che === true
     && che[0].noi_dung === 'Dạ quán giao quận 7 ạ, số quán 028 3822 1234' && che[0].da_che === false, JSON.stringify(che));
 });

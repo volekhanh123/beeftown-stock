@@ -287,6 +287,8 @@ const veGap = lh.hotline ? CHU_TRO_LY.veGapGoi[nn](lh.hotline) : CHU_TRO_LY.veGa
       document.documentElement.classList.add('tlt-khoa');
       hop!.showModal();
       o!.focus();
+      // Mở lại khung thì hỏi lại từ đầu, kể cả khi lần trước công tắc đang tắt.
+      tatXem = false;
       void xem();
     }
 
@@ -365,7 +367,8 @@ const veGap = lh.hotline ? CHU_TRO_LY.veGapGoi[nn](lh.hotline) : CHU_TRO_LY.veGa
       if (tatXem || !hop!.open || document.hidden) return;
       // Chưa gửi tin nào thì cuộc chưa có trên database: chỉ hỏi một lần lúc mở (có nhân viên trực không).
       if (cheDo !== 'nhan_vien' && !coCuoc) return;
-      const nhip = cheDo === 'nhan_vien' ? NHIP_XEM.nhanVien : NHIP_XEM.trang;
+      // Chưa ai mở màn theo dõi thì không ai nhận được cuộc này: hỏi thưa (chỉ để biết khi có người trực).
+      const nhip = cheDo === 'nhan_vien' ? NHIP_XEM.nhanVien : truc ? NHIP_XEM.trang : NHIP_XEM.khongTruc;
       henXem = setTimeout(() => { void xem(); }, Math.min(NHIP_XEM.loiToiDa, nhip * 2 ** loiXem));
     }
     async function xem() {

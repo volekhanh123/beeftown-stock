@@ -2726,6 +2726,8 @@ try {
       ok('"Đơn của bạn" tính lại đúng tổng của thẻ', tamTinh === dinhDangTien(td.tamTinh), tamTinh);
       await chupTrang('5-da-cho-vao-don');
 
+      // Từ đây có nhân viên mở màn theo dõi (giả): mở lại khung thì khung hỏi lại 8 giây một lần (chưa ai trực: 30 giây).
+      mayGia.troLyNhanVien({ viec: 'truc', bat: true });
       // Mất mạng: Edge Function giả trả 502 lần đầu → câu "chưa được trả lời" + Gửi lại cùng mã tin → trả lời.
       await p.locator('[data-tlt-mo]').click();
       await p.locator('[data-tlt-o]').fill('lỗi mạng thử');
@@ -2807,7 +2809,9 @@ try {
       mayGia.troLyNhanVien({ viec: 'truc', bat: false });
       // Đóng bằng nút: trang phía sau cuộn lại được.
       await p.locator('[data-tlt-dong]').click();
-      ok('Đóng khung: hết khóa cuộn trang', !(await p.evaluate(() => document.documentElement.classList.contains('tlt-khoa'))));
+      // Sự kiện close của <dialog> chạy ở tác vụ sau: chờ tới 2 giây.
+      const hetKhoa = await p.waitForFunction(() => !document.documentElement.classList.contains('tlt-khoa'), null, { timeout: 2000 }).then(() => true, () => false);
+      ok('Đóng khung: hết khóa cuộn trang', hetKhoa);
       ok('Cả nhóm không lỗi JavaScript', loiJs.length === 0, loiJs.join(' | '));
     } finally {
       await c.close();

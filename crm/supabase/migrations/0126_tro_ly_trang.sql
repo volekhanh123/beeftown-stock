@@ -202,8 +202,7 @@ comment on column tro_ly_luot.bo_tin is
 create index tro_ly_luot_created_at_idx on tro_ly_luot (created_at);
 
 alter table tro_ly_luot enable row level security;
-create policy tro_ly_luot_doc on tro_ly_luot
-  for select using ((select co_vai_tro(array['chu_so_huu', 'quan_ly']::vai_tro[])));
+-- Policy đọc đặt ở mục 3b (cần tro_ly_cuoc để biết chi nhánh của cuộc chat).
 
 
 -- =============================================================================
@@ -279,6 +278,29 @@ alter table tro_ly_cuoc enable row level security;
 alter table tro_ly_tin enable row level security;
 alter table tro_ly_truc enable row level security;
 
+-- Nhật ký tro_ly_luot: chủ đọc mọi cuộc; quản lý chỉ cuộc của chi nhánh mình (như hộp thư đơn mua thịt, và như trang
+-- Quyền riêng tư nói). tro_ly_cuoc không vai nào đọc thẳng, nên tra chi nhánh của cuộc bằng hàm definer.
+create or replace function tro_ly_luot_duoc_doc(p_cuoc uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from nhan_su ns
+    where ns.auth_uid = auth.uid() and ns.dang_lam
+      and (ns.vai_tro = 'chu_so_huu'
+           or (ns.vai_tro = 'quan_ly'
+               and ns.chi_nhanh_id = (select c.chi_nhanh_id from tro_ly_cuoc c where c.id = p_cuoc))))
+$$;
+
+comment on function tro_ly_luot_duoc_doc(uuid) is
+  'Policy đọc nhật ký Trang (0126): chủ mọi cuộc, quản lý cuộc của chi nhánh mình.';
+
+create policy tro_ly_luot_doc on tro_ly_luot
+  for select using (tro_ly_luot_duoc_doc(cuoc_id));
+
 
 -- =============================================================================
 -- 4 · HAI HÀM CỦA EDGE FUNCTION
@@ -345,6 +367,40 @@ begin
   end if;
   insert into tro_ly_tin (cuoc_id, nguoi, noi_dung) values (p_cuoc, 'he_thong', 'trang_quay_lai');
   return true;
+end;
+$$;
+
+-- Dọn dần, mỗi lần một ít (như gioi_han_lay_luot của 0084): nhật ký quá 180 ngày; cuộc chat quá 180 ngày không tin mới
+-- (tin của nó xóa theo); tin nhân viên quá một ngày thì che số. Gọi từ lượt Trang (tro_ly_ghi_luot), tin nhân viên
+-- (tro_ly_nv_gui) và màn theo dõi (tro_ly_dang_truc) — chat chỉ có nhân viên vẫn được dọn. Công tắc tắt, không ai mở
+-- màn theo dõi thì dòng cũ chờ tới lần kế tiếp (web/README.md, "Trợ lý Trang").
+create or replace function tro_ly_don_dep()
+returns void
+language plpgsql
+volatile
+security definer
+set search_path = public
+as $$
+begin
+  delete from tro_ly_luot
+  where id in (select l.id from tro_ly_luot l
+               where l.created_at < now() - interval '180 days'
+               order by l.created_at
+               limit 50
+               for update skip locked);
+  delete from tro_ly_cuoc
+  where id in (select c.id from tro_ly_cuoc c
+               where c.tin_cuoi_luc < now() - interval '180 days'
+               order by c.tin_cuoi_luc
+               limit 20
+               for update skip locked);
+  update tro_ly_tin
+     set noi_dung = tro_ly_che_so(noi_dung), da_che = true
+   where id in (select t.id from tro_ly_tin t
+                where t.nguoi = 'nhan_vien' and not t.da_che and t.created_at < now() - interval '1 day'
+                order by t.id
+                limit 50
+                for update skip locked);
 end;
 $$;
 
@@ -560,10 +616,13 @@ begin
     v_ly := case when coalesce((v_so ->> 'doi_nguoi')::boolean, false) then 'gap_nguoi'
                  when coalesce((v_tl ->> 'chuyen_nguoi')::boolean, false) then 'chuyen_nguoi'
                  when coalesce((v_tl ->> 'chot')::boolean, false) then 'chot_don' end;
+    -- Nhân viên đã nhận trong lúc Claude đang trả lời: tin Trang vẫn ghi (khách đã thấy), lý do cần người thì không.
     update tro_ly_cuoc
        set tin_cuoi_luc  = now(),
-           can_nguoi     = case when tro_ly_hang_can_nguoi(v_ly) > tro_ly_hang_can_nguoi(can_nguoi) then v_ly else can_nguoi end,
-           can_nguoi_luc = case when tro_ly_hang_can_nguoi(v_ly) > tro_ly_hang_can_nguoi(can_nguoi) then now() else can_nguoi_luc end
+           can_nguoi     = case when ai_tra_loi = 'trang' and tro_ly_hang_can_nguoi(v_ly) > tro_ly_hang_can_nguoi(can_nguoi)
+                                then v_ly else can_nguoi end,
+           can_nguoi_luc = case when ai_tra_loi = 'trang' and tro_ly_hang_can_nguoi(v_ly) > tro_ly_hang_can_nguoi(can_nguoi)
+                                then now() else can_nguoi_luc end
      where id = p_cuoc;
   end if;
 
@@ -576,27 +635,7 @@ begin
       set so_lan_hoi = tro_ly_so_hoc.so_lan_hoi + 1, hoi_lan_cuoi = now();
   end if;
 
-  -- Dọn dần, mỗi lượt một ít (như gioi_han_lay_luot của 0084): nhật ký quá 180 ngày; cuộc chat quá 180 ngày không tin
-  -- mới (tin của nó xóa theo); tin nhân viên quá một ngày thì che số.
-  delete from tro_ly_luot
-  where id in (select l.id from tro_ly_luot l
-               where l.created_at < now() - interval '180 days'
-               order by l.created_at
-               limit 50
-               for update skip locked);
-  delete from tro_ly_cuoc
-  where id in (select c.id from tro_ly_cuoc c
-               where c.tin_cuoi_luc < now() - interval '180 days'
-               order by c.tin_cuoi_luc
-               limit 20
-               for update skip locked);
-  update tro_ly_tin
-     set noi_dung = tro_ly_che_so(noi_dung), da_che = true
-   where id in (select t.id from tro_ly_tin t
-                where t.nguoi = 'nhan_vien' and not t.da_che and t.created_at < now() - interval '1 day'
-                order by t.id
-                limit 50
-                for update skip locked);
+  perform tro_ly_don_dep();
   return true;
 end;
 $$;
@@ -664,13 +703,11 @@ stable
 security definer
 set search_path = public
 as $$
-  select exists (select 1 from nhan_su
-                 where auth_uid = auth.uid() and dang_lam
-                   and vai_tro in ('chu_so_huu', 'quan_ly', 'thu_ngan'))
+  select don_mua_thit_duoc_xem()
 $$;
 
 comment on function tro_ly_duoc_ho_tro() is
-  'Người đăng nhập theo dõi và nhận được chat của Trang (0126): chủ, quản lý, thu ngân đang làm — như don_mua_thit_duoc_xem(). Chi nhánh lọc thêm bằng tro_ly_thay_cuoc().';
+  'Người đăng nhập theo dõi và nhận được chat của Trang (0126): đúng người xem được hộp thư đơn mua thịt (don_mua_thit_duoc_xem, 0113 — chủ, quản lý, thu ngân đang làm). Chi nhánh lọc thêm bằng tro_ly_thay_cuoc().';
 
 create or replace function tro_ly_thay_cuoc(p_chi_nhanh_id uuid)
 returns boolean
@@ -708,11 +745,15 @@ set search_path = public
 as $$
 declare
   v_toi uuid;
+  v_cn  uuid[];
+  v_chu boolean;
 begin
   if not tro_ly_duoc_ho_tro() then
     raise exception 'Không có quyền xem chat của Trang' using errcode = 'insufficient_privilege';
   end if;
   v_toi := (nhan_su_hien_tai()).id;
+  v_cn := crm_cn_duoc();
+  v_chu := (nhan_su_hien_tai()).vai_tro = 'chu_so_huu';
   return query
   select c.id, cn.ten, c.ai_tra_loi, ns.ho_ten, coalesce(c.nhan_vien_id = v_toi, false), c.can_nguoi, c.can_nguoi_luc,
          c.so_tin_khach,
@@ -722,7 +763,7 @@ begin
   left join chi_nhanh cn on cn.id = c.chi_nhanh_id
   left join nhan_su ns on ns.id = c.nhan_vien_id
   where (c.ai_tra_loi = 'nhan_vien' or c.tin_cuoi_luc > now() - interval '2 hours')
-    and tro_ly_thay_cuoc(c.chi_nhanh_id)
+    and (c.chi_nhanh_id = any (v_cn) or (c.chi_nhanh_id is null and v_chu))
   order by (c.ai_tra_loi = 'trang' and c.can_nguoi is not null) desc,
            tro_ly_hang_can_nguoi(case when c.ai_tra_loi = 'trang' then c.can_nguoi end) desc,
            (c.ai_tra_loi = 'nhan_vien') desc,
@@ -880,6 +921,7 @@ begin
   insert into tro_ly_tin (cuoc_id, nguoi, noi_dung, nhan_vien_id, ten_hien, ma_tin)
   values (p_cuoc, 'nhan_vien', v_chu, v_toi.id, tro_ly_ten_goi(v_toi.ho_ten), p_ma_tin);
   update tro_ly_cuoc set tin_cuoi_luc = now(), nhan_vien_go_luc = null where id = p_cuoc;
+  perform tro_ly_don_dep();
   return 'da_gui';
 end;
 $$;
@@ -927,6 +969,7 @@ begin
   insert into tro_ly_truc (nhan_su_id, chi_nhanh_id, luc)
   values (v_toi.id, case when v_toi.vai_tro = 'chu_so_huu' then null else v_toi.chi_nhanh_id end, now())
   on conflict (nhan_su_id) do update set chi_nhanh_id = excluded.chi_nhanh_id, luc = excluded.luc;
+  perform tro_ly_don_dep();
   return true;
 end;
 $$;
@@ -1128,7 +1171,7 @@ $$;
 -- 6 · QUYỀN
 -- =============================================================================
 -- Sổ học: sửa thẳng bảng qua RLS (như 0117) — thêm, sửa đúng bốn ô hoi, dap, trang_thai, nguon; người duyệt, giờ duyệt,
--- số lần hỏi do database ghi. Nhật ký: chỉ đọc (chủ, quản lý — RLS); không ai ghi trực tiếp.
+-- số lần hỏi do database ghi. Nhật ký: chỉ đọc (chủ mọi cuộc, quản lý cuộc của chi nhánh mình — RLS); không ai ghi trực tiếp.
 -- Cuộc chat, tin nhắn, nhân viên trực: không vai nào đọc / ghi thẳng bảng (RLS bật, không policy) — chỉ qua hàm.
 -- Ba hàm của Edge Function: chỉ service_role. Bảy hàm nhân viên (mục 4b): authenticated, tự kiểm vai và chi nhánh.
 -- Hàm nội bộ (che số, tên gọi, trực, tự trả lại, hạng, quyền): thu khỏi mọi vai — chỉ hàm definer gọi.
@@ -1173,19 +1216,21 @@ revoke execute on function tro_ly_tra_cuoc(uuid) from public;
 revoke execute on function tro_ly_nv_gui(uuid, uuid, text) from public;
 revoke execute on function tro_ly_nv_dang_go(uuid) from public;
 revoke execute on function tro_ly_dang_truc() from public;
+revoke execute on function tro_ly_don_dep() from public;
+revoke execute on function tro_ly_luot_duoc_doc(uuid) from public;
 do $$
 declare
   v_noi_bo text[] := array[
     'tro_ly_mo_luot(uuid, uuid, text, inet, text)', 'tro_ly_ghi_luot(uuid, uuid, jsonb)', 'tro_ly_xem(uuid, bigint, text)',
     'tro_ly_che_so(text)', 'tro_ly_so_hoc_ghi_duyet()', 'tro_ly_ten_goi(text)', 'tro_ly_co_truc(uuid)',
-    'tro_ly_tu_tra_lai(uuid)', 'tro_ly_hang_can_nguoi(text)', 'tro_ly_duoc_ho_tro()', 'tro_ly_thay_cuoc(uuid)'];
+    'tro_ly_tu_tra_lai(uuid)', 'tro_ly_hang_can_nguoi(text)', 'tro_ly_duoc_ho_tro()', 'tro_ly_thay_cuoc(uuid)', 'tro_ly_don_dep()'];
   v_nhan_vien text[] := array[
     'tro_ly_ds_cuoc()', 'tro_ly_xem_cuoc(uuid, bigint)', 'tro_ly_nhan_cuoc(uuid)', 'tro_ly_tra_cuoc(uuid)',
     'tro_ly_nv_gui(uuid, uuid, text)', 'tro_ly_nv_dang_go(uuid)', 'tro_ly_dang_truc()'];
   v_ham text;
 begin
   if exists (select 1 from pg_roles where rolname = 'anon') then
-    foreach v_ham in array v_noi_bo || v_nhan_vien loop
+    foreach v_ham in array v_noi_bo || v_nhan_vien || array['tro_ly_luot_duoc_doc(uuid)'] loop
       execute format('revoke execute on function %s from anon', v_ham);
     end loop;
   end if;
@@ -1196,6 +1241,8 @@ begin
     foreach v_ham in array v_nhan_vien loop
       execute format('grant execute on function %s to authenticated', v_ham);
     end loop;
+    -- Policy đọc nhật ký gọi hàm này dưới vai người đọc; nó chỉ trả true / false cho chính người đó.
+    execute 'grant execute on function tro_ly_luot_duoc_doc(uuid) to authenticated';
   end if;
   if exists (select 1 from pg_roles where rolname = 'service_role') then
     execute 'grant execute on function tro_ly_mo_luot(uuid, uuid, text, inet, text) to service_role';
