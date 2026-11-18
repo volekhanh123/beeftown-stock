@@ -547,7 +547,7 @@ await nhom('12 · HÓA ĐƠN ĐỎ (0125): Ô ĐÁNH DẤU, BỐN Ô, CHẠY KH�
     ['hoa_don_ten_don_vi', 'input', toiDa[0], /type="text"/, /autocomplete="organization"/, true],
     ['hoa_don_ma_so_thue', 'input', toiDa[1], /type="text"/, /inputmode="numeric"/, true],
     ['hoa_don_dia_chi', 'textarea', toiDa[2], /^<textarea/, /rows="2"/, false],
-    ['hoa_don_email', 'input', toiDa[3], /type="text"/, /inputmode="email" autocomplete="email"/, true],
+    ['hoa_don_email', 'input', toiDa[3], /type="text"/, /inputmode="email" autocomplete="off"/, true],
   ];
   for (const [ten, the, dai, kieu, them, batBuoc] of BON) {
     const t = o(ten);

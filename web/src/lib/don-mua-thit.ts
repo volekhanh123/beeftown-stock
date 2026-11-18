@@ -221,9 +221,9 @@ export function rutGonMenu(menu: readonly SanPhamMua[]): SanPhamMua[] {
 export const HOA_DON_TOI_DA = { tenDonVi: 200, maSoThue: 20, diaChi: 300, email: 200 } as const;
 
 /** Mọi kiểu gạch ngang khách gõ / dán (bàn phím điện thoại, Word, PDF): U+2010–U+2015, U+2212 → "-". */
-const GACH_NGANG = /[‐-―−]/g;
+const GACH_NGANG = /[\u2010-\u2015\u2212]/g;
 /** Bỏ khỏi mã số thuế: dấu cách (cả cách không ngắt U+00A0, cách hẹp U+202F, ký tự rộng 0 U+200B, U+FEFF), tab, xuống dòng, dấu chấm. */
-const BO_KHOI_MA_SO_THUE = /[ \t\r\n  ​﻿.]/g;
+const BO_KHOI_MA_SO_THUE = /[ \t\r\n\u00a0\u202f\u200b\ufeff.]/g;
 /** Mã số thuế đã chuẩn hóa: 10 số (doanh nghiệp, tổ chức), hoặc 10 số - 3 số (đơn vị phụ thuộc, chi nhánh). */
 export const MAU_MA_SO_THUE = /^[0-9]{10}(?:-[0-9]{3})?$/;
 /** Email nhận hóa đơn: phần trước @ chữ không dấu, số, . _ % + -; tên miền có ít nhất một dấu chấm, đuôi từ hai chữ. */

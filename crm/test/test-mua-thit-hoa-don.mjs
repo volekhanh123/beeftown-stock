@@ -93,7 +93,7 @@ async function tao(ma, ten) {
 // Đặt hàng như trang gọi: mỗi lần một mã chống gửi hai lần, một số điện thoại, một IP. Thông tin hóa đơn mẫu là dữ
 // liệu giả (mã số thuế đúng dạng, tên miền example.com dành riêng cho ví dụ).
 // ---------------------------------------------------------------------------
-const HD = {
+const HOA_DON = {
   ten_don_vi: 'CÔNG TY TNHH THỬ NGHIỆM BÒ TƯƠI',
   ma_so_thue: '0123456789',
   dia_chi: 'Số 1 Đường Thử, Phường Thử Nghiệm, Thành phố Hồ Chí Minh',
@@ -107,7 +107,7 @@ const SQL_DAT = `select tao_don_mua_thit($1::uuid, $2, $3, $4, $5, $6, $7::jsonb
 /** hoaDon: object (gửi dạng JSON), null (không cần hóa đơn), hay chuỗi JSON thô qua hoaDonTho ('"abc"', '[1]', 'null'). */
 async function datHang(them = {}, uid = 'anon') {
   const p = { maGui: maGui(), cn: 'q1', hoTen: 'Nguyễn Thị Hoa', sdt: sdtMoi(), diaChi: '12 Nguyễn Huệ, phường Sài Gòn',
-              ghiChu: null, gio: { 'ribeye-uc_200': 1 }, gia: GIA, nn: 'vi', ip: ipMoi(), hoaDon: HD, ...them };
+              ghiChu: null, gio: { 'ribeye-uc_200': 1 }, gia: GIA, nn: 'vi', ip: ipMoi(), hoaDon: HOA_DON, ...them };
   const hoaDon = 'hoaDonTho' in them ? them.hoaDonTho : p.hoaDon === null ? null : JSON.stringify(p.hoaDon);
   return goi(uid, SQL_DAT, [p.maGui, p.cn, p.hoTen, p.sdt, p.diaChi, p.ghiChu, JSON.stringify(p.gio), JSON.stringify(p.gia),
                             p.nn, p.ip, hoaDon]);
@@ -140,8 +140,8 @@ await nhom('1 · QUYỀN', async () => {
   MA_CO_HOA_DON = r.kq?.ma_don ?? '';
   const d = await dongDon(MA_CO_HOA_DON);
   ok('Đơn ghi đủ năm cột hóa đơn đúng như khách điền',
-     d?.xuat_hoa_don === true && d.hoa_don_ten_don_vi === HD.ten_don_vi && d.hoa_don_ma_so_thue === HD.ma_so_thue
-       && d.hoa_don_dia_chi === HD.dia_chi && d.hoa_don_email === HD.email, JSON.stringify(d));
+     d?.xuat_hoa_don === true && d.hoa_don_ten_don_vi === HOA_DON.ten_don_vi && d.hoa_don_ma_so_thue === HOA_DON.ma_so_thue
+       && d.hoa_don_dia_chi === HOA_DON.dia_chi && d.hoa_don_email === HOA_DON.email, JSON.stringify(d));
 
   const docThang = await duoiAnon(`select hoa_don_ma_so_thue, hoa_don_email from don_mua_thit`);
   ok('anon KHÔNG đọc được cột hóa đơn của bảng', docThang.loi !== null && /permission denied/i.test(docThang.loi), vi(docThang));
@@ -169,8 +169,8 @@ await nhom('1 · QUYỀN', async () => {
     const x = await hopThu(uid);
     const dong = (x.kq ?? []).find(o => o.ma_don === MA_CO_HOA_DON);
     ok(`${ten} thấy đủ năm cột hóa đơn trong hộp thư`,
-       dong?.xuat_hoa_don === true && dong.hoa_don_ten_don_vi === HD.ten_don_vi && dong.hoa_don_ma_so_thue === HD.ma_so_thue
-         && dong.hoa_don_dia_chi === HD.dia_chi && dong.hoa_don_email === HD.email, vi(x));
+       dong?.xuat_hoa_don === true && dong.hoa_don_ten_don_vi === HOA_DON.ten_don_vi && dong.hoa_don_ma_so_thue === HOA_DON.ma_so_thue
+         && dong.hoa_don_dia_chi === HOA_DON.dia_chi && dong.hoa_don_email === HOA_DON.email, vi(x));
   }
   const qlB = await hopThu(UID.qlB);
   ok('Quản lý Q7 KHÔNG thấy đơn có hóa đơn của Q1', qlB.loi === null && !(qlB.kq ?? []).some(o => o.ma_don === MA_CO_HOA_DON), vi(qlB));
@@ -191,14 +191,14 @@ await nhom('2 · BẤM HAI LẦN', async () => {
   const ma = maGui();
   const truoc = await demDon();
   const lan1 = await datHang({ maGui: ma });
-  const lan2 = await datHang({ maGui: ma, hoaDon: { ...HD, ten_don_vi: 'CÔNG TY KHÁC', email: 'khac@example.com' } });
+  const lan2 = await datHang({ maGui: ma, hoaDon: { ...HOA_DON, ten_don_vi: 'CÔNG TY KHÁC', email: 'khac@example.com' } });
   const lan3 = await datHang({ maGui: ma, hoaDon: null });
   ok('Gửi lại cùng mã (đổi thông tin hóa đơn, hay bỏ chọn hóa đơn) → cùng mã đơn, da_co, chỉ một dòng',
      lan1.loi === null && [lan2, lan3].every(l => l.loi === null && l.kq?.da_co === true && l.kq?.ma_don === lan1.kq?.ma_don)
        && (await demDon()) === truoc + 1, [lan1, lan2, lan3].map(vi).join(' | '));
   const d = await dongDon(lan1.kq?.ma_don);
-  ok('Đơn giữ thông tin hóa đơn của lần gửi đầu', d?.xuat_hoa_don === true && d.hoa_don_ten_don_vi === HD.ten_don_vi
-     && d.hoa_don_email === HD.email, JSON.stringify(d));
+  ok('Đơn giữ thông tin hóa đơn của lần gửi đầu', d?.xuat_hoa_don === true && d.hoa_don_ten_don_vi === HOA_DON.ten_don_vi
+     && d.hoa_don_email === HOA_DON.email, JSON.stringify(d));
 });
 
 // ===========================================================================
@@ -209,13 +209,13 @@ const BANG_MA_SO_THUE = [
   ['0123.456.789', '0123456789'],
   ['0123456789-001', '0123456789-001'],
   ['0123456789 - 001', '0123456789-001'],
-  ['0123456789–001', '0123456789-001'],   // gạch ngắn (Word tự đổi)
-  ['0123456789—001', '0123456789-001'],   // gạch dài
-  ['0123456789−001', '0123456789-001'],   // dấu trừ
-  ['0123456789‑001', '0123456789-001'],   // gạch không ngắt
+  ['0123456789\u2013001', '0123456789-001'],   // gạch ngắn (Word tự đổi)
+  ['0123456789\u2014001', '0123456789-001'],   // gạch dài
+  ['0123456789\u2212001', '0123456789-001'],   // dấu trừ
+  ['0123456789\u2011001', '0123456789-001'],   // gạch không ngắt
   ['0123456789001', '0123456789-001'],         // 13 số liền: bàn phím số của điện thoại không có dấu gạch
-  ['0123456789 ', '0123456789'],          // cách không ngắt (dán từ Word)
-  ['​0123456789', '0123456789'],          // ký tự rộng 0 (dán từ PDF)
+  ['0123456789\u00a0', '0123456789'],          // cách không ngắt (dán từ Word)
+  ['\u200b0123456789', '0123456789'],          // ký tự rộng 0 (dán từ PDF)
   ['\t0123456789\n', '0123456789'],
   ['012345678', null],                         // 9 số
   ['01234567890', null],                       // 11 số
@@ -253,7 +253,7 @@ const BANG_EMAIL = [
 await nhom('4 · CHỮ VÀ SỐ: MÃ SỐ THUẾ, EMAIL, TÊN ĐƠN VỊ — WEB VÀ DATABASE CÙNG MỘT LUẬT', async () => {
   await traLuot();
   for (const [vao, ra] of BANG_MA_SO_THUE) {
-    const r = await datHang({ hoaDon: { ...HD, ma_so_thue: vao } });
+    const r = await datHang({ hoaDon: { ...HOA_DON, ma_so_thue: vao } });
     const d = r.kq?.ma_don ? await dongDon(r.kq.ma_don) : null;
     const web = DMT.chuanHoaMaSoThue(vao);
     const loiWeb = DMT.loiOHoaDon('maSoThue', vao);
@@ -272,7 +272,7 @@ await nhom('4 · CHỮ VÀ SỐ: MÃ SỐ THUẾ, EMAIL, TÊN ĐƠN VỊ — WEB
 
   await traLuot();
   for (const [email, nhan] of BANG_EMAIL) {
-    const r = await datHang({ hoaDon: { ...HD, email } });
+    const r = await datHang({ hoaDon: { ...HOA_DON, email } });
     const loiWeb = DMT.loiOHoaDon('email', email);
     ok(`Email "${email.length > 40 ? `${email.slice(0, 12)}… (${email.length} ký tự)` : email}": database ${nhan ? 'nhận' : 'từ chối'}, web cũng vậy`,
        nhan ? r.loi === null && loiWeb === null : r.loi !== null && /Email (nhận hóa đơn không đúng dạng|dài quá 200 ký tự)/.test(r.loi) && loiWeb === 'saiEmailHoaDon',
@@ -285,7 +285,7 @@ await nhom('4 · CHỮ VÀ SỐ: MÃ SỐ THUẾ, EMAIL, TÊN ĐƠN VỊ — WEB
   await traLuot();
   const tenVao = '  CÔNG TY TNHH   THƯƠNG MẠI\n ĐÔNG Á  ';
   const diaChiVao = '  Tầng 5,\n 12 Lê Lợi, Phường Bến Thành  ';
-  const r = await datHang({ hoaDon: { ...HD, ten_don_vi: tenVao, dia_chi: diaChiVao } });
+  const r = await datHang({ hoaDon: { ...HOA_DON, ten_don_vi: tenVao, dia_chi: diaChiVao } });
   const d = await dongDon(r.kq?.ma_don);
   const f = new FormData();
   for (const [k, v] of Object.entries({ xuat_hoa_don: 'co', hoa_don_ten_don_vi: tenVao, hoa_don_dia_chi: diaChiVao, hoa_don_ma_so_thue: '0123456789', hoa_don_email: 'ketoan@example.com' })) f.append(k, v);
@@ -293,10 +293,21 @@ await nhom('4 · CHỮ VÀ SỐ: MÃ SỐ THUẾ, EMAIL, TÊN ĐƠN VỊ — WEB
   ok('Tên đơn vị, địa chỉ đơn vị có dấu nguyên vẹn, khoảng trắng và xuống dòng gộp thành một dấu cách — database và web như nhau',
      d?.hoa_don_ten_don_vi === 'CÔNG TY TNHH THƯƠNG MẠI ĐÔNG Á' && d.hoa_don_dia_chi === 'Tầng 5, 12 Lê Lợi, Phường Bến Thành'
        && web?.tenDonVi === d.hoa_don_ten_don_vi && web?.diaChi === d.hoa_don_dia_chi, `${JSON.stringify(d)} · ${JSON.stringify(web)}`);
-  const trong = await datHang({ hoaDon: { ...HD, dia_chi: '   \n ' } });
+  // Cách không ngắt (U+00A0, U+202F — dán từ Word): database đổi thành dấu cách như \s của web.
+  const [nbsp, hep] = [String.fromCharCode(0xa0), String.fromCharCode(0x202f)];
+  const tenDan = `CÔNG TY${nbsp}TNHH${hep}${nbsp}ĐÔNG Á${nbsp}`;
+  const dan = await datHang({ hoaDon: { ...HOA_DON, ten_don_vi: tenDan, dia_chi: `Tầng${nbsp}5` } });
+  const dd = await dongDon(dan.kq?.ma_don);
+  const fd = new FormData();
+  for (const [k, v] of Object.entries({ xuat_hoa_don: 'co', hoa_don_ten_don_vi: tenDan, hoa_don_dia_chi: `Tầng${nbsp}5`, hoa_don_ma_so_thue: '0123456789', hoa_don_email: 'ketoan@example.com' })) fd.append(k, v);
+  const webDan = DH.docDonGui(fd).hoaDon;
+  ok('Tên, địa chỉ đơn vị có cách không ngắt (dán từ Word) → database và web cùng lưu dấu cách thường',
+     dd?.hoa_don_ten_don_vi === 'CÔNG TY TNHH ĐÔNG Á' && dd.hoa_don_dia_chi === 'Tầng 5'
+       && webDan?.tenDonVi === dd.hoa_don_ten_don_vi && webDan?.diaChi === dd.hoa_don_dia_chi, `${JSON.stringify(dd)} · ${JSON.stringify(webDan)}`);
+  const trong = await datHang({ hoaDon: { ...HOA_DON, dia_chi: '   \n ' } });
   const dt = await dongDon(trong.kq?.ma_don);
   ok('Địa chỉ đơn vị không bắt buộc: để trống (chỉ khoảng trắng) → null, đơn vẫn ghi', trong.loi === null && dt?.hoa_don_dia_chi === null, vi(trong));
-  const thieuDiaChi = await datHang({ hoaDon: { ten_don_vi: HD.ten_don_vi, ma_so_thue: HD.ma_so_thue, email: HD.email } });
+  const thieuDiaChi = await datHang({ hoaDon: { ten_don_vi: HOA_DON.ten_don_vi, ma_so_thue: HOA_DON.ma_so_thue, email: HOA_DON.email } });
   ok('Thiếu hẳn khóa dia_chi → null, đơn vẫn ghi', thieuDiaChi.loi === null && (await dongDon(thieuDiaChi.kq?.ma_don))?.hoa_don_dia_chi === null, vi(thieuDiaChi));
 });
 
@@ -306,14 +317,14 @@ await nhom('5 · LUẬT CỦA HÀM: BẮT BUỘC, ĐỘ DÀI, DẠNG p_hoa_don; 
   const truoc = await demDon();
   const luotTruoc = Number((await db.query(`select count(*) n from gioi_han_luot where viec = 'tao_don_mua_thit'`)).rows[0].n);
   const CA = [
-    ['Tên đơn vị trống', { hoaDon: { ...HD, ten_don_vi: '  \n ' } }, /^Chưa điền tên đơn vị xuất hóa đơn/],
-    ['Thiếu khóa ten_don_vi', { hoaDon: { ma_so_thue: HD.ma_so_thue, email: HD.email } }, /^Chưa điền tên đơn vị xuất hóa đơn/],
-    ['Tên đơn vị 201 ký tự', { hoaDon: { ...HD, ten_don_vi: 'Đ'.repeat(201) } }, /^Tên đơn vị dài quá 200 ký tự/],
-    ['Mã số thuế 9 số', { hoaDon: { ...HD, ma_so_thue: '012345678' } }, /^Mã số thuế phải gồm 10 số/],
+    ['Tên đơn vị trống', { hoaDon: { ...HOA_DON, ten_don_vi: '  \n ' } }, /^Chưa điền tên đơn vị xuất hóa đơn/],
+    ['Thiếu khóa ten_don_vi', { hoaDon: { ma_so_thue: HOA_DON.ma_so_thue, email: HOA_DON.email } }, /^Chưa điền tên đơn vị xuất hóa đơn/],
+    ['Tên đơn vị 201 ký tự', { hoaDon: { ...HOA_DON, ten_don_vi: 'Đ'.repeat(201) } }, /^Tên đơn vị dài quá 200 ký tự/],
+    ['Mã số thuế 9 số', { hoaDon: { ...HOA_DON, ma_so_thue: '012345678' } }, /^Mã số thuế phải gồm 10 số/],
     ['Mã số thuế là số JSON (mất số 0 đầu)', { hoaDonTho: '{"ten_don_vi":"Công ty A","ma_so_thue":123456789,"email":"a@example.com"}' }, /^Mã số thuế phải gồm 10 số/],
-    ['Địa chỉ đơn vị 301 ký tự', { hoaDon: { ...HD, dia_chi: 'đ'.repeat(301) } }, /^Địa chỉ đơn vị dài quá 300 ký tự/],
-    ['Email trống', { hoaDon: { ...HD, email: '   ' } }, /^Chưa điền email nhận hóa đơn/],
-    ['Email sai dạng', { hoaDon: { ...HD, email: 'ketoan@' } }, /^Email nhận hóa đơn không đúng dạng/],
+    ['Địa chỉ đơn vị 301 ký tự', { hoaDon: { ...HOA_DON, dia_chi: 'đ'.repeat(301) } }, /^Địa chỉ đơn vị dài quá 300 ký tự/],
+    ['Email trống', { hoaDon: { ...HOA_DON, email: '   ' } }, /^Chưa điền email nhận hóa đơn/],
+    ['Email sai dạng', { hoaDon: { ...HOA_DON, email: 'ketoan@' } }, /^Email nhận hóa đơn không đúng dạng/],
     ['p_hoa_don là chuỗi', { hoaDonTho: '"0123456789"' }, /^Thông tin xuất hóa đơn không đúng dạng/],
     ['p_hoa_don là mảng', { hoaDonTho: '["CÔNG TY A", "0123456789"]' }, /^Thông tin xuất hóa đơn không đúng dạng/],
   ];

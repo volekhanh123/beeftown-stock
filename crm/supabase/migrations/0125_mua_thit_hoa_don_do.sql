@@ -125,10 +125,10 @@ declare
   r         record;
   -- 0125 · hóa đơn đỏ
   v_xuat_hoa_don boolean := p_hoa_don is not null and jsonb_typeof(p_hoa_don) <> 'null';
-  v_hd_ten       text;
-  v_hd_ma_so_thue text;
-  v_hd_dia_chi   text;
-  v_hd_email     text;
+  v_hoa_don_ten       text;
+  v_hoa_don_ma_so_thue text;
+  v_hoa_don_dia_chi   text;
+  v_hoa_don_email     text;
 begin
   if not mua_thit_ve_kenh_mo() then
     raise exception 'Mua thịt về qua website đang tạm đóng'
@@ -180,37 +180,40 @@ begin
     if jsonb_typeof(p_hoa_don) <> 'object' then
       raise exception 'Thông tin xuất hóa đơn không đúng dạng' using errcode = 'check_violation';
     end if;
-    v_hd_ten := btrim(regexp_replace(coalesce(p_hoa_don ->> 'ten_don_vi', ''), '\s+', ' ', 'g'));
-    if v_hd_ten = '' then
+    -- Cách không ngắt (U+00A0, U+202F — dán từ Word) thành dấu cách trước khi gộp: \s của Postgres không chắc nhận
+    -- chúng, \s của web (motDong) thì có — hai bên lưu cùng một chuỗi.
+    v_hoa_don_ten := btrim(regexp_replace(translate(coalesce(p_hoa_don ->> 'ten_don_vi', ''), E'\u00a0\u202f', '  '), '\s+', ' ', 'g'));
+    if v_hoa_don_ten = '' then
       raise exception 'Chưa điền tên đơn vị xuất hóa đơn' using errcode = 'check_violation';
     end if;
-    if char_length(v_hd_ten) > 200 then
+    if char_length(v_hoa_don_ten) > 200 then
       raise exception 'Tên đơn vị dài quá 200 ký tự' using errcode = 'check_violation';
     end if;
     -- Mọi kiểu gạch ngang (bàn phím điện thoại, Word, PDF: U+2010–U+2015, U+2212) thành "-"; bỏ dấu cách (cả cách
     -- không ngắt U+00A0, cách hẹp U+202F, ký tự rộng 0 U+200B, U+FEFF), tab, xuống dòng, dấu chấm; 13 số liền nhau
     -- thành 10 số - 3 số. (repeat thay cho bảy dấu gạch viết liền: bộ đọc migration của repo coi hai gạch là chú thích.)
-    v_hd_ma_so_thue := translate(
-      translate(coalesce(p_hoa_don ->> 'ma_so_thue', ''), E'‐‑‒–—―−', repeat('-', 7)),
-      E' \t\r\n  ​﻿.', '');
-    if v_hd_ma_so_thue ~ '^[0-9]{13}$' then
-      v_hd_ma_so_thue := substr(v_hd_ma_so_thue, 1, 10) || '-' || substr(v_hd_ma_so_thue, 11, 3);
+    v_hoa_don_ma_so_thue := translate(
+      translate(coalesce(p_hoa_don ->> 'ma_so_thue', ''), E'\u2010\u2011\u2012\u2013\u2014\u2015\u2212', repeat('-', 7)),
+      E' \t\r\n\u00a0\u202f\u200b\ufeff.', '');
+    if v_hoa_don_ma_so_thue ~ '^[0-9]{13}$' then
+      v_hoa_don_ma_so_thue := substr(v_hoa_don_ma_so_thue, 1, 10) || '-' || substr(v_hoa_don_ma_so_thue, 11, 3);
     end if;
-    if v_hd_ma_so_thue !~ '^[0-9]{10}(-[0-9]{3})?$' then
+    if v_hoa_don_ma_so_thue !~ '^[0-9]{10}(-[0-9]{3})?$' then
       raise exception 'Mã số thuế phải gồm 10 số, hoặc 10 số - 3 số' using errcode = 'check_violation';
     end if;
-    v_hd_dia_chi := nullif(btrim(regexp_replace(coalesce(p_hoa_don ->> 'dia_chi', ''), '\s+', ' ', 'g')), '');
-    if char_length(v_hd_dia_chi) > 300 then
+    v_hoa_don_dia_chi := nullif(btrim(regexp_replace(translate(coalesce(p_hoa_don ->> 'dia_chi', ''), E'\u00a0\u202f', '  '),
+                                                    '\s+', ' ', 'g')), '');
+    if char_length(v_hoa_don_dia_chi) > 300 then
       raise exception 'Địa chỉ đơn vị dài quá 300 ký tự' using errcode = 'check_violation';
     end if;
-    v_hd_email := btrim(coalesce(p_hoa_don ->> 'email', ''));
-    if v_hd_email = '' then
+    v_hoa_don_email := btrim(coalesce(p_hoa_don ->> 'email', ''));
+    if v_hoa_don_email = '' then
       raise exception 'Chưa điền email nhận hóa đơn' using errcode = 'check_violation';
     end if;
-    if char_length(v_hd_email) > 200 then
+    if char_length(v_hoa_don_email) > 200 then
       raise exception 'Email dài quá 200 ký tự' using errcode = 'check_violation';
     end if;
-    if v_hd_email !~ '^[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+\.)+[A-Za-z]{2,}$' then
+    if v_hoa_don_email !~ '^[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+\.)+[A-Za-z]{2,}$' then
       raise exception 'Email nhận hóa đơn không đúng dạng' using errcode = 'check_violation';
     end if;
   end if;
@@ -292,7 +295,7 @@ begin
                             xuat_hoa_don, hoa_don_ten_don_vi, hoa_don_ma_so_thue, hoa_don_dia_chi, hoa_don_email)
   values (sinh_ma_don_mua_thit(), p_ma_gui, v_cn.id, v_ho_ten, v_sdt, v_dia_chi, v_ghi_chu, v_dong, v_tong,
           case when p_ngon_ngu in ('vi', 'en', 'ko') then p_ngon_ngu else 'vi' end,
-          v_xuat_hoa_don, v_hd_ten, v_hd_ma_so_thue, v_hd_dia_chi, v_hd_email)
+          v_xuat_hoa_don, v_hoa_don_ten, v_hoa_don_ma_so_thue, v_hoa_don_dia_chi, v_hoa_don_email)
   returning * into v_don;
 
   return jsonb_build_object('ma_don', v_don.ma_don, 'tam_tinh', v_don.tam_tinh, 'da_co', false);
