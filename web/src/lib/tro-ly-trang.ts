@@ -100,8 +100,11 @@ export const CACH_DONG_AO: Readonly<Record<1 | 2 | 3, CachDong>> = {
   },
 };
 
-/** Cách Khánh chọn — tạm cách 1 cho tới khi Khánh chọn (ảnh ba cách: web/kiem-tra/anh-chup/tro-ly-trang/). */
-export const CACH_DONG_AO_CHON: 1 | 2 | 3 = 1;
+/**
+ * Khánh chọn cách 3 ngày 18/11/2026 ("Cách này", ảnh 9-dong-cach-3 của web/kiem-tra/anh-chup/tro-ly-trang/). Chưa nhân
+ * viên nào mở màn theo dõi thì dongAo trả cách 1 — khung không bao giờ nói "có nhân viên theo dõi" khi không có ai.
+ */
+export const CACH_DONG_AO_CHON: 1 | 2 | 3 = 3;
 
 /** Chữ của dòng dưới tên Trang lúc này: cách cần nhân viên trực mà chưa ai trực thì dùng cách 1. */
 export function dongAo(cach: 1 | 2 | 3, truc: boolean): CachDong {

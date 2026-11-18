@@ -261,8 +261,10 @@ thức năm phần thịt, bảng từ, máy giữ tiếng Việt, nhịp trả 
 **Đúng một chỗ khách biết đây là AI** (Khánh 18/11/2026 13:45: "dòng gạch dưới thôi, ai click vào mới thể hiện rõ"): dòng
 gạch dưới nhỏ, màu xám, cố định ngay dưới tên Trang, hiện từ lúc mở khung, chữ hiện sẵn luôn có **"trợ lý ảo"** — ba cách
 ghi ở `CACH_DONG_AO` của `src/lib/tro-ly-trang.ts` (1 "Trang là trợ lý ảo của Beeftown" · 2 "Trợ lý ảo · Chính sách tư
-vấn" · 3 "Tư vấn bằng trợ lý ảo, có nhân viên theo dõi" — cách 3 chỉ hiện khi thật sự có nhân viên mở màn theo dõi), đang
-dùng `CACH_DONG_AO_CHON` = 1, **chờ Khánh chọn** (ảnh `kiem-tra/anh-chup/tro-ly-trang/9-dong-cach-*`). Bấm dòng đó mở
+vấn" · 3 "Tư vấn bằng trợ lý ảo, có nhân viên theo dõi" — cách 3 chỉ hiện khi thật sự có nhân viên mở màn theo dõi).
+**Khánh chọn cách 3** ngày 18/11/2026 (`CACH_DONG_AO_CHON` = 3; ảnh `kiem-tra/anh-chup/tro-ly-trang/9-dong-cach-*`,
+`12-co-nhan-vien-truc`): chưa nhân viên nào mở màn theo dõi — kể cả từ giờ tới khi màn đó làm xong — thì khách thấy cách
+1 "Trang là trợ lý ảo của Beeftown", không bao giờ thấy "có nhân viên theo dõi" khi không có ai. Bấm dòng đó mở
 khung giải thích: Trang là trợ lý ảo (AI) trả lời theo thông tin quán đã duyệt; cách gặp nhân viên (có người trực thì
 "nhân viên đang theo dõi"); giá do bảng giá; tin được lưu, số điện thoại và địa chỉ được che; link mục chat ở trang Quyền
 riêng tư (`#tro-ly-trang`, vi / en / ko — nói Anthropic, 180 ngày). Chỉ "Chính sách tư vấn" thì không đạt: khách không

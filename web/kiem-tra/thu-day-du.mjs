@@ -2730,6 +2730,15 @@ try {
       mayGia.troLyNhanVien({ viec: 'truc', bat: true });
       // Mất mạng: Edge Function giả trả 502 lần đầu → câu "chưa được trả lời" + Gửi lại cùng mã tin → trả lời.
       await p.locator('[data-tlt-mo]').click();
+      // Mở lại khung lúc có người trực: dòng dưới tên Trang đổi sang cách đã chọn khi có người trực (Khánh chọn cách 3).
+      const coTruc = dongAo(CACH_DONG_AO_CHON, true);
+      const chuCoTruc = coTruc.dau.vi + coTruc.gach.vi;
+      const doiDong = await p.waitForFunction(chu => (document.querySelector('[data-tlt-ai-dong]')?.textContent ?? '').replace(/\s+/g, ' ').trim() === chu,
+        chuCoTruc, { timeout: 5000 }).then(() => true, () => false);
+      ok(`Có nhân viên trực: dòng dưới tên Trang thành "${chuCoTruc}" ngay khi mở lại khung (chưa ai trực thì là "${chuDong}")`,
+        doiDong && (CACH_DONG_AO_CHON !== 3 || (chuCoTruc === CACH_DONG_AO[3].gach.vi && chuDong === CACH_DONG_AO[1].gach.vi)),
+        motDong(await p.locator('[data-tlt-ai-dong]').innerText()));
+      await chupTrang('12-co-nhan-vien-truc');
       await p.locator('[data-tlt-o]').fill('lỗi mạng thử');
       await p.locator('[data-tlt-gui]').click();
       const heThong = p.locator('.tlt-he-thong', { hasText: CHU_TRO_LY.chuaTraLoi.vi });
