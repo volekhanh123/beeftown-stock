@@ -123,6 +123,11 @@ await nhom('2 · MÁY KIỂM TIẾNG VIỆT VÀ CHỮ CẤM', async () => {
     ['Dạ em là trợ lý AI của Beeftown ạ', true], ['Dạ em là chatbot của quán ạ', true], ['Dạ trang tự động tính tiền ạ', true],
     ['Em dùng trí tuệ nhân tạo ạ', true], ['Dạ em là A.I. ạ', true],
     ['Dạ em là trợ lý ảo của Beeftown ạ', false], ['Nhà mình có ai ăn cay không ạ?', false], ['Ai ăn tái được thì lấy diềm thăn ạ', false],
+    // Bộ chấm lần 1 (#30, #41): nói như đang làm việc ngoài khung nhắn tin.
+    ['Dạ giờ giao buổi tối khoảng 7 giờ em ghi lại giúp anh/chị ở phần ghi chú khi đặt hàng ạ.', true], ['Dạ được ạ, anh chờ em một chút nhé.', true],
+    ['Để em báo nhân viên nhé', true], ['Dạ em sẽ báo quán ạ', true], ['Để em kiểm tra lại ạ', true],
+    ['Anh/chị ghi giờ muốn nhận ở ô Ghi chú khi đặt nhé.', false], ['Dạ em ghi 3 gói diềm thăn bò cho chị ạ.', false],
+    ['Dạ mỗi phần hợp một gu nên em hỏi anh/chị chút ạ.', false], ['Anh/chị nhắn Zalo cho quán theo cách bên dưới nhé.', false],
     ['Dạ 2 khay, mỗi người 1,5 gói ạ', false], ['Dạ tầng 3, 63 Hồ Tùng Mậu ạ', false],
     ['Dạ gói 150 g ạ', false], ['Dạ 2 kg là nhiều đó ạ', false],
   ]) ok(`chuCam("${t}") ${cam ? 'bắt' : 'không bắt'}`, (tv.chuCam(t).length > 0) === cam, JSON.stringify(tv.chuCam(t)));
@@ -354,6 +359,27 @@ await nhom('9 · NHÂN VIÊN NHẬN CHAT: KHÔNG GỌI CLAUDE, LỆNH XEM, GHI C
   const db5 = dbGia();
   await chay(yc(THAN()), { goiClaude: claudeGia(KQ()).f, rpc: db5.rpc });
   ok('Đóng lượt ghi doi_nguoi: true khi khách đòi gặp người, false khi không', db4.ghi()[0]?.doi_nguoi === true && db5.ghi()[0]?.doi_nguoi === false);
+});
+
+await nhom('10 · SAU BỘ CHẤM LẦN 1: ĐƠN LỚN LUÔN HIỆN CÁCH LIÊN HỆ, LỜI DẶN CÓ BẢNG SỐ GÓI', async () => {
+  for (const [tin, mong] of [['công ty anh 12 người nướng ngoài trời', 12], ['nhà 4 người', 4], ['nhóm 10 khách', 10], ['15 ng đi nhậu', 15],
+    ['2 ngày nữa giao', 0], ['gói 300 nghìn', 0], ['chị 1 người, sau đó 9 người nữa', 9]]) {
+    ok(`soNguoiKhachNoi("${tin}") = ${mong}`, trang.soNguoiKhachNoi(tin) === mong, String(trang.soNguoiKhachNoi(tin)));
+  }
+  const db = dbGia();
+  const { j } = await chay(yc(THAN({ tin: 'công ty anh 12 người nướng ngoài trời' })), { goiClaude: claudeGia(KQ({ tin: ['Dạ anh thích thịt mềm hay dai ạ?'] })).f, rpc: db.rpc });
+  ok('12 người mà Claude quên đặt chuyen_nguoi → máy đặt (trang hiện cách liên hệ quán), nhật ký ghi đúng', j?.chuyen_nguoi === true && db.ghi()[0]?.tra_loi?.chuyen_nguoi === true, JSON.stringify(j));
+  const db2 = dbGia();
+  const { j: j2 } = await chay(yc(THAN({ tin: 'nhà 8 người' })), { goiClaude: claudeGia(KQ()).f, rpc: db2.rpc });
+  ok('8 người → không ép liên hệ quán', j2?.chuyen_nguoi === false);
+  const L = trang.LOI_DAY_CO_DINH;
+  ok('Lời dặn: bảng số gói (2 người 3 gói, 6 người 9 gói), số gói trong tin bằng tổng "don", không nói kg',
+    L.includes('2 người 3 gói') && L.includes('6 người 9 gói') && L.includes('Số gói nói trong tin phải đúng bằng tổng số gói ghi ở "don"') && L.includes('không nói kg'));
+  ok('Lời dặn: từ 9 người là đơn lớn, PHẢI chuyen_nguoi; có đoạn mẫu đơn lớn', L.includes('Từ 9 người trở lên là đơn lớn') && L.includes('Mẫu') && L.includes('(Đơn lớn, quá 8 người)'));
+  ok('Lời dặn: không thêm thời gian, nhiệt độ ngoài dữ liệu; không nói như đang làm việc ngoài khung; không mở đầu bằng lời chào',
+    L.includes('Thêm thời gian (phút, giờ, đêm)') && L.includes('Nói như đang làm việc ngoài khung nhắn tin') && L.includes('Không mở đầu bằng lời chào'));
+  ok('Lời dặn: câu hỏi giao hàng trong TP.HCM trả lời theo câu đã học; tên tiếng Hàn không bao giờ nói "không có"',
+    L.includes('trả lời theo câu ĐÃ HỌC THÊM về giao hàng') && L.includes('립아이 là ribeye') && L.includes('không bao giờ nói "không có"'));
 });
 
 process.exit(ketThuc('TRỢ LÝ TRANG — EDGE FUNCTION'));
