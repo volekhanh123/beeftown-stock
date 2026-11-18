@@ -177,7 +177,7 @@ await nhom('3 · GỬI HAI LẦN: cùng (cuộc, ma_tin) một dòng, một câu
   ok('Ghi lượt: true', (await ghi(cuoc, tin, { tra_loi: TRA_LOI })) === true);
   ok('Ghi lại lượt đã đóng: false (không ghi đè)', (await ghi(cuoc, tin, { tra_loi: { ...TRA_LOI, tin: ['khác'] } })) === false);
   const lan3 = await mo(cuoc, tin);
-  ok('Lần ba sau khi trả lời: "da_tra_loi" kèm đúng câu cũ', lan3?.ly_do === 'da_tra_loi' && lan3.tra_loi?.tin?.[0] === TRA_LOI.tin[0], JSON.stringify(lan3));
+  ok('Lần ba sau khi trả lời: "da_tra_loi" kèm đúng câu cũ và menu để dựng lại thẻ', lan3?.ly_do === 'da_tra_loi' && lan3.tra_loi?.tin?.[0] === TRA_LOI.tin[0] && lan3.menu?.length >= 1, JSON.stringify(lan3));
   ok('Chỉ một dòng nhật ký', Number((await db.query(`select count(*) n from tro_ly_luot where cuoc_id = $1`, [cuoc])).rows[0].n) === 1);
 
   const tinLoi = crypto.randomUUID();

@@ -128,6 +128,7 @@ await nhom('3 · CHE THÔNG TIN KHÁCH (chữ có dấu, số kiểu Việt)', a
     ['+84 912 345 678', '[số điện thoại]'],
     ['email lan.nguyen@gmail.com', 'email [email]'],
     ['giao tới 12/3A Nguyễn Trãi, phường Bến Thành, quận 1', 'giao tới [địa chỉ], [địa chỉ], quận 1'],
+    ['Phường Bến Thành, giao chiều nay', '[địa chỉ], giao chiều nay'],
     ['địa chỉ của chị là 45 Lê Lợi quận 1. Giao chiều nay', 'địa chỉ của chị là [địa chỉ]. Giao chiều nay'],
     ['hẻm 45 đường số 7', '[địa chỉ]'],
     ['số 12 Trần Hưng Đạo', '[địa chỉ]'],
@@ -140,6 +141,9 @@ await nhom('3 · CHE THÔNG TIN KHÁCH (chữ có dấu, số kiểu Việt)', a
 await nhom('4 · ĐỌC KẾT QUẢ CỦA CLAUDE: thẻ, đơn theo menu, chốt, câu chưa biết', async () => {
   const menu = trang.docMenu(MENU);
   ok('Menu: sản phẩm tên không nói được bằng tiếng Việt ("Mystery Cut") bị bỏ khỏi dữ liệu của Trang', !menu.some(m => m.ma === 'mystery-cut') && menu.length === 4);
+  const duTrung = trang.duLieuLuot(trang.docMenu([...MENU, { san_pham_ma: 'thu-ribeye', loai: 'thit', don_vi: 'goi', bao_quan: 'mat', ten: 'Ribeye', ten_vi: 'Ribeye', mo_ta: null, cach_dung: null, so_gam: 200, gia: 189000, tam_het: false }]), [], true);
+  ok('Tên đọc qua bảng từ trùng đầu tên phần thịt của quầy ("Ribeye" → "đầu thăn ngoại"): dữ liệu dặn hỏi lại khách', /đầu thăn ngoại — mã thu-ribeye.*Lưu ý: khác sản phẩm đầu thăn ngoại còn nắp/.test(duTrung), duTrung);
+  ok('Địa chỉ quán "TP.HCM" qua máy kiểm tiếng Việt', tv.chuNgoai('Dạ quán ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM ạ').length === 0);
   ok('Kim chi gọi là kim chi, không phải thịt', trang.theCua('thu-kim-chi', menu)?.loai === 'Kim chi');
   const kq = trang.docKetQua(JSON.stringify({
     tin: ['**Dạ** chào ạ', '- hai', '', 'ba', 'bốn'], the: ['ribeye-with-cap', 'ribeye-with-cap', 'khong-co', 'top-blade', 'thu-kim-chi'],
@@ -246,14 +250,14 @@ await nhom('7 · MẤT MẠNG, CLAUDE HỎNG: không bao giờ bịa câu trả 
 });
 
 await nhom('8 · DATABASE TỪ CHỐI, GỬI HAI LẦN, YÊU CẦU SAI, NGUỒN LẠ', async () => {
-  for (const [lyDo, trangThai, loi] of [['tat', 403, 'tat'], ['chua_mo', 403, 'tat'], ['qua_luot_ip', 429, 'qua_luot'], ['qua_luot_cuoc', 429, 'qua_luot'],
+  for (const [lyDo, trangThai, loi] of [['tat', 403, 'tat'], ['chua_mo', 403, 'tat'], ['qua_luot_ip', 429, 'qua_luot'], ['qua_luot_cuoc', 429, 'het_luot'],
     ['qua_luot_ngay', 429, 'qua_luot'], ['dang_tra_loi', 409, 'dang_tra_loi'], ['sai', 400, 'sai']]) {
     const c = claudeGia(KQ());
     const { r, j } = await chay(yc(THAN()), { goiClaude: c.f, rpc: dbGia({ duoc: false, ly_do: lyDo }).rpc });
     ok(`Database "${lyDo}" → ${trangThai} "${loi}", không gọi Claude`, r.status === trangThai && j?.loi === loi && c.goi.length === 0, JSON.stringify(j));
   }
   const c = claudeGia(KQ());
-  const daTra = dbGia({ duoc: false, ly_do: 'da_tra_loi', tra_loi: KQ({ tin: ['Câu cũ ạ.'], the: ['top-blade'] }) });
+  const daTra = dbGia({ duoc: false, ly_do: 'da_tra_loi', tra_loi: KQ({ tin: ['Câu cũ ạ.'], the: ['top-blade'] }), menu: MENU });
   const { r, j } = await chay(yc(THAN()), { goiClaude: c.f, rpc: daTra.rpc });
   ok('"da_tra_loi" → 200 với câu cũ, thẻ dựng lại từ menu, không gọi Claude', r.status === 200 && j?.tin?.[0] === 'Câu cũ ạ.' && j?.the?.[0]?.nhan === 'Top Blade' && c.goi.length === 0, JSON.stringify(j));
   for (const [ten, than] of [['không phải JSON', 'xin chào'], ['thiếu ma_tin', { cuoc: crypto.randomUUID(), tin: 'x' }],
@@ -273,6 +277,9 @@ await nhom('8 · DATABASE TỪ CHỐI, GỬI HAI LẦN, YÊU CẦU SAI, NGUỒN 
   ok('OPTIONS từ beeftown.vn → 204, cho đúng nguồn đó', op.status === 204 && op.headers.get('access-control-allow-origin') === NGUON);
   const { r: rok } = await chay(yc(THAN()), { goiClaude: claudeGia(KQ()).f, rpc: dbGia().rpc });
   ok('Trả lời có Access-Control-Allow-Origin đúng nguồn, không lưu đệm', rok.headers.get('access-control-allow-origin') === NGUON && rok.headers.get('cache-control') === 'no-store');
+  const ip = h => xuLy.ipKhach(new Request('https://x', { headers: h }));
+  ok('IP: ô đầu x-forwarded-for do khách tự đặt không được tin — lấy ô cuối không phải địa chỉ nội bộ', ip({ 'x-forwarded-for': '6.6.6.6, 192.0.2.10, 10.0.0.1' }) === '192.0.2.10');
+  ok('IP: có cf-connecting-ip thì dùng nó', ip({ 'cf-connecting-ip': '198.51.100.3', 'x-forwarded-for': '6.6.6.6' }) === '198.51.100.3');
   ok('IP: x-forwarded-for sai dạng → null (không giới hạn theo IP)', xuLy.ipKhach(new Request('https://x', { headers: { 'x-forwarded-for': 'not-an-ip' } })) === null);
 });
 

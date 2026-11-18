@@ -394,6 +394,7 @@ const lh = lienHe(nd);
     function baoLoi(loi: LoiTrang, tin: string, maTin: string, dongKhach: HTMLElement) {
       if (loi === 'tat') { heThong(CHU_TRO_LY.tamNghi[nn]); theLienHe(); return; }
       if (loi === 'qua_luot') { heThong(CHU_TRO_LY.quaLuot[nn]); theLienHe(); return; }
+      if (loi === 'het_luot') { heThong(CHU_TRO_LY.hetLuot[nn]); theLienHe(); return; }
       const p = heThong(CHU_TRO_LY.chuaTraLoi[nn]);
       const nut = el('button', 'nut nut-vien', CHU_TRO_LY.guiLai[nn]);
       nut.type = 'button';

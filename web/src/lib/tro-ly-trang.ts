@@ -100,6 +100,11 @@ export const CHU_TRO_LY = {
     en: 'Too many messages right now. Please wait a few minutes, or contact us below.',
     ko: '지금 메시지가 너무 많아요. 몇 분 뒤에 다시 보내 주시거나 아래 방법으로 연락해 주세요.',
   },
+  hetLuot: {
+    vi: 'Cuộc nhắn tin này đã đủ số tin cho một lần. Anh/chị tải lại trang để bắt đầu cuộc mới, hoặc liên hệ quán theo cách bên dưới.',
+    en: 'This chat has reached its message limit. Reload the page to start a new one, or contact us below.',
+    ko: '이 채팅은 메시지 한도에 도달했어요. 페이지를 새로 고쳐 새 채팅을 시작하시거나 아래 방법으로 연락해 주세요.',
+  },
   tamNghi: {
     vi: 'Khung nhắn tin đang tạm nghỉ. Anh/chị liên hệ quán theo cách bên dưới nhé.',
     en: 'The chat is paused for now. Please contact us below.',
@@ -152,7 +157,8 @@ export interface DongDonTrang { khoa: string; so_goi: number; ten: string }
 export interface TraLoiTrang {
   ok: true; tin: string[]; the: ThePhanThit[]; don: DongDonTrang[]; chot: boolean; chuyen_nguoi: boolean;
 }
-export type LoiTrang = 'tam_thoi' | 'qua_luot' | 'tat' | 'dang_tra_loi' | 'sai';
+export type LoiTrang = 'tam_thoi' | 'qua_luot' | 'het_luot' | 'tat' | 'dang_tra_loi' | 'sai';
+const LOI_BIET: readonly string[] = ['qua_luot', 'het_luot', 'tat', 'dang_tra_loi', 'sai'];
 
 const chuoi = (v: unknown, toiDa: number): string => (typeof v === 'string' ? v.slice(0, toiDa) : '');
 
@@ -161,7 +167,7 @@ export function docTraLoi(v: unknown): TraLoiTrang | { ok: false; loi: LoiTrang 
   const o = v && typeof v === 'object' ? (v as Record<string, unknown>) : null;
   if (!o || o.ok !== true) {
     const loi = o?.loi;
-    return { ok: false, loi: loi === 'qua_luot' || loi === 'tat' || loi === 'dang_tra_loi' || loi === 'sai' ? loi : 'tam_thoi' };
+    return { ok: false, loi: typeof loi === 'string' && LOI_BIET.includes(loi) ? (loi as LoiTrang) : 'tam_thoi' };
   }
   const tin = (Array.isArray(o.tin) ? o.tin : []).map(t => chuoi(t, 600).trim()).filter(Boolean).slice(0, 3);
   if (!tin.length) return { ok: false, loi: 'tam_thoi' };

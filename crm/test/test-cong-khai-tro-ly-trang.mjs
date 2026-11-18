@@ -105,7 +105,7 @@ await nhom('3 · THẺ ĐƠN: TRANG TỰ TÍNH TIỀN BẰNG GIỎ CỦA TRANG',
 
 await nhom('4 · ĐỌC TRẢ LỜI CỦA EDGE FUNCTION: KHÔNG TIN DỮ LIỆU NGOÀI', async () => {
   for (const [ten, v, loi] of [['null', null, 'tam_thoi'], ['ok false không mã', { ok: false }, 'tam_thoi'], ['quá lượt', { ok: false, loi: 'qua_luot' }, 'qua_luot'],
-    ['tắt', { ok: false, loi: 'tat' }, 'tat'], ['mã lạ', { ok: false, loi: 'gi_do' }, 'tam_thoi'], ['ok mà không tin nào', { ok: true, tin: [] }, 'tam_thoi']]) {
+    ['tắt', { ok: false, loi: 'tat' }, 'tat'], ['hết lượt của cuộc', { ok: false, loi: 'het_luot' }, 'het_luot'], ['mã lạ', { ok: false, loi: 'gi_do' }, 'tam_thoi'], ['ok mà không tin nào', { ok: true, tin: [] }, 'tam_thoi']]) {
     const k = TL.docTraLoi(v);
     ok(`${ten} → lỗi "${loi}" (trang nói tin CHƯA được trả lời, không bịa câu)`, k.ok === false && k.loi === loi, JSON.stringify(k));
   }

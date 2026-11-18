@@ -23,6 +23,8 @@ import { timChuoiCam } from './chuoi-cam.js';
 /** Tên riêng, đơn vị giữ nguyên (viết thường). "AI" không cần ở đây: "ai" là một âm tiết tiếng Việt — Trang phải nói được "trợ lý AI". */
 export const GIU_NGUYEN: readonly string[] = [
   'beeftown', 'vn', 'vnpay', 'zalo', 'ahamove', 'qr', 'chimichurri', 'facebook', 'g', 'kg',
+  // Địa chỉ quán Trang được dạy nói: "tầng 3, 63 Hồ Tùng Mậu, TP.HCM".
+  'tp', 'hcm',
 ];
 
 /** Chữ tiếng Anh có dạng một âm tiết tiếng Việt không dấu — máy kiểm âm tiết không bắt được nên liệt kê. */

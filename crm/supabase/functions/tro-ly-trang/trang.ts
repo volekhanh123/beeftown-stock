@@ -322,7 +322,11 @@ export function duLieuLuot(menu: readonly SanPhamCuaTrang[], soHoc: readonly SoH
     const loai = loaiChu(sp) + (sp.donVi === 'hop' ? ', bán theo hộp' : '');
     const goi = sp.goi.map(g => `${g.khoa} (${sp.donVi === 'hop' ? 'hộp' : 'gói'} ${g.soGam} g, ${dinhSo(g.gia)} đồng${g.tamHet ? ', đang tạm hết ở quầy: không gợi ý' : ''})`).join('; ');
     const them = kt ? 'kiến thức: xem PHẦN THỊT' : [sp.moTa && `mô tả của quán: ${sp.moTa}`, sp.cachDung && `cách dùng: ${sp.cachDung}`].filter(Boolean).join('; ') || 'chưa có mô tả, đừng tự giới thiệu thêm';
-    return `- ${sp.tenNoi} — mã ${sp.ma}; trên trang ghi "${sp.tenTrang}"; ${loai}. Khóa gói: ${goi}. ${them}.`;
+    // Tên đọc qua bảng từ có thể trùng đầu tên một phần thịt của quầy ("Ribeye" → "đầu thăn ngoại" so với "đầu thăn ngoại
+    // còn nắp"): dặn rõ là hai sản phẩm khác nhau, khách nói tên chung thì hỏi lại.
+    const trung = kt ? [] : Object.values(PHAN_THIT).filter(p => p.ten !== sp.tenNoi && p.ten.startsWith(sp.tenNoi)).map(p => p.ten);
+    const luuY = trung.length ? ` Lưu ý: khác sản phẩm ${trung.join(', ')}; khách chỉ nói "${sp.tenNoi}" thì hỏi lại khách muốn sản phẩm nào.` : '';
+    return `- ${sp.tenNoi} — mã ${sp.ma}; trên trang ghi "${sp.tenTrang}"; ${loai}. Khóa gói: ${goi}. ${them}.${luuY}`;
   });
   const traTien = traTruoc
     ? 'Bấm Đặt hàng xong khách trả trước qua VNPay (thẻ ngân hàng nội địa, thẻ quốc tế, ví điện tử, mã QR ngân hàng). Giá gói đã gồm phí giao. Quán gọi hẹn giờ giao sau khi khách trả tiền.'
@@ -372,11 +376,15 @@ export interface TraLoi {
   cau_chua_biet: string;
 }
 
+/** Số điện thoại Việt Nam (có hay không dấu cách, chấm, gạch) và dãy từ 9 chữ số — một mẫu cho cheSo và CHE. */
+const MAU_SO_DIEN_THOAI = /(\+?84|\b0)([ .-]?\d){8,10}\b/g;
+const MAU_DAY_SO = /\d{9,}/g;
+
 /** Số gói tối đa mỗi ô chọn của trang (SO_GOI_TOI_DA, web/src/lib/don-mua-thit.ts). */
 export const SO_GOI_TOI_DA = 10;
 
 /** Che số điện thoại, email trong câu Trang ghi vào sổ học (database che lần nữa). */
-const cheSo = (s: string) => s.replace(/(\+?84|\b0)([ .-]?\d){8,10}/g, '[số điện thoại]').replace(/\d{9,}/g, '[số]');
+const cheSo = (s: string) => s.replace(MAU_SO_DIEN_THOAI, '[số điện thoại]').replace(MAU_DAY_SO, '[số]');
 
 /**
  * JSON Claude trả → TraLoi đã gọt: tối đa 3 tin (bỏ markdown, gạch đầu dòng), thẻ chỉ mã có trên menu (tối đa 2, không
@@ -490,8 +498,8 @@ export function theCua(ma: string, menu: readonly SanPhamCuaTrang[]): ThePhanThi
 const CHE: readonly [RegExp, string][] = [
   // Email, số điện thoại Việt Nam (có hay không dấu cách, chấm, gạch), dãy dài từ 9 chữ số (số tài khoản, giấy tờ).
   [/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, '[email]'],
-  [/(\+?84|\b0)([ .-]?\d){8,10}\b/g, '[số điện thoại]'],
-  [/\d{9,}/g, '[số]'],
+  [MAU_SO_DIEN_THOAI, '[số điện thoại]'],
+  [MAU_DAY_SO, '[số]'],
   // "địa chỉ (của) em/anh/chị là …": che tới hết câu.
   [/(địa\s+chỉ(\s+(của\s+)?(em|anh|chị|tôi|mình|nhà))?\s*(là|:|ở)\s*)[^.!?\n]+/giu, '$1[địa chỉ]'],
   // Số nhà có gạch chéo (12/3, 12/3A/4), hẻm / ngõ có số, số nhà đứng trước đường / hẻm / ngõ…, "số 12" — che cả tên
@@ -502,7 +510,7 @@ const CHE: readonly [RegExp, string][] = [
   [/\b(số\s+nhà|số)\s+\d+[a-zA-Z]?(\s+[\p{Lu}][\p{L}]*(\s+[\p{Lu}0-9][\p{L}0-9]*){0,4})?/giu, '[địa chỉ]'],
   // Số nhà ngay sau "giao / gửi / tới / đến / ở / nhà / tại" ("giao 12 Lê Lợi", "nhà ở 45 Lê Lợi"); "mua về 2 Ribeye" không bị che.
   [/((?:giao|gửi|tới|đến|ở|nhà|tại)\s+(?:(?:tới|đến|về|ở|tại)\s+)?)\d+[a-zA-Z]?\s+[\p{Lu}][\p{L}]*(\s+[\p{Lu}0-9][\p{L}0-9]*){0,4}/gu, '$1[địa chỉ]'],
-  [/(phường|xã|thôn|ấp|khu phố|chung cư|căn hộ|block|lô)\s+[\p{Lu}0-9][\p{L}0-9]*(\s+[\p{Lu}0-9][\p{L}0-9]*){0,3}/gu, '[địa chỉ]'],
+  [/([Pp]hường|[Xx]ã|[Tt]hôn|[Ấấ]p|[Kk]hu phố|[Cc]hung cư|[Cc]ăn hộ|[Bb]lock|[Ll]ô)\s+[\p{Lu}0-9][\p{L}0-9]*(\s+[\p{Lu}0-9][\p{L}0-9]*){0,3}/gu, '[địa chỉ]'],
   // "tên em/anh/chị/tôi là X Y": che tên.
   [/(tên\s+(của\s+)?(em|anh|chị|tôi|mình|cô|chú)\s+là\s+)[\p{Lu}][\p{L}]*(\s+[\p{Lu}][\p{L}]*){0,3}/gu, '$1[tên]'],
 ];

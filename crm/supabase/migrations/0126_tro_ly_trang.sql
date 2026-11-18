@@ -248,7 +248,9 @@ begin
   select * into v_dong from tro_ly_luot where cuoc_id = p_cuoc and ma_tin = p_ma_tin;
   if found then
     if v_dong.trang_thai = 'tra_loi' then
-      return jsonb_build_object('duoc', false, 'ly_do', 'da_tra_loi', 'tra_loi', v_dong.tra_loi);
+      -- Kèm menu hiện tại: Edge Function dựng lại thẻ mà không phải gọi database lần nữa.
+      return jsonb_build_object('duoc', false, 'ly_do', 'da_tra_loi', 'tra_loi', v_dong.tra_loi,
+        'menu', (select coalesce(jsonb_agg(to_jsonb(m)), '[]'::jsonb) from mua_thit_ve_cong_khai('vi', p_chi_nhanh_ma) m));
     end if;
     if v_dong.trang_thai = 'dang' and v_dong.created_at > now() - interval '90 seconds' then
       return jsonb_build_object('duoc', false, 'ly_do', 'dang_tra_loi');

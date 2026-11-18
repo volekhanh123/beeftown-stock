@@ -6,7 +6,7 @@
  *   POST { cuoc: uuid, ma_tin: uuid, tin: "…", tra_truoc?: boolean, chi_nhanh?: "q1" }
  * Trả về (luôn JSON):
  *   200 { ok: true, tin: [...], the: [ThePhanThit], don: [{khoa, so_goi}], chot, chuyen_nguoi }
- *   4xx / 5xx { ok: false, loi } — loi: sai · tat · qua_luot · dang_tra_loi · tam_thoi · chua_cai
+ *   4xx / 5xx { ok: false, loi } — loi: sai · tat · qua_luot · het_luot (30 lượt của cuộc) · dang_tra_loi · tam_thoi · chua_cai
  *
  * Một lượt:
  *   1 · che số điện thoại, email, địa chỉ, tên trong tin khách (cheThongTin) — Claude và nhật ký chỉ thấy bản đã che;
@@ -70,10 +70,18 @@ function nguonCors(req: Request, duoc: readonly string[]): string | null {
   return o && duoc.includes(o) ? o : null;
 }
 
-/** IP khách: Supabase đặt x-forwarded-for (IP đầu tiên là khách). Sai dạng → null (không giới hạn theo IP). */
+const IP_NOI_BO = /^(10\.|127\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|f[cd][0-9a-f]{2}:)/i;
+
+/**
+ * IP khách cho giới hạn lượt. Ô đầu của x-forwarded-for do CHÍNH khách đặt được (proxy chỉ nối thêm phía sau), nên
+ * không tin nó: lấy cf-connecting-ip (Cloudflare đặt), không có thì ô CUỐI CÙNG không phải địa chỉ nội bộ — thứ proxy
+ * của Supabase nối vào. Sai dạng → null (không giới hạn theo IP; giới hạn 2.000 lượt mỗi ngày vẫn chặn).
+ */
 export function ipKhach(req: Request): string | null {
-  const ip = (req.headers.get('x-forwarded-for') ?? '').split(',')[0]?.trim() || req.headers.get('cf-connecting-ip')?.trim() || '';
-  return IP.test(ip) ? ip : null;
+  const cf = req.headers.get('cf-connecting-ip')?.trim() ?? '';
+  if (IP.test(cf)) return cf;
+  const ds = (req.headers.get('x-forwarded-for') ?? '').split(',').map(s => s.trim()).filter(s => IP.test(s));
+  return [...ds].reverse().find(s => !IP_NOI_BO.test(s)) ?? null;
 }
 
 interface YeuCau { cuoc: string; maTin: string; tin: string; traTruoc: boolean; chiNhanh: string | null }
@@ -190,13 +198,15 @@ export async function xuLyYeuCau(req: Request, mt: MoiTruong): Promise<Response>
     const lyDo = String(mo.ly_do ?? '');
     if (lyDo === 'da_tra_loi') {
       // Cùng ma_tin đã trả lời (bấm đúp, trình duyệt gửi lại): trả đúng câu cũ, không gọi Claude.
-      const menuCu = docMenu(await docMenuLai(mt.rpc, yc.chiNhanh));
+      const menuCu = docMenu(mo.menu);
       const cu = docKetQua(mo.tra_loi, menuCu);
       if (cu) return traJson(goiChoKhach(cu, menuCu), 200, nguon);
       return traJson({ ok: false, loi: 'tam_thoi' }, 503, nguon);
     }
     if (lyDo === 'dang_tra_loi') return traJson({ ok: false, loi: 'dang_tra_loi' }, 409, nguon);
     if (lyDo === 'tat' || lyDo === 'chua_mo') return traJson({ ok: false, loi: 'tat' }, 403, nguon);
+    // Hết 30 lượt của cuộc chat: chờ không giúp gì (giới hạn theo cuộc, không theo giờ) — trang mời bắt đầu cuộc mới.
+    if (lyDo === 'qua_luot_cuoc') return traJson({ ok: false, loi: 'het_luot' }, 429, nguon);
     if (lyDo.startsWith('qua_luot')) return traJson({ ok: false, loi: 'qua_luot' }, 429, nguon);
     return traJson({ ok: false, loi: 'sai' }, 400, nguon);
   }
@@ -281,10 +291,3 @@ async function ghiLuot(rpc: Rpc, yc: YeuCau, ketQua: Record<string, unknown>, lo
   }
 }
 
-/** Lượt đã trả lời: menu để dựng lại thẻ — đọc thẳng menu công khai (anon cũng đọc được hàm này). */
-async function docMenuLai(rpc: Rpc, chiNhanh: string | null): Promise<unknown> {
-  try {
-    const { data, error } = await rpc('mua_thit_ve_cong_khai', { p_ngon_ngu: 'vi', p_chi_nhanh_ma: chiNhanh });
-    return error ? [] : data;
-  } catch { return []; }
-}
