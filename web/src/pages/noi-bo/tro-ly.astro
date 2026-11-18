@@ -1,0 +1,183 @@
+---
+/**
+ * TRỢ LÝ TRANG — SỔ HỌC (/noi-bo/tro-ly, migration 0126)
+ *
+ * Câu Trang (khung nhắn tin ở trang Mua thịt về) chưa biết và câu trả lời quán đã duyệt. Chủ, quản lý viết và duyệt;
+ * marketing chỉ xem. Quyền do database quyết định (đầu lib/tro-ly-noi-bo.ts); trang chỉ đưa vai khác về /noi-bo và ẩn ô
+ * sửa với người không sửa được.
+ *
+ * Không JavaScript: mọi việc là form POST thật, ghi xong chuyển hướng 303 (lib/gui-noi-bo.ts); câu trả lời của câu đã
+ * học nằm trong mục gập. Ghi hỏng thì dựng tại chỗ, điền lại chữ đã gõ (câu trả lời dài, không vừa cookie) — như dao-tao.
+ */
+import NoiBo from '../../layouts/NoiBo.astro';
+import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo';
+import { CAU_DOC_FORM_HONG, chuyenHuongNoiBo, docBaoNoiBo, docFormNoiBo } from '../../lib/gui-noi-bo';
+import { docNoiDung } from '../../lib/noi-dung';
+import { homNayVn } from '../../lib/gio-vn';
+import {
+  VAI_XEM_SO_HOC, VAI_SUA_SO_HOC, DAI_HOI, DAI_DAP, THU_TU_NHOM, TEN_NHOM, CAU,
+  docSoHoc, suaCau, xoaCau, themCau, type CauSoHoc, type BaoSoHoc,
+} from '../../lib/tro-ly-noi-bo';
+
+const { client, nhanSu } = Astro.locals.phien!;
+if (!VAI_XEM_SO_HOC.includes(nhanSu.vai_tro)) return Astro.redirect('/noi-bo', 302);
+const duocSua = VAI_SUA_SO_HOC.includes(nhanSu.vai_tro);
+
+const nn = nnCua(Astro);
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Trợ lý Trang', en: 'Trang assistant' },
+  dan: {
+    vi: 'Trang là trợ lý AI trả lời khách trong khung nhắn tin của trang Mua thịt về. Câu nào Trang chưa biết, Trang mời khách liên hệ quán rồi tự ghi câu đó vào mục Chờ trả lời. Viết câu trả lời như nói với khách, bấm Lưu và duyệt: từ tin nhắn kế tiếp Trang dùng câu đó. Câu trả lời phải hoàn toàn tiếng Việt có dấu, không ghi số tiền.',
+    en: 'Trang is the AI assistant that answers customers in the chat box on the Take home page. When Trang does not know something, she asks the customer to contact us and writes the question under Waiting for an answer. Write the answer as you would say it to a customer and press Save and approve: Trang uses it from the next message. Answers must be fully in Vietnamese with diacritics, with no amounts of money.',
+  },
+  batRoi: { vi: 'Khung nhắn tin đang bật cho khách.', en: 'The chat box is on for customers.' },
+  tatRoi: { vi: 'Khung nhắn tin đang tắt — chủ bật ở Nội dung website, nhóm Mua thịt về.', en: 'The chat box is off — the owner turns it on under Website content, Take home group.' },
+  khongDoc: { vi: 'Chưa đọc được sổ học. Tải lại trang sau ít phút.', en: 'Could not read the learning book. Reload the page in a few minutes.' },
+  trong: { vi: 'Chưa có câu nào.', en: 'No questions yet.' },
+  soLan: { vi: (n: number, ngay: string) => `Khách hỏi ${n} lần · lần cuối ${ngay}`, en: (n: number, ngay: string) => `Asked ${n} time${n === 1 ? '' : 's'} · last on ${ngay}` },
+  nguon: { vi: 'Nguồn', en: 'Source' },
+  dapO: { vi: 'Câu trả lời', en: 'Answer' },
+  duyet: { vi: 'Lưu và duyệt', en: 'Save and approve' },
+  nhap: { vi: 'Lưu nháp', en: 'Save draft' },
+  suaDaHoc: { vi: 'Sửa câu trả lời hoặc bỏ học', en: 'Edit the answer or unlearn' },
+  boHoc: { vi: 'Bỏ học', en: 'Unlearn' },
+  xoaMuc: { vi: 'Xóa câu này', en: 'Delete this question' },
+  xoaDan: { vi: 'Xóa hẳn khỏi sổ học. Khách hỏi lại thì Trang ghi lại từ đầu.', en: 'Removes it from the learning book. If a customer asks again, Trang writes it down again.' },
+  xoa: { vi: 'Xóa', en: 'Delete' },
+  themTieuDe: { vi: 'Thêm một câu', en: 'Add a question' },
+  themDan: { vi: 'Có câu trả lời thì câu vào thẳng mục Đã học.', en: 'With an answer, it goes straight to Learned.' },
+  hoiO: { vi: 'Câu khách hay hỏi', en: 'A question customers ask' },
+  them: { vi: 'Thêm vào sổ học', en: 'Add to the learning book' },
+  chiXem: { vi: 'Tài khoản này chỉ xem sổ học.', en: 'This account can only view the learning book.' },
+});
+
+let bao: BaoSoHoc | null = docBaoNoiBo(Astro.cookies, Astro.url.pathname);
+let goLai: { id: string; dap: string } | null = null;
+let goLaiThem: { hoi: string; dap: string } | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await docFormNoiBo(Astro.request);
+  if (!form) {
+    bao = { ok: false, cau: CAU_DOC_FORM_HONG[nn] };
+  } else if (!duocSua) {
+    bao = { ok: false, cau: CAU.khongQuyen[nn] };
+  } else {
+    const viec = String(form.get('viec') ?? '');
+    const kq: BaoSoHoc = viec === 'xoa' ? await xoaCau(client, form, nn)
+      : viec === 'them' ? await themCau(client, form, nn)
+      : await suaCau(client, form, nn);
+    if (kq.ok) return chuyenHuongNoiBo(Astro, kq);
+    bao = kq;
+    if (viec === 'them') goLaiThem = { hoi: String(form.get('hoi') ?? ''), dap: String(form.get('dap') ?? '') };
+    else if (!kq.banMoi) goLai = { id: String(form.get('id') ?? ''), dap: String(form.get('dap') ?? '') };
+  }
+}
+
+let ds: CauSoHoc[] = [];
+let dsLoi = false;
+try { ds = await docSoHoc(client); } catch { dsLoi = true; }
+const nd = await docNoiDung('vi');
+const nhom = THU_TU_NHOM.map(tt => ({ tt, cau: ds.filter(x => x.trang_thai === tt) }));
+const ngay = (iso: string | null) => {
+  const ms = iso ? Date.parse(iso) : NaN;
+  if (!Number.isFinite(ms)) return '';
+  const [y, m, d] = homNayVn(ms).split('-');
+  return `${d}/${m}/${y}`;
+};
+const dapCua = (x: CauSoHoc) => (goLai && goLai.id === x.id ? goLai.dap : (x.dap ?? ''));
+---
+<NoiBo tieuDe={t.tieuDe} nhanSu={nhanSu}>
+  <h1>{t.tieuDe}</h1>
+  {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`} role={bao.ok ? 'status' : 'alert'}><p>{bao.cau}</p></div>}
+  <p class="nb-dan">{t.dan}</p>
+  <p class="th-cong-tac">{nd.hien_tro_ly_trang === true ? t.batRoi : t.tatRoi}</p>
+  {!duocSua && <p class="nb-dan">{t.chiXem}</p>}
+
+  {dsLoi && <div class="nb-bao loi" role="alert"><p>{t.khongDoc}</p></div>}
+
+  {!dsLoi && nhom.map(n => (
+    <section class="th-nhom" aria-labelledby={`th-${n.tt}`}>
+      <h2 id={`th-${n.tt}`}>{TEN_NHOM[n.tt][nn]} <span class="th-dem">({n.cau.length})</span></h2>
+      {n.cau.length === 0 && <div class="nb-rong"><p style="margin:0">{t.trong}</p></div>}
+      {n.cau.map(x => (
+        <article class="nb-the th-cau" id={`cau-${x.id}`}>
+          <h3>{x.hoi}</h3>
+          <p class="th-phu">{t.soLan(x.so_lan_hoi, ngay(x.hoi_lan_cuoi))}{x.nguon && <> · {t.nguon}: {x.nguon}</>}</p>
+          {x.trang_thai === 'da_duyet' && <p class="th-dap">{x.dap}</p>}
+          {duocSua && x.trang_thai !== 'da_duyet' && (
+            <form method="POST">
+              <input type="hidden" name="id" value={x.id} />
+              <input type="hidden" name="phien_ban" value={x.updated_at} />
+              <label class="nb-o"><span>{t.dapO}</span>
+                <textarea name="dap" maxlength={DAI_DAP} rows="3">{dapCua(x)}</textarea>
+              </label>
+              <div class="th-nut">
+                <button type="submit" name="viec" value="duyet" class="nb-nut">{t.duyet}</button>
+                <button type="submit" name="viec" value="nhap" class="nb-nut phu">{t.nhap}</button>
+              </div>
+            </form>
+          )}
+          {duocSua && x.trang_thai === 'da_duyet' && (
+            <details class="th-sua" open={goLai?.id === x.id}>
+              <summary>{t.suaDaHoc}</summary>
+              <form method="POST">
+                <input type="hidden" name="id" value={x.id} />
+                <input type="hidden" name="phien_ban" value={x.updated_at} />
+                <label class="nb-o"><span>{t.dapO}</span>
+                  <textarea name="dap" maxlength={DAI_DAP} rows="3">{dapCua(x)}</textarea>
+                </label>
+                <div class="th-nut">
+                  <button type="submit" name="viec" value="duyet" class="nb-nut">{t.duyet}</button>
+                  <button type="submit" name="viec" value="bo_hoc" class="nb-nut phu">{t.boHoc}</button>
+                </div>
+              </form>
+            </details>
+          )}
+          {duocSua && (
+            <details class="th-sua">
+              <summary>{t.xoaMuc}</summary>
+              <form method="POST">
+                <input type="hidden" name="viec" value="xoa" />
+                <input type="hidden" name="id" value={x.id} />
+                <p class="th-phu">{t.xoaDan}</p>
+                <button type="submit" class="nb-nut phu">{t.xoa}</button>
+              </form>
+            </details>
+          )}
+        </article>
+      ))}
+    </section>
+  ))}
+
+  {duocSua && (
+    <section class="th-nhom" aria-labelledby="th-them">
+      <h2 id="th-them">{t.themTieuDe}</h2>
+      <form method="POST" class="nb-the">
+        <input type="hidden" name="viec" value="them" />
+        <p class="th-phu">{t.themDan}</p>
+        <label class="nb-o"><span>{t.hoiO} *</span>
+          <input type="text" name="hoi" required maxlength={DAI_HOI} value={goLaiThem?.hoi ?? ''} />
+        </label>
+        <label class="nb-o"><span>{t.dapO}</span>
+          <textarea name="dap" maxlength={DAI_DAP} rows="3">{goLaiThem?.dap ?? ''}</textarea>
+        </label>
+        <button type="submit" class="nb-nut">{t.them}</button>
+      </form>
+    </section>
+  )}
+</NoiBo>
+
+<style>
+  .th-cong-tac { margin: 0 0 1.5rem; font-weight: 600; }
+  .th-nhom { margin-top: 2rem; }
+  .th-nhom h2 { font-size: 1.15rem; margin: 0 0 .75rem; }
+  .th-dem { font-weight: 400; color: var(--muc-nhat); }
+  .th-cau { margin-bottom: 1rem; }
+  .th-cau h3 { margin: 0 0 .35rem; font-size: 1rem; overflow-wrap: anywhere; }
+  .th-phu { margin: 0 0 .75rem; font-size: .88rem; color: var(--muc-nhat); overflow-wrap: anywhere; }
+  .th-dap { margin: 0 0 .75rem; padding: .6rem .75rem; background: var(--kem-sau); border-radius: 6px; white-space: pre-line; overflow-wrap: anywhere; }
+  .th-nut { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .th-sua { margin-top: .75rem; }
+  .th-sua summary { cursor: pointer; font-weight: 600; min-height: 48px; display: flex; align-items: center; }
+  .th-sua form { margin-top: .5rem; }
+</style>

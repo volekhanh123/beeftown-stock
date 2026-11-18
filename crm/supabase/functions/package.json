@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "type": "module",
+  "description": "Edge Function của Supabase (Deno). File này chỉ để Node đọc các file .ts ở đây như ES module trong kiểm thử (crm/test/test-tro-ly-trang-ham.mjs); không có thư viện nào."
+}

@@ -50,7 +50,15 @@
 !crm/supabase/migrations/*.sql
 !crm/supabase/thu/*.sql
 !crm/supabase/thu/README.md
+# Edge Function của Supabase (Deno) — Trợ lý Trang (0126). package.json chỉ để Node đọc .ts như ES module trong kiểm thử.
+!crm/supabase/functions/package.json
+!crm/supabase/functions/tro-ly-trang/*.ts
+!crm/supabase/functions/tro-ly-trang/*.js
 !crm/test/*.mjs
+# Bộ chấm 50 câu của Trang (chạy tay, gọi Claude thật — không nằm trong npm test).
+!crm/test/cham-trang/*.mjs
+!crm/test/cham-trang/*.json
+!crm/test/cham-trang/*.md
 # Sao lưu hằng đêm (.github/workflows/sao-luu.yml) — script, không bao giờ là bản sao: *.gpg, *.sql.gz vẫn bị chặn
 !crm/sao-luu/*.sh
 !crm/sao-luu/*.sql

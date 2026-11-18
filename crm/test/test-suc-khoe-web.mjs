@@ -25,7 +25,7 @@ const WEB = join(GOC, 'web', 'src');
 const {
   danhGiaSucKhoe, bangSucKhoe, cauTomTat, docSucKhoe, docSaoLuu, docSucKhoeVaSaoLuu, laSucKhoeTho, laThieuHam, khoangThoiGian, tuTruoc,
   PHUT_NHIP_TIM, GIO_KHONG_CO_TIN, PHUT_TIN_KET, GIO_SAO_LUU, GIO_KHONG_GUI_BAO_DONG,
-  PHUT_MAY_CAN_IM, PHUT_CAN_KHONG_TRA_LOI, PHUT_LECH_CAN, GIO_MAY_CAN_THOI_DUNG, NGAY_CHO_BAM_DON,
+  PHUT_MAY_CAN_IM, PHUT_CAN_KHONG_TRA_LOI, PHUT_LECH_CAN, GIO_MAY_CAN_THOI_DUNG, NGAY_CHO_BAM_DON, LUOT_LOI_DO_TRO_LY,
 } = await import(join(WEB, 'lib', 'suc-khoe.ts'));
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — SỨC KHỎE HỆ THỐNG, PHÍA WEB');
@@ -731,6 +731,33 @@ await nhom('18 · DỌN DỮ LIỆU CÁ NHÂN (0074) — đèn nói khi nào ph�
   ok('Database chưa chạy 0074 (thiếu ô) → vàng, nói rõ — không bao giờ xanh', d.mau === 'vang' && /migration 0074/.test(d.cau), tom(d));
   d = dd({ ho_so_qua_han: 'x', ve_qua_han: null });
   ok('Số lạ → coi là 0, không vỡ trang', d.mau === 'xanh', tom(d));
+});
+
+await nhom('19 · TRỢ LÝ TRANG (0126) — khung nhắn tin ở trang Mua thịt về, Claude trong Edge Function', async () => {
+  const tl = (o, nn = 'vi') => den(voi(t => { t.tro_ly = { bat: true, luot_24h: 0, loi_24h: 0, luot_cuoi: null, ...o }; }), 'tro_ly', nn);
+  let d = den(thoGoc(), 'tro_ly');
+  ok('Database chưa chạy 0126 (thiếu ô) → "Chưa bật", nói rõ migration — không bao giờ xanh', d?.mau === 'tat' && /migration 0126/.test(d.cau), tom(d));
+  d = tl({ bat: false });
+  ok('Công tắc tắt, không lượt nào → "Chưa bật", mở màn Trợ lý Trang, nằm ở khối "Toàn thương hiệu"',
+     d.mau === 'tat' && d.cau === 'Khung nhắn tin đang tắt.' && d.di === '/noi-bo/tro-ly'
+     && danhGiaSucKhoe(voi(t => { t.tro_ly = { bat: false, luot_24h: 0, loi_24h: 0, luot_cuoi: null }; }), 'vi', true).khoi[0].den.some(x => x.ma === 'tro_ly'), tom(d));
+  d = tl({});
+  ok('Bật, chưa ai nhắn trong 24 giờ → xanh, nói chưa có khách nhắn', d.mau === 'xanh' && /chưa có khách nhắn/.test(d.cau), tom(d));
+  d = tl({ luot_24h: 12, luot_cuoi: truoc(30) });
+  ok('12 tin, không lỗi → xanh, nói số tin và lượt gần nhất', d.mau === 'xanh' && /12 tin trong 24 giờ, tin gần nhất 30 phút trước/.test(d.cau), tom(d));
+  d = tl({ luot_24h: 12, loi_24h: 2, luot_cuoi: truoc(5) });
+  ok('2/12 lỗi → vàng (khách bấm Gửi lại được)', d.mau === 'vang' && /^2 tin khách trong 24 giờ qua Trang chưa trả lời được/.test(d.cau), tom(d));
+  d = tl({ luot_24h: 4, loi_24h: LUOT_LOI_DO_TRO_LY, luot_cuoi: truoc(90) });
+  ok(`${LUOT_LOI_DO_TRO_LY}/4 lỗi → ĐỎ, nói khóa Claude và chỗ tắt khung`, d.mau === 'do'
+     && new RegExp(`^${LUOT_LOI_DO_TRO_LY}/4 tin khách`).test(d.cau) && /ANTHROPIC_API_KEY/.test(d.cau) && /tắt khung/.test(d.cau), tom(d));
+  d = tl({ luot_24h: 20, loi_24h: LUOT_LOI_DO_TRO_LY, luot_cuoi: truoc(1) });
+  ok(`${LUOT_LOI_DO_TRO_LY}/20 lỗi (dưới một nửa) → chỉ vàng`, d.mau === 'vang', tom(d));
+  d = tl({ bat: false, luot_24h: 5, loi_24h: 5 });
+  ok('Vừa tắt công tắc mà 24 giờ qua còn lượt lỗi → vẫn đỏ (không giấu lỗi vừa xảy ra)', d.mau === 'do', tom(d));
+  d = tl({ luot_24h: 'x', loi_24h: null });
+  ok('Số lạ → coi là 0, không vỡ trang', d.mau === 'xanh', tom(d));
+  const en = tl({ luot_24h: 4, loi_24h: 4, luot_cuoi: truoc(2) }, 'en');
+  ok('Tiếng Anh: tên và câu không lẫn chữ Việt', en.ten === 'Trang assistant' && !VIET.test(en.cau) && /got no answer from Trang/.test(en.cau), tom(en));
 });
 
 process.exit(ketThuc('SỨC KHỎE HỆ THỐNG PHÍA WEB'));

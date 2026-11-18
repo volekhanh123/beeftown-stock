@@ -157,6 +157,11 @@ export interface SucKhoeTho {
    * (trong 24 giờ) mà VNPay chưa báo về — IPN hỏng. Thiếu ô (database chưa chạy 0115) → "Chưa dùng", không bao giờ xanh.
    */
   vnpay?: { lan_mo_30_ngay: number; ipn_cuoi: string | null; ve_chua_ipn: number };
+  /**
+   * 0126 · khung nhắn tin Trang (Edge Function tro-ly-trang, Claude). loi_24h: lượt lỗi và lượt treo quá 5 phút trong 24
+   * giờ. Thiếu ô (database chưa chạy 0126) → "Chưa bật", không bao giờ xanh.
+   */
+  tro_ly?: { bat: boolean; luot_24h: number; loi_24h: number; luot_cuoi: string | null };
   /** Gắn thêm từ suc_khoe_sao_luu() (docSucKhoeVaSaoLuu). undefined: database chưa chạy 0058; null: không đọc được. */
   sao_luu?: SaoLuuTho | null;
   chi_nhanh: ChiNhanhTho[];
@@ -251,7 +256,7 @@ export async function docSucKhoeVaSaoLuu(client: Pick<SupabaseClient, 'rpc'>): P
 // -----------------------------------------------------------------------------
 export type MauDen = 'xanh' | 'vang' | 'do' | 'tat';
 export type MaDen = 'dat_ban' | 'ipos' | 'so_kho' | 'can' | 'tin_zalo' | 'tuyen_dung' | 'zalo' | 'messenger' | 'dich' | 'sao_luu' | 'bao_dong'
-  | 'don_dep' | 'vnpay';
+  | 'don_dep' | 'vnpay' | 'tro_ly';
 
 export interface Den {
   ma: MaDen;
@@ -295,6 +300,7 @@ const TEN: Record<MaDen, Cau> = {
   bao_dong:   { vi: 'Báo động', en: 'Alerts' },
   don_dep:    { vi: 'Dọn dữ liệu cá nhân', en: 'Personal data clean-up' },
   vnpay:      { vi: 'Thanh toán VNPay', en: 'VNPay payments' },
+  tro_ly:     { vi: 'Trợ lý Trang', en: 'Trang assistant' },
 };
 
 export const TEN_THUONG_HIEU: Cau = { vi: 'Toàn thương hiệu', en: 'Whole brand' };
@@ -643,6 +649,27 @@ function denVnpay(v: Partial<NonNullable<SucKhoeTho['vnpay']>> | undefined, bayG
         en: `VNPay reports results normally — last one ${tuTruoc(bayGio, ipn).en}.` }, di, nn);
 }
 
+// --- Trợ lý Trang — khung nhắn tin ở trang Mua thịt về (cả thương hiệu, 0126) -----------------
+/** Đỏ khi ít nhất chừng này lượt lỗi trong 24 giờ VÀ lỗi chiếm từ một nửa số lượt: khách nhắn mà Trang không trả lời. */
+export const LUOT_LOI_DO_TRO_LY = 3;
+function denTroLy(t: Partial<NonNullable<SucKhoeTho['tro_ly']>> | undefined, bayGio: number, nn: NgonNguNB): Den {
+  const di = '/noi-bo/tro-ly';
+  if (!t) return denTat('tro_ly', { vi: 'Chưa có số liệu — database chưa chạy migration 0126.', en: 'No data yet — the database has not run migration 0126.' }, di, nn);
+  const luot = so(t.luot_24h), loi = so(t.loi_24h), cuoi = ms(t.luot_cuoi);
+  if (t.bat !== true && luot === 0) return denTat('tro_ly', { vi: 'Khung nhắn tin đang tắt.', en: 'The chat box is off.' }, di, nn);
+  const vd: VanDe[] = [];
+  if (loi >= LUOT_LOI_DO_TRO_LY && loi * 2 >= luot) vd.push({ muc: 'do', cau: {
+    vi: `${loi}/${luot} tin khách trong 24 giờ qua Trang không trả lời được — khách đang nhắn mà không ai trả lời. Báo người quản trị kỹ thuật xem log hàm tro-ly-trang trên Supabase (khóa ANTHROPIC_API_KEY, tài khoản Anthropic còn tiền), hoặc tắt khung ở Nội dung website.`,
+    en: `${loi}/${luot} customer message${s(luot)} in the last 24 hours got no answer from Trang — customers are writing and nobody replies. Ask the technical admin to check the tro-ly-trang function logs in Supabase (ANTHROPIC_API_KEY, Anthropic account balance), or turn the chat box off under Website content.` } });
+  else if (loi > 0) vd.push({ muc: 'vang', cau: {
+    vi: `${loi} tin khách trong 24 giờ qua Trang chưa trả lời được (khách bấm Gửi lại được) — nhiều lên thì xem log hàm tro-ly-trang`,
+    en: `${loi} customer message${s(loi)} in the last 24 hours Trang could not answer (customers can press Send again) — if it grows, check the tro-ly-trang function logs` } });
+  return denTu('tro_ly', vd, cuoi === null
+    ? { vi: 'Khung nhắn tin đang bật, chưa có khách nhắn trong 24 giờ qua.', en: 'The chat box is on; no customer messages in the last 24 hours.' }
+    : { vi: `Trang trả lời bình thường — ${luot} tin trong 24 giờ, tin gần nhất ${tuTruoc(bayGio, cuoi).vi}.`,
+        en: `Trang answers normally — ${luot} message${s(luot)} in 24 hours, last one ${tuTruoc(bayGio, cuoi).en}.` }, di, nn);
+}
+
 // --- Máy dịch (cả thương hiệu) ------------------------------------------------------
 function denDich(d: Partial<SucKhoeTho['dich']>, nn: NgonNguNB): Den {
   const loi = so(d.loi), cho = so(d.cho);
@@ -853,6 +880,7 @@ export function danhGiaSucKhoe(tho: SucKhoeTho, nn: NgonNguNB, laChu = false): S
         denZalo(tho.zalo ?? {}, laChu, bayGio, nn),
         denMessenger(tho.messenger ?? {}, bayGio, nn),
         denVnpay(tho.vnpay, bayGio, nn),
+        denTroLy(tho.tro_ly, bayGio, nn),
         denDich(tho.dich ?? {}, nn),
         denBaoDong(tho.bao_dong ?? {}, bayGio, nn),
         denDonDep(tho.don_dep, laChu, nn),

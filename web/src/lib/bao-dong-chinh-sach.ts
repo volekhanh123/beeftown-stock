@@ -65,6 +65,9 @@ export const NHOM: Readonly<Record<MaDenBaoDong, NhomDen>> = {
   // Thanh toán VNPay (0115): đỏ khi khách trả xong trên VNPay mà VNPay không báo về website — IPN hỏng, đơn đã trả mà
   // hộp thư ghi chưa. Máy hỏng, không phải khách bị bỏ quên: báo ngay như mọi đèn hệ thống.
   vnpay: 'he_thong',
+  // Trợ lý Trang (0126): đỏ khi phần lớn tin khách trong 24 giờ không được trả lời — khóa Claude hỏng hay hết tiền. Máy
+  // hỏng: báo ngay như mọi đèn hệ thống (ban đêm vẫn có khách nhắn).
+  tro_ly: 'he_thong',
   doc_so_lieu: 'he_thong',
   dat_ban: 'khach',
   tuyen_dung: 'khach',

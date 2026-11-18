@@ -104,6 +104,12 @@ export const MUC_NOI_BO: readonly MucNoiBo[] = [
     ten: { vi: 'Bot Messenger', en: 'Messenger bot' }, ngan: { vi: 'Messenger', en: 'Messenger' },
     vai: ['chu_so_huu', 'quan_ly'], bieuTuong: 'tin_nhan', nhom: 'khach',
     tuKhoa: { vi: 'facebook fanpage trả lời tự động', en: 'facebook page auto reply' } },
+  // Trợ lý Trang (0126): sổ học — câu Trang chưa biết, câu trả lời chủ / quản lý viết và duyệt. Ba vai như policy
+  // tro_ly_so_hoc_doc; marketing chỉ xem (trang ẩn ô sửa — VAI_SUA_SO_HOC của lib/tro-ly-noi-bo.ts).
+  { ma: 'tro_ly', link: '/noi-bo/tro-ly',
+    ten: { vi: 'Trợ lý Trang', en: 'Trang assistant' }, ngan: { vi: 'Trang', en: 'Trang' },
+    vai: ['chu_so_huu', 'quan_ly', 'marketing'], bieuTuong: 'tin_nhan', nhom: 'khach',
+    tuKhoa: { vi: 'sổ học trợ lý AI khung nhắn tin tư vấn chọn bò câu hỏi khách', en: 'learning book AI assistant chat beef advice customer questions' } },
   { ma: 'noi_dung', link: '/noi-bo/noi-dung',
     ten: { vi: 'Nội dung website', en: 'Website content' }, ngan: { vi: 'Nội dung', en: 'Content' },
     vai: ['chu_so_huu', 'quan_ly', 'marketing'], bieuTuong: 'trang_web', nhom: 'website',

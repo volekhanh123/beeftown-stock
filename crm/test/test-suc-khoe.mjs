@@ -401,7 +401,7 @@ await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-
   ok('Số liệu đúng dạng web chờ', laSucKhoeTho(k));
 
   const KHOA = {
-    goc:        ['luc', 'zalo', 'messenger', 'dich', 'bao_dong', 'don_dep', 'vnpay', 'chi_nhanh'],
+    goc:        ['luc', 'zalo', 'messenger', 'dich', 'bao_dong', 'don_dep', 'vnpay', 'tro_ly', 'chi_nhanh'],
     sao_luu:    ['lan_cuoi', 'lan_cuoi_ok', 'lan_cuoi_thu', 'dung_duoc_cuoi', 'kich_thuoc'],
     zalo:       ['dang_bat', 'che_do', 'bat_luc', 'lan_chay_cuoi', 'co_loi'],
     messenger:  ['dang_bat', 'bat_luc', 'lan_nhan_cuoi', 'loi_cuoi_luc', 'loi_7_ngay'],
@@ -410,6 +410,8 @@ await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-
     don_dep:    ['ho_so_qua_han', 'ho_so_qua_han_7_ngay', 've_qua_han', 'su_kien_qua_han'],
     // 0115: đèn Thanh toán VNPay (test-mua-thit-vnpay.mjs thử từng ô).
     vnpay:      ['lan_mo_30_ngay', 'ipn_cuoi', 've_chua_ipn'],
+    // 0126: đèn Trợ lý Trang (test-tro-ly-trang.mjs nhóm 9 thử từng ô).
+    tro_ly:     ['bat', 'luot_24h', 'loi_24h', 'luot_cuoi'],
     chi_nhanh:  ['id', 'ma', 'ten', 'ipos', 'tin_zalo', 'dat_ban', 'tuyen_dung', 'so_kho', 'can'],
     ipos:       ['co_cau_hinh', 'bat', 'cau_hinh_du', 'den', 'mat_ket_noi', 'loi_tu_luc', 'nhan_hd_luc', 'gio_mat_ket_noi',
                  'dang_tru_kho', 'cho_xu_ly', 'dong_loi', 'bat_luc', 'cron_cuoi'],
@@ -423,6 +425,7 @@ await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-
   const a = cua(k, cnA);
   const saoLuu = (await docSl(UID.chu)).k;
   const thuc = { goc: k, zalo: k?.zalo, messenger: k?.messenger, dich: k?.dich, bao_dong: k?.bao_dong, don_dep: k?.don_dep, vnpay: k?.vnpay,
+                 tro_ly: k?.tro_ly,
                  sao_luu: saoLuu, chi_nhanh: a,
                  ipos: a?.ipos, tin_zalo: a?.tin_zalo, dat_ban: a?.dat_ban, tuyen_dung: a?.tuyen_dung, so_kho: a?.so_kho,
                  can: a?.can, can_may: a?.can?.may?.[0] };
@@ -681,7 +684,7 @@ await nhom('13 · 0060 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
     const moi = await duoi(uid, `select suc_khoe_he_thong() as k`);
     const cu = await duoi(uid, `select suc_khoe_he_thong_cu() as k`);
     if (moi.loi !== cu.loi || moi.ma !== cu.ma
-        || JSON.stringify(boCan(bo(moi.rows?.[0]?.k, 'luc', 'bao_dong', 'don_dep', 'vnpay'))) !== JSON.stringify(bo(cu.rows?.[0]?.k, 'luc'))) {
+        || JSON.stringify(boCan(bo(moi.rows?.[0]?.k, 'luc', 'bao_dong', 'don_dep', 'vnpay', 'tro_ly'))) !== JSON.stringify(bo(cu.rows?.[0]?.k, 'luc'))) {
       lechSk.push(`${ten}: ${moi.loi ?? 'đọc được'} / ${cu.loi ?? 'đọc được'}`);
     }
     moi.loi ? skTuChoi++ : skDuoc++;
@@ -699,7 +702,7 @@ await nhom('13 · 0060 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
       m.loi ? iposTuChoi++ : iposDuoc++;
     }
   }
-  ok(`suc_khoe_he_thong(): ${NGUOI.length} người — số liệu và câu từ chối y hệt trước khi tách (trừ ô bao_dong, ô can của 0061, ô don_dep của 0074, ô vnpay của 0115)`,
+  ok(`suc_khoe_he_thong(): ${NGUOI.length} người — số liệu và câu từ chối y hệt trước khi tách (trừ ô bao_dong, ô can của 0061, ô don_dep của 0074, ô vnpay của 0115, ô tro_ly của 0126)`,
      lechSk.length === 0 && skDuoc >= 3 && skTuChoi >= 5, lechSk.join(' | ') || `${skDuoc} đọc được, ${skTuChoi} bị từ chối`);
   ok(`kho_ipos_trang_thai(): ${NGUOI.length} người × 2 chi nhánh — kết quả và câu từ chối y hệt trước khi tách`,
      lechIpos.length === 0 && iposDuoc >= 4 && iposTuChoi >= 4,

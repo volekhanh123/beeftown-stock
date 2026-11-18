@@ -67,6 +67,7 @@ import { CHINH_SACH } from '../lib/chinh-sach';
 import { CHO_TRONG } from '../lib/cho-trong';
 import type { Gu, PhanCatGu } from '../lib/chon-theo-gu';
 import BieuTuong, { type TenBieuTuong } from './BieuTuong.astro';
+import TroLyTrang from './TroLyTrang.astro';
 import MuaThitThe from './MuaThitThe.astro';
 
 interface Props {
@@ -412,6 +413,8 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
             <li><BieuTuong ten={d.bt} /><div><p class="mtv-dieu">{d.chu}</p>{d.phu && <p class="mtv-dieu-phu">{d.phu}</p>}{d.them && <p class="mtv-dieu-phu" data-vat>{d.them}</p>}</div></li>
           ))}
         </ul>
+        {/* 0126 · Trợ lý Trang: thẻ mời và khung nhắn tin — chỉ dựng khi công tắc bật, trang mở, trang tiếng Việt. */}
+        <TroLyTrang ngonNgu={nn} noiDung={nd} trangThai={trangThai} traVnpay={traVnpay} />
         {menu.nhom.length > 1 && (
           <div class="chon-loc mtv-loc" role="group" aria-label={c.locNhom} data-mtv-loc hidden>
             <button type="button" aria-pressed="true" data-mtv-loc-nhom="">{c.tatCa}</button>
