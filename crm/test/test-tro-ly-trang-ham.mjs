@@ -378,8 +378,10 @@ await nhom('10 · SAU BỘ CHẤM LẦN 1: ĐƠN LỚN LUÔN HIỆN CÁCH LIÊN 
   ok('Lời dặn: từ 9 người là đơn lớn, PHẢI chuyen_nguoi; có đoạn mẫu đơn lớn', L.includes('Từ 9 người trở lên là đơn lớn') && L.includes('Mẫu') && L.includes('(Đơn lớn, quá 8 người)'));
   ok('Lời dặn: không thêm thời gian, nhiệt độ ngoài dữ liệu; không nói như đang làm việc ngoài khung; không mở đầu bằng lời chào',
     L.includes('Thêm thời gian (phút, giờ, đêm)') && L.includes('Nói như đang làm việc ngoài khung nhắn tin') && L.includes('Không mở đầu bằng lời chào'));
-  ok('Lời dặn: câu hỏi giao hàng trong TP.HCM trả lời theo câu đã học; tên tiếng Hàn không bao giờ nói "không có"',
-    L.includes('trả lời theo câu ĐÃ HỌC THÊM về giao hàng') && L.includes('립아이 là ribeye') && L.includes('không bao giờ nói "không có"'));
+  ok('Lời dặn: giao bao lâu, giờ nào theo câu đã học; khu vực giao chưa có thì không tự nói giao được hay không; tên tiếng Hàn không bao giờ nói "không có"',
+    L.includes('trả lời theo câu ĐÃ HỌC THÊM về giao hàng') && L.includes('không tự nói giao được, không giao được, hay chỉ giao trong khu nào') && !L.includes('TP.HCM (giao bao lâu') && L.includes('립아이 là ribeye') && L.includes('không bao giờ nói "không có"'));
+  ok('Lời dặn (sau lần 2): nhắc đúng mẹo của dữ liệu; chỉ hướng dẫn nút có trên trang (Chọn gói, Cho vào đơn chỉ ở thẻ đơn); dẻ sườn bò chưa ướp; hỏi phần rẻ thì nói thẳng phần giá thấp hơn',
+    L.includes('nhắc đúng câu của dữ liệu, không thêm') && L.includes('nút "Cho vào đơn" chỉ có ở thẻ đơn em gửi') && L.includes('Dẻ sườn bò là thịt mát, chưa ướp') && L.includes('không lảng sang hỏi gu'));
 });
 
 process.exit(ketThuc('TRỢ LÝ TRANG — EDGE FUNCTION'));
