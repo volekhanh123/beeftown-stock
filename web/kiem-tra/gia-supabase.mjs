@@ -64,6 +64,8 @@
  *   Trang Mua thịt về (0101, đặt thẳng trên website từ 0113). hien_mua_thit_ve dưới đây là giá trị DATABASE TRẢ —
  *   công tắc hiệu lực mà noi_dung_cong_khai() đã tính (bật + có gói trên menu web; từ 0113 không còn đòi link Zalo).
  *   Mọi kịch bản cũ: null, menu []. tao_don_mua_thit (0113) ghi đơn ở mọi kịch bản có menu, trừ hai kịch bản -dat-.
+ *   Từ 0125 hàm nhận thêm p_hoa_don (hóa đơn đỏ, không bắt buộc) và ghi nó vào nhật ký như mọi tham số khác; luật của
+ *   các ô hóa đơn kiểm ở crm/test/test-mua-thit-hoa-don.mjs (database thật trên PGlite), không ở server giả này.
  *   mua-thit-mo         như day-du (có hotline); hien_mua_thit_ve true, zalo_oa_url = ZALO_OA_THU, giờ giao có chữ
  *                       thử; menu MENU_THU (Ba chỉ bò Mỹ 400 g "Tạm hết ở quầy"); gu thử GU_THU (đợt 3: dòng gu trên thẻ)
  *   mua-thit-giao       như mua-thit-mo, thêm mua_thit_giao_hang (chữ thử, không số tiền), hotline null
@@ -690,8 +692,10 @@ const THAM_SO_NOP_HO_SO = [
   'p_vi_tri_ma', 'p_ho_ten', 'p_sdt', 'p_email', 'p_nam_sinh', 'p_gioi_thieu', 'p_kinh_nghiem', 'p_ca_lam_duoc',
   'p_ma_tai_len', 'p_ten_tep', 'p_dong_y', 'p_bay', 'p_giay_tren_form', 'p_utm_source', 'p_utm_campaign', 'p_ip',
 ];
+// 0125: p_hoa_don (không bắt buộc) — web chỉ gửi khi khách chọn "Cần xuất hóa đơn đỏ"; như hàm thật, thiếu thì là null.
 const THAM_SO_DAT_HANG = [
   'p_ma_gui', 'p_chi_nhanh_ma', 'p_ho_ten', 'p_sdt', 'p_dia_chi', 'p_ghi_chu', 'p_gio', 'p_gia_da_xem', 'p_ngon_ngu', 'p_ip',
+  'p_hoa_don',
 ];
 const HAM = {
   noi_dung_cong_khai: { thamSo: ['p_ngon_ngu'], batBuoc: [] },

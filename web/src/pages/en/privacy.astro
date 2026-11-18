@@ -63,6 +63,10 @@ const nd = await docNoiDung('en');
         your <strong>name, phone number, delivery address, note</strong> and the packs
         you chose, with their prices at the time. Only the owner, managers and
         cashiers of the branch can read orders.</p>
+      <p>If you tick <strong>I need a VAT invoice</strong>, Beeftown also stores the
+        company name, tax code, company address and invoice email you give, with the
+        order. They are used only to issue the VAT invoice for that order and send it
+        to that email. If you do not tick it, Beeftown does not store them.</p>
       <p>If you pay with VNPay, you enter your card or bank account on the VNPay
         page, not on the Beeftown website — Beeftown never sees or stores a card
         number, cardholder name or password. Beeftown only stores the amount, the
@@ -70,15 +74,16 @@ const nd = await docNoiDung('en');
         the order is paid and to check it if a refund is needed.</p>
       <p>The IP address of the order is only used to block too many orders and
         is not stored with the order. If sending the order fails, your browser
-        keeps your name, phone number and address in the open tab for 15 minutes
-        so you do not have to type them again; that data does not leave your
-        device.</p>
+        keeps your name, phone number, address and any VAT invoice details you
+        typed in the open tab for 15 minutes so you do not have to type them
+        again; that data does not leave your device.</p>
 
       <h2>What we use it for</h2>
       <p>Booking details are used so the restaurant can call to confirm.
         Take-home orders are used to call you about the total, the delivery fee
         and the delivery time (or just the time, when you have paid with VNPay),
-        and to deliver your order. Job applications are
+        and to deliver your order. VAT invoice details, when you give them, are
+        used only to issue and send the invoice. Job applications are
         used to arrange a meeting. We only send news about dishes
         or events if you <strong>tick the box yourself</strong> — that box is never
         pre-ticked, and leaving it unticked does not affect your booking.</p>

@@ -770,6 +770,35 @@ const LOI_DATABASE: ReadonlyArray<readonly [RegExp, Readonly<Record<'en' | 'ko',
     en: 'The payment page has been opened too many times for this order. Please call us.',
     ko: '이 주문의 결제 페이지를 너무 여러 번 여셨어요. 매장에 전화해 주세요.',
   }],
+  // tao_don_mua_thit() — 0125: khách cần xuất hóa đơn đỏ ('Email dài quá 200 ký tự' dùng câu của 0121 ở trên)
+  [/^Thông tin xuất hóa đơn không đúng dạng/, {
+    en: 'The VAT invoice details could not be read. Please reload the page and order again.',
+    ko: '세금계산서 정보를 읽지 못했어요. 페이지를 새로 고친 뒤 다시 주문해 주세요.',
+  }],
+  [/^Chưa điền tên đơn vị xuất hóa đơn/, {
+    en: 'Please enter the company name for the VAT invoice.',
+    ko: '세금계산서에 들어갈 회사 이름을 입력해 주세요.',
+  }],
+  [/^Tên đơn vị dài quá 200 ký tự/, {
+    en: 'The company name can be up to 200 characters.',
+    ko: '회사 이름은 200자까지 입력할 수 있어요.',
+  }],
+  [/^Mã số thuế phải gồm 10 số/, {
+    en: 'The tax code must be 10 digits, or 10 digits - 3 digits for a branch.',
+    ko: '세금 코드는 숫자 10자리, 지점은 10자리-3자리여야 해요.',
+  }],
+  [/^Địa chỉ đơn vị dài quá 300 ký tự/, {
+    en: 'The company address can be up to 300 characters.',
+    ko: '회사 주소는 300자까지 입력할 수 있어요.',
+  }],
+  [/^Chưa điền email nhận hóa đơn/, {
+    en: 'Please enter the email address for the VAT invoice.',
+    ko: '세금계산서를 받을 이메일 주소를 입력해 주세요.',
+  }],
+  [/^Email nhận hóa đơn không đúng dạng/, {
+    en: 'The email address for the VAT invoice is not valid.',
+    ko: '세금계산서를 받을 이메일 주소가 올바르지 않아요.',
+  }],
 ];
 
 /**

@@ -46,6 +46,11 @@
  *     container query). Dưới 1024px: gói → giao hàng → đơn, một cột; thanh giỏ đen như trước.
  *   · Thẻ có dòng gu (theoGu: bo_tai_quay_theo_gu, 0116 — ba file vỏ đọc song song); đọc lỗi thì thẻ không có dòng gu.
  *
+ * HÓA ĐƠN ĐỎ (0125, Khánh 18/11/2026): cuối khối Giao hàng có ô "Cần xuất hóa đơn đỏ"; chọn thì hiện bốn ô — tên đơn
+ * vị, mã số thuế, email nhận hóa đơn bắt buộc, địa chỉ đơn vị không bắt buộc. Bốn ô hiện bằng CSS (chạy cả khi tắt
+ * JavaScript); script báo lỗi sát ô, giữ chữ đã gõ như ô liên hệ, và không gửi bốn ô khi khách không chọn. Luật mã số
+ * thuế và email: lib/don-mua-thit.ts (loiOHoaDon) — cùng luật với database (tao_don_mua_thit, 0125).
+ *
  * CHÍNH SÁCH (Khánh giao 16/11/2026, hồ sơ thông báo website thương mại điện tử): câu cạnh nút Đặt hàng trỏ tới
  * Quyền riêng tư, Điều khoản, Đổi trả và hoàn tiền (lib/chinh-sach.ts); dưới "Giá gói đã gồm phí giao" có dòng VAT
  * (CHO_TRONG.VAT — còn chờ Sang, John trả lời). Dòng "Đang thử cổng VNPay" giữ nguyên cho tới khi sang cổng thật.
@@ -171,6 +176,40 @@ const c = dichCau(nn, {
     vi: 'Ví dụ: giờ muốn nhận, gọi trước khi giao, cần hơn 10 gói một loại.',
     en: 'For example: when you would like it, call before delivering, more than 10 of one pack.',
     ko: '예: 받고 싶은 시간, 배달 전 전화, 한 팩을 10개보다 많이 원할 때.',
+  },
+
+  // --- 0125 · Hóa đơn đỏ (Khánh 18/11/2026) ---------------------------------------------
+  // Tiếng Hàn: 세금계산서 là hóa đơn giá trị gia tăng; "레드 인보이스" là cách người Hàn ở Việt Nam gọi hóa đơn đỏ.
+  // Mã số thuế: 세금 코드, như nhãn ở chân trang (lib/chu.ts, maSoThue).
+  canHoaDon: { vi: 'Cần xuất hóa đơn đỏ', en: 'I need a VAT invoice (red invoice)', ko: '세금계산서(레드 인보이스)가 필요해요' },
+  hoaDonDan: {
+    vi: 'Beeftown chỉ dùng các thông tin này để xuất hóa đơn đỏ cho đơn này và gửi tới email bạn ghi.',
+    en: 'Beeftown uses these details only to issue the VAT invoice for this order and send it to the email you give.',
+    ko: 'Beeftown은 이 정보를 이 주문의 세금계산서를 발행해 적어 주신 이메일로 보내는 데에만 써요.',
+  },
+  tenDonVi: { vi: 'Tên đơn vị', en: 'Company name', ko: '회사 이름' },
+  tenDonViPhu: {
+    vi: 'Ghi đầy đủ như trên giấy đăng ký kinh doanh.',
+    en: 'In full, as on the business registration.',
+    ko: '등록된 회사 이름 전체를 적어 주세요.',
+  },
+  maSoThue: { vi: 'Mã số thuế', en: 'Tax code', ko: '세금 코드' },
+  maSoThuePhu: {
+    vi: '10 số; chi nhánh thêm 3 số, ví dụ 0123456789-001.',
+    en: '10 digits; a branch adds 3 more, for example 0123456789-001.',
+    ko: '숫자 10자리예요. 지점은 3자리가 더 붙어요(예: 0123456789-001).',
+  },
+  diaChiDonVi: { vi: 'Địa chỉ đơn vị', en: 'Company address', ko: '회사 주소' },
+  diaChiDonViPhu: {
+    vi: 'Như trên giấy đăng ký kinh doanh. Để trống thì quán tra theo mã số thuế.',
+    en: 'As on the business registration. Leave it empty and we look it up from the tax code.',
+    ko: '등록된 회사 주소를 적어 주세요. 비워 두시면 세금 코드로 찾아볼게요.',
+  },
+  emailHoaDon: { vi: 'Email nhận hóa đơn', en: 'Email for the invoice', ko: '세금계산서 받을 이메일' },
+  emailHoaDonPhu: {
+    vi: 'Hóa đơn điện tử được gửi tới email này.',
+    en: 'The e-invoice is sent to this address.',
+    ko: '전자 세금계산서를 이 이메일로 보내 드려요.',
   },
 
   // --- Đơn của bạn ---------------------------------------------------------------------
@@ -426,6 +465,43 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
                 <small id="mtv-ghi-chu-phu">{c.ghiChuPhu}</small>
                 <textarea id="mtv-ghi-chu" name="ghi_chu" maxlength="500" rows="2" aria-describedby="mtv-ghi-chu-phu"></textarea>
               </div>
+              {/* 0125 · Hóa đơn đỏ: bốn ô hiện bằng CSS khi ô đánh dấu được chọn, nên tắt JavaScript vẫn điền được. Các ô
+                  không required, không pattern, không type email: ô đang ẩn mà mang lỗi thì trình duyệt chặn gửi cả form
+                  mà không chỉ ra ô nào. Script báo lỗi sát ô khi ô đánh dấu được chọn; máy chủ và database kiểm lại. */}
+              <div class="mtv-hoa-don">
+                <input type="checkbox" id="mtv-xuat-hoa-don" name="xuat_hoa_don" value="co" aria-controls="mtv-hoa-don-o" />
+                <label for="mtv-xuat-hoa-don" class="mtv-hoa-don-chon">{c.canHoaDon}</label>
+                <div class="mtv-hoa-don-o" id="mtv-hoa-don-o">
+                  <p class="mtv-ghi mtv-hoa-don-dan">{c.hoaDonDan}</p>
+                  <div class="o">
+                    <label for="mtv-hoa-don-ten">{c.tenDonVi} <em>({c.batBuoc})</em></label>
+                    <small id="mtv-hoa-don-ten-phu">{c.tenDonViPhu}</small>
+                    <input type="text" id="mtv-hoa-don-ten" name="hoa_don_ten_don_vi" maxlength="200" autocomplete="organization"
+                           aria-describedby="mtv-hoa-don-ten-phu mtv-loi-hoa_don_ten_don_vi" />
+                    <p class="loi-o" id="mtv-loi-hoa_don_ten_don_vi" data-mtv-loi="hoa_don_ten_don_vi" hidden></p>
+                  </div>
+                  <div class="o">
+                    <label for="mtv-hoa-don-ma-so-thue">{c.maSoThue} <em>({c.batBuoc})</em></label>
+                    <small id="mtv-hoa-don-ma-so-thue-phu">{c.maSoThuePhu}</small>
+                    <input type="text" id="mtv-hoa-don-ma-so-thue" name="hoa_don_ma_so_thue" maxlength="20" inputmode="numeric" autocomplete="off"
+                           aria-describedby="mtv-hoa-don-ma-so-thue-phu mtv-loi-hoa_don_ma_so_thue" />
+                    <p class="loi-o" id="mtv-loi-hoa_don_ma_so_thue" data-mtv-loi="hoa_don_ma_so_thue" hidden></p>
+                  </div>
+                  <div class="o">
+                    <label for="mtv-hoa-don-dia-chi">{c.diaChiDonVi} <em>({c.khongBatBuoc})</em></label>
+                    <small id="mtv-hoa-don-dia-chi-phu">{c.diaChiDonViPhu}</small>
+                    <textarea id="mtv-hoa-don-dia-chi" name="hoa_don_dia_chi" maxlength="300" rows="2" autocomplete="off"
+                              aria-describedby="mtv-hoa-don-dia-chi-phu"></textarea>
+                  </div>
+                  <div class="o">
+                    <label for="mtv-hoa-don-email">{c.emailHoaDon} <em>({c.batBuoc})</em></label>
+                    <small id="mtv-hoa-don-email-phu">{c.emailHoaDonPhu}</small>
+                    <input type="text" id="mtv-hoa-don-email" name="hoa_don_email" maxlength="200" inputmode="email" autocomplete="off"
+                           autocapitalize="off" spellcheck="false" aria-describedby="mtv-hoa-don-email-phu mtv-loi-hoa_don_email" />
+                    <p class="loi-o" id="mtv-loi-hoa_don_email" data-mtv-loi="hoa_don_email" hidden></p>
+                  </div>
+                </div>
+              </div>
             </section>
           )}
 
@@ -498,7 +574,10 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
   // Script chỉ THÊM vào trang (không có nó trang vẫn đặt được: form POST, database tính đơn): nút −/+, "Đơn của bạn"
   // đổi ngay khi chọn, thanh giỏ dính đáy màn hình, chặn bấm đúp, giữ chữ đã gõ khi database từ chối. Tính đơn bằng
   // chính các hàm máy chủ dùng (don-mua-thit.ts).
-  import { CHU_DON, SO_GOI_TOI_DA, dinhDangTien, docGio, nhanGoi, tinhDon, type Don, type SanPhamMua } from '../lib/don-mua-thit';
+  import {
+    CAU_HOA_DON, CHU_DON, SO_GOI_TOI_DA, dinhDangTien, docGio, loiOHoaDon, nhanGoi, tinhDon,
+    type Don, type LoiHoaDon, type SanPhamMua,
+  } from '../lib/don-mua-thit';
   import { guiSuKienMotLan } from '../lib/meta-pixel';
 
   type ThuTieng = keyof typeof CHU_DON.tamTinh;
@@ -509,7 +588,11 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
   const KHOA = 'bt-dat-hang';
   const SONG_MS = 15 * 60 * 1000;
   const O_GIU = ['ho_ten', 'sdt', 'dia_chi', 'ghi_chu'] as const;
-  type DaLuu = { luc: number } & Record<(typeof O_GIU)[number], string>;
+  // 0125 · Hóa đơn đỏ: ô đánh dấu và bốn ô — chỉ giữ khi khách đã chọn "Cần xuất hóa đơn đỏ" (không chọn thì không
+  // giữ chữ nào của hóa đơn).
+  const O_GIU_HOA_DON = ['hoa_don_ten_don_vi', 'hoa_don_ma_so_thue', 'hoa_don_dia_chi', 'hoa_don_email'] as const;
+  type DaLuu = { luc: number; xuat_hoa_don?: boolean } & Record<(typeof O_GIU)[number], string>
+    & Partial<Record<(typeof O_GIU_HOA_DON)[number], string>>;
   function docDaLuu(): DaLuu | null {
     try {
       const s = sessionStorage.getItem(KHOA);
@@ -591,6 +674,47 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
         if ((o instanceof HTMLInputElement || o instanceof HTMLTextAreaElement) && !o.value) o.value = daLuu[ten] ?? '';
       }
     }
+
+    // 0125 · Hóa đơn đỏ. Bốn ô hiện bằng CSS khi ô "Cần xuất hóa đơn đỏ" được chọn; script chỉ thêm: chọn lại ô và điền
+    // lại chữ đã giữ khi database vừa từ chối đơn, lỗi sát ô của ba ô bắt buộc (cùng luật, cùng câu với máy chủ —
+    // loiOHoaDon, CAU_HOA_DON của don-mua-thit.ts), và bỏ bốn ô khỏi thân gửi khi khách không chọn.
+    const oXuatHoaDon = form.querySelector<HTMLInputElement>('#mtv-xuat-hoa-don');
+    if (daLuu?.xuat_hoa_don && oXuatHoaDon) {
+      oXuatHoaDon.checked = true;
+      for (const ten of O_GIU_HOA_DON) {
+        const o = form.elements.namedItem(ten);
+        if ((o instanceof HTMLInputElement || o instanceof HTMLTextAreaElement) && !o.value) o.value = daLuu[ten] ?? '';
+      }
+    }
+    const KIEM_HOA_DON = [['hoa_don_ten_don_vi', 'tenDonVi'], ['hoa_don_ma_so_thue', 'maSoThue'], ['hoa_don_email', 'email']] as const;
+    const oChu = (ten: string): HTMLInputElement | null => {
+      const o = form.elements.namedItem(ten);
+      return o instanceof HTMLInputElement ? o : null;
+    };
+    function datLoiHoaDon(ten: string, loi: LoiHoaDon | null) {
+      const o = oChu(ten);
+      const cau = form.querySelector<HTMLElement>(`[data-mtv-loi="${ten}"]`);
+      if (loi) o?.setAttribute('aria-invalid', 'true'); else o?.removeAttribute('aria-invalid');
+      if (cau) { cau.textContent = loi ? CAU_HOA_DON[loi][nn] : ''; cau.hidden = !loi; }
+    }
+    /** Kiểm ba ô bắt buộc khi ô "Cần xuất hóa đơn đỏ" đang chọn (bỏ chọn: xóa mọi lỗi). Trả ô sai đầu tiên. */
+    function kiemHoaDon(): HTMLInputElement | null {
+      let oSaiDau: HTMLInputElement | null = null;
+      for (const [ten, loaiO] of KIEM_HOA_DON) {
+        const loi = oXuatHoaDon?.checked ? loiOHoaDon(loaiO, oChu(ten)?.value ?? '') : null;
+        datLoiHoaDon(ten, loi);
+        if (loi && !oSaiDau) oSaiDau = oChu(ten);
+      }
+      return oSaiDau;
+    }
+    // Sửa đúng ô nào thì lỗi của ô đó tắt ngay; bỏ chọn ô "Cần xuất hóa đơn đỏ" thì mọi lỗi hóa đơn tắt.
+    for (const [ten, loaiO] of KIEM_HOA_DON) {
+      oChu(ten)?.addEventListener('input', () => {
+        const o = oChu(ten);
+        if (o?.getAttribute('aria-invalid') === 'true' && !loiOHoaDon(loaiO, o.value)) datLoiHoaDon(ten, null);
+      });
+    }
+    oXuatHoaDon?.addEventListener('change', () => { if (!oXuatHoaDon.checked) kiemHoaDon(); });
 
     const theoKhoa = new Map<string, { ten: string; nhan: string }>();
     for (const sp of menu) for (const g of sp.goi) theoKhoa.set(g.khoa, { ten: sp.ten, nhan: nhanGoi(sp.donVi, g.soGam, nn) });
@@ -689,6 +813,8 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
         if (theoKhoa.has(ten)) { if (giaTri === '0') e.formData.delete(ten); else chon.add(ten); }
       }
       for (const [ten] of [...e.formData]) if (ten.startsWith('gia_') && !chon.has(ten.slice(4))) e.formData.delete(ten);
+      // 0125 · Không chọn "Cần xuất hóa đơn đỏ": chữ đã gõ vào bốn ô (đang ẩn) không rời trình duyệt.
+      if (!oXuatHoaDon?.checked) for (const ten of O_GIU_HOA_DON) e.formData.delete(ten);
     });
 
     // Gửi: giỏ rỗng → không gửi, báo và đưa con trỏ về ô chọn đầu. Có giỏ → giữ ô liên hệ, khóa nút (bấm đúp không
@@ -712,6 +838,9 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
         dau?.focus();
         return;
       }
+      // 0125 · Hóa đơn đỏ: ô bắt buộc trống hay sai dạng → không gửi, câu lỗi sát ô, con trỏ về ô sai đầu tiên.
+      const oSai = kiemHoaDon();
+      if (oSai) { e.preventDefault(); oSai.focus(); return; }
       if (dangGui) { e.preventDefault(); return; }
       dangGui = true;
       try {
@@ -719,6 +848,14 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
         for (const ten of O_GIU) {
           const o = form.elements.namedItem(ten);
           d[ten] = o instanceof HTMLInputElement || o instanceof HTMLTextAreaElement ? o.value : '';
+        }
+        // 0125 · Chỉ giữ chữ của hóa đơn khi khách đã chọn "Cần xuất hóa đơn đỏ".
+        if (oXuatHoaDon?.checked) {
+          d.xuat_hoa_don = true;
+          for (const ten of O_GIU_HOA_DON) {
+            const o = form.elements.namedItem(ten);
+            d[ten] = o instanceof HTMLInputElement || o instanceof HTMLTextAreaElement ? o.value : '';
+          }
         }
         sessionStorage.setItem(KHOA, JSON.stringify(d));
       } catch { /* không giữ được thì thôi */ }
@@ -814,6 +951,18 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
   .mtv-don .hang-nut .nut { width: 100%; }
   .mtv-bao { font-weight: 700; margin: var(--k-3) 0 0; }
   .mtv-bao:empty { margin: 0; }
+
+  /* --- 0125 · Hóa đơn đỏ: ô đánh dấu 24px tự vẽ (cong-khai.css) cạnh nhãn, hàng cao 48px; bốn ô chỉ hiện khi ô được
+     chọn — bằng CSS (input:checked ~), nên chạy cả khi tắt JavaScript. ------------------------------------------- */
+  .mtv-hoa-don {
+    display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: var(--k-3); align-items: start;
+    margin: 0 0 var(--k-5); padding-top: var(--k-3); border-top: 1px solid var(--vien);
+  }
+  .mtv-hoa-don > input { margin-top: var(--k-3); }
+  .mtv-hoa-don-chon { display: flex; align-items: center; min-height: 48px; font-size: 15px; font-weight: 700; line-height: 1.5; cursor: pointer; }
+  .mtv-hoa-don-o { grid-column: 1 / -1; display: none; padding-top: var(--k-3); }
+  .mtv-hoa-don > input:checked ~ .mtv-hoa-don-o { display: block; }
+  .mtv-hoa-don-dan { margin: 0 0 var(--k-4); }
 
   /* --- Thanh giỏ: đen, dính đáy màn hình khi có gói và khối Đặt hàng chưa trên màn hình -------------- */
   .mtv-thanh {

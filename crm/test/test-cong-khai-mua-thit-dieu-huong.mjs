@@ -17,8 +17,9 @@
  *   4. Đường dẫn và ba file vỏ: dòng CAP_DUONG_DAN ngay sau /thuc-don; vỏ nhận POST đặt hàng (xuLyDatHang) trước khi
  *      đọc gì, đọc nội dung và menu song song, tính trạng thái bằng trangThaiMuaThit(muaThitVeMo(noiDung), menu).
  *   5. Mô tả trang: giao tận nơi, đặt trên web, quán gọi xác nhận; câu "chưa mở" không hứa gì.
- *   6. Quyền riêng tư, xóa dữ liệu: nói đúng dữ liệu đơn lưu gì (họ tên, số điện thoại, địa chỉ, ghi chú, gói),
- *      ai đọc, không thu tiền; IP chỉ để chặn gửi quá nhiều; không còn câu "tin đơn qua Zalo".
+ *   6. Quyền riêng tư, xóa dữ liệu: nói đúng dữ liệu đơn lưu gì (họ tên, số điện thoại, địa chỉ, ghi chú, gói; chọn
+ *      "Cần xuất hóa đơn đỏ" thì thêm tên đơn vị, mã số thuế, địa chỉ đơn vị, email nhận hóa đơn — 0125), ai đọc,
+ *      không thu tiền; IP chỉ để chặn gửi quá nhiều; không còn câu "tin đơn qua Zalo".
  *
  * Phần trong component: test-cong-khai-mua-thit-ve.mjs. Lib đơn và menu: test-mua-thit-ve-web.mjs. Gửi đơn:
  * test-mua-thit-dat-hang-web.mjs. Database: test-mua-thit-ve.mjs, test-mua-thit-dat-hang.mjs.
@@ -242,15 +243,22 @@ await nhom('5 · MÔ TẢ TRANG', async () => {
 // ===========================================================================
 await nhom('6 · QUYỀN RIÊNG TƯ, XÓA DỮ LIỆU', async () => {
   const RIENG_TU = [
+    // 0125 · hóa đơn đỏ: chọn ô thì lưu thêm bốn thông tin, chỉ để xuất hóa đơn; không chọn thì không lưu.
     ['vi', 'web/src/pages/quyen-rieng-tu.astro', 'Khi bạn đặt mua thịt về', 'Dùng để làm gì',
       [/họ tên,\s*số điện thoại,\s*địa chỉ giao,\s*ghi chú/u, /chủ nhà hàng,\s*quản lý và thu ngân/u,
-       /trên\s*trang của VNPay/u, /không\s*thấy và không lưu số thẻ/u, /IP[^.]*chặn/u, /15 phút/u]],
+       /trên\s*trang của VNPay/u, /không\s*thấy và không lưu số thẻ/u, /IP[^.]*chặn/u, /15 phút/u,
+       /Cần xuất hóa đơn đỏ[^.]*tên đơn vị,\s*mã số thuế,\s*địa chỉ đơn vị và email nhận hóa đơn/u,
+       /chỉ dùng để xuất hóa đơn/u, /Không chọn thì Beeftown không lưu/u]],
     ['en', 'web/src/pages/en/privacy.astro', 'When you order beef to take home', 'What we use it for',
       [/name, phone number, delivery address, note/u, /owner, managers and\s*cashiers/u,
-       /on the VNPay\s*page/u, /never sees or stores a card\s*number/u, /IP address[^.]*block/u, /15 minutes/u]],
+       /on the VNPay\s*page/u, /never sees or stores a card\s*number/u, /IP address[^.]*block/u, /15 minutes/u,
+       /I need a VAT invoice[^.]*company name, tax code, company address and invoice email/u,
+       /used only to issue the VAT invoice/u, /If you do not tick it, Beeftown does not store them/u]],
     ['ko', 'web/src/pages/ko/privacy.astro', '소고기 포장 주문을 하실 때', '이용 목적',
       [/이름,\s*전화번호,\s*배달 주소,\s*메모/u, /대표,\s*매니저,\s*캐셔/u,
-       /VNPay\s*페이지에서/u, /카드 번호,\s*카드 소유자 이름,\s*비밀번호를 보거나 저장하지 않아요/u, /IP 주소[^.]*막는/u, /15분/u]],
+       /VNPay\s*페이지에서/u, /카드 번호,\s*카드 소유자 이름,\s*비밀번호를 보거나 저장하지 않아요/u, /IP 주소[^.]*막는/u, /15분/u,
+       /세금계산서\(레드 인보이스\)가 필요해요[^.]*회사 이름,\s*세금 코드,\s*회사 주소,\s*세금계산서 받을 이메일/u,
+       /보내는 데에만 써요/u, /체크하지\s*않으시면 저장하지 않아요/u]],
   ];
   const loiMuc = [], loiCau = [];
   for (const [nn, f, tieuDe, sau, y] of RIENG_TU) {

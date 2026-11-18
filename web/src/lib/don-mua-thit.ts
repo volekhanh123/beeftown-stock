@@ -209,3 +209,65 @@ export function gioThanhDiaChi(gio: ReadonlyMap<string, number>): string {
 export function rutGonMenu(menu: readonly SanPhamMua[]): SanPhamMua[] {
   return menu.map(sp => ({ ...sp, moTa: null, cachDung: null, goi: sp.goi.map(g => ({ ...g })) }));
 }
+
+// -----------------------------------------------------------------------------
+// HÓA ĐƠN ĐỎ (0125, Khánh 18/11/2026) — khách chọn "Cần xuất hóa đơn đỏ" thì điền tên đơn vị, mã số thuế, địa chỉ
+// đơn vị, email nhận hóa đơn. Cùng luật với tao_don_mua_thit và ràng buộc don_mua_thit_hoa_don của
+// crm/supabase/migrations/0125_mua_thit_hoa_don_do.sql — crm/test/test-mua-thit-hoa-don.mjs chạy cả hai bên trên cùng
+// một bảng chữ. Máy chủ (lib/dat-hang-mua-thit.ts) chặn sớm; script của trang báo lỗi sát ô trước khi gửi.
+// -----------------------------------------------------------------------------
+
+/** Độ dài tối đa — như tao_don_mua_thit (0125) và maxlength của ô. Mã số thuế: 20 ký tự gõ (còn dấu cách). */
+export const HOA_DON_TOI_DA = { tenDonVi: 200, maSoThue: 20, diaChi: 300, email: 200 } as const;
+
+/** Mọi kiểu gạch ngang khách gõ / dán (bàn phím điện thoại, Word, PDF): U+2010–U+2015, U+2212 → "-". */
+const GACH_NGANG = /[\u2010-\u2015\u2212]/g;
+/** Bỏ khỏi mã số thuế: dấu cách (cả cách không ngắt U+00A0, cách hẹp U+202F, ký tự rộng 0 U+200B, U+FEFF), tab, xuống dòng, dấu chấm. */
+const BO_KHOI_MA_SO_THUE = /[ \t\r\n\u00a0\u202f\u200b\ufeff.]/g;
+/** Mã số thuế đã chuẩn hóa: 10 số (doanh nghiệp, tổ chức), hoặc 10 số - 3 số (đơn vị phụ thuộc, chi nhánh). */
+export const MAU_MA_SO_THUE = /^[0-9]{10}(?:-[0-9]{3})?$/;
+/** Email nhận hóa đơn: phần trước @ chữ không dấu, số, . _ % + -; tên miền có ít nhất một dấu chấm, đuôi từ hai chữ. */
+export const MAU_EMAIL_HOA_DON = /^[A-Za-z0-9._%+-]+@(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}$/;
+
+/**
+ * Mã số thuế như database lưu: mọi kiểu gạch ngang thành "-"; bỏ dấu cách, dấu chấm; 13 số liền nhau thành
+ * "0123456789-001". Không đoán thêm gì — chuỗi khác để nguyên cho MAU_MA_SO_THUE từ chối.
+ */
+export function chuanHoaMaSoThue(v: string): string {
+  const s = v.replace(GACH_NGANG, '-').replace(BO_KHOI_MA_SO_THUE, '');
+  return /^[0-9]{13}$/.test(s) ? `${s.slice(0, 10)}-${s.slice(10)}` : s;
+}
+
+/** Lỗi của ô hóa đơn (null = đúng). Chỉ gọi khi khách đã chọn "Cần xuất hóa đơn đỏ". Địa chỉ đơn vị không bắt buộc. */
+export type LoiHoaDon = 'thieuTenDonVi' | 'saiMaSoThue' | 'thieuEmailHoaDon' | 'saiEmailHoaDon';
+export function loiOHoaDon(o: 'tenDonVi' | 'maSoThue' | 'email', giaTri: string): LoiHoaDon | null {
+  const v = giaTri.trim();
+  if (o === 'tenDonVi') return v ? null : 'thieuTenDonVi';
+  if (o === 'maSoThue') return MAU_MA_SO_THUE.test(chuanHoaMaSoThue(v)) ? null : 'saiMaSoThue';
+  if (!v) return 'thieuEmailHoaDon';
+  return v.length <= HOA_DON_TOI_DA.email && MAU_EMAIL_HOA_DON.test(v) ? null : 'saiEmailHoaDon';
+}
+
+/** Câu lỗi của ô hóa đơn, ba thứ tiếng — máy chủ (chặn sớm) và script của trang (lỗi sát ô) dùng chung. */
+export const CAU_HOA_DON = {
+  thieuTenDonVi: {
+    vi: 'Vui lòng điền tên đơn vị để xuất hóa đơn đỏ.',
+    en: 'Please enter the company name for the VAT invoice.',
+    ko: '세금계산서에 들어갈 회사 이름을 입력해 주세요.',
+  },
+  saiMaSoThue: {
+    vi: 'Mã số thuế gồm 10 số, hoặc 10 số - 3 số với chi nhánh. Vui lòng kiểm tra lại.',
+    en: 'The tax code is 10 digits, or 10 digits - 3 digits for a branch. Please check it.',
+    ko: '세금 코드는 숫자 10자리, 지점은 10자리-3자리예요. 다시 확인해 주세요.',
+  },
+  thieuEmailHoaDon: {
+    vi: 'Vui lòng điền email nhận hóa đơn.',
+    en: 'Please enter the email address for the VAT invoice.',
+    ko: '세금계산서를 받을 이메일 주소를 입력해 주세요.',
+  },
+  saiEmailHoaDon: {
+    vi: 'Email nhận hóa đơn chưa đúng dạng. Vui lòng kiểm tra lại.',
+    en: 'The email address for the VAT invoice does not look right. Please check it.',
+    ko: '세금계산서를 받을 이메일 주소 형식이 맞지 않아요. 다시 확인해 주세요.',
+  },
+} as const satisfies Record<LoiHoaDon, BaTieng<string>>;

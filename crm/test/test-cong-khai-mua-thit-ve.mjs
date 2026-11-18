@@ -26,16 +26,20 @@
  *  11. Đợt 3 (Khánh duyệt 12/11/2026): một khuôn thẻ (giá đậm, cỡ gói ngay dưới, nút ở chân thẻ), dòng gu từ
  *      bo_tai_quay_theo_gu, cách dùng trong hộp, dải ba điều đúng theo cách trả tiền, nút lọc nhóm chạy nhờ script,
  *      cột "Đơn của bạn" dính bên phải từ 1024px.
+ *  12. Hóa đơn đỏ (0125, Khánh 18/11/2026): ô "Cần xuất hóa đơn đỏ" cuối khối Giao hàng, bốn ô hiện bằng CSS (chạy không
+ *      cần JavaScript), không ràng buộc nào của trình duyệt trên ô có thể đang ẩn, lỗi sát ô, giữ chữ đã gõ, bốn ô
+ *      không rời trình duyệt khi khách không chọn.
  */
 
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { napBoDoc } from './dinh-chu.mjs';
 import { taoBoDem } from './kho-chung.mjs';
 
 const GOC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const COMP = join(GOC, 'web', 'src', 'components');
+const { timChuoiCam } = await import(pathToFileURL(join(GOC, 'web', 'src', 'lib', 'chuoi-cam.js')).href);
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — TRANG MUA THỊT VỀ: HAI COMPONENT (ĐỌC TỪ MÃ NGUỒN)');
 
@@ -258,9 +262,15 @@ await nhom('5 · Ô GIAO HÀNG, QUYỀN RIÊNG TƯ, KHÔNG <img>, VÙNG THÔNG B
      /<textarea/.test(o('dia_chi')) && /\srequired(?=[\s>])/.test(o('dia_chi')) && /minlength="8"/.test(o('dia_chi')) && /maxlength="300"/.test(o('dia_chi')), o('dia_chi'));
   ok('Ghi chú: textarea, không bắt buộc, maxlength 500', /<textarea/.test(o('ghi_chu')) && !/required/.test(o('ghi_chu')) && /maxlength="500"/.test(o('ghi_chu')));
   const id = [...TRANG.khuon.matchAll(/<(?:input|textarea) type="(?:text|tel)" id="([\w-]+)"|<textarea id="([\w-]+)"/g)].map(m => m[1] ?? m[2]);
-  ok('Mỗi ô có <label for> riêng; không placeholder thay nhãn', id.length === 4 && id.every(i => TRANG.khuon.includes(`<label for="${i}">`))
-     && !/placeholder=/.test(TRANG.khuon), id.join(', '));
-  ok('Không ô đánh dấu, radio, email', HAI.every(([, f]) => !/type="(?:checkbox|radio|email)"/.test(f.khuon)));
+  // 0125: bốn ô giao hàng + bốn ô hóa đơn đỏ (nhóm 12).
+  ok('Mỗi ô có <label for> riêng (bốn ô giao hàng, bốn ô hóa đơn đỏ); không placeholder thay nhãn',
+     id.length === 8 && id.every(i => TRANG.khuon.includes(`<label for="${i}">`)) && !/placeholder=/.test(TRANG.khuon), id.join(', '));
+  // 0125 (Khánh 18/11/2026): đúng một ô đánh dấu — "Cần xuất hóa đơn đỏ" — không chọn sẵn, không bắt buộc. Vẫn không
+  // radio, không ô đồng ý (bấm Đặt hàng là đồng ý), không type="email" (ô đang ẩn mang lỗi chặn gửi cả form — nhóm 12).
+  const danhDau = HAI.flatMap(([, f]) => f.khuon.match(/<input[^>]*type="checkbox"[^>]*>/g) ?? []);
+  ok('Đúng một ô đánh dấu: name="xuat_hoa_don" value="co", không checked, không required; không radio, không type="email"',
+     danhDau.length === 1 && /name="xuat_hoa_don"/.test(danhDau[0]) && /value="co"/.test(danhDau[0]) && !/\schecked|required/.test(danhDau[0])
+       && HAI.every(([, f]) => !/type="(?:radio|email)"/.test(f.khuon)), danhDau.join(' | '));
   // Khánh giao 16/11/2026 (hồ sơ thông báo website thương mại điện tử): sau câu đồng ý là ba link — Quyền riêng tư,
   // Điều khoản, Đổi trả và hoàn tiền —, viết liền một dòng (compressHTML), đường dẫn đúng thứ tiếng.
   ok('Câu cho biết họ tên, số điện thoại, địa chỉ dùng để gọi xác nhận và giao, kèm link Quyền riêng tư, Điều khoản, Đổi trả và hoàn tiền đúng thứ tiếng',
@@ -512,6 +522,73 @@ await nhom('11 · ĐỢT 3: KHUÔN THẺ, GU, BA ĐIỀU, LỌC NHÓM, CỘT Đ�
        && /khoiDatDangHien = dangHien\.size > 0;/.test(s) && /for \(const k of khoiDat\) quan\.observe\(k\);/.test(s));
   ok('DOM theo thứ tự đọc: lưới gói → ô giao hàng → cột đơn (điện thoại một cột đúng thứ tự đó)',
      TRANG.khuon.indexOf('id="chon-goi"') < TRANG.khuon.indexOf('id="dat-hang"') && TRANG.khuon.indexOf('id="dat-hang"') < TRANG.khuon.indexOf('data-mtv-don>'));
+});
+
+// ===========================================================================
+// 0125 (Khánh 18/11/2026): quán có xuất hóa đơn đỏ, cần mẫu cho khách nhập. Luật mã số thuế và email chạy ở web và
+// database trên cùng một bảng chữ: test-mua-thit-hoa-don.mjs.
+await nhom('12 · HÓA ĐƠN ĐỎ (0125): Ô ĐÁNH DẤU, BỐN Ô, CHẠY KHÔNG CẦN JAVASCRIPT', async () => {
+  const k = TRANG.khuon;
+  const hd = /<div class="mtv-hoa-don">[\s\S]*?\n {14}<\/div>(?=\n {12}<\/section>)/.exec(k)?.[0] ?? '';
+  ok('Khối hóa đơn nằm trong khối Giao hàng (#dat-hang, chỉ khi trạng thái mo), sau ô Ghi chú, ngay trước khi khối đóng',
+     !!hd && chiTrongKhoi(k, "{trangThai === 'mo' && (", 'class="mtv-hoa-don"') && k.indexOf('name="ghi_chu"') < k.indexOf('class="mtv-hoa-don"')
+       && k.indexOf('id="dat-hang"') < k.indexOf('class="mtv-hoa-don"') && k.indexOf('class="mtv-hoa-don"') < k.indexOf('data-mtv-don>'), hd.slice(0, 200));
+  ok('Ô đánh dấu là con đầu của .mtv-hoa-don, nhãn ngay sau, rồi tới .mtv-hoa-don-o — cùng cha, để CSS input:checked ~ chạm tới bốn ô',
+     /^<div class="mtv-hoa-don">\s*<input type="checkbox" id="mtv-xuat-hoa-don" name="xuat_hoa_don" value="co" aria-controls="mtv-hoa-don-o" \/>\s*<label for="mtv-xuat-hoa-don" class="mtv-hoa-don-chon">\{c\.canHoaDon\}<\/label>\s*<div class="mtv-hoa-don-o" id="mtv-hoa-don-o">/.test(hd));
+  const css = boChuThichCss(TRANG.style);
+  ok('CSS: bốn ô ẩn mặc định, hiện khi ô được chọn (.mtv-hoa-don > input:checked ~ .mtv-hoa-don-o) — không cần JavaScript; hàng ô đánh dấu cao ≥ 48px',
+     /\.mtv-hoa-don-o\s*\{[^}]*display:\s*none/.test(css) && /\.mtv-hoa-don > input:checked ~ \.mtv-hoa-don-o\s*\{\s*display:\s*block;\s*\}/.test(css)
+       && /\.mtv-hoa-don-chon\s*\{[^}]*min-height:\s*48px/.test(css));
+
+  const toiDa = /export const HOA_DON_TOI_DA = \{ tenDonVi: (\d+), maSoThue: (\d+), diaChi: (\d+), email: (\d+) \}/
+    .exec(readFileSync(join(GOC, 'web', 'src', 'lib', 'don-mua-thit.ts'), 'utf8'))?.slice(1).map(Number) ?? [];
+  const o = ten => theMo(hd, `name="${ten}"`);
+  const BON = [
+    ['hoa_don_ten_don_vi', 'input', toiDa[0], /type="text"/, /autocomplete="organization"/, true],
+    ['hoa_don_ma_so_thue', 'input', toiDa[1], /type="text"/, /inputmode="numeric"/, true],
+    ['hoa_don_dia_chi', 'textarea', toiDa[2], /^<textarea/, /rows="2"/, false],
+    ['hoa_don_email', 'input', toiDa[3], /type="text"/, /inputmode="email" autocomplete="off"/, true],
+  ];
+  for (const [ten, the, dai, kieu, them, batBuoc] of BON) {
+    const t = o(ten);
+    ok(`Ô ${ten}: <${the}>, maxlength ${dai} (HOA_DON_TOI_DA của don-mua-thit.ts), ${batBuoc ? 'nhãn "bắt buộc", câu lỗi sát ô' : 'nhãn "không bắt buộc"'}`,
+       new RegExp(`^<${the}\\b`).test(t) && kieu.test(t) && them.test(t) && dai > 0 && t.includes(`maxlength="${dai}"`)
+         && (batBuoc
+           ? hd.includes(`<p class="loi-o" id="mtv-loi-${ten}" data-mtv-loi="${ten}" hidden></p>`) && new RegExp(`aria-describedby="[^"]*mtv-loi-${ten}"`).test(t)
+           : /\{c\.diaChiDonVi\} <em>\(\{c\.khongBatBuoc\}\)<\/em>/.test(hd)), t);
+  }
+  ok('Không ô nào của khối mang required, pattern, minlength hay type="email": ô đang ẩn mà mang lỗi thì trình duyệt chặn gửi cả form mà không chỉ ra ô nào',
+     !/\srequired|pattern=|minlength=|type="email"/.test(hd), hd.match(/\srequired|pattern=|minlength=|type="email"/g)?.join(', ') ?? '');
+  ok('Ba ô bắt buộc có nhãn "bắt buộc": tên đơn vị, mã số thuế, email nhận hóa đơn',
+     ['tenDonVi', 'maSoThue', 'emailHoaDon'].every(x => hd.includes(`{c.${x}} <em>({c.batBuoc})</em></label>`)));
+
+  const KHOA_HD = ['canHoaDon', 'hoaDonDan', 'tenDonVi', 'tenDonViPhu', 'maSoThue', 'maSoThuePhu', 'diaChiDonVi', 'diaChiDonViPhu', 'emailHoaDon', 'emailHoaDonPhu'];
+  const chuHd = KHOA_HD.flatMap(x => ['vi', 'en', 'ko'].map(nn => [x, nn, cauCua(x)?.[nn]?.[0] ?? '']));
+  ok('Chữ của khối đủ vi, en, ko; không chữ cấm; bản en, ko không lẫn chữ Việt',
+     chuHd.every(([, , s]) => s.length > 1 && timChuoiCam(s).length === 0)
+       && chuHd.filter(([, nn]) => nn !== 'vi').every(([, , s]) => !/[ăâđêôơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/i.test(s)),
+     chuHd.filter(([, , s]) => s.length <= 1 || timChuoiCam(s).length).map(([x, nn]) => `${x}.${nn}`).join(', '));
+  ok('Nhãn ô đánh dấu đúng chữ Khánh giao: "Cần xuất hóa đơn đỏ"; câu dẫn nói thông tin CHỈ dùng để xuất hóa đơn (vi, en, ko)',
+     cauCua('canHoaDon')?.vi?.[0] === 'Cần xuất hóa đơn đỏ' && /chỉ dùng[\s\S]*xuất hóa đơn đỏ/.test(cauCua('hoaDonDan')?.vi?.[0] ?? '')
+       && /only/.test(cauCua('hoaDonDan')?.en?.[0] ?? '') && /에만/.test(cauCua('hoaDonDan')?.ko?.[0] ?? ''));
+  ok('Gợi ý mã số thuế ghi đúng dạng: 10 số, chi nhánh thêm 3 số (ví dụ 0123456789-001 — không phải mã số thuế thật: sai số kiểm tra)',
+     /10 số[\s\S]*3 số[\s\S]*0123456789-001/.test(cauCua('maSoThuePhu')?.vi?.[0] ?? '') && /10 digits[\s\S]*0123456789-001/.test(cauCua('maSoThuePhu')?.en?.[0] ?? ''));
+
+  const s = TRANG.script;
+  ok('Script nạp luật và câu từ don-mua-thit.ts (loiOHoaDon, CAU_HOA_DON) — cùng luật, cùng chữ với máy chủ',
+     /import \{[\s\S]*CAU_HOA_DON[\s\S]*loiOHoaDon[\s\S]*\} from '\.\.\/lib\/don-mua-thit';/.test(s) && /CAU_HOA_DON\[loi\]\[nn\]/.test(s));
+  ok('Bấm Đặt hàng: kiểm hóa đơn TRƯỚC khi khóa nút (sai thì không gửi, con trỏ về ô sai đầu tiên)',
+     /const oSai = kiemHoaDon\(\);\s*if \(oSai\) \{ e\.preventDefault\(\); oSai\.focus\(\); return; \}\s*if \(dangGui\)/.test(s));
+  ok('Chỉ kiểm khi ô "Cần xuất hóa đơn đỏ" đang chọn; bỏ chọn thì xóa mọi lỗi hóa đơn',
+     /const loi = oXuatHoaDon\?\.checked \? loiOHoaDon\(loaiO, oChu\(ten\)\?\.value \?\? ''\) : null;/.test(s)
+       && /oXuatHoaDon\?\.addEventListener\('change', \(\) => \{ if \(!oXuatHoaDon\.checked\) kiemHoaDon\(\); \}\);/.test(s));
+  ok('Không chọn: bốn ô (đang ẩn) bị bỏ khỏi thân gửi trong sự kiện formdata',
+     /if \(!oXuatHoaDon\?\.checked\) for \(const ten of O_GIU_HOA_DON\) e\.formData\.delete\(ten\);/.test(s)
+       && /const O_GIU_HOA_DON = \['hoa_don_ten_don_vi', 'hoa_don_ma_so_thue', 'hoa_don_dia_chi', 'hoa_don_email'\] as const;/.test(s));
+  ok('Giữ chữ của hóa đơn trong sessionStorage CHỈ khi đã chọn; database từ chối thì chọn lại ô và điền lại ô đang trống',
+     /if \(oXuatHoaDon\?\.checked\) \{\s*d\.xuat_hoa_don = true;/.test(s)
+       && /if \(daLuu\?\.xuat_hoa_don && oXuatHoaDon\) \{\s*oXuatHoaDon\.checked = true;[\s\S]*?&& !o\.value\) o\.value = daLuu\[ten\] \?\? '';/.test(s));
+  ok('Script không tự đặt required / pattern lên ô (lỗi chỉ qua câu sát ô)', !/\.required\s*=|setAttribute\('(?:required|pattern)'/.test(s));
 });
 
 process.exit(ketThuc('TRANG MUA THỊT VỀ: HAI COMPONENT'));

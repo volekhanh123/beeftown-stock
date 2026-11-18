@@ -5,6 +5,9 @@
  * Khánh 03/11/2026: khách đặt thẳng trên website, chỉ giao tận nơi. Form của trang /mua-thit-ve (en, ko: /buy-meat)
  * là form POST: các ô chọn số gói (tên ô = khoaGoi), giá khách đã thấy của từng gói (ô ẩn gia_<khoa>), mã chống gửi
  * hai lần (ô ẩn ma_gui, mỗi lần dựng form một mã), họ tên, số điện thoại, địa chỉ giao, ghi chú.
+ * 0125 (Khánh 18/11/2026): ô "Cần xuất hóa đơn đỏ" (xuat_hoa_don=co) và bốn ô hoa_don_ten_don_vi, hoa_don_ma_so_thue,
+ * hoa_don_dia_chi, hoa_don_email — chỉ đọc khi ô đó được chọn; chỉ khi đó lời gọi mới mang p_hoa_don (database chưa
+ * chạy 0125 vẫn nhận đơn không cần hóa đơn).
  * lib/xu-ly-form.ts đọc thân POST rồi gọi guiDonMuaThit; trang đọc kết quả qua cookie sau khi chuyển hướng.
  *
  * Database quyết định đơn: tự tính từ giá đã chốt, từ chối gói ngừng bán / tạm hết, từ chối khi giá khách đã thấy
@@ -19,7 +22,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { maChiNhanh, type NgonNgu } from './noi-dung.ts';
 import { cauLoiDatabase, laLoiDatabase, dich, type BaThuTieng } from './chu.ts';
-import { SO_GOI_TOI_DA } from './don-mua-thit.ts';
+import { SO_GOI_TOI_DA, CAU_HOA_DON, chuanHoaMaSoThue, loiOHoaDon } from './don-mua-thit.ts';
 
 /** Câu trả lời sau khi đặt, ba thứ tiếng. "Đã nhận" — không bao giờ "thành công" hay "đã xác nhận". */
 export const CAU_DAT_HANG = {
@@ -59,6 +62,8 @@ export const CAU_DAT_HANG = {
     en: 'We could not open the VNPay payment page. Your order is recorded but has NOT been paid.',
     ko: 'VNPay 결제 페이지를 열지 못했어요. 주문은 접수되었지만 아직 결제되지 않았어요.',
   },
+  // 0125 · hóa đơn đỏ — cùng câu với lỗi sát ô của trang (lib/don-mua-thit.ts, CAU_HOA_DON)
+  ...CAU_HOA_DON,
 } as const satisfies Record<string, BaThuTieng>;
 
 /** Kết quả mở một lần trả VNPay (mua_thit_mo_vnpay, 0115). */
@@ -108,6 +113,15 @@ export interface KetQuaDatHang {
   daTra?: boolean;
 }
 
+/** 0125 · thông tin xuất hóa đơn đỏ, đã chuẩn hóa như database lưu (chưa kiểm — kiemDonGui và database kiểm). */
+export interface HoaDonGui {
+  tenDonVi: string;
+  maSoThue: string;
+  /** Không bắt buộc: để trống thì nhân viên tra theo mã số thuế. */
+  diaChi: string | null;
+  email: string;
+}
+
 /** Đơn đọc từ thân POST — chưa kiểm với menu (database làm việc đó). */
 export interface DonGui {
   maGui: string | null;
@@ -119,6 +133,8 @@ export interface DonGui {
   gio: Map<string, number>;
   /** khoa → giá khách đã thấy, chỉ cho gói có trong giỏ. */
   giaDaXem: Record<string, number>;
+  /** 0125 · null = khách không chọn "Cần xuất hóa đơn đỏ" (bốn ô hóa đơn, nếu có gửi lên, bị bỏ qua). */
+  hoaDon: HoaDonGui | null;
 }
 
 /** khoaGoi của don-mua-thit.ts: mã sản phẩm (0099: chữ thường không dấu, số, gạch nối) + "_" + số gam. */
@@ -150,6 +166,15 @@ export function docDonGui(form: FormData): DonGui {
   }
   const maGui = chu(form.get('ma_gui')).trim();
   const ghiChu = chu(form.get('ghi_chu')).replace(/\r/g, '').trim();
+  // 0125 · chỉ đọc bốn ô hóa đơn khi khách chọn ô "Cần xuất hóa đơn đỏ" (ô bị ẩn vẫn có thể gửi chữ đã gõ lên).
+  const hoaDon: HoaDonGui | null = chu(form.get('xuat_hoa_don')) === 'co'
+    ? {
+        tenDonVi: motDong(chu(form.get('hoa_don_ten_don_vi'))),
+        maSoThue: chuanHoaMaSoThue(chu(form.get('hoa_don_ma_so_thue'))),
+        diaChi: motDong(chu(form.get('hoa_don_dia_chi'))) || null,
+        email: chu(form.get('hoa_don_email')).trim(),
+      }
+    : null;
   return {
     maGui: MAU_UUID.test(maGui) ? maGui.toLowerCase() : null,
     hoTen: motDong(chu(form.get('ho_ten'))),
@@ -158,6 +183,7 @@ export function docDonGui(form: FormData): DonGui {
     ghiChu: ghiChu || null,
     gio,
     giaDaXem,
+    hoaDon,
   };
 }
 
@@ -168,6 +194,12 @@ export function kiemDonGui(d: DonGui, ngonNgu: NgonNgu): string | null {
   if (!d.hoTen) return cau.thieuHoTen;
   if (d.sdt.replace(/[^0-9]/g, '').length < 9) return cau.thieuSdt;
   if (d.diaChi.length < 8) return cau.thieuDiaChi;
+  // 0125 · hóa đơn đỏ: tên đơn vị, mã số thuế, email — cùng luật và cùng câu với lỗi sát ô của trang.
+  if (d.hoaDon) {
+    const loi = loiOHoaDon('tenDonVi', d.hoaDon.tenDonVi) ?? loiOHoaDon('maSoThue', d.hoaDon.maSoThue)
+      ?? loiOHoaDon('email', d.hoaDon.email);
+    if (loi) return cau[loi];
+  }
   return null;
 }
 
@@ -194,6 +226,12 @@ export async function guiDonMuaThit(
     p_gia_da_xem: d.giaDaXem,
     p_ngon_ngu: ngonNgu,
     p_ip: ip,
+    // 0125 · chỉ khi khách chọn "Cần xuất hóa đơn đỏ": đơn không cần hóa đơn gửi đúng mười tham số cũ.
+    ...(d.hoaDon ? {
+      p_hoa_don: {
+        ten_don_vi: d.hoaDon.tenDonVi, ma_so_thue: d.hoaDon.maSoThue, dia_chi: d.hoaDon.diaChi, email: d.hoaDon.email,
+      },
+    } : {}),
   });
 
   if (error) {
