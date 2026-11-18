@@ -70,6 +70,8 @@
  *                       thử; menu MENU_THU (Ba chỉ bò Mỹ 400 g "Tạm hết ở quầy"); gu thử GU_THU (đợt 3: dòng gu trên thẻ)
  *   mua-thit-giao       như mua-thit-mo, thêm mua_thit_giao_hang (chữ thử, không số tiền), hotline null
  *   mua-thit-het-quay   như mua-thit-mo, mọi gói tam_het
+ *   mua-thit-trang      như mua-thit-mo, thêm hien_tro_ly_trang = true (0126 · khung nhắn tin Trang; Edge Function giả
+ *                       POST /functions/v1/tro-ly-trang trả TRA_LOI_TRANG_THU)
  *   mua-thit-rong       database tự tính false (bật, 0 gói); menu []
  *   mua-thit-khong-zalo true, zalo_oa_url null; menu MENU_THU — 0113: trang mở và đặt được dù chưa có link Zalo
  *   mua-thit-lech       true, menu [] (gói vừa bị bỏ giữa hai lời gọi song song)
@@ -143,7 +145,7 @@ export const CONG_MAC_DINH = 54331;
 export const KICH_BAN = ['rong', 'day-du', 'dat-ban-dong', 'dat-ban-loi', 'dat-ban-500', 'dat-ban-dut', 'dat-ban-sap', 'dia-chi-cong-bo',
   'tuyen-dung-mo', 'tuyen-dung-dut', 'tuyen-dung-loi', 'sap-mo', 'da-mo', 'khong-con-tat', 'thuc-don-thu-suc',
   'mua-thit-mo', 'mua-thit-giao', 'mua-thit-het-quay', 'mua-thit-rong', 'mua-thit-khong-zalo',
-  'mua-thit-lech', 'mua-thit-loi', 'mua-thit-dut', 'mua-thit-treo', 'mua-thit-dat-loi', 'mua-thit-dat-dut'];
+  'mua-thit-lech', 'mua-thit-loi', 'mua-thit-dut', 'mua-thit-treo', 'mua-thit-dat-loi', 'mua-thit-dat-dut', 'mua-thit-trang'];
 
 // Liên hệ "đã công bố" của kịch bản day-du. Đường dẫn thử, không phải trang thật của nhà hàng.
 export const LIEN_HE_THU = {
@@ -184,6 +186,8 @@ const KHOA_NOI_DUNG = [
   // Trang Mua thịt về (0101).
   'hien_mua_thit_ve', 'mua_thit_hien_tam_het', 'mua_thit_gio_nhan', 'mua_thit_giao_hang', 'mua_thit_thue',
   'mua_thit_bao_quan_mat', 'mua_thit_bao_quan_dong_lanh', 'mua_thit_can_lech', 'mua_thit_hang_loi', 'mua_thit_doi_huy',
+  // Khung nhắn tin Trang (0126).
+  'hien_tro_ly_trang',
   'dia_chi_hien_thi', 'hotline', 'facebook_url', 'instagram_url', 'tiktok_url', 'zalo_oa_url',
   'google_maps_url', 'email_lien_he', 'tieu_de_og', 'mo_ta_og', 'anh_chia_se',
 ];
@@ -209,7 +213,7 @@ export const GIAO_HANG_THU = ba(
 );
 /** Kịch bản có menu (mua_thit_ve_cong_khai trả MENU_THU). */
 const KICH_BAN_CO_MENU = new Set(['mua-thit-mo', 'mua-thit-giao', 'mua-thit-het-quay', 'mua-thit-khong-zalo',
-  'mua-thit-dat-loi', 'mua-thit-dat-dut']);
+  'mua-thit-dat-loi', 'mua-thit-dat-dut', 'mua-thit-trang']);
 
 /** Khóa nhóm "Mua thịt về" của một kịch bản (rỗng với kịch bản cũ: mọi khóa null). */
 function noiDungMuaThit(kichBan, n) {
@@ -220,10 +224,37 @@ function noiDungMuaThit(kichBan, n) {
     hien_mua_thit_ve: kichBan !== 'mua-thit-rong',
     zalo_oa_url: kichBan === 'mua-thit-khong-zalo' ? null : ZALO_OA_THU,
   };
-  if (['mua-thit-mo', 'mua-thit-giao', 'mua-thit-het-quay'].includes(kichBan)) nd.mua_thit_gio_nhan = GIO_NHAN_THU[n];
+  if (['mua-thit-mo', 'mua-thit-giao', 'mua-thit-het-quay', 'mua-thit-trang'].includes(kichBan)) nd.mua_thit_gio_nhan = GIO_NHAN_THU[n];
   if (kichBan === 'mua-thit-giao') Object.assign(nd, { mua_thit_giao_hang: GIAO_HANG_THU[n], hotline: null });
+  // 0126 · khung nhắn tin Trang bật (công tắc hien_tro_ly_trang) — Edge Function giả ở traLoiTroLy bên dưới.
+  if (kichBan === 'mua-thit-trang') nd.hien_tro_ly_trang = true;
   return nd;
 }
+
+// ---------------------------------------------------------------------------
+// Edge Function tro-ly-trang GIẢ (0126) — POST {URL}/functions/v1/tro-ly-trang, thân text/plain chứa JSON
+// {cuoc, ma_tin, tin, tra_truoc, chi_nhanh}. Trả lời mẫu theo chữ khách gõ (không gọi Claude):
+//   có "lỗi"             → 502 { ok: false, loi: 'tam_thoi' } LẦN ĐẦU của mỗi ma_tin; gửi lại cùng ma_tin → trả lời thường
+//   có "người hay máy"   → nói thật là trợ lý ảo + cách liên hệ quán (chuyen_nguoi)
+//   có "người" (số người) → hai tin, thẻ ribeye-cap, đơn 2 gói ribeye-cap_200 và 1 gói than-ngoai_200
+//   còn lại              → một tin hỏi số người
+// Lệnh xem {hanh_dong: 'xem', cuoc, sau} → trạng thái cuộc của nhân viên giả. Nhân viên giả do kiểm thử điều khiển:
+// mayGia.troLyNhanVien({ viec: 'nhan' | 'go' | 'gui' | 'tra' | 'truc', ten, noi_dung, bat, cuoc }) (cuoc bỏ trống = cuộc
+// vừa nhắn). Nhân viên đang nhận cuộc → tin khách trả { ok, nhan_vien: true, ten } (như Edge Function thật).
+// ---------------------------------------------------------------------------
+export const TRA_LOI_TRANG_THU = {
+  goiY: {
+    ok: true,
+    tin: ['Dạ nhà mình 2 người thì em gợi ý đầu thăn ngoại còn nắp làm phần chính ạ.', 'Thêm một gói thăn ngoại để so, giá em để ở thẻ bên dưới nhé.'],
+    the: [{ ma: 'ribeye-cap', ten: 'Đầu thăn ngoại còn nắp', nhan: 'Ribeye with Cap', loai: 'Thịt mát', viTri: 'vùng sườn dọc lưng',
+            diem: ['Mềm', 'Béo thơm', 'Mọng nước'], doChin: 'Tái chín đến chín vừa', meo: 'Vỉ nóng vừa. Nếm miếng đầu không chấm gì.', moTa: null }],
+    don: [{ khoa: 'ribeye-cap_200', so_goi: 2, ten: 'đầu thăn ngoại còn nắp' }, { khoa: 'than-ngoai_200', so_goi: 1, ten: 'thăn ngoại' }],
+    chot: false, chuyen_nguoi: false,
+  },
+  ai: { ok: true, tin: ['Dạ em là trợ lý ảo của Beeftown ạ.', 'Anh/chị muốn nói chuyện với nhân viên của quán thì liên hệ theo cách ở ngay bên dưới nhé.'],
+        the: [], don: [], chot: false, chuyen_nguoi: true },
+  hoi: { ok: true, tin: ['Dạ anh/chị nướng cho mấy người ạ?'], the: [], don: [], chot: false, chuyen_nguoi: false },
+};
 
 /**
  * Đúng thứ noi_dung_cong_khai(p_ngon_ngu) trả trong một kịch bản: ĐỦ mọi khóa, chưa công bố là null. Chữ của khóa văn
@@ -738,6 +769,27 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
   let soDonMuaThit = 0;
   const donTheoMaGui = new Map();
   const henGio = new Set();   // lời trả lời đang hoãn (mua-thit-treo) — dong() hủy hết
+  // Nhân viên nhận chat giả (0126 mục 4b): cuộc → { aiTraLoi, ten, dangGo, tin }; truc = có nhân viên mở màn theo dõi.
+  const troLyCuoc = new Map();
+  let troLyTruc = false;
+  let troLyId = 0;
+  let troLyCuocCuoi = null;
+  const cuocGia = id => {
+    if (!troLyCuoc.has(id)) troLyCuoc.set(id, { aiTraLoi: 'trang', ten: null, dangGo: false, tin: [] });
+    return troLyCuoc.get(id);
+  };
+  function troLyNhanVien({ viec, ten = null, noi_dung = '', bat = true, cuoc = null } = {}) {
+    if (viec === 'truc') { troLyTruc = !!bat; return { truc: troLyTruc }; }
+    const id = cuoc ?? troLyCuocCuoi;
+    if (!id) throw new Error('Chưa có cuộc chat nào để nhân viên giả nhận');
+    const cc = cuocGia(id);
+    if (viec === 'nhan') { cc.aiTraLoi = 'nhan_vien'; cc.ten = ten; cc.tin.push({ id: ++troLyId, nguoi: 'he_thong', noi_dung: 'nhan_vien_vao', ten }); }
+    else if (viec === 'go') cc.dangGo = !!bat;
+    else if (viec === 'gui') { cc.dangGo = false; cc.tin.push({ id: ++troLyId, nguoi: 'nhan_vien', noi_dung: String(noi_dung), ten: cc.ten }); }
+    else if (viec === 'tra') { cc.aiTraLoi = 'trang'; cc.ten = null; cc.dangGo = false; cc.tin.push({ id: ++troLyId, nguoi: 'he_thong', noi_dung: 'trang_quay_lai', ten: null }); }
+    else throw new Error(`Việc lạ của nhân viên giả: ${viec}`);
+    return { cuoc: id, ...cc, tin: [...cc.tin] };
+  }
 
   const datKichBan = (ten, { cham: ms = 0 } = {}) => {
     if (!KICH_BAN.includes(ten)) throw new Error(`Kịch bản lạ: ${ten}`);
@@ -850,6 +902,32 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
       }
       if (url.pathname === '/__dem') return tra(200, dem);
       if (url.pathname === '/__nhat-ky') return tra(200, nhatKy);
+
+      // --- Edge Function tro-ly-trang giả (0126): trả TRA_LOI_TRANG_THU theo chữ khách gõ --------------------
+      if (url.pathname === '/functions/v1/tro-ly-trang') {
+        const dau = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
+        if (req.headers.origin) { dau['Access-Control-Allow-Origin'] = req.headers.origin; dau.Vary = 'Origin'; }
+        if (req.method === 'OPTIONS') { res.writeHead(204, dau); return res.end(); }
+        let than = null;
+        try { than = JSON.parse(duLieu || 'null'); } catch { /* thân hỏng */ }
+        nhatKy.push({ ham: 'tro-ly-trang', thamSo: { than, loaiNoiDung: req.headers['content-type'] ?? '', coCookie: !!req.headers.cookie } });
+        const tin = String(than?.tin ?? '');
+        const lanCuaMa = nhatKy.filter(d => d.ham === 'tro-ly-trang' && d.thamSo.than?.ma_tin === than?.ma_tin).length;
+        const traVe = (status, j) => { res.writeHead(status, dau); res.end(JSON.stringify(j)); };
+        if (than?.hanh_dong === 'xem') {
+          const cc = typeof than.cuoc === 'string' ? troLyCuoc.get(than.cuoc) : null;
+          const sau = Number(than.sau) || 0;
+          return traVe(200, { ok: true, xem: true, ai_tra_loi: cc?.aiTraLoi ?? 'trang', ten: cc?.aiTraLoi === 'nhan_vien' ? cc.ten : null,
+            dang_go: !!cc?.dangGo, truc: troLyTruc, tin: (cc?.tin ?? []).filter(t => t.id > sau) });
+        }
+        if (typeof than?.cuoc === 'string') troLyCuocCuoi = than.cuoc;
+        const ccGui = typeof than?.cuoc === 'string' ? troLyCuoc.get(than.cuoc) : null;
+        if (ccGui?.aiTraLoi === 'nhan_vien') return traVe(200, { ok: true, nhan_vien: true, ten: ccGui.ten });
+        if (/lỗi/i.test(tin) && lanCuaMa === 1) return traVe(502, { ok: false, loi: 'tam_thoi' });
+        if (/người hay máy/i.test(tin)) return traVe(200, TRA_LOI_TRANG_THU.ai);
+        if (/người/i.test(tin)) return traVe(200, TRA_LOI_TRANG_THU.goiY);
+        return traVe(200, TRA_LOI_TRANG_THU.hoi);
+      }
       if (url.pathname === '/__thu-hoi' && req.method === 'POST') return tra(200, { da_thu_hoi: thuHoiPhien() });
       if (url.pathname === '/__auth') return tra(200, { phien: phienAuth(), nhat_ky: nhatKyAuth });
 
@@ -1200,6 +1278,7 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
     kichBan: () => hienTai,
     dem: () => ({ ...dem }),
     nhatKy: () => [...nhatKy],
+    troLyNhanVien,
     // /noi-bo: Supabase Auth giả và bảng (đầu file, mục "/noi-bo — ĐĂNG NHẬP THẬT").
     thuHoiPhien,
     phienAuth,

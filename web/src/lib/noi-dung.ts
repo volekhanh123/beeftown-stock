@@ -57,6 +57,9 @@ export interface NoiDung {
   hien_mua_thit_ve: boolean | null;
   // Trang ghi "Tạm hết ở quầy" — website không đọc khóa này, hàm mua_thit_ve_cong_khai() tự hỏi.
   mua_thit_hien_tam_het: boolean | null;
+  // 0126 · Khung nhắn tin Trang (trợ lý AI) ở trang Mua thịt về. Chưa công bố = tắt. Hiện khi bật VÀ trang Mua thịt về
+  // đang mở (troLyTrangMo của lib/tro-ly-trang.ts); Edge Function tro-ly-trang tự kiểm lại công tắc mỗi lượt.
+  hien_tro_ly_trang: boolean | null;
   mua_thit_gio_nhan: string | null;
   // Đã công bố = trang mở "Giao tận nơi"; chưa công bố = chỉ nhận tại quầy.
   mua_thit_giao_hang: string | null;
@@ -89,7 +92,7 @@ const RONG: NoiDung = {
   hien_thuc_don: null, hien_do_uong_co_con: null, hien_tuyen_dung: null,
   hien_ba_buoc: null, hien_quay_thit: null, hien_tiec_nhom: null, hien_danh_gia: null,
   mini_app_hien_con_hang: null,
-  hien_mua_thit_ve: null, mua_thit_hien_tam_het: null, mua_thit_gio_nhan: null, mua_thit_giao_hang: null,
+  hien_mua_thit_ve: null, mua_thit_hien_tam_het: null, hien_tro_ly_trang: null, mua_thit_gio_nhan: null, mua_thit_giao_hang: null,
   mua_thit_thue: null, mua_thit_bao_quan_mat: null, mua_thit_bao_quan_dong_lanh: null, mua_thit_can_lech: null,
   mua_thit_hang_loi: null, mua_thit_doi_huy: null,
   dia_chi_hien_thi: null, hotline: null, facebook_url: null, instagram_url: null,
@@ -114,6 +117,15 @@ const RONG: NoiDung = {
 function layBien(ten: string): string | undefined {
   const v = (import.meta.env as Record<string, unknown>)?.[ten];
   return typeof v === 'string' && v ? v : undefined;
+}
+
+/**
+ * Địa chỉ một Edge Function của Supabase (0126: tro-ly-trang — khung chat Trang), từ PUBLIC_SUPABASE_URL. Chưa nối
+ * database (CI) → null: trang không dựng thứ gì gọi hàm đó.
+ */
+export function diaChiHamSupabase(ten: string): string | null {
+  const url = layBien('PUBLIC_SUPABASE_URL');
+  return url ? `${url.replace(/\/+$/, '')}/functions/v1/${ten}` : null;
 }
 
 export function taoClient() {

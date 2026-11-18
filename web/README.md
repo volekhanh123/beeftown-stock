@@ -251,6 +251,96 @@ Vai `may_vnpay` không đọc / ghi được bảng CRM, kho hay đơn nào; nó
 
 Mã: `src/lib/vnpay.ts` (cấu hình, ký, kiểm chữ ký, dải IP, câu mã phản hồi), `src/lib/vnpay-hook.ts` (IPN, trang kết quả — tài khoản máy), `luotDatHang` / `luotTraLai` / `xuLyKetQuaVnpay` trong `src/lib/xu-ly-form.ts`, `src/components/TrangKetQuaVnpay.astro`, `src/pages/hook/vnpay-ipn.ts` (và `src/worker.ts` chặn đường đó trước Astro). Kiểm thử: `crm/test/test-mua-thit-vnpay.mjs` (database), `test-mua-thit-vnpay-web.mjs` (web).
 
+### Trợ lý Trang — khung nhắn tin tư vấn chọn bò (0126)
+
+Khánh 17/11/2026: "để khách tự chọn bò thì khó bán lẻ" — khách nhắn tự do như với nhân viên quầy, không bấm nút. 18/11/2026:
+trợ lý tên **Trang**, xưng "em" ("Dạ em là Trang bên Beeftown ạ"), nói giọng người, **không chữ AI, bot, tự động trong
+lời chào hay tin nào** (máy lọc `CAM_TRANG` chặn). Bản thử (artifact riêng tư 17–18/11) chuyển sang đây: lời dặn, kiến
+thức năm phần thịt, bảng từ, máy giữ tiếng Việt, nhịp trả lời, sổ học.
+
+**Đúng một chỗ khách biết đây là AI** (Khánh 18/11/2026 13:45: "dòng gạch dưới thôi, ai click vào mới thể hiện rõ"): dòng
+gạch dưới nhỏ, màu xám, cố định ngay dưới tên Trang, hiện từ lúc mở khung, chữ hiện sẵn luôn có **"trợ lý ảo"** — ba cách
+ghi ở `CACH_DONG_AO` của `src/lib/tro-ly-trang.ts` (1 "Trang là trợ lý ảo của Beeftown" · 2 "Trợ lý ảo · Chính sách tư
+vấn" · 3 "Tư vấn bằng trợ lý ảo, có nhân viên theo dõi" — cách 3 chỉ hiện khi thật sự có nhân viên mở màn theo dõi).
+**Khánh chọn cách 3** ngày 18/11/2026 (`CACH_DONG_AO_CHON` = 3; ảnh `kiem-tra/anh-chup/tro-ly-trang/9-dong-cach-*`,
+`12-co-nhan-vien-truc`): chưa nhân viên nào mở màn theo dõi — kể cả từ giờ tới khi màn đó làm xong — thì khách thấy cách
+1 "Trang là trợ lý ảo của Beeftown", không bao giờ thấy "có nhân viên theo dõi" khi không có ai. Bấm dòng đó mở
+khung giải thích: Trang là trợ lý ảo (AI) trả lời theo thông tin quán đã duyệt; cách gặp nhân viên (có người trực thì
+"nhân viên đang theo dõi"); giá do bảng giá; tin được lưu, số điện thoại và địa chỉ được che; link mục chat ở trang Quyền
+riêng tư (`#tro-ly-trang`, vi / en / ko — nói Anthropic, 180 ngày). Chỉ "Chính sách tư vấn" thì không đạt: khách không
+biết đang chat với AI. Khách hỏi người hay máy thì Trang nói thật "Dạ em là trợ lý ảo của Beeftown ạ" rồi mời liên hệ
+quán; Trang không bịa đời tư hay việc chưa làm, không hứa nhân viên vào khung. Ảnh đại diện là chữ "T". Lý do (đã báo
+Khánh): chính sách dùng của Anthropic, Luật Trí tuệ nhân tạo 134/2025/QH15, Điều 11 (hiệu lực 01/03/2026).
+
+**Khi nào hiện** (`troLyTrangMo`): công tắc `hien_tro_ly_trang` (nhóm Mua thịt về ở `/noi-bo/noi-dung`, chỉ chủ; chưa
+công bố = tắt) bật **và** trang Mua thịt về đang mở có gói đặt được **và** trang tiếng Việt (tạm — `/en/buy-meat`,
+`/ko/buy-meat` chờ Khánh chọn) **và** web đã nối database. Tắt JavaScript thì không có gì của Trang (khung chỉ chạy nhờ
+script). Dưới dải ba điều có thẻ mời "Chưa biết chọn phần nào?" và nút viền **Nhắn Trang** (nút chính của trang vẫn là
+Đặt hàng); bấm thì mở khung toàn màn hình điện thoại, khung 440px bên phải từ 600px.
+
+**Một lượt**: trình duyệt gửi `{cuoc, ma_tin, tin, tra_truoc, chi_nhanh}` (text/plain, không cookie) tới Edge Function
+`tro-ly-trang` của Supabase (`crm/supabase/functions/tro-ly-trang`). Hàm che số điện thoại, email, địa chỉ, tên trong tin
+khách → `tro_ly_mo_luot` (công tắc, giới hạn, lịch sử của cuộc, menu công khai, sổ học đã duyệt) → Claude Haiku 5.5 (không
+suy nghĩ thêm, lời dặn lưu đệm, khuôn JSON bắt buộc) → máy kiểm tiếng Việt và chữ cấm (`src/lib/tieng-viet-trang.ts`,
+cùng danh sách chữ cấm của web) — sai thì bắt viết lại **một** lần, vẫn sai thì thay bảng từ hoặc bỏ tin → `tro_ly_ghi_luot`.
+Trang **không bao giờ ghi số tiền** trong tin: thẻ phần thịt và thẻ đơn do trang tự tính từ menu của chính nó
+(`tinhDon`). **Cho vào đơn** đặt số gói vào các ô chọn có sẵn của form — đặt hàng vẫn đúng luồng cũ (form, VNPay).
+Cần người thật: thẻ "Liên hệ nhân viên của quán" với đúng các kênh đã công bố (hotline, Zalo OA, Facebook); không kênh
+nào thì câu ghi vào ô Ghi chú.
+
+**Nhịp như người** (`NHIP`, bản thử 18/11 — Khánh: "phải chục giây, rồi có bong bóng"): 1–2 giây hiện "Đã xem" và bong
+bóng đang soạn; tin đầu sau lời chào 9–11 giây, các lần sau 5–7 giây (máy chậm hơn thì không chờ thêm); tin thứ 2, 3 "gõ"
+2–4 giây; thẻ sau tin cuối 0,8 giây. Mất mạng, Claude lỗi: câu hệ thống "Tin của anh/chị chưa được trả lời" và nút
+**Gửi lại** (cùng mã tin — database không trả lời hai lần, không gọi Claude hai lần).
+
+**Giới hạn và chi phí**: 30 lượt mỗi cuộc, 40 lượt mỗi giờ mỗi IP, 2.000 lượt mỗi ngày cả quán (`tro_ly_mo_luot`). Đo
+ngày 18/11: lời dặn khoảng 7.200 token, mỗi tin trả lời khoảng 210 token — khoảng 87.000 đ một tháng ở mức 50 cuộc chat
+mỗi ngày (có lưu đệm; không lưu đệm khoảng 221.000 đ). Nhật ký `tro_ly_luot` lưu chữ đã che, không IP, tự dọn sau 180 ngày
+(cuộc chat và tin nhắn cũng vậy; tin nhân viên che số sau một ngày). Việc dọn chạy theo lượt chat — tắt công tắc lâu thì
+dòng cũ chờ tới lượt chat kế tiếp.
+Đèn **Trợ lý Trang** (bảng sức khỏe, khối Toàn thương hiệu): đỏ khi phần lớn tin khách trong 24 giờ không được trả lời.
+
+**Nhân viên nhận chat** (Khánh 18/11/2026 13:35 — cổng theo dõi để nhân viên nhận tư vấn; **màn ở `/noi-bo` làm ở PR
+sau**, dữ liệu và luồng có từ 0126): mỗi cuộc chat (`tro_ly_cuoc`) và từng tin (`tro_ly_tin` — khách đã che, Trang,
+nhân viên, câu hệ thống) nằm ở database. Cuộc có trạng thái Trang / nhân viên nào đang trả lời và lý do cần người (khách
+đòi gặp người > Trang mời liên hệ quán > khách vừa chốt đơn). Nhân viên nhận (`tro_ly_nhan_cuoc`) thì Edge Function
+**không gọi Claude** cho cuộc đó: tin khách chỉ ghi cho nhân viên. Khung của khách hỏi lại hàm (`{hanh_dong: 'xem'}`)
+mỗi 8 giây khi Trang trả lời, 2,5 giây khi nhân viên đang nhận — chỉ khi khung đang mở và thẻ trình duyệt đang hiện (repo
+không dùng Supabase Realtime; khách không đăng nhập nên kênh realtime riêng tư không cấp được) — để nhận tin nhân viên,
+"đang soạn tin…" của nhân viên, câu "Minh, nhân viên Beeftown, đã vào chat." và "Trang tiếp tục hỗ trợ anh/chị.". Tin
+nhân viên có nhãn "Tên · Nhân viên Beeftown", đầu khung đổi sang nhân viên — không bao giờ dưới tên Trang. Nhân viên rời
+màn theo dõi hơn 2 phút mà chưa trả thì cuộc tự về Trang (`tro_ly_tu_tra_lai`). Trả lại xong, lượt Trang kế tiếp có ghi
+chú các tin nhân viên đã nhắn (`ghiChuNhanVien`). Quyền như hộp thư đơn mua thịt: chủ, quản lý, thu ngân đang làm, cuộc
+của chi nhánh mình; bảy hàm `tro_ly_ds_cuoc`, `tro_ly_xem_cuoc`, `tro_ly_nhan_cuoc`, `tro_ly_tra_cuoc`,
+`tro_ly_nv_gui`, `tro_ly_nv_dang_go`, `tro_ly_dang_truc` (màn theo dõi gọi 20–30 giây một lần). Chưa có: màn theo dõi,
+tin Zalo báo nhân viên khi có cuộc cần người.
+
+**Sổ học** (`/noi-bo/tro-ly` — chủ, quản lý viết và duyệt; marketing xem): câu Trang chưa biết tự vào "Chờ trả lời";
+viết câu trả lời rồi **Lưu và duyệt** — Trang dùng từ tin nhắn kế tiếp. Câu trả lời phải qua máy kiểm của Trang (không
+chữ nước ngoài, không chữ cấm, không số tiền). Ghi sẵn năm câu Khánh đã duyệt ở bản thử và câu "giờ mở cửa" (chờ trả lời).
+
+**Đưa lên chạy thật — việc của Khánh, theo thứ tự** (sau khi PR được gộp):
+1. Chạy `crm/supabase/migrations/0126_tro_ly_trang.sql` ở SQL Editor (cả file một lần), rồi `npm run doi-chieu` báo KHỚP.
+2. Supabase → Edge Functions → Secrets: thêm `ANTHROPIC_API_KEY` (khóa API Anthropic — không ghi vào repo, chat hay log).
+3. Deploy hàm `tro-ly-trang` với **verify_jwt = false** (như `zalo-translate`): Supabase MCP `deploy_edge_function`
+   (project `bzfzutyuqwxjarlsmgjt`, entrypoint `index.ts`, năm file `index.ts`, `xu-ly.ts`, `trang.ts`,
+   `tieng-viet-trang.ts`, `chuoi-cam.js` của `crm/supabase/functions/tro-ly-trang/`). Hàm đọc database bằng khóa
+   service_role Supabase tự cấp — không bí mật nào khác.
+4. Deploy web như mọi lần (`npm run deploy` trên máy có `web/.env`).
+5. Thử thật trước khi bật cho khách: bật công tắc lúc vắng khách, nhắn trên iPhone và Android (trình duyệt thường, trong
+   Zalo, Facebook): thấy "Đã xem", bong bóng, tin đầu khoảng 10 giây; hỏi "nhà 4 người nên lấy gì" → thẻ đơn, bấm Cho vào
+   đơn → đơn của bạn đúng; hỏi "em là người hay máy" → nói là trợ lý ảo; bấm dòng gạch dưới → khung giải thích; tắt
+   mạng rồi gửi → "chưa được trả lời"; xem
+   `/noi-bo/tro-ly` có câu chưa biết; đèn Trợ lý Trang xanh.
+
+Chấm trước khi bật: `crm/test/cham-trang/` — 50 câu khách hay hỏi, chạy đúng mã của hàm với Claude thật (README đầu
+`cham-trang.mjs`); bật cho khách khi từ 45/50 câu Đạt. Mã: `src/lib/tro-ly-trang.ts`, `src/components/TroLyTrang.astro`,
+`src/lib/tieng-viet-trang.ts`, `src/lib/tro-ly-noi-bo.ts`, `src/pages/noi-bo/tro-ly.astro`,
+`crm/supabase/functions/tro-ly-trang/` (`trang.ts` lời dặn và kiến thức, `xu-ly.ts` một lượt, `index.ts` nối Deno; hai bản
+chép `tieng-viet-trang.ts`, `chuoi-cam.js` phải đúng từng byte bản của web). Kiểm thử: `crm/test/test-tro-ly-trang.mjs`
+(database), `test-tro-ly-trang-ham.mjs` (Edge Function, Claude giả), `test-cong-khai-tro-ly-trang.mjs` (khung),
+`test-noi-bo-tro-ly.mjs` (sổ học), `kiem-tra/thu-day-du.mjs` nhóm 17 (trình duyệt thật).
+
 ---
 
 ## Meta Pixel (đo quảng cáo Facebook, Instagram)

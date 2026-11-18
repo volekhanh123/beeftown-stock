@@ -2608,6 +2608,227 @@ try {
   });
 
   // =========================================================================
+  await nhom('17 · TRỢ LÝ TRANG (0126): DÒNG TRỢ LÝ ẢO, NHỊP NHƯ NGƯỜI, THẺ ĐƠN DO TRANG TÍNH, CHO VÀO ĐƠN, MẤT MẠNG, NHÂN VIÊN NHẬN CHAT — 390 PX', async () => {
+    const { CACH_DONG_AO, CACH_DONG_AO_CHON, CHU_TRO_LY, LOI_CHAO, dongAo, theDon } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'tro-ly-trang.ts')).href);
+    const dongMong = dongAo(CACH_DONG_AO_CHON, false);
+    const chuDong = dongMong.dau.vi + dongMong.gach.vi;
+    const motDong = s => (s ?? '').replace(/\s+/g, ' ').trim();
+    const c = await trinhDuyet.newContext({ viewport: { width: 390, height: 844 } });
+    const p = await c.newPage();
+    const loiJs = [];
+    p.on('pageerror', e => loiJs.push(e.message));
+    const chupTrang = async ten => {
+      const thuMuc = join(WEB, 'kiem-tra', 'anh-chup', 'tro-ly-trang');
+      mkdirSync(thuMuc, { recursive: true });
+      await p.screenshot({ path: join(thuMuc, `${ten}-390.png`) });
+    };
+    try {
+      // Công tắc tắt (mua-thit-mo): không có gì của Trang.
+      mayGia.datKichBan('mua-thit-mo');
+      await p.goto(goc + '/mua-thit-ve', { waitUntil: 'load', timeout: 60000 });
+      ok('Công tắc chưa bật (mua-thit-mo): trang không có khối Trang', await p.locator('[data-tlt]').count() === 0);
+      // Bật: thẻ mời hiện nhờ script.
+      mayGia.datKichBan('mua-thit-trang');
+      await p.goto(goc + '/mua-thit-ve', { waitUntil: 'load', timeout: 60000 });
+      const nutMo = p.locator('[data-tlt-mo]');
+      ok('Bật (mua-thit-trang): thẻ mời "Nhắn Trang" hiện, không lỗi JavaScript', await nutMo.isVisible() && !loiJs.length, loiJs.join(' | '));
+      const cao = await nutMo.evaluate(e => e.getBoundingClientRect().height);
+      ok('Nút "Nhắn Trang" cao ít nhất 48px', cao >= 48, `${cao}px`);
+      await chupTrang('1-the-moi');
+      await p.goto(goc + '/en/buy-meat', { waitUntil: 'load', timeout: 60000 });
+      ok('Trang tiếng Anh: chưa có Trang (tạm, chờ Khánh chọn)', await p.locator('[data-tlt]').count() === 0);
+      await p.goto(goc + '/mua-thit-ve', { waitUntil: 'load', timeout: 60000 });
+
+      await p.locator('[data-tlt-mo]').click();
+      const hop = p.locator('[data-tlt-hop]');
+      ok('Bấm "Nhắn Trang": khung mở toàn màn hình điện thoại', await hop.isVisible()
+        && (await hop.evaluate(e => e.getBoundingClientRect().height)) >= 840);
+      const dongAo1 = motDong(await p.locator('[data-tlt-ai-dong]').innerText());
+      const kieuDong = await p.locator('[data-tlt-ai]').evaluate(e => { const k = getComputedStyle(e); return `${k.textDecorationLine} ${k.color} ${k.fontSize}`; });
+      ok(`Đầu khung: tên Trang và đúng một dòng gạch dưới "${chuDong}" — hiện ngay khi mở, chữ nhỏ màu xám`, dongAo1 === chuDong
+        && motDong(await p.locator('#tlt-ten').innerText()).startsWith('Trang') && /^underline /.test(kieuDong) && await p.locator('[data-tlt-ai]').isVisible(), `${dongAo1} · ${kieuDong}`);
+      const bong = () => p.locator('.tlt-cua-trang .tlt-bong').allInnerTexts();
+      ok('Hai tin chào hiện ngay, đúng chữ, không nhắc AI', JSON.stringify((await bong()).map(motDong)) === JSON.stringify(LOI_CHAO));
+      const kieuBong = await p.evaluate(() => { const s = getComputedStyle(document.querySelector('.tlt-cua-trang .tlt-bong')); return `${s.backgroundColor} ${s.borderTopWidth} ${s.borderTopLeftRadius}`; });
+      ok('Bong bóng do script dựng vẫn nhận CSS của khung: nền xám nhạt F4, viền 1px, góc 4px', kieuBong === 'rgb(244, 244, 244) 1px 4px', kieuBong);
+      const caoDau = await p.locator('[data-tlt-ai-dong]').evaluate(e => Math.round(e.getBoundingClientRect().height));
+      const caoNut = await p.locator('[data-tlt-ai]').evaluate(e => Math.round(e.getBoundingClientRect().height));
+      ok('Dòng trợ lý ảo vừa hai dòng ở 390px, chỗ bấm cao ít nhất 24px (nút Đóng là biểu tượng vuông 48px, có nhãn ẩn)', caoDau <= 40 && caoNut >= 24
+        && await p.locator('[data-tlt-dong] .an-chu').innerText() === CHU_TRO_LY.dong.vi, `dòng ${caoDau}px · chỗ bấm ${caoNut}px`);
+      await chupTrang('2-loi-chao');
+      // Bấm dòng gạch dưới: khung giải thích hiện (trợ lý ảo, gặp nhân viên, giá, tin được lưu và che, Quyền riêng tư).
+      ok('Khung giải thích ẩn lúc mở', !(await p.locator('[data-tlt-ve]').isVisible()));
+      await p.locator('[data-tlt-ai]').click();
+      const ve = p.locator('[data-tlt-ve]');
+      const chuVe = motDong(await ve.innerText());
+      ok('Bấm dòng: khung giải thích hiện, aria-expanded = true; có "trợ lý ảo (AI)", cách gặp nhân viên, giá, tin được lưu và che',
+        await ve.isVisible() && await p.locator('[data-tlt-ai]').getAttribute('aria-expanded') === 'true'
+        && chuVe.includes(CHU_TRO_LY.veAi.vi) && chuVe.includes(CHU_TRO_LY.veGia.vi) && chuVe.includes(CHU_TRO_LY.veLuu.vi) && /gặp nhân viên/.test(chuVe), chuVe);
+      ok('Chưa có nhân viên trực: không nói "đang theo dõi"', !chuVe.includes(CHU_TRO_LY.veTruc.vi));
+      ok('Link Quyền riêng tư tới đúng mục chat', await ve.locator('a').getAttribute('href') === '/quyen-rieng-tu#tro-ly-trang');
+      await chupTrang('8-giai-thich');
+      await p.locator('[data-tlt-ai]').click();
+      ok('Bấm lần nữa: khung giải thích đóng', !(await ve.isVisible()) && await p.locator('[data-tlt-ai]').getAttribute('aria-expanded') === 'false');
+      // Ba cách ghi dòng cho Khánh chọn (ảnh 9-dong-cach-1/2/3): đổi chữ ngay trên trang rồi chụp, xong trả lại.
+      for (const n of [1, 2, 3]) {
+        await p.evaluate(([dau, gach]) => {
+          document.querySelector('[data-tlt-ai-dau]').textContent = dau;
+          document.querySelector('[data-tlt-ai]').textContent = gach;
+        }, [CACH_DONG_AO[n].dau.vi, CACH_DONG_AO[n].gach.vi]);
+        await chupTrang(`9-dong-cach-${n}`);
+      }
+      await p.evaluate(([dau, gach]) => {
+        document.querySelector('[data-tlt-ai-dau]').textContent = dau;
+        document.querySelector('[data-tlt-ai]').textContent = gach;
+      }, [dongMong.dau.vi, dongMong.gach.vi]);
+
+      // Lượt 1: nhịp như người — "Đã xem" và bong bóng sau 1–2 giây, tin đầu sau khoảng 10 giây.
+      const batDau = Date.now();
+      await p.locator('[data-tlt-o]').fill('nhà 2 người, thích mềm');
+      await p.locator('[data-tlt-gui]').click();
+      await p.locator('.tlt-da-xem').waitFor({ timeout: 4000 });
+      const tDaXem = Date.now() - batDau;
+      ok('"Đã xem" và bong bóng đang soạn hiện sau 1–2 giây; đầu khung ghi "đang soạn tin…", dòng trợ lý ảo vẫn nguyên',
+        tDaXem >= 900 && tDaXem <= 3000 && await p.locator('.tlt-dang-go').isVisible() && await p.locator('[data-tlt-dang-soan]').isVisible()
+        && motDong(await p.locator('[data-tlt-ai-dong]').innerText()) === chuDong, `${tDaXem} ms`);
+      ok('Nút Gửi khóa khi đang chờ', await p.locator('[data-tlt-gui]').isDisabled());
+      await chupTrang('3-dang-soan');
+      await p.waitForFunction(n => document.querySelectorAll('.tlt-cua-trang .tlt-bong').length > n, LOI_CHAO.length + 1, { timeout: 20000 });
+      const tTinDau = Date.now() - batDau;
+      ok('Tin đầu sau lời chào hiện sau 9–12 giây (Edge Function giả trả ngay)', tTinDau >= 8800 && tTinDau <= 13000, `${tTinDau} ms`);
+      await p.locator('.tlt-the').first().waitFor({ timeout: 10000 });
+      await p.waitForTimeout(500);
+      const ky = await p.evaluate(() => {
+        const g = document.querySelector('[data-mtv-form]');
+        return JSON.parse(g?.dataset.menu ?? '[]');
+      });
+      const td = theDon([{ khoa: 'ribeye-cap_200', so_goi: 2, ten: 'đầu thăn ngoại còn nắp' }, { khoa: 'than-ngoai_200', so_goi: 1, ten: 'thăn ngoại' }], ky, 'vi');
+      const tongTrang = motDong(await p.locator('.tlt-tong [data-tien]').innerText());
+      ok(`Thẻ đơn: trang tự tính tổng ${dinhDangTien(td.tamTinh)} từ giá gói của menu (không lấy số từ Trang)`, tongTrang === dinhDangTien(td.tamTinh), tongTrang);
+      ok('Thẻ phần thịt: tên, tên trên nhãn, giá gói trong data-tien', /Đầu thăn ngoại còn nắp/.test(await p.locator('.tlt-the').first().innerText())
+        && await p.locator('.tlt-the').first().locator('[data-tien]').count() >= 1);
+      const kieuThe = await p.evaluate(() => {
+        const t = document.querySelector('.tlt-the'), k = document.querySelector('.tlt-cua-khach .tlt-bong');
+        return `${getComputedStyle(t).borderTopWidth} ${getComputedStyle(t.querySelector('ul')).listStyleType} ${getComputedStyle(k).backgroundColor}`;
+      });
+      ok('Thẻ có viền 1px, danh sách không chấm đầu dòng; bong bóng khách nền đen', kieuThe === '1px none rgb(0, 0, 0)', kieuThe);
+      await p.evaluate(() => { const t = document.querySelector('[data-tlt-tin]'); t.scrollTop = t.scrollHeight; });
+      await chupTrang('4-the-don');
+      const tranNgangKhung = await p.evaluate(() => document.querySelector('[data-tlt-tin]').scrollWidth - document.querySelector('[data-tlt-tin]').clientWidth);
+      ok('Khung không tràn ngang ở 390px', tranNgangKhung <= 0, `${tranNgangKhung}px`);
+
+      // Cho vào đơn: ô chọn của form đặt hàng đổi như khách tự chọn, khung đóng, đơn của bạn có đúng dòng.
+      await p.locator('.tlt-the button', { hasText: CHU_TRO_LY.choVaoDon.vi }).click();
+      ok('"Cho vào đơn": khung đóng', !(await hop.isVisible()));
+      const giaTri = await p.evaluate(() => [...document.querySelectorAll('select.mtv-so')].filter(s => s.value !== '0').map(s => `${s.name}=${s.value}`).sort().join('&'));
+      ok('Ô chọn của form đặt hàng: ribeye-cap_200 = 2, than-ngoai_200 = 1', giaTri === 'ribeye-cap_200=2&than-ngoai_200=1', giaTri);
+      const tamTinh = motDong(await p.locator('[data-mtv-tam-tinh] [data-tien]').innerText());
+      ok('"Đơn của bạn" tính lại đúng tổng của thẻ', tamTinh === dinhDangTien(td.tamTinh), tamTinh);
+      await chupTrang('5-da-cho-vao-don');
+
+      // Từ đây có nhân viên mở màn theo dõi (giả): mở lại khung thì khung hỏi lại 8 giây một lần (chưa ai trực: 30 giây).
+      mayGia.troLyNhanVien({ viec: 'truc', bat: true });
+      // Mất mạng: Edge Function giả trả 502 lần đầu → câu "chưa được trả lời" + Gửi lại cùng mã tin → trả lời.
+      await p.locator('[data-tlt-mo]').click();
+      // Mở lại khung lúc có người trực: dòng dưới tên Trang đổi sang cách đã chọn khi có người trực (Khánh chọn cách 3).
+      const coTruc = dongAo(CACH_DONG_AO_CHON, true);
+      const chuCoTruc = coTruc.dau.vi + coTruc.gach.vi;
+      const doiDong = await p.waitForFunction(chu => (document.querySelector('[data-tlt-ai-dong]')?.textContent ?? '').replace(/\s+/g, ' ').trim() === chu,
+        chuCoTruc, { timeout: 5000 }).then(() => true, () => false);
+      ok(`Có nhân viên trực: dòng dưới tên Trang thành "${chuCoTruc}" ngay khi mở lại khung (chưa ai trực thì là "${chuDong}")`,
+        doiDong && (CACH_DONG_AO_CHON !== 3 || (chuCoTruc === CACH_DONG_AO[3].gach.vi && chuDong === CACH_DONG_AO[1].gach.vi)),
+        motDong(await p.locator('[data-tlt-ai-dong]').innerText()));
+      await chupTrang('12-co-nhan-vien-truc');
+      await p.locator('[data-tlt-o]').fill('lỗi mạng thử');
+      await p.locator('[data-tlt-gui]').click();
+      const heThong = p.locator('.tlt-he-thong', { hasText: CHU_TRO_LY.chuaTraLoi.vi });
+      await heThong.waitFor({ timeout: 15000 });
+      ok('502: câu hệ thống nói tin CHƯA được trả lời, có nút Gửi lại; không bong bóng nào của Trang được bịa',
+        await heThong.locator('button', { hasText: CHU_TRO_LY.guiLai.vi }).isVisible());
+      await chupTrang('6-chua-tra-loi');
+      await heThong.locator('button').click();
+      await p.waitForFunction(() => /nướng cho mấy người/.test(document.querySelector('[data-tlt-tin]')?.innerText ?? ''), null, { timeout: 15000 });
+      const goiTroLy = mayGia.nhatKy().filter(d => d.ham === 'tro-ly-trang' && d.thamSo.than?.hanh_dong !== 'xem');
+      const goiXem = mayGia.nhatKy().filter(d => d.ham === 'tro-ly-trang' && d.thamSo.than?.hanh_dong === 'xem');
+      ok('Lệnh xem (khung hỏi lại): text/plain, không cookie, đúng bốn ô, cùng mã cuộc chat', goiXem.length >= 1
+        && goiXem.every(d => /^text\/plain/.test(d.thamSo.loaiNoiDung) && !d.thamSo.coCookie
+          && JSON.stringify(Object.keys(d.thamSo.than ?? {}).sort()) === JSON.stringify(['chi_nhanh', 'cuoc', 'hanh_dong', 'sau'])
+          && d.thamSo.than.cuoc === goiTroLy[0]?.thamSo.than?.cuoc), JSON.stringify(goiXem.slice(0, 2).map(d => d.thamSo.than)));
+      const hai = goiTroLy.slice(-2);
+      ok('Gửi lại dùng đúng mã tin cũ; lời gọi text/plain, không cookie, đủ năm ô', hai.length === 2 && hai[0].thamSo.than?.ma_tin === hai[1].thamSo.than?.ma_tin
+        && goiTroLy.every(d => /^text\/plain/.test(d.thamSo.loaiNoiDung) && !d.thamSo.coCookie
+          && JSON.stringify(Object.keys(d.thamSo.than ?? {}).sort()) === JSON.stringify(['chi_nhanh', 'cuoc', 'ma_tin', 'tin', 'tra_truoc'])), JSON.stringify(hai.map(d => d.thamSo.than)));
+      ok('Mọi lượt cùng một mã cuộc chat', new Set(goiTroLy.map(d => d.thamSo.than?.cuoc)).size === 1);
+
+      // Hỏi người hay máy: nói thật + thẻ liên hệ quán (kênh đã công bố).
+      await p.locator('[data-tlt-o]').fill('em là người hay máy');
+      await p.locator('[data-tlt-gui]').click();
+      await p.locator('.tlt-the', { hasText: CHU_TRO_LY.lienHe.vi }).waitFor({ timeout: 15000 });
+      const theLh = p.locator('.tlt-the', { hasText: CHU_TRO_LY.lienHe.vi }).last();
+      ok('Hỏi người hay máy: Trang nói "trợ lý ảo"; thẻ liên hệ có "Gọi quán" (hotline đã công bố), không giả nhân viên vào khung',
+        /em là trợ lý ảo của Beeftown/.test(await p.locator('[data-tlt-tin]').innerText()) && await theLh.locator('a[href^="tel:"]').count() === 1);
+      ok('Không tin nào của Trang có chữ AI, bot, tự động', (await p.locator('.tlt-cua-trang .tlt-bong').allInnerTexts()).every(t => !/(^|[^\p{L}])AI(?![\p{L}])|\bbot\b|tự động/u.test(t)));
+      await chupTrang('7-nguoi-hay-may');
+
+      // Nhân viên nhận chat (0126 mục 4b, nhân viên giả): khách thấy "… đã vào chat", tin nhân viên có nhãn riêng.
+      mayGia.troLyNhanVien({ viec: 'truc', bat: true });
+      mayGia.troLyNhanVien({ viec: 'nhan', ten: 'Minh' });
+      const vao = p.locator('.tlt-he-thong', { hasText: CHU_TRO_LY.nhanVienVao.vi('Minh') });
+      await vao.waitFor({ timeout: 15000 });
+      ok('Nhân viên nhận: khung hỏi lại thấy trong ≤ 10 giây, câu "Minh, nhân viên Beeftown, đã vào chat."', await vao.count() === 1);
+      ok('Đầu khung đổi sang nhân viên: chữ "M", tên Minh, dòng "Nhân viên Beeftown"; dòng trợ lý ảo ẩn (nhân viên không gõ dưới tên Trang)',
+        motDong(await p.locator('[data-tlt-hinh]').innerText()) === 'M' && motDong(await p.locator('[data-tlt-ten]').innerText()) === 'Minh'
+        && motDong(await p.locator('[data-tlt-nv-dong]').innerText()) === CHU_TRO_LY.nhanVien.vi && !(await p.locator('[data-tlt-ai-dong]').isVisible()));
+      mayGia.troLyNhanVien({ viec: 'go', bat: true });
+      await p.locator('.tlt-cua-nv.tlt-dang-go').waitFor({ timeout: 8000 });
+      ok('Nhân viên đang gõ: bong bóng đang soạn của nhân viên, đầu khung ghi "đang soạn tin…"', await p.locator('[data-tlt-dang-soan]').isVisible());
+      await chupTrang('10-nhan-vien-dang-go');
+      mayGia.troLyNhanVien({ viec: 'gui', noi_dung: 'Dạ em Minh bên quán ạ. Anh/chị cần em hỗ trợ gì thêm không ạ?' });
+      const tinNv = p.locator('.tlt-cua-nv .tlt-bong', { hasText: 'Dạ em Minh bên quán ạ' });
+      await tinNv.waitFor({ timeout: 8000 });
+      ok('Tin nhân viên hiện là tin của nhân viên: nhãn "Minh · Nhân viên Beeftown", viền đậm; hết bong bóng đang soạn',
+        motDong(await p.locator('.tlt-nguoi-gui').last().innerText()) === `Minh · ${CHU_TRO_LY.nhanVien.vi}` && await p.locator('.tlt-dang-go').count() === 0
+        && await tinNv.evaluate(e => getComputedStyle(e).borderTopColor) === 'rgb(0, 0, 0)');
+      const truocGui = mayGia.nhatKy().filter(d => d.ham === 'tro-ly-trang' && d.thamSo.than?.hanh_dong !== 'xem').length;
+      const tGui = Date.now();
+      await p.locator('[data-tlt-o]').fill('giao quận 7 được không em');
+      await p.locator('[data-tlt-gui]').click();
+      await p.locator('.tlt-da-xem', { hasText: CHU_TRO_LY.daGui.vi }).waitFor({ timeout: 4000 });
+      ok('Khách nhắn lúc nhân viên đang nhận: "Đã gửi" ngay (dưới 1,5 giây), không nhịp và bong bóng của Trang',
+        Date.now() - tGui < 1500 && await p.locator('.tlt-cua-trang.tlt-dang-go').count() === 0
+        && mayGia.nhatKy().filter(d => d.ham === 'tro-ly-trang' && d.thamSo.than?.hanh_dong !== 'xem').length === truocGui + 1, `${Date.now() - tGui} ms`);
+      await p.waitForTimeout(700);
+      ok('"Đã gửi" nằm trong khung nhìn (khung cuộn tới tin vừa gửi)', await p.locator('.tlt-da-xem').evaluate(e => { const r = e.getBoundingClientRect(), k = document.querySelector('[data-tlt-tin]').getBoundingClientRect(); return r.bottom <= k.bottom + 1 && r.top >= k.top; }));
+      await chupTrang('11-nhan-vien-tra-loi');
+      // Đóng khung: thôi hỏi lại; mở lại: hỏi ngay.
+      await p.locator('[data-tlt-dong]').click();
+      const xemKhiDong = mayGia.nhatKy().filter(d => d.thamSo?.than?.hanh_dong === 'xem').length;
+      await p.waitForTimeout(6000);
+      ok('Đóng khung: không hỏi lại nữa (6 giây, nhân viên đang nhận)', mayGia.nhatKy().filter(d => d.thamSo?.than?.hanh_dong === 'xem').length === xemKhiDong);
+      await p.locator('[data-tlt-mo]').click();
+      mayGia.troLyNhanVien({ viec: 'tra' });
+      await p.locator('.tlt-he-thong', { hasText: CHU_TRO_LY.trangQuayLai.vi }).waitFor({ timeout: 8000 });
+      ok('Trả lại cho Trang: "Trang tiếp tục hỗ trợ anh/chị.", đầu khung về Trang với dòng trợ lý ảo',
+        motDong(await p.locator('[data-tlt-ten]').innerText()) === 'Trang' && await p.locator('[data-tlt-ai-dong]').isVisible()
+        && !(await p.locator('[data-tlt-nv-dong]').isVisible()));
+      await p.locator('[data-tlt-ai]').click();
+      ok('Có nhân viên trực: khung giải thích nói "đang theo dõi", không còn câu chỉ cách liên hệ', await p.locator('[data-tlt-ve-truc]').isVisible()
+        && !(await p.locator('[data-tlt-ve-gap]').isVisible()));
+      await p.locator('[data-tlt-ai]').click();
+      mayGia.troLyNhanVien({ viec: 'truc', bat: false });
+      // Đóng bằng nút: trang phía sau cuộn lại được.
+      await p.locator('[data-tlt-dong]').click();
+      // Sự kiện close của <dialog> chạy ở tác vụ sau: chờ tới 2 giây.
+      const hetKhoa = await p.waitForFunction(() => !document.documentElement.classList.contains('tlt-khoa'), null, { timeout: 2000 }).then(() => true, () => false);
+      ok('Đóng khung: hết khóa cuộn trang', hetKhoa);
+      ok('Cả nhóm không lỗi JavaScript', loiJs.length === 0, loiJs.join(' | '));
+    } finally {
+      await c.close();
+      mayGia.datKichBan('day-du');
+    }
+  });
+
+  // =========================================================================
   if (CHUP) {
     await nhom('6 · CHỤP ẢNH TOÀN TRANG (--chup) → kiem-tra/anh-chup/', async () => {
       const CO = [360, 390, 768, 1024, 1440];

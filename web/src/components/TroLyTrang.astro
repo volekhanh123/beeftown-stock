@@ -1,0 +1,571 @@
+---
+/**
+ * TRỢ LÝ TRANG — khung nhắn tin tư vấn chọn bò ở trang Mua thịt về (0126; Khánh 17–18/11/2026)
+ * ============================================================================================
+ *
+ * Dựng khi troLyTrangMo(): công tắc hien_tro_ly_trang bật, trang đang mở có gói đặt được, trang tiếng Việt, web đã nối
+ * database. Chỉ chạy được nhờ JavaScript (khung nhắn tin gọi Edge Function tro-ly-trang), nên cả khối ra trang với
+ * hidden và script hiện nó khi trình duyệt có <dialog> và fetch — tắt JavaScript thì trang y như chưa có Trang.
+ *
+ * Bố cục: một thẻ mời ngay dưới dải ba điều ("Chưa biết chọn phần nào?" + nút viền "Nhắn Trang" — nút chính của trang
+ * vẫn là Đặt hàng), bấm thì mở <dialog> toàn màn hình trên điện thoại, khung 440px bên phải từ 600px. Đầu khung đen:
+ * chữ "T" (không ảnh người), tên Trang, và DÒNG DUY NHẤT nói đây là trợ lý ảo: dòng gạch dưới nhỏ màu xám (CACH_DONG_AO —
+ * cố định, hiện ngay khi mở, không bao giờ bị thay bởi "đang soạn tin…": trạng thái soạn tin đứng cạnh tên). Bấm dòng đó
+ * mở khung giải thích (trợ lý ảo, gặp nhân viên, giá do trang tính, tin được lưu và che, link Quyền riêng tư).
+ * Nhân viên nhận chat (0126 mục 4b): script hỏi lại Edge Function khi khung mở (NHIP_XEM); nhân viên nhận thì đầu khung đổi
+ * sang nhân viên, tin của họ có nhãn tên riêng — không bao giờ dưới tên Trang.
+ *
+ * Tiền: thẻ phần thịt và thẻ đơn tính bằng menu của chính trang (data-menu của form đặt hàng, tinhDon) — Trang không
+ * tự cộng; số tiền chỉ in qua dinhDangTien trong phần tử data-tien. "Cho vào đơn" đặt số gói vào các ô chọn có sẵn rồi
+ * phát change như khách tự chọn — đặt hàng vẫn đúng luồng cũ (form POST, tao_don_mua_thit, VNPay).
+ * Cần người thật: thẻ "Liên hệ nhân viên của quán" với đúng các kênh đã công bố (hotline, Zalo OA, Facebook) — không
+ * kênh nào thì câu ghi vào ô Ghi chú. Không bao giờ giả là có nhân viên vào khung.
+ *
+ * Kiểm thử: crm/test/test-cong-khai-tro-ly-trang.mjs (dựng, chữ, quyền riêng tư), web/kiem-tra/thu-day-du.mjs nhóm 18
+ * (trình duyệt thật, Supabase và Edge Function giả).
+ */
+import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+import { diaChiHamSupabase, maChiNhanh } from '../lib/noi-dung';
+import { lienHe } from '../lib/trang-cong-khai';
+import { dich, duongDanTuongUng } from '../lib/chu';
+import { CACH_DONG_AO_CHON, CHU_TRO_LY, dongAo, troLyTrangMo } from '../lib/tro-ly-trang';
+import BieuTuong from './BieuTuong.astro';
+
+interface Props {
+  ngonNgu: NgonNgu;
+  noiDung: NoiDung;
+  /** trangThaiMuaThit của file vỏ — Trang chỉ hiện khi 'mo'. */
+  trangThai: string;
+  traVnpay?: boolean;
+}
+const { ngonNgu: nn, noiDung: nd, trangThai, traVnpay = false } = Astro.props;
+const diaChi = diaChiHamSupabase('tro-ly-trang');
+const mo = troLyTrangMo(nd.hien_tro_ly_trang, trangThai, nn, diaChi);
+const c = dich(nn, CHU_TRO_LY);
+const lh = lienHe(nd);
+// Lúc dựng chưa biết có nhân viên trực: cách cần người trực thì ra cách 1, script đổi khi biết (lệnh xem).
+const dong = dongAo(CACH_DONG_AO_CHON, false);
+const veGap = lh.hotline ? CHU_TRO_LY.veGapGoi[nn](lh.hotline) : CHU_TRO_LY.veGap[nn];
+---
+{mo && (
+  <div class="tlt" data-tlt data-dia-chi={diaChi} data-chi-nhanh={maChiNhanh()} data-nn={nn}
+       data-tra-truoc={traVnpay ? '1' : ''} data-goi={lh.goi ?? ''} data-hotline={lh.hotline ?? ''}
+       data-zalo={lh.zalo ?? ''} data-facebook={lh.facebook ?? ''} hidden>
+    <div class="tlt-moi">
+      <span class="tlt-hinh" aria-hidden="true">T</span>
+      <div class="tlt-moi-chu">
+        <p class="tlt-moi-tieu-de">{c.moTieuDe}</p>
+        <p class="tlt-moi-dan">{c.moDan}</p>
+      </div>
+      <button type="button" class="nut nut-vien tlt-moi-nut" data-tlt-mo aria-haspopup="dialog">{c.moNut}</button>
+    </div>
+
+    <dialog class="tlt-hop" aria-labelledby="tlt-ten" aria-describedby="tlt-ai" data-tlt-hop>
+      <div class="tlt-dau be-toi">
+        <span class="tlt-hinh" aria-hidden="true" data-tlt-hinh>T</span>
+        <div class="tlt-dau-chu">
+          <p class="tlt-ten" id="tlt-ten"><span data-tlt-ten>{c.ten}</span><span class="tlt-dang-soan" data-tlt-dang-soan hidden> · {c.dangSoan}</span></p>
+          <p class="tlt-ai" id="tlt-ai" data-tlt-ai-dong><span data-tlt-ai-dau>{dong.dau[nn]}</span><button type="button" class="tlt-ai-nut" aria-expanded="false" aria-controls="tlt-ve" data-tlt-ai>{dong.gach[nn]}</button></p>
+          <p class="tlt-ai" data-tlt-nv-dong hidden>{c.nhanVien}</p>
+        </div>
+        <button type="button" class="nut nut-vien tlt-dong" data-tlt-dong><BieuTuong ten="dong" /><span class="an-chu">{c.dong}</span></button>
+      </div>
+      <div class="tlt-ve" id="tlt-ve" data-tlt-ve hidden>
+        <ul>
+          <li>{c.veAi}</li>
+          <li data-tlt-ve-gap>{veGap}</li>
+          <li data-tlt-ve-truc hidden>{c.veTruc}</li>
+          <li>{c.veGia}</li>
+          <li>{c.veLuu} <a href={`${duongDanTuongUng('/quyen-rieng-tu', nn)}#tro-ly-trang`}>{c.veQuyen}</a></li>
+        </ul>
+      </div>
+      <div class="tlt-tin" role="log" aria-live="polite" aria-labelledby="tlt-ten" data-tlt-tin></div>
+      <form class="tlt-go" data-tlt-go>
+        <label class="an-chu" for="tlt-o">{c.oNhan}</label>
+        <input id="tlt-o" type="text" maxlength="400" enterkeyhint="send" autocomplete="off" placeholder={c.goiY} data-tlt-o />
+        <button type="submit" class="nut nut-chinh tlt-gui" data-tlt-gui>{c.gui}</button>
+      </form>
+    </dialog>
+  </div>
+)}
+
+<style>
+  [hidden] { display: none !important; }
+
+  /* Thẻ mời: dưới dải ba điều, trên lưới gói. Nút viền — nút chính của trang là Đặt hàng. */
+  .tlt-moi {
+    display: grid; grid-template-columns: auto 1fr; gap: var(--k-3) var(--k-4); align-items: start;
+    margin-top: var(--k-6); padding: var(--dem-the); background: var(--kem-sau); border: 1px solid var(--vach);
+    border-radius: var(--bo-anh); max-width: 760px;
+  }
+  .tlt-moi-nut { grid-column: 1 / -1; justify-self: start; }
+  @media (min-width: 600px) {
+    .tlt-moi { grid-template-columns: auto 1fr auto; align-items: center; }
+    .tlt-moi-nut { grid-column: auto; }
+  }
+  .tlt-moi-tieu-de { margin: 0; font-weight: 700; font-size: var(--co-than); line-height: 24px; color: var(--than); }
+  .tlt-moi-dan { margin: var(--k-1) 0 0; font-size: var(--co-nho); line-height: 20px; color: var(--muc-nhat); }
+
+  /* Chữ "T" thay ảnh đại diện: không ảnh người thật, không ảnh người do AI tạo (Khánh 18/11/2026). Trắng trên đỏ 6,64 : 1. */
+  .tlt-hinh {
+    flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--bo);
+    background: var(--do); color: var(--kem); font-weight: 800; font-size: 20px; line-height: 1;
+  }
+
+  .tlt-hop {
+    padding: 0; border: 0; margin: 0; width: 100%; max-width: 100%; height: 100%; max-height: 100%;
+    background: var(--kem); color: var(--than); overflow: hidden;
+  }
+  .tlt-hop[open] { display: flex; flex-direction: column; }
+  .tlt-hop::backdrop { background: rgba(0, 0, 0, .6); }
+  @media (min-width: 600px) {
+    .tlt-hop {
+      inset: auto var(--k-6) var(--k-6) auto; width: 440px; height: min(720px, calc(100% - 2 * var(--k-6)));
+      border: 1px solid var(--vach); border-radius: var(--bo-anh);
+    }
+  }
+
+  .tlt-dau {
+    display: flex; align-items: center; gap: var(--k-3); flex: none;
+    padding: var(--k-3) var(--k-4); padding-top: max(var(--k-3), env(safe-area-inset-top));
+    background: var(--than); color: var(--kem);
+  }
+  .tlt-dau-chu { flex: 1; min-width: 0; }
+  .tlt-ten { margin: 0; font-weight: 700; font-size: var(--co-than); line-height: 24px; }
+  .tlt-dang-soan { font-weight: 400; font-size: var(--co-ti); color: var(--da); }
+  .tlt-ai { margin: 0; font-size: var(--co-ti); line-height: 18px; color: var(--da); }
+  /* Dòng gạch dưới "trợ lý ảo" (Khánh 18/11/2026): chữ nhỏ xám như dòng phụ, gạch dưới để biết bấm được; cao tối thiểu
+     24px (WCAG 2.5.8) mà không đẩy đầu khung cao thêm. */
+  .tlt-ai-nut {
+    display: inline-flex; align-items: center; min-height: 24px; margin: -3px 0; padding: 0; border: 0; background: none;
+    color: inherit; font: inherit; text-align: left; cursor: pointer;
+    text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px;
+  }
+  .tlt-ai-nut:focus-visible { outline: 2px solid var(--kem); outline-offset: 2px; }
+  .tlt-ve {
+    flex: none; padding: var(--k-3) var(--k-4); background: var(--kem-sau); border-bottom: 1px solid var(--vach);
+    font-size: var(--co-nho); line-height: 20px; color: var(--than);
+  }
+  .tlt-ve ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: var(--k-1); }
+  .tlt-ve a { color: var(--than); text-decoration: underline; text-underline-offset: 2px; }
+  /* Nút đóng vuông 48px: biểu tượng "dong" kèm nhãn ẩn (.an-chu) — dòng AI dưới tên có thêm chỗ, vừa hai dòng ở 360px. */
+  .tlt-dong { flex: none; width: var(--cham); min-width: var(--cham); padding: 0; justify-content: center; }
+  .tlt-dong :global(svg) { width: 24px; height: 24px; }
+
+  .tlt-tin {
+    flex: 1; overflow-y: auto; overscroll-behavior: contain;
+    display: flex; flex-direction: column; gap: var(--k-2); padding: var(--k-4);
+  }
+  /* Tin, thẻ, câu hệ thống do script dựng: phần tử không mang dấu phạm vi của Astro, nên chạm tới bằng :global() dưới
+     khung tin (.tlt-tin là phần tử tĩnh của component). */
+  .tlt-tin :global(.tlt-dong-tin) { display: flex; }
+  .tlt-tin :global(.tlt-cua-khach) { justify-content: flex-end; }
+  .tlt-tin :global(.tlt-bong) {
+    max-width: 85%; margin: 0; padding: 10px 14px; border-radius: var(--bo); white-space: pre-line; overflow-wrap: anywhere;
+    font-size: var(--co-than); line-height: 24px;
+  }
+  .tlt-tin :global(.tlt-cua-trang .tlt-bong) { background: var(--kem-sau); border: 1px solid var(--vach); color: var(--than); }
+  .tlt-tin :global(.tlt-cua-khach .tlt-bong) { background: var(--than); color: var(--kem); }
+  .tlt-tin :global(.tlt-cua-khach + .tlt-cua-trang), .tlt-tin :global(.tlt-cua-trang + .tlt-cua-khach) { margin-top: var(--k-2); }
+  /* Tin nhân viên: nhãn tên riêng ở đầu mỗi chuỗi tin, viền đậm — khách luôn biết đây là người, không phải Trang. */
+  .tlt-tin :global(.tlt-cua-nv) { flex-direction: column; align-items: flex-start; }
+  .tlt-tin :global(.tlt-cua-nv .tlt-bong) { background: var(--kem); border: 1px solid var(--than); color: var(--than); }
+  .tlt-tin :global(.tlt-nguoi-gui) { margin: var(--k-2) 0 2px; font-size: var(--co-ti); line-height: 18px; font-weight: 700; color: var(--muc-nhat); }
+  .tlt-tin :global(.tlt-da-xem) { align-self: flex-end; margin: calc(-1 * var(--k-1)) 0 0; font-size: var(--co-ti); color: var(--muc-nhat); }
+  .tlt-tin :global(.tlt-he-thong) { align-self: center; max-width: 92%; margin: var(--k-1) 0; text-align: center; font-size: var(--co-nho); line-height: 20px; color: var(--muc-nhat); }
+  .tlt-tin :global(.tlt-he-thong .nut) { margin-top: var(--k-2); }
+
+  .tlt-tin :global(.tlt-dang-go .tlt-bong) { display: flex; gap: 5px; align-items: center; padding: 15px 16px; }
+  .tlt-tin :global(.tlt-cham) { display: block; width: 7px; height: 7px; border-radius: 50%; background: var(--muc-nhat); animation: tlt-nhay 1.1s infinite ease-in-out; }
+  .tlt-tin :global(.tlt-cham:nth-of-type(2)) { animation-delay: .15s; }
+  .tlt-tin :global(.tlt-cham:nth-of-type(3)) { animation-delay: .3s; }
+  @keyframes tlt-nhay { 0%, 60%, 100% { opacity: .25; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+  @media (prefers-reduced-motion: reduce) { .tlt-tin :global(.tlt-cham) { animation: none; opacity: .6; } }
+
+  .tlt-tin :global(.tlt-the) {
+    max-width: 92%; padding: var(--k-4); background: var(--kem); border: 1px solid var(--vach); border-radius: var(--bo-anh);
+    display: flex; flex-direction: column; gap: var(--k-2); font-size: var(--co-nho); line-height: 20px; color: var(--than);
+  }
+  .tlt-tin :global(.tlt-the p) { margin: 0; }
+  .tlt-tin :global(.tlt-the-nhan) { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--do-sau); }
+  .tlt-tin :global(.tlt-the-ten) { font-weight: 700; font-size: var(--co-than); line-height: 24px; color: var(--than); }
+  .tlt-tin :global(.tlt-the-phu) { color: var(--muc-nhat); }
+  .tlt-tin :global(.tlt-the ul) { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--k-1); }
+  .tlt-tin :global(.tlt-the b) { font-weight: 700; }
+  .tlt-tin :global(.tlt-the [data-tien]) { white-space: nowrap; font-weight: 700; }
+  .tlt-tin :global(.tlt-tong) { padding-top: var(--k-2); border-top: 1px solid var(--vach); font-weight: 700; font-size: var(--co-than); line-height: 24px; }
+  .tlt-tin :global(.tlt-the .nut) { align-self: stretch; }
+  .tlt-tin :global(.tlt-hang-nut) { display: flex; flex-wrap: wrap; gap: var(--k-2); }
+
+  .tlt-go {
+    flex: none; display: flex; gap: var(--k-2); padding: var(--k-3) var(--k-4);
+    padding-bottom: max(var(--k-3), env(safe-area-inset-bottom)); border-top: 1px solid var(--vach); background: var(--kem);
+  }
+  .tlt-go input {
+    flex: 1; min-width: 0; min-height: var(--cham); padding: 0 14px; border: 1px solid var(--vien-o); border-radius: var(--bo);
+    background: var(--kem); color: var(--than); font: inherit; font-size: 16px;
+  }
+  .tlt-go input::placeholder { color: var(--muc-nhat); }
+  .tlt-go input:focus-visible { outline: 3px solid var(--than); outline-offset: 3px; }
+  .tlt-gui { flex: none; }
+
+  :global(html.tlt-khoa) { overflow: hidden; }
+  @media (forced-colors: active) {
+    .tlt-tin :global(.tlt-bong), .tlt-tin :global(.tlt-the), .tlt-moi, .tlt-hinh { border: 1px solid CanvasText; }
+  }
+</style>
+
+<script>
+  // Script là toàn bộ khung nhắn tin (không có nó khối ở yên hidden). Nhịp, chữ, thẻ đơn: lib/tro-ly-trang.ts.
+  import {
+    CACH_DONG_AO_CHON, CHU_TRO_LY, LOI_CHAO, NHIP, NHIP_XEM, docTraLoi, docXem, dongAo, goiCuaSanPham, theDon, thoiGianGo,
+    trongKhoang, type DaToiNhanVien, type LoiTrang, type ThePhanThit, type TinXem, type TraLoiTrang,
+  } from '../lib/tro-ly-trang';
+  import { dinhDangTien, type SanPhamMua } from '../lib/don-mua-thit';
+
+  type ThuTieng = 'vi' | 'en' | 'ko';
+  type KetQuaGui = TraLoiTrang | DaToiNhanVien | { ok: false; loi: LoiTrang };
+  const goc = document.querySelector<HTMLElement>('[data-tlt]');
+  if (goc && typeof HTMLDialogElement === 'function' && typeof fetch === 'function') khoiDong(goc);
+
+  function khoiDong(goc: HTMLElement) {
+    const nn: ThuTieng = (['vi', 'en', 'ko'] as const).find(x => x === goc.dataset.nn) ?? 'vi';
+    const hop = goc.querySelector<HTMLDialogElement>('[data-tlt-hop]');
+    const ds = goc.querySelector<HTMLElement>('[data-tlt-tin]');
+    const formGo = goc.querySelector<HTMLFormElement>('[data-tlt-go]');
+    const o = goc.querySelector<HTMLInputElement>('[data-tlt-o]');
+    const nutGui = goc.querySelector<HTMLButtonElement>('[data-tlt-gui]');
+    const dangSoan = goc.querySelector<HTMLElement>('[data-tlt-dang-soan]');
+    const hinh = goc.querySelector<HTMLElement>('[data-tlt-hinh]');
+    const tenDau = goc.querySelector<HTMLElement>('[data-tlt-ten]');
+    const dongAoEl = goc.querySelector<HTMLElement>('[data-tlt-ai-dong]');
+    const dauAo = goc.querySelector<HTMLElement>('[data-tlt-ai-dau]');
+    const nutAo = goc.querySelector<HTMLButtonElement>('[data-tlt-ai]');
+    const dongNv = goc.querySelector<HTMLElement>('[data-tlt-nv-dong]');
+    const ve = goc.querySelector<HTMLElement>('[data-tlt-ve]');
+    const veGap = goc.querySelector<HTMLElement>('[data-tlt-ve-gap]');
+    const veTruc = goc.querySelector<HTMLElement>('[data-tlt-ve-truc]');
+    const diaChi = goc.dataset.diaChi ?? '';
+    if (!hop || !ds || !formGo || !o || !nutGui || !diaChi) return;
+    const formDat = document.querySelector<HTMLFormElement>('[data-mtv-form]');
+    let menu: SanPhamMua[] = [];
+    try { const m = JSON.parse(formDat?.dataset.menu ?? '[]'); if (Array.isArray(m)) menu = m; } catch { /* menu rỗng: thẻ không giá */ }
+    const giam = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+
+    const cuoc = taoMa();
+    let lanDau = true;
+    let dangGui = false;
+    let daChao = false;
+    const daGuiThe = new Set<string>();
+    // Nhân viên nhận chat (0126 mục 4b): ai đang trả lời, có nhân viên trực, tin nhân viên / câu hệ thống đã hiện tới id nào.
+    let cheDo: 'trang' | 'nhan_vien' = 'trang';
+    let tenNv: string | null = null;
+    let truc = false;
+    let moc = 0;
+    let coCuoc = false;
+    let tatXem = false;
+    let loiXem = 0;
+    let dangXem = false;
+    let henXem: ReturnType<typeof setTimeout> | undefined;
+    let goNv: HTMLElement | null = null;
+    goc.hidden = false;
+
+    goc.querySelectorAll<HTMLElement>('[data-tlt-mo]').forEach(n => n.addEventListener('click', moHop));
+    goc.querySelector('[data-tlt-dong]')?.addEventListener('click', () => hop.close());
+    hop.addEventListener('click', e => { if (e.target === hop) hop.close(); });
+    hop.addEventListener('close', () => { document.documentElement.classList.remove('tlt-khoa'); thoiXem(); });
+    formGo.addEventListener('submit', e => { e.preventDefault(); void gui(o.value); });
+    nutAo?.addEventListener('click', () => {
+      if (!ve) return;
+      ve.hidden = !ve.hidden;
+      nutAo.setAttribute('aria-expanded', String(!ve.hidden));
+    });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) thoiXem(); else if (hop.open) void xem(); });
+
+    function moHop() {
+      if (!daChao) { for (const t of LOI_CHAO) tinTrang(t); daChao = true; }
+      document.documentElement.classList.add('tlt-khoa');
+      hop!.showModal();
+      o!.focus();
+      // Mở lại khung thì hỏi lại từ đầu, kể cả khi lần trước công tắc đang tắt.
+      tatXem = false;
+      void xem();
+    }
+
+    // --- Dựng tin -------------------------------------------------------------------------------------------
+    function el<K extends keyof HTMLElementTagNameMap>(tag: K, lop?: string, chu?: string): HTMLElementTagNameMap[K] {
+      const e = document.createElement(tag);
+      if (lop) e.className = lop;
+      if (chu != null) e.textContent = chu;
+      return e;
+    }
+    function cuon(e: Element) { try { e.scrollIntoView({ block: 'nearest', behavior: giam ? 'auto' : 'smooth' }); } catch { /* trình duyệt cũ */ } }
+    function them(e: HTMLElement) {
+      // Bong bóng nhân viên đang soạn luôn đứng cuối.
+      if (goNv && goNv !== e && goNv.parentElement === ds) ds!.insertBefore(e, goNv); else ds!.append(e);
+      cuon(e); return e;
+    }
+    function tinTrang(chu: string) {
+      const d = el('div', 'tlt-dong-tin tlt-cua-trang'); d.append(el('p', 'tlt-bong', chu)); return them(d);
+    }
+    function tinKhach(chu: string) {
+      const d = el('div', 'tlt-dong-tin tlt-cua-khach'); d.append(el('p', 'tlt-bong', chu)); return them(d);
+    }
+    /** Tin nhân viên: nhãn "Tên · Nhân viên Beeftown" ở đầu mỗi chuỗi tin của họ — không bao giờ dưới tên Trang. */
+    function tinNhanVien(chu: string, ten: string | null) {
+      const d = el('div', 'tlt-dong-tin tlt-cua-nv');
+      const truoc = goNv ? goNv.previousElementSibling : ds!.lastElementChild;
+      if (!truoc?.classList.contains('tlt-cua-nv')) {
+        d.append(el('p', 'tlt-nguoi-gui', ten ? `${ten} · ${CHU_TRO_LY.nhanVien[nn]}` : CHU_TRO_LY.nhanVien[nn]));
+      }
+      d.append(el('p', 'tlt-bong', chu));
+      return them(d);
+    }
+    function heThong(chu: string) { return them(el('p', 'tlt-he-thong', chu)); }
+    function dangGo(cuaNhanVien = false) {
+      const d = el('div', `tlt-dong-tin ${cuaNhanVien ? 'tlt-cua-nv' : 'tlt-cua-trang'} tlt-dang-go`);
+      const b = el('p', 'tlt-bong');
+      b.append(el('span', 'an-chu', (cuaNhanVien ? CHU_TRO_LY.nhanVienDangSoanDoc : CHU_TRO_LY.dangSoanDoc)[nn]),
+        el('span', 'tlt-cham'), el('span', 'tlt-cham'), el('span', 'tlt-cham'));
+      d.append(b);
+      if (dangSoan) dangSoan.hidden = false;
+      if (cuaNhanVien) { ds!.append(d); cuon(d); return d; }
+      return them(d);
+    }
+    function xoaGo(d: HTMLElement | null) {
+      d?.remove();
+      if (dangSoan && !ds!.querySelector('.tlt-dang-go')) dangSoan.hidden = true;
+    }
+    function daXem(dong: HTMLElement, chu: string = CHU_TRO_LY.daXem[nn]) {
+      ds!.querySelectorAll('.tlt-da-xem').forEach(x => x.remove());
+      const x = el('p', 'tlt-da-xem', chu);
+      dong.after(x);
+      cuon(x);
+    }
+    function oTien(n: number) { const s = el('span', '', dinhDangTien(n)); s.dataset.tien = ''; return s; }
+    const doi = (ms: number) => new Promise<void>(xong => setTimeout(xong, ms));
+
+    // --- Đầu khung: Trang (dòng gạch dưới "trợ lý ảo") hay nhân viên đang nhận ------------------------------------
+    function veDau() {
+      const laNv = cheDo === 'nhan_vien';
+      if (hinh) hinh.textContent = laNv ? (tenNv?.charAt(0).toUpperCase() || 'B') : 'T';
+      if (tenDau) tenDau.textContent = laNv ? (tenNv ?? CHU_TRO_LY.nhanVien[nn]) : CHU_TRO_LY.ten[nn];
+      if (dongAoEl) dongAoEl.hidden = laNv;
+      if (dongNv) dongNv.hidden = !laNv || !tenNv;
+      if (laNv && ve && !ve.hidden) { ve.hidden = true; nutAo?.setAttribute('aria-expanded', 'false'); }
+      const d = dongAo(CACH_DONG_AO_CHON, truc);
+      if (dauAo) dauAo.textContent = d.dau[nn];
+      if (nutAo) nutAo.textContent = d.gach[nn];
+      if (veGap) veGap.hidden = truc;
+      if (veTruc) veTruc.hidden = !truc;
+    }
+
+    // --- Hỏi lại khi khung mở (lệnh xem) ----------------------------------------------------------------------
+    function thoiXem() { if (henXem) clearTimeout(henXem); henXem = undefined; }
+    function henXemLai() {
+      thoiXem();
+      if (tatXem || !hop!.open || document.hidden) return;
+      // Chưa gửi tin nào thì cuộc chưa có trên database: chỉ hỏi một lần lúc mở (có nhân viên trực không).
+      if (cheDo !== 'nhan_vien' && !coCuoc) return;
+      // Chưa ai mở màn theo dõi thì không ai nhận được cuộc này: hỏi thưa (chỉ để biết khi có người trực).
+      const nhip = cheDo === 'nhan_vien' ? NHIP_XEM.nhanVien : truc ? NHIP_XEM.trang : NHIP_XEM.khongTruc;
+      henXem = setTimeout(() => { void xem(); }, Math.min(NHIP_XEM.loiToiDa, nhip * 2 ** loiXem));
+    }
+    async function xem() {
+      if (dangXem || tatXem) return;
+      dangXem = true;
+      thoiXem();
+      const huy = new AbortController();
+      const hen = setTimeout(() => huy.abort(), 15000);
+      try {
+        const r = await fetch(diaChi, {
+          method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, credentials: 'omit', signal: huy.signal,
+          body: JSON.stringify({ hanh_dong: 'xem', cuoc, sau: moc, chi_nhanh: goc.dataset.chiNhanh }),
+        });
+        const kq = docXem(await r.json().catch(() => null));
+        if (!kq.ok) { if (kq.loi === 'tat') tatXem = true; else loiXem = Math.min(loiXem + 1, 4); return; }
+        loiXem = 0;
+        truc = kq.truc;
+        for (const t of kq.tin) if (t.id > moc) { moc = t.id; hienTinXem(t); }
+        cheDo = kq.aiTraLoi;
+        tenNv = kq.ten;
+        if (kq.dangGo && !goNv) goNv = dangGo(true);
+        else if (!kq.dangGo && goNv) { xoaGo(goNv); goNv = null; }
+        veDau();
+      } catch {
+        loiXem = Math.min(loiXem + 1, 4);
+      } finally {
+        clearTimeout(hen);
+        dangXem = false;
+        henXemLai();
+      }
+    }
+    function hienTinXem(t: TinXem) {
+      if (t.nguoi === 'nhan_vien') {
+        if (goNv) { xoaGo(goNv); goNv = null; }
+        tinNhanVien(t.noiDung, t.ten);
+      } else if (t.noiDung === 'nhan_vien_vao') heThong(CHU_TRO_LY.nhanVienVao[nn](t.ten));
+      else heThong(CHU_TRO_LY.trangQuayLai[nn]);
+    }
+
+    // --- Thẻ ------------------------------------------------------------------------------------------------
+    function thePhanThit(t: ThePhanThit) {
+      const the = el('div', 'tlt-the');
+      the.append(el('p', 'tlt-the-ten', t.ten));
+      const phu = [t.nhan && t.nhan !== t.ten ? `${CHU_TRO_LY.trenTrang[nn]}: ${t.nhan}` : '', t.loai].filter(Boolean).join(' · ');
+      if (phu) the.append(el('p', 'tlt-the-phu', phu));
+      const goi = goiCuaSanPham(t.ma, menu, nn);
+      if (goi.length) {
+        const ul = el('ul');
+        for (const g of goi) { const li = el('li', '', `${g.nhan} · `); li.append(oTien(g.gia)); ul.append(li); }
+        the.append(ul);
+      }
+      if (t.diem.length) the.append(el('p', '', t.diem.join(' · ')));
+      if (t.moTa) the.append(el('p', '', t.moTa));
+      for (const [nhan, chu] of [[CHU_TRO_LY.viTri[nn], t.viTri], [CHU_TRO_LY.doChin[nn], t.doChin], [CHU_TRO_LY.meo[nn], t.meo]] as const) {
+        if (!chu) continue;
+        const p = el('p'); p.append(el('b', '', `${nhan}: `), document.createTextNode(chu)); the.append(p);
+      }
+      const d = el('div', 'tlt-dong-tin tlt-cua-trang'); d.append(the); them(d);
+    }
+
+    function theDonHang(kq: TraLoiTrang) {
+      const td = theDon(kq.don, menu, nn);
+      if (!td.dong.length) { if (kq.don.length) heThong(CHU_TRO_LY.goiDaDoi[nn]); return; }
+      const the = el('div', 'tlt-the');
+      the.append(el('p', 'tlt-the-nhan', kq.chot ? CHU_TRO_LY.donChot[nn] : CHU_TRO_LY.donGoiY[nn]));
+      const ul = el('ul');
+      for (const d of td.dong) { const li = el('li', '', d.chu); li.append(oTien(d.thanhTien)); ul.append(li); }
+      the.append(ul);
+      const tong = el('p', 'tlt-tong', `${td.dem} · `); tong.append(oTien(td.tamTinh)); the.append(tong);
+      the.append(el('p', 'tlt-the-phu', goc.dataset.traTruoc ? CHU_TRO_LY.giaGomPhiGiao[nn] : CHU_TRO_LY.giaChuaGomPhiGiao[nn]));
+      if (td.thieu > 0) the.append(el('p', 'tlt-the-phu', CHU_TRO_LY.goiDaDoi[nn]));
+      if (formDat) {
+        const nut = el('button', `nut ${kq.chot ? 'nut-chinh' : 'nut-vien'}`, CHU_TRO_LY.choVaoDon[nn]);
+        nut.type = 'button';
+        nut.addEventListener('click', () => choVaoDon(td.gio, td.dem));
+        the.append(nut);
+      }
+      const d = el('div', 'tlt-dong-tin tlt-cua-trang'); d.append(the); them(d);
+    }
+
+    /** Đặt số gói vào ô chọn của form đặt hàng (như khách tự chọn), đóng khung, đưa khách tới phần Giao hàng. */
+    function choVaoDon(gio: Map<string, number>, dem: string) {
+      if (!formDat) return;
+      for (const [khoa, n] of gio) {
+        const s = formDat.querySelector<HTMLSelectElement>(`select[name="${CSS.escape(khoa)}"]`);
+        if (s) s.value = String(n);
+      }
+      formDat.dispatchEvent(new Event('change', { bubbles: true }));
+      heThong(CHU_TRO_LY.daChoVaoDon[nn](dem));
+      hop!.close();
+      const giao = document.getElementById('dat-hang');
+      giao?.scrollIntoView({ block: 'start', behavior: giam ? 'auto' : 'smooth' });
+      const hoTen = formDat.querySelector<HTMLInputElement>('#mtv-ho-ten');
+      if (hoTen && !hoTen.value) hoTen.focus({ preventScroll: true });
+    }
+
+    function theLienHe() {
+      const the = el('div', 'tlt-the');
+      the.append(el('p', 'tlt-the-nhan', CHU_TRO_LY.lienHe[nn]));
+      const hang = el('div', 'tlt-hang-nut');
+      const link = (href: string, chu: string, ngoai: boolean) => {
+        const a = el('a', 'nut nut-vien', chu); a.href = href;
+        if (ngoai) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+        hang.append(a);
+      };
+      const { goi, hotline, zalo, facebook } = goc.dataset;
+      if (goi) link(goi, hotline ? `${CHU_TRO_LY.goiQuan[nn]} ${hotline}` : CHU_TRO_LY.goiQuan[nn], false);
+      if (zalo) link(zalo, CHU_TRO_LY.nhanZalo[nn], true);
+      if (facebook) link(facebook, CHU_TRO_LY.nhanFacebook[nn], true);
+      if (hang.childElementCount) the.append(hang); else the.append(el('p', '', CHU_TRO_LY.khongKenh[nn]));
+      const d = el('div', 'tlt-dong-tin tlt-cua-trang'); d.append(the); them(d);
+    }
+
+    // --- Gửi một tin ------------------------------------------------------------------------------------------
+    async function hoi(tin: string, maTin: string): Promise<KetQuaGui> {
+      const huy = new AbortController();
+      const hen = setTimeout(() => huy.abort(), 45000);
+      try {
+        // text/plain: yêu cầu "đơn giản", trình duyệt không hỏi trước (CORS) — nhanh hơn một vòng mạng.
+        const r = await fetch(diaChi, {
+          method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, credentials: 'omit', signal: huy.signal,
+          body: JSON.stringify({ cuoc, ma_tin: maTin, tin, tra_truoc: !!goc.dataset.traTruoc, chi_nhanh: goc.dataset.chiNhanh }),
+        });
+        return docTraLoi(await r.json().catch(() => null));
+      } catch {
+        return { ok: false, loi: 'tam_thoi' };
+      } finally { clearTimeout(hen); }
+    }
+
+    function khoa(b: boolean) { nutGui!.disabled = b; if (b) nutGui!.setAttribute('aria-busy', 'true'); else nutGui!.removeAttribute('aria-busy'); }
+
+    async function gui(tho: string, maTinCu?: string, dongCu?: HTMLElement) {
+      const tin = tho.replace(/\s+/g, ' ').trim();
+      if (!tin || dangGui) return;
+      dangGui = true; khoa(true);
+      if (!maTinCu) o!.value = '';
+      const maTin = maTinCu ?? taoMa();
+      const dongKhach = dongCu ?? tinKhach(tin);
+      const batDau = Date.now();
+      // Trang trả lời: đọc tin một chút rồi mới "Đã xem" và bong bóng đang soạn — như người. Lần đầu sau lời chào:
+      // khoảng 10 giây. Nhân viên đang nhận cuộc: không nhịp nào của Trang, tin tới nhân viên ngay.
+      const choNhanVien = cheDo === 'nhan_vien';
+      const hanTra = trongKhoang(lanDau ? NHIP.tinDauSauChao : NHIP.tinDau, Math.random());
+      let go: HTMLElement | null = null;
+      const henGo = choNhanVien ? undefined : setTimeout(() => { daXem(dongKhach); go = dangGo(); }, trongKhoang(NHIP.doc, Math.random()));
+      let kq = await hoi(tin, maTin);
+      // Cùng tin đang được trả lời ở một lượt gửi trước (mạng chập rồi gửi lại): chờ rồi hỏi lại đúng tin đó.
+      for (let i = 0; i < 4 && !kq.ok && kq.loi === 'dang_tra_loi'; i++) { await doi(3000); kq = await hoi(tin, maTin); }
+      if (kq.ok && !('nhanVien' in kq)) { const con = hanTra - (Date.now() - batDau); if (con > 0) await doi(con); }
+      clearTimeout(henGo);
+      xoaGo(go);
+      if (!kq.ok) baoLoi(kq.loi, tin, maTin, dongKhach);
+      else if ('nhanVien' in kq) {
+        // Tin đã tới nhân viên đang nhận cuộc — lệnh xem lấy câu "… đã vào chat" (nếu chưa hiện) và tin trả lời.
+        coCuoc = true; lanDau = false;
+        daXem(dongKhach, CHU_TRO_LY.daGui[nn]);
+        if (cheDo !== 'nhan_vien') { cheDo = 'nhan_vien'; tenNv = kq.ten; veDau(); }
+        void xem();
+      } else {
+        coCuoc = true; lanDau = false;
+        await hienTraLoi(kq);
+        if (!henXem && !dangXem) henXemLai();
+      }
+      dangGui = false; khoa(false);
+    }
+
+    async function hienTraLoi(kq: TraLoiTrang) {
+      for (let i = 0; i < kq.tin.length; i++) {
+        if (i > 0) { const g = dangGo(); await doi(thoiGianGo(kq.tin[i], Math.random())); xoaGo(g); }
+        tinTrang(kq.tin[i]);
+      }
+      const theMoi = kq.the.filter(t => !daGuiThe.has(t.ma));
+      if (theMoi.length || kq.don.length || kq.chuyen_nguoi) await doi(NHIP.truocThe);
+      for (const t of theMoi) { daGuiThe.add(t.ma); thePhanThit(t); }
+      if (kq.don.length) theDonHang(kq);
+      if (kq.chuyen_nguoi) theLienHe();
+    }
+
+    /** Câu hệ thống đúng sự thật: tin CHƯA được trả lời; gửi lại dùng đúng mã tin cũ (database không trả lời hai lần). */
+    function baoLoi(loi: LoiTrang, tin: string, maTin: string, dongKhach: HTMLElement) {
+      if (loi === 'tat') { heThong(CHU_TRO_LY.tamNghi[nn]); theLienHe(); return; }
+      if (loi === 'qua_luot') { heThong(CHU_TRO_LY.quaLuot[nn]); theLienHe(); return; }
+      if (loi === 'het_luot') { heThong(CHU_TRO_LY.hetLuot[nn]); theLienHe(); return; }
+      const p = heThong(CHU_TRO_LY.chuaTraLoi[nn]);
+      const nut = el('button', 'nut nut-vien', CHU_TRO_LY.guiLai[nn]);
+      nut.type = 'button';
+      nut.addEventListener('click', () => { p.remove(); void gui(tin, maTin, dongKhach); });
+      p.append(document.createElement('br'), nut);
+    }
+  }
+
+  /** Mã uuid v4 cho cuộc chat và từng tin (trình duyệt cũ không có randomUUID: tự dựng từ getRandomValues). */
+  function taoMa(): string {
+    if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+    const b = crypto.getRandomValues(new Uint8Array(16));
+    b[6] = (b[6] & 0x0f) | 0x40; b[8] = (b[8] & 0x3f) | 0x80;
+    const h = [...b].map(x => x.toString(16).padStart(2, '0')).join('');
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+  }
+</script>

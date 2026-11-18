@@ -106,6 +106,13 @@ const { rows: [spBanLe] } = await db.query(
 await db.query(`insert into ban_le_goi (san_pham_id, so_gam) values ($1, 200)`, [spBanLe.id]);
 // 0117 · video đào tạo — một video, để phép thử tương đương của bốn policy không rỗng.
 await db.query(`insert into video_dao_tao (youtube_id, tieu_de) values ('aaaaaaaaaaa', 'Bài 1')`);
+// 0126 · nhật ký chat của Trang — ba lượt (cuộc của Q1, cuộc của Q7, cuộc chưa có dòng tro_ly_cuoc), để phép thử tương
+// đương của tro_ly_luot_doc phân biệt được chi nhánh (sổ học đã có 6 câu ghi sẵn).
+for (const cn of [cnA, cnB, null]) {
+  const { rows: [{ id: cuoc }] } = await db.query('select gen_random_uuid() as id');
+  if (cn) await db.query('insert into tro_ly_cuoc (id, chi_nhanh_id) values ($1, $2)', [cuoc, cn.id]);
+  await db.query(`insert into tro_ly_luot (cuoc_id, ma_tin, luot, tin_khach, trang_thai) values ($1, gen_random_uuid(), 1, 'chào em', 'tra_loi')`, [cuoc]);
+}
 // Hai dữ kiện nháp (chưa công bố) — đúng thứ không được lộ cho người đã nghỉ / vai kho. Hỏng thì ném: bảng
 // thiếu dòng làm phép thử của mục 1–2 thành rỗng.
 await db.query(`insert into noi_dung_cong_bo (khoa, kieu, gia_tri_text)
@@ -201,6 +208,16 @@ const SAU_0070 = {
   'video_dao_tao.video_dao_tao_sua': [
     "co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro])", "co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro])"],
   'video_dao_tao.video_dao_tao_xoa': ["co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro])", null],
+  // 0126 — sổ học của Trang (test-tro-ly-trang.mjs nhóm 2b): đọc = chủ, quản lý, marketing; thêm, sửa, xóa = chủ, quản lý.
+  // Nhật ký chat: chủ mọi cuộc, quản lý cuộc của chi nhánh mình (chi nhánh lấy từ tro_ly_cuoc); không policy ghi.
+  'tro_ly_so_hoc.tro_ly_so_hoc_doc': ["co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro, 'marketing'::vai_tro])", null],
+  'tro_ly_so_hoc.tro_ly_so_hoc_them': [null, "co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro])"],
+  'tro_ly_so_hoc.tro_ly_so_hoc_sua': [
+    "co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro])", "co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro])"],
+  'tro_ly_so_hoc.tro_ly_so_hoc_xoa': ["co_vai_tro(ARRAY['chu_so_huu'::vai_tro, 'quan_ly'::vai_tro])", null],
+  'tro_ly_luot.tro_ly_luot_doc': [
+    "co_vai_tro(ARRAY['chu_so_huu'::vai_tro]) or (co_vai_tro(ARRAY['quan_ly'::vai_tro]) and exists (select 1 from tro_ly_cuoc c join nhan_su ns on ns.auth_uid = auth.uid() and ns.dang_lam where c.id = tro_ly_luot.cuoc_id and c.chi_nhanh_id = ns.chi_nhanh_id))",
+    null],
 };
 
 const { rows: MOI_PL } = await db.query(`

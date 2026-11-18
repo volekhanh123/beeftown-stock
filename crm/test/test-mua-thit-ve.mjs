@@ -935,7 +935,8 @@ await nhom('10 · CÂU CHỮ VÀ KHÓA', async () => {
     const d = cua(khoa);
     return !d || d.kieu !== kieu || d.nhom !== 'mua_thit' || d.chi_chu_so_huu !== chiChu || d.bat_buoc !== false || d.thu_tu !== thuTu;
   }).map(k => `${k[0]}: ${JSON.stringify(cua(k[0]))}`);
-  const { rows: [nhomMoi] } = await db.query(`select count(*)::int n from khoa_cong_bo where nhom = 'mua_thit'`);
+  // Nhóm mua_thit: mười khóa của 0101 và công tắc hien_tro_ly_trang của 0126 (Trợ lý Trang — test-tro-ly-trang.mjs nhóm 1).
+  const { rows: [nhomMoi] } = await db.query(`select count(*)::int n from khoa_cong_bo where nhom = 'mua_thit' and khoa <> 'hien_tro_ly_trang'`);
   ok('Mười khóa mới có trong khoa_cong_bo, nhóm mua_thit, đúng kiểu, đúng chi_chu_so_huu, bat_buoc = false',
      saiKhoa.length === 0 && nhomMoi.n === 10, saiKhoa.join(' · '));
 

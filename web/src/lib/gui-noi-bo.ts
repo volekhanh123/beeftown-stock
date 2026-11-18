@@ -12,7 +12,8 @@
  *     điền lại chữ nào của lượt gửi, nên chuyển hướng không làm mất gì: dat-ban, don-mua-thit,
  *     tuyen-dung, cai-dat, noi-dung, tin-tuyen-dung/index. Còn dựng tại chỗ khi lỗi — vì điền lại
  *     chữ đã gõ (dài, không vừa một cookie; Khánh quyết 16/11/2026 giữ cách này, #194): thuc-don/[id],
- *     tin-tuyen-dung/[id], ban-le/[id], ban-le/cai-dat, ban-le/index, dao-tao, zalo/chien-dich/moi.
+ *     tin-tuyen-dung/[id], ban-le/[id], ban-le/cai-dat, ban-le/index, dao-tao, zalo/chien-dich/moi —
+ *     và tro-ly (0126, cùng lý do: câu trả lời của sổ học tới 1.000 ký tự, máy kiểm tiếng Việt từ chối là thường).
  *     Kiểm thử: crm/test/test-noi-bo-loi-chuyen-huong.mjs.
  *   · Bấm đúp: lần hai tới máy chủ SAU khi lần một đã ghi, và trình duyệt bỏ câu trả lời
  *     của lần một — người bấm chỉ thấy câu của lần hai. Chuyển hướng không chữa được ca

@@ -35,7 +35,9 @@ const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — /noi-bo (CRM): GỬI KHÔNG
 
 const SAU_TRANG = ['dat-ban.astro', 'don-mua-thit.astro', 'tuyen-dung.astro', 'cai-dat.astro', 'noi-dung.astro', 'tin-tuyen-dung/index.astro'];
 const BAY_TRANG_DIEN_LAI = ['thuc-don/[id].astro', 'tin-tuyen-dung/[id].astro', 'ban-le/[id].astro', 'ban-le/cai-dat.astro',
-  'ban-le/index.astro', 'dao-tao.astro', 'zalo/chien-dich/moi.astro'];
+  'ban-le/index.astro', 'dao-tao.astro', 'zalo/chien-dich/moi.astro',
+  // 0126 · sổ học của Trang: câu trả lời tới 1.000 ký tự, máy kiểm tiếng Việt từ chối là chuyện thường — điền lại chữ đã gõ.
+  'tro-ly.astro'];
 const docTrang = t => readFileSync(join(SRC, 'pages', 'noi-bo', t), 'utf8');
 
 /** Khối `if (… Astro.request.method === 'POST') { … }` ở cấp ngoài cùng của phần đầu trang, bỏ chú thích. */
