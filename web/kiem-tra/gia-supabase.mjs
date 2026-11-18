@@ -235,9 +235,12 @@ function noiDungMuaThit(kichBan, n) {
 // Edge Function tro-ly-trang GIẢ (0126) — POST {URL}/functions/v1/tro-ly-trang, thân text/plain chứa JSON
 // {cuoc, ma_tin, tin, tra_truoc, chi_nhanh}. Trả lời mẫu theo chữ khách gõ (không gọi Claude):
 //   có "lỗi"             → 502 { ok: false, loi: 'tam_thoi' } LẦN ĐẦU của mỗi ma_tin; gửi lại cùng ma_tin → trả lời thường
-//   có "người hay máy"   → nói thật là trợ lý AI + cách liên hệ quán (chuyen_nguoi)
+//   có "người hay máy"   → nói thật là trợ lý ảo + cách liên hệ quán (chuyen_nguoi)
 //   có "người" (số người) → hai tin, thẻ ribeye-cap, đơn 2 gói ribeye-cap_200 và 1 gói than-ngoai_200
 //   còn lại              → một tin hỏi số người
+// Lệnh xem {hanh_dong: 'xem', cuoc, sau} → trạng thái cuộc của nhân viên giả. Nhân viên giả do kiểm thử điều khiển:
+// mayGia.troLyNhanVien({ viec: 'nhan' | 'go' | 'gui' | 'tra' | 'truc', ten, noi_dung, bat, cuoc }) (cuoc bỏ trống = cuộc
+// vừa nhắn). Nhân viên đang nhận cuộc → tin khách trả { ok, nhan_vien: true, ten } (như Edge Function thật).
 // ---------------------------------------------------------------------------
 export const TRA_LOI_TRANG_THU = {
   goiY: {
@@ -248,7 +251,7 @@ export const TRA_LOI_TRANG_THU = {
     don: [{ khoa: 'ribeye-cap_200', so_goi: 2, ten: 'đầu thăn ngoại còn nắp' }, { khoa: 'than-ngoai_200', so_goi: 1, ten: 'thăn ngoại' }],
     chot: false, chuyen_nguoi: false,
   },
-  ai: { ok: true, tin: ['Dạ em là trợ lý AI của Beeftown ạ.', 'Anh/chị muốn nói chuyện với nhân viên của quán thì liên hệ theo cách ở ngay bên dưới nhé.'],
+  ai: { ok: true, tin: ['Dạ em là trợ lý ảo của Beeftown ạ.', 'Anh/chị muốn nói chuyện với nhân viên của quán thì liên hệ theo cách ở ngay bên dưới nhé.'],
         the: [], don: [], chot: false, chuyen_nguoi: true },
   hoi: { ok: true, tin: ['Dạ anh/chị nướng cho mấy người ạ?'], the: [], don: [], chot: false, chuyen_nguoi: false },
 };
@@ -766,6 +769,27 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
   let soDonMuaThit = 0;
   const donTheoMaGui = new Map();
   const henGio = new Set();   // lời trả lời đang hoãn (mua-thit-treo) — dong() hủy hết
+  // Nhân viên nhận chat giả (0126 mục 4b): cuộc → { aiTraLoi, ten, dangGo, tin }; truc = có nhân viên mở màn theo dõi.
+  const troLyCuoc = new Map();
+  let troLyTruc = false;
+  let troLyId = 0;
+  let troLyCuocCuoi = null;
+  const cuocGia = id => {
+    if (!troLyCuoc.has(id)) troLyCuoc.set(id, { aiTraLoi: 'trang', ten: null, dangGo: false, tin: [] });
+    return troLyCuoc.get(id);
+  };
+  function troLyNhanVien({ viec, ten = null, noi_dung = '', bat = true, cuoc = null } = {}) {
+    if (viec === 'truc') { troLyTruc = !!bat; return { truc: troLyTruc }; }
+    const id = cuoc ?? troLyCuocCuoi;
+    if (!id) throw new Error('Chưa có cuộc chat nào để nhân viên giả nhận');
+    const cc = cuocGia(id);
+    if (viec === 'nhan') { cc.aiTraLoi = 'nhan_vien'; cc.ten = ten; cc.tin.push({ id: ++troLyId, nguoi: 'he_thong', noi_dung: 'nhan_vien_vao', ten }); }
+    else if (viec === 'go') cc.dangGo = !!bat;
+    else if (viec === 'gui') { cc.dangGo = false; cc.tin.push({ id: ++troLyId, nguoi: 'nhan_vien', noi_dung: String(noi_dung), ten: cc.ten }); }
+    else if (viec === 'tra') { cc.aiTraLoi = 'trang'; cc.ten = null; cc.dangGo = false; cc.tin.push({ id: ++troLyId, nguoi: 'he_thong', noi_dung: 'trang_quay_lai', ten: null }); }
+    else throw new Error(`Việc lạ của nhân viên giả: ${viec}`);
+    return { cuoc: id, ...cc, tin: [...cc.tin] };
+  }
 
   const datKichBan = (ten, { cham: ms = 0 } = {}) => {
     if (!KICH_BAN.includes(ten)) throw new Error(`Kịch bản lạ: ${ten}`);
@@ -890,6 +914,15 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
         const tin = String(than?.tin ?? '');
         const lanCuaMa = nhatKy.filter(d => d.ham === 'tro-ly-trang' && d.thamSo.than?.ma_tin === than?.ma_tin).length;
         const traVe = (status, j) => { res.writeHead(status, dau); res.end(JSON.stringify(j)); };
+        if (than?.hanh_dong === 'xem') {
+          const cc = typeof than.cuoc === 'string' ? troLyCuoc.get(than.cuoc) : null;
+          const sau = Number(than.sau) || 0;
+          return traVe(200, { ok: true, xem: true, ai_tra_loi: cc?.aiTraLoi ?? 'trang', ten: cc?.aiTraLoi === 'nhan_vien' ? cc.ten : null,
+            dang_go: !!cc?.dangGo, truc: troLyTruc, tin: (cc?.tin ?? []).filter(t => t.id > sau) });
+        }
+        if (typeof than?.cuoc === 'string') troLyCuocCuoi = than.cuoc;
+        const ccGui = typeof than?.cuoc === 'string' ? troLyCuoc.get(than.cuoc) : null;
+        if (ccGui?.aiTraLoi === 'nhan_vien') return traVe(200, { ok: true, nhan_vien: true, ten: ccGui.ten });
         if (/lỗi/i.test(tin) && lanCuaMa === 1) return traVe(502, { ok: false, loi: 'tam_thoi' });
         if (/người hay máy/i.test(tin)) return traVe(200, TRA_LOI_TRANG_THU.ai);
         if (/người/i.test(tin)) return traVe(200, TRA_LOI_TRANG_THU.goiY);
@@ -1245,6 +1278,7 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
     kichBan: () => hienTai,
     dem: () => ({ ...dem }),
     nhatKy: () => [...nhatKy],
+    troLyNhanVien,
     // /noi-bo: Supabase Auth giả và bảng (đầu file, mục "/noi-bo — ĐĂNG NHẬP THẬT").
     thuHoiPhien,
     phienAuth,

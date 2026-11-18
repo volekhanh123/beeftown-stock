@@ -126,6 +126,20 @@ await nhom('2 · QUYỀN: hai hàm của Edge Function chỉ service_role', asyn
     const c = await goi(uid, `select tro_ly_che_so('0912345678') as r`);
     ok(`${ten} không gọi được tro_ly_che_so`, c.loi !== null, vi(c));
   }
+  // Hàm nội bộ của 0126 (tên gọi, có người trực, tự trả lại, hạng lý do, quyền nhân viên) và lệnh xem của Edge Function:
+  // không vai nào gọi thẳng được — chỉ hàm definer gọi.
+  for (const ham of ["tro_ly_ten_goi('Nguyễn Văn Minh')", 'tro_ly_co_truc(null)', 'tro_ly_tu_tra_lai(gen_random_uuid())',
+    "tro_ly_hang_can_nguoi('gap_nguoi')", 'tro_ly_duoc_ho_tro()', 'tro_ly_thay_cuoc(null)', 'tro_ly_xem(gen_random_uuid(), 0, null)']) {
+    for (const [ten, uid] of [['anon', 'anon'], ['chủ', UID.chu], ['thu ngân', UID.thuNganA]]) {
+      const r = await goi(uid, `select ${ham} as r`);
+      ok(`${ten} không gọi thẳng được ${ham.split('(')[0]}`, r.loi !== null && /permission denied/.test(r.loi), vi(r));
+    }
+  }
+  ok('Tên gọi khách thấy: chữ cuối của họ tên', (await db.query("select tro_ly_ten_goi('  Nguyễn Văn Minh ') a, tro_ly_ten_goi('') b, tro_ly_ten_goi(null) c")).rows
+    .every(x => x.a === 'Minh' && x.b === null && x.c === null));
+  ok('Hạng lý do cần người: khách đòi gặp người > Trang mời liên hệ > chốt đơn > không', (await db.query(
+    "select tro_ly_hang_can_nguoi('gap_nguoi') a, tro_ly_hang_can_nguoi('chuyen_nguoi') b, tro_ly_hang_can_nguoi('chot_don') c, tro_ly_hang_can_nguoi(null) d")).rows
+    .every(x => x.a === 3 && x.b === 2 && x.c === 1 && x.d === 0));
   const dv = await mo(cuoc, tin);
   ok('service_role gọi được (công tắc bật → được)', dv?.duoc === true, JSON.stringify(dv));
   await ghi(cuoc, tin, { tra_loi: TRA_LOI });
@@ -355,6 +369,169 @@ await nhom('10 · EDGE FUNCTION TRÊN DATABASE THẬT (Claude giả)', async () 
   await thuHoi('hien_tro_ly_trang');
   const r3 = await xuLyYeuCau(yc({ cuoc, ma_tin: crypto.randomUUID(), tin: 'còn không em' }), mt);
   ok('Công tắc tắt: 403 { loi: "tat" }, không gọi Claude', r3.status === 403 && (await r3.json()).loi === 'tat' && goiClaude === 1);
+});
+
+await nhom('11 · NHÂN VIÊN NHẬN CHAT: cuộc chat và tin lưu ở database, quyền theo vai và chi nhánh, không gọi Claude', async () => {
+  await congBo('hien_tro_ly_trang', true);
+  const xem = async (cuoc, sau = 0) => (await dichVu(`select tro_ly_xem($1::uuid, $2::bigint, 'q1') as r`, [cuoc, sau])).rows?.[0]?.r;
+  const tinCua = async cuoc => (await db.query(`select * from tro_ly_tin where cuoc_id = $1 order by id`, [cuoc])).rows;
+  const cuocCua = async cuoc => (await db.query(`select * from tro_ly_cuoc where id = $1`, [cuoc])).rows[0];
+
+  // Lượt đầu: khách gửi số điện thoại, đòi gặp người; Trang trả hai tin, thẻ, mời liên hệ quán.
+  const C1 = crypto.randomUUID(), t1 = crypto.randomUUID();
+  const m1 = await mo(C1, t1, 'cho chị gặp nhân viên, số chị 0912 345 678', null);
+  ok('Lượt đầu mở được', m1?.duoc === true && Array.isArray(m1.xen) && m1.xen.length === 0, JSON.stringify(m1));
+  await ghi(C1, t1, { tra_loi: { tin: ['Dạ em chào chị.', 'Chị liên hệ quán ở ngay bên dưới nhé.'], the: ['ribeye-with-cap'], don: [], chot: false, chuyen_nguoi: true, cau_chua_biet: '' }, doi_nguoi: true });
+  const c1 = await cuocCua(C1);
+  ok('Cuộc chat có trên database: chi nhánh Q1, Trang đang trả lời, 1 tin khách, cần người vì khách đòi gặp người',
+    c1?.chi_nhanh_id === cnA.id && c1.ai_tra_loi === 'trang' && c1.so_tin_khach === 1 && c1.can_nguoi === 'gap_nguoi' && c1.can_nguoi_luc !== null, JSON.stringify(c1));
+  let ts = await tinCua(C1);
+  ok('Tin theo đúng thứ khách thấy: khách (đã che số), Trang tin 1, Trang tin 2 kèm thẻ và chuyen_nguoi',
+    JSON.stringify(ts.map(t => [t.nguoi, t.noi_dung])) === JSON.stringify([['khach', 'cho chị gặp nhân viên, số chị [số điện thoại]'],
+      ['trang', 'Dạ em chào chị.'], ['trang', 'Chị liên hệ quán ở ngay bên dưới nhé.']])
+    && ts[1].du_lieu === null && JSON.stringify(ts[2].du_lieu?.the) === '["ribeye-with-cap"]' && ts[2].du_lieu?.chuyen_nguoi === true, JSON.stringify(ts));
+  const C2 = crypto.randomUUID(), t2a = crypto.randomUUID();
+  await mo(C2, t2a, 'nhà 2 người', null);
+  await ghi(C2, t2a, { tra_loi: TRA_LOI, doi_nguoi: false });
+
+  // Không ai đọc / ghi thẳng ba bảng mới.
+  for (const [ten, uid] of [['anon', 'anon'], ['chủ', UID.chu], ['quản lý', UID.qlA], ['thu ngân', UID.thuNganA]]) {
+    for (const bang of ['tro_ly_cuoc', 'tro_ly_tin', 'tro_ly_truc']) {
+      const r = await goi(uid, `select count(*) as r from ${bang}`);
+      ok(`${ten} không đọc thẳng được ${bang}`, r.loi !== null && /permission denied/.test(r.loi), vi(r));
+    }
+  }
+  const sua = await goi(UID.chu, `update tro_ly_cuoc set ai_tra_loi = 'nhan_vien' where id = $1`, [C1]);
+  ok('Chủ không sửa thẳng được tro_ly_cuoc (chỉ qua hàm)', sua.loi !== null, vi(sua));
+
+  // Quyền các hàm nhân viên: như hộp thư đơn mua thịt (chủ, quản lý, thu ngân đang làm; chi nhánh của mình).
+  const an = await goi('anon', `select tro_ly_ds_cuoc() as r`);
+  ok('anon không gọi được tro_ly_ds_cuoc', an.loi !== null && /permission denied/.test(an.loi), vi(an));
+  for (const [ten, uid] of [['marketing', UID.mktA], ['thủ kho', UID.thuKhoA], ['người đã nghỉ', UID.nghiViec], ['tài khoản không có nhan_su', UID_LA]]) {
+    const r = await goi(uid, `select count(*) as r from tro_ly_ds_cuoc()`);
+    ok(`${ten} bị từ chối xem danh sách chat`, r.loi !== null && /Không có quyền/.test(r.loi), vi(r));
+    const n = await goi(uid, `select tro_ly_nhan_cuoc($1::uuid) as r`, [C1]);
+    ok(`${ten} bị từ chối nhận chat`, n.loi !== null && /Không có quyền/.test(n.loi), vi(n));
+  }
+  const dsCua = async uid => (await duoi(uid, `select * from tro_ly_ds_cuoc()`)).rows ?? [];
+  for (const [ten, uid] of [['chủ', UID.chu], ['quản lý Q1', UID.qlA], ['thu ngân Q1', UID.thuNganA]]) {
+    const ds = await dsCua(uid);
+    ok(`${ten} thấy hai cuộc của Q1; cuộc cần người (khách đòi gặp người) đứng đầu dù cuộc kia mới hơn`,
+      ds.length >= 2 && ds[0].id === C1 && ds[0].can_nguoi === 'gap_nguoi' && ds.some(d => d.id === C2) && ds[0].tin_cuoi === 'cho chị gặp nhân viên, số chị [số điện thoại]',
+      JSON.stringify(ds.map(d => [d.id === C1 ? 'C1' : d.id === C2 ? 'C2' : '?', d.can_nguoi])));
+  }
+  const dsB = await dsCua(UID.qlB);
+  ok('Quản lý Q7 không thấy cuộc chat của Q1', !dsB.some(d => d.id === C1 || d.id === C2), JSON.stringify(dsB));
+  const xb = await goi(UID.qlB, `select tro_ly_xem_cuoc($1::uuid) as r`, [C1]);
+  ok('Quản lý Q7 mở cuộc của Q1 → "Không thấy cuộc chat này"', xb.loi !== null && /Không thấy/.test(xb.loi), vi(xb));
+  const nb = await goi(UID.qlB, `select tro_ly_nhan_cuoc($1::uuid) as r`, [C1]);
+  ok('Quản lý Q7 nhận cuộc của Q1 → bị từ chối', nb.loi !== null && /Không thấy/.test(nb.loi), vi(nb));
+  const xc = await goi(UID.qlA, `select tro_ly_xem_cuoc($1::uuid) as r`, [C1]);
+  ok('Quản lý Q1 xem trực tiếp: đủ 3 tin, trạng thái Trang, cần người', xc.loi === null && xc.kq?.tin?.length === 3 && xc.kq?.cuoc?.ai_tra_loi === 'trang'
+    && xc.kq?.cuoc?.can_nguoi === 'gap_nguoi', vi(xc));
+
+  // Nhân viên trực: chỉ người trực của đúng chi nhánh (hay chủ) mới làm khung nói "có nhân viên theo dõi".
+  let x = await xem(C1);
+  ok('Khung của khách hỏi lại: Trang đang trả lời, không tin nhân viên, chưa ai trực', x?.ai_tra_loi === 'trang' && x?.tin?.length === 0 && x?.truc === false, JSON.stringify(x));
+  await goi(UID.qlB, `select tro_ly_dang_truc() as r`);
+  ok('Quản lý Q7 trực → cuộc của Q1 vẫn "chưa ai trực"', (await xem(C1))?.truc === false);
+  const tr = await goi(UID.thuNganA, `select tro_ly_dang_truc() as r`);
+  ok('Thu ngân Q1 mở màn theo dõi → khung của khách thấy "có nhân viên theo dõi"', tr.kq === true && (await xem(C1))?.truc === true, vi(tr));
+  const tx = await goi(UID.mktA, `select tro_ly_dang_truc() as r`);
+  ok('Marketing không ghi được "đang trực"', tx.loi !== null, vi(tx));
+  const chuaCo = (await dichVu(`select tro_ly_xem($1::uuid, 0, 'q1') as r`, [crypto.randomUUID()])).rows?.[0]?.r;
+  ok('Cuộc chưa có tin nào: vẫn biết có nhân viên trực (theo chi nhánh của trang)', chuaCo?.ai_tra_loi === 'trang' && chuaCo?.truc === true, JSON.stringify(chuaCo));
+  const khachXem = (await cuocCua(C1)).khach_xem_luc;
+  ok('Khung hỏi lại thì ghi lúc khách còn mở khung', khachXem !== null);
+
+  // Nhận tư vấn.
+  const n1 = await goi(UID.thuNganA, `select tro_ly_nhan_cuoc($1::uuid) as r`, [C1]);
+  const n2 = await goi(UID.thuNganA, `select tro_ly_nhan_cuoc($1::uuid) as r`, [C1]);
+  const n3 = await goi(UID.qlA, `select tro_ly_nhan_cuoc($1::uuid) as r`, [C1]);
+  ok('Thu ngân nhận → da_nhan; bấm lần hai → da_o_san; quản lý bấm sau → nguoi_khac', n1.kq === 'da_nhan' && n2.kq === 'da_o_san' && n3.kq === 'nguoi_khac', [n1, n2, n3].map(vi).join(' · '));
+  ts = await tinCua(C1);
+  ok('Đúng một câu hệ thống "nhân viên vào" với tên gọi của người nhận', ts.filter(t => t.nguoi === 'he_thong').length === 1
+    && ts.at(-1).noi_dung === 'nhan_vien_vao' && ts.at(-1).ten_hien === 'Q1', JSON.stringify(ts.at(-1)));
+  const idVao = ts.at(-1).id;
+  x = await xem(C1);
+  ok('Khung của khách: nhân viên đang nhận, tên "Q1", nhận câu "đã vào chat"', x?.ai_tra_loi === 'nhan_vien' && x?.ten === 'Q1'
+    && x?.tin?.length === 1 && x.tin[0].noi_dung === 'nhan_vien_vao', JSON.stringify(x));
+
+  // Khách nhắn khi nhân viên đang nhận: ghi cho nhân viên, không lượt Trang.
+  const t2 = crypto.randomUUID();
+  const m2 = await mo(C1, t2, 'cho chị hỏi giao quận 7 không', null);
+  const m2b = await mo(C1, t2, 'cho chị hỏi giao quận 7 không', null);
+  ok('Tin khách lúc nhân viên đang nhận → "nhan_vien" kèm tên (không mở lượt Trang); gửi lại cùng mã → vẫn một tin',
+    m2?.duoc === false && m2?.ly_do === 'nhan_vien' && m2?.ten === 'Q1' && m2b?.ly_do === 'nhan_vien'
+    && Number((await db.query(`select count(*) n from tro_ly_luot where ma_tin = $1`, [t2])).rows[0].n) === 0
+    && (await tinCua(C1)).filter(t => t.ma_tin === t2).length === 1 && (await cuocCua(C1)).so_tin_khach === 2, JSON.stringify(m2));
+
+  // Nhân viên gõ, gửi.
+  const g0 = await goi(UID.qlA, `select tro_ly_nv_dang_go($1::uuid) as r`, [C1]);
+  const g1 = await goi(UID.thuNganA, `select tro_ly_nv_dang_go($1::uuid) as r`, [C1]);
+  ok('Chỉ người đang nhận báo "đang gõ" được; khung của khách thấy bong bóng đang soạn', g0.kq === false && g1.kq === true && (await xem(C1, idVao))?.dang_go === true, `${vi(g0)} · ${vi(g1)}`);
+  const maNv = crypto.randomUUID();
+  const s0 = await goi(UID.qlA, `select tro_ly_nv_gui($1::uuid, $2::uuid, $3) as r`, [C1, crypto.randomUUID(), 'Dạ để em xem ạ']);
+  const s1 = await goi(UID.thuNganA, `select tro_ly_nv_gui($1::uuid, $2::uuid, $3) as r`, [C1, maNv, '  Dạ quán giao quận 7 ạ, số quán 028 3822 1234  ']);
+  const s2 = await goi(UID.thuNganA, `select tro_ly_nv_gui($1::uuid, $2::uuid, $3) as r`, [C1, maNv, 'Dạ quán giao quận 7 ạ']);
+  const s3 = await goi(UID.thuNganA, `select tro_ly_nv_gui($1::uuid, $2::uuid, $3) as r`, [C1, crypto.randomUUID(), '   ']);
+  ok('Người không nhận → chua_nhan; người nhận → da_gui; bấm đúp cùng mã → da_co; tin trống → bị chặn',
+    s0.kq === 'chua_nhan' && s1.kq === 'da_gui' && s2.kq === 'da_co' && s3.loi !== null, [s0, s1, s2, s3].map(vi).join(' · '));
+  x = await xem(C1, idVao);
+  ok('Khung của khách nhận đúng một tin nhân viên mới hơn mốc, chữ nguyên văn (khách cần số quán), hết "đang gõ"',
+    x?.tin?.length === 1 && x.tin[0].nguoi === 'nhan_vien' && x.tin[0].noi_dung === 'Dạ quán giao quận 7 ạ, số quán 028 3822 1234' && x.tin[0].ten === 'Q1' && x.dang_go === false, JSON.stringify(x));
+
+  // Trả lại cho Trang: quản lý trả hộ được; quản lý chi nhánh khác thì không.
+  const r0 = await goi(UID.qlB, `select tro_ly_tra_cuoc($1::uuid) as r`, [C1]);
+  const r1 = await goi(UID.qlA, `select tro_ly_tra_cuoc($1::uuid) as r`, [C1]);
+  const r2 = await goi(UID.qlA, `select tro_ly_tra_cuoc($1::uuid) as r`, [C1]);
+  const sau = await cuocCua(C1);
+  ok('Quản lý Q7 trả → bị từ chối; quản lý Q1 trả hộ → da_tra; lần hai → da_o_san; lý do cần người đã xóa',
+    r0.loi !== null && r1.kq === 'da_tra' && r2.kq === 'da_o_san' && sau.ai_tra_loi === 'trang' && sau.nhan_vien_id === null && sau.can_nguoi === null,
+    [r0, r1, r2].map(vi).join(' · '));
+  ok('Khung của khách nhận câu "Trang tiếp tục hỗ trợ"', (await xem(C1, idVao))?.tin?.at(-1)?.noi_dung === 'trang_quay_lai');
+
+  // Lượt Trang kế tiếp: kèm các tin khách / nhân viên đã nhắn trong lúc nhân viên nhận.
+  const t3 = crypto.randomUUID();
+  const m3 = await mo(C1, t3, 'vậy lấy 2 gói', null);
+  ok('Lượt Trang sau khi trả lại có xen: tin khách và tin nhân viên ở giữa (không gồm tin đang gửi)',
+    m3?.duoc === true && JSON.stringify(m3.xen.map(x => [x.nguoi, x.ten])) === JSON.stringify([['khach', null], ['nhan_vien', 'Q1']]), JSON.stringify(m3?.xen));
+  await ghi(C1, t3, { tra_loi: TRA_LOI });
+  const m4 = await mo(C1, crypto.randomUUID(), 'cảm ơn em', null);
+  ok('Lượt sau nữa: không còn xen (đã có tin Trang sau tin nhân viên)', m4?.duoc === true && m4.xen.length === 0, JSON.stringify(m4?.xen));
+
+  // Nhân viên rời màn theo dõi mà quên trả: cuộc tự về Trang — khách không nhắn vào khoảng không.
+  const C3 = crypto.randomUUID(), t3a = crypto.randomUUID();
+  await mo(C3, t3a, 'một', null); await ghi(C3, t3a, { tra_loi: TRA_LOI });
+  ok('Thu ngân nhận cuộc C3', (await goi(UID.thuNganA, `select tro_ly_nhan_cuoc($1::uuid) as r`, [C3])).kq === 'da_nhan');
+  await db.query(`update tro_ly_cuoc set nhan_luc = now() - interval '3 minutes' where id = $1`, [C3]);
+  const m5 = await mo(C3, crypto.randomUUID(), 'còn đó không', null);
+  ok('Nhận đã 3 phút nhưng người nhận vẫn đang trực → vẫn nhân viên trả lời', m5?.ly_do === 'nhan_vien', JSON.stringify(m5));
+  await db.query(`update tro_ly_truc set luc = now() - interval '3 minutes'`);
+  const m6 = await mo(C3, crypto.randomUUID(), 'alo', null);
+  ok('Người nhận rời màn theo dõi hơn 2 phút → cuộc tự về Trang, khách thấy "Trang tiếp tục hỗ trợ"',
+    m6?.duoc === true && (await cuocCua(C3)).ai_tra_loi === 'trang' && (await tinCua(C3)).some(t => t.noi_dung === 'trang_quay_lai'), JSON.stringify(m6));
+  const C4 = crypto.randomUUID(), t4a = crypto.randomUUID();
+  await mo(C4, t4a, 'một', null); await ghi(C4, t4a, { tra_loi: TRA_LOI });
+  await goi(UID.qlA, `select tro_ly_nhan_cuoc($1::uuid) as r`, [C4]);
+  ok('Vừa nhận (chưa quá 2 phút) thì không tự trả, dù chưa trực', (await mo(C4, crypto.randomUUID(), 'alo', null))?.ly_do === 'nhan_vien');
+
+  // Giới hạn, công tắc.
+  await thuHoi('hien_tro_ly_trang');
+  ok('Công tắc tắt: khung của khách hỏi lại → tat; tin khách → tat', (await xem(C4))?.tat === true && (await mo(C4, crypto.randomUUID(), 'x', null))?.ly_do === 'tat');
+  await congBo('hien_tro_ly_trang', true);
+
+  // Dọn: cuộc quá 180 ngày (tin xóa theo); tin nhân viên quá một ngày thì che số.
+  const C5 = crypto.randomUUID();
+  await db.query(`insert into tro_ly_cuoc (id, tin_cuoi_luc, created_at) values ($1, now() - interval '200 days', now() - interval '200 days')`, [C5]);
+  await db.query(`insert into tro_ly_tin (cuoc_id, nguoi, noi_dung) values ($1, 'khach', 'cũ')`, [C5]);
+  await db.query(`insert into tro_ly_tin (cuoc_id, nguoi, noi_dung, ten_hien, created_at) values ($1, 'nhan_vien', 'Dạ chị gọi em 0909 111 222 nhé', 'Q1', now() - interval '2 days')`, [C1]);
+  const t5 = crypto.randomUUID();
+  await mo(C2, t5, 'x', null); await ghi(C2, t5, { tra_loi: TRA_LOI });
+  ok('Cuộc quá 180 ngày bị xóa cùng tin của nó', !(await cuocCua(C5)) && Number((await db.query(`select count(*) n from tro_ly_tin where cuoc_id = $1`, [C5])).rows[0].n) === 0);
+  const che = (await db.query(`select noi_dung, da_che from tro_ly_tin where cuoc_id = $1 and nguoi = 'nhan_vien' order by id`, [C1])).rows;
+  ok('Tin nhân viên quá một ngày đã che số; tin hôm nay giữ nguyên', che.at(-1)?.noi_dung === 'Dạ chị gọi em [số điện thoại] nhé' && che.at(-1)?.da_che === true
+    && che[0].noi_dung === 'Dạ quán giao quận 7 ạ, số quán 028 3822 1234' && che[0].da_che === false, JSON.stringify(che));
 });
 
 process.exit(ketThuc('TRỢ LÝ TRANG — DATABASE VÀ EDGE FUNCTION'));

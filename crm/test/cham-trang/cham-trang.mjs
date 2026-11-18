@@ -13,7 +13,7 @@
  * với database giả trong bộ nhớ: menu và sổ học là ảnh chụp production ngày 18/11/2026 (menu-18-11.json), lịch sử của
  * mỗi cuộc chat giữ như tro_ly_mo_luot (tám lượt gần nhất). Không đụng database thật, không deploy gì.
  *
- * Máy chấm từng câu theo cau-hoi.json (JSON đúng khuôn, tiếng Việt, chữ cấm, AI chỉ khi khách hỏi, các ô phai_* /
+ * Máy chấm từng câu theo cau-hoi.json (JSON đúng khuôn, tiếng Việt, chữ cấm kể cả AI / bot / tự động, "trợ lý ảo" chỉ khi khách hỏi, các ô phai_* /
  * khong_*). Kết quả: ket-qua-<ngày>.json (đủ chi tiết, cả bản Claude trả lần đầu) và ket-qua-<ngày>.md (bảng để người
  * chấm đọc từng câu theo "tot_la" rồi ghi Đạt / Không đạt). Ngưỡng bật cho khách: từ 45/50 câu Đạt.
  */
@@ -120,7 +120,8 @@ function chamMay(c, luot) {
     for (const t of tin) {
       if (chuNgoai(t).length) loi.push(`chữ nước ngoài: ${chuNgoai(t).join(', ')}`);
       if (chuCam(t).length) loi.push(`chữ cấm: ${chuCam(t).join(' ')}`);
-      if (!c.cho_phep_ai && /\bAI\b|trợ lý tự động|\bbot\b|là máy/i.test(t)) loi.push(`tự nhắc AI khi khách không hỏi: "${t}"`);
+      // Chữ AI, bot, tự động đã bị chuCam bắt ở mọi câu (Khánh 18/11/2026). "Trợ lý ảo" chỉ khi khách hỏi.
+      if (!c.cho_phep_tro_ly_ao && /trợ lý ảo|là máy/i.test(t)) loi.push(`tự nhắc trợ lý ảo khi khách không hỏi: "${t}"`);
     }
   }
   const tinCuoi = cuoi.tin.join(' ');

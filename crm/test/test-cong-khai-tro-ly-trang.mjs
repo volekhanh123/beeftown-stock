@@ -4,10 +4,11 @@
  *
  *     node test/test-cong-khai-tro-ly-trang.mjs
  *
- * Khánh 18/11/2026: trợ lý tên Trang, nói như nhân viên quầy, không gắn nhãn AI trong từng tin; ĐÚNG MỘT chỗ khách biết
- * đây là trợ lý AI (dòng cố định dưới tên Trang). Theo 9 mục "xong":
+ * Khánh 18/11/2026: trợ lý tên Trang, nói như nhân viên quầy, không chữ AI, bot, tự động trong lời chào hay tin nào; ĐÚNG
+ * MỘT chỗ khách biết đây là trợ lý ảo (dòng gạch dưới cố định dưới tên Trang, bấm vào mở phần giải thích). Nhân viên nhận
+ * chat (0126 mục 4b): lệnh xem, tin nhân viên có nhãn riêng, đầu khung đổi sang nhân viên. Theo 9 mục "xong":
  *   1. quyen — khung chỉ dựng khi công tắc bật, trang mở, trang tiếng Việt, có địa chỉ hàm; lời gọi không mang cookie,
- *      chỉ năm ô (cuộc, mã tin, tin, trả trước, chi nhánh).
+ *      chỉ năm ô (cuộc, mã tin, tin, trả trước, chi nhánh); lệnh xem chỉ bốn ô (hanh_dong, cuoc, sau, chi_nhanh).
  *   2. bam-hai-lan — nút Gửi khóa khi đang chờ; gửi lại dùng đúng mã tin cũ (Edge Function không trả lời hai lần).
  *   4. chu-va-so — tiền của thẻ đơn tính bằng tinhDon (giá gói của trang), in qua dinhDangTien trong data-tien; số gói 1–10.
  *   5. mat-mang — trả lời hỏng, lỗi mạng: câu "chưa được trả lời" + Gửi lại; không bao giờ bịa câu của Trang.
@@ -54,14 +55,27 @@ await nhom('1 · KHI NÀO KHUNG HIỆN (troLyTrangMo)', async () => {
   ok('TrangMuaThitVe dựng <TroLyTrang> với noiDung, trangThai, traVnpay', /<TroLyTrang ngonNgu=\{nn\} noiDung=\{nd\} trangThai=\{trangThai\} traVnpay=\{traVnpay\} \/>/.test(vo));
 });
 
-await nhom('2 · CHỈ MỘT CHỖ NÓI LÀ AI; LỜI CHÀO TRÙNG LỜI DẶN; CHỮ ĐỦ BA THỨ TIẾNG', async () => {
+await nhom('2 · CHỈ MỘT CHỖ NÓI LÀ TRỢ LÝ ẢO; LỜI CHÀO TRÙNG LỜI DẶN; CHỮ ĐỦ BA THỨ TIẾNG', async () => {
   ok('Lời chào của trang trùng LOI_CHAO của Edge Function (lời dặn nói Trang đã chào bằng đúng hai câu này)',
     JSON.stringify(TL.LOI_CHAO) === JSON.stringify(HAM.LOI_CHAO));
-  ok('Lời chào không nhắc AI, máy, tự động, bot', TL.LOI_CHAO.every(t => !/\bAI\b|máy|tự động|\bbot\b/i.test(t)));
-  ok('dongAi nói "AI" ở cả ba thứ tiếng', ['vi', 'en', 'ko'].every(nn => /\bAI\b/.test(TL.CHU_TRO_LY.dongAi[nn])), JSON.stringify(TL.CHU_TRO_LY.dongAi));
-  const khacNoiAi = Object.entries(TL.CHU_TRO_LY).filter(([k]) => k !== 'dongAi')
+  ok('Trang tự giới thiệu "em là Trang bên Beeftown"', TL.LOI_CHAO[0] === 'Dạ em chào anh/chị, em là Trang bên Beeftown ạ.', TL.LOI_CHAO[0]);
+  ok('Lời chào không nhắc AI, trợ lý, máy, tự động, bot', TL.LOI_CHAO.every(t => !/\bAI\b|trợ lý|máy|tự động|\bbot\b/i.test(t)));
+  for (const cach of [1, 2, 3]) {
+    const d = TL.CACH_DONG_AO[cach];
+    ok(`Cách ${cach}: chữ hiện sẵn có "trợ lý ảo" / "virtual assistant" / "가상 도우미" (chỉ "Chính sách tư vấn" thì không đạt)`,
+      /trợ lý ảo/i.test(d.dau.vi + d.gach.vi) && /virtual assistant/i.test(d.dau.en + d.gach.en) && /가상 도우미/.test(d.dau.ko + d.gach.ko),
+      JSON.stringify(d));
+    ok(`Cách ${cach}: không chữ AI, bot, tự động`, !/\bAI\b|\bbot\b|tự động/i.test(d.dau.vi + d.gach.vi));
+  }
+  ok('Cách 3 ("có nhân viên theo dõi") chỉ khi có người trực, không thì về cách 1; cách 1, 2 không phụ thuộc',
+    TL.dongAo(3, false) === TL.CACH_DONG_AO[1] && TL.dongAo(3, true) === TL.CACH_DONG_AO[3]
+    && TL.dongAo(2, false) === TL.CACH_DONG_AO[2] && TL.dongAo(1, true) === TL.CACH_DONG_AO[1]);
+  ok('Cách đang dùng là một trong ba cách', [1, 2, 3].includes(TL.CACH_DONG_AO_CHON));
+  // Ngoài dòng gạch dưới (CACH_DONG_AO) chỉ phần giải thích (veAi — hiện khi khách bấm dòng đó) được nói AI / trợ lý.
+  const khacNoiAi = Object.entries(TL.CHU_TRO_LY).filter(([k]) => k !== 'veAi')
     .filter(([, v]) => ['vi', 'en', 'ko'].some(nn => { const s = typeof v[nn] === 'function' ? v[nn]('x') : v[nn]; return /\bAI\b|trợ lý|assistant|도우미/i.test(s); }));
-  ok('Không chữ cố định nào khác nói AI hay trợ lý (đúng một chỗ)', khacNoiAi.length === 0, khacNoiAi.map(([k]) => k).join(', '));
+  ok('Ngoài dòng gạch dưới và phần giải thích, không chữ cố định nào nói AI hay trợ lý', khacNoiAi.length === 0, khacNoiAi.map(([k]) => k).join(', '));
+  ok('Phần giải thích nói rõ trợ lý ảo (AI) ở cả ba thứ tiếng', /trợ lý ảo \(AI\)/.test(TL.CHU_TRO_LY.veAi.vi) && /\(AI\)/.test(TL.CHU_TRO_LY.veAi.en) && /\(AI\)/.test(TL.CHU_TRO_LY.veAi.ko));
   const thieu = [], lanViet = [], cam = [];
   for (const [k, v] of Object.entries(TL.CHU_TRO_LY)) {
     for (const nn of ['vi', 'en', 'ko']) {
@@ -74,15 +88,34 @@ await nhom('2 · CHỈ MỘT CHỖ NÓI LÀ AI; LỜI CHÀO TRÙNG LỜI DẶN; 
       }
     }
   }
+  for (const [cach, d] of Object.entries(TL.CACH_DONG_AO)) {
+    for (const nn of ['en', 'ko']) if (VIET.test(d.dau[nn] + d.gach[nn])) lanViet.push(`CACH_DONG_AO.${cach}.${nn}`);
+    for (const nn of ['vi', 'en', 'ko']) if (timChuoiCam(d.dau[nn] + d.gach[nn]).length) cam.push(`CACH_DONG_AO.${cach}.${nn}`);
+  }
   ok('Mọi chữ cố định có vi, en, ko', thieu.length === 0, thieu.join(', '));
   ok('Tiếng Anh, tiếng Hàn không lẫn chữ Việt', lanViet.length === 0, lanViet.join(', '));
   ok('Không chữ cấm', cam.length === 0, cam.join(', '));
   const hua = Object.entries(TL.CHU_TRO_LY).filter(([, v]) => { const s = typeof v.vi === 'function' ? v.vi('x') : v.vi; return /sẽ vào|gọi lại cho|vào trả lời/.test(s); });
   ok('Không câu nào hứa nhân viên vào khung hay gọi lại', hua.length === 0, hua.map(([k]) => k).join(', '));
   const tp = docNguon('web', 'src', 'components', 'TroLyTrang.astro');
-  ok('Dòng AI in đúng một lần trong khung, dưới tên, cố định (trạng thái soạn tin là phần tử riêng)',
-    (tp.match(/\{c\.dongAi\}/g) ?? []).length === 1 && /data-tlt-dang-soan/.test(tp) && !/dongAi[^\n]*textContent|data-tlt-ai[^\n]*textContent/.test(tp));
-  ok('Ảnh đại diện là chữ "T" (không <img>, không ảnh người)', !/<img\b/i.test(tp) && (tp.match(/class="tlt-hinh" aria-hidden="true">T</g) ?? []).length === 2);
+  ok('Dòng gạch dưới in đúng một lần, ngay dưới tên: nút có aria-expanded, aria-controls tới khung giải thích',
+    (tp.match(/\{dong\.gach\[nn\]\}/g) ?? []).length === 1
+    && /<p class="tlt-ai" id="tlt-ai" data-tlt-ai-dong><span data-tlt-ai-dau>\{dong\.dau\[nn\]\}<\/span><button type="button" class="tlt-ai-nut" aria-expanded="false" aria-controls="tlt-ve" data-tlt-ai>\{dong\.gach\[nn\]\}<\/button><\/p>/.test(tp)
+    && /aria-describedby="tlt-ai"/.test(tp));
+  ok('Chữ của dòng chỉ đổi theo dongAo (cách đã chọn, có người trực) — không bao giờ thành "đang soạn tin…"',
+    (tp.match(/nutAo\.textContent = /g) ?? []).length === 1 && /nutAo\.textContent = d\.gach\[nn\]/.test(tp)
+    && /const d = dongAo\(CACH_DONG_AO_CHON, truc\)/.test(tp) && /data-tlt-dang-soan/.test(tp));
+  ok('Khung giải thích ẩn lúc đầu, bấm dòng mới hiện; có trợ lý ảo, gặp nhân viên, giá, tin lưu và che, link Quyền riêng tư',
+    /<div class="tlt-ve" id="tlt-ve" data-tlt-ve hidden>/.test(tp) && /ve\.hidden = !ve\.hidden;/.test(tp)
+    && ['{c.veAi}', '{veGap}', '{c.veTruc}', '{c.veGia}', '{c.veLuu}', "duongDanTuongUng('/quyen-rieng-tu', nn)}#tro-ly-trang"].every(x => tp.includes(x)));
+  ok('"Có nhân viên theo dõi" trong phần giải thích chỉ hiện khi có người trực',
+    /<li data-tlt-ve-truc hidden>\{c\.veTruc\}<\/li>/.test(tp) && /if \(veGap\) veGap\.hidden = truc;/.test(tp) && /if \(veTruc\) veTruc\.hidden = !truc;/.test(tp));
+  for (const [nn, tep] of [['vi', 'quyen-rieng-tu.astro'], ['en', 'en/privacy.astro'], ['ko', 'ko/privacy.astro']]) {
+    const t = docNguon('web', 'src', 'pages', ...tep.split('/'));
+    const muc = t.split('id="tro-ly-trang"')[1]?.split('<h2')[0] ?? '';
+    ok(`Quyền riêng tư (${nn}) có mục id="tro-ly-trang": nói Anthropic, 180 ngày`, /<h2 id="tro-ly-trang">/.test(t) && /Anthropic/.test(muc) && /180/.test(muc));
+  }
+  ok('Ảnh đại diện là chữ "T" (không <img>, không ảnh người)', !/<img\b/i.test(tp) && (tp.match(/class="tlt-hinh" aria-hidden="true"( data-tlt-hinh)?>T</g) ?? []).length === 2);
 });
 
 await nhom('3 · THẺ ĐƠN: TRANG TỰ TÍNH TIỀN BẰNG GIỎ CỦA TRANG', async () => {
@@ -121,19 +154,58 @@ await nhom('5 · NHỊP NHƯ NGƯỜI (bản thử 18/11/2026)', async () => {
   ok('Các lần sau 5–7 giây; "Đã xem" sau 1–2 giây', TL.trongKhoang(TL.NHIP.tinDau, 0.5) === 6000 && TL.trongKhoang(TL.NHIP.doc, 0) === 1000 && TL.trongKhoang(TL.NHIP.doc, 1) === 2000);
   ok('Tin thứ 2, 3 "gõ" 2–4 giây ±15%', TL.thoiGianGo('x', 0) === 1700 && TL.thoiGianGo('x'.repeat(200), 1) === 4600 && TL.thoiGianGo('x'.repeat(60), 0.5) === 3000);
   const tp = docNguon('web', 'src', 'components', 'TroLyTrang.astro');
-  ok('Máy trả lời chậm hơn mốc thì không chờ thêm (chỉ chờ phần còn lại)', /const con = moc - \(Date\.now\(\) - batDau\); if \(con > 0\) await doi\(con\);/.test(tp));
+  ok('Máy trả lời chậm hơn mốc thì không chờ thêm (chỉ chờ phần còn lại)', /const con = hanTra - \(Date\.now\(\) - batDau\); if \(con > 0\) await doi\(con\);/.test(tp));
 });
 
 await nhom('6 · LỜI GỌI EDGE FUNCTION: KHÔNG COOKIE, CHỈ NĂM Ô, GỬI LẠI CÙNG MÃ TIN', async () => {
   const tp = docNguon('web', 'src', 'components', 'TroLyTrang.astro');
   ok('text/plain (không hỏi trước CORS), credentials: omit, hết giờ 45 giây', /'Content-Type': 'text\/plain;charset=UTF-8'/.test(tp) && /credentials: 'omit'/.test(tp)
     && /setTimeout\(\(\) => huy\.abort\(\), 45000\)/.test(tp));
-  const than = tp.match(/body: JSON\.stringify\(\{([^}]*)\}\)/)?.[1] ?? '';
+  const than = tp.match(/body: JSON\.stringify\(\{ (cuoc, ma_tin[^}]*)\}\)/)?.[1] ?? '';
   ok('Thân gửi đúng năm ô: cuoc, ma_tin, tin, tra_truoc, chi_nhanh', JSON.stringify(than.split(',').map(x => x.trim().split(':')[0].trim())) === JSON.stringify(['cuoc', 'ma_tin', 'tin', 'tra_truoc', 'chi_nhanh']), than);
+  const xem = tp.match(/body: JSON\.stringify\(\{ (hanh_dong[^}]*)\}\)/)?.[1] ?? '';
+  ok('Lệnh xem gửi đúng bốn ô: hanh_dong xem, cuoc, sau (mốc đã hiện), chi_nhanh; hết giờ 15 giây',
+    xem.trim() === "hanh_dong: 'xem', cuoc, sau: moc, chi_nhanh: goc.dataset.chiNhanh" && /setTimeout\(\(\) => huy\.abort\(\), 15000\)/.test(tp), xem);
   ok('Gửi lại dùng đúng mã tin cũ và dòng tin cũ', /void gui\(tin, maTin, dongKhach\)/.test(tp) && /const maTin = maTinCu \?\? taoMa\(\)/.test(tp));
   ok('Đang chờ thì nút Gửi khóa, không gửi chồng', /if \(!tin \|\| dangGui\) return;/.test(tp) && /nutGui!\.disabled = b/.test(tp));
   ok('Khối ra trang với hidden, script hiện khi có <dialog> và fetch; quy tắc [hidden] riêng của component',
     /data-tlt [^>]*hidden>/.test(tp.replace(/\n\s+/g, ' ')) && /typeof HTMLDialogElement === 'function'/.test(tp) && /\[hidden\] \{ display: none !important; \}/.test(tp));
+});
+
+await nhom('7 · NHÂN VIÊN NHẬN CHAT: LỆNH XEM, TIN NHÂN VIÊN KHÔNG DƯỚI TÊN TRANG', async () => {
+  const k = TL.docTraLoi({ ok: true, nhan_vien: true, ten: '  Minh ' });
+  ok('Tin tới nhân viên đang nhận: { ok, nhanVien, ten } — không câu nào của Trang', k.ok && k.nhanVien === true && k.ten === 'Minh' && !('tin' in k), JSON.stringify(k));
+  for (const [ten, v, loi] of [['null', null, 'tam_thoi'], ['tắt', { ok: false, loi: 'tat' }, 'tat'], ['ok mà không phải lệnh xem', { ok: true, tin: [] }, 'tam_thoi']]) {
+    const x = TL.docXem(v);
+    ok(`Lệnh xem: ${ten} → "${loi}"`, x.ok === false && x.loi === loi, JSON.stringify(x));
+  }
+  const x = TL.docXem({ ok: true, xem: true, ai_tra_loi: 'nhan_vien', ten: 'Minh', dang_go: true, truc: true, tin: [
+    { id: 9, nguoi: 'nhan_vien', noi_dung: ' Dạ em là Minh bên quán ạ ', ten: 'Minh' }, { id: 7, nguoi: 'he_thong', noi_dung: 'nhan_vien_vao', ten: 'Minh' },
+    { id: 8, nguoi: 'he_thong', noi_dung: 'gi_do' }, { id: 10, nguoi: 'trang', noi_dung: 'x' }, { id: 11, nguoi: 'nhan_vien', noi_dung: '  ' }, { id: 'a', nguoi: 'nhan_vien', noi_dung: 'y' }] });
+  ok('Giữ tin nhân viên có chữ và câu hệ thống đã biết, cũ trước; bỏ mã lạ, tin Trang, tin rỗng, id sai',
+    x.ok && JSON.stringify(x.tin.map(t => [t.id, t.nguoi, t.noiDung])) === JSON.stringify([[7, 'he_thong', 'nhan_vien_vao'], [9, 'nhan_vien', 'Dạ em là Minh bên quán ạ']]), JSON.stringify(x));
+  ok('Nhân viên đang nhận: tên, đang gõ, có người trực', x.ok && x.aiTraLoi === 'nhan_vien' && x.ten === 'Minh' && x.dangGo && x.truc);
+  const t = TL.docXem({ ok: true, xem: true, ai_tra_loi: 'trang', ten: 'Minh', dang_go: true, truc: false, tin: [] });
+  ok('Trang đang trả lời: không tên nhân viên, không bong bóng nhân viên đang gõ', t.ok && t.aiTraLoi === 'trang' && t.ten === null && t.dangGo === false);
+  ok('Câu hệ thống: "Minh, nhân viên Beeftown, đã vào chat." · không tên thì "Nhân viên Beeftown đã vào chat." · "Trang tiếp tục hỗ trợ anh/chị."',
+    TL.CHU_TRO_LY.nhanVienVao.vi('Minh') === 'Minh, nhân viên Beeftown, đã vào chat.' && TL.CHU_TRO_LY.nhanVienVao.vi(null) === 'Nhân viên Beeftown đã vào chat.'
+    && TL.CHU_TRO_LY.trangQuayLai.vi === 'Trang tiếp tục hỗ trợ anh/chị.');
+  ok('Hỏi lại nhanh khi nhân viên đang nhận (≤ 3 giây), chậm khi Trang trả lời (≥ 5 giây), lỗi thì giãn tới 30 giây',
+    TL.NHIP_XEM.nhanVien <= 3000 && TL.NHIP_XEM.trang >= 5000 && TL.NHIP_XEM.loiToiDa === 30000);
+  const tp = docNguon('web', 'src', 'components', 'TroLyTrang.astro');
+  ok('Tin nhân viên là tin của nhân viên: lớp tlt-cua-nv, nhãn "Tên · Nhân viên Beeftown", không dưới tên Trang',
+    /function tinNhanVien\(chu: string, ten: string \| null\) \{\s*const d = el\('div', 'tlt-dong-tin tlt-cua-nv'\);/.test(tp)
+    && tp.includes("el('p', 'tlt-nguoi-gui', ten ? `${ten} · ${CHU_TRO_LY.nhanVien[nn]}` : CHU_TRO_LY.nhanVien[nn])"));
+  ok('Nhân viên đang nhận: đầu khung đổi sang nhân viên, ẩn dòng trợ lý ảo; trả lại thì về Trang',
+    tp.includes('if (tenDau) tenDau.textContent = laNv ? (tenNv ?? CHU_TRO_LY.nhanVien[nn]) : CHU_TRO_LY.ten[nn];')
+    && tp.includes('if (dongAoEl) dongAoEl.hidden = laNv;'));
+  ok('Gửi lúc nhân viên đang nhận: không nhịp của Trang (không "Đã xem" giả, không bong bóng Trang), ghi "Đã gửi"',
+    tp.includes('const henGo = choNhanVien ? undefined :') && tp.includes('daXem(dongKhach, CHU_TRO_LY.daGui[nn])'));
+  ok('Đóng khung hay ẩn thẻ thì thôi hỏi lại; chưa gửi tin nào thì chỉ hỏi một lần lúc mở; công tắc tắt thì thôi hẳn',
+    tp.includes("hop.addEventListener('close', () => { document.documentElement.classList.remove('tlt-khoa'); thoiXem(); });")
+    && tp.includes('if (tatXem || !hop!.open || document.hidden) return;') && tp.includes("if (cheDo !== 'nhan_vien' && !coCuoc) return;")
+    && tp.includes("if (kq.loi === 'tat') tatXem = true;"));
+  ok('Chỉ hiện tin mới hơn mốc (không hiện hai lần một tin nhân viên)', tp.includes('for (const t of kq.tin) if (t.id > moc) { moc = t.id; hienTinXem(t); }'));
 });
 
 process.exit(ketThuc('KHUNG NHẮN TIN TRANG'));

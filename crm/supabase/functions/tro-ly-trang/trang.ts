@@ -2,10 +2,12 @@
  * TRANG — LỜI DẶN, KIẾN THỨC, ĐỌC KẾT QUẢ (phần thuần của Edge Function tro-ly-trang)
  * ===================================================================================
  *
- * Khánh 17–18/11/2026: khách nhắn tự do như với nhân viên quầy; trợ lý tên Trang, xưng "em", nói giọng người, không
- * gắn nhãn AI trong từng tin. Đúng MỘT chỗ khách biết đây là AI: dòng cố định "Trợ lý AI của Beeftown" ở đầu khung nhắn tin
- * (web/src/lib/tro-ly-trang.ts). Trang nói thật khi khách hỏi người hay máy, không bịa đời tư hay việc chưa làm, không
- * hứa nhân viên vào chat — cần người thì trang hiện cách liên hệ quán.
+ * Khánh 17–18/11/2026: khách nhắn tự do như với nhân viên quầy; trợ lý tên Trang, xưng "em", nói giọng người, không chữ
+ * AI, bot, tự động trong tin nào. Đúng MỘT chỗ khách biết đây là AI: dòng gạch dưới cố định dưới tên Trang ở đầu khung
+ * nhắn tin, có chữ "trợ lý ảo", bấm vào mới hiện phần giải thích (web/src/lib/tro-ly-trang.ts). Trang nói thật khi khách
+ * hỏi người hay máy ("em là trợ lý ảo của Beeftown"), không bịa đời tư hay việc chưa làm, không hứa nhân viên vào chat —
+ * cần người thì trang hiện cách liên hệ quán. Nhân viên nhận cuộc chat rồi trả lại: lượt kế tiếp có ghi chú các tin họ
+ * đã nhắn (ghiChuNhanVien) để Trang nối tiếp.
  *
  * Chép từ bản thử ngày 18/11/2026 (07_Marketing_TaiLieu/Beeftown_TroLy_ChonBo_2026-11-17/tro-ly-chon-bo_demo_v3.html:
  * CUTS, CACH_NOI, LUAT, VI_DU, loiDay, docKq) và ảnh sẵn (anh-phan-thit/mau.html: vị trí, đặc điểm, độ chín, mẹo).
@@ -90,7 +92,7 @@ export const PHAN_THIT: Readonly<Record<string, PhanThit>> = {
 // LỜI CHÀO — web hiện hai tin này khi mở khung nhắn tin; lời dặn nói Trang đã chào rồi
 // -----------------------------------------------------------------------------
 export const LOI_CHAO: readonly string[] = [
-  'Dạ em chào anh/chị, em là Trang của quầy thịt Beeftown ạ.',
+  'Dạ em chào anh/chị, em là Trang bên Beeftown ạ.',
   'Anh/chị nướng cho mấy người, thích thịt kiểu nào thì cứ nhắn em, em gợi ý phần thịt và số gói vừa đủ nhé.',
 ];
 
@@ -101,9 +103,9 @@ export const CAU_AN_TOAN = 'Dạ câu này anh/chị hỏi nhân viên của qu�
 // LỜI DẶN CỐ ĐỊNH (khối system thứ nhất — lưu đệm)
 // -----------------------------------------------------------------------------
 const THAT_THA = [
-  'Không tự nhắc mình là AI, máy hay trợ lý tự động trong tin thường: đầu khung nhắn tin đã có sẵn dòng "Trợ lý AI của Beeftown".',
-  'Khách hỏi em là người hay máy, AI hay người thật, có phải tự động không: nói thật "Dạ em là trợ lý AI của Beeftown ạ", rồi mời khách nói chuyện với nhân viên của quán nếu muốn, và đặt chuyen_nguoi = true. Không bao giờ nhận là người.',
-  'Không bịa đời tư hay việc em không làm được: không tuổi, quê, gia đình, sở thích; không "em đang đứng quầy", "em vừa hỏi bếp", "em kiểm kho", "để em ra tủ xem". Khách hỏi chuyện riêng thì nói ngắn em là trợ lý AI nên không có, rồi quay về chuyện chọn thịt.',
+  'Không bao giờ viết chữ "AI", "bot", "chatbot", "tự động", "trí tuệ nhân tạo" trong tin, kể cả khi khách dùng các chữ đó. Không tự nhắc mình là trợ lý ảo hay máy trong tin thường: đầu khung nhắn tin đã có sẵn dòng "Trang là trợ lý ảo của Beeftown".',
+  'Khách hỏi em là người hay máy, AI hay người thật, có phải bot, có phải trả lời tự động không: nói thật, nhẹ nhàng "Dạ em là trợ lý ảo của Beeftown ạ", rồi mời khách nói chuyện với nhân viên của quán nếu muốn, và đặt chuyen_nguoi = true. Không bao giờ nhận là người, không chối.',
+  'Không bịa đời tư hay việc em không làm được: không tuổi, quê, gia đình, sở thích; không "em đang đứng quầy", "em vừa hỏi bếp", "em kiểm kho", "để em ra tủ xem". Khách hỏi chuyện riêng thì nói ngắn em là trợ lý ảo nên không có, rồi quay về chuyện chọn thịt.',
   'Không hứa nhân viên sẽ vào khung nhắn tin hay sẽ gọi lại cho khách. Cần người thật thì đặt chuyen_nguoi = true: trang tự hiện cách liên hệ quán ngay dưới tin. Trong tin chỉ nói kiểu "Câu này anh/chị hỏi nhân viên của quán giúp em nhé, cách liên hệ ở ngay bên dưới ạ."',
 ];
 
@@ -186,11 +188,11 @@ const VI_DU: readonly { ten: string; luot: readonly (readonly [string, string, s
   ] },
   { ten: 'Hỏi người hay máy', luot: [
     ['k', 'em là người thật hay máy vậy'],
-    ['e', 'Dạ em là trợ lý AI của Beeftown ạ.||Anh/chị muốn nói chuyện với nhân viên của quán thì liên hệ theo cách ở ngay bên dưới nhé. Còn chọn thịt thì em vẫn gợi ý được ạ.', '[chuyen_nguoi]'],
+    ['e', 'Dạ em là trợ lý ảo của Beeftown ạ.||Anh/chị muốn nói chuyện với nhân viên của quán thì liên hệ theo cách ở ngay bên dưới nhé. Còn chọn thịt thì em vẫn gợi ý được ạ.', '[chuyen_nguoi]'],
   ] },
   { ten: 'Hỏi chuyện riêng', luot: [
     ['k', 'em bao nhiêu tuổi, quê đâu'],
-    ['e', 'Dạ em là trợ lý AI nên không có tuổi hay quê đâu ạ.||Anh/chị đang tính nướng cho mấy người để em gợi ý phần thịt nhé?'],
+    ['e', 'Dạ em là trợ lý ảo nên không có tuổi hay quê đâu ạ.||Anh/chị đang tính nướng cho mấy người để em gợi ý phần thịt nhé?'],
   ] },
   { ten: 'Khách gửi số điện thoại', luot: [
     ['k', 'số em 09xx, giao giúp chị 2 gói diềm thăn'],
@@ -211,9 +213,9 @@ function kienThucPhanThit(): string {
 
 /** Lời dặn cố định — không đổi theo lượt, nên lưu đệm được giữa mọi cuộc chat (khối system thứ nhất). */
 export const LOI_DAY_CO_DINH: string = [
-  'Em là Trang, trợ lý AI của quầy thịt Beeftown, đang nhắn tin với khách trong khung nhắn tin của trang Mua thịt về trên beeftown.vn (khách đặt qua mạng, quán giao tận nơi). Hãy nói chuyện như một nhân viên quầy thịt giỏi đã học kỹ bài đào tạo thịt bò của quán.',
+  'Em là Trang, trợ lý ảo (AI) của quầy thịt Beeftown, đang nhắn tin với khách trong khung nhắn tin của trang Mua thịt về trên beeftown.vn (khách đặt qua mạng, quán giao tận nơi). Hãy nói chuyện như một nhân viên quầy thịt giỏi đã học kỹ bài đào tạo thịt bò của quán.',
   'VỀ QUÁN: Beeftown là nhà hàng thịt bò nướng ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM. Ở quán, bò đã cắt sẵn, đóng khay màng ôm sát theo từng phần; khách chọn khay ở tủ rồi nướng tại bàn trên vỉ nướng ga. Quán cũng bán thịt mang về: khách đặt ở trang này, quán giao tận nơi.',
-  `KHUNG CHAT: đầu khung nhắn tin luôn có dòng nhỏ "Trợ lý AI của Beeftown". Em đã chào khách bằng hai tin: "${LOI_CHAO[0]}" và "${LOI_CHAO[1]}". Không chào lại.`,
+  `KHUNG CHAT: đầu khung nhắn tin luôn có dòng nhỏ "Trang là trợ lý ảo của Beeftown". Em đã chào khách bằng hai tin: "${LOI_CHAO[0]}" và "${LOI_CHAO[1]}". Không chào lại. Có lúc nhân viên của quán nhận cuộc chat, nhắn trực tiếp với khách rồi trả lại cho em: khi đó tin của khách mở đầu bằng ghi chú của hệ thống kèm các tin đã nhắn — em nối tiếp tự nhiên, không chào lại, không hỏi lại điều đã có câu trả lời.`,
   'THẬT THÀ (bắt buộc):\n' + THAT_THA.map(s => '- ' + s).join('\n'),
   'CÁCH NÓI CHUYỆN:\n' + CACH_NOI.map(s => '- ' + s).join('\n'),
   'CHỈ DÙNG DỮ LIỆU: phần PHẦN THỊT, CHUNG bên dưới, cùng THỰC ĐƠN ĐANG BÁN, CÁCH TRẢ TIỀN và ĐÃ HỌC THÊM ở khối dữ liệu của lượt này. Câu nào ĐÃ HỌC THÊM có câu trả lời thì trả lời theo đó. Câu nào dữ liệu chưa có (ví dụ giờ mở cửa, khuyến mãi, xuất xứ, cấp hạng, số ngày ủ, gia vị, độ cay, dị ứng, giao xa bao nhiêu) thì nói em chưa có thông tin chắc, đặt chuyen_nguoi = true và ghi câu khách hỏi vào cau_chua_biet.',
@@ -520,4 +522,43 @@ export function cheThongTin(text: string): string {
   let s = String(text ?? '').normalize('NFC');
   for (const [mau, thay] of CHE) s = s.replace(mau, thay);
   return s;
+}
+
+// -----------------------------------------------------------------------------
+// NHÂN VIÊN NHẬN CHAT — khách đòi gặp người; ghi chú cho Trang khi nhân viên trả cuộc lại
+// -----------------------------------------------------------------------------
+const MAU_DOI_NGUOI: readonly RegExp[] = [
+  /(gặp|nói\s+chuyện(\s+(với|cùng))?|nối\s+máy|kết\s+nối|chuyển(\s+(cho|qua|sang))?|gọi|cần|xin)\s+(với\s+)?(nhân\s+viên|người\s+thật|quản\s+lý|chủ\s+quán|tư\s+vấn\s+viên|admin)/iu,
+  /nhân\s+viên\s+(đâu|ơi)|người\s+thật|có\s+ai\s+(ở\s+)?(đó|đấy)\s+không/iu,
+  /\b(gap|goi|noi chuyen voi)\s+(nhan vien|nguoi that|quan ly)\b|\bnguoi that\b/i,
+];
+
+/** Khách đòi gặp người thật (cuộc chat lên đầu màn theo dõi của nhân viên — tro_ly_cuoc.can_nguoi = gap_nguoi). */
+export function khachDoiNguoi(tin: string): boolean {
+  const s = String(tin ?? '').normalize('NFC');
+  return MAU_DOI_NGUOI.some(re => re.test(s));
+}
+
+/** Một tin khách / nhân viên nhắn khi nhân viên đang nhận cuộc (tro_ly_mo_luot trả ở ô xen). */
+export interface TinXen { nguoi: 'khach' | 'nhan_vien'; noi_dung: string; ten: string | null }
+
+export function docXen(v: unknown): TinXen[] {
+  return (Array.isArray(v) ? v : []).flatMap(x => {
+    const o = x as Record<string, unknown> | null;
+    if (!o || (o.nguoi !== 'khach' && o.nguoi !== 'nhan_vien') || typeof o.noi_dung !== 'string' || !o.noi_dung.trim()) return [];
+    return [{ nguoi: o.nguoi, noi_dung: o.noi_dung.trim().slice(0, 600), ten: typeof o.ten === 'string' && o.ten ? o.ten.slice(0, 60) : null }];
+  }).slice(-12);
+}
+
+/**
+ * Tin gửi Claude ở lượt ngay sau khi nhân viên trả cuộc lại: ghi chú các tin khách và nhân viên đã nhắn với nhau (chữ
+ * khách đã che như mọi lượt), rồi tin khách vừa gửi. Không có tin xen thì chỉ là tin khách.
+ */
+export function ghiChuNhanVien(xen: readonly TinXen[], tinKhach: string): string {
+  if (!xen.some(t => t.nguoi === 'nhan_vien')) return tinKhach;
+  const dong = xen.map(t => (t.nguoi === 'khach' ? 'Khách: ' : `Nhân viên${t.ten ? ' ' + t.ten : ''}: `) + t.noi_dung);
+  return '[Ghi chú của hệ thống, không phải lời khách: vừa rồi nhân viên của quán đã nhận cuộc chat, nhắn trực tiếp với khách '
+    + 'rồi trả lại cho em. Các tin đã nhắn:\n' + dong.join('\n')
+    + '\nEm nối tiếp tự nhiên, không chào lại, không hỏi lại điều đã có câu trả lời, không nhận lời nhân viên là của em.]\n'
+    + 'Tin khách vừa nhắn: ' + tinKhach;
 }

@@ -97,12 +97,16 @@ await nhom('1 · BẢN CHÉP TRONG THƯ MỤC HÀM ĐÚNG TỪNG BYTE (Supabase 
 await nhom('2 · MÁY KIỂM TIẾNG VIỆT VÀ CHỮ CẤM', async () => {
   ok('Lời chào sạch', trang.LOI_CHAO.every(t => !tv.chuNgoai(t).length && !tv.chuCam(t).length));
   ok('Câu an toàn sạch', !tv.chuNgoai(trang.CAU_AN_TOAN).length && !tv.chuCam(trang.CAU_AN_TOAN).length);
-  ok('Lời chào không nhắc AI, trợ lý tự động, bot', trang.LOI_CHAO.every(t => !/\bAI\b|tự động|\bbot\b|máy/i.test(t)));
+  ok('Lời chào không nhắc AI, trợ lý, tự động, bot', trang.LOI_CHAO.every(t => !/\bAI\b|trợ lý|tự động|\bbot\b|máy/i.test(t)));
   const em = trang.LOI_DAY_CO_DINH.split('\n').filter(d => d.startsWith('Em: ')).map(d => d.slice(4).replace(/\s*\[[^\]]*\]$/, '').split('||')).flat();
   ok(`Đoạn chat mẫu: ${em.length} tin của Trang, không tin nào có chữ nước ngoài hay chữ cấm`,
     em.length >= 20 && em.every(t => !tv.chuNgoai(t).length && !tv.chuCam(t).length),
     em.filter(t => tv.chuNgoai(t).length || tv.chuCam(t).length).join(' | '));
-  ok('Lời dặn mở đầu: Trang là trợ lý AI của quầy thịt Beeftown', trang.LOI_DAY_CO_DINH.startsWith('Em là Trang, trợ lý AI của quầy thịt Beeftown'));
+  ok('Lời dặn mở đầu: Trang là trợ lý ảo (AI) của quầy thịt Beeftown', trang.LOI_DAY_CO_DINH.startsWith('Em là Trang, trợ lý ảo (AI) của quầy thịt Beeftown'));
+  ok('Lời dặn: hỏi người hay máy thì nói "Dạ em là trợ lý ảo của Beeftown ạ"; không bao giờ viết AI, bot, tự động trong tin',
+    trang.LOI_DAY_CO_DINH.includes('"Dạ em là trợ lý ảo của Beeftown ạ"') && trang.LOI_DAY_CO_DINH.includes('Không bao giờ viết chữ "AI", "bot", "chatbot", "tự động", "trí tuệ nhân tạo" trong tin'));
+  ok('Đoạn mẫu của Trang không có chữ AI, bot, tự động; người hay máy trả lời "trợ lý ảo"',
+    em.every(t => !/(^|[^\p{L}])AI(?![\p{L}])|\bbot\b|tự động/u.test(t)) && em.some(t => t.startsWith('Dạ em là trợ lý ảo của Beeftown ạ.')));
   ok('Lời chào và đoạn mẫu không còn "trợ lý tự động" của bản thử', ![...trang.LOI_CHAO, ...em].some(t => /trợ lý tự động/.test(t)));
   for (const [t, mong] of [
     ['có ribeye không em, ăn medium rare được không', ['ribeye', 'medium', 'rare']],
@@ -116,7 +120,10 @@ await nhom('2 · MÁY KIỂM TIẾNG VIỆT VÀ CHỮ CẤM', async () => {
     ['Dạ phần này rẻ lắm ạ', true], ['Dạ đây là thịt bò Hanwoo ạ', true], ['Dạ em là người thật ạ', true],
     ['Dạ em không phải là máy đâu ạ', true], ['Nhân viên sẽ vào chat ngay ạ', true], ['Để em ra kho xem lại nhé', true],
     ['Em vừa hỏi bếp rồi ạ', true], ['Ngon nhất quán ạ', true],
-    ['Dạ em là trợ lý AI của Beeftown ạ', false], ['Dạ 2 khay, mỗi người 1,5 gói ạ', false], ['Dạ tầng 3, 63 Hồ Tùng Mậu ạ', false],
+    ['Dạ em là trợ lý AI của Beeftown ạ', true], ['Dạ em là chatbot của quán ạ', true], ['Dạ trang tự động tính tiền ạ', true],
+    ['Em dùng trí tuệ nhân tạo ạ', true], ['Dạ em là A.I. ạ', true],
+    ['Dạ em là trợ lý ảo của Beeftown ạ', false], ['Nhà mình có ai ăn cay không ạ?', false], ['Ai ăn tái được thì lấy diềm thăn ạ', false],
+    ['Dạ 2 khay, mỗi người 1,5 gói ạ', false], ['Dạ tầng 3, 63 Hồ Tùng Mậu ạ', false],
     ['Dạ gói 150 g ạ', false], ['Dạ 2 kg là nhiều đó ạ', false],
   ]) ok(`chuCam("${t}") ${cam ? 'bắt' : 'không bắt'}`, (tv.chuCam(t).length > 0) === cam, JSON.stringify(tv.chuCam(t)));
   ok('thayBangTu: "ribeye medium rare ok" → tiếng Việt', tv.chuNgoai(tv.thayBangTu('ribeye medium rare ok nha')).length === 0, tv.thayBangTu('ribeye medium rare ok nha'));
@@ -281,6 +288,72 @@ await nhom('8 · DATABASE TỪ CHỐI, GỬI HAI LẦN, YÊU CẦU SAI, NGUỒN 
   ok('IP: ô đầu x-forwarded-for do khách tự đặt không được tin — lấy ô cuối không phải địa chỉ nội bộ', ip({ 'x-forwarded-for': '6.6.6.6, 192.0.2.10, 10.0.0.1' }) === '192.0.2.10');
   ok('IP: có cf-connecting-ip thì dùng nó', ip({ 'cf-connecting-ip': '198.51.100.3', 'x-forwarded-for': '6.6.6.6' }) === '198.51.100.3');
   ok('IP: x-forwarded-for sai dạng → null (không giới hạn theo IP)', xuLy.ipKhach(new Request('https://x', { headers: { 'x-forwarded-for': 'not-an-ip' } })) === null);
+});
+
+await nhom('9 · NHÂN VIÊN NHẬN CHAT: KHÔNG GỌI CLAUDE, LỆNH XEM, GHI CHÚ KHI TRẢ LẠI', async () => {
+  // Nhân viên đang nhận cuộc: database đã ghi tin cho nhân viên.
+  const c = claudeGia(KQ());
+  const db = dbGia({ duoc: false, ly_do: 'nhan_vien', ten: 'Minh' });
+  const { r, j } = await chay(yc(THAN()), { goiClaude: c.f, rpc: db.rpc });
+  ok('Nhân viên đang nhận → 200 { ok, nhan_vien, ten }, không gọi Claude, không đóng lượt nào', r.status === 200 && j?.ok === true && j?.nhan_vien === true
+    && j?.ten === 'Minh' && !('tin' in (j ?? {})) && c.goi.length === 0 && db.ghi().length === 0, JSON.stringify(j));
+
+  // Lệnh xem.
+  const xemGia = (data, loi = null) => {
+    const goi = [];
+    return { goi, rpc: async (ten, thamSo) => { goi.push({ ten, thamSo }); return ten === 'tro_ly_xem' ? { data, error: loi } : { data: null, error: { message: 'không có hàm' } }; } };
+  };
+  const cuoc = crypto.randomUUID();
+  const x = xemGia({ ai_tra_loi: 'nhan_vien', ten: 'Minh', dang_go: true, truc: true, tin: [
+    { id: 5, nguoi: 'he_thong', noi_dung: 'nhan_vien_vao', ten: 'Minh' }, { id: 6, nguoi: 'nhan_vien', noi_dung: 'Dạ em Minh bên quán ạ', ten: 'Minh' },
+    { id: 7, nguoi: 'khach', noi_dung: 'không được lọt ra' }, { id: 'x', nguoi: 'nhan_vien', noi_dung: 'id sai' }] });
+  const cx = claudeGia(KQ());
+  const { r: rx, j: jx } = await chay(yc({ hanh_dong: 'xem', cuoc, sau: 4, chi_nhanh: 'q1' }), { goiClaude: cx.f, rpc: x.rpc });
+  ok('Lệnh xem → 200: ai đang trả lời, tên, đang gõ, có người trực, tin nhân viên / câu hệ thống (không tin khách, id sai)',
+    rx.status === 200 && jx?.xem === true && jx.ai_tra_loi === 'nhan_vien' && jx.ten === 'Minh' && jx.dang_go === true && jx.truc === true
+    && JSON.stringify(jx.tin.map(t => t.id)) === '[5,6]', JSON.stringify(jx));
+  ok('Lệnh xem gọi tro_ly_xem đúng cuộc, mốc, chi nhánh; không gọi Claude', x.goi.length === 1 && x.goi[0].thamSo.p_cuoc === cuoc
+    && x.goi[0].thamSo.p_sau === 4 && x.goi[0].thamSo.p_chi_nhanh_ma === 'q1' && cx.goi.length === 0, JSON.stringify(x.goi));
+  const { j: jt } = await chay(yc({ hanh_dong: 'xem', cuoc }), { goiClaude: null, rpc: xemGia({ ai_tra_loi: 'trang', ten: 'Minh', dang_go: true, truc: false, tin: [] }).rpc });
+  ok('Chưa đặt khóa Claude vẫn xem được; Trang đang trả lời thì không tên, không đang gõ; mốc lạ → 0',
+    jt?.ok === true && jt.ai_tra_loi === 'trang' && jt.ten === null && jt.dang_go === false, JSON.stringify(jt));
+  const { r: rtat, j: jtat } = await chay(yc({ hanh_dong: 'xem', cuoc }), { goiClaude: null, rpc: xemGia({ tat: true }).rpc });
+  ok('Công tắc tắt → 403 "tat"', rtat.status === 403 && jtat?.loi === 'tat');
+  const { r: rloi, j: jloi } = await chay(yc({ hanh_dong: 'xem', cuoc }), { goiClaude: null, rpc: xemGia(null, { message: 'hỏng' }).rpc });
+  ok('Database lỗi → 503 "tam_thoi"', rloi.status === 503 && jloi?.loi === 'tam_thoi');
+  const xs = xemGia({});
+  const { r: rsai } = await chay(yc({ hanh_dong: 'xem', cuoc: 'abc' }), { goiClaude: null, rpc: xs.rpc });
+  ok('Lệnh xem cuộc không phải uuid → 400, không gọi database', rsai.status === 400 && xs.goi.length === 0);
+  const { r: rcc, j: jcc } = await chay(yc({ hanh_dong: 'xem', cuoc }), { goiClaude: claudeGia(KQ()).f, rpc: null });
+  ok('Thiếu khóa service_role → 503 "chua_cai"', rcc.status === 503 && jcc?.loi === 'chua_cai');
+  const xl = xemGia({});
+  const { r: rla } = await chay(yc({ hanh_dong: 'xem', cuoc }, { Origin: 'https://trang-la.example' }), { goiClaude: null, rpc: xl.rpc });
+  ok('Lệnh xem từ nguồn lạ → 403, không gọi database', rla.status === 403 && xl.goi.length === 0);
+
+  // Nhân viên vừa trả cuộc lại: ghi chú các tin đã nhắn vào lượt kế tiếp của Trang.
+  const xen = [{ nguoi: 'khach', noi_dung: 'cho chị hỏi giao quận 7 không', ten: null }, { nguoi: 'nhan_vien', noi_dung: 'Dạ quán giao quận 7 ạ', ten: 'Minh' }];
+  const c2 = claudeGia(KQ());
+  await chay(yc(THAN({ tin: 'vậy lấy 2 gói diềm thăn' })), { goiClaude: c2.f, rpc: dbGia({ duoc: true, luot: 3, lich_su: [], menu: MENU, so_hoc: [], xen }).rpc });
+  const noi = c2.goi[0]?.messages?.at(-1)?.content ?? '';
+  ok('Sau khi nhân viên trả lại: tin gửi Claude có ghi chú hệ thống, tin khách và "Nhân viên Minh", rồi tin khách vừa nhắn',
+    noi.startsWith('[Ghi chú của hệ thống, không phải lời khách:') && noi.includes('Khách: cho chị hỏi giao quận 7 không')
+    && noi.includes('Nhân viên Minh: Dạ quán giao quận 7 ạ') && noi.endsWith('Tin khách vừa nhắn: vậy lấy 2 gói diềm thăn'), noi);
+  const c3 = claudeGia(KQ());
+  await chay(yc(THAN({ tin: 'nhà 4 người' })), { goiClaude: c3.f, rpc: dbGia({ duoc: true, luot: 2, lich_su: [], menu: MENU, so_hoc: [], xen: [xen[0]] }).rpc });
+  ok('Không tin nhân viên nào ở giữa → tin gửi Claude chỉ là tin khách', c3.goi[0]?.messages?.at(-1)?.content === 'nhà 4 người');
+  ok('Ghi chú chỉ dùng chữ đã che, tối đa 12 tin', trang.docXen(Array.from({ length: 20 }, (_, i) => ({ nguoi: 'khach', noi_dung: 't' + i }))).length === 12
+    && trang.docXen([{ nguoi: 'trang', noi_dung: 'x' }, { nguoi: 'nhan_vien', noi_dung: '  ' }, null]).length === 0);
+
+  // Khách đòi gặp người → đóng lượt kèm doi_nguoi (cuộc lên đầu màn theo dõi).
+  for (const [tin, mong] of [['cho chị gặp nhân viên', true], ['em ơi cho anh nói chuyện với người thật', true], ['gap nhan vien giup chi', true],
+    ['nhân viên đâu rồi', true], ['nhà 4 người nên lấy gì', false], ['nhân viên giao hàng có gọi trước không', false]]) {
+    ok(`khachDoiNguoi("${tin}") = ${mong}`, trang.khachDoiNguoi(tin) === mong);
+  }
+  const db4 = dbGia();
+  await chay(yc(THAN({ tin: 'cho chị gặp nhân viên' })), { goiClaude: claudeGia(KQ({ chuyen_nguoi: true })).f, rpc: db4.rpc });
+  const db5 = dbGia();
+  await chay(yc(THAN()), { goiClaude: claudeGia(KQ()).f, rpc: db5.rpc });
+  ok('Đóng lượt ghi doi_nguoi: true khi khách đòi gặp người, false khi không', db4.ghi()[0]?.doi_nguoi === true && db5.ghi()[0]?.doi_nguoi === false);
 });
 
 process.exit(ketThuc('TRỢ LÝ TRANG — EDGE FUNCTION'));

@@ -2,7 +2,7 @@
  * TIẾNG VIỆT CỦA TRANG — máy kiểm từng tin trước khi tới khách (Khánh 18/11/2026: "việt hóa hoàn toàn")
  * ===================================================================================================
  *
- * Trang (trợ lý AI của Beeftown, khung chat ở trang Mua thịt về) chỉ nói tiếng Việt có dấu. Ba lớp giữ:
+ * Trang (trợ lý ảo của Beeftown, khung chat ở trang Mua thịt về) chỉ nói tiếng Việt có dấu. Ba lớp giữ:
  *   1 · lời dặn có bảng từ (crm/supabase/functions/tro-ly-trang/trang.ts);
  *   2 · máy kiểm ở file này: chữ có dấu tiếng Việt thì qua; chữ không dấu phải có dạng một âm tiết tiếng Việt; thêm danh
  *       sách chữ tiếng Anh có dạng âm tiết (set, top, cap…). Thấy chữ nước ngoài, chữ cấm hay câu sai sự thật thì Edge
@@ -20,7 +20,10 @@
  */
 import { timChuoiCam } from './chuoi-cam.js';
 
-/** Tên riêng, đơn vị giữ nguyên (viết thường). "AI" không cần ở đây: "ai" là một âm tiết tiếng Việt — Trang phải nói được "trợ lý AI". */
+/**
+ * Tên riêng, đơn vị giữ nguyên (viết thường). "ai" là một âm tiết tiếng Việt ("ai ăn", "có ai") nên máy kiểm âm tiết cho
+ * qua; chữ "AI" viết hoa thì CAM_TRANG chặn — Trang không bao giờ viết "AI" trong tin (Khánh 18/11/2026).
+ */
 export const GIU_NGUYEN: readonly string[] = [
   'beeftown', 'vn', 'vnpay', 'zalo', 'ahamove', 'qr', 'chimichurri', 'facebook', 'g', 'kg',
   // Địa chỉ quán Trang được dạy nói: "tầng 3, 63 Hồ Tùng Mậu, TP.HCM".
@@ -110,6 +113,12 @@ export const CAM_TRANG: readonly { re: RegExp; vi_sao: string }[] = [
     vi_sao: 'Số tiền trong tin: giá chỉ có trên thẻ do trang tự tính.' },
   { re: /\bem\s+(là|đúng là)\s+người(\s+thật)?(?![\p{L}])|em\s+không\s+phải\s+(là\s+)?(máy|ai|bot|trợ\s?lý)|(nhân viên|người)\s+(sẽ|đang)\s+vào\s+(chat|trả lời)|(quán|nhân viên)\s+sẽ\s+gọi\s+lại\s+ngay/iu,
     vi_sao: 'Trang không nhận là người, không hứa nhân viên vào khung chat hay gọi lại.' },
+  // Khánh 18/11/2026: "xóa các thông tin cho rằng đây là trợ lý AI" trong tin — đầu khung đã có dòng "trợ lý ảo";
+  // khách hỏi người hay máy thì Trang nói "em là trợ lý ảo của Beeftown". "AI" phân biệt hoa thường: "ai" là tiếng Việt.
+  { re: /(^|[^\p{L}])A\.?I\.?(?![\p{L}])/u,
+    vi_sao: 'Không chữ "AI" trong tin: dòng dưới tên Trang đã nói đây là trợ lý ảo; khách hỏi thì nói "trợ lý ảo".' },
+  { re: /tự\s+động|trí\s+tuệ\s+nhân\s+tạo|(^|[^\p{L}])(chat\s?bot|bot|robot)(?![\p{L}])/iu,
+    vi_sao: 'Không chữ "tự động", "bot", "trí tuệ nhân tạo" trong tin: khách hỏi thì nói "trợ lý ảo".' },
   { re: /(em|mình)\s+(đang|vừa|mới)\s+(đứng|ở)\s+(quầy|tủ|bếp|kho)|em\s+(vừa|mới|đã)\s+(hỏi|kiểm|xem)\s+(bếp|kho|quầy|tủ|anh|chị)|để\s+em\s+(ra|xuống|vào|chạy)\s+(kho|quầy|bếp|tủ)/iu,
     vi_sao: 'Trang không bịa việc mình không làm được (đứng quầy, hỏi bếp, kiểm kho).' },
 ];

@@ -3,9 +3,12 @@
  * ==========================================================================
  *
  * Trình duyệt (khung chat Trang ở trang Mua thịt về — web/src/components/TroLyTrang.astro) gửi:
- *   POST { cuoc: uuid, ma_tin: uuid, tin: "…", tra_truoc?: boolean, chi_nhanh?: "q1" }
+ *   POST { cuoc: uuid, ma_tin: uuid, tin: "…", tra_truoc?: boolean, chi_nhanh?: "q1" }          — một tin khách
+ *   POST { hanh_dong: "xem", cuoc: uuid, sau: số, chi_nhanh?: "q1" }                            — hỏi lại khi đang mở
  * Trả về (luôn JSON):
- *   200 { ok: true, tin: [...], the: [ThePhanThit], don: [{khoa, so_goi}], chot, chuyen_nguoi }
+ *   200 { ok: true, tin: [...], the: [ThePhanThit], don: [{khoa, so_goi}], chot, chuyen_nguoi }  — Trang trả lời
+ *   200 { ok: true, nhan_vien: true, ten }   — nhân viên đang nhận cuộc: tin đã tới nhân viên, KHÔNG gọi Claude
+ *   200 { ok: true, xem: true, ai_tra_loi, ten, dang_go, truc, tin: [{id, nguoi, noi_dung, ten}] } — lệnh xem
  *   4xx / 5xx { ok: false, loi } — loi: sai · tat · qua_luot · het_luot (30 lượt của cuộc) · dang_tra_loi · tam_thoi · chua_cai
  *
  * Một lượt:
@@ -25,8 +28,8 @@
  * (PostgREST với khóa service_role). Nhờ vậy Node chạy thẳng file này trong crm/test/test-tro-ly-trang-ham.mjs.
  */
 import {
-  KHUON_KET_QUA, LOI_DAY_CO_DINH, cauVietLai, cheThongTin, docKetQua, docMenu, duLieuLuot, gotTin, kiemTin, theCua,
-  type SanPhamCuaTrang, type SoHoc, type ThePhanThit, type TraLoi,
+  KHUON_KET_QUA, LOI_DAY_CO_DINH, cauVietLai, cheThongTin, docKetQua, docMenu, docXen, duLieuLuot, ghiChuNhanVien, gotTin,
+  khachDoiNguoi, kiemTin, theCua, type SanPhamCuaTrang, type SoHoc, type ThePhanThit, type TraLoi,
 } from './trang.ts';
 
 /** Mô hình mặc định (Khánh duyệt 18/11/2026: "Oke" với Haiku 5.5, khoảng 58 đ mỗi cuộc chat). */
@@ -85,22 +88,71 @@ export function ipKhach(req: Request): string | null {
 }
 
 interface YeuCau { cuoc: string; maTin: string; tin: string; traTruoc: boolean; chiNhanh: string | null }
+interface YeuCauXem { cuoc: string; sau: number; chiNhanh: string | null }
 
-async function docYeuCau(req: Request): Promise<YeuCau | null> {
+async function docThan(req: Request): Promise<Record<string, unknown> | null> {
   let chu: string;
   try { chu = await req.text(); } catch { return null; }
   if (!chu || chu.length > THAN_TOI_DA) return null;
-  let o: Record<string, unknown>;
+  let o: unknown;
   try { o = JSON.parse(chu); } catch { return null; }
-  if (!o || typeof o !== 'object') return null;
+  return o && typeof o === 'object' && !Array.isArray(o) ? (o as Record<string, unknown>) : null;
+}
+
+const docChiNhanh = (v: unknown): string | null => (typeof v === 'string' && MA_CHI_NHANH.test(v) ? v : null);
+
+function docYeuCau(o: Record<string, unknown>): YeuCau | null {
   const tin = typeof o.tin === 'string' ? o.tin.replace(/\s+/g, ' ').trim() : '';
   if (typeof o.cuoc !== 'string' || !UUID.test(o.cuoc) || typeof o.ma_tin !== 'string' || !UUID.test(o.ma_tin)) return null;
   if (!tin || [...tin].length > TIN_TOI_DA) return null;
-  const chiNhanh = typeof o.chi_nhanh === 'string' && MA_CHI_NHANH.test(o.chi_nhanh) ? o.chi_nhanh : null;
-  return { cuoc: o.cuoc.toLowerCase(), maTin: o.ma_tin.toLowerCase(), tin, traTruoc: o.tra_truoc === true, chiNhanh };
+  return { cuoc: o.cuoc.toLowerCase(), maTin: o.ma_tin.toLowerCase(), tin, traTruoc: o.tra_truoc === true, chiNhanh: docChiNhanh(o.chi_nhanh) };
 }
 
-interface DuLieuMo { luot: number; lich_su: { khach: string; tra_loi: TraLoi | null }[]; menu: unknown; so_hoc: SoHoc[] }
+function docYeuCauXem(o: Record<string, unknown>): YeuCauXem | null {
+  if (typeof o.cuoc !== 'string' || !UUID.test(o.cuoc)) return null;
+  const sau = typeof o.sau === 'number' && Number.isSafeInteger(o.sau) && o.sau >= 0 ? o.sau : 0;
+  return { cuoc: o.cuoc.toLowerCase(), sau, chiNhanh: docChiNhanh(o.chi_nhanh) };
+}
+
+/** Một tin nhân viên / câu hệ thống cho khung chat của khách (đọc lại từ tro_ly_xem, không tin dữ liệu ngoài). */
+function tinXem(v: unknown): { id: number; nguoi: string; noi_dung: string; ten: string | null }[] {
+  return (Array.isArray(v) ? v : []).flatMap(x => {
+    const t = x as Record<string, unknown> | null;
+    const id = Number(t?.id);
+    if (!t || !Number.isSafeInteger(id) || (t.nguoi !== 'nhan_vien' && t.nguoi !== 'he_thong') || typeof t.noi_dung !== 'string') return [];
+    return [{ id, nguoi: t.nguoi, noi_dung: t.noi_dung.slice(0, 1000), ten: typeof t.ten === 'string' && t.ten ? t.ten.slice(0, 60) : null }];
+  });
+}
+
+/** Lệnh xem: khung chat đang mở hỏi lại vài giây một lần — ai đang trả lời, nhân viên đang gõ, tin nhân viên mới. */
+async function xuLyXem(o: Record<string, unknown>, rpc: Rpc, nguon: string | null, log: (...x: unknown[]) => void): Promise<Response> {
+  const yc = docYeuCauXem(o);
+  if (!yc) return traJson({ ok: false, loi: 'sai' }, 400, nguon);
+  let d: Record<string, unknown>;
+  try {
+    const { data, error } = await rpc('tro_ly_xem', { p_cuoc: yc.cuoc, p_sau: yc.sau, p_chi_nhanh_ma: yc.chiNhanh });
+    if (error || !data || typeof data !== 'object') {
+      log('[tro-ly-trang] tro_ly_xem lỗi:', error?.message ?? 'không có dữ liệu');
+      return traJson({ ok: false, loi: 'tam_thoi' }, 503, nguon);
+    }
+    d = data as Record<string, unknown>;
+  } catch (e) {
+    log('[tro-ly-trang] không gọi được database:', e instanceof Error ? e.message : String(e));
+    return traJson({ ok: false, loi: 'tam_thoi' }, 503, nguon);
+  }
+  if (d.tat === true) return traJson({ ok: false, loi: 'tat' }, 403, nguon);
+  if (d.sai === true) return traJson({ ok: false, loi: 'sai' }, 400, nguon);
+  const laNv = d.ai_tra_loi === 'nhan_vien';
+  return traJson({
+    ok: true, xem: true,
+    ai_tra_loi: laNv ? 'nhan_vien' : 'trang',
+    ten: laNv && typeof d.ten === 'string' && d.ten ? d.ten.slice(0, 60) : null,
+    // Chỉ nhân viên đang nhận mới "đang gõ" được — Trang trả lời theo lượt gửi, không qua lệnh xem.
+    dang_go: laNv && d.dang_go === true, truc: d.truc === true, tin: tinXem(d.tin),
+  }, 200, nguon);
+}
+
+interface DuLieuMo { luot: number; lich_su: { khach: string; tra_loi: TraLoi | null }[]; menu: unknown; so_hoc: SoHoc[]; xen?: unknown }
 
 /**
  * Thứ trả trình duyệt: thẻ dựng lại từ menu hiện tại (nhật ký chỉ lưu mã); mỗi dòng đơn kèm tên Trang nói, để thẻ đơn
@@ -168,12 +220,22 @@ export async function xuLyYeuCau(req: Request, mt: MoiTruong): Promise<Response>
   // Trình duyệt luôn gửi Origin: trang khác nhúng lời gọi tới hàm này thì bị từ chối trước khi tốn gì. (Gọi ngoài
   // trình duyệt thì không có Origin — giới hạn lượt của tro_ly_mo_luot là chốt chặn.)
   if (req.headers.get('origin') && !nguon) return traJson({ ok: false, loi: 'sai' }, 403, null);
+
+  const than = await docThan(req);
+  if (!than) return traJson({ ok: false, loi: 'sai' }, 400, nguon);
+  if (than.hanh_dong === 'xem') {
+    if (!mt.rpc) {
+      log('[tro-ly-trang] chưa cài: thiếu khóa service_role');
+      return traJson({ ok: false, loi: 'chua_cai' }, 503, nguon);
+    }
+    return xuLyXem(than, mt.rpc, nguon, log);
+  }
   if (!mt.goiClaude || !mt.rpc) {
     log('[tro-ly-trang] chưa cài: thiếu ANTHROPIC_API_KEY hoặc khóa service_role');
     return traJson({ ok: false, loi: 'chua_cai' }, 503, nguon);
   }
 
-  const yc = await docYeuCau(req);
+  const yc = docYeuCau(than);
   if (!yc) return traJson({ ok: false, loi: 'sai' }, 400, nguon);
   const batDau = bayGio();
   const tinChe = cheThongTin(yc.tin);
@@ -203,6 +265,10 @@ export async function xuLyYeuCau(req: Request, mt: MoiTruong): Promise<Response>
       if (cu) return traJson(goiChoKhach(cu, menuCu), 200, nguon);
       return traJson({ ok: false, loi: 'tam_thoi' }, 503, nguon);
     }
+    // Nhân viên đang nhận cuộc này: database đã ghi tin cho nhân viên — không gọi Claude, không câu trả lời của Trang.
+    if (lyDo === 'nhan_vien') {
+      return traJson({ ok: true, nhan_vien: true, ten: typeof mo.ten === 'string' && mo.ten ? mo.ten.slice(0, 60) : null }, 200, nguon);
+    }
     if (lyDo === 'dang_tra_loi') return traJson({ ok: false, loi: 'dang_tra_loi' }, 409, nguon);
     if (lyDo === 'tat' || lyDo === 'chua_mo') return traJson({ ok: false, loi: 'tat' }, 403, nguon);
     // Hết 30 lượt của cuộc chat: chờ không giúp gì (giới hạn theo cuộc, không theo giờ) — trang mời bắt đầu cuộc mới.
@@ -223,7 +289,8 @@ export async function xuLyYeuCau(req: Request, mt: MoiTruong): Promise<Response>
       { type: 'text', text: LOI_DAY_CO_DINH, cache_control: { type: 'ephemeral' } },
       { type: 'text', text: duLieuLuot(menu, soHoc, yc.traTruoc), cache_control: { type: 'ephemeral' } },
     ],
-    messages: [...lichSuThanhTin(du.lich_su), { role: 'user', content: tinChe }],
+    // Nhân viên vừa trả cuộc lại: lượt này kèm ghi chú các tin họ đã nhắn với khách (ghiChuNhanVien).
+    messages: [...lichSuThanhTin(du.lich_su), { role: 'user', content: ghiChuNhanVien(docXen(du.xen), tinChe) }],
     output_config: { format: { type: 'json_schema', schema: KHUON_KET_QUA } },
   };
 
@@ -272,7 +339,8 @@ export async function xuLyYeuCau(req: Request, mt: MoiTruong): Promise<Response>
 
   // 5 · Ghi nhật ký (hỏng thì vẫn trả câu đã có cho khách).
   await ghiLuot(mt.rpc, yc, {
-    tra_loi: kq, viet_lai: vietLai, thay_tu: thayTu, bo_tin: boTin, mili_giay: bayGio() - batDau, ...tokenGhi(dung),
+    tra_loi: kq, doi_nguoi: khachDoiNguoi(yc.tin), viet_lai: vietLai, thay_tu: thayTu, bo_tin: boTin,
+    mili_giay: bayGio() - batDau, ...tokenGhi(dung),
   }, log);
   return traJson(goiChoKhach(kq, menu), 200, nguon);
 }

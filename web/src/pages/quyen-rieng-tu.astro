@@ -30,7 +30,8 @@ const nd = await docNoiDung('vi');
         chủ nhà hàng và quản lý mở được.</p>
       <p>Dữ liệu được lưu tại Supabase, một dịch vụ database mà Beeftown thuê.
         Ngoài Supabase, không đơn vị nào khác đọc được dữ liệu này — riêng tin
-        nhắn bạn gửi qua Messenger thì đi qua Meta (xem mục bên dưới).</p>
+        nhắn bạn gửi qua Messenger thì đi qua Meta, tin nhắn gửi Trang ở trang
+        Mua thịt về thì đi qua Anthropic (xem các mục bên dưới).</p>
 
       <h2>Khi bạn xem trang web này</h2>
       <p>Beeftown dùng Meta Pixel, công cụ đo lường của Meta (công ty sở hữu
@@ -64,6 +65,22 @@ const nd = await docNoiDung('vi');
         không kèm tên, số điện thoại hay nội dung. Beeftown không dùng Messenger
         để gửi quảng cáo.</p>
       <p>Cách xóa dữ liệu: xem <a href="/xoa-du-lieu">hướng dẫn xóa dữ liệu</a>.</p>
+
+      <h2 id="tro-ly-trang">Khi bạn nhắn Trang ở trang Mua thịt về</h2>
+      <p>Trang là trợ lý ảo (AI) của Beeftown, trả lời trong khung nhắn tin ở
+        trang Mua thịt về. Beeftown lưu tin bạn nhắn và câu trả lời, để nhân viên
+        theo dõi, vào hỗ trợ khi cần và bổ sung câu trả lời cho những câu Trang
+        chưa biết. Trước khi lưu, <strong>số điện thoại, email và địa chỉ bạn gõ
+        được che</strong>.</p>
+      <p>Để soạn câu trả lời, tin nhắn (đã che) được gửi tới Anthropic, công ty
+        cung cấp mô hình Claude mà Trang dùng; Anthropic xử lý theo điều khoản và
+        chính sách quyền riêng tư của Anthropic, và có thể xử lý trên máy chủ ở
+        nước ngoài. Địa chỉ IP chỉ dùng để chặn gửi quá nhiều tin, xóa sau một
+        ngày, không lưu kèm tin nhắn. Chủ nhà hàng, quản lý và thu ngân của chi
+        nhánh đọc được cuộc chat. Tin nhắn được giữ <strong>180 ngày</strong>, sau
+        đó bị xóa dần.</p>
+      <p>Đừng gửi số tài khoản, mật khẩu hay giấy tờ tùy thân qua khung nhắn tin.
+        Khi đặt hàng, bạn điền họ tên, số điện thoại, địa chỉ ở phần Giao hàng.</p>
 
       <h2>Khi bạn đặt mua thịt về</h2>
       <p>Khi bạn bấm Đặt hàng ở trang Mua thịt về, Beeftown lưu <strong>họ tên,
