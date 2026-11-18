@@ -74,6 +74,9 @@
  *       (mua-thit-dat-loi) → câu lỗi đúng thứ tiếng, giỏ và ô liên hệ điền lại. Mất mạng (mua-thit-dat-dut) → "không
  *       chắc", không form. Thanh giỏ dính đáy khi có gói. mua-thit-het-quay, -loi / -dut / -treo (trả lời trong 6 giây),
  *       chưa mở (rong, day-du, mua-thit-rong, -lech): không form, không giá. mua-thit-khong-zalo: vẫn mở (0113).
+ *       Hóa đơn đỏ (0125, vi/en/ko): bốn ô ẩn tới khi chọn "Cần xuất hóa đơn đỏ" (CSS — cả khi tắt JavaScript), hàng ô
+ *       đánh dấu cao ≥ 48px; chọn mà để trống → ba câu lỗi sát ô, không gọi database; đủ → p_hoa_don đã chuẩn hóa; gõ
+ *       dở rồi bỏ chọn → không p_hoa_don; database từ chối → ô được chọn lại, chữ đã gõ điền lại, địa chỉ trang sạch.
  *       Kiểm cả chính phép đo giao diện: nút vừa hết di chuột mà còn đang chuyển màu (kéo dài 1,5 giây cho chắc) thì
  *       phép đo chờ xong rồi mới đo (do-giao-dien.mjs: choDungYen); nền nút đứng yên ở màu ngoài bảng vẫn bị báo.
  *  13. Meta Pixel (src/lib/meta-pixel.ts; Meta bị chặn ở mọi context — chan-meta.mjs). Hỏi bàn: Lead đúng một lần,
@@ -139,7 +142,7 @@ const { congNgay, homNayVn } = await import(pathToFileURL(join(WEB, 'src', 'lib'
 const { dinhDangNgay } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'noi-dung.ts')).href);
 // Trang Mua thịt về (nhóm 12): đơn mong đợi tính bằng chính lib của trang từ dữ liệu giả.
 const { nhomMuaThitVe, chiaNhom } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'mua-thit-ve.ts')).href);
-const { CHU_DON, dinhDangTien, docGio, nhanGoi, tinhDon } =
+const { CHU_DON, CAU_HOA_DON, dinhDangTien, docGio, nhanGoi, tinhDon } =
   await import(pathToFileURL(join(WEB, 'src', 'lib', 'don-mua-thit.ts')).href);
 const { CAU_DAT_HANG } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'dat-hang-mua-thit.ts')).href);
 const { TEN_GU } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'chon-theo-gu.ts')).href);
@@ -1726,6 +1729,101 @@ try {
       ok('Tắt JavaScript: hộp chọn vẫn mở / đóng (popover), nút −/+ không hiện; chọn bằng ô chọn, đặt hàng được (form POST), trang "đã nhận"',
          !buocHien && JSON.stringify(ts.p_gio) === JSON.stringify({ 'la-galbi_400': 2 }) && ts.p_gia_da_xem?.['la-galbi_400'] === 360000
            && await p.locator('[data-ket-qua="da-nhan"]').count() === 1, JSON.stringify(ts));
+      await c.close();
+    }
+
+    // ---- 0125 · Hóa đơn đỏ: bốn ô ẩn tới khi chọn ô; trống → lỗi sát ô, không gọi; đủ → p_hoa_don đã chuẩn hóa ------
+    const HOA_DON_THU = { hoa_don_ten_don_vi: 'Công ty TNHH Thử Nghiệm', hoa_don_ma_so_thue: '0123 456 789', hoa_don_email: 'ketoan@example.com' };
+    const dienHoaDon = async (p, o = HOA_DON_THU) => { for (const [ten, v] of Object.entries(o)) await p.fill(`form[data-mtv-form] [name="${ten}"]`, v); };
+    const loiHoaDon = p => p.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-mtv-loi]')]
+      .map(e => [e.dataset.mtvLoi, e.hidden ? null : e.textContent.trim()])));
+    for (const nn of NGON_NGU) {
+      mayGia.datKichBan('mua-thit-mo');
+      const { c, p, loiJs } = await mo(duongMua(nn));
+      try {
+        const oHd = p.locator('#mtv-hoa-don-o');
+        const anLucDau = await oHd.isHidden();
+        const hang = await p.locator('.mtv-hoa-don-chon').boundingBox();
+        const tuVe = await p.locator('#mtv-xuat-hoa-don').evaluate(o => getComputedStyle(o).appearance);
+        await chonSo(p, 'ribeye-cap_200', '1');
+        await dien(p);
+        await p.locator('#mtv-xuat-hoa-don').check();
+        const hienKhiChon = await oHd.isVisible();
+        await nutDat(p).click();
+        await cho(300);
+        const loi = await loiHoaDon(p);
+        const conTro = await p.evaluate(() => document.activeElement?.getAttribute('name') ?? null);
+        const goiKhiTrong = goiDat().length;
+        await dienHoaDon(p);
+        const loiTat = Object.values(await loiHoaDon(p)).every(v => v === null);
+        await datVaCho(p);
+        const ts = goiDat()[0]?.thamSo ?? {};
+        const tot = [
+          ok(`${duongMua(nn)}: bốn ô hóa đơn ẩn khi mới vào; ô đánh dấu tự vẽ, hàng cao ≥ 48px; chọn ô thì bốn ô hiện`,
+             anLucDau && hang?.height >= 47.5 && tuVe === 'none' && hienKhiChon, JSON.stringify({ anLucDau, hang, tuVe, hienKhiChon })),
+          ok(`${duongMua(nn)}: chọn mà để trống → ba câu lỗi sát ô đúng chữ (CAU_HOA_DON), con trỏ về ô tên đơn vị, không gọi database`,
+             loi.hoa_don_ten_don_vi === CAU_HOA_DON.thieuTenDonVi[nn] && loi.hoa_don_ma_so_thue === CAU_HOA_DON.saiMaSoThue[nn]
+               && loi.hoa_don_email === CAU_HOA_DON.thieuEmailHoaDon[nn] && conTro === 'hoa_don_ten_don_vi' && goiKhiTrong === 0,
+             JSON.stringify({ loi, conTro, goiKhiTrong })),
+          ok(`${duongMua(nn)}: sửa đúng thì lỗi tắt; Đặt hàng gửi p_hoa_don đã chuẩn hóa; trang "đã nhận"`,
+             loiTat && JSON.stringify(ts.p_hoa_don) === JSON.stringify({ ten_don_vi: 'Công ty TNHH Thử Nghiệm', ma_so_thue: '0123456789', dia_chi: null, email: 'ketoan@example.com' })
+               && await p.locator('[data-ket-qua="da-nhan"]').count() === 1, JSON.stringify(ts)),
+          ok(`${duongMua(nn)}: hóa đơn đỏ — không lỗi JavaScript`, !loiJs.length, loiJs.slice(0, 2).join(' | ')),
+        ];
+        if (tot.includes(false)) await chupP(p, `hoa-don-${nn}`);
+      } finally {
+        await c.close();
+      }
+    }
+    {
+      // Gõ dở (mã số thuế sai dạng) rồi bỏ chọn: bốn ô ẩn không chặn gì, không chữ nào của hóa đơn rời trình duyệt.
+      mayGia.datKichBan('mua-thit-mo');
+      const { c, p } = await mo(duongMua('vi'));
+      await chonSo(p, 'ribeye-cap_200', '1');
+      await dien(p);
+      await p.locator('#mtv-xuat-hoa-don').check();
+      await dienHoaDon(p, { hoa_don_ma_so_thue: '12', hoa_don_email: 'ketoan@' });
+      await p.locator('#mtv-xuat-hoa-don').uncheck();
+      await datVaCho(p);
+      const ts = goiDat()[0]?.thamSo ?? {};
+      ok('Hóa đơn đỏ: gõ dở hai ô (sai dạng) rồi bỏ chọn → đặt được, lời gọi không mang p_hoa_don, trang "đã nhận"',
+         goiDat().length === 1 && !('p_hoa_don' in ts) && await p.locator('[data-ket-qua="da-nhan"]').count() === 1, JSON.stringify(ts));
+      await c.close();
+    }
+    {
+      // Tắt JavaScript: CSS hiện bốn ô khi chọn; máy chủ đọc và chuẩn hóa (13 số liền → 10 số - 3 số).
+      mayGia.datKichBan('mua-thit-mo');
+      const { c, p } = await mo(duongMua('vi'), { js: false });
+      const an = await p.locator('#mtv-hoa-don-o').isHidden();
+      await chonSo(p, 'la-galbi_400', '1').catch(() => {});
+      await dien(p);
+      await p.locator('#mtv-xuat-hoa-don').check();
+      const hien = await p.locator('#mtv-hoa-don-o').isVisible();
+      await dienHoaDon(p, { ...HOA_DON_THU, hoa_don_ma_so_thue: '0123456789001' });
+      await Promise.all([p.waitForNavigation({ waitUntil: 'load' }), nutDat(p).click()]);
+      const ts = goiDat()[0]?.thamSo ?? {};
+      ok('Tắt JavaScript: bốn ô hóa đơn ẩn tới khi chọn ô, chọn thì CSS hiện; đặt được, p_hoa_don đã chuẩn hóa ở máy chủ',
+         an && hien && ts.p_hoa_don?.ma_so_thue === '0123456789-001' && ts.p_hoa_don?.ten_don_vi === HOA_DON_THU.hoa_don_ten_don_vi
+           && await p.locator('[data-ket-qua="da-nhan"]').count() === 1, JSON.stringify({ an, hien, ts }));
+      await c.close();
+    }
+    {
+      // Database từ chối đơn có hóa đơn: về trang, ô được chọn lại, bốn ô hiện, chữ đã gõ điền lại; địa chỉ trang sạch.
+      mayGia.datKichBan('mua-thit-dat-loi');
+      const { c, p } = await mo(duongMua('vi'));
+      await chonSo(p, 'ribeye-cap_200', '1');
+      await dien(p);
+      await p.locator('#mtv-xuat-hoa-don').check();
+      await dienHoaDon(p);
+      await datVaCho(p);
+      const chon = await p.locator('#mtv-xuat-hoa-don').isChecked();
+      const hien = await p.locator('#mtv-hoa-don-o').isVisible();
+      const giaTri = await p.evaluate(() => ['hoa_don_ten_don_vi', 'hoa_don_ma_so_thue', 'hoa_don_email']
+        .map(ten => document.querySelector(`form[data-mtv-form] [name="${ten}"]`)?.value ?? null));
+      const diaChiTrang = decodeURIComponent(p.url());
+      ok('Hóa đơn đỏ: database từ chối → ô "Cần xuất hóa đơn đỏ" chọn lại, bốn ô hiện, chữ đã gõ điền lại; địa chỉ trang không mang tên đơn vị, mã số thuế, email',
+         chon && hien && JSON.stringify(giaTri) === JSON.stringify(Object.values(HOA_DON_THU)) && !/Thử|0123|ketoan|example/.test(diaChiTrang),
+         JSON.stringify({ chon, hien, giaTri, diaChiTrang }));
       await c.close();
     }
 

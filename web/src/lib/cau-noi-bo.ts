@@ -292,6 +292,15 @@ export const CAU_EN: Readonly<Record<string, string>> = {
   'Đơn này đã giao xong, không cần trả tiền qua website nữa': 'This order has already been delivered, no need to pay on the website',
   'Đơn này đã mở trang trả tiền quá nhiều lần, vui lòng gọi quán':
     'The payment page has been opened too many times for this order, please call us',
+  // 0125 — hóa đơn đỏ của đơn mua thịt (tao_don_mua_thit; khách đọc bản en / ko ở LOI_DATABASE của lib/chu.ts).
+  // 'Email dài quá 200 ký tự' dùng câu của 0121 ở trên.
+  'Thông tin xuất hóa đơn không đúng dạng': 'The VAT invoice details are not in the expected format',
+  'Chưa điền tên đơn vị xuất hóa đơn': 'No company name entered for the VAT invoice',
+  'Tên đơn vị dài quá 200 ký tự': 'The company name is longer than 200 characters',
+  'Mã số thuế phải gồm 10 số, hoặc 10 số - 3 số': 'The tax code must be 10 digits, or 10 digits - 3 digits',
+  'Địa chỉ đơn vị dài quá 300 ký tự': 'The company address is longer than 300 characters',
+  'Chưa điền email nhận hóa đơn': 'No email address entered for the VAT invoice',
+  'Email nhận hóa đơn không đúng dạng': 'The email address for the VAT invoice is not valid',
 
   // 0102 — cài đặt bán lẻ: cỡ gói thịt bò dùng chung (ban_le_luu_co_goi). Câu có % ở MAU_EN.
   'Danh sách cỡ gói không hợp lệ — tải lại trang.': 'Invalid pack size list — reload the page.',

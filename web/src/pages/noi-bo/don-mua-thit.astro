@@ -14,6 +14,10 @@
  * trả hai lần thì ghi số phải hoàn; khách về trang kết quả với mã 00 mà VNPay chưa báo về thì nói xem trên trang quản lý
  * của VNPay trước khi giao. Chữ và dấu, không màu (skill thiết kế).
  *
+ * Hóa đơn đỏ (0125): đơn khách chọn "Cần xuất hóa đơn đỏ" có nhãn "Xuất hóa đơn đỏ" (K5 lưu ý) cạnh trạng thái và
+ * dòng "Hóa đơn đỏ" — tên đơn vị, mã số thuế, địa chỉ đơn vị (khách để trống: tra theo mã số thuế), email nhận hóa
+ * đơn. Database chưa chạy 0125 thì không có cột nào: trang không hiện gì thêm.
+ *
  * Bấm nút xong thì chuyển hướng 303 về chính trang này (lib/gui-noi-bo.ts) — F5 không gửi lại lệnh cũ. Bấm đúp:
  * database trả "da_o_san" → báo "đơn đã ở …", không báo "người khác đã xử lý".
  */
@@ -98,6 +102,15 @@ const t = dichNB(nn, {
               en: 'VNPay TEST gateway — not real money, do not deliver as a paid order.' },
   khongVnpay: { vi: 'Chưa trả qua website: thu khi giao hoặc chuyển khoản khi gọi xác nhận.',
                 en: 'Not paid on the website: collect on delivery or by bank transfer when you call.' },
+  // 0125 · hóa đơn đỏ
+  dan5:     { vi: ' Đơn có nhãn "Xuất hóa đơn đỏ" là khách cần hóa đơn giá trị gia tăng: xuất theo tên đơn vị, mã số thuế trong đơn, gửi tới email nhận hóa đơn.',
+              en: ' An order labelled "VAT invoice" needs a VAT invoice: issue it with the company name and tax code in the order and send it to the invoice email.' },
+  nhanHoaDon: { vi: 'Xuất hóa đơn đỏ', en: 'VAT invoice' },
+  hoaDon:   { vi: 'Hóa đơn đỏ', en: 'VAT invoice' },
+  maSoThue: { vi: 'Mã số thuế', en: 'Tax code' },
+  diaChiDonVi: { vi: 'Địa chỉ đơn vị', en: 'Company address' },
+  khongDiaChiDonVi: { vi: 'khách để trống, tra theo mã số thuế', en: 'left empty, look it up from the tax code' },
+  emailHoaDon: { vi: 'Email nhận hóa đơn', en: 'Invoice email' },
 });
 const TEN_THU_TIENG: Record<string, HaiThuTieng> = {
   en: { vi: 'tiếng Anh', en: 'English' },
@@ -145,6 +158,9 @@ interface Don {
   dong: DongDon[]; tam_tinh: number; ngon_ngu: string; trang_thai: string; nguoi_xu_ly: string | null;
   /** 0115 — vắng khi database chưa chạy 0115 (coi như chưa trả, chưa mở lần nào). */
   da_tra?: number; tra_luc?: string | null; ma_vnpay?: string | null; so_lan_mo?: number; khach_ve_da_tra?: boolean;
+  /** 0125 — vắng khi database chưa chạy 0125 (coi như không cần hóa đơn). */
+  xuat_hoa_don?: boolean; hoa_don_ten_don_vi?: string | null; hoa_don_ma_so_thue?: string | null;
+  hoa_don_dia_chi?: string | null; hoa_don_email?: string | null;
 }
 let dsLoi: string | null = null;
 let ds: Don[] = [];
@@ -177,7 +193,7 @@ const BO_LOC = [
     <div class="nb-bao loi"><p>{t.khongQuyen}</p></div>
   ) : (
     <>
-      <p class="nb-dan">{t.dan1}<strong>{t.dan2}</strong>{t.dan3}{t.dan4}</p>
+      <p class="nb-dan">{t.dan1}<strong>{t.dan2}</strong>{t.dan3}{t.dan4}{t.dan5}</p>
 
       {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>}
       {dsLoi && <div class="nb-bao loi"><p>{dsLoi}</p></div>}
@@ -209,6 +225,7 @@ const BO_LOC = [
               <span class={`nb-nhan ${d.trang_thai === 'cho_xac_nhan' ? 'cho' : d.trang_thai === 'da_xac_nhan' ? 'song' : 'tat'}`}>
                 {nhanNB(TEN_TRANG_THAI, d.trang_thai, nn)}
               </span>
+              {d.xuat_hoa_don === true && <span class="nb-nhan luu-y" data-nhan-hoa-don>{t.nhanHoaDon}</span>}
             </div>
             <dl>
               <dt>{t.dienThoai}</dt>
@@ -237,6 +254,17 @@ const BO_LOC = [
                 ) : d.khach_ve_da_tra ? (<strong>{t.khachVe}</strong>)
                   : Number(d.so_lan_mo ?? 0) > 0 ? t.chuaTra(Number(d.so_lan_mo)) : t.khongVnpay}
               </dd>
+              {d.xuat_hoa_don === true && (
+                <>
+                  <dt>{t.hoaDon}</dt>
+                  <dd data-hoa-don>
+                    <div><strong>{d.hoa_don_ten_don_vi}</strong></div>
+                    <div>{t.maSoThue}: <code>{d.hoa_don_ma_so_thue}</code></div>
+                    <div>{t.diaChiDonVi}: {d.hoa_don_dia_chi || t.khongDiaChiDonVi}</div>
+                    <div>{t.emailHoaDon}: <code>{d.hoa_don_email}</code></div>
+                  </dd>
+                </>
+              )}
               {d.ghi_chu && <><dt>{t.ghiChu}</dt><dd style="white-space:pre-line">{d.ghi_chu}</dd></>}
               {TEN_THU_TIENG[d.ngon_ngu] && <><dt>{t.thuTieng}</dt><dd>{TEN_THU_TIENG[d.ngon_ngu][nn]}</dd></>}
               <dt>{t.datLuc}</dt>

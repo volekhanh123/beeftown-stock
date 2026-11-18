@@ -15,6 +15,7 @@
  *   7. cau-chu — chữ của trang đủ vi / en; trạng thái phân biệt bằng chữ (không màu xanh / vàng).
  *   3. gio-vn — giờ đặt in theo giờ Việt Nam qua gioVnTuMs (không tự cộng 7 tiếng).
  *   4, 6, 8, 9 — không áp dụng (kiểm ở test-mua-thit-dat-hang.mjs; trang không ghi kho, không migration, không dịch vụ ngoài).
+ *   Nhóm 4 — hóa đơn đỏ (0125): nhãn "Xuất hóa đơn đỏ" (K5, chữ không màu) và dòng "Hóa đơn đỏ" đủ bốn thông tin.
  */
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -110,6 +111,42 @@ await nhom('3 · GHI VÀ CÂU BÁO CÙNG MỘT AWAIT (mat-mang), GIỜ VIỆT NA
      cap.filter(m => /[ăâđêôơư]/i.test(m[2])).map(m => m[2]).join(' | '));
   ok('Trạng thái phân biệt bằng chữ (nb-nhan), không màu xanh / vàng', !/green|yellow|#0[0-9a-f]{5}|xanh|vàng/i.test(TRANG));
   ok('Số điện thoại bấm gọi được (tel:)', /href=\{`tel:\$\{d\.sdt\}`\}/.test(TRANG));
+});
+
+// ===========================================================================
+// 0125 · Hóa đơn đỏ (Khánh 18/11/2026): đơn khách chọn "Cần xuất hóa đơn đỏ" có nhãn cạnh trạng thái và dòng "Hóa đơn
+// đỏ" đủ bốn thông tin. Database và luật của ô: test-mua-thit-hoa-don.mjs.
+await nhom('4 · HÓA ĐƠN ĐỎ (0125): NHÃN VÀ BỐN THÔNG TIN CHO NHÂN VIÊN', async () => {
+  const { rows: [co] } = await db.query(
+    `insert into don_mua_thit (ma_don, ma_gui, chi_nhanh_id, ho_ten, sdt, dia_chi, dong, tam_tinh, xuat_hoa_don,
+                               hoa_don_ten_don_vi, hoa_don_ma_so_thue, hoa_don_dia_chi, hoa_don_email)
+     values (sinh_ma_don_mua_thit(), $1, $2, 'Lê Văn Nam', '0912345679', '12 Nguyễn Huệ, phường Sài Gòn',
+             '[{"khoa":"ribeye-cap_200","ten_vi":"Ribeye with Cap","don_vi":"goi","bao_quan":"mat","so_gam":200,"so_luong":2,"gia":400000,"thanh_tien":800000}]',
+             800000, true, 'CÔNG TY TNHH THỬ NGHIỆM', '0123456789-001', null, 'ketoan@example.com') returning id`, [maGui(), cnA.id]);
+  const khong = await don();
+  const ds = await duoi(UID.thuNganA, `select id, xuat_hoa_don, hoa_don_ten_don_vi, hoa_don_ma_so_thue, hoa_don_dia_chi, hoa_don_email
+                                       from don_mua_thit_danh_sach('tat_ca')`);
+  const dongCo = ds.rows?.find(x => x.id === co.id);
+  const dongKhong = ds.rows?.find(x => x.id === khong);
+  ok('Hộp thư (thu ngân) trả năm cột: đơn cần hóa đơn đủ bốn thông tin; đơn không cần thì false và bốn cột trống',
+     dongCo?.xuat_hoa_don === true && dongCo.hoa_don_ten_don_vi === 'CÔNG TY TNHH THỬ NGHIỆM' && dongCo.hoa_don_ma_so_thue === '0123456789-001'
+       && dongCo.hoa_don_dia_chi === null && dongCo.hoa_don_email === 'ketoan@example.com'
+       && dongKhong?.xuat_hoa_don === false && dongKhong.hoa_don_ma_so_thue === null && dongKhong.hoa_don_email === null, vi(ds));
+
+  ok('Nhãn "Xuất hóa đơn đỏ" là K5 lưu ý (nb-nhan luu-y: chữ trên nền xám, không màu riêng), chỉ khi xuat_hoa_don === true',
+     /\{d\.xuat_hoa_don === true && <span class="nb-nhan luu-y" data-nhan-hoa-don>\{t\.nhanHoaDon\}<\/span>\}/.test(TRANG));
+  const khoi = TRANG.match(/\{d\.xuat_hoa_don === true && \(\s*<>[\s\S]*?<\/>\s*\)\}/)?.[0] ?? '';
+  ok('Dòng "Hóa đơn đỏ" chỉ khi xuat_hoa_don === true: tên đơn vị, mã số thuế, địa chỉ (trống → "tra theo mã số thuế"), email nhận hóa đơn',
+     /<dt>\{t\.hoaDon\}<\/dt>/.test(khoi) && /\{d\.hoa_don_ten_don_vi\}/.test(khoi) && /\{t\.maSoThue\}: <code>\{d\.hoa_don_ma_so_thue\}<\/code>/.test(khoi)
+       && /\{d\.hoa_don_dia_chi \|\| t\.khongDiaChiDonVi\}/.test(khoi) && /\{t\.emailHoaDon\}: <code>\{d\.hoa_don_email\}<\/code>/.test(khoi), khoi.slice(0, 300));
+  ok('Email nhận hóa đơn in dạng chữ để chép vào phần mềm hóa đơn (không link mailto)', !/mailto:/.test(TRANG));
+  ok('Database chưa chạy 0125: năm cột là tùy chọn trong kiểu Don — trang không vỡ, không hiện gì thêm',
+     /xuat_hoa_don\?: boolean; hoa_don_ten_don_vi\?: string \| null; hoa_don_ma_so_thue\?: string \| null;/.test(TRANG));
+  ok('Chữ mới viết theo cặp { vi, en }: nhãn, dòng, câu dẫn đầu trang nhắc nhãn',
+     ['nhanHoaDon', 'hoaDon', 'maSoThue', 'diaChiDonVi', 'khongDiaChiDonVi', 'emailHoaDon', 'dan5']
+       .every(x => new RegExp(`${x}:\\s*\\{ vi: '[^']+',\\s*en: '[^']+' \\}`).test(TRANG))
+       && /\{t\.dan4\}\{t\.dan5\}/.test(TRANG) && /"Xuất hóa đơn đỏ"/.test(TRANG.match(/dan5:[^\n]*/)?.[0] ?? ''));
+  await db.query(`delete from don_mua_thit where id = any($1)`, [[co.id, khong]]);
 });
 
 process.exit(ketThuc('HỘP THƯ ĐƠN MUA THỊT VỀ'));
