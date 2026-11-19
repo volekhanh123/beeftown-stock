@@ -293,6 +293,14 @@ await nhom('8 · CỔNG — mọi hàm definer authenticated gọi được ph�
     // 0115 — hai hàm máy may_vnpay (kết quả VNPay của đơn mua thịt): từ chối anon, chủ, quản lý, thu ngân, máy khác, máy
     // đã tắt, nhân sự đã nghỉ, không nhan_su bằng 42501 (test-mua-thit-vnpay.mjs nhóm 1).
     vnpay_ghi_ipn: 'tu_kiem_vai', vnpay_ghi_ve: 'tu_kiem_vai',
+    // 0126 — nhân viên nhận chat của Trang: chủ, quản lý, thu ngân đang làm (don_mua_thit_duoc_xem), cuộc của chi nhánh
+    // mình; từ chối anon, marketing, thủ kho, nhân sự đã nghỉ, không nhan_su, chi nhánh khác (test-tro-ly-trang.mjs nhóm 11).
+    tro_ly_ds_cuoc: 'tu_kiem_vai', tro_ly_xem_cuoc: 'tu_kiem_vai', tro_ly_nhan_cuoc: 'tu_kiem_vai',
+    tro_ly_tra_cuoc: 'tu_kiem_vai', tro_ly_nv_gui: 'tu_kiem_vai', tro_ly_nv_dang_go: 'tu_kiem_vai',
+    tro_ly_dang_truc: 'tu_kiem_vai',
+    // 0126 — policy đọc nhật ký tro_ly_luot: chỉ trả lời CHÍNH người gọi có được đọc cuộc đó không (chủ mọi cuộc, quản lý
+    // cuộc chi nhánh mình); test-tro-ly-trang.mjs nhóm 11, test-quyen-doc-crm.mjs.
+    tro_ly_luot_duoc_doc: 'policy',
     // Chỉ đọc thứ đã công khai cho anon (cong_tac_bat: công tắc đã công bố; lịch trống: như lich_trong_theo_ma).
     cong_tac_bat: 'cong_khai', khung_gio_trong_ngay: 'cong_khai', so_ban_con_trong: 'cong_khai',
     lich_trong_theo_ngay: 'cong_khai',
