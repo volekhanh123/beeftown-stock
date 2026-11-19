@@ -554,10 +554,13 @@ export function khachDoiNguoi(tin: string): boolean {
 /** Từ chừng này người trở lên là đơn lớn: luôn hiện cách liên hệ quán (CHUNG của lời dặn), kể cả khi Claude quên. */
 export const DON_LON_TU = 9;
 
-/** Số người lớn nhất khách nêu trong tin ("12 người", "nhóm 10 khách", "15 ng"); không nêu thì 0. */
+/**
+ * Số người lớn nhất khách nêu trong tin ("12 người", "nhóm 10 khách", "15 ng"); không nêu thì 0. "20 khách hàng" (khách
+ * quen, khách của công ty) không phải số người ăn.
+ */
 export function soNguoiKhachNoi(tin: string): number {
   let lon = 0;
-  for (const m of String(tin ?? '').normalize('NFC').matchAll(/(\d{1,3})\s*(người|nguoi|ng|khách|khach|thành viên|pax)(?![\p{L}])/giu)) {
+  for (const m of String(tin ?? '').normalize('NFC').matchAll(/(\d{1,3})\s*(người|nguoi|ng|khách(?!\s*hàng)|khach(?!\s*hang)|thành viên|pax)(?![\p{L}])/giu)) {
     lon = Math.max(lon, Number(m[1]));
   }
   return lon;

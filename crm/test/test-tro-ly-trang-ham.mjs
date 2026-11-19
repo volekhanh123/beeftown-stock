@@ -128,6 +128,8 @@ await nhom('2 · MÁY KIỂM TIẾNG VIỆT VÀ CHỮ CẤM', async () => {
     ['Để em báo nhân viên nhé', true], ['Dạ em sẽ báo quán ạ', true], ['Để em kiểm tra lại ạ', true],
     ['Anh/chị ghi giờ muốn nhận ở ô Ghi chú khi đặt nhé.', false], ['Dạ em ghi 3 gói diềm thăn bò cho chị ạ.', false],
     ['Dạ mỗi phần hợp một gu nên em hỏi anh/chị chút ạ.', false], ['Anh/chị nhắn Zalo cho quán theo cách bên dưới nhé.', false],
+    // Rà soát 19/11: câu đúng không được bắt nhầm.
+    ['Em lưu ý anh/chị ghi giờ muốn nhận ở ô Ghi chú nhé.', false], ['Dạ để em báo giá ở thẻ ngay bên dưới ạ.', false], ['Để em báo nhân viên nhé', true],
     ['Dạ 2 khay, mỗi người 1,5 gói ạ', false], ['Dạ tầng 3, 63 Hồ Tùng Mậu ạ', false],
     ['Dạ gói 150 g ạ', false], ['Dạ 2 kg là nhiều đó ạ', false],
   ]) ok(`chuCam("${t}") ${cam ? 'bắt' : 'không bắt'}`, (tv.chuCam(t).length > 0) === cam, JSON.stringify(tv.chuCam(t)));
@@ -363,7 +365,8 @@ await nhom('9 · NHÂN VIÊN NHẬN CHAT: KHÔNG GỌI CLAUDE, LỆNH XEM, GHI C
 
 await nhom('10 · SAU BỘ CHẤM LẦN 1: ĐƠN LỚN LUÔN HIỆN CÁCH LIÊN HỆ, LỜI DẶN CÓ BẢNG SỐ GÓI', async () => {
   for (const [tin, mong] of [['công ty anh 12 người nướng ngoài trời', 12], ['nhà 4 người', 4], ['nhóm 10 khách', 10], ['15 ng đi nhậu', 15],
-    ['2 ngày nữa giao', 0], ['gói 300 nghìn', 0], ['chị 1 người, sau đó 9 người nữa', 9]]) {
+    ['2 ngày nữa giao', 0], ['gói 300 nghìn', 0], ['chị 1 người, sau đó 9 người nữa', 9],
+    ['nhà 3 người, tháng trước mua cho 20 khách hàng công ty', 3]]) {
     ok(`soNguoiKhachNoi("${tin}") = ${mong}`, trang.soNguoiKhachNoi(tin) === mong, String(trang.soNguoiKhachNoi(tin)));
   }
   const db = dbGia();
