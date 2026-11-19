@@ -28,8 +28,9 @@
  * (PostgREST với khóa service_role). Nhờ vậy Node chạy thẳng file này trong crm/test/test-tro-ly-trang-ham.mjs.
  */
 import {
-  KHUON_KET_QUA, LOI_DAY_CO_DINH, cauVietLai, cheThongTin, docKetQua, docMenu, docXen, duLieuLuot, ghiChuNhanVien, gotTin,
-  khachDoiNguoi, kiemTin, theCua, type SanPhamCuaTrang, type SoHoc, type ThePhanThit, type TraLoi,
+  DON_LON_TU, KHUON_KET_QUA, LOI_DAY_CO_DINH, cauVietLai, cheThongTin, docKetQua, docMenu, docXen, duLieuLuot,
+  ghiChuNhanVien, gotTin, khachDoiNguoi, kiemTin, soNguoiKhachNoi, theCua,
+  type SanPhamCuaTrang, type SoHoc, type ThePhanThit, type TraLoi,
 } from './trang.ts';
 
 /** Mô hình mặc định (Khánh duyệt 18/11/2026: "Oke" với Haiku 5.5, khoảng 58 đ mỗi cuộc chat). */
@@ -334,6 +335,8 @@ export async function xuLyYeuCau(req: Request, mt: MoiTruong): Promise<Response>
   }
   const got = gotTin(kq);
   kq = got.kq;
+  // Đơn lớn (từ 9 người): luôn hiện cách liên hệ quán, kể cả khi Claude quên đặt chuyen_nguoi (bộ chấm lần 1, câu #7).
+  if (!kq.chuyen_nguoi && soNguoiKhachNoi(yc.tin) >= DON_LON_TU) kq = { ...kq, chuyen_nguoi: true };
   thayTu = got.thayTu;
   boTin = got.boTin;
 

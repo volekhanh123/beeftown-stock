@@ -113,6 +113,10 @@ export const CAM_TRANG: readonly { re: RegExp; vi_sao: string }[] = [
     vi_sao: 'Số tiền trong tin: giá chỉ có trên thẻ do trang tự tính.' },
   { re: /\bem\s+(là|đúng là)\s+người(\s+thật)?(?![\p{L}])|em\s+không\s+phải\s+(là\s+)?(máy|ai|bot|trợ\s?lý)|(nhân viên|người)\s+(sẽ|đang)\s+vào\s+(chat|trả lời)|(quán|nhân viên)\s+sẽ\s+gọi\s+lại\s+ngay/iu,
     vi_sao: 'Trang không nhận là người, không hứa nhân viên vào khung chat hay gọi lại.' },
+  // Bộ chấm lần 1 (18/11/2026, câu #30, #41): "em ghi lại giúp ở phần ghi chú", "anh chờ em một chút" — Trang chỉ nhắn tin.
+  // "em lưu ý anh/chị ghi giờ ở ô Ghi chú", "để em báo giá ở thẻ" là câu đúng — không bắt.
+  { re: /em\s+(ghi|lưu)\s+(lại\s+(giúp|hộ)?|giúp|hộ)[^.!?\n]{0,30}ghi\s+chú|chờ\s+em\s+(một\s+)?(chút|lát|xíu|tí)(?![\p{L}])|để\s+em\s+(kiểm\s+tra|xem\s+lại)(?![\p{L}])|(để\s+)?em\s+(sẽ\s+)?(báo|nhắn|gọi)\s+(cho\s+)?(nhân viên|quán|quản lý|bếp)/iu,
+    vi_sao: 'Trang chỉ nhắn tin: không nói như đang ghi chú hộ, bắt khách chờ, hay đi báo, kiểm tra, gọi cho ai.' },
   // Khánh 18/11/2026: "xóa các thông tin cho rằng đây là trợ lý AI" trong tin — đầu khung đã có dòng "trợ lý ảo";
   // khách hỏi người hay máy thì Trang nói "em là trợ lý ảo của Beeftown". "AI" phân biệt hoa thường: "ai" là tiếng Việt.
   { re: /(^|[^\p{L}])A\.?I\.?(?![\p{L}])/u,

@@ -126,6 +126,9 @@
   position: absolute; right: 0; top: calc(100% + .4rem); z-index: 40;
   width: min(18rem, calc(100vw - 32px)); background: var(--nb-the); color: var(--than);
   border-radius: 12px; box-shadow: 0 12px 36px rgba(0, 0, 0, .28); padding: .5rem;
+  /* Menu nằm trong thanh đầu dính (sticky) nên trang cuộn không kéo được nó: dài hơn màn hình thì menu tự cuộn, nút
+     Đăng xuất ở cuối luôn bấm tới được (0126 thêm mục Trợ lý Trang làm menu dài ra ở điện thoại 390 × 844). */
+  max-height: calc(100vh - 5rem); max-height: calc(100dvh - 5rem); overflow-y: auto; overscroll-behavior: contain;
 }
 .kho-nguoi-menu p { margin: .35rem .6rem .6rem; font-size: .85rem; color: var(--muc-nhat); }
 .kho-nguoi-menu p strong { color: var(--than); }

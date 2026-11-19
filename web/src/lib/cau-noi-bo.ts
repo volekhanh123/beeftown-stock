@@ -254,6 +254,13 @@ export const CAU_EN: Readonly<Record<string, string>> = {
   'Không có quyền xử lý đơn mua thịt': 'You are not allowed to handle take-home orders',
   'Bước chuyển trạng thái đơn không hợp lệ': 'That order status change is not allowed',
   'Không thấy đơn này': 'This order could not be found',
+  // 0126 — nhân viên nhận chat của Trang (tro_ly_ds_cuoc, tro_ly_xem_cuoc, tro_ly_nhan_cuoc, tro_ly_tra_cuoc, tro_ly_nv_gui,
+  // tro_ly_nv_dang_go, tro_ly_dang_truc)
+  'Không có quyền xem chat của Trang': 'You are not allowed to see the Trang chats',
+  'Không có quyền nhận chat của Trang': 'You are not allowed to take over the Trang chats',
+  'Không có quyền theo dõi chat của Trang': 'You are not allowed to monitor the Trang chats',
+  'Không thấy cuộc chat này': 'This chat could not be found',
+  'Tin nhắn trống hoặc dài quá 1.000 ký tự': 'The message is empty or longer than 1,000 characters',
   // 0115 · trả tiền VNPay của đơn mua thịt về — hai hàm máy may_vnpay (câu chỉ vào nhật ký Worker)
   'Không có quyền ghi kết quả thanh toán VNPay': 'You are not allowed to record VNPay payment results',
   'Mã phản hồi VNPay không hợp lệ': 'The VNPay response code is not valid',
