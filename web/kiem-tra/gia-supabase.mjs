@@ -147,7 +147,10 @@ export const CONG_MAC_DINH = 54331;
 export const KICH_BAN = ['rong', 'day-du', 'dat-ban-dong', 'dat-ban-loi', 'dat-ban-500', 'dat-ban-dut', 'dat-ban-sap', 'dia-chi-cong-bo',
   'tuyen-dung-mo', 'tuyen-dung-dut', 'tuyen-dung-loi', 'sap-mo', 'da-mo', 'da-mo-chua-doi-cau', 'khong-con-tat', 'thuc-don-thu-suc',
   'mua-thit-mo', 'mua-thit-giao', 'mua-thit-het-quay', 'mua-thit-rong', 'mua-thit-khong-zalo',
-  'mua-thit-lech', 'mua-thit-loi', 'mua-thit-dut', 'mua-thit-treo', 'mua-thit-dat-loi', 'mua-thit-dat-dut', 'mua-thit-trang'];
+  'mua-thit-lech', 'mua-thit-loi', 'mua-thit-dut', 'mua-thit-treo', 'mua-thit-dat-loi', 'mua-thit-dat-dut', 'mua-thit-trang',
+  // Giờ mở cửa hiện trên trang (23/11/2026): cả hai công tắc bật · chỉ chi nhánh chốt giờ mà cổng nội dung tắt (không in) ·
+  // cổng nội dung bật mà chi nhánh chưa chốt (không in, chi_nhanh_cong_khai giấu bốn mốc như hàm thật).
+  'gio-cong-bo', 'gio-tat', 'gio-chua-chot'];
 
 // Liên hệ "đã công bố" của kịch bản day-du. Đường dẫn thử, không phải trang thật của nhà hàng.
 export const LIEN_HE_THU = {
@@ -273,6 +276,7 @@ export function noiDung(kichBan, nn = 'vi') {
     hien_thuc_don: true,
     hien_do_uong_co_con: kichBan !== 'khong-con-tat',
     ...(kichBan === 'dia-chi-cong-bo' ? { dia_chi_hien_thi: DIA_CHI_CONG_BO_THU } : {}),
+    ...(['gio-cong-bo', 'gio-chua-chot'].includes(kichBan) ? { gio_phuc_vu_da_chot: true } : {}),
     ...(kichBan === 'sap-mo' ? { ngay_khai_truong: ngaySapMoThu(), dong_trang_thai: TRANG_THAI_THU['sap-mo'] } : {}),
     ...(kichBan === 'da-mo' ? { ngay_khai_truong: NGAY_DA_MO_THU, dong_trang_thai: TRANG_THAI_THU['da-mo'] } : {}),
     ...(kichBan === 'da-mo-chua-doi-cau' ? { ngay_khai_truong: NGAY_DA_MO_THU } : {}),
@@ -739,6 +743,8 @@ const HAM = {
   tao_dat_ban: { thamSo: THAM_SO_DAT_BAN, batBuoc: THAM_SO_DAT_BAN.slice(0, 6) },
   nop_ho_so_ung_tuyen: { thamSo: THAM_SO_NOP_HO_SO, batBuoc: THAM_SO_NOP_HO_SO.slice(0, 3) },
   mua_thit_ve_cong_khai: { thamSo: ['p_ngon_ngu', 'p_chi_nhanh_ma'], batBuoc: [] },
+  // 0013: giờ mở cửa của các chi nhánh; bốn mốc chỉ hiện khi gio_da_chot = true.
+  chi_nhanh_cong_khai: { thamSo: [], batBuoc: [] },
   bo_tai_quay_theo_gu: { thamSo: ['p_ngon_ngu'], batBuoc: [] },
   tao_don_mua_thit: { thamSo: THAM_SO_DAT_HANG, batBuoc: THAM_SO_DAT_HANG.slice(0, 8) },
   // /noi-bo (0092): số đỏ trên menu kho. Chỉ người đăng nhập, đúng chi nhánh của mình.
@@ -968,6 +974,11 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
       switch (ten) {
         case 'noi_dung_cong_khai': return tra(200, noiDung(hienTai, nn));
         case 'thuc_don_cong_khai': return tra(200, thucDon(hienTai, nn));
+        case 'chi_nhanh_cong_khai': {
+          const chot = ['gio-cong-bo', 'gio-tat'].includes(hienTai);
+          return tra(200, [{ ma: CHI_NHANH_THU.ma, gio_da_chot: chot, trua_bat_dau: chot ? '11:00:00' : null, trua_ket_thuc: chot ? '14:00:00' : null,
+            toi_bat_dau: chot ? '17:00:00' : null, toi_ket_thuc: chot ? '23:00:00' : null }]);
+        }
         case 'tin_tuyen_dung_cong_khai': return tra(200, tinTuyenDung(hienTai, nn));
         case 'lich_trong_theo_ma':
           if (hienTai === 'dat-ban-sap') return tra(500, loiPostgrest('XX000', 'upstream request timeout'));

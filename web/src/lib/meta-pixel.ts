@@ -29,6 +29,14 @@
  *                     mã (lib/xu-ly-form.ts): script của TrangDatBan.astro, guiSuKienMotLan theo mã — tải lại hay
  *                     bấm Back về thẻ đó không thành Lead thứ hai.
  *
+ * TẢI SAU TRANG (23/11/2026, rà soát SEO: fbevents.js là thứ nặng nhất trang — khoảng 105 KB truyền tải, 875 KB sau
+ * giải nén — và tranh băng thông với ảnh đầu trang). Mã gốc vẫn chạy ngay ở <head>: dựng `fbq`, xếp hàng
+ * fbq('init') và fbq('track', 'PageView'), và mọi lời gọi sau đó (ViewContent, Contact, InitiateCheckout, Lead) vẫn xếp
+ * hàng như cũ vì `fbq` đã có. Chỉ việc CHÈN <script src=fbevents.js> bị hoãn: tới sau sự kiện `load` của cửa sổ, rồi
+ * requestIdleCallback (hạn 2,5 giây) hoặc, trình duyệt không có hàm đó, 200 ms. fbevents.js tải xong thì tự chạy lại
+ * toàn bộ hàng đợi theo đúng thứ tự — không sự kiện nào mất. Đổi lại: khách rời trang TRƯỚC sự kiện `load` thì lượt đó
+ * không có PageView (khách bỏ đi quá sớm; chấp nhận). Thẻ <noscript><img> giữ nguyên (tắt JavaScript vẫn được đo).
+ *
  * SCRIPT CỦA META TẢI HỎNG (chặn quảng cáo, mất mạng): mã gốc tải fbevents.js bất đồng bộ, fbq của mã gốc chỉ xếp
  * hàng lời gọi. Mọi lời gọi ngoài mã gốc đi qua guiSuKien: kiểm typeof fbq === 'function' và nuốt mọi lỗi — trang,
  * form hỏi bàn, Mua thịt về chạy như không có pixel. Kiểm thử trình duyệt chặn Meta ở mọi trang (kiem-tra/chan-meta.mjs).
@@ -71,8 +79,10 @@ export function suKienMoTrang(tenTrang: string | null | undefined): SuKienPixel 
 }
 
 /**
- * Mã gốc Meta Pixel (Trình quản lý sự kiện → "Get started"), đúng từng chữ — chỉ thay ID. Trang.astro in nguyên khối
- * này ở cuối <head>; kiểm thử so nó với bản Meta đưa.
+ * Mã gốc Meta Pixel (Trình quản lý sự kiện → "Get started"), đúng từng chữ — chỉ thay ID và MỘT chỗ khác với bản Meta
+ * đưa: dòng cuối của hàm, `s.parentNode.insertBefore(t,s)` (chèn fbevents.js ngay lúc đọc <head>), được hoãn tới sau
+ * sự kiện `load` của cửa sổ (xem "TẢI SAU TRANG" ở đầu file). Trang.astro in nguyên khối này ở cuối <head>; kiểm thử so
+ * nó với bản Meta đưa, và so phần hoãn với đúng một dòng của bản Meta.
  */
 export function khoiMaPixel(id: string = MA_PIXEL): string {
   if (!/^\d{15,16}$/.test(id)) throw new Error(`ID pixel không đúng dạng: ${id}`);
@@ -84,7 +94,9 @@ n.callMethod.apply(n,arguments):n.queue.push(arguments)};
 if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
 n.queue=[];t=b.createElement(e);t.async=!0;
 t.src=v;s=b.getElementsByTagName(e)[0];
-s.parentNode.insertBefore(t,s)}(window, document,'script',
+var d=function(){s.parentNode.insertBefore(t,s)},
+g=function(){f.requestIdleCallback?f.requestIdleCallback(d,{timeout:2500}):f.setTimeout(d,200)};
+b.readyState==='complete'?g():f.addEventListener('load',g)}(window, document,'script',
 'https://connect.facebook.net/en_US/fbevents.js');
 fbq('init', '${id}');
 fbq('track', 'PageView');

@@ -31,12 +31,16 @@
  * "3 cỡ gói"), nút ở mép phải; chân thẻ luôn sát đáy nên các thẻ cùng hàng thẳng nhau. Phần thịt đã gắn gu ở
  * /noi-bo/ban-le (0116, cùng dữ liệu khối "Chọn theo gu" của trang Thực đơn) có thêm dòng "Gu: …" dưới nhãn bảo
  * quản. Cách dùng (cach_dung của menu bán lẻ) nằm trong hộp chọn, dưới mô tả. Không giá theo 100 g: quán bán theo gói.
- * Kiểm thử: crm/test/test-cong-khai-mua-thit-ve.mjs.
+ * TÊN VÀ LINK (SEO 23/11/2026, lib/ten-phan-thit.ts): tên hiện là tên Việt (trang Việt) hay Hàn (trang Hàn) kèm tên khay trong
+ * ngoặc — "Đầu thăn ngoại (Ribeye)"; dưới nhãn bảo quản có link nhỏ sang mục của phần thịt đó ở trang Các phần thịt bò. Chỉ đổi
+ * cách hiện: đơn gửi quán mang khóa gói, tên trên đơn là tên database.
+ * Kiểm thử: crm/test/test-cong-khai-mua-thit-ve.mjs, test-cong-khai-ten-phan-thit.mjs.
  */
 import { dich } from '../lib/chu';
 import type { NgonNgu } from '../lib/noi-dung';
 import { CHU_DON, SO_GOI_TOI_DA, dinhDangTien, nhanGoi, type SanPhamMua } from '../lib/don-mua-thit';
 import { TEN_GU, type Gu } from '../lib/chon-theo-gu';
+import { lienKetPhanThit, tenHienThi } from '../lib/ten-phan-thit';
 import Anh from './Anh.astro';
 import BieuTuong from './BieuTuong.astro';
 
@@ -62,6 +66,9 @@ const c = dich(ngonNgu, {
   soCoGoi: { vi: (n: number) => `${n} cỡ gói`, en: (n: number) => `${n} pack sizes`, ko: (n: number) => `팩 크기 ${n}가지` },
   soCoHop: { vi: (n: number) => `${n} cỡ hộp`, en: (n: number) => `${n} box sizes`, ko: (n: number) => `통 크기 ${n}가지` },
   guLa: { vi: 'Gu:', en: 'Taste:', ko: '맛:' },
+  // Link nhỏ trên thẻ thịt sang mục của phần thịt đó ở trang Các phần thịt bò; tên phần thịt đã nằm trên thẻ, nên chữ ngắn
+  // (trình đọc màn hình đọc thêm tên ở phần ẩn của link, để các link cùng chữ không giống hệt nhau).
+  vePhan: { vi: 'Xem phần thịt này', en: 'About this cut', ko: '이 부위 알아보기' },
   // "Cách dùng" của menu bán lẻ nói cả cách nướng thịt lẫn cách ăn kim chi (Codex rà 12/11/2026).
   cachDung: { vi: 'Cách dùng:', en: 'How to use:', ko: '드시는 방법:' },
   dong: { vi: 'Đóng', en: 'Close', ko: '닫기' },
@@ -104,8 +111,15 @@ const guThe = sanPham.loai === 'thit' ? gu : [];
 const daChonSo = coHop ? datDuoc.reduce((tong, g) => tong + (gio.get(g.khoa) ?? 0), 0) : 0;
 const daChon = CHU_DON.daChon[ngonNgu](sanPham.donVi === 'hop' ? 0 : daChonSo, sanPham.donVi === 'hop' ? daChonSo : 0);
 const idHop = `mtv-hop-${sanPham.ma}`;
-// Tên chưa có bản dịch thì là tên tiếng Việt: trình đọc màn hình đọc đúng giọng.
+// Tên chưa có bản dịch thì là tên tiếng Việt: trình đọc màn hình đọc đúng giọng. Tên gốc của database (sanPham.ten) quyết
+// định việc này, trước khi tenHienThi thêm tên Việt hay Hàn.
 const langTen = ngonNgu !== 'vi' && sanPham.ten === sanPham.tenVi ? 'vi' : undefined;
+// Tên hiện ra: trang Việt "Đầu thăn ngoại (Ribeye)", trang Hàn "꽃등심 (Ribeye)" khi bảng nhà có tên; tên gốc ở chỗ còn lại.
+// Chỉ đổi cách hiện — đơn gửi quán vẫn mang khóa gói và tên database (lib/ten-phan-thit.ts).
+const ten = tenHienThi(sanPham, ngonNgu);
+const lienKetPhan = lienKetPhanThit(sanPham, ngonNgu);
+// Tên đã đổi sang tiếng của trang (Việt trên trang Việt, Hàn trên trang Hàn) thì không còn là "tên tiếng Việt lạc giữa trang khác".
+const langTenHienThi = ten === sanPham.ten ? langTen : undefined;
 ---
 <article class:list={['the', 'mtv-the', { 'mtv-the-kim-chi': laKimChi }]} data-mtv-the={sanPham.ma}>
   <div class="mtv-anh">
@@ -118,9 +132,12 @@ const langTen = ngonNgu !== 'vi' && sanPham.ten === sanPham.tenVi ? 'vi' : undef
     )}
   </div>
   <div class="mtv-the-chu">
-    <h3 lang={langTen}>{sanPham.ten}</h3>
+    <h3 lang={langTenHienThi}>{ten}</h3>
     <p class="nhan-mon mtv-bao-quan">{nhanBaoQuan}</p>
     {guThe.length > 0 && (<p class="mtv-gu">{`${c.guLa} ${guThe.map(g => TEN_GU[g][ngonNgu]).join(' · ')}`}</p>)}
+    {lienKetPhan && (
+      <p class="mtv-ve-phan"><a class="lien-ket" href={lienKetPhan}>{c.vePhan}<span class="an-chu">: {ten}</span><BieuTuong ten="mui-ten" /></a></p>
+    )}
   </div>
 
   <div class="mtv-the-chan">
@@ -130,7 +147,7 @@ const langTen = ngonNgu !== 'vi' && sanPham.ten === sanPham.tenVi ? 'vi' : undef
     </div>
     {coHop ? (
       <button type="button" class="nut nut-vien mtv-mo-hop" popovertarget={idHop} data-mtv-mo-hop>
-        {sanPham.donVi === 'hop' ? c.chonHop : c.chonGoi}<span class="an-chu">: {sanPham.ten}</span>
+        {sanPham.donVi === 'hop' ? c.chonHop : c.chonGoi}<span class="an-chu">: {ten}</span>
       </button>
     ) : (
       <p class="mtv-tam-het" data-mtv-tam-het>{c.tamHet}</p>
@@ -142,7 +159,7 @@ const langTen = ngonNgu !== 'vi' && sanPham.ten === sanPham.tenVi ? 'vi' : undef
     <div popover id={idHop} class="mtv-hop be-kem" role="dialog" aria-labelledby={`${idHop}-ten`} data-mtv-hop>
       <div class="mtv-hop-dau">
         <div>
-          <p class="mtv-hop-ten" id={`${idHop}-ten`} lang={langTen}>{sanPham.ten}</p>
+          <p class="mtv-hop-ten" id={`${idHop}-ten`} lang={langTenHienThi}>{ten}</p>
           <p class="nhan-mon mtv-bao-quan">{nhanBaoQuan}</p>
         </div>
         <button type="button" class="mtv-dong" popovertarget={idHop} popovertargetaction="hide" data-mtv-dong-hop>
@@ -165,12 +182,12 @@ const langTen = ngonNgu !== 'vi' && sanPham.ten === sanPham.tenVi ? 'vi' : undef
               ) : (
                 <span class="mtv-chon">
                   <input type="hidden" name={`gia_${goi.khoa}`} value={String(goi.gia)} />
-                  <label class="an-chu" for={idO}>{c.soGoi(nhan, sanPham.ten)}</label>
-                  <button type="button" class="mtv-buoc" data-mtv-buoc="-1" hidden><BieuTuong ten="tru" /><span class="an-chu">{c.bot(nhan, sanPham.ten)}</span></button>
+                  <label class="an-chu" for={idO}>{c.soGoi(nhan, ten)}</label>
+                  <button type="button" class="mtv-buoc" data-mtv-buoc="-1" hidden><BieuTuong ten="tru" /><span class="an-chu">{c.bot(nhan, ten)}</span></button>
                   <select name={goi.khoa} id={idO} class="mtv-so">
                     {SO_CHON.map(so => <option value={String(so)} selected={so === (gio.get(goi.khoa) ?? 0)}>{so}</option>)}
                   </select>
-                  <button type="button" class="mtv-buoc" data-mtv-buoc="1" hidden><BieuTuong ten="cong" /><span class="an-chu">{c.them(nhan, sanPham.ten)}</span></button>
+                  <button type="button" class="mtv-buoc" data-mtv-buoc="1" hidden><BieuTuong ten="cong" /><span class="an-chu">{c.them(nhan, ten)}</span></button>
                 </span>
               )}
             </div>
@@ -216,6 +233,8 @@ const langTen = ngonNgu !== 'vi' && sanPham.ten === sanPham.tenVi ? 'vi' : undef
     }
   }
   .mtv-bao-quan { margin: 0; }
+  /* Link sang trang Các phần thịt bò: dưới tên, nhãn bảo quản và gu; vùng chạm 48px của .lien-ket. */
+  .mtv-ve-phan { margin: var(--k-2) 0 0; }
 
   /* Dòng gu: chữ phụ, dưới nhãn bảo quản (chữ hoa đỏ) — hai dòng không cùng kiểu chữ để khỏi rối mắt. */
   .mtv-gu { margin: var(--k-2) 0 0; font-size: var(--co-nho); line-height: 1.5; color: var(--chu-phu); overflow-wrap: anywhere; }

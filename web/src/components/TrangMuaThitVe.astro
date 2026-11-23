@@ -59,6 +59,7 @@ import { THUONG_HIEU, dich as dichCau, duongDanTuongUng } from '../lib/chu';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import { jsonTrongScript, lienHe } from '../lib/trang-cong-khai';
 import { sanPhamJsonLd, type LoaiNhom, type MenuMuaThit, type TrangThaiTrang } from '../lib/mua-thit-ve';
+import { tenHienThi } from '../lib/ten-phan-thit';
 import { CHU_DON, dinhDangTien, docGio, nhanGoi, rutGonMenu, tinhDon } from '../lib/don-mua-thit';
 import type { KetQuaDatHang } from '../lib/dat-hang-mua-thit';
 import { DUONG_KET_QUA_VNPAY } from '../lib/xu-ly-form';
@@ -87,7 +88,7 @@ const { ngonNgu: nn, noiDung: nd, menu, trangThai, ketQua, thamSo, duongDan, tra
 const congThu = /sandbox/.test(CONG_VNPAY);
 const lh = lienHe(nd);
 // JSON-LD Product + Offer: chỉ gói có giá đã công bố (sanPhamJsonLd — không có gì bịa).
-const jsonSanPham = sanPhamJsonLd(menu, trangThai, THUONG_HIEU.ten);
+const jsonSanPham = sanPhamJsonLd(menu, trangThai, THUONG_HIEU.ten, nn);
 const { gio, boTamHet } = docGio(thamSo, menu.sanPham);
 const don = tinhDon(gio, menu.sanPham, boTamHet);
 const gioRong = don.dong.length === 0;
@@ -336,6 +337,9 @@ const duongQuyenRiengTu = duongDanTuongUng('/quyen-rieng-tu', nn);
 const duongDieuKhoan = duongDanTuongUng(CHINH_SACH.dieuKhoan.duong, nn);
 const duongDoiTra = duongDanTuongUng(CHINH_SACH.doiTra.duong, nn);
 const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
+// Tên hiện trên trang: tên Việt (hay Hàn) kèm tên gốc trong ngoặc (lib/ten-phan-thit.ts). Menu cho script của trang (data-menu)
+// mang tên đó ở `ten`, nên dòng "Đơn của bạn" và thẻ của Trang dùng cùng tên với thẻ gói; khóa gói, giá, tenVi không đổi.
+const menuHienThi = menu.sanPham.map(sp => ({ ...sp, ten: tenHienThi(sp, nn) }));
 ---
 {/* Thẻ script cặp mở / đóng (không tự đóng "/>"): kiểm thử đọc mã nguồn tách thẻ script theo cặp. */}
 {jsonSanPham && <script type="application/ld+json" set:html={jsonTrongScript(jsonSanPham)} is:inline></script>}
@@ -429,7 +433,7 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
     </section>
 
     <form method="post" action={duongDan + '#dat-hang'} class="mtv-form" data-mtv-form data-nn={nn}
-          data-menu={JSON.stringify(rutGonMenu(menu.sanPham))} data-dang-gui={c.dangGui} data-thieu-gio={CHU_DON.donTrong[nn]}>
+          data-menu={JSON.stringify(rutGonMenu(menuHienThi))} data-dang-gui={c.dangGui} data-thieu-gio={CHU_DON.donTrong[nn]}>
       <input type="hidden" name="ma_gui" value={maGui} />
 
       <div class="muc be-kem mtv-cua-hang">
@@ -516,7 +520,7 @@ const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
             <aside class="the mtv-don" aria-labelledby="mtv-don-cua-ban" data-mtv-don>
               <h2 id="mtv-don-cua-ban">{c.donCuaBan}</h2>
               <ul class="mtv-dong-don" data-mtv-dong-don>
-                {don.dong.map(d => <li>{CHU_DON.dongDau[nn](d.sanPham.ten, nhanGoi(d.sanPham.donVi, d.goi.soGam, nn), d.soLuong)}<span data-tien>{dinhDangTien(d.thanhTien)}</span></li>)}
+                {don.dong.map(d => <li>{CHU_DON.dongDau[nn](tenHienThi(d.sanPham, nn), nhanGoi(d.sanPham.donVi, d.goi.soGam, nn), d.soLuong)}<span data-tien>{dinhDangTien(d.thanhTien)}</span></li>)}
               </ul>
               <p class="mtv-trong" data-mtv-trong hidden={!gioRong}>{CHU_DON.donTrong[nn]}. <a href="#chon-goi">{c.chonGoi}</a></p>
               {boTamHet > 0 && (<p class="mtv-ghi">{c.boTamHet}</p>)}

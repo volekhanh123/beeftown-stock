@@ -357,6 +357,13 @@ không nhận gì khác; `fbq('init')` chỉ có ID; So khớp nâng cao và S�
 số điện thoại là POST nên địa chỉ trang không bao giờ mang chúng. Trang Quyền riêng tư (ba thứ tiếng) ghi đúng Meta nhận
 gì — đổi sự kiện thì sửa cả ba trang đó.
 
+**Tải sau trang** (rà soát SEO 23/11/2026: `fbevents.js` là thứ nặng nhất trang — khoảng 105 KB truyền tải, 875 KB sau giải nén). Mã gốc vẫn
+chạy ngay ở `<head>` và `fbq` có ngay, nên `init`, `PageView` và mọi sự kiện sau đó xếp hàng như cũ; chỉ việc chèn thẻ
+`<script>` của `fbevents.js` bị hoãn tới sau sự kiện `load` của cửa sổ, rồi `requestIdleCallback` (hạn 2,5 giây; trình duyệt không có
+thì chờ 200 ms). Tải xong, thư viện tự chạy lại cả hàng đợi theo đúng thứ tự — không sự kiện nào mất. Khác bản Meta đưa đúng một
+dòng (`khoiMaPixel()` trong `meta-pixel.ts`; kiểm thử so từng ký tự). Đổi lại, khách rời trang **trước** sự kiện `load` thì lượt đó không
+có `PageView`. Thẻ `<noscript><img>` giữ nguyên.
+
 | Sự kiện | Khi nào | Ở đâu trong mã |
 |---|---|---|
 | `PageView` | mở trang | mã gốc |

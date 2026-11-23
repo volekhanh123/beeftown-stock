@@ -7,7 +7,8 @@
  *     cũ), nên nó có mặt ở MỌI trang công khai — chỉ gọn lại so với một khối riêng.
  *  2. Dải đen, nền phẳng: logo chính trắng của bộ 21/10/2026 (logo-ngang-trang.svg — đầu
  *     bò khoét lộ nền đen; guideline trang 4 vẽ bản trắng trên đỏ), các mục điều hướng,
- *     địa chỉ + câu chỉ đường. Một bề mặt một dấu thương hiệu: không tem, không hoa văn
+ *     địa chỉ + câu chỉ đường. Cột Thông tin: Các phần thịt bò (trang trụ cột cho người tìm tên phần thịt — link từ
+ *     chân trang để mọi trang đều dẫn tới nó), Tuyển dụng, Xóa dữ liệu. Một bề mặt một dấu thương hiệu: không tem, không hoa văn
  *     chữ BEEFTOWN chìm sau chữ. Điện thoại: hai nhóm link đứng cạnh nhau thành 2 cột.
  *     Dưới cùng dải đen: nhóm CHÍNH SÁCH rộng hết hàng — link tới tám trang chính sách (lib/chinh-sach.ts) và
  *     Quyền riêng tư. Nghị định 248/2026, Điều 17 khoản 1 điểm a: nội dung chính sách phải có link ở màn hình
@@ -29,6 +30,7 @@ import { THUONG_HIEU, PHAP_NHAN, chu, dich, duongDanTuongUng } from '../lib/chu'
 import { cumDiaChi, dieuHuong, diaChi, lienHe } from '../lib/trang-cong-khai';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import { namVn } from '../lib/gio-vn';
+import { cauGioMoCua, docGioMoCuaTrongLuot } from '../lib/gio-mo-cua';
 import { CHINH_SACH, THU_TU_CHINH_SACH, XAC_NHAN_CO_QUAN } from '../lib/chinh-sach';
 import { CHO_TRONG } from '../lib/cho-trong';
 import BieuTuong from './BieuTuong.astro';
@@ -39,6 +41,8 @@ const { ngonNgu, noiDung: nd, duongDan = '' } = Astro.props;
 const laTrangTuyenDung = duongDan.replace(/\/$/, '') === duongDanTuongUng('/tuyen-dung', ngonNgu);
 const t = chu(ngonNgu);
 const lh = lienHe(nd);
+// Giờ mở cửa: chỉ khi đã công bố — cùng khung giờ, cùng hai công tắc, cùng lần đọc với JSON-LD của khung trang (gio-mo-cua.ts).
+const cauGio = cauGioMoCua(await docGioMoCuaTrongLuot(Astro.request, nd), ngonNgu);
 // Cùng danh sách với đầu trang: năm mục khi trang Mua thịt về mở, bốn mục khi chưa.
 const muc = dieuHuong(ngonNgu, nd);
 const mangXaHoi = [
@@ -88,6 +92,7 @@ const c = dich(ngonNgu, {
       <nav class="ct-cot" aria-labelledby="ct-thong-tin">
         <h2 class="ct-tieu-de" id="ct-thong-tin">{t.thongTin}</h2>
         <ul>
+          <li><a href={duongDanTuongUng('/phan-thit-bo', ngonNgu)}>{t.phanThitBo}</a></li>
           <li><a href={duongDanTuongUng('/tuyen-dung', ngonNgu)}>{t.tuyenDung}</a></li>
           <li><a href={duongDanTuongUng('/xoa-du-lieu', ngonNgu)}>{t.xoaDuLieu}</a></li>
         </ul>
@@ -98,6 +103,7 @@ const c = dich(ngonNgu, {
         <address>
           <p lang="vi">{cumDiaChi(diaChi(nd)).map(cum => <><span class:list={{ lien: cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</p>
           <p class="ct-loi-len"><BieuTuong ten="thang-may" /><span>{t.loiLen}</span></p>
+          {cauGio && <p class="ct-gio">{cauGio}</p>}
           {/* Hotline của nhà hàng (khóa hotline của /noi-bo — KHÔNG phải số pháp nhân ở dòng dưới cùng): chỉ khi đã công bố,
               là link tel: bấm được; số in đúng như đã công bố. Cùng link với trang Đến Beeftown và thanh hành động. */}
           {lh.goi && lh.hotline && <p class="ct-goi"><a href={lh.goi}><BieuTuong ten="dien-thoai" /><span>{lh.hotline}</span></a></p>}
@@ -183,6 +189,7 @@ const c = dich(ngonNgu, {
   address { font-style: normal; }
   address p { margin: 0 0 var(--k-3); max-width: 36ch; }
   .ct-goi { margin: 0; }
+  .ct-gio { font-size: 15px; }
   .ct-goi a { gap: var(--k-2); font-weight: 600; }
   .ct-goi :global(svg) { width: 24px; height: 24px; flex: none; }
   .ct-loi-len { display: flex; gap: var(--k-2); align-items: flex-start; font-size: 15px; }
