@@ -12,6 +12,8 @@
  *      "khai trương" trong mô tả; dòng ngày ("Đón bạn từ" / "Mở cửa từ") chỉ khi chủ công bố ngay_khai_truong (giờ Việt
  *      Nam: 23:50 và 00:10, ngày không có thật 31/02).
  *   4. JSON-LD giờ mở cửa: chỉ khi cả hai công tắc đã công bố; chưa công bố thì không gọi database lần hai.
+ *   4c. Giờ mở cửa HIỆN TRÊN TRANG (chân trang, khối "Địa chỉ và lối lên" ở trang chủ và Đến Beeftown): cùng khung giờ, cùng hai
+ *      công tắc với JSON-LD, dựng từ dữ liệu (không giờ viết tay, không giờ mặc định), một lần đọc database mỗi lượt xem.
  *   4b. JSON-LD `geo` (tọa độ chấm ghim đã xác minh của Google Business Profile): cùng cổng với `hasMap` — chỉ khi đã công bố
  *      link Google Maps.
  *   5. JSON-LD Product + Offer của trang Mua thịt về: chỉ gói có giá đã công bố, không dữ liệu bịa; tên Product là tên đang hiện
@@ -42,7 +44,7 @@ const { tinhTrangKhaiTruong, dongTrangThai, lienHe, jsonTrongScript, toaDoCoCauT
 const { docNoiDung } = await nap('noi-dung.ts');
 const { homNayVn } = await nap('gio-vn.ts');
 const { timChuoiCam } = await nap('chuoi-cam.js');
-const { khungGioCongBo, gioMoCuaJsonLd, docGioMoCua, docGioMoCuaChoTrang, xoaBoNhoGioMoCua, NHO_GIO_MO_CUA_MS } = await nap('gio-mo-cua.ts');
+const { khungGioCongBo, gioMoCuaJsonLd, docGioMoCua, docGioMoCuaChoTrang, docGioMoCuaTrongLuot, cauGioMoCua, xoaBoNhoGioMoCua, NHO_GIO_MO_CUA_MS } = await nap('gio-mo-cua.ts');
 const { nhomMuaThitVe, chiaNhom, sanPhamJsonLd, trangThaiMuaThit } = await nap('mua-thit-ve.ts');
 const { datHsts, HSTS } = await nap('header-https.ts');
 const { PHUONG_QUAN, LUAT_CHU_KHACH_DOC } = await import(pathToFileURL(join(WEB, 'kiem-tra', 'mau-dia-diem.mjs')).href);
@@ -262,8 +264,8 @@ await nhom('4 · JSON-LD GIỜ MỞ CỬA: CHỈ KHI ĐÃ CÔNG BỐ', async () 
   } finally { console.error = loiGoc; }
 
   const layout = doc(SRC, 'layouts', 'Trang.astro');
-  ok('Trang.astro: giờ vào JSON-LD qua docGioMoCuaChoTrang(nd) + gioMoCuaJsonLd, không trên trang không lập chỉ mục (404)',
-     layout.includes('gioMoCuaJsonLd(khongLapChiMuc ? [] : await docGioMoCuaChoTrang(nd))') && layout.includes('duLieuCoCauTruc.openingHoursSpecification = gioJson;'));
+  ok('Trang.astro: giờ vào JSON-LD qua docGioMoCuaTrongLuot(Astro.request, nd) (bọc docGioMoCuaChoTrang) + gioMoCuaJsonLd, không trên trang không lập chỉ mục (404)',
+     layout.includes('gioMoCuaJsonLd(khongLapChiMuc ? [] : await docGioMoCuaTrongLuot(Astro.request, nd))') && layout.includes('duLieuCoCauTruc.openingHoursSpecification = gioJson;'));
   ok('Trang.astro không khai priceRange, aggregateRating, review (vẫn chưa có dữ kiện)', !/duLieuCoCauTruc\.(priceRange|aggregateRating|review)/.test(layout));
 });
 
@@ -285,6 +287,77 @@ await nhom('4b · JSON-LD `geo`: TỌA ĐỘ CHỈ KHI ĐÃ CÔNG BỐ LINK GOOG
   ok('Trang.astro: geo đứng sau hasMap, lấy từ toaDoCoCauTruc(nd), chỉ gắn khi khác null; không viết tọa độ thẳng trong layout',
      /if \(lh\.maps\) duLieuCoCauTruc\.hasMap = lh\.maps;\r?\n\/\/ Tọa độ: [^\r\n]*\r?\nconst geo = toaDoCoCauTruc\(nd\);\r?\nif \(geo\) duLieuCoCauTruc\.geo = geo;/.test(layout)
        && !/10\.7718087|106\.7039074/.test(layout.replace(/\/\*[\s\S]*?\*\//g, '')));
+});
+
+// ===========================================================================
+await nhom('4c · GIỜ MỞ CỬA HIỆN TRÊN TRANG: CÙNG DỮ LIỆU, CÙNG HAI CÔNG TẮC VỚI JSON-LD, MỘT LẦN ĐỌC MỖI LƯỢT XEM', async () => {
+  const DONG = { ma: 'q1', gio_da_chot: true, trua_bat_dau: '11:00:00', trua_ket_thuc: '14:00:00', toi_bat_dau: '17:00:00', toi_ket_thuc: '23:00:00' };
+  const BAT = { gio_phuc_vu_da_chot: true };
+  const khung = khungGioCongBo(BAT, DONG);
+  const MONG = { vi: 'Mở cửa mỗi ngày: 11:00–14:00 và 17:00–23:00', en: 'Open every day: 11:00–14:00 and 17:00–23:00', ko: '매일 영업: 11:00–14:00, 17:00–23:00' };
+  for (const nn of NGON_NGU) ok(`[${nn}] cauGioMoCua dựng từ khung đã công bố: «${MONG[nn]}»`, cauGioMoCua(khung, nn) === MONG[nn], cauGioMoCua(khung, nn));
+  ok('Câu dựng từ DỮ LIỆU, không từ chữ viết sẵn: khung khác → giờ khác ("09:30–12:00"; một khung không có "và")',
+     cauGioMoCua([{ mo: '09:30', dong: '12:00' }], 'vi') === 'Mở cửa mỗi ngày: 09:30–12:00' && cauGioMoCua([{ mo: '09:30', dong: '12:00' }], 'en') === 'Open every day: 09:30–12:00');
+  ok('Không khung → null (không in gì, không giờ mặc định)', NGON_NGU.every(nn => cauGioMoCua([], nn) === null));
+  ok('Câu giờ không chữ cấm, không tên phường, không luật địa điểm nào bị phạm',
+     NGON_NGU.every(nn => timChuoiCam(MONG[nn]).length === 0 && LUAT_CHU_KHACH_DOC.every(l => !l.tim(MONG[nn]))));
+
+  // Hai công tắc: câu chỉ ra khi CẢ HAI bật — đi qua đúng khungGioCongBo của JSON-LD.
+  const cau = (them, dong) => cauGioMoCua(khungGioCongBo(them, dong), 'vi');
+  ok('Cả hai bật → có câu', cau(BAT, DONG) === MONG.vi);
+  ok('Công tắc nội dung tắt (null, false) dù chi nhánh đã chốt → KHÔNG câu', [null, false, undefined].every(v => cau({ gio_phuc_vu_da_chot: v }, DONG) === null));
+  ok('Chi nhánh chưa chốt (gio_da_chot false / thiếu / không có dòng) dù công tắc nội dung bật → KHÔNG câu, kể cả khi dòng còn giờ mặc định 17:00–22:00',
+     [{ ...DONG, gio_da_chot: false, toi_ket_thuc: '22:00:00' }, { ...DONG, gio_da_chot: undefined }, null].every(d => cau(BAT, d) === null));
+  ok('Giờ hỏng (25:00, mở ≥ đóng) → KHÔNG câu, như JSON-LD', cau(BAT, { ...DONG, toi_bat_dau: '25:00' }) === null && cau(BAT, { ...DONG, toi_ket_thuc: '00:30:00' }) === null);
+
+  // Một lượt xem = một lần đọc: khung trang, chân trang, khối địa chỉ cùng hỏi docGioMoCuaTrongLuot với cùng một Request.
+  const gia = kq => { const s = { daGoi: 0 }; return { s, client: { rpc() { s.daGoi++; return kq(); } } }; };
+  const ghiLoi = []; const loiGoc = console.error; console.error = (...a) => ghiLoi.push(a.join(' '));
+  try {
+    xoaBoNhoGioMoCua();
+    const luot = new Request('https://beeftown.vn/den-beeftown');
+    const g = gia(() => Promise.resolve({ data: [DONG], error: null }));
+    const [a, b, c] = await Promise.all([1, 2, 3].map(() => docGioMoCuaTrongLuot(luot, BAT, g.client, 'q1', 5_000_000)));
+    ok('Ba nơi hỏi trong một lượt xem → đúng một lời gọi database, cùng một kết quả', g.s.daGoi === 1 && a === b && b === c && a.length === 2, `${g.s.daGoi} lời gọi`);
+    ok('Lượt xem khác (Request khác) trong 60 giây → dùng bộ nhớ, vẫn không thêm lời gọi', (await docGioMoCuaTrongLuot(new Request('https://beeftown.vn/'), BAT, g.client, 'q1', 5_000_000 + 1)).length === 2 && g.s.daGoi === 1);
+
+    // Lỗi database: không nhớ (lượt sau thử lại) NHƯNG trong một lượt xem chỉ thử một lần — không ba lần chờ 2 giây.
+    xoaBoNhoGioMoCua(); ghiLoi.length = 0;
+    const hong = gia(() => Promise.resolve({ data: null, error: { code: '500', message: 'x' } }));
+    const luotHong = new Request('https://beeftown.vn/');
+    const kq = await Promise.all([1, 2, 3].map(() => docGioMoCuaTrongLuot(luotHong, BAT, hong.client, 'q1', 6_000_000)));
+    ok('Database lỗi: trong một lượt xem chỉ MỘT lời gọi và một dòng log (không ba), cả ba nơi đều không giờ', hong.s.daGoi === 1 && ghiLoi.length === 1 && kq.every(x => x.length === 0), `${hong.s.daGoi} lời gọi, ${ghiLoi.length} log`);
+    await docGioMoCuaTrongLuot(new Request('https://beeftown.vn/'), BAT, hong.client, 'q1', 6_000_001);
+    ok('Lỗi không được nhớ: lượt xem sau thử lại', hong.s.daGoi === 2, `${hong.s.daGoi} lời gọi`);
+
+    // Công tắc tắt: không gọi database, không giờ.
+    xoaBoNhoGioMoCua();
+    const tat = gia(() => Promise.resolve({ data: [DONG], error: null }));
+    const luotTat = new Request('https://beeftown.vn/');
+    const rong = await Promise.all([1, 2].map(() => docGioMoCuaTrongLuot(luotTat, { gio_phuc_vu_da_chot: false }, tat.client, 'q1', 7_000_000)));
+    ok('Công tắc nội dung tắt → không gọi database, không giờ ở cả ba nơi', tat.s.daGoi === 0 && rong.every(x => x.length === 0));
+  } finally { console.error = loiGoc; xoaBoNhoGioMoCua(); }
+
+  // Nối vào trang: chân trang, khối "Địa chỉ và lối lên" và JSON-LD dùng CÙNG hàm, không giờ viết tay.
+  const layout = doc(SRC, 'layouts', 'Trang.astro');
+  ok('Trang.astro: JSON-LD lấy giờ qua docGioMoCuaTrongLuot(Astro.request, nd) (không còn docGioMoCuaChoTrang gọi riêng)',
+     layout.includes('gioMoCuaJsonLd(khongLapChiMuc ? [] : await docGioMoCuaTrongLuot(Astro.request, nd))') && !/docGioMoCuaChoTrang/.test(layout.replace(/\/\*[\s\S]*?\*\//g, '')));
+  const chan = doc(SRC, 'components', 'ChanTrang.astro');
+  const iGio = chan.indexOf('{cauGio && <p class="ct-gio">');
+  ok('ChanTrang.astro: giờ qua cauGioMoCua(await docGioMoCuaTrongLuot(Astro.request, nd), ngonNgu), in trong khối địa chỉ chỉ khi có câu',
+     chan.includes('const cauGio = cauGioMoCua(await docGioMoCuaTrongLuot(Astro.request, nd), ngonNgu);') && chan.includes('{cauGio && <p class="ct-gio">{cauGio}</p>}')
+       && iGio > chan.indexOf('<address>') && iGio < chan.indexOf('</address>'));
+  const lt3 = doc(SRC, 'components', 'LenTang3.astro');
+  ok('LenTang3.astro: giờ chỉ ở bản đầy đủ (gon → null), qua cùng hàm, in chỉ khi có câu',
+     lt3.includes('const cauGio = gon ? null : cauGioMoCua(await docGioMoCuaTrongLuot(Astro.request, nd), ngonNgu);') && lt3.includes('{cauGio && <p class="lt3-gio">{cauGio}</p>}'));
+  const denBeeftown = doc(SRC, 'components', 'TrangDenBeeftown.astro');
+  ok('Trang Đến Beeftown (cả /en/visit, /ko/visit dùng chung component): khối "Địa chỉ và lối lên" là LenTang3 bản đầy đủ (không gon)',
+     /<LenTang3 ngonNgu=\{ngonNgu\} noiDung=\{nd\} khongLinkDuongDen anHieu tieuDe=\{c\.tieuDeDiaChi\} \/>/.test(denBeeftown)
+       && ['den-beeftown.astro', 'en/visit.astro', 'ko/visit.astro'].every(f => doc(SRC, 'pages', f).includes('<TrangDenBeeftown ')));
+  const GIO_TAY = /\b(?:0?\d|1\d|2[0-3]):[0-5]\d\b/;
+  const MA_NGUON = ['ChanTrang.astro', 'LenTang3.astro'].map(f => doc(SRC, 'components', f).replace(/<style[\s\S]*?<\/style>/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, ''));
+  ok('Không giờ nào viết tay trong chân trang và khối địa chỉ (không "11:00", "14:00", "17:00", "22:00", "23:00")', MA_NGUON.every(m => !GIO_TAY.test(m)),
+     MA_NGUON.map(m => m.match(GIO_TAY)?.[0]).filter(Boolean).join(', '));
 });
 
 // ===========================================================================

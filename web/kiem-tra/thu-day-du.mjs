@@ -842,6 +842,59 @@ try {
     return { soO: o.length, coNgay: o.some(e => e.type === 'date'), oSai, nhanSai };
   };
 
+  // =========================================================================
+  // Giờ mở cửa (23/11/2026): JSON-LD khai giờ thì khách phải đọc được giờ đó — chân trang và khối "Địa chỉ và lối lên" in cùng
+  // khung giờ, cùng hai công tắc. Bộ nhớ 60 giây của gio-mo-cua.ts nằm trong server dev: kịch bản có giờ chạy SAU các kịch bản
+  // không có giờ, và "chi nhánh chưa chốt" (cần bỏ bộ nhớ) kiểm ở crm/test/test-cong-khai-seo.mjs nhóm 4c.
+  await nhom('7b · GIỜ MỞ CỬA HIỆN TRÊN TRANG: CHỈ KHI CẢ HAI CÔNG TẮC BẬT, CÙNG GIỜ VỚI JSON-LD, KHÔNG THÊM LỜI GỌI DATABASE', async () => {
+    const motDong = s => (s ?? '').replace(/\s+/g, ' ').trim();
+    const docGio = () => page.evaluate(() => {
+      let ld = null;
+      try { ld = JSON.parse(document.querySelector('script[type="application/ld+json"]')?.textContent ?? 'null'); } catch { /* không có */ }
+      return {
+        chan: [...document.querySelectorAll('footer .ct-gio')].map(e => e.textContent.trim()),
+        khoi: [...document.querySelectorAll('main .lt3 .lt3-gio')].map(e => e.textContent.trim()),
+        ld: (ld?.openingHoursSpecification ?? []).map(x => `${x.opens}–${x.closes}`),
+      };
+    });
+    const TRANG_GIO = nn => ['/', '/den-beeftown', '/dat-ban'].map(d => duongDanTuongUng(d, nn));
+
+    // Công tắc nội dung tắt (day-du: null; gio-tat: null dù chi nhánh đã chốt): không giờ ở đâu, không gọi database lần hai.
+    for (const kb of ['day-du', 'gio-tat']) {
+      mayGia.datKichBan(kb);
+      const truoc = mayGia.dem().chi_nhanh_cong_khai ?? 0;
+      const sai = [];
+      for (const nn of NGON_NGU) for (const d of TRANG_GIO(nn)) {
+        await page.goto(goc + d, { waitUntil: 'load' });
+        const g = await docGio();
+        if (g.chan.length || g.khoi.length || g.ld.length) sai.push(`${d}: ${JSON.stringify(g)}`);
+      }
+      ok(`${kb}: cổng giờ tắt → chân trang, khối địa chỉ, JSON-LD không có giờ nào`, sai.length === 0, sai.slice(0, 2).join(' | '));
+      ok(`${kb}: cổng giờ tắt → không một lời gọi chi_nhanh_cong_khai`, (mayGia.dem().chi_nhanh_cong_khai ?? 0) === truoc, `${(mayGia.dem().chi_nhanh_cong_khai ?? 0) - truoc} lời gọi`);
+    }
+
+    // Cả hai công tắc bật: giờ do database trả (11:00–14:00, 17:00–23:00), in đúng chữ của từng thứ tiếng.
+    mayGia.datKichBan('gio-cong-bo');
+    const truoc = mayGia.dem().chi_nhanh_cong_khai ?? 0;
+    const MONG = { vi: 'Mở cửa mỗi ngày: 11:00–14:00 và 17:00–23:00', en: 'Open every day: 11:00–14:00 and 17:00–23:00', ko: '매일 영업: 11:00–14:00, 17:00–23:00' };
+    let soTrang = 0;
+    for (const nn of NGON_NGU) {
+      for (const d of TRANG_GIO(nn)) {
+        await page.goto(goc + d, { waitUntil: 'load' });
+        soTrang++;
+        const g = await docGio();
+        const coKhoi = !d.includes('dat-ban') && !d.includes('book');   // trang đặt bàn chỉ có bản gọn (không in giờ ở khối)
+        ok(`${d}: chân trang có đúng một dòng "${MONG[nn]}"`, JSON.stringify(g.chan.map(motDong)) === JSON.stringify([MONG[nn]]), JSON.stringify(g.chan));
+        ok(`${d}: ${coKhoi ? `khối "Địa chỉ và lối lên" có đúng một dòng "${MONG[nn]}"` : 'khối địa chỉ bản gọn không in giờ'}`,
+           JSON.stringify(g.khoi.map(motDong)) === JSON.stringify(coKhoi ? [MONG[nn]] : []), JSON.stringify(g.khoi));
+        ok(`${d}: JSON-LD khai đúng hai khung đang in trên trang (11:00–14:00, 17:00–23:00)`, JSON.stringify(g.ld) === JSON.stringify(['11:00–14:00', '17:00–23:00']), JSON.stringify(g.ld));
+      }
+    }
+    // Chân trang, khối địa chỉ và JSON-LD cùng một lượt xem → một lần đọc; bộ nhớ 60 giây gánh phần còn lại.
+    const goi = (mayGia.dem().chi_nhanh_cong_khai ?? 0) - truoc;
+    ok(`Giờ in ở chân trang, khối địa chỉ và JSON-LD cùng một lần đọc mỗi lượt xem: ${soTrang} lượt xem chỉ ${goi} lời gọi chi_nhanh_cong_khai (bộ nhớ 60 giây)`, goi >= 1 && goi <= 2, `${goi} lời gọi`);
+  });
+
   await nhom('8 · THÀNH PHẦN CỦA FORM Ở 390 VÀ 1440 PX: Ô NHẬP, Ô CHỌN GIỜ, THẺ, CÂU LỖI', async () => {
     for (const rong of [390, 1440]) {
       await page.setViewportSize({ width: rong, height: 900 });

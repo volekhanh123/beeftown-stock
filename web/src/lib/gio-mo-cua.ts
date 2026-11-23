@@ -18,9 +18,15 @@
  * liệu có cấu trúc không hại gì) để mỗi lượt xem trang không tốn thêm một lời gọi database; lỗi không được nhớ, và
  * công tắc gio_phuc_vu_da_chot tắt là hết giờ NGAY (nó nằm trong nd, đọc mỗi lượt, không qua bộ nhớ).
  * Kiểm thử: crm/test/test-cong-khai-seo.mjs.
+ *
+ * HIỆN GIỜ TRÊN TRANG (23/11/2026): JSON-LD khai giờ thì khách cũng phải đọc được giờ đó (hướng dẫn dữ liệu có cấu trúc của
+ * Google: không đánh dấu thứ người đọc không thấy). Chân trang (ChanTrang.astro) và khối "Địa chỉ và lối lên" (LenTang3.astro,
+ * trang chủ và trang Đến Beeftown) in cauGioMoCua(khung) — CÙNG khung giờ, CÙNG hai công tắc với JSON-LD, không giờ nào viết
+ * tay, không giờ mặc định. Cả ba nơi lấy kết quả qua docGioMoCuaTrongLuot: một lượt xem trang một lần đọc (không thêm lời
+ * gọi database; lỗi cũng chỉ thử một lần mỗi lượt, không ba lần).
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { taoClient, maChiNhanh, type NoiDung } from './noi-dung.ts';
+import { taoClient, maChiNhanh, type NgonNgu, type NoiDung } from './noi-dung.ts';
 
 /** Một khung giờ trong ngày, "HH:MM" 24 giờ. */
 export interface KhungGio { mo: string; dong: string }
@@ -120,6 +126,39 @@ async function layGioMoCua(
   } finally {
     clearTimeout(hen);
   }
+}
+
+/**
+ * Một lượt xem trang = một lần đọc: khung trang (JSON-LD), chân trang và khối "Địa chỉ và lối lên" cùng hỏi, cùng một Promise.
+ * `luot` là Astro.request (một đối tượng cho cả lượt dựng trang). Không bao giờ ném lỗi (như docGioMoCuaChoTrang).
+ */
+const theoLuot = new WeakMap<object, Promise<KhungGio[]>>();
+export function docGioMoCuaTrongLuot(
+  luot: object,
+  nd: Pick<NoiDung, 'gio_phuc_vu_da_chot'>,
+  client: Pick<SupabaseClient, 'rpc'> | null = taoClient(),
+  ma: string = maChiNhanh(),
+  bayGio: number = Date.now(),
+): Promise<KhungGio[]> {
+  let p = theoLuot.get(luot);
+  if (!p) { p = docGioMoCuaChoTrang(nd, client, ma, bayGio); theoLuot.set(luot, p); }
+  return p;
+}
+
+const NHAN_GIO: Record<NgonNgu, { nhan: string; noi: string }> = {
+  vi: { nhan: 'Mở cửa mỗi ngày', noi: ' và ' },
+  en: { nhan: 'Open every day', noi: ' and ' },
+  ko: { nhan: '매일 영업', noi: ', ' },
+};
+
+/**
+ * Câu giờ mở cửa cho khách đọc, dựng từ khung đã công bố: "Mở cửa mỗi ngày: 11:00–14:00 và 17:00–23:00". Không khung → null
+ * (không in gì, không giờ mặc định). "Mỗi ngày" là điều JSON-LD cũng khai (cả bảy ngày — xem GIẢ ĐỊNH ở đầu file).
+ */
+export function cauGioMoCua(khung: readonly KhungGio[], ngonNgu: NgonNgu): string | null {
+  if (khung.length === 0) return null;
+  const t = NHAN_GIO[ngonNgu];
+  return `${t.nhan}: ${khung.map(k => `${k.mo}–${k.dong}`).join(t.noi)}`;
 }
 
 /** Thời gian nhớ kết quả của docGioMoCuaChoTrang (ms). */

@@ -49,7 +49,7 @@ import '../styles/chung.css';
 import '../styles/cong-khai.css';
 import { THUONG_HIEU, NGON_NGU, TEN_NGON_NGU, chu, duongDanTuongUng } from '../lib/chu';
 import { diaChiCoCauTruc, jsonTrongScript, lienHe, toaDoCoCauTruc } from '../lib/trang-cong-khai';
-import { docGioMoCuaChoTrang, gioMoCuaJsonLd } from '../lib/gio-mo-cua';
+import { docGioMoCuaTrongLuot, gioMoCuaJsonLd } from '../lib/gio-mo-cua';
 import { khoiMaPixel, tenTrangPixel } from '../lib/meta-pixel';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import DauTrang from '../components/DauTrang.astro';
@@ -128,7 +128,8 @@ const geo = toaDoCoCauTruc(nd);
 if (geo) duLieuCoCauTruc.geo = geo;
 // Giờ mở cửa: chỉ khi đã công bố (gio-mo-cua.ts: chưa công bố thì không đọc thêm database, không có trường này;
 // đã công bố thì nhớ 60 giây trong Worker, không thêm một lời gọi database mỗi lượt xem trang).
-const gioJson = gioMoCuaJsonLd(khongLapChiMuc ? [] : await docGioMoCuaChoTrang(nd));
+// Cùng kết quả được chân trang và khối "Địa chỉ và lối lên" in thành chữ (cauGioMoCua): một lượt xem, một lần đọc.
+const gioJson = gioMoCuaJsonLd(khongLapChiMuc ? [] : await docGioMoCuaTrongLuot(Astro.request, nd));
 if (gioJson.length) duLieuCoCauTruc.openingHoursSpecification = gioJson;
 // Trang thực đơn chỉ được khai khi thực đơn đang hiện.
 if (nd.hien_thuc_don === true && goc) duLieuCoCauTruc.hasMenu = goc + duongDanTuongUng('/thuc-don', ngonNgu);
