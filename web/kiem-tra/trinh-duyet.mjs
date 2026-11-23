@@ -2472,9 +2472,17 @@ try {
           if (rong < 1080) {
             // Nút danh mục và nút ngôn ngữ cùng name="dau-trang": mở cái này thì cái kia đóng (cả khi tắt JavaScript).
             const menu = page.locator('details.menu-gon');
+            const hopTrenThanh = () => page.evaluate(() => ['.dt-ngon-ngu > summary', '.dt-hoi-ban', '.menu-gon > summary']
+              .map(c => { const k = document.querySelector(`header ${c}`).getBoundingClientRect(); return [Math.round(k.left), Math.round(k.width)]; }));
+            const truocMo = await hopTrenThanh();
             await menu.locator('summary').click();
             tot.push(ok(`${nhan}: đang mở danh sách mà bấm Danh mục → danh sách đóng, danh mục mở (chỉ một bảng một lúc)`,
               await mo() === false && await menu.evaluate(d => d.open)));
+            // Lỗi thật 23/11/2026: nút danh mục đổi bề rộng ("Danh mục" ↔ "Đóng") nên nút ngôn ngữ và Đặt bàn xô đi 37px
+            // ngay lúc danh mục đóng — đóng lúc nhấn chuột xuống (mất tiêu điểm), nên cú bấm nhả ra ngoài nút và mất.
+            const sauMo = await hopTrenThanh();
+            tot.push(ok(`${nhan}: mở danh mục không làm nút ngôn ngữ, Đặt bàn, Danh mục xô lệch hay đổi bề rộng`,
+              JSON.stringify(sauMo) === JSON.stringify(truocMo), `trước ${JSON.stringify(truocMo)} · sau ${JSON.stringify(sauMo)}`));
             await nut.click();
             tot.push(ok(`${nhan}: đang mở danh mục mà bấm nút ngôn ngữ → danh mục đóng, danh sách mở`,
               await mo() === true && !(await menu.evaluate(d => d.open))));
@@ -2483,8 +2491,9 @@ try {
             await page.keyboard.press('Escape');
             tot.push(ok(`${nhan}: Esc → đóng, tiêu điểm về nút ngôn ngữ`, await mo() === false && await nut.evaluate(s => document.activeElement === s)));
             await nut.click();
-            await page.locator('main h1').click();
-            tot.push(ok(`${nhan}: mở rồi bấm ra ngoài (câu chính của trang) → đóng`, await mo() === false));
+            // Góc dưới bên trái màn hình: chắc chắn ngoài danh sách (ở 768px danh sách che giữa câu tiêu đề).
+            await page.mouse.click(8, page.viewportSize().height - 8);
+            tot.push(ok(`${nhan}: mở rồi bấm ra ngoài (góc dưới trang) → đóng`, await mo() === false));
             // Bàn phím: Enter mở, Tab đi qua hai link, Tab ra khỏi link cuối thì đóng (bảng không che phần tử vừa nhận tiêu điểm).
             await nut.focus();
             await page.keyboard.press('Enter');

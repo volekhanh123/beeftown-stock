@@ -103,8 +103,8 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
         <summary>
           <BieuTuong ten="menu" class="mg-mo" />
           <BieuTuong ten="dong" class="mg-dong" />
-          <span class="mg-mo">{t.moMenu}</span>
-          <span class="mg-dong">{t.dong}</span>
+          {/* Hai nhãn chồng trong cùng một ô lưới: nút rộng bằng nhãn dài hơn ở cả hai trạng thái. */}
+          <span class="mg-chu"><span class="mg-mo">{t.moMenu}</span><span class="mg-dong">{t.dong}</span></span>
         </summary>
         <div class="mg-bang be-kem">
           <nav aria-label={t.dieuHuongChinh}>
@@ -322,9 +322,17 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
   .menu-gon summary::-webkit-details-marker { display: none; }
   .menu-gon summary span { white-space: nowrap; }
   .menu-gon summary :global(svg) { width: 24px; height: 24px; flex: none; }
-  .menu-gon summary :global(.mg-dong), .menu-gon[open] summary :global(.mg-mo) { display: none; }
+  .menu-gon summary :global(svg.mg-dong), .menu-gon[open] summary :global(svg.mg-mo) { display: none; }
   .menu-gon[open] summary :global(svg.mg-dong) { display: block; }
-  .menu-gon[open] summary :global(span.mg-dong) { display: inline; }
+  /* Nhãn "Danh mục" và "Đóng" nằm chồng trong cùng một ô lưới, nhãn không dùng thì ẩn bằng visibility (vẫn giữ
+     chỗ, không vào tên đọc được): nút KHÔNG đổi bề rộng khi mở / đóng. Đổi bề rộng thì mọi thứ bên trái nó trên
+     thanh (nút ngôn ngữ, Đặt bàn) xô sang một khúc ngay lúc danh mục đóng — mà danh mục đóng ngay khi nhấn chuột
+     xuống nút khác (mất tiêu điểm), nên lúc nhả chuột con trỏ đã ở ngoài nút vừa nhấn: cú bấm mất (lỗi thật
+     23/11/2026, trinh-duyet.mjs nhóm 13). */
+  .menu-gon summary .mg-chu { display: inline-grid; }
+  .menu-gon summary .mg-chu > span { grid-area: 1 / 1; }
+  .menu-gon summary .mg-chu > .mg-dong, .menu-gon[open] summary .mg-chu > .mg-mo { visibility: hidden; }
+  .menu-gon[open] summary .mg-chu > .mg-dong { visibility: visible; }
   .menu-gon summary:active, .menu-gon[open] summary { background: var(--nut-phu-nen-di); color: var(--nut-phu-chu-di); border-color: var(--nut-phu-chu-di); }
   /* Di chuột: chỉ máy có chuột — trên màn cảm ứng, chạm đóng xong nút phải về lại màu lúc đóng. */
   @media (hover: hover) {
