@@ -50,7 +50,7 @@ export interface TrangChinhSach {
  * Ngày cập nhật in ở cuối mỗi trang. Đổi chữ trang nào (kể cả khi điền chỗ trống) thì đổi ngày này —
  * Điều khoản hứa: "Beeftown ghi ngày cập nhật ở cuối trang".
  */
-export const NGAY_CAP_NHAT = '16/11/2026';
+export const NGAY_CAP_NHAT = '23/11/2026';
 export const CAU_CAP_NHAT: Cau = {
   vi: `Cập nhật ngày ${NGAY_CAP_NHAT}.`,
   en: `Last updated ${NGAY_CAP_NHAT}.`,
