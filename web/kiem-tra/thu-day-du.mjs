@@ -2834,9 +2834,10 @@ try {
           && JSON.stringify(Object.keys(d.thamSo.than ?? {}).sort()) === JSON.stringify(['chi_nhanh', 'cuoc', 'hanh_dong', 'sau'])
           && d.thamSo.than.cuoc === goiTroLy[0]?.thamSo.than?.cuoc), JSON.stringify(goiXem.slice(0, 2).map(d => d.thamSo.than)));
       const hai = goiTroLy.slice(-2);
-      ok('Gửi lại dùng đúng mã tin cũ; lời gọi text/plain, không cookie, đủ năm ô', hai.length === 2 && hai[0].thamSo.than?.ma_tin === hai[1].thamSo.than?.ma_tin
-        && goiTroLy.every(d => /^text\/plain/.test(d.thamSo.loaiNoiDung) && !d.thamSo.coCookie
-          && JSON.stringify(Object.keys(d.thamSo.than ?? {}).sort()) === JSON.stringify(['chi_nhanh', 'cuoc', 'ma_tin', 'tin', 'tra_truoc'])), JSON.stringify(hai.map(d => d.thamSo.than)));
+      // Sáu ô từ 23/11/2026: thêm nn — trang khách đang mở (trang tiếng Việt gửi "vi"), để Trang biết trả lời tiếng Hàn hay tiếng Việt.
+      ok('Gửi lại dùng đúng mã tin cũ; lời gọi text/plain, không cookie, đủ sáu ô (nn = "vi" ở trang tiếng Việt)', hai.length === 2 && hai[0].thamSo.than?.ma_tin === hai[1].thamSo.than?.ma_tin
+        && goiTroLy.every(d => /^text\/plain/.test(d.thamSo.loaiNoiDung) && !d.thamSo.coCookie && d.thamSo.than?.nn === 'vi'
+          && JSON.stringify(Object.keys(d.thamSo.than ?? {}).sort()) === JSON.stringify(['chi_nhanh', 'cuoc', 'ma_tin', 'nn', 'tin', 'tra_truoc'])), JSON.stringify(hai.map(d => d.thamSo.than)));
       ok('Mọi lượt cùng một mã cuộc chat', new Set(goiTroLy.map(d => d.thamSo.than?.cuoc)).size === 1);
 
       // Hỏi người hay máy: nói thật + thẻ liên hệ quán (kênh đã công bố).
