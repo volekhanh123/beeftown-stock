@@ -159,9 +159,9 @@ await nhom('4 · ĐƯỜNG DẪN, VỎ TRANG', async () => {
        && duongDanTuongUng('/ko/buy-meat/', 'vi') === '/mua-thit-ve');
 
   const VO = [
-    ['vi', 'web/src/pages/mua-thit-ve.astro', '/mua-thit-ve', 'Mua thịt về — Beeftown', '../'],
-    ['en', 'web/src/pages/en/buy-meat.astro', '/en/buy-meat', 'Beef to take home — Beeftown', '../../'],
-    ['ko', 'web/src/pages/ko/buy-meat.astro', '/ko/buy-meat', '소고기 포장 구매 — Beeftown', '../../'],
+    ['vi', 'web/src/pages/mua-thit-ve.astro', '/mua-thit-ve', 'Mua thịt bò về nhà — Bò chia gói từ quầy Beeftown, TP.HCM', '../'],
+    ['en', 'web/src/pages/en/buy-meat.astro', '/en/buy-meat', 'Buy Beef to Take Home — Packs from the Beeftown Counter', '../../'],
+    ['ko', 'web/src/pages/ko/buy-meat.astro', '/ko/buy-meat', '소고기 포장 구매 — 호치민 Beeftown', '../../'],
   ];
   const coFile = VO.filter(([, f]) => existsSync(join(GOC, f)));
   ok('Ba file vỏ có thật', coFile.length === 3, VO.filter(v => !coFile.includes(v)).map(v => v[1]).join(', '));
@@ -212,8 +212,8 @@ await nhom('5 · MÔ TẢ TRANG', async () => {
   const MONG = {
     muaThitVe: { vi: 'Mua thịt về', en: 'Take home', ko: '포장 구매' },
     moTaMuaThit: {
-      vi: 'Thịt bò của quầy Beeftown chia gói, giao tận nơi. Chọn gói và đặt hàng trên web; quán gọi lại xác nhận tổng tiền, phí giao và giờ giao.',
-      en: 'Beef from the Beeftown counter in packs, delivered to you. Choose your packs and order here; we call you back to confirm the total, the delivery fee and the time.',
+      vi: 'Mua thịt bò đóng gói từ quầy Beeftown, giao tận nơi. Chọn gói và đặt hàng trên web; quán gọi lại xác nhận tổng tiền, phí giao và giờ giao.',
+      en: 'Order packs of beef from the Beeftown counter for delivery. We call back to confirm your order total, delivery fee and delivery time.',
       ko: 'Beeftown 매장의 소고기를 팩으로 배달해 드려요. 여기서 팩을 고르고 주문해 주시면 전화로 총액, 배달비, 배달 시간을 확인해 드려요.',
     },
     moTaMuaThitChuaMo: {

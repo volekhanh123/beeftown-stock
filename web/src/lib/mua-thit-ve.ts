@@ -184,6 +184,39 @@ export async function docMuaThitVe(
 /** Trạng thái của trang — một bảng chân trị cho điều hướng, trang và form. */
 export type TrangThaiTrang = 'chua_mo' | 'loi' | 'mo' | 'het_quay';
 
+/**
+ * DỮ LIỆU CÓ CẤU TRÚC (JSON-LD Product + Offer) CỦA TRANG MUA THỊT VỀ — chỉ gói có giá đã công bố.
+ * Menu của file này đã là thứ database cho hiện (mua_thit_ve_cong_khai(): công tắc bật, sản phẩm Đang bán, giá
+ * đã chốt ở /noi-bo/ban-le) và nhomMuaThitVe đã bỏ gói không có giá nguyên dương, tên dính chữ cấm hay còn ngoặc vuông
+ * — nên mỗi Offer ở đây là một dòng đang in ra trang, đúng giá đang in ra trang. Không có gì bịa: không ảnh, không
+ * đánh giá, không mã sản phẩm, không hạn giá, không giá khuyến mại.
+ *   · chỉ trạng thái 'mo' và 'het_quay' (trang liệt kê gói kèm giá); chưa mở, lỗi → null, không khai gì;
+ *   · gói "Tạm hết ở quầy" khai OutOfStock (khách thấy đúng câu đó), gói còn thì InStock;
+ *   · tên Offer là cỡ gói ("200 g"), tên Product là tên theo thứ tiếng của trang.
+ * Trả về một khối @graph để in vào MỘT thẻ script; không có sản phẩm nào thì null.
+ */
+export function sanPhamJsonLd(menu: MenuMuaThit, trangThai: TrangThaiTrang, tenThuongHieu: string): Record<string, unknown> | null {
+  if (trangThai !== 'mo' && trangThai !== 'het_quay') return null;
+  const sanPham = menu.sanPham.filter(sp => sp.goi.length > 0);
+  if (sanPham.length === 0) return null;
+  return {
+    '@context': 'https://schema.org',
+    '@graph': sanPham.map(sp => ({
+      '@type': 'Product',
+      name: sp.ten,
+      ...(sp.moTa ? { description: sp.moTa } : {}),
+      brand: { '@type': 'Brand', name: tenThuongHieu },
+      offers: sp.goi.map(g => ({
+        '@type': 'Offer',
+        name: `${g.soGam} g`,
+        price: String(g.gia),
+        priceCurrency: 'VND',
+        availability: g.tamHet ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+      })),
+    })),
+  };
+}
+
 /** Có ít nhất một gói khách đặt được (không "Tạm hết ở quầy"). */
 export function coGoiDatDuoc(menu: MenuMuaThit): boolean {
   return menu.sanPham.some(sp => sp.goi.some(g => !g.tamHet));

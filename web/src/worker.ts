@@ -13,6 +13,8 @@
  *   · /hook/vnpay-ipn → xuLyIpnVnpay (lib/vnpay-hook.ts) — VNPay báo kết quả trả tiền của đơn Mua thịt về (0115).
  *     Chặn trước Astro như hai hook trên: không cookie, không phiên người; truyền env để đọc bí mật VNPAY_*.
  *   · mọi đường dẫn khác: đúng handler mặc định của @astrojs/cloudflare.
+ *   Mọi trả lời đi ra đều qua datHsts (lib/header-https.ts): Strict-Transport-Security một năm, không includeSubDomains.
+ *   File tĩnh (ảnh, CSS, phông) do lớp assets của Cloudflare phát, không qua đây — header của chúng ở web/public/_headers.
  * `scheduled`: Cron Trigger khai ở wrangler.toml `[triggers] crons` — mỗi 5 phút
  * chạy `dongBoTatCa` (lib/kho/ipos-dong-bo.ts): kéo bù hóa đơn iPOS vừa cập nhật +
  * thử lại hàng chờ. Thiếu bí mật thì chỉ ghi một dòng log; web không bị ảnh hưởng.
@@ -38,27 +40,32 @@ import { guiZaloTatCa } from './lib/zalo-gui.ts';
 import { xuLyHookMessenger, DUONG_MESSENGER } from './lib/messenger-hook.ts';
 import { baoDongTatCa, CRON_BAO_DONG } from './lib/bao-dong.ts';
 import { xuLyIpnVnpay, DUONG_IPN_VNPAY } from './lib/vnpay-hook.ts';
+import { datHsts } from './lib/header-https.ts';
 
 interface NguCanh {
   waitUntil(p: Promise<unknown>): void;
 }
 
+async function xuLyYeuCau(request: Request, env: Record<string, unknown>, ctx: NguCanh): Promise<Response> {
+  const duong = new URL(request.url).pathname;
+  if (duong.startsWith(DUONG_HOOK)) {
+    const khoa = khoaTuDuong(duong);
+    if (khoa === null) return new Response('Không tìm thấy', { status: 404 });
+    return xuLyHookIpos(request, khoa, { env });
+  }
+  if (duong === DUONG_MESSENGER || duong === DUONG_MESSENGER + '/') {
+    return xuLyHookMessenger(request, { env, ctx });
+  }
+  if (duong === DUONG_IPN_VNPAY || duong === DUONG_IPN_VNPAY + '/') {
+    return xuLyIpnVnpay(request, { env });
+  }
+  // Kiểu của handle là Request / Env / ExecutionContext của workerd — dự án không cài kiểu đó.
+  return handle(request as never, env as never, ctx as never);
+}
+
 export default {
   async fetch(request: Request, env: Record<string, unknown>, ctx: NguCanh) {
-    const duong = new URL(request.url).pathname;
-    if (duong.startsWith(DUONG_HOOK)) {
-      const khoa = khoaTuDuong(duong);
-      if (khoa === null) return new Response('Không tìm thấy', { status: 404 });
-      return xuLyHookIpos(request, khoa, { env });
-    }
-    if (duong === DUONG_MESSENGER || duong === DUONG_MESSENGER + '/') {
-      return xuLyHookMessenger(request, { env, ctx });
-    }
-    if (duong === DUONG_IPN_VNPAY || duong === DUONG_IPN_VNPAY + '/') {
-      return xuLyIpnVnpay(request, { env });
-    }
-    // Kiểu của handle là Request / Env / ExecutionContext của workerd — dự án không cài kiểu đó.
-    return handle(request as never, env as never, ctx as never);
+    return datHsts(await xuLyYeuCau(request, env, ctx));
   },
   async scheduled(dieuKhien: { cron?: string } | undefined, env: Record<string, unknown>, ctx: NguCanh) {
     // Cron riêng của việc báo động: chỉ chạy việc đó.

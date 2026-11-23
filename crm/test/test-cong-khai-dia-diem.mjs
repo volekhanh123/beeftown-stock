@@ -65,7 +65,9 @@ const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — ĐỊA ĐIỂM TRÊN TRANG 
 // ---------------------------------------------------------------------------
 const DIA_DIEM = { vi: 'Tầng 3, 63 Hồ Tùng Mậu', en: 'Floor 3, 63 Hồ Tùng Mậu', ko: 'Hồ Tùng Mậu 63, 3층' };
 const DIA_DIEM_TRONG_CAU = { vi: 'ở tầng 3, 63 Hồ Tùng Mậu', en: 'on Floor 3, 63 Hồ Tùng Mậu', ko: 'Hồ Tùng Mậu 63, 3층' };
-const DIA_CHI_NGAN = { vi: '63 Hồ Tùng Mậu, TP.HCM', en: '63 Hồ Tùng Mậu, Ho Chi Minh City', ko: '호치민시 Hồ Tùng Mậu 63' };
+// Từ 23/11/2026 (Khánh quyết) có "Quận 1 cũ": vi "Quận 1 cũ", en "former District 1", ko "구 1군" — chỉ ba cách đó.
+const KHU = { vi: 'Quận 1 cũ', en: 'former District 1', ko: '구 1군' };
+const DIA_CHI_NGAN = { vi: '63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM', en: '63 Hồ Tùng Mậu, former District 1, Ho Chi Minh City', ko: '호치민시 구 1군 Hồ Tùng Mậu 63' };
 // Câu chỉ đường đang dùng — Claude đề xuất, chờ Khánh duyệt chữ (xem đầu file).
 const CAU_CHI_DUONG = {
   vi: 'Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3.',
@@ -73,9 +75,9 @@ const CAU_CHI_DUONG = {
   ko: 'GS25 바로 옆 전용 입구로 들어와 엘리베이터로 3층까지 올라오세요.',
 };
 const MO_TA_DEN_BEEFTOWN = {
-  vi: `Beeftown ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM. ${CAU_CHI_DUONG.vi}`,
-  en: `Beeftown is on Floor 3, 63 Hồ Tùng Mậu, Ho Chi Minh City. ${CAU_CHI_DUONG.en}`,
-  ko: `Beeftown은 호치민시 Hồ Tùng Mậu 63, 3층에 있어요. ${CAU_CHI_DUONG.ko}`,
+  vi: `Beeftown ở tầng 3, 63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM. ${CAU_CHI_DUONG.vi}`,
+  en: `Beeftown is on Floor 3, 63 Hồ Tùng Mậu, former District 1, Ho Chi Minh City. ${CAU_CHI_DUONG.en}`,
+  ko: `Beeftown은 호치민시 구 1군 Hồ Tùng Mậu 63, 3층에 있어요. ${CAU_CHI_DUONG.ko}`,
 };
 const PHAP_NHAN_DUNG = {
   ten: 'CÔNG TY TNHH SLK GROUP',
@@ -247,17 +249,23 @@ await nhom('4 · JSON-LD: streetAddress ĐÚNG, KHÔNG CÓ TÊN PHƯỜNG', asyn
   ok('JSON-LD chưa công bố: không chữ "phường", "ward", "Sài Gòn", "Hàm Nghi" ở bất kỳ trường nào',
      !/phường|\bward\b|Sài Gòn|Hàm Nghi/iu.test(JSON.stringify(dc)), JSON.stringify(dc));
 
-  ok('DIA_CHI_PHAN không có khóa phuong, và không giá trị nào là tên phường hay quận',
-     !('phuong' in DIA_CHI_PHAN) && !Object.values(DIA_CHI_PHAN).some(v => /phường|quận|\bP\.\s*\S|\bQ\.?\s*\d/iu.test(v)), JSON.stringify(DIA_CHI_PHAN));
-  ok('DIA_CHI_NHA_HANG là "Tầng 3, 63 Hồ Tùng Mậu, TP.HCM"', DIA_CHI_NHA_HANG === 'Tầng 3, 63 Hồ Tùng Mậu, TP.HCM', DIA_CHI_NHA_HANG);
-  ok('Chưa nối database: trang in đúng địa chỉ đó; sau chữ "Tầng 3" đậm là "63 Hồ Tùng Mậu, TP.HCM"',
-     diaChi(NEN) === 'Tầng 3, 63 Hồ Tùng Mậu, TP.HCM' && diaChiSauTang(NEN) === '63 Hồ Tùng Mậu, TP.HCM', `${diaChi(NEN)} | ${diaChiSauTang(NEN)}`);
+  ok('JSON-LD chưa công bố: không ghi quận (schema.org không có trường quận; "Quận 1 cũ" nằm ở địa chỉ in trên trang và thẻ mô tả)',
+     !/quận|district|1군/iu.test(JSON.stringify(dc)), JSON.stringify(dc));
+
+  ok('DIA_CHI_PHAN không có khóa phuong, và ngoài khu "Quận 1 cũ" không giá trị nào là tên phường hay quận',
+     !('phuong' in DIA_CHI_PHAN) && DIA_CHI_PHAN.khu === 'Quận 1 cũ'
+       && !Object.entries(DIA_CHI_PHAN).filter(([k]) => k !== 'khu').some(([, v]) => /phường|quận|\bP\.\s*\S|\bQ\.?\s*\d/iu.test(v)), JSON.stringify(DIA_CHI_PHAN));
+  ok('DIA_CHI_NHA_HANG là "Tầng 3, 63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM"', DIA_CHI_NHA_HANG === 'Tầng 3, 63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM', DIA_CHI_NHA_HANG);
+  ok('Chưa nối database: trang in đúng địa chỉ đó; sau chữ "Tầng 3" đậm là "63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM"',
+     diaChi(NEN) === 'Tầng 3, 63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM' && diaChiSauTang(NEN) === '63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM', `${diaChi(NEN)} | ${diaChiSauTang(NEN)}`);
+  ok('Màn đầu: bản ngắn của địa chỉ cố định giữ "Quận 1 cũ" (chỉ vế phường mới bị bỏ)', diaChiManDau(NEN) === '63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM', diaChiManDau(NEN));
 
   const layout = docSrc('layouts', 'Trang.astro');
   ok('Trang.astro: địa chỉ của JSON-LD lấy từ diaChiCoCauTruc(nd), mô tả nhà hàng lấy từ câu nền moTaNgan',
      layout.includes('duLieuCoCauTruc.address = diaChiCoCauTruc(nd);') && layout.includes('description: nd.mo_ta_og ?? t.moTaNgan,'));
   for (const nn of NGON_NGU) {
     ok(`chu.ts [${nn}]: mô tả nền (thẻ description và JSON-LD) ghi "${DIA_DIEM_TRONG_CAU[nn]}"`, chu(nn).moTaNgan.includes(DIA_DIEM_TRONG_CAU[nn]), chu(nn).moTaNgan);
+    ok(`chu.ts [${nn}]: mô tả nền ghi khu vực "${KHU[nn]}"`, chu(nn).moTaNgan.includes(KHU[nn]), chu(nn).moTaNgan);
   }
 });
 
@@ -288,14 +296,22 @@ await nhom('6 · CÁCH GHI ĐỊA ĐIỂM TỪNG THỨ TIẾNG; KHÔNG GỌI LÀ
     ok(`chu.ts [${nn}]: bản ngắn là "${DIA_CHI_NGAN[nn]}"`, chu(nn).diaChiNgan === DIA_CHI_NGAN[nn], chu(nn).diaChiNgan);
   }
   const tieuDe = f => docSrc('pages', ...f).match(/\btieuDe="([^"]*)"/)?.[1] ?? '';
-  ok(`pages/den-beeftown.astro: tiêu đề "Đến Beeftown — ${DIA_DIEM.vi}"`, tieuDe(['den-beeftown.astro']) === `Đến Beeftown — ${DIA_DIEM.vi}`, tieuDe(['den-beeftown.astro']));
-  ok(`pages/en/visit.astro: tiêu đề "Visit Beeftown — ${DIA_DIEM.en}"`, tieuDe(['en', 'visit.astro']) === `Visit Beeftown — ${DIA_DIEM.en}`, tieuDe(['en', 'visit.astro']));
+  // Tiêu đề trang Đến Beeftown (SEO 23/11/2026): có đường dẫn, địa chỉ, khu vực, thành phố — chép tay từng chữ.
+  const TIEU_DE_DEN = {
+    vi: 'Đường đến Beeftown — 63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM',
+    en: 'Visit Beeftown — 63 Hồ Tùng Mậu, Former District 1, HCMC',
+    ko: '오시는 길 — Beeftown, 호치민 구 1군 Hồ Tùng Mậu 63',
+  };
+  for (const [nn, f] of [['vi', ['den-beeftown.astro']], ['en', ['en', 'visit.astro']], ['ko', ['ko', 'visit.astro']]]) {
+    ok(`pages/${f.join('/')}: tiêu đề "${TIEU_DE_DEN[nn]}"`, tieuDe(f) === TIEU_DE_DEN[nn], tieuDe(f));
+  }
 
-  // Thẻ mô tả của các trang còn lại: trang nào ghi địa điểm thì ghi đúng cách của thứ tiếng đó.
+  // Thẻ mô tả của các trang còn lại: trang nào ghi địa điểm thì ghi đúng cách của thứ tiếng đó. Trang thực đơn và
+  // đặt bàn ghi khu vực; trang tuyển dụng tiếng Anh, tiếng Hàn ghi địa chỉ ngắn không kèm khu vực (cho vừa độ dài).
   const MO_TA = [
-    [['thuc-don.astro'], `${DIA_DIEM.vi}, TP.HCM`], [['en', 'menu.astro'], `${DIA_DIEM.en}, Ho Chi Minh City`], [['ko', 'menu.astro'], `호치민시 ${DIA_DIEM.ko}`],
-    [['dat-ban.astro'], `${DIA_DIEM_TRONG_CAU.vi}, TP.HCM`], [['en', 'book.astro'], `${DIA_DIEM_TRONG_CAU.en}, Ho Chi Minh City`], [['ko', 'book.astro'], `호치민시 ${DIA_DIEM.ko}`],
-    [['tuyen-dung.astro'], `tại ${DIA_CHI_NGAN.vi}`], [['en', 'jobs.astro'], `at ${DIA_CHI_NGAN.en}`], [['ko', 'jobs.astro'], DIA_CHI_NGAN.ko],
+    [['thuc-don.astro'], `${DIA_DIEM.vi}, Quận 1 cũ, TP.HCM`], [['en', 'menu.astro'], `${DIA_DIEM.en}, Ho Chi Minh City`], [['ko', 'menu.astro'], `호치민시 구 1군 ${DIA_DIEM.ko}`],
+    [['dat-ban.astro'], `${DIA_DIEM_TRONG_CAU.vi}, Quận 1 cũ, TP.HCM`], [['en', 'book.astro'], `${DIA_DIEM.en}, former District 1, Ho Chi Minh City`], [['ko', 'book.astro'], `호치민시 구 1군 ${DIA_DIEM.ko}`],
+    [['tuyen-dung.astro'], `tại ${DIA_CHI_NGAN.vi}`], [['en', 'jobs.astro'], 'at 63 Hồ Tùng Mậu, Ho Chi Minh City'], [['ko', 'jobs.astro'], '호치민시 Hồ Tùng Mậu 63'],
   ];
   for (const [f, mong] of MO_TA) {
     const nguon = docSrc('pages', ...f);

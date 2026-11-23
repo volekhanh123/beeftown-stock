@@ -16,7 +16,7 @@
  *    "lập trình viên gõ nhầm tên khóa".
  *
  * 3. Công tắc CHỈ THÊM dữ kiện. Phần nền — tên, khẩu hiệu, "nhà hàng chuyên
- *    bò tại Quận 1" — nằm trong mã nguồn và không có công tắc nào tắt được.
+ *    bò tại Quận 1 cũ" — nằm trong mã nguồn và không có công tắc nào tắt được.
  */
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';

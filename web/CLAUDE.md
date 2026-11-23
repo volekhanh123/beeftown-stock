@@ -26,6 +26,7 @@ thẳng file `.ts` của `src/lib/`. Tìm test của một file: `cd crm && npm 
 | Việc chạy theo giờ (cron) | `wrangler.toml` | `src/worker.ts` (hàm `scheduled`) |
 | Bản dịch tự động Anh / Hàn | `README.md`, "Bản dịch tự động" | `src/lib/may-dich.ts`, `src/lib/ban-dich.ts` |
 | Meta Pixel | `README.md`, "Meta Pixel" | `src/lib/meta-pixel.ts` |
+| SEO trang công khai (tiêu đề, mô tả, JSON-LD giờ mở cửa và Product + Offer, ngày khai trương, HSTS, Cache-Control, phông tự phát) | đầu file từng file bên cạnh; `crm/test/test-cong-khai-seo.mjs` liệt kê điều đang được giữ | tiêu đề, mô tả: `src/pages/*.astro` và `src/lib/chu.ts` (`tieuDeTrangChu`, `moTaNgan`); `src/layouts/Trang.astro`; `src/lib/gio-mo-cua.ts`, `src/lib/mua-thit-ve.ts` (`sanPhamJsonLd`), `src/lib/trang-cong-khai.ts` (`dongTrangThai`, `moTaTrangChu`); `src/lib/header-https.ts` + `src/worker.ts` (trả lời của Worker); `public/_headers` (file tĩnh); `public/phong/` + `src/styles/chung.css` (phông) |
 | Video đào tạo (YouTube Không công khai, nhúng cho nhân viên; tài khoản học viên chỉ mở trang này) | `README.md`, "Video đào tạo" | `src/lib/video-dao-tao.ts`, `src/pages/noi-bo/dao-tao.astro`; học viên: `src/middleware.ts`, `src/lib/dieu-huong-noi-bo.ts` (`chuyenHuongHocVien`), `src/lib/kho/nhan-vien.ts` |
 
 ## Kho

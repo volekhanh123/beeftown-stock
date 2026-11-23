@@ -55,10 +55,10 @@
  * Quyền riêng tư, Điều khoản, Đổi trả và hoàn tiền (lib/chinh-sach.ts); dưới "Giá gói đã gồm phí giao" có dòng VAT
  * (CHO_TRONG.VAT — còn chờ Sang, John trả lời). Dòng "Đang thử cổng VNPay" giữ nguyên cho tới khi sang cổng thật.
  */
-import { dich as dichCau, duongDanTuongUng } from '../lib/chu';
+import { THUONG_HIEU, dich as dichCau, duongDanTuongUng } from '../lib/chu';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
-import { lienHe } from '../lib/trang-cong-khai';
-import type { LoaiNhom, MenuMuaThit, TrangThaiTrang } from '../lib/mua-thit-ve';
+import { jsonTrongScript, lienHe } from '../lib/trang-cong-khai';
+import { sanPhamJsonLd, type LoaiNhom, type MenuMuaThit, type TrangThaiTrang } from '../lib/mua-thit-ve';
 import { CHU_DON, dinhDangTien, docGio, nhanGoi, rutGonMenu, tinhDon } from '../lib/don-mua-thit';
 import type { KetQuaDatHang } from '../lib/dat-hang-mua-thit';
 import { DUONG_KET_QUA_VNPAY } from '../lib/xu-ly-form';
@@ -86,6 +86,8 @@ interface Props {
 const { ngonNgu: nn, noiDung: nd, menu, trangThai, ketQua, thamSo, duongDan, traVnpay = false, theoGu = [] } = Astro.props;
 const congThu = /sandbox/.test(CONG_VNPAY);
 const lh = lienHe(nd);
+// JSON-LD Product + Offer: chỉ gói có giá đã công bố (sanPhamJsonLd — không có gì bịa).
+const jsonSanPham = sanPhamJsonLd(menu, trangThai, THUONG_HIEU.ten);
 const { gio, boTamHet } = docGio(thamSo, menu.sanPham);
 const don = tinhDon(gio, menu.sanPham, boTamHet);
 const gioRong = don.dong.length === 0;
@@ -335,6 +337,8 @@ const duongDieuKhoan = duongDanTuongUng(CHINH_SACH.dieuKhoan.duong, nn);
 const duongDoiTra = duongDanTuongUng(CHINH_SACH.doiTra.duong, nn);
 const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
 ---
+{/* Thẻ script cặp mở / đóng (không tự đóng "/>"): kiểm thử đọc mã nguồn tách thẻ script theo cặp. */}
+{jsonSanPham && <script type="application/ld+json" set:html={jsonTrongScript(jsonSanPham)} is:inline></script>}
 {daNhan && (
   <section class="mo-dau-trang be-kem mtv-ket-qua" aria-labelledby="mtv-tieu-de">
     <div class="khung khung-hep" id="da-nhan" data-ket-qua="da-nhan" data-ma={ketQua?.ma} tabindex="-1">

@@ -254,6 +254,11 @@ node_modules/
 # Ảnh minh họa món (luôn kèm dòng "Ảnh minh họa" trên trang) — cỡ đã dựng sẵn
 !/web/public/anh/*.webp
 !/web/public/anh/*.avif
+# Phông Montserrat tự phát (bản biến thiên, OFL, hai bộ ký tự: latin, vietnamese) — tên file có số phiên bản để
+# đặt Cache-Control immutable an toàn — và luật Cache-Control / HSTS của Cloudflare (web/public/_headers).
+!/web/public/phong/*.woff2
+!/web/public/phong/OFL.txt
+!/web/public/_headers
 # Script dựng tài sản (Python + Pillow, poppler)
 !/web/cong-cu/**/*.py
 # Ảnh chụp màn hình khi kiểm thử trạng thái đầy đủ — không commit

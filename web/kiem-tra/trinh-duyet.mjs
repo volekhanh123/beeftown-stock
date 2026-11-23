@@ -33,7 +33,11 @@
  *      dùng TRONG nội dung chính (chữ của câu là Claude đề xuất, chờ Khánh duyệt);
  *      JSON-LD ghi streetAddress "Tầng 3, 63 Hồ Tùng Mậu", không có tên phường; ngoài
  *      dòng pháp nhân, cả trang không còn địa chỉ nào khác và không ghi tên phường,
- *      quận nào; không còn chữ về cầu thang bộ. Mẫu tìm chữ sai: mau-dia-diem.mjs.
+ *      quận nào (trừ "Quận 1 cũ", Khánh quyết 23/11/2026: chân trang ghi khu vực đó);
+ *      không còn chữ về cầu thang bộ. Mẫu tìm chữ sai: mau-dia-diem.mjs.
+ *      SEO 23/11/2026: mọi trang preload phông Montserrat tự phát (không stylesheet Google
+ *      cho Montserrat), JSON-LD không khai giờ khi giờ chưa công bố, trang chủ có dòng hiệu
+ *      đúng tiếng của trang.
  *   2. Trang đặt bàn / tuyển dụng / Mua thịt về chưa có database: KHÔNG có form nào, không có chữ
  *      "thành công" / "success" / "성공". Trang hỏi bàn: meta description, og:description
  *      và đoạn mở đầu không hứa "gửi yêu cầu, nhà hàng gọi lại" khi form đóng.
@@ -112,7 +116,7 @@ import { taoChonNhom } from './chon-nhom.mjs';
 // Meta Pixel (nhóm 12): ID và mã gốc đọc từ chính thư viện của trang — crm/test/test-cong-khai-meta-pixel.mjs so mã gốc
 // đó với bản Meta đưa, đúng từng chữ. Tên trang thì chép quy tắc tay (bản tiếng Việt của đường dẫn, bỏ "/").
 const { MA_PIXEL, khoiMaPixel } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'meta-pixel.ts')).href);
-const { duongDanTuongUng } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'chu.ts')).href);
+const { duongDanTuongUng, chu } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'chu.ts')).href);
 
 const ANH_LOI = join(WEB, 'kiem-tra', 'anh-loi');
 const CONG = 4330;
@@ -333,6 +337,15 @@ function doTrang() {
       try { return JSON.parse(document.querySelector('script[type="application/ld+json"]')?.textContent ?? 'null')?.address ?? null; }
       catch { return null; }
     })(),
+    // JSON-LD của nhà hàng có khai giờ mở cửa không (chỉ được khi giờ đã công bố — lib/gio-mo-cua.ts).
+    coGioJsonLd: (() => {
+      try { return 'openingHoursSpecification' in (JSON.parse(document.querySelector('script[type="application/ld+json"]')?.textContent ?? 'null') ?? {}); }
+      catch { return null; }
+    })(),
+    // SEO 23/11/2026: phông Montserrat tự phát (preload, không stylesheet Google cho Montserrat) và dòng hiệu của trang chủ.
+    phongPreload: [...document.querySelectorAll('link[rel="preload"][as="font"]')].map(l => l.getAttribute('href')),
+    coGoogleMontserrat: [...document.querySelectorAll('link[rel="stylesheet"]')].some(l => /family=Montserrat/.test(l.href)),
+    dongHieu: (document.querySelector('main .kmd .hieu')?.textContent ?? '').trim(),
   };
 }
 
@@ -421,9 +434,20 @@ try {
           ok(`${nhan}: ảnh minh họa dưới màn hình đầu có loading="lazy"`, !them.anhKhongLazy.length, them.anhKhongLazy.slice(0, 3).join(' | ')),
           ...Object.entries(PHEP_DO).map(([khoa, ten]) =>
             ok(`${nhan}: ${ten}`, giaoDien[khoa]?.length === 0, (giaoDien[khoa] ?? ['không đo được']).slice(0, 4).join(' | '))),
-          ok(`${nhan}: chân trang có địa chỉ "${DUONG_NHA_HANG}" kèm câu chỉ đường`,
-             them.chuChan.includes(DUONG_NHA_HANG) && motDong(them.chuChan).includes(CAU_CHI_DUONG[ngonNguCua(duong)]),
+          ok(`${nhan}: chân trang có địa chỉ "${DUONG_NHA_HANG}" kèm khu vực "Quận 1 cũ" (bản build không database) và câu chỉ đường`,
+             them.chuChan.includes(DUONG_NHA_HANG) && (URL_NGOAI || them.chuChan.includes('Quận 1 cũ'))
+               && motDong(them.chuChan).includes(CAU_CHI_DUONG[ngonNguCua(duong)]),
              motDong(them.chuChan).slice(0, 200)),
+          // SEO 23/11/2026: phông Montserrat tự phát (preload bộ latin, không stylesheet Google cho Montserrat); JSON-LD
+          // chưa công bố giờ thì không có openingHoursSpecification; trang chủ có dòng hiệu đúng tiếng của trang.
+          ok(`${nhan}: phông Montserrat tự phát — preload /phong/montserrat-5.3.0-latin-wght.woff2, không stylesheet Google cho Montserrat`,
+             them.phongPreload.includes('/phong/montserrat-5.3.0-latin-wght.woff2') && !them.coGoogleMontserrat,
+             `preload: ${them.phongPreload.join(', ') || '(không có)'} · stylesheet Google Montserrat: ${them.coGoogleMontserrat}`),
+          ...(URL_NGOAI ? [] : [ok(`${nhan}: JSON-LD chưa công bố giờ phục vụ → không có openingHoursSpecification`, them.coGioJsonLd === false, String(them.coGioJsonLd))]),
+          ...(duongDanTuongUng('/', ngonNguCua(duong)) === duong
+            ? [ok(`${nhan}: dòng hiệu trên câu chính là "${chu(ngonNguCua(duong)).dongHieu}" (đúng tiếng của trang, không còn "Beef Specialty Restaurant")`,
+                  them.dongHieu === chu(ngonNguCua(duong)).dongHieu && !/Beef Specialty/i.test(them.dongHieu), them.dongHieu)]
+            : []),
           ...(TRANG_LOI_LEN.includes(duong)
             ? [ok(`${nhan}: nội dung chính in đúng từng chữ câu chỉ đường (lối vào riêng ngay cạnh GS25, thang máy lên tầng 3)`,
                   motDong(them.chuChinh).includes(CAU_CHI_DUONG[ngonNguCua(duong)]))]
@@ -441,7 +465,7 @@ try {
           ok(`${nhan}: ngoài dòng pháp nhân (có đúng một lần), cả trang không còn địa chỉ nào khác ${DUONG_NHA_HANG}`,
              them.htmlTrang.split(phapNhan[1]).length === 2 && !diaChiKhac,
              `dòng pháp nhân có ${them.htmlTrang.split(phapNhan[1]).length - 1} lần; thấy «${diaChiKhac ?? ''}»`),
-          ok(`${nhan}: ngoài dòng pháp nhân, chữ khách đọc không ghi tên phường hay quận nào`, !phuongQuan, `thấy «${phuongQuan ?? ''}»`),
+          ok(`${nhan}: ngoài dòng pháp nhân, chữ khách đọc không ghi tên phường hay quận nào (trừ "Quận 1 cũ")`, !phuongQuan, `thấy «${phuongQuan ?? ''}»`),
           ok(`${nhan}: không còn chữ về cầu thang bộ, không câu nào nói không có thang máy`, !CAU_THANG.tim(them.chuCaTrang),
              CAU_THANG.tim(them.chuCaTrang) ?? ''),
           ok(`${nhan}: tương phản chữ ≥ 4,5:1 (chữ lớn ≥ 3:1) trên nền màu đặc`, !them.tuongPhan.length,

@@ -13,8 +13,9 @@
  *      — không bắt khách đi một quãng để đọc lời từ chối. Ở cả vi, en, ko.
  *   2. Chỉ nhận đường dẫn http(s) đã công bố: javascript:, data:, ftp:… gõ vào cổng nội dung
  *      KHÔNG thành href. Hotline có chữ lạ, email sai dạng cũng bị bỏ.
- *   3. Địa chỉ cố định "Tầng 3, 63 Hồ Tùng Mậu, TP.HCM" hiện cả khi chưa có database; bản công bố
- *      (dia_chi_hien_thi) thay vào khi có. Tên phường chưa có giấy xác nhận nên không ghi.
+ *   3. Địa chỉ cố định "Tầng 3, 63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM" hiện cả khi chưa có database; bản công bố
+ *      (dia_chi_hien_thi) thay vào khi có. Tên phường chưa có giấy xác nhận nên không ghi; "Quận 1 cũ" thì được
+ *      ghi (Khánh quyết 23/11/2026).
  *   4. Bốn mục điều hướng đúng thứ tự, đúng đường dẫn từng thứ tiếng, mục cuối là "Hỏi bàn".
  */
 
@@ -150,7 +151,7 @@ await nhom('3 · HOTLINE VÀ EMAIL: CHỮ LẠ BỊ BỎ', async () => {
 
 // ===========================================================================
 await nhom('4 · ĐỊA CHỈ CỐ ĐỊNH, BẢN CÔNG BỐ THAY VÀO KHI CÓ', async () => {
-  ok('Địa chỉ cố định là "Tầng 3, 63 Hồ Tùng Mậu, TP.HCM"', DIA_CHI_NHA_HANG === 'Tầng 3, 63 Hồ Tùng Mậu, TP.HCM', DIA_CHI_NHA_HANG);
+  ok('Địa chỉ cố định là "Tầng 3, 63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM"', DIA_CHI_NHA_HANG === 'Tầng 3, 63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM', DIA_CHI_NHA_HANG);
   ok('Chưa nối database → in địa chỉ cố định', diaChi(NEN) === DIA_CHI_NHA_HANG, diaChi(NEN));
   ok('dia_chi_hien_thi chỉ có khoảng trắng → vẫn địa chỉ cố định', diaChi(nd({ dia_chi_hien_thi: '   ' })) === DIA_CHI_NHA_HANG);
   // Bản công bố là chữ người gõ trong /noi-bo: có thể dài hơn địa chỉ cố định (thêm phường khi đã có giấy, viết đủ tên thành phố).
@@ -160,8 +161,8 @@ await nhom('4 · ĐỊA CHỈ CỐ ĐỊNH, BẢN CÔNG BỐ THAY VÀO KHI CÓ',
 
   // Menu gọn và màn đầu in "Tầng 3" đậm rồi mới tới địa chỉ: bỏ "Tầng 3" ở đầu, nhưng phải là địa chỉ của
   // diaChi() — trước đây hai chỗ đó in hằng số, nên bản công bố không bao giờ tới (hai địa chỉ trên một trang).
-  ok('diaChiSauTang: chưa công bố → "63 Hồ Tùng Mậu, TP.HCM"',
-     diaChiSauTang(NEN) === '63 Hồ Tùng Mậu, TP.HCM', diaChiSauTang(NEN));
+  ok('diaChiSauTang: chưa công bố → "63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM"',
+     diaChiSauTang(NEN) === '63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM', diaChiSauTang(NEN));
   ok('diaChiSauTang: có bản công bố → dùng bản công bố, bỏ "Tầng 3," ở đầu',
      diaChiSauTang(nd({ dia_chi_hien_thi: congBo })) === '63 Hồ Tùng Mậu, phường Thử, TP. Hồ Chí Minh',
      diaChiSauTang(nd({ dia_chi_hien_thi: congBo })));
@@ -170,7 +171,7 @@ await nhom('4 · ĐỊA CHỈ CỐ ĐỊNH, BẢN CÔNG BỐ THAY VÀO KHI CÓ',
 
   // Màn đầu trang chủ in bản ngắn nhất: sau "Tầng 3" chỉ còn số nhà, tên đường, thành phố. Bản công bố có ghi
   // phường (tên nào cũng vậy) thì màn đầu bỏ phường đi; các chỗ khác vẫn in đủ.
-  ok('diaChiManDau: chưa công bố → "63 Hồ Tùng Mậu, TP.HCM"', diaChiManDau(NEN) === '63 Hồ Tùng Mậu, TP.HCM', diaChiManDau(NEN));
+  ok('diaChiManDau: chưa công bố → "63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM" (vế "Quận 1 cũ" không bị bỏ như vế phường)', diaChiManDau(NEN) === '63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM', diaChiManDau(NEN));
   ok('diaChiManDau: bản công bố có phường → bỏ "Tầng 3," ở đầu và bỏ phường',
      diaChiManDau(nd({ dia_chi_hien_thi: congBo })) === '63 Hồ Tùng Mậu, TP. Hồ Chí Minh', diaChiManDau(nd({ dia_chi_hien_thi: congBo })));
   ok('diaChiManDau: "Phường" viết hoa, "P." viết tắt cũng bỏ; chữ "phường" nằm trong tên đường thì giữ',
@@ -208,8 +209,8 @@ await nhom('4 · ĐỊA CHỈ CỐ ĐỊNH, BẢN CÔNG BỐ THAY VÀO KHI CÓ',
 
   // In địa chỉ theo cụm: "Hồ Tùng / Mậu", "phường / Thử" không gãy giữa cụm; cụm dài thì để tự xuống dòng.
   const cum = cumDiaChi(DIA_CHI_NHA_HANG);
-  ok('cumDiaChi: địa chỉ cố định → 3 cụm, dấu phẩy đi cùng cụm, cụm nào cũng giữ nguyên một dòng',
-     JSON.stringify(cum.map(c => c.chu)) === JSON.stringify(['Tầng 3,', '63 Hồ Tùng Mậu,', 'TP.HCM']) && cum.every(c => c.giu),
+  ok('cumDiaChi: địa chỉ cố định → 4 cụm, dấu phẩy đi cùng cụm, cụm nào cũng giữ nguyên một dòng',
+     JSON.stringify(cum.map(c => c.chu)) === JSON.stringify(['Tầng 3,', '63 Hồ Tùng Mậu,', 'Quận 1 cũ,', 'TP.HCM']) && cum.every(c => c.giu),
      JSON.stringify(cum));
   const cumCongBo = cumDiaChi(congBo.trim());
   ok('cumDiaChi: bản công bố có phường → 4 cụm, cụm nào cũng giữ nguyên một dòng',
