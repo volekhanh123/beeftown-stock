@@ -273,10 +273,24 @@ quán; Trang không bịa đời tư hay việc chưa làm, không hứa nhân v
 Khánh): chính sách dùng của Anthropic, Luật Trí tuệ nhân tạo 134/2025/QH15, Điều 11 (hiệu lực 01/03/2026).
 
 **Khi nào hiện** (`troLyTrangMo`): công tắc `hien_tro_ly_trang` (nhóm Mua thịt về ở `/noi-bo/noi-dung`, chỉ chủ; chưa
-công bố = tắt) bật **và** trang Mua thịt về đang mở có gói đặt được **và** trang tiếng Việt (tạm — `/en/buy-meat`,
-`/ko/buy-meat` chờ Khánh chọn) **và** web đã nối database. Tắt JavaScript thì không có gì của Trang (khung chỉ chạy nhờ
-script). Dưới dải ba điều có thẻ mời "Chưa biết chọn phần nào?" và nút viền **Nhắn Trang** (nút chính của trang vẫn là
-Đặt hàng); bấm thì mở khung toàn màn hình điện thoại, khung 440px bên phải từ 600px.
+công bố = tắt) bật **và** trang Mua thịt về đang mở có gói đặt được **và** trang tiếng Việt hay tiếng Hàn
+(`/ko/buy-meat` từ 23/11/2026; `/en/buy-meat` vẫn chờ Khánh chọn) **và** web đã nối database. Tắt JavaScript thì không
+có gì của Trang (khung chỉ chạy nhờ script). Dưới dải ba điều có thẻ mời "Chưa biết chọn phần nào?" và nút viền
+**Nhắn Trang** (nút chính của trang vẫn là Đặt hàng); bấm thì mở khung toàn màn hình điện thoại, khung 440px bên phải
+từ 600px.
+
+**Tiếng Hàn** (Khánh 23/11/2026: "Làm tiếng Hàn"): khách gõ chữ Hàn thì Trang trả lời tiếng Hàn — ở cả trang tiếng Việt;
+tin không rõ tiếng ("ok", "4") thì theo câu Trang vừa nói, chưa nói gì thì theo trang đang mở (`ngonNguTraLoi` của
+`src/lib/tieng-viet-trang.ts`; mỗi tin gửi kèm `nn` của trang). Trang tiếng Hàn chào bằng `LOI_CHAO_HAN`. Lời dặn có
+phần TIẾNG HÀN (tên phần thịt đúng như trang tiếng Hàn ghi — 립아이 캡, 안창살, 부채살, 갈비살, LA갈비 —, độ chín 미디엄
+레어…, 해요체, mẫu chat); khối cuối của lời dặn (không lưu đệm) ghi ngôn ngữ của lượt. Máy kiểm tiếng Hàn
+(`chuNgoaiHan`, `chuCamHan`): mỗi tin phải có chữ Hàn, chữ La-tinh chỉ tên riêng và địa chỉ quán, không số tiền (원, 동),
+không 저렴, 챗봇, 자동, không nhận là người — sai thì viết lại một lần, vẫn sai thì `thayBangTuHan` / bỏ tin / câu an
+toàn tiếng Hàn. Thẻ phần thịt tiếng Hàn lấy từ `PHAN_THIT[...].han`; sản phẩm không có tên tiếng Hàn (sản phẩm thử,
+phần thịt mới) thì Trang không nhắc khi nói tiếng Hàn. `cau_chua_biet` vẫn ghi tiếng Việt cho sổ học. Chữ tiếng Hàn do
+Claude soạn — người Hàn của quán nên đọc lại (bảng chấm câu 46, 51–60, ngưỡng 9/10) trước khi quảng bá trang tiếng Hàn.
+Đưa lên: deploy lại hàm `tro-ly-trang` (năm file, như bước 3 dưới) **và** web — chỉ một trong hai thì trang tiếng Hàn
+chào tiếng Hàn mà hàm cũ trả tiếng Việt, hoặc ngược lại khung tiếng Hàn chưa hiện.
 
 **Một lượt**: trình duyệt gửi `{cuoc, ma_tin, tin, tra_truoc, chi_nhanh}` (text/plain, không cookie) tới Edge Function
 `tro-ly-trang` của Supabase (`crm/supabase/functions/tro-ly-trang`). Hàm che số điện thoại, email, địa chỉ, tên trong tin

@@ -15,10 +15,19 @@
  * do trang tự tính — cùng luật với số tiền trên web: chuoi-cam.js); đơn ghi theo khóa gói của trang Mua thịt về
  * (`<mã>_<số gam>`, khoaGoi của web/src/lib/don-mua-thit.ts); thực đơn, giá, sổ học đọc từ database mỗi lượt.
  *
+ * Tiếng Hàn (Khánh 23/11/2026 "Làm tiếng Hàn"): khách gõ chữ Hàn hay ở trang /ko/buy-meat thì Trang nói tiếng Hàn — phần
+ * TIENG_HAN của lời dặn, khối ngôn ngữ cuối (khoiNgonNgu, không lưu đệm), PHAN_THIT[...].han cho thẻ, máy kiểm tiếng Hàn
+ * (MAY_KIEM.ko). Lời dặn vẫn viết bằng tiếng Việt; cau_chua_biet luôn tiếng Việt.
+ *
  * File thuần: không mạng, không Deno, không đồng hồ — Node chạy thẳng trong kiểm thử (crm/test/test-tro-ly-trang-ham.mjs)
- * và bộ chấm 50 câu (crm/test/cham-trang/).
+ * và bộ chấm (crm/test/cham-trang/: 50 câu, thêm câu 51–60 tiếng Hàn).
  */
-import { BANG_TU, chuCam, chuNgoai, thayBangTu } from './tieng-viet-trang.ts';
+import {
+  BANG_TU, chuCam, chuCamHan, chuNgoai, chuNgoaiHan, thayBangTu, thayBangTuHan, type NgonNguTrang,
+} from './tieng-viet-trang.ts';
+
+/** Ngôn ngữ Trang nói (Khánh 23/11/2026 thêm tiếng Hàn): vi mặc định; ko khi khách viết tiếng Hàn hay ở trang /ko. */
+export type { NgonNguTrang } from './tieng-viet-trang.ts';
 
 // -----------------------------------------------------------------------------
 // KIẾN THỨC TỪNG PHẦN THỊT — bài đào tạo thịt bò 13/11/2026 và mô tả thực đơn bán lẻ
@@ -38,6 +47,11 @@ export interface PhanThit {
   diem: readonly string[];
   doChin: string;
   meo: string;
+  /**
+   * Tiếng Hàn (23/11/2026): tên đúng như trang /ko/buy-meat ghi (ban_le_san_pham.ten_ko) và chữ của thẻ phần thịt.
+   * Claude soạn từ các ô tiếng Việt ở trên — người Hàn của quán nên đọc lại trước khi quảng bá trang tiếng Hàn.
+   */
+  han: { ten: string; viTri: string; diem: readonly string[]; doChin: string; meo: string };
 }
 
 export const PHAN_THIT: Readonly<Record<string, PhanThit>> = {
@@ -49,6 +63,10 @@ export const PHAN_THIT: Readonly<Record<string, PhanThit>> = {
     baoQuan: 'ngăn mát tủ lạnh',
     viTri: 'vùng sườn dọc lưng', diem: ['Mềm', 'Béo thơm', 'Mọng nước'],
     doChin: 'Tái chín đến chín vừa', meo: 'Vỉ nóng vừa. Nếm miếng đầu không chấm gì.',
+    han: {
+      ten: '립아이 캡', viTri: '등쪽 갈비 부위(꽃등심)', diem: ['부드러움', '고소한 지방 맛', '육즙이 풍부함'],
+      doChin: '미디엄 레어~미디엄', meo: '중불로 구워 주세요. 첫 점은 소스 없이 드셔 보세요.',
+    },
   },
   'outside-skirt': {
     ten: 'diềm thăn bò', nhan: 'Outside Skirt', loai: 'Thịt mát',
@@ -58,6 +76,10 @@ export const PHAN_THIT: Readonly<Record<string, PhanThit>> = {
     baoQuan: 'ngăn mát tủ lạnh',
     viTri: 'cơ hoành, trong xương sườn', diem: ['Dai giòn', 'Hương bò đậm', 'Thịt cơ, không phải nội tạng'],
     doChin: 'Tái chín đến chín vừa', meo: 'Vỉ thật nóng, nướng nhanh, không để lâu.',
+    han: {
+      ten: '안창살', viTri: '횡격막, 갈비뼈 안쪽', diem: ['쫄깃하고 탄력 있음', '진한 소고기 향', '내장이 아닌 근육 부위'],
+      doChin: '미디엄 레어~미디엄', meo: '아주 센 불에서 빠르게 굽고, 오래 굽지 마세요.',
+    },
   },
   'top-blade': {
     ten: 'lõi vai bò', nhan: 'Top Blade', loai: 'Thịt mát',
@@ -67,6 +89,10 @@ export const PHAN_THIT: Readonly<Record<string, PhanThit>> = {
     baoQuan: 'ngăn mát tủ lạnh',
     viTri: 'vai, gần xương bả vai', diem: ['Tương đối ít béo', 'Có đường gân giữa'],
     doChin: 'Chín tới đâu tùy anh/chị. Nướng quá lâu dễ khô.', meo: 'Lúc ăn, cắt lát ngang đường gân.',
+    han: {
+      ten: '부채살', viTri: '어깨, 견갑골 근처', diem: ['비교적 기름기가 적음', '가운데 힘줄이 있음'],
+      doChin: '원하시는 굽기로 드세요. 너무 오래 구우면 퍽퍽해져요.', meo: '드실 때 힘줄과 가로로 썰어 주세요.',
+    },
   },
   'galbisal': {
     ten: 'dẻ sườn bò', nhan: 'Galbisal', loai: 'Thịt mát',
@@ -76,6 +102,10 @@ export const PHAN_THIT: Readonly<Record<string, PhanThit>> = {
     baoQuan: 'ngăn mát tủ lạnh',
     viTri: 'giữa các xương sườn', diem: ['Dai dễ chịu', 'Béo thơm', 'Càng nhai càng thơm'],
     doChin: 'Chín vừa đến chín tới', meo: 'Lật đều tay, không để một mặt cháy.',
+    han: {
+      ten: '갈비살', viTri: '갈비뼈 사이', diem: ['적당히 쫄깃함', '고소한 지방 맛', '씹을수록 고소함'],
+      doChin: '미디엄~미디엄 웰던', meo: '골고루 뒤집어 한쪽만 타지 않게 해 주세요.',
+    },
   },
   'la-galbi': {
     ten: 'sườn bò cắt ngang ướp sẵn', nhan: 'LA Galbi', loai: 'Thịt đông lạnh',
@@ -85,6 +115,10 @@ export const PHAN_THIT: Readonly<Record<string, PhanThit>> = {
     baoQuan: 'ngăn đá',
     viTri: 'vùng sườn, cắt ngang xương', diem: ['Ướp sẵn', 'Còn xương', 'Dễ ăn cho cả nhà'],
     doChin: 'Rã đông trong ngăn mát trước khi nướng.', meo: 'Vỉ nóng nhẹ, trở mặt thường xuyên vì thịt đã ướp.',
+    han: {
+      ten: 'LA갈비', viTri: '갈비, 뼈와 가로로 썬 부위', diem: ['양념되어 있음', '뼈 포함', '온 가족이 먹기 좋음'],
+      doChin: '굽기 전에 냉장실에서 해동해 주세요.', meo: '약불에서 구워 주세요. 양념이 되어 있어 자주 뒤집어 주세요.',
+    },
   },
 };
 
@@ -96,8 +130,16 @@ export const LOI_CHAO: readonly string[] = [
   'Anh/chị nướng cho mấy người, thích thịt kiểu nào thì cứ nhắn em, em gợi ý phần thịt và số gói vừa đủ nhé.',
 ];
 
+/** Lời chào của khung ở trang tiếng Hàn (/ko/buy-meat) — PHẢI trùng LOI_CHAO_HAN của web/src/lib/tro-ly-trang.ts. */
+export const LOI_CHAO_HAN: readonly string[] = [
+  '안녕하세요, Beeftown의 Trang이에요.',
+  '몇 분이 드실지, 어떤 고기를 좋아하시는지 편하게 보내 주세요. 부위와 알맞은 팩 수를 추천해 드릴게요.',
+];
+
 /** Một câu Trang nói khi không trả lời chắc được (máy lọc chặn hết, Claude từ chối, kết quả hỏng). */
 export const CAU_AN_TOAN = 'Dạ câu này anh/chị hỏi nhân viên của quán giúp em cho chắc nhé, cách liên hệ ở ngay bên dưới ạ.';
+/** CAU_AN_TOAN bằng tiếng Hàn. */
+export const CAU_AN_TOAN_HAN = '이 부분은 매장 직원에게 여쭤봐 주시면 정확해요. 연락 방법은 바로 아래에 있어요.';
 
 // -----------------------------------------------------------------------------
 // LỜI DẶN CỐ ĐỊNH (khối system thứ nhất — lưu đệm)
@@ -110,7 +152,7 @@ const THAT_THA = [
 ];
 
 const CACH_NOI = [
-  'Chỉ nói tiếng Việt có dấu, kể cả khi khách viết tiếng Anh, tiếng Hàn hay viết không dấu. Không chen chữ tiếng Anh: tên phần thịt, độ chín, cách đóng gói đều nói theo BẢNG TỪ; không dùng ok, shop, menu, online, size, combo, set, ship, link. Chỉ giữ nguyên tên riêng: Beeftown, VNPay, Zalo, Ahamove, Facebook, mã QR, sốt chimichurri.',
+  'Nói đúng NGÔN NGỮ LƯỢT NÀY ghi ở khối cuối của lời dặn: tiếng Việt có dấu, hoặc tiếng Hàn theo phần TIẾNG HÀN. Khách viết tiếng Anh hay viết không dấu thì vẫn theo NGÔN NGỮ LƯỢT NÀY. Khi nói tiếng Việt: không chen chữ tiếng Anh — tên phần thịt, độ chín, cách đóng gói đều nói theo BẢNG TỪ; không dùng ok, shop, menu, online, size, combo, set, ship, link. Chỉ giữ nguyên tên riêng: Beeftown, VNPay, Zalo, Ahamove, Facebook, mã QR, sốt chimichurri.',
   'Như người thật nhắn tin: câu ngắn, tự nhiên, ấm áp; không văn mẫu, không liệt kê, không gạch đầu dòng, không markdown, không emoji.',
   'Không mở đầu bằng lời chào: khung đã chào khách rồi. Khách chào thì đáp "Dạ" rồi vào việc luôn.',
   'Xưng "em", gọi khách "anh/chị"; khách tự xưng anh, chị, cô, chú thì gọi theo. "Dạ", "ạ", "nhé" vừa phải, không câu nào cũng "dạ".',
@@ -212,8 +254,57 @@ const VI_DU: readonly { ten: string; luot: readonly (readonly [string, string, s
   ] },
 ];
 
-function mauChoLoiDay(): string {
-  return VI_DU.map((v, i) => `Mẫu ${i + 1} (${v.ten}):\n` + v.luot.map(([ai, chu, them]) =>
+/**
+ * TIẾNG HÀN (Khánh 23/11/2026: "Làm tiếng Hàn"). Lời dặn vẫn viết bằng tiếng Việt; phần này dặn cách nói khi NGÔN NGỮ
+ * LƯỢT NÀY là tiếng Hàn. Tên phần thịt đúng như trang /ko/buy-meat ghi (ban_le_san_pham.ten_ko, 23/11/2026).
+ */
+const TIENG_HAN = [
+  'Trả lời hoàn toàn bằng tiếng Hàn tự nhiên, lịch sự kiểu 해요체, như nhân viên quầy thịt nói với khách: tự xưng 저, gọi khách là 고객님 khi cần, tên vẫn là Trang. Câu ngắn, không liệt kê, không gạch đầu dòng, không markdown, không emoji.',
+  'Không mở đầu bằng 안녕하세요 hay lời chào nào (khung đã chào). Mỗi lượt chỉ hỏi MỘT điều — không hỏi cả số người lẫn độ chín trong cùng một lượt.',
+  'Không chen tiếng Việt hay tiếng Anh. Chữ La-tinh chỉ được: Beeftown, Trang, VNPay, Zalo, Ahamove, Facebook, QR, g, kg, LA갈비 và địa chỉ quán (63 Hồ Tùng Mậu, TP.HCM).',
+  'Tên phần thịt nói đúng như trang tiếng Hàn ghi: ' + Object.values(PHAN_THIT).map(p => `${p.han.ten} = ${p.ten}`).join(', ')
+    + ', kim chi = 김치. 립아이 캡 là NGUYÊN miếng 꽃등심 còn giữ lớp nắp bên ngoài (lớp nắp rất mềm, lõi giữa dai hơn một chút) — không nói nó chỉ là phần nắp. Sản phẩm nào trong THỰC ĐƠN ĐANG BÁN không có tên tiếng Hàn thì không nhắc.',
+  'Độ chín: tái chín = 미디엄 레어 (속이 붉은 분홍빛), chín vừa = 미디엄 (속이 연한 분홍빛), chín tới = 미디엄 웰던 (속에 분홍빛이 살짝), chín hẳn = 웰던. Lần đầu nhắc độ chín thì kèm màu ở giữa như trong ngoặc.',
+  'Từ của quầy: gói = 팩 (150g 팩), hộp = 통, khay màng ôm sát = 스킨팩 포장, thịt mát = 냉장육, thịt đông lạnh = 냉동육, vỉ nướng ga = 가스 그릴, ủ ướt = 웻에이징, vỉ nóng vừa = 중불, vỉ nóng nhẹ = 약불, vỉ thật nóng = 아주 센 불. Nút trên trang tiếng Hàn: "팩 고르기" (chọn gói), "주문에 담기" (cho vào đơn, chỉ ở thẻ đơn em gửi), phần "배달 정보" (giao hàng), ô "메모" (ghi chú), nút "주문하기" (đặt hàng), ô "세금계산서(레드 인보이스)가 필요해요" (hóa đơn đỏ).',
+  'Mọi luật ở trên vẫn giữ nguyên: không ghi số tiền (kể cả 원, 동, 천, 만); không 최고, 유일, 와규, 한우, 숯불, 저렴, 싸요 (hỏi phần nào giá thấp thì nói phần nào có giá gói thấp hơn); không chữ AI, 봇, 챗봇, 자동, 인공지능; không nhận là người; không hứa nhân viên vào chat hay gọi lại; không nói như đang đi hỏi hay đi kiểm tra ai (잠시만 기다려 주세요, 확인해 볼게요, 직원에게 물어보고…).',
+  'PHẦN THỊT, CHUNG, CÁCH TRẢ TIỀN, ĐÃ HỌC THÊM viết bằng tiếng Việt: dịch đúng nghĩa sang tiếng Hàn, không thêm bớt — mẹo nướng, cách rã đông, bảo quản nói đúng như dữ liệu.',
+  'Khách hỏi bằng tiếng Hàn điều mà ĐÃ HỌC THÊM có câu trả lời (ví dụ 배달 = giao hàng: 배달은 얼마나 걸려요, 언제 와요, 어떻게 배달해요): dịch đúng ý câu đã học sang tiếng Hàn và trả lời theo đó — KHÔNG nói 정확한 정보가 없어요 về điều đã học, KHÔNG đặt cau_chua_biet cho câu đó. Chỉ phần đã học không nói tới (ví dụ khu vực giao) mới nói chưa có thông tin chắc.',
+  'Khách hỏi người hay máy: nói thật "저는 Beeftown의 가상 도우미예요." rồi mời liên hệ nhân viên nếu muốn, chuyen_nguoi = true. Khách đòi gặp nhân viên (직원 연결, 사람이랑 얘기…): mời liên hệ theo cách ngay bên dưới, chuyen_nguoi = true.',
+  'cau_chua_biet LUÔN viết bằng tiếng Việt (quán đọc sổ học bằng tiếng Việt), ví dụ "Quán mở cửa mấy giờ?".',
+  `Ở trang tiếng Hàn, khung đã chào bằng hai tin: "${LOI_CHAO_HAN[0]}" và "${LOI_CHAO_HAN[1]}". Khách ở trang tiếng Việt mà viết tiếng Hàn thì khung đã chào bằng tiếng Việt. Cả hai trường hợp: không chào lại, trả lời luôn bằng tiếng Hàn.`,
+];
+
+/** Đoạn chat mẫu tiếng Hàn — cùng cách ghi với VI_DU. */
+const VI_DU_HAN: readonly { ten: string; luot: readonly (readonly [string, string, string?])[] }[] = [
+  { ten: 'Khách Hàn, 4 người', luot: [
+    ['k', '4명인데 어떤 고기가 좋을까요?'],
+    ['e', '4분이 드시는군요.||부드러운 고기가 좋으세요, 아니면 쫄깃하고 소고기 향이 진한 쪽이 좋으세요?'],
+    ['k', '부드러운 게 좋아요'],
+    ['e', '그럼 립아이 캡을 추천드려요. 고소한 지방 맛이 나고 바깥쪽 캡 부분이 아주 부드러워요.||4분이면 6팩 정도로, 립아이 캡 4팩에 양념된 LA갈비 2팩 어떠세요? 가격은 아래 카드에 있어요.', '[the: ribeye-with-cap, la-galbi; don: ribeye-with-cap_150 4, la-galbi_150 2]'],
+  ] },
+  { ten: 'Khách Hàn hỏi giá', luot: [
+    ['k', '안창살 한 팩에 얼마예요?'],
+    ['e', '안창살은 150g 팩으로 나와요. 가격은 바로 아래 카드에 있어요.||쫄깃하고 소고기 향이 진한 부위예요. 몇 분이 드실 건가요?', '[the: outside-skirt]'],
+  ] },
+  { ten: 'Khách Hàn hỏi người hay máy', luot: [
+    ['k', '혹시 사람이에요?'],
+    ['e', '저는 Beeftown의 가상 도우미예요.||직원과 이야기하고 싶으시면 바로 아래 연락 방법을 이용해 주세요. 고기 고르시는 건 제가 계속 도와드릴게요.', '[chuyen_nguoi]'],
+  ] },
+  { ten: 'Khách Hàn hỏi điều chưa có', luot: [
+    ['k', '몇 시까지 영업해요?'],
+    ['e', '영업시간은 아직 정확한 정보가 없어요.||매장 직원에게 여쭤봐 주시면 정확해요. 연락 방법은 바로 아래에 있어요.', '[chuyen_nguoi; cau_chua_biet: Quán mở cửa mấy giờ?]'],
+  ] },
+];
+
+/** Khối cuối của lời dặn (không lưu đệm, đổi theo lượt): ngôn ngữ Trang phải nói ở lượt này. */
+export function khoiNgonNgu(nn: NgonNguTrang): string {
+  return nn === 'ko'
+    ? 'NGÔN NGỮ LƯỢT NÀY: tiếng Hàn. Trả lời hoàn toàn bằng tiếng Hàn theo phần TIẾNG HÀN; cau_chua_biet vẫn viết tiếng Việt.'
+    : 'NGÔN NGỮ LƯỢT NÀY: tiếng Việt có dấu.';
+}
+
+function mauChoLoiDay(ds: typeof VI_DU = VI_DU, dau = 'Mẫu '): string {
+  return ds.map((v, i) => `${dau}${i + 1} (${v.ten}):\n` + v.luot.map(([ai, chu, them]) =>
     (ai === 'k' ? 'Khách: ' : 'Em: ') + chu + (them ? ' ' + them : '')).join('\n')).join('\n\n');
 }
 
@@ -236,8 +327,10 @@ export const LOI_DAY_CO_DINH: string = [
   'CHUNG:\n' + CHUNG.map(s => '- ' + s).join('\n'),
   'BẢNG TỪ (khách hay nói, nhãn khay → em nói):\n' + BANG_TU_CHO_LOI_DAY,
   'ĐOẠN CHAT MẪU (học cách nói, không chép nguyên văn; "||" là chỗ tách tin, ngoặc vuông là phần JSON của lượt đó):\n' + mauChoLoiDay(),
+  'TIẾNG HÀN (khi NGÔN NGỮ LƯỢT NÀY là tiếng Hàn):\n' + TIENG_HAN.map(s => '- ' + s).join('\n')
+    + '\n\nĐoạn chat mẫu tiếng Hàn:\n' + mauChoLoiDay(VI_DU_HAN, 'Mẫu tiếng Hàn '),
   'TRẢ LỜI BẰNG MỘT ĐỐI TƯỢNG JSON đúng khuôn đã cho:\n'
-    + '- tin: 1 đến 3 tin nhắn ngắn, mỗi tin tối đa 2 câu, hoàn toàn tiếng Việt có dấu, không số tiền.\n'
+    + '- tin: 1 đến 3 tin nhắn ngắn, mỗi tin tối đa 2 câu, hoàn toàn bằng NGÔN NGỮ LƯỢT NÀY (tiếng Việt có dấu, hoặc tiếng Hàn), không số tiền.\n'
     + '- the: mã các phần thịt gửi thẻ ở lượt này (tối đa 2), mã lấy trong THỰC ĐƠN ĐANG BÁN; không cần thì mảng rỗng.\n'
     + '- don: các dòng {"khoa": khóa gói, "so_goi": số nguyên 1–10} khi lượt này em gợi ý số gói cụ thể hoặc khách đổi số gói; khóa gói lấy đúng trong THỰC ĐƠN ĐANG BÁN (dạng mã_số gam); các lượt khác mảng rỗng.\n'
     + '- chot: true khi khách vừa đồng ý lấy đơn; khi đó "don" ghi đúng đơn đã chốt.\n'
@@ -291,11 +384,17 @@ function soNguyenDuong(v: unknown): number | null {
   return Number.isSafeInteger(n) && n > 0 ? n : null;
 }
 
+/** Tên tiếng Hàn của một sản phẩm: phần thịt của quầy theo PHAN_THIT, kim chi là 김치; còn lại không có (Trang không nhắc). */
+function tenHan(ma: string, loai: unknown): string | null {
+  return PHAN_THIT[ma]?.han.ten ?? (loai === 'kim_chi' ? '김치' : null);
+}
+
 /**
  * Dòng database → sản phẩm Trang biết. Bỏ dòng hỏng; tên không nói được bằng tiếng Việt (vẫn còn chữ nước ngoài sau
- * bảng từ) thì Trang không nhắc sản phẩm đó — khách vẫn thấy nó trên trang.
+ * bảng từ) thì Trang không nhắc sản phẩm đó — khách vẫn thấy nó trên trang. nn = 'ko': tenNoi là tên tiếng Hàn
+ * (tenHan); sản phẩm không có tên tiếng Hàn thì Trang không nhắc khi nói tiếng Hàn.
  */
-export function docMenu(dong: unknown): SanPhamCuaTrang[] {
+export function docMenu(dong: unknown, nn: NgonNguTrang = 'vi'): SanPhamCuaTrang[] {
   if (!Array.isArray(dong)) return [];
   const theoMa = new Map<string, SanPhamCuaTrang>();
   for (const d of dong as Partial<DongMenu>[]) {
@@ -309,8 +408,8 @@ export function docMenu(dong: unknown): SanPhamCuaTrang[] {
     if (!sp) {
       const kt = PHAN_THIT[ma];
       const tenVi = typeof d.ten_vi === 'string' ? d.ten_vi.replace(/\s+/g, ' ').trim() : tenTrang;
-      const tenNoi = kt ? kt.ten : thayBangTu(tenVi).toLowerCase();
-      if (!kt && chuNgoai(tenNoi).length > 0) continue;
+      const tenNoi = nn === 'ko' ? tenHan(ma, d.loai) : kt ? kt.ten : thayBangTu(tenVi).toLowerCase();
+      if (!tenNoi || (nn === 'vi' && !kt && chuNgoai(tenNoi).length > 0)) continue;
       sp = {
         ma, tenNoi, tenTrang, loai: String(d.loai ?? ''), donVi: String(d.don_vi ?? 'goi'), baoQuan: String(d.bao_quan ?? ''),
         moTa: typeof d.mo_ta === 'string' ? d.mo_ta : null, cachDung: typeof d.cach_dung === 'string' ? d.cach_dung : null, goi: [],
@@ -439,39 +538,53 @@ export function docKetQua(raw: unknown, menu: readonly SanPhamCuaTrang[]): TraLo
 
 export interface KiemTin { ngoai: string[]; cam: string[] }
 
-/** Chữ nước ngoài và chữ cấm của các tin trong một lượt. */
-export function kiemTin(tin: readonly string[]): KiemTin {
+/** Máy kiểm theo ngôn ngữ: tiếng Việt (chuNgoai, chuCam, thayBangTu) hay tiếng Hàn (chuNgoaiHan, chuCamHan, thayBangTuHan). */
+const MAY_KIEM = {
+  vi: { ngoai: chuNgoai, cam: chuCam, thay: thayBangTu },
+  ko: { ngoai: chuNgoaiHan, cam: chuCamHan, thay: thayBangTuHan },
+} as const;
+
+/** Chữ nước ngoài và chữ cấm của các tin trong một lượt (theo ngôn ngữ Trang nói ở lượt đó). */
+export function kiemTin(tin: readonly string[], nn: NgonNguTrang = 'vi'): KiemTin {
+  const may = MAY_KIEM[nn];
   const ngoai: string[] = [];
   const cam: string[] = [];
   for (const t of tin) {
-    for (const w of chuNgoai(t)) if (!ngoai.includes(w)) ngoai.push(w);
-    for (const c of chuCam(t)) if (!cam.includes(c)) cam.push(c);
+    for (const w of may.ngoai(t)) if (!ngoai.includes(w)) ngoai.push(w);
+    for (const c of may.cam(t)) if (!cam.includes(c)) cam.push(c);
   }
   return { ngoai, cam };
 }
 
 /** Câu bắt Claude viết lại một lần (lượt thứ hai của cùng tin khách). */
-export function cauVietLai(k: KiemTin): string {
+export function cauVietLai(k: KiemTin, nn: NgonNguTrang = 'vi'): string {
   const phan: string[] = [];
-  if (k.ngoai.length) phan.push(`còn chữ không phải tiếng Việt: ${k.ngoai.join(', ')} — nói lại theo BẢNG TỪ`);
+  if (k.ngoai.length) {
+    phan.push(nn === 'ko'
+      ? `còn chữ không phải tiếng Hàn: ${k.ngoai.join(', ')} — nói lại bằng tiếng Hàn theo phần TIẾNG HÀN`
+      : `còn chữ không phải tiếng Việt: ${k.ngoai.join(', ')} — nói lại theo BẢNG TỪ`);
+  }
   if (k.cam.length) phan.push(`phạm luật: ${k.cam.join(' ')}`);
-  return `Tin vừa rồi ${phan.join('; ')}. Viết lại đúng ý đó, hoàn toàn bằng tiếng Việt có dấu, giữ nguyên the, don, chot, chuyen_nguoi, cau_chua_biet nếu không sai, trả về đúng khuôn JSON như trên.`;
+  const cach = nn === 'ko' ? 'hoàn toàn bằng tiếng Hàn' : 'hoàn toàn bằng tiếng Việt có dấu';
+  return `Tin vừa rồi ${phan.join('; ')}. Viết lại đúng ý đó, ${cach}, giữ nguyên the, don, chot, chuyen_nguoi, cau_chua_biet nếu không sai, trả về đúng khuôn JSON như trên.`;
 }
 
 /**
  * Lớp giữ cuối: thay chữ nước ngoài theo bảng từ; tin vẫn còn chữ nước ngoài hay chữ cấm thì bỏ. Bỏ hết thì thay bằng
- * CAU_AN_TOAN và chuyển người. Trả số tin bị bỏ.
+ * CAU_AN_TOAN (tiếng Hàn: CAU_AN_TOAN_HAN) và chuyển người. Trả số tin bị bỏ.
  */
-export function gotTin(kq: TraLoi): { kq: TraLoi; thayTu: boolean; boTin: number } {
+export function gotTin(kq: TraLoi, nn: NgonNguTrang = 'vi'): { kq: TraLoi; thayTu: boolean; boTin: number } {
+  const may = MAY_KIEM[nn];
   let thayTu = false;
   const giu: string[] = [];
   for (const t of kq.tin) {
     let s = t;
-    if (chuNgoai(s).length) { s = thayBangTu(s); thayTu = true; }
-    if (!chuNgoai(s).length && !chuCam(s).length) giu.push(s);
+    if (may.ngoai(s).length) { s = may.thay(s); thayTu = true; }
+    if (!may.ngoai(s).length && !may.cam(s).length) giu.push(s);
   }
   const boTin = kq.tin.length - giu.length;
-  if (giu.length === 0) return { kq: { ...kq, tin: [CAU_AN_TOAN], chuyen_nguoi: true, chot: false }, thayTu, boTin };
+  const anToan = nn === 'ko' ? CAU_AN_TOAN_HAN : CAU_AN_TOAN;
+  if (giu.length === 0) return { kq: { ...kq, tin: [anToan], chuyen_nguoi: true, chot: false }, thayTu, boTin };
   return { kq: { ...kq, tin: giu }, thayTu, boTin };
 }
 
@@ -492,12 +605,34 @@ export interface ThePhanThit {
 
 const vietHoaDau = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export function theCua(ma: string, menu: readonly SanPhamCuaTrang[]): ThePhanThit | null {
+/** Loại sản phẩm bằng tiếng Hàn trên thẻ. */
+const loaiHan = (sp: Pick<SanPhamCuaTrang, 'loai' | 'baoQuan'>): string =>
+  sp.loai === 'kim_chi' ? '김치' : sp.baoQuan === 'dong_lanh' ? '냉동육' : '냉장육';
+
+/**
+ * Thẻ phần thịt. nn: ngôn ngữ Trang nói ở lượt này (chữ của thẻ); nnTrang: trang khách đang mở — "nhan" là tên trang đó
+ * ghi (khách Hàn ở trang tiếng Việt thấy "이 페이지 표기: Ribeye with Cap"; ở trang tiếng Hàn tên trùng nên không hiện).
+ */
+export function theCua(
+  ma: string, menu: readonly SanPhamCuaTrang[], nn: NgonNguTrang = 'vi', nnTrang: NgonNguTrang = nn,
+): ThePhanThit | null {
   const sp = menu.find(x => x.ma === ma);
   if (!sp) return null;
   const kt = PHAN_THIT[ma];
+  if (kt && nn === 'ko') {
+    const h = kt.han;
+    return {
+      ma, ten: h.ten, nhan: nnTrang === 'ko' ? h.ten : kt.nhan, loai: kt.loai === 'Thịt đông lạnh' ? '냉동육' : '냉장육',
+      viTri: h.viTri, diem: [...h.diem], doChin: h.doChin, meo: h.meo, moTa: null,
+    };
+  }
   if (kt) {
     return { ma, ten: vietHoaDau(kt.ten), nhan: kt.nhan, loai: kt.loai, viTri: kt.viTri, diem: [...kt.diem], doChin: kt.doChin, meo: kt.meo, moTa: null };
+  }
+  if (nn === 'ko') {
+    // Mô tả của quán viết bằng tiếng Việt: thẻ tiếng Hàn không in. Ở trang tiếng Hàn không biết tên trang ghi (menu đọc
+    // bằng tiếng Việt) nên không hiện dòng "이 페이지 표기".
+    return { ma, ten: sp.tenNoi, nhan: nnTrang === 'ko' ? sp.tenNoi : sp.tenTrang, loai: loaiHan(sp), viTri: null, diem: [], doChin: null, meo: null, moTa: null };
   }
   const moTa = sp.moTa && !chuCam(sp.moTa).length ? sp.moTa : null;
   return {
@@ -527,6 +662,9 @@ const CHE: readonly [RegExp, string][] = [
   [/([Pp]hường|[Xx]ã|[Tt]hôn|[Ấấ]p|[Kk]hu phố|[Cc]hung cư|[Cc]ăn hộ|[Bb]lock|[Ll]ô)\s+[\p{Lu}0-9][\p{L}0-9]*(\s+[\p{Lu}0-9][\p{L}0-9]*){0,3}/gu, '[địa chỉ]'],
   // "tên em/anh/chị/tôi là X Y": che tên.
   [/(tên\s+(của\s+)?(em|anh|chị|tôi|mình|cô|chú)\s+là\s+)[\p{Lu}][\p{L}]*(\s+[\p{Lu}][\p{L}]*){0,3}/gu, '$1[tên]'],
+  // Tiếng Hàn (23/11/2026): "주소는 …", "배달 주소: …" che tới hết câu; "제 이름은 …", "성함은 …" che chữ ngay sau.
+  [/((배달\s*|배송\s*)?주소(는|가|요)?\s*[:：]?\s*)[^.!?\n]+/gu, '$1[주소]'],
+  [/((제\s*)?이름(은|이)|성함(은|이))\s*[^\s.!?,]+/gu, '$1 [이름]'],
 ];
 
 /** Che số điện thoại, email, địa chỉ, tên trong tin khách. Không chắc thì che thừa còn hơn sót. */
@@ -543,6 +681,8 @@ const MAU_DOI_NGUOI: readonly RegExp[] = [
   /(gặp|nói\s+chuyện(\s+(với|cùng))?|nối\s+máy|kết\s+nối|chuyển(\s+(cho|qua|sang))?|gọi|cần|xin)\s+(với\s+)?(nhân\s+viên|người\s+thật|quản\s+lý|chủ\s+quán|tư\s+vấn\s+viên|admin)/iu,
   /nhân\s+viên\s+(đâu|ơi)|người\s+thật|có\s+ai\s+(ở\s+)?(đó|đấy)\s+không/iu,
   /\b(gap|goi|noi chuyen voi)\s+(nhan vien|nguoi that|quan ly)\b|\bnguoi that\b/i,
+  // Tiếng Hàn: "직원 연결" (khung tiếng Hàn dặn khách nhắn đúng câu này), gọi nhân viên, nói chuyện với người thật.
+  /직원\s*(연결|불러|바꿔|호출|이랑|하고|과\s|와\s)|상담원|사장님\s*(연결|바꿔|불러)|사람(이랑|하고|과|와)\s*(얘기|이야기|대화|통화)|진짜\s*사람|실제\s*사람/u,
 ];
 
 /** Khách đòi gặp người thật (cuộc chat lên đầu màn theo dõi của nhân viên — tro_ly_cuoc.can_nguoi = gap_nguoi). */
@@ -560,9 +700,12 @@ export const DON_LON_TU = 9;
  */
 export function soNguoiKhachNoi(tin: string): number {
   let lon = 0;
-  for (const m of String(tin ?? '').normalize('NFC').matchAll(/(\d{1,3})\s*(người|nguoi|ng|khách(?!\s*hàng)|khach(?!\s*hang)|thành viên|pax)(?![\p{L}])/giu)) {
+  const s = String(tin ?? '').normalize('NFC');
+  for (const m of s.matchAll(/(\d{1,3})\s*(người|nguoi|ng|khách(?!\s*hàng)|khach(?!\s*hang)|thành viên|pax)(?![\p{L}])/giu)) {
     lon = Math.max(lon, Number(m[1]));
   }
+  // Tiếng Hàn: "4명이에요", "10인분", "4인 가족" — trợ từ dính liền sau số người nên không đòi chữ sau phải là ngắt.
+  for (const m of s.matchAll(/(\d{1,3})\s*(명|인분|인(?=$|[\s,.!?]|이|가|용))/gu)) lon = Math.max(lon, Number(m[1]));
   return lon;
 }
 

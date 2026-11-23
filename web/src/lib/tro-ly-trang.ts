@@ -18,7 +18,8 @@
  * ô chọn có sẵn của form đặt hàng. Đặt hàng vẫn là luồng cũ (tao_don_mua_thit, VNPay).
  *
  * Khi nào hiện (troLyTrangMo): công tắc hien_tro_ly_trang đã công bố và bật (0126), trang Mua thịt về đang mở có gói
- * đặt được, trang tiếng Việt (tạm — chờ Khánh chọn cho /en, /ko), và web đã nối database (có địa chỉ hàm).
+ * đặt được, trang tiếng Việt hay tiếng Hàn (Khánh 23/11/2026 "Làm tiếng Hàn"; /en vẫn chờ Khánh chọn), và web đã nối
+ * database (có địa chỉ hàm).
  *
  * File thuần: chỉ import type và hàm thuần của don-mua-thit.ts; không supabase-js, không DOM, không mạng, không đồng hồ.
  * Kiểm thử: crm/test/test-cong-khai-tro-ly-trang.mjs.
@@ -36,6 +37,26 @@ export const LOI_CHAO: readonly string[] = [
   'Dạ em chào anh/chị, em là Trang bên Beeftown ạ.',
   'Anh/chị nướng cho mấy người, thích thịt kiểu nào thì cứ nhắn em, em gợi ý phần thịt và số gói vừa đủ nhé.',
 ];
+
+/**
+ * Lời chào ở trang tiếng Hàn (/ko/buy-meat; Khánh 23/11/2026 "Làm tiếng Hàn") — PHẢI trùng LOI_CHAO_HAN của trang.ts.
+ * Khách gõ tiếng Hàn thì Trang trả lời tiếng Hàn ở cả trang tiếng Việt; khách gõ tiếng Việt ở trang tiếng Hàn thì
+ * Trang trả lời tiếng Việt (ngonNguTraLoi của tieng-viet-trang.ts, chạy trong Edge Function).
+ */
+export const LOI_CHAO_HAN: readonly string[] = [
+  '안녕하세요, Beeftown의 Trang이에요.',
+  '몇 분이 드실지, 어떤 고기를 좋아하시는지 편하게 보내 주세요. 부위와 알맞은 팩 수를 추천해 드릴게요.',
+];
+
+/** Lời chào theo trang đang mở. */
+export function loiChao(nn: NgonNgu): readonly string[] {
+  return nn === 'ko' ? LOI_CHAO_HAN : LOI_CHAO;
+}
+
+/** Ngôn ngữ của trang đang mở gửi lên Edge Function (nn của tin khách): chỉ 'ko' hay 'vi'. */
+export function nnGuiHam(nn: NgonNgu): 'vi' | 'ko' {
+  return nn === 'ko' ? 'ko' : 'vi';
+}
 
 /**
  * Nhịp trả lời cho giống người (mili giây; mỗi khoảng [thấp, cao] lấy ngẫu nhiên) — bản thử ngày 18/11/2026 (Khánh: "sau
@@ -112,9 +133,12 @@ export function dongAo(cach: 1 | 2 | 3, truc: boolean): CachDong {
   return c.canTruc && !truc ? CACH_DONG_AO[1] : c;
 }
 
-/** Khung Trang hiện hay không — một chỗ quyết định (file vỏ và component cùng gọi). */
+/**
+ * Khung Trang hiện hay không — một chỗ quyết định (file vỏ và component cùng gọi). Trang tiếng Việt và tiếng Hàn
+ * (23/11/2026); trang tiếng Anh vẫn chờ Khánh chọn.
+ */
 export function troLyTrangMo(batCongTac: unknown, trangThaiTrang: string, nn: NgonNgu, diaChiHam: string | null): boolean {
-  return batCongTac === true && trangThaiTrang === 'mo' && nn === 'vi' && !!diaChiHam;
+  return batCongTac === true && trangThaiTrang === 'mo' && (nn === 'vi' || nn === 'ko') && !!diaChiHam;
 }
 
 /**
@@ -216,7 +240,7 @@ export const CHU_TRO_LY = {
   daChoVaoDon: {
     vi: (dem: string) => `Đã cho vào đơn: ${dem}. Anh/chị điền họ tên, số điện thoại, địa chỉ giao ở phần Giao hàng rồi bấm Đặt hàng.`,
     en: (dem: string) => `Added to your order: ${dem}. Enter your name, phone number and delivery address under Delivery, then press Place order.`,
-    ko: (dem: string) => `주문에 담았어요: ${dem}. 배송 칸에 이름, 전화번호, 주소를 적고 주문하기를 눌러 주세요.`,
+    ko: (dem: string) => `주문에 담았어요: ${dem}. 배달 정보 칸에 이름, 전화번호, 주소를 적고 주문하기를 눌러 주세요.`,
   },
   goiDaDoi: {
     vi: 'Một số gói trong thẻ không còn trên trang — tải lại trang để xem giá mới nhất.',

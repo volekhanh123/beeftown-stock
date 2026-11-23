@@ -134,3 +134,102 @@ export function chuCam(text: unknown): string[] {
   for (const { re, vi_sao } of CAM_TRANG) if (re.test(s)) ra.push(vi_sao);
   return ra;
 }
+
+// -----------------------------------------------------------------------------
+// TIẾNG HÀN (Khánh 23/11/2026: "Làm tiếng Hàn") — khách viết tiếng Hàn, hay đang ở trang /ko/buy-meat, thì Trang trả
+// lời tiếng Hàn. Cùng ba lớp giữ như tiếng Việt: lời dặn (phần TIẾNG HÀN của trang.ts), máy kiểm ở đây (viết lại một
+// lần), rồi thay bảng từ / bỏ tin.
+// -----------------------------------------------------------------------------
+export type NgonNguTrang = 'vi' | 'ko';
+
+/** Chữ Hàn: âm tiết ghép, chữ cái rời (jamo), chữ cái tương thích. */
+const HANGUL = /[ᄀ-ᇿ㄰-㆏가-힯]/;
+
+/** Đoạn chữ có chữ Hàn không. */
+export function coChuHan(text: unknown): boolean {
+  return HANGUL.test(String(text ?? ''));
+}
+
+/**
+ * Ngôn ngữ Trang trả lời lượt này: tin khách có chữ Hàn → tiếng Hàn; có dấu tiếng Việt → tiếng Việt; không có cả hai
+ * ("ok", "4", "ribeye", tiếng Việt không dấu) → theo macDinh — ngôn ngữ Trang đang nói trong cuộc chat, chưa nói gì thì
+ * ngôn ngữ của trang đang mở.
+ */
+export function ngonNguTraLoi(tin: unknown, macDinh: NgonNguTrang): NgonNguTrang {
+  const s = String(tin ?? '').normalize('NFC');
+  if (HANGUL.test(s)) return 'ko';
+  if (DAU_VIET.test(s.toLowerCase())) return 'vi';
+  return macDinh;
+}
+
+/** Chữ La-tinh được giữ trong câu tiếng Hàn (viết thường): tên riêng, đơn vị, "LA" của LA갈비, địa chỉ quán. */
+export const GIU_NGUYEN_HAN: readonly string[] = [
+  'beeftown', 'trang', 'vnpay', 'zalo', 'ahamove', 'facebook', 'qr', 'g', 'kg', 'la', 'chimichurri',
+  'tp', 'hcm', 'hồ', 'tùng', 'mậu',
+];
+
+/** Đánh dấu trong danh sách chữ lạ: câu không có chữ Hàn nào (Claude trả tiếng Việt hay tiếng Anh). */
+export const KHONG_CO_CHU_HAN = '(không có chữ Hàn)';
+
+/**
+ * Chữ không hợp trong một câu tiếng Hàn (viết thường, không lặp). Rỗng = sạch. Mọi đoạn chữ La-tinh (kể cả chữ Việt:
+ * "đầu thăn ngoại", "ạ") phải nằm trong GIU_NGUYEN_HAN — "LA갈비", "150 g", "Beeftown" qua; "ribeye", "AI", "ok" bị bắt.
+ * Câu không có chữ Hàn nào thì thêm KHONG_CO_CHU_HAN.
+ */
+export function chuNgoaiHan(text: unknown): string[] {
+  const s = String(text ?? '').normalize('NFC');
+  const ra: string[] = [];
+  for (const w of s.toLowerCase().match(/\p{Script=Latin}+/gu) ?? []) {
+    if (!GIU_NGUYEN_HAN.includes(w) && !ra.includes(w)) ra.push(w);
+  }
+  if (s.trim() && !HANGUL.test(s)) ra.push(KHONG_CO_CHU_HAN);
+  return ra;
+}
+
+/** Bảng từ tiếng Hàn của lớp giữ cuối: chữ tiếng Anh lọt vào câu tiếng Hàn → tên trang tiếng Hàn ghi. Cụm dài trước. */
+export const BANG_TU_HAN: readonly (readonly [RegExp, string])[] = [
+  [/rib\s?eye\s+with\s+cap/gi, '립아이 캡'],
+  [/outside\s+skirt/gi, '안창살'],
+  [/top\s+blade/gi, '부채살'],
+  [/\bla\s+galbi\b/gi, 'LA갈비'],
+  [/galbisal/gi, '갈비살'],
+  [/rib\s?eye/gi, '꽃등심'],
+  [/medium[\s-]+rare/gi, '미디엄 레어'],
+  [/medium[\s-]+well/gi, '미디엄 웰던'],
+  [/well[\s-]+done/gi, '웰던'],
+  [/\bmedium\b/gi, '미디엄'],
+  [/\brare\b/gi, '레어'],
+  [/skin[\s-]*pack/gi, '스킨팩'],
+  [/kimchi/gi, '김치'],
+  [/\b(ok|oke|okay)\b,?\s*/gi, ''],
+];
+
+/** Thay theo bảng từ tiếng Hàn (lớp giữ cuối của câu tiếng Hàn). */
+export function thayBangTuHan(t: unknown): string {
+  let s = String(t ?? '');
+  for (const [mau, thay] of BANG_TU_HAN) s = s.replace(mau, thay);
+  return s.replace(/\s{2,}/g, ' ').trim();
+}
+
+/** Luật riêng của câu tiếng Hàn — cùng ý với CAM_TRANG, viết theo tiếng Hàn. Mỗi dòng kèm lý do. */
+export const CAM_TRANG_HAN: readonly { re: RegExp; vi_sao: string }[] = [
+  { re: /\d\s?(원|동)(?![\p{L}])|\d\s?(천|만)\s?(원|동)|\d+([.,]\d{3})+/u,
+    vi_sao: 'Số tiền trong tin (tiếng Hàn): giá chỉ có trên thẻ do trang tự tính.' },
+  { re: /저렴|값싼|싸요|싸게/u,
+    vi_sao: 'Không nói "rẻ" (저렴, 싸요): chỉ nói phần nào giá gói thấp hơn.' },
+  { re: /인공지능|챗봇|로봇|(^|[^\p{L}])봇(?![\p{L}])|자동\s?(응답|답변|상담)/u,
+    vi_sao: 'Không chữ AI, bot, tự động trong tin (tiếng Hàn): khách hỏi thì nói "가상 도우미".' },
+  { re: /(저는|전|제가)\s*(진짜\s*|실제\s*)?(사람|직원)(이에요|입니다|이야|예요)|사람\s*맞아요|(직원|매장|사장님?)(이|가|께서)?\s*(곧|바로|금방)\s*(들어|연락|전화)/u,
+    vi_sao: 'Trang không nhận là người, không hứa nhân viên vào chat hay gọi lại (tiếng Hàn).' },
+  // "직원에게 여쭤봐 주시면" (khách tự hỏi nhân viên) là câu đúng — chỉ bắt câu Trang tự đi hỏi: "물어보고", "확인해 드릴게요".
+  { re: /(잠시만|잠깐만?)\s*(기다려|기다리)|(확인|체크)해\s*(볼게요|드릴게요|보겠습니다)|(직원|매장|주방|사장님?)(에게|께|한테)\s*(물어|여쭤|확인해|전달해)\s?(보고|볼게요|봐\s?드릴게요|드릴게요)/u,
+    vi_sao: 'Trang chỉ nhắn tin: không bắt khách chờ, không nói đi kiểm tra hay đi hỏi ai (tiếng Hàn).' },
+];
+
+/** Chữ cấm trong một câu tiếng Hàn: danh sách của web (đã có mẫu tiếng Hàn), CAM_TRANG (chữ AI, Hanwoo), CAM_TRANG_HAN. */
+export function chuCamHan(text: unknown): string[] {
+  const s = String(text ?? '').normalize('NFC');
+  const ra = chuCam(s);
+  for (const { re, vi_sao } of CAM_TRANG_HAN) if (re.test(s)) ra.push(vi_sao);
+  return ra;
+}
