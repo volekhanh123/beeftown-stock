@@ -534,6 +534,10 @@ function doKhiDungYen(conChay = []) {
     // Bốn ảnh tạm ChatGPT tạo ngày 10/11/2026: quầy (Đến Beeftown) và ảnh sản phẩm Mua thịt về.
     'quay-chon-bo', 'mua-thit-mat', 'mua-thit-dong-lanh', 'mua-kim-chi',
   ].join('|') + ')-\\d+x\\d+-\\d+\\.(?:avif|webp)(?:$|[?#])');
+  // Ảnh CHỤP THẬT của người khác (trang Các phần thịt bò, Khánh quyết 23/11/2026): KHÔNG nhãn "Ảnh minh họa" (nhãn chỉ dành
+  // cho ảnh AI); vẫn đo alt, bóng đổ, tỷ lệ, lấp đúng khung, không phần tử nào đè lên ảnh. Chép tay như ANH_AI.
+  const ANH_THAT = new RegExp('/anh/(?:' + ['phan-bo-dau-than-ngoai', 'phan-bo-de-suon', 'phan-bo-diem-than', 'phan-bo-nac-vai', 'phan-bo-loi-vai'].join('|')
+    + ')-\\d+x\\d+-\\d+\\.(?:avif|webp)(?:$|[?#])');
   const NHAN_ANH = { vi: 'Ảnh minh họa', en: 'Illustrative image', ko: '연출 이미지' };
   const cuonDau = scrollY;
   const veCho = y => scrollTo({ top: y, left: 0, behavior: 'instant' });
@@ -546,6 +550,29 @@ function doKhiDungYen(conChay = []) {
     const ten = (a?.getAttribute('src') ?? '').replace(/^.*\/anh\//, '').replace(/-\d+\.(?:avif|webp).*$/, '') || moTa(f);
     if (!a) { kq.anh.push(`${ten}: <figure class="anh"> không có <img>`); continue; }
     if ((a.getAttribute('alt') ?? '').trim().length < 20) kq.anh.push(`${ten}: alt quá ngắn hoặc rỗng`);
+    if (ANH_THAT.test(a.getAttribute('src') ?? '')) {
+      if (f.querySelector('figcaption.chu-thich-anh')) kq.anh.push(`${ten}: ảnh chụp thật mà có nhãn "${NHAN_ANH[NGON_NGU]}" — nhãn chỉ dành cho ảnh AI`);
+      if (!hien(f)) continue;
+      const [kf, csF, ka] = [f.getBoundingClientRect(), getComputedStyle(f), a.getBoundingClientRect()];
+      if (csF.boxShadow !== 'none' || getComputedStyle(a).boxShadow !== 'none' || /drop-shadow/.test(`${csF.filter}${getComputedStyle(a).filter}`)) kq.anh.push(`${ten}: ảnh có bóng đổ`);
+      if (csF.transform !== 'none' || csF.rotate !== 'none') kq.anh.push(`${ten}: ảnh bị xoay / biến dạng (${csF.transform})`);
+      if (a.complete && a.naturalWidth > 0 && Math.abs(ka.width / ka.height - a.naturalWidth / a.naturalHeight) > 0.02) kq.anh.push(`${ten}: hiện ${ka.width.toFixed(0)} × ${ka.height.toFixed(0)}px, file ảnh ${a.naturalWidth} × ${a.naturalHeight} — sai tỷ lệ`);
+      if (Math.abs(ka.width - kf.width) > 1 || Math.abs(ka.height - kf.height) > 1) kq.anh.push(`${ten}: ảnh không lấp đúng khung`);
+      veCho(scrollY + kf.top + kf.height / 2 - innerHeight / 2);
+      const k3 = f.getBoundingClientRect();
+      const cheT = (document.querySelector('header.dau-trang')?.getBoundingClientRect().bottom ?? 0) + 2;
+      const t3 = document.querySelector('.thd');
+      const kt3 = t3 && hien(t3) ? t3.getBoundingClientRect() : null;
+      const cheD = kt3 && kt3.top < innerHeight ? kt3.top - 2 : innerHeight - 1;
+      const tr3 = Math.max(k3.top, cheT), du3 = Math.min(k3.bottom, cheD);
+      if (du3 - tr3 > 40) {
+        for (const [tx, ty] of [[0.5, 0.5], [0.12, 0.12], [0.88, 0.12], [0.12, 0.88], [0.88, 0.88]]) {
+          const tc = document.elementFromPoint(k3.left + k3.width * tx, tr3 + (du3 - tr3) * ty);
+          if (tc && !f.contains(tc)) { kq.anh.push(`${ten}: ${moTa(tc).slice(0, 50)} đè lên ảnh`); break; }
+        }
+      }
+      continue;
+    }
     if (!ANH_AI.test(a.getAttribute('src') ?? '')) { kq.anh.push(`${ten}: không thuộc danh sách ảnh đã biết — ảnh chụp thật mới thì thêm vào phép đo này`); continue; }
     const nhan = f.querySelector('figcaption.chu-thich-anh');
     if (!nhan) { kq.anh.push(`${ten}: ảnh AI không có nhãn "${NHAN_ANH[NGON_NGU]}"`); continue; }
