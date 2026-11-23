@@ -217,7 +217,7 @@ await nhom('8 · BA GÓI MUA VỀ: LA GALBI, BA CHỈ BÒ, RIBEYE CÒN NẮP (23
        && PHAN_BO.filter(p => p.coGoiMuaVe).map(p => p.id).join() === 'dau-than-ngoai,la-galbi,ba-chi');
   ok('Bảng so sánh và hỏi đáp có đủ ba phần mới (hàng bảng ba thứ tiếng; câu hỏi LA galbi, ba chỉ bò, ribeye còn nắp)',
      ['la-galbi', 'ba-chi'].every(k => NGON_NGU.every(nn => (CHU_PHAN_BO.bang[k]?.[nn] ?? '').length > 20))
-       && ['LA Galbi là gì?', 'Ba chỉ bò là phần nào?', 'Ribeye còn nắp (Ribeye with Cap) là gì?'].every(h => CHU_PHAN_BO.hoi.some(q => q.h.vi.startsWith(h))));
+       && ['LA Galbi (sườn bò cắt ngang) là gì?', 'Ba chỉ bò là phần nào?', 'Đầu thăn ngoại còn nắp (Ribeye with Cap) là gì?'].every(h => CHU_PHAN_BO.hoi.some(q => q.h.vi.startsWith(h))));
   ok('Ba chỉ bò nói thái mỏng / lát mỏng chỉ như điều thường gặp, không hứa độ dày; không nói xuất xứ hay cấp hạng (đã kiểm ở nhóm 2)',
      !/\d\s?mm|\d\s?ly/i.test(JSON.stringify(id('ba-chi'))) && /thường được thái lát mỏng/.test(id('ba-chi').an.vi));
 });

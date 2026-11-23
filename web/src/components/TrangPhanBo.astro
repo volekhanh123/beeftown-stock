@@ -5,8 +5,9 @@
  * Trang trụ cột cho người đang tìm tên các phần thịt ("đầu thăn ngoại", "dẻ sườn bò là phần
  * nào", "diềm thăn bò"): năm phần thịt bò nướng của Beeftown cùng ba gói của trang Mua thịt về
  * (LA Galbi, ba chỉ bò, ribeye còn nắp), mỗi phần có ảnh, chỗ nằm trên con bò, cảm giác khi ăn,
- * cách nướng. Neo #pb-la-galbi và #pb-ba-chi được trang Mua thịt về trỏ tới — không đổi tên. Chữ và nguồn sự thật: lib/phan-bo.ts
- * (đọc chú thích đầu file đó — đặc biệt danh sách thứ KHÔNG được viết ra).
+ * cách nướng. Neo #pb-la-galbi và #pb-ba-chi được trang Mua thịt về trỏ tới — không đổi tên.
+ * Chữ và nguồn sự thật: lib/phan-bo.ts (đọc chú thích đầu file đó — đặc biệt danh sách thứ KHÔNG được
+ * viết ra).
  *
  * Ảnh là ảnh chụp thật của người khác, giấy phép cho dùng lại (web/cong-cu/anh/NGUON-ANH-PHAN-BO.md),
  * không phải ảnh quán: không nhãn "Ảnh minh họa" (Khánh quyết 23/11/2026; riêng ảnh diềm thăn bò đã chỉnh bằng AI, dòng nguồn
@@ -230,7 +231,7 @@ const SIZES_ANH = '(min-width: 900px) 42vw, (min-width: 600px) 560px, calc(100vw
     border-bottom: 1px solid var(--vien);
   }
   .pb-bang tbody th, .pb-bang tbody td { padding: var(--k-4) var(--k-4) var(--k-4) 0; border-bottom: 1px solid var(--vien); vertical-align: top; text-align: left; }
-  .pb-bang tbody th { font-size: 18px; font-weight: 700; white-space: nowrap; }
+  .pb-bang tbody th { font-size: 18px; font-weight: 700; }
   .pb-bang tbody th a { display: inline-flex; align-items: center; min-height: var(--cham); color: inherit; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
   @media (hover: hover) { .pb-bang tbody th a:hover { color: var(--nhan); } }
   .pb-ghi-chu { margin: var(--k-5) 0 0; max-width: 70ch; color: var(--chu-phu); }
@@ -248,7 +249,8 @@ const SIZES_ANH = '(min-width: 900px) 42vw, (min-width: 600px) 560px, calc(100vw
       font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--nhan-nho);
     }
   }
-  @media (min-width: 720px) { .pb-bang tbody td:nth-child(2) { width: 42%; } }
+  /* Từ 720px: ba cột theo tỷ lệ — tên dài ("LA Galbi (sườn bò cắt ngang)") xuống dòng, không ép cột "Hợp với ai" còn ~90px. */
+  @media (min-width: 720px) { .pb-bang tbody th { width: 26%; padding-right: var(--k-5); } .pb-bang tbody td:nth-child(2) { width: 36%; } }
 
   /* Hai thứ nên nhìn trên khay. */
   .pb-doc { margin-top: var(--k-8); }
