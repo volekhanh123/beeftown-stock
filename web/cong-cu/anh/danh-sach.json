@@ -558,6 +558,30 @@
       "khung": {
         "4x3": { "fx": 0.5, "fy": 0.5, "rong": [400, 640] }
       }
+    },
+    "phan-bo-la-galbi": {
+      "mo_ta": "Những lát thịt bò đã ướp trên khay đen — ảnh chụp thật (xem NGUON-ANH-PHAN-BO.md)",
+      "nguon": {
+        "cong_cu": "Ảnh chụp thật của người khác, giấy phép cho dùng lại — web/cong-cu/anh/NGUON-ANH-PHAN-BO.md",
+        "da_chon": "cắt 4:3 từ ảnh tải về; không qua công cụ tạo ảnh"
+      },
+      "chat_luong": { "avif": 45, "webp": 60 },
+      "goc": "phan-bo-la-galbi-4x3.jpg",
+      "khung": {
+        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [400, 640] }
+      }
+    },
+    "phan-bo-ba-chi": {
+      "mo_ta": "Những lát thịt bò thái mỏng mỡ xen nạc — ảnh chụp thật (xem NGUON-ANH-PHAN-BO.md)",
+      "nguon": {
+        "cong_cu": "Ảnh chụp thật của người khác, giấy phép cho dùng lại — web/cong-cu/anh/NGUON-ANH-PHAN-BO.md",
+        "da_chon": "cắt 4:3 từ ảnh tải về; không qua công cụ tạo ảnh"
+      },
+      "chat_luong": { "avif": 45, "webp": 60 },
+      "goc": "phan-bo-ba-chi-4x3.jpg",
+      "khung": {
+        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [400, 629] }
+      }
     }
   },
   "du_phong": {

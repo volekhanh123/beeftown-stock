@@ -147,6 +147,12 @@ export const ANH_TAO_SAN: Readonly<Record<string, Readonly<Record<string, CoAnh>
   'phan-bo-loi-vai': {
     '4x3': { rong: 640, cao: 480, cac: [400, 640], mau: '#E0BDB0' },
   },
+  'phan-bo-la-galbi': {
+    '4x3': { rong: 640, cao: 480, cac: [400, 640], mau: '#715547' },
+  },
+  'phan-bo-ba-chi': {
+    '4x3': { rong: 629, cao: 472, cac: [400, 629], mau: '#B46866' },
+  },
   'quay-chon-bo': {
     '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#905942' },
   },

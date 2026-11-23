@@ -96,7 +96,8 @@ const ANH_AI = [...ANH_CHATGPT, ...ANH_MON, ...ANH_TAM];
 // từ web, không nhãn "Ảnh minh họa"; web/cong-cu/anh/NGUON-ANH-PHAN-BO.md) → minhHoa: false. Riêng phan-bo-diem-than đã chỉnh bằng AI (GPT):
 // Khánh quyết 23/11/2026 vẫn không nhãn, nên nguồn và dòng nguồn ảnh trên trang phải nói rõ "chỉnh sửa bằng AI" (DA_CHINH_AI).
 const DA_CHINH_AI = ['phan-bo-diem-than'];
-const ANH_THAT = ['phan-bo-dau-than-ngoai', 'phan-bo-de-suon', 'phan-bo-diem-than', 'phan-bo-nac-vai', 'phan-bo-loi-vai'];
+const ANH_THAT = ['phan-bo-dau-than-ngoai', 'phan-bo-de-suon', 'phan-bo-diem-than', 'phan-bo-nac-vai', 'phan-bo-loi-vai',
+  'phan-bo-la-galbi', 'phan-bo-ba-chi'];
 // Ảnh đang đặt trên trang và khung của từng ảnh; bo-xeo-vi là ảnh dự phòng, chưa đặt ở đâu nên không dựng.
 const ANH_DA_DAT = {
   'hero-vi-gas': ['4x3', '4x5'],
@@ -135,10 +136,11 @@ const CO_GOC = {
   // Năm JPG đã cắt 4:3 từ ảnh chụp thật (NGUON-ANH-PHAN-BO.md): đầu thăn ngoại, dẻ sườn, diềm thăn, nạc vai, lõi vai.
   'phan-bo-dau-than-ngoai-4x3.jpg': [780, 585], 'phan-bo-de-suon-4x3.jpg': [900, 675], 'phan-bo-diem-than-4x3.png': [1448, 1086],
   'phan-bo-nac-vai-4x3.jpg': [810, 608], 'phan-bo-loi-vai-4x3.jpg': [810, 608],
+  'phan-bo-la-galbi-4x3.jpg': [1137, 853], 'phan-bo-ba-chi-4x3.jpg': [630, 472],
 };
 
 // ===========================================================================
-await nhom('1 · DANH MỤC ẢNH: ĐÚNG 42 ID, CỜ MINH HỌA, ALT BA THỨ TIẾNG TẢ ĐÚNG ẢNH', async () => {
+await nhom('1 · DANH MỤC ẢNH: ĐÚNG 44 ID, CỜ MINH HỌA, ALT BA THỨ TIẾNG TẢ ĐÚNG ẢNH', async () => {
   const idKhai = (doc(SRC, 'lib', 'anh.ts').match(/export\s+type\s+IdAnh\s*=\s*([^;]+);/)?.[1].match(/'([^']+)'/g) ?? []).map(s => s.slice(1, -1));
   const mong = [...ANH_AI, ...ANH_THAT].sort();
   ok(`IdAnh khai đúng ${mong.length} id: ${mong.join(', ')}`, JSON.stringify([...idKhai].sort()) === JSON.stringify(mong), idKhai.join(', '));

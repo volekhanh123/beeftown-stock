@@ -1,16 +1,24 @@
 /**
  * NỘI DUNG TRANG "CÁC PHẦN THỊT BÒ" — /phan-thit-bo, /en/beef-cuts, /ko/beef-cuts
  * ===============================================================================
- * Trang giải thích năm phần thịt bò nướng của Beeftown cho người đang tìm tên các phần thịt
+ * Trang giải thích bảy phần thịt bò của Beeftown (năm phần nướng tại bàn, ba gói mua về — LA Galbi, ba chỉ bò,
+ * ribeye còn nắp) cho người đang tìm tên các phần thịt
  * ("đầu thăn ngoại", "dẻ sườn bò là phần nào", "diềm thăn bò"…). Tiếng Việt là bản gốc: viết
  * theo tên tiếng Việt của từng phần (Khánh quyết 23/11/2026); bản Anh và Hàn dịch theo.
  *
- * NGUỒN SỰ THẬT — chỉ hai thứ:
+ * NGUỒN SỰ THẬT — ba thứ:
  *   1. Tài liệu đào tạo thịt bò (mục 05 và 06–10 của "Beef Training", bản VI 13/11/2026):
  *      cảm giác khi ăn, hợp với khách nào, mức chín gợi ý, cách nướng, việc nhân viên làm.
  *   2. Kiến thức pha lóc phổ thông: phần thịt nằm ở đâu trên con bò; tên tiếng Việt, Anh, Hàn
  *      của từng phần (tra 13/11/2026, nguồn từng tên ở ten-tieng-viet-phan-thit.md của thư mục
  *      video đào tạo thịt bò trên OneDrive — không nằm trong repo).
+ *   3. Ba phần của gói Mua thịt về (thêm 23/11/2026, không có trong tài liệu đào tạo): mô tả của chính quán
+ *      trên /mua-thit-ve (JSON-LD: LA Galbi "sườn bò cắt ngang còn xương, đã ướp sẵn, cấp đông"; Ba chỉ bò "thớ mỡ
+ *      xen nạc, cấp đông, hợp nướng nhanh hoặc nhúng lẩu"; Ribeye with Cap "giữ phần nắp bên ngoài, đóng skin-pack
+ *      trên khay đen") cùng nguồn công khai: Wikipedia "Galbi" (mục LA galbi: kiểu flanken, cắt ngang xương, ướp xì dầu,
+ *      tỏi, đường), "Short ribs" (sườn bò lấy từ vùng ức, vai, bụng dưới hoặc sườn) và "Beef plate" (bụng bò dưới xương
+ *      sườn, béo, dai); tên Hàn 우삼겹 = "ba chỉ bò" (trang bán lẻ và báo Hàn: lớp mỡ xen nạc, thái mỏng). Vẫn không có
+ *      xuất xứ, cấp hạng, giá, ngày ủ.
  *
  * KHÔNG viết, dù tài liệu có nhắc, vì chữ này bị chặn trên trang công khai hoặc chưa ai xác nhận
  * cho đúng sản phẩm bán trong ngày: giống bò, cấp hạng, xuất xứ, số ngày ủ, giá, khối lượng khay
@@ -23,7 +31,7 @@
  */
 import type { BaThuTieng } from './chu';
 
-export type IdPhanBo = 'dau-than-ngoai' | 'de-suon' | 'diem-than' | 'nac-vai' | 'loi-vai';
+export type IdPhanBo = 'dau-than-ngoai' | 'de-suon' | 'diem-than' | 'nac-vai' | 'loi-vai' | 'la-galbi' | 'ba-chi';
 
 export interface PhanBo {
   id: IdPhanBo;
@@ -41,6 +49,8 @@ export interface PhanBo {
   hop: BaThuTieng;
   /** Một ý riêng của phần này (nhãn + chữ), không phần nào bắt buộc có. */
   them?: { nhan: BaThuTieng; chu: BaThuTieng };
+  /** Phần này có gói trong trang Mua thịt về: thêm link tới trang đó (chỉ khi trang đang mở). */
+  coGoiMuaVe?: boolean;
 }
 
 // Thứ tự trang: ba phần hay được tìm bằng tên tiếng Việt nhất trước, rồi hai phần ở vai.
@@ -69,6 +79,16 @@ export const PHAN_BO: readonly PhanBo[] = [
       en: 'You like tender, rich beef.',
       ko: '부드럽고 고소한 소고기를 좋아하신다면 잘 맞아요.',
     },
+    // Ribeye còn nắp = gói "Ribeye with Cap" của trang Mua thịt về (23/11/2026): mô tả của quán + tài liệu đào tạo (nắp).
+    them: {
+      nhan: { vi: 'Ribeye còn nắp', en: 'Ribeye with cap', ko: '새우살이 붙은 꽃등심' },
+      chu: {
+        vi: 'Ribeye còn nắp (Ribeye with Cap) là miếng ribeye giữ nguyên phần nắp bao quanh bên ngoài, phần đặc biệt mềm và béo thơm. Beeftown bán gói này trong trang Mua thịt về, đóng skin-pack trên khay đen.',
+        en: 'Ribeye with Cap is a ribeye that keeps the cap wrapped around the outside, the especially tender and richly flavoured part. Beeftown sells this pack through Take home, skin-packed on a black tray.',
+        ko: '새우살이 붙은 꽃등심(Ribeye with Cap)은 바깥을 감싸는 새우살을 그대로 둔 꽃등심으로, 특히 부드럽고 고소한 부분이에요. Beeftown은 이 상품을 포장 구매 페이지에서 검은 트레이에 스킨팩으로 담아 판매해요.',
+      },
+    },
+    coGoiMuaVe: true,
   },
   {
     id: 'de-suon',
@@ -178,9 +198,77 @@ export const PHAN_BO: readonly PhanBo[] = [
       ko: '너무 기름진 소고기를 좋아하지 않으신다면 잘 맞아요.',
     },
   },
+  {
+    id: 'la-galbi',
+    ten: { vi: 'LA Galbi (sườn bò cắt ngang)', en: 'LA galbi (flanken-cut short ribs)', ko: 'LA갈비' },
+    hanLatin: 'LA galbi',
+    noi: {
+      vi: 'Là sườn bò (short rib) cắt ngang qua các xương theo kiểu flanken: mỗi miếng là một lát thịt mỏng, còn vài mẩu xương nhỏ ở mép. Sườn bò lấy từ vùng sườn và ngực của con bò, phía dưới lưng.',
+      en: 'Beef short ribs cut across the bones in the flanken style: each piece is a thin strip of meat with a few small bone pieces along the edge. Short ribs come from the rib and chest area of the animal, below the back.',
+      ko: '소갈비를 뼈를 가로질러 플랭큰 방식으로 자른 것으로, 한 조각마다 얇게 저민 살코기 옆에 작은 뼈 조각이 몇 개 붙어 있어요. 소갈비는 소의 등 아래쪽, 갈비와 가슴 부위에서 나와요.',
+    },
+    an: {
+      vi: 'Lát cắt mỏng nên thịt chín nhanh. Gia vị ướp kiểu galbi thường có xì dầu, tỏi và đường, cho vị ngọt mặn đậm đà; thịt xen mỡ, ăn cùng cơm rất hợp. Gói LA Galbi của Beeftown đã ướp sẵn và cấp đông, dễ ăn cho cả nhà.',
+      en: 'The thin cut cooks quickly. Galbi marinade usually contains soy sauce, garlic and sugar, giving a rich sweet-savoury flavour; the meat is marbled with fat and goes well with rice. Beeftown’s LA galbi pack is already marinated and frozen, easy for the whole family to enjoy.',
+      ko: '얇게 썰어서 빨리 익어요. 갈비 양념에는 보통 간장, 마늘, 설탕이 들어가 달콤짭짤하고 진한 맛이 나고, 지방이 고루 섞여 있어 밥과 잘 어울려요. Beeftown의 LA갈비는 미리 양념해 냉동한 상품이라 온 가족이 편하게 드실 수 있어요.',
+    },
+    nuong: {
+      vi: 'Nướng nhanh trên vỉ nóng và canh kỹ vì lát mỏng rất mau chín. Gia vị ngọt mặn dễ cháy: dùng mức lửa vừa và lật thịt để gia vị không cháy đen. Nên nướng sau các phần nguyên vị; nếu muốn nướng nguyên vị sau đó, hãy nhờ nhân viên kiểm tra vỉ và thay vỉ nếu cần.',
+      en: 'Grill it quickly on a hot grill and keep an eye on it, because thin strips cook fast. Sweet-savoury seasoning burns easily, so use medium heat and turn the meat so the seasoning doesn’t blacken. Grill it after the plain cuts; if you want a plain cut afterwards, ask our staff to check the grill and change it if needed.',
+      ko: '뜨거운 그릴에 빠르게 굽고 얇아서 금방 익으니 잘 지켜봐 주세요. 달콤짭짤한 양념은 쉽게 타니 불은 중간 정도로 하고 고기를 뒤집어서 양념이 까맣게 타지 않도록 해 주세요. 양념하지 않은 부위를 먼저 굽고 그다음에 굽는 것이 좋아요. 양념하지 않은 고기를 나중에 구우려면 직원에게 그릴을 확인하고 필요하면 바꿔 달라고 하세요.',
+    },
+    hop: {
+      vi: 'Bạn muốn một phần sườn bò dễ ăn, vị ngọt mặn, hợp ăn cùng cơm.',
+      en: 'You want easy-to-eat beef ribs with a sweet-savoury flavour that goes with rice.',
+      ko: '먹기 편하고 달콤짭짤해서 밥과 잘 어울리는 소갈비를 원하신다면 잘 맞아요.',
+    },
+    them: {
+      nhan: { vi: 'Mua về nhà', en: 'To take home', ko: '집에서 즐기기' },
+      chu: {
+        vi: 'LA Galbi có trong trang Mua thịt về, bán dạng sườn bò cắt ngang còn xương, đã ướp sẵn và cấp đông.',
+        en: 'LA galbi is sold through Take home as bone-in beef ribs cut across the bone, already marinated and frozen.',
+        ko: 'LA갈비는 포장 구매 페이지에서 뼈가 붙은 채 가로로 자른 소갈비로, 미리 양념해 냉동한 상태로 판매해요.',
+      },
+    },
+    coGoiMuaVe: true,
+  },
+  {
+    id: 'ba-chi',
+    ten: { vi: 'Ba chỉ bò', en: 'Beef short plate (belly)', ko: '우삼겹' },
+    hanLatin: 'usamgyeop',
+    noi: {
+      vi: 'Là phần thịt ở bụng bò, ngay dưới các xương sườn (short plate trong cách phân loại của Mỹ). Thịt có những lớp mỡ xen nạc, nhìn giống ba chỉ heo nên được gọi là ba chỉ bò.',
+      en: 'The meat from the belly of the animal, just below the ribs (the short plate in the US system). It has layers of fat between the lean, much like pork belly, which is why the Korean name, usamgyeop, means “beef three-layer”.',
+      ko: '소의 배, 갈비 바로 아래 부위의 고기예요(미국 분류로는 쇼트 플레이트). 지방과 살코기가 켜켜이 겹쳐 있어 돼지 삼겹살과 닮아서 우삼겹이라고 불러요.',
+    },
+    an: {
+      vi: 'Nhiều mỡ xen nạc nên béo thơm; thịt ở vùng bụng khá dai và béo nên thường được thái lát mỏng. Gói ba chỉ bò của Beeftown được cấp đông, hợp nướng nhanh trên vỉ hoặc nhúng lẩu.',
+      en: 'Plenty of fat between the lean makes it rich and savoury; belly meat is fairly tough and fatty, so it is usually sliced thin. Beeftown’s beef short plate pack is frozen and suits a quick grill or a dip in the hot pot.',
+      ko: '지방과 살코기가 번갈아 있어 고소하고, 배 쪽 고기는 질기고 기름진 편이라 보통 얇게 썰어 먹어요. Beeftown의 우삼겹은 냉동 상품으로 빠르게 구워 먹거나 샤브샤브처럼 전골에 살짝 담가 먹기 좋아요.',
+    },
+    nuong: {
+      vi: 'Lát mỏng chín rất nhanh nên canh kỹ, đừng để quá lâu trên vỉ. Cũng có thể nhúng nhanh vào nồi lẩu.',
+      en: 'Thin slices cook very fast, so watch them and don’t leave them on the grill too long. You can also dip them quickly in a hot pot.',
+      ko: '얇게 썬 고기는 아주 빨리 익으니 잘 지켜보고 그릴에 너무 오래 두지 마세요. 전골 냄비에 살짝 담갔다 먹어도 좋아요.',
+    },
+    hop: {
+      vi: 'Bạn thích vị béo của mỡ xen nạc và muốn món nướng nhanh hoặc nhúng lẩu.',
+      en: 'You like the richness of fat between lean meat and want a quick grill or a hot pot.',
+      ko: '지방과 살코기가 어우러진 고소함을 좋아하고 빠르게 구워 먹거나 전골로 즐기고 싶으시다면 잘 맞아요.',
+    },
+    them: {
+      nhan: { vi: 'Mua về nhà', en: 'To take home', ko: '집에서 즐기기' },
+      chu: {
+        vi: 'Ba chỉ bò có trong trang Mua thịt về, bán dạng cấp đông.',
+        en: 'Beef short plate is sold through Take home, frozen.',
+        ko: '우삼겹은 포장 구매 페이지에서 냉동 상태로 판매해요.',
+      },
+    },
+    coGoiMuaVe: true,
+  },
 ];
 
-/** Chữ của trang ngoài năm phần thịt. Đủ vi / en / ko. */
+/** Chữ của trang ngoài bảy phần thịt. Đủ vi / en / ko. */
 export const CHU_PHAN_BO = {
   // --- Mở đầu ---------------------------------------------------------------
   hieu: { vi: 'Các phần thịt bò', en: 'Beef cuts', ko: '소고기 부위' },
@@ -191,9 +279,9 @@ export const CHU_PHAN_BO = {
     ko: '꽃등심, 갈비살, 안창살, 윗등심, 부채살. 각 부위가 소의 어디에 있는지, 어떤 맛과 식감인지, 테이블 가스 그릴에서 어떻게 구우면 좋은지 알려 드릴게요.',
   },
   quay: {
-    vi: 'Ở Beeftown, bạn chọn khay thịt đóng gói skin-pack tại quầy, đọc nhãn rồi cả bàn cùng nướng thịt trên vỉ gas. Trang này giúp bạn biết trước mỗi phần thịt khác nhau thế nào. Khối lượng và giá của từng khay được ghi trên nhãn.',
-    en: 'At Beeftown, you pick a skin-packed tray at the counter, read the label, and grill the meat together on the gas grill at your table. This page helps you see how the cuts differ before you arrive. Each tray’s weight and price are shown on its label.',
-    ko: 'Beeftown에서는 정육 코너에서 스킨팩 트레이를 고르고 라벨을 확인한 뒤, 테이블의 가스 그릴에서 고기를 함께 구워 드실 수 있어요. 이 페이지에서 부위마다 어떻게 다른지 미리 알아보세요. 고기의 중량과 가격은 트레이 라벨에 적혀 있어요.',
+    vi: 'Ở Beeftown, bạn chọn khay thịt đóng gói skin-pack tại quầy, đọc nhãn rồi cả bàn cùng nướng thịt trên vỉ gas. Trang này giúp bạn biết trước mỗi phần thịt khác nhau thế nào. Khối lượng và giá của từng khay được ghi trên nhãn. Trang cũng nói về ba món có trong gói Mua thịt về: LA Galbi, ba chỉ bò và ribeye còn nắp.',
+    en: 'At Beeftown, you pick a skin-packed tray at the counter, read the label, and grill the meat together on the gas grill at your table. This page helps you see how the cuts differ before you arrive. Each tray’s weight and price are shown on its label. It also covers three items sold through Take home: LA galbi, beef short plate and ribeye with cap.',
+    ko: 'Beeftown에서는 정육 코너에서 스킨팩 트레이를 고르고 라벨을 확인한 뒤, 테이블의 가스 그릴에서 고기를 함께 구워 드실 수 있어요. 이 페이지에서 부위마다 어떻게 다른지 미리 알아보세요. 고기의 중량과 가격은 트레이 라벨에 적혀 있어요. 포장 구매에서 판매하는 LA갈비, 우삼겹, 새우살이 붙은 꽃등심도 함께 소개해요.',
   },
 
   // --- Chọn theo khẩu vị -----------------------------------------------------
@@ -204,7 +292,7 @@ export const CHU_PHAN_BO = {
     en: 'Ask yourself two things: do you like tender meat or a firmer chew, and do you prefer the rich flavour of fat or a more pronounced beef flavour? Our staff can compare two cuts based on your preferences to help you decide.',
     ko: '두 가지를 생각해 보세요. 부드러운 고기가 좋은지 씹는 맛이 있는 고기가 좋은지, 그리고 지방의 진한 고소함이 좋은지 소고기 본연의 향이 또렷한 쪽이 좋은지요. 정육 코너 직원도 취향에 맞춰 두 부위를 비교해 선택을 도와드려요.',
   },
-  bangTen: { vi: 'So sánh năm phần thịt', en: 'Five cuts compared', ko: '다섯 부위 비교' },
+  bangTen: { vi: 'So sánh các phần thịt', en: 'The cuts compared', ko: '부위 비교' },
   cotPhan: { vi: 'Phần thịt', en: 'Cut', ko: '부위' },
   cotAn: { vi: 'Cảm giác khi ăn', en: 'Flavour and texture', ko: '먹었을 때 느낌' },
   cotHop: { vi: 'Hợp với ai', en: 'Who it suits', ko: '추천 대상' },
@@ -235,6 +323,16 @@ export const CHU_PHAN_BO = {
       en: 'Relatively lean; can dry out if overcooked',
       ko: '지방이 비교적 적고, 너무 익히면 퍽퍽해져요',
     },
+    'la-galbi': {
+      vi: 'Lát mỏng cắt ngang xương, chín nhanh; ướp ngọt mặn, hợp ăn cùng cơm',
+      en: 'Thin strips cut across the bone, quick to cook; a sweet-savoury marinade that goes with rice',
+      ko: '뼈를 가로질러 얇게 썰어 빨리 익고, 달콤짭짤한 양념이 밥과 잘 어울려요',
+    },
+    'ba-chi': {
+      vi: 'Mỡ xen nạc, béo thơm; lát mỏng chín rất nhanh',
+      en: 'Fat between the lean, rich and savoury; thin slices cook very fast',
+      ko: '지방과 살코기가 켜켜이 있어 고소하고, 얇게 썰어 아주 빨리 익어요',
+    },
   } satisfies Record<IdPhanBo, BaThuTieng>,
   bangGhiChu: {
     vi: 'Độ mềm, độ mọng nước, hương thịt bò và vị béo là bốn cảm nhận khác nhau: một phần thịt có thể mạnh ở điều này, nhẹ ở điều kia. Kết cấu còn phụ thuộc cách sơ chế và cách nướng, nên “mềm và ngon” chưa nói được nhiều.',
@@ -262,7 +360,8 @@ export const CHU_PHAN_BO = {
   nhanTenKhac: { vi: 'Tên gọi khác', en: 'Also called', ko: '다른 이름' },
   nhanNoi: { vi: 'Nằm ở đâu', en: 'Where it comes from', ko: '위치' },
   nhanAn: { vi: 'Ăn ra sao', en: 'Flavour and texture', ko: '맛과 식감' },
-  nhanNuong: { vi: 'Nướng tại bàn', en: 'Grilling at the table', ko: '테이블에서 굽기' },
+  nhanNuong: { vi: 'Cách nướng', en: 'How to grill', ko: '굽는 법' },
+  xemGoi: { vi: 'Xem gói trong trang Mua thịt về', en: 'See the pack in Take home', ko: '포장 구매에서 보기' },
   nhanHop: { vi: 'Hợp với ai', en: 'Who it suits', ko: '추천 대상' },
   // Hình con bò nhỏ ở dòng "Nằm ở đâu" (lib/so-do-con-bo.ts). {ten} = tên phần thịt theo thứ tiếng của trang.
   hinhConBo: {
@@ -369,6 +468,42 @@ export const CHU_PHAN_BO = {
         vi: 'Tên tiếng Việt của các phần thịt bò thay đổi theo từng nhà bán, nên cùng một phần có thể có nhiều tên. Khi còn băn khoăn, hãy hỏi nhân viên quầy hoặc xem nhãn trên khay.',
         en: 'Vietnamese names for beef cuts vary from one seller to another, so the same cut can carry several names. If in doubt, ask the counter staff or check the label on the tray.',
         ko: '소고기 부위의 베트남어 이름은 판매처마다 달라서 같은 부위도 여러 이름으로 불릴 수 있어요. 헷갈리시면 정육 코너 직원에게 묻거나 트레이의 라벨을 확인해 보세요.',
+      },
+    },
+    {
+      h: {
+        vi: 'LA Galbi là gì? Khác dẻ sườn bò thế nào?',
+        en: 'What is LA galbi? How is it different from rib finger?',
+        ko: 'LA갈비는 무엇인가요? 갈비살과 어떻게 다른가요?',
+      },
+      d: {
+        vi: 'LA Galbi là sườn bò (short rib) cắt ngang qua các xương thành lát mỏng, mỗi miếng còn vài mẩu xương nhỏ ở mép, thường ướp ngọt mặn rồi nướng nhanh. Dẻ sườn bò (galbisal) là phần khác: thịt lóc xương nằm giữa và quanh các xương sườn.',
+        en: 'LA galbi is beef short rib cut across the bones into thin strips, each piece with a few small bone pieces along the edge, usually marinated sweet and savoury and grilled quickly. Rib finger (galbisal) is a different cut: the boneless meat between and around the ribs.',
+        ko: 'LA갈비는 소갈비를 뼈를 가로질러 얇게 썬 것으로, 조각마다 작은 뼈가 붙어 있고 보통 달콤짭짤하게 양념해 빠르게 구워요. 갈비살은 뼈를 발라낸, 갈비뼈 사이와 주변의 살코기로 다른 부위예요.',
+      },
+    },
+    {
+      h: {
+        vi: 'Ba chỉ bò là phần nào?',
+        en: 'What is “ba chỉ bò”?',
+        ko: 'ba chỉ bò(우삼겹)는 어느 부위인가요?',
+      },
+      d: {
+        vi: 'Ba chỉ bò là phần thịt ở bụng bò, ngay dưới các xương sườn, có những lớp mỡ xen nạc giống ba chỉ heo. Tiếng Anh là beef short plate, tiếng Hàn là usamgyeop (우삼겹). Thường thái lát mỏng để nướng nhanh hoặc nhúng lẩu.',
+        en: '“Ba chỉ bò” is the meat from the belly of the animal, just below the ribs, with layers of fat between the lean like pork belly. In English it is beef short plate and in Korean usamgyeop (우삼겹). It is usually sliced thin for a quick grill or a hot pot.',
+        ko: 'ba chỉ bò는 소의 배, 갈비 바로 아래 부위로 지방과 살코기가 돼지 삼겹살처럼 겹겹이 있는 고기예요. 영어로는 beef short plate, 한국어로는 우삼겹이라고 해요. 보통 얇게 썰어 빠르게 굽거나 전골에 넣어 먹어요.',
+      },
+    },
+    {
+      h: {
+        vi: 'Ribeye còn nắp (Ribeye with Cap) là gì?',
+        en: 'What is ribeye with cap?',
+        ko: '새우살이 붙은 꽃등심(Ribeye with Cap)은 무엇인가요?',
+      },
+      d: {
+        vi: 'Là miếng ribeye (đầu thăn ngoại) giữ nguyên phần nắp bao quanh bên ngoài. Phần nắp đặc biệt mềm và béo thơm, còn phần lõi ở giữa dai hơn một chút. Beeftown bán gói này trong trang Mua thịt về, đóng skin-pack trên khay đen.',
+        en: 'It is a ribeye (“đầu thăn ngoại” in Vietnamese) that keeps the cap wrapped around the outside. The cap is especially tender and richly flavoured, while the eye in the middle has a little more chew. Beeftown sells this pack through Take home, skin-packed on a black tray.',
+        ko: '꽃등심(베트남어로 đầu thăn ngoại)에서 바깥을 감싸는 새우살을 그대로 둔 것이에요. 새우살은 특히 부드럽고 고소하며, 가운데 알등심은 조금 더 씹는 맛이 있어요. Beeftown은 이 상품을 포장 구매 페이지에서 검은 트레이에 스킨팩으로 담아 판매해요.',
       },
     },
   ] as ReadonlyArray<{ h: BaThuTieng; d: BaThuTieng }>,
