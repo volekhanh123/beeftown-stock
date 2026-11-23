@@ -973,15 +973,18 @@ function doKhiDungYen(conChay = []) {
   // nên cả hai ô rơi vào cùng một cột ngầm; hai nhãn in đè thành "Sốngười Ngàyđến". Mọi phép đo khác đều đạt (ô vẫn cao
   // 48px, nền trắng, viền đúng màu) — phải đo vị trí. Trong mỗi form: không hai phần tử nhìn thấy nào (nhãn, ô nhập, ô
   // chọn, nút) đè lên nhau; phần tử nằm trong phần tử kia (nhãn bọc ô đánh dấu) thì không tính. Hộp mỏng dưới 2px (chữ
-  // chỉ cho trình đọc màn hình, ô thật nằm dưới hình tự vẽ) bỏ qua.
+  // chỉ cho trình đọc màn hình, ô thật nằm dưới hình tự vẽ) bỏ qua. Hộp nổi (popover đang mở, dialog đang mở — hộp chọn
+  // gói của Mua thịt về) CỐ Ý nằm đè lên phần trang phía dưới: chỉ so hai phần tử cùng một lớp (cùng hộp nổi, hoặc cùng
+  // nằm ngoài mọi hộp nổi).
   kq.oForm = [];
+  const lopNoi = el => el.closest(':popover-open, dialog[open]');
   for (const form of moi('form').filter(hien)) {
     const phan = [...form.querySelectorAll('label, input:not([type="hidden"]), select, textarea, button, a.nut')]
       .filter(el => hien(el) && Math.min(el.getBoundingClientRect().width, el.getBoundingClientRect().height) >= 2);
     for (let i = 0; i < phan.length; i++) {
       for (let j = i + 1; j < phan.length; j++) {
         const [a, b] = [phan[i], phan[j]];
-        if (a.contains(b) || b.contains(a)) continue;
+        if (a.contains(b) || b.contains(a) || lopNoi(a) !== lopNoi(b)) continue;
         if (giao(a.getBoundingClientRect(), b.getBoundingClientRect())) {
           kq.oForm.push(`${moTa(form).slice(0, 30)}: ${moTa(a).slice(0, 50)} đè lên ${moTa(b).slice(0, 50)}`);
         }
