@@ -132,6 +132,21 @@ export const ANH_TAO_SAN: Readonly<Record<string, Readonly<Record<string, CoAnh>
   'uong-khong-con-ba-ly': {
     '3x2': { rong: 800, cao: 533, cac: [480, 800], mau: '#EED098' },
   },
+  'phan-bo-dau-than-ngoai': {
+    '4x3': { rong: 640, cao: 480, cac: [400, 640], mau: '#B2826A' },
+  },
+  'phan-bo-de-suon': {
+    '4x3': { rong: 640, cao: 480, cac: [400, 640], mau: '#885850' },
+  },
+  'phan-bo-diem-than': {
+    '4x3': { rong: 640, cao: 480, cac: [400, 640], mau: '#3F2E24' },
+  },
+  'phan-bo-nac-vai': {
+    '4x3': { rong: 640, cao: 480, cac: [400, 640], mau: '#DAAFA0' },
+  },
+  'phan-bo-loi-vai': {
+    '4x3': { rong: 640, cao: 480, cac: [400, 640], mau: '#E0BDB0' },
+  },
   'quay-chon-bo': {
     '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#905942' },
   },

@@ -1,0 +1,16 @@
+---
+import Trang from '../../layouts/Trang.astro';
+import TrangPhanBo from '../../components/TrangPhanBo.astro';
+import { docNoiDung } from '../../lib/noi-dung';
+
+const noiDung = await docNoiDung('en');
+---
+<Trang
+  ngonNgu="en"
+  noiDung={noiDung}
+  duongDan="/en/beef-cuts"
+  tieuDe="Beef cuts: ribeye, rib finger, outside skirt — Beeftown"
+  moTa="Ribeye, rib finger, outside skirt, chuck eye roll and top blade: where each cut sits on the animal, how it eats and how to grill it on the gas grill at your table."
+>
+  <TrangPhanBo ngonNgu="en" noiDung={noiDung} />
+</Trang>

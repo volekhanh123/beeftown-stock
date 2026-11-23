@@ -1,0 +1,16 @@
+---
+import Trang from '../layouts/Trang.astro';
+import TrangPhanBo from '../components/TrangPhanBo.astro';
+import { docNoiDung } from '../lib/noi-dung';
+
+const noiDung = await docNoiDung('vi');
+---
+<Trang
+  ngonNgu="vi"
+  noiDung={noiDung}
+  duongDan="/phan-thit-bo"
+  tieuDe="Phần thịt bò: đầu thăn ngoại, dẻ sườn bò, diềm thăn — Beeftown"
+  moTa="Đầu thăn ngoại, dẻ sườn bò, diềm thăn bò, nạc vai và lõi vai: mỗi phần nằm ở đâu trên con bò, ăn ra sao, nướng mức chín nào trên vỉ gas tại bàn."
+>
+  <TrangPhanBo ngonNgu="vi" noiDung={noiDung} />
+</Trang>

@@ -1,0 +1,302 @@
+---
+/**
+ * TRANG CÁC PHẦN THỊT BÒ — /phan-thit-bo, /en/beef-cuts, /ko/beef-cuts
+ *
+ * Trang trụ cột cho người đang tìm tên các phần thịt ("đầu thăn ngoại", "dẻ sườn bò là phần
+ * nào", "diềm thăn bò"): năm phần thịt bò nướng của Beeftown, mỗi phần có ảnh, chỗ nằm trên con
+ * bò, cảm giác khi ăn, cách nướng trên vỉ gas tại bàn. Chữ và nguồn sự thật: lib/phan-bo.ts
+ * (đọc chú thích đầu file đó — đặc biệt danh sách thứ KHÔNG được viết ra).
+ *
+ * Ảnh là ảnh chụp thật của người khác, giấy phép cho dùng lại (web/cong-cu/anh/NGUON-ANH-PHAN-BO.md),
+ * không phải ảnh quán: không nhãn "Ảnh minh họa" (Khánh quyết 23/11/2026; riêng ảnh diềm thăn bò đã chỉnh bằng AI, dòng nguồn
+ * ảnh nói rõ), alt tả đúng thứ nhìn thấy
+ * và không nói đây là ảnh của quán. Dòng nguồn ảnh cuối trang là bắt buộc với ảnh CC BY 2.0
+ * (diềm thăn bò) và ghi luôn tác giả các ảnh còn lại.
+ *
+ * Bề mặt các khối: trắng (mở đầu) → xám nhạt (chọn nhanh) → năm phần thịt xen trắng / xám nhạt
+ * → đen (nướng chung) → trắng (hỏi đáp) → đỏ (đặt bàn) → trắng (nguồn ảnh). `compressHTML`: thẻ
+ * nội dòng (<a>, <span>) nằm giữa dòng, không đứng đầu hay cuối dòng cạnh chữ.
+ */
+import { chu, duongDanTuongUng } from '../lib/chu';
+import { coKenhHoiBan } from '../lib/trang-cong-khai';
+import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+import { CHU_PHAN_BO as c, NGUON_ANH_DIEM_THAN, PHAN_BO, type PhanBo } from '../lib/phan-bo';
+import { CON_BO_THAN, VIEWBOX_CON_BO, VUNG_CON_BO } from '../lib/so-do-con-bo';
+import AnhPhanBo from './AnhPhanBo.astro';
+import BieuTuong from './BieuTuong.astro';
+
+interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; }
+const { ngonNgu, noiDung: nd } = Astro.props;
+const t = chu(ngonNgu);
+const coKenh = coKenhHoiBan(nd);
+
+// Tên khác của một phần thịt = tên ở hai thứ tiếng còn lại, mỗi tên đánh dấu đúng thứ tiếng của nó.
+// Tên Hàn kèm phiên âm Latin để tìm được bằng bàn phím Việt / Anh.
+const NGON_NGU_KHAC: Record<NgonNgu, readonly NgonNgu[]> = { vi: ['en', 'ko'], en: ['vi', 'ko'], ko: ['en', 'vi'] };
+const NHAN_NGON_NGU = { vi: c.ngonNguVi, en: c.ngonNguEn, ko: c.ngonNguKo } as const;
+function tenKhac(p: PhanBo) {
+  return NGON_NGU_KHAC[ngonNgu].map(ng => ({
+    ng,
+    chu: ng === 'ko' ? `${p.ten.ko} / ${p.hanLatin}` : p.ten[ng],
+    nhan: NHAN_NGON_NGU[ng][ngonNgu],
+  }));
+}
+const SIZES_ANH = '(min-width: 900px) 42vw, (min-width: 600px) 560px, calc(100vw - 40px)';
+---
+{/* Hình con bò định nghĩa MỘT lần ở đây; mỗi phần thịt vẽ lại bằng <use> (lib/so-do-con-bo.ts). */}
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <g id="pb-con" set:html={CON_BO_THAN} />
+    {PHAN_BO.map(p => <g id={`pb-vung-${p.id}`} set:html={VUNG_CON_BO[p.id]} />)}
+  </defs>
+</svg>
+
+<section class="mo-dau-trang be-kem" aria-labelledby="pb-tieu-de">
+  <div class="khung">
+    <p class="hieu">{c.hieu[ngonNgu]}</p>
+    <h1 id="pb-tieu-de">{c.tieuDe[ngonNgu]}</h1>
+    <p class="dan">{c.dan[ngonNgu]}</p>
+    <p class="pb-quay">{c.quay[ngonNgu]}</p>
+  </div>
+</section>
+
+{/* Chọn nhanh: hai câu hỏi, bảng so sánh năm phần, hai thứ nên nhìn trên khay. */}
+<section class="muc be-kem-dam pb-chon" aria-labelledby="pb-h-chon">
+  <div class="khung">
+    <p class="hieu">{c.chonHieu[ngonNgu]}</p>
+    <h2 id="pb-h-chon">{c.chonTieuDe[ngonNgu]}</h2>
+    <p class="dan">{c.chonDan[ngonNgu]}</p>
+
+    <table class="pb-bang">
+      <caption class="pb-an">{c.bangTen[ngonNgu]}</caption>
+      <thead>
+        <tr>
+          <th scope="col">{c.cotPhan[ngonNgu]}</th>
+          <th scope="col">{c.cotAn[ngonNgu]}</th>
+          <th scope="col">{c.cotHop[ngonNgu]}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {PHAN_BO.map(p => (
+          <tr>
+            <th scope="row"><a href={`#pb-${p.id}`}>{p.ten[ngonNgu]}</a></th>
+            <td data-nhan={c.cotAn[ngonNgu]}>{c.bang[p.id][ngonNgu]}</td>
+            <td data-nhan={c.cotHop[ngonNgu]}>{p.hop[ngonNgu]}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    <p class="nho pb-ghi-chu">{c.bangGhiChu[ngonNgu]}</p>
+
+    <div class="pb-doc">
+      <h3>{c.docTieuDe[ngonNgu]}</h3>
+      <dl class="pb-doc-ds">
+        <div>
+          <dt>{c.vanMoTen[ngonNgu]}</dt>
+          <dd>{c.vanMo[ngonNgu]}</dd>
+        </div>
+        <div>
+          <dt>{c.thoTen[ngonNgu]}</dt>
+          <dd>{c.tho[ngonNgu]}</dd>
+        </div>
+      </dl>
+    </div>
+  </div>
+</section>
+
+{/* Năm phần thịt: ảnh một bên, chữ một bên (so le trên màn rộng); nền xen trắng và xám nhạt. */}
+{PHAN_BO.map((p, i) => (
+  <section class:list={['muc', i % 2 === 0 ? 'be-kem' : 'be-kem-dam', 'pb-phan', { 'pb-chan': i % 2 === 1 }]} id={`pb-${p.id}`} aria-labelledby={`pb-h-${p.id}`}>
+    <div class="khung pb-luoi">
+      <div class="pb-anh">
+        <AnhPhanBo phan={p.id} ngonNgu={ngonNgu} sizes={SIZES_ANH} />
+      </div>
+      <div class="pb-chu">
+        <h2 id={`pb-h-${p.id}`}>{p.ten[ngonNgu]}</h2>
+        <p class="pb-ten-khac">{c.nhanTenKhac[ngonNgu]}: {tenKhac(p).map((k, j) => <>{j > 0 && ' · '}<span lang={k.ng}>{k.chu}</span> ({k.nhan})</>)}</p>
+        <dl class="pb-ds">
+          <div>
+            <dt>{c.nhanNoi[ngonNgu]}</dt>
+            <dd class="pb-noi">
+              <p>{p.noi[ngonNgu]}</p>
+              <figure class="pb-con-bo">
+                <svg viewBox={VIEWBOX_CON_BO} role="img" aria-label={c.hinhConBo[ngonNgu].replace('{ten}', p.ten[ngonNgu])}>
+                  <use href="#pb-con" />
+                  <use href={`#pb-vung-${p.id}`} />
+                </svg>
+                <figcaption>{c.viTri[ngonNgu]}</figcaption>
+              </figure>
+            </dd>
+          </div>
+          <div>
+            <dt>{c.nhanAn[ngonNgu]}</dt>
+            <dd>{p.an[ngonNgu]}</dd>
+          </div>
+          <div>
+            <dt>{c.nhanNuong[ngonNgu]}</dt>
+            <dd>{p.nuong[ngonNgu]}</dd>
+          </div>
+          {p.them && (
+            <div>
+              <dt>{p.them.nhan[ngonNgu]}</dt>
+              <dd>{p.them.chu[ngonNgu]}</dd>
+            </div>
+          )}
+          <div>
+            <dt>{c.nhanHop[ngonNgu]}</dt>
+            <dd>{p.hop[ngonNgu]}</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  </section>
+))}
+
+{/* Nướng chung trên vỉ gas: dải đen, năm lời dặn đánh số. Số trắng (đỏ trên đen chỉ 3,16 : 1). */}
+<section class="muc be-toi pb-nuong" aria-labelledby="pb-h-nuong">
+  <div class="khung">
+    <p class="hieu">{c.nuongHieu[ngonNgu]}</p>
+    <h2 id="pb-h-nuong">{c.nuongTieuDe[ngonNgu]}</h2>
+    <ol class="pb-nuong-ds" role="list">
+      {c.nuong.map((m, i) => (
+        <li>
+          <span class="pb-so" aria-hidden="true">{i + 1}</span>
+          <p>{m[ngonNgu]}</p>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>
+
+{/* Hỏi đáp: dẻ sườn bò là phần nào, đầu thăn ngoại khác thăn ngoại, diềm thăn có phải nội tạng. */}
+<section class="muc be-kem" aria-labelledby="pb-h-hoi">
+  <div class="khung-hep">
+    <p class="hieu">{c.hoiHieu[ngonNgu]}</p>
+    <h2 id="pb-h-hoi">{c.hoiTieuDe[ngonNgu]}</h2>
+    <div class="cau-hoi">
+      {c.hoi.map(q => (
+        <details>
+          <summary>{q.h[ngonNgu]}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
+          <div class="tra-loi"><p>{q.d[ngonNgu]}</p></div>
+        </details>
+      ))}
+    </div>
+  </div>
+</section>
+
+{/* Cuối trang: Đặt bàn chỉ khi có kênh thật để hỏi; Xem thực đơn luôn có. Dải đỏ phẳng. */}
+<section class="muc be-do pb-moi" aria-labelledby="pb-h-moi">
+  <div class="khung pb-moi-chu">
+    <p class="hieu">{c.moiHieu[ngonNgu]}</p>
+    <h2 id="pb-h-moi"><span class="cau">{coKenh ? c.moiTieuDe1[ngonNgu] : c.moiTieuDeMenu1[ngonNgu]}</span> <span class="cau">{coKenh ? c.moiTieuDe2[ngonNgu] : c.moiTieuDeMenu2[ngonNgu]}</span></h2>
+    <p class="dan">{coKenh ? c.moiDan[ngonNgu] : c.moiDanMenu[ngonNgu]}</p>
+    <div class="hang-nut">
+      {coKenh && <a class="nut nut-chinh" href={duongDanTuongUng('/dat-ban', ngonNgu)}>{t.datBan}</a>}
+      <a class:list={['nut', coKenh ? 'nut-vien' : 'nut-chinh']} href={duongDanTuongUng('/thuc-don', ngonNgu)}>{t.xemMenu}</a>
+    </div>
+  </div>
+</section>
+
+{/* Nguồn ảnh: tác giả mọi ảnh; ảnh CC BY 2.0 kèm giấy phép, trang gốc và việc đã chỉnh. */}
+<section class="muc be-kem pb-nguon" aria-labelledby="pb-h-nguon">
+  <div class="khung-hep">
+    <h2 id="pb-h-nguon" class="pb-nguon-h">{c.nguonTieuDe[ngonNgu]}</h2>
+    <p class="nho">{c.nguonDan[ngonNgu]}</p>
+    <p class="nho">{c.nguonConBo[ngonNgu]}</p>
+    <p class="nho">{c.nguonDiemThanTruoc[ngonNgu]}<a href={NGUON_ANH_DIEM_THAN.trang} rel="noopener" lang="en">Yazawa cut harami</a>{c.nguonDiemThanGiua[ngonNgu]}<a href={NGUON_ANH_DIEM_THAN.giayPhep} rel="noopener" lang="en">CC BY 2.0</a>{c.nguonDiemThanSau[ngonNgu]}</p>
+  </div>
+</section>
+
+<style>
+  /* --- Mở đầu ---------------------------------------------------------------- */
+  .pb-quay { margin: var(--k-5) 0 0; max-width: 62ch; color: var(--chu-phu); }
+
+  /* --- Chọn nhanh: bảng so sánh ---------------------------------------------- */
+  .pb-chon h2 { max-width: 22ch; }
+  .pb-chon .dan { margin-top: var(--k-4); }
+  /* Tên bảng cho trình đọc màn hình; mắt thường đã có h2 ngay trên. */
+  .pb-an { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .pb-bang { width: 100%; margin-top: var(--k-7); border-collapse: collapse; border-top: 2px solid var(--chu-chinh); }
+  .pb-bang thead th {
+    text-align: left; padding: var(--k-3) var(--k-4) var(--k-3) 0;
+    font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--nhan-nho);
+    border-bottom: 1px solid var(--vien);
+  }
+  .pb-bang tbody th, .pb-bang tbody td { padding: var(--k-4) var(--k-4) var(--k-4) 0; border-bottom: 1px solid var(--vien); vertical-align: top; text-align: left; }
+  .pb-bang tbody th { font-size: 18px; font-weight: 700; white-space: nowrap; }
+  .pb-bang tbody th a { display: inline-flex; align-items: center; min-height: var(--cham); color: inherit; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+  @media (hover: hover) { .pb-bang tbody th a:hover { color: var(--nhan); } }
+  .pb-ghi-chu { margin: var(--k-5) 0 0; max-width: 70ch; color: var(--chu-phu); }
+
+  /* Điện thoại: mỗi hàng thành một khối dọc, nhãn cột in trước từng ô. */
+  @media (max-width: 719px) {
+    .pb-bang thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .pb-bang, .pb-bang tbody, .pb-bang tr, .pb-bang th, .pb-bang td { display: block; }
+    .pb-bang tbody tr { padding: var(--k-4) 0; border-bottom: 1px solid var(--vien); }
+    .pb-bang tbody th, .pb-bang tbody td { padding: 0; border: 0; }
+    .pb-bang tbody th { white-space: normal; }
+    .pb-bang tbody td { margin-top: var(--k-2); }
+    .pb-bang tbody td::before {
+      content: attr(data-nhan); display: block;
+      font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--nhan-nho);
+    }
+  }
+  @media (min-width: 720px) { .pb-bang tbody td:nth-child(2) { width: 42%; } }
+
+  /* Hai thứ nên nhìn trên khay. */
+  .pb-doc { margin-top: var(--k-8); }
+  .pb-doc h3 { margin: 0 0 var(--k-4); }
+  .pb-doc-ds { margin: 0; display: grid; gap: var(--k-5); grid-template-columns: 1fr; }
+  @media (min-width: 720px) { .pb-doc-ds { grid-template-columns: 1fr 1fr; gap: var(--k-7); } }
+  .pb-doc-ds div { border-top: 1px solid var(--vien); padding-top: var(--k-4); }
+  .pb-doc-ds dt { font-size: var(--co-h3); font-weight: 700; margin-bottom: var(--k-2); }
+  .pb-doc-ds dd { margin: 0; max-width: 56ch; }
+
+  /* --- Từng phần thịt -------------------------------------------------------- */
+  /* Neo từ bảng so sánh: đầu trang dính cao 64 / 80px không che tiêu đề của phần. */
+  .pb-phan { scroll-margin-top: var(--cao-dau); }
+  .pb-luoi { display: grid; gap: var(--k-6); grid-template-columns: 1fr; align-items: start; }
+  .pb-anh { max-width: 560px; }
+  @media (min-width: 900px) {
+    .pb-luoi { grid-template-columns: 5fr 6fr; gap: var(--k-8); }
+    .pb-anh { max-width: none; }
+    /* So le: phần thứ hai, thứ tư đặt ảnh bên phải. */
+    .pb-chan .pb-anh { order: 2; }
+    .pb-chan .pb-luoi { grid-template-columns: 6fr 5fr; }
+  }
+  .pb-chu h2 { margin: 0; max-width: 22ch; }
+  .pb-ten-khac { margin: var(--k-3) 0 0; font-size: var(--co-nho); color: var(--chu-phu); }
+  .pb-ds { margin: var(--k-5) 0 0; display: grid; gap: 0; }
+  .pb-ds > div { border-top: 1px solid var(--vien); padding: var(--k-4) 0; }
+  .pb-ds > div:last-child { border-bottom: 1px solid var(--vien); }
+  .pb-ds dt { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--nhan-nho); margin-bottom: var(--k-2); }
+  .pb-ds dd { margin: 0; max-width: 62ch; }
+  /* Dòng "Nằm ở đâu": chữ và hình con bò nhỏ cạnh nhau từ 600px; điện thoại thì hình xuống dưới chữ. */
+  .pb-ds dd.pb-noi { max-width: none; display: grid; gap: var(--k-4); grid-template-columns: 1fr; align-items: start; }
+  .pb-noi p { margin: 0; max-width: 56ch; }
+  .pb-con-bo { margin: 0; max-width: 200px; }
+  .pb-con-bo svg { display: block; width: 100%; height: auto; }
+  .pb-con-bo figcaption { margin-top: var(--k-1); font-size: var(--co-ti); color: var(--chu-phu); }
+  @media (min-width: 600px) { .pb-ds dd.pb-noi { grid-template-columns: minmax(0, 1fr) 170px; gap: var(--k-5); } }
+
+  /* --- Nướng chung (dải đen) ------------------------------------------------- */
+  .pb-nuong h2 { max-width: 24ch; }
+  .pb-nuong-ds { list-style: none; margin: var(--k-7) 0 0; padding: 0; display: grid; gap: var(--k-6); grid-template-columns: 1fr; }
+  @media (min-width: 720px) { .pb-nuong-ds { grid-template-columns: 1fr 1fr; gap: var(--k-6) var(--k-8); } }
+  @media (min-width: 1100px) { .pb-nuong-ds { grid-template-columns: repeat(3, 1fr); } }
+  .pb-nuong-ds li { display: flex; gap: var(--k-4); align-items: flex-start; }
+  .pb-so {
+    flex: none; min-width: 1ch;
+    font-size: clamp(36px, 2.5vw + 24px, 48px); font-weight: 800; line-height: .9; letter-spacing: -.04em;
+    color: var(--chu-chinh);
+  }
+  .pb-nuong-ds p { margin: 4px 0 0; max-width: 40ch; }
+
+  /* --- Cuối trang ------------------------------------------------------------ */
+  .pb-moi-chu h2 { max-width: 22ch; }
+  .pb-moi-chu .cau { display: block; }
+  .pb-moi-chu .dan { margin-bottom: var(--k-6); }
+  .pb-nguon-h { font-size: var(--co-h3); margin: 0 0 var(--k-3); }
+  .pb-nguon .nho { margin: 0 0 var(--k-2); color: var(--chu-phu); }
+  .pb-nguon a { text-decoration: underline; }
+</style>

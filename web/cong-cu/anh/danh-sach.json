@@ -501,6 +501,63 @@
         "4x3": { "fx": 0.5, "fy": 0.5, "rong": [400, 800] },
         "1x1": { "fx": 0.5, "fy": 0.5, "rong": [200, 320] }
       }
+    },
+    "phan-bo-dau-than-ngoai": {
+      "mo_ta": "Miếng đầu thăn ngoại (ribeye) sống trên thớt gỗ — ảnh chụp thật (xem NGUON-ANH-PHAN-BO.md)",
+      "nguon": {
+        "cong_cu": "Ảnh chụp thật của người khác, giấy phép cho dùng lại — web/cong-cu/anh/NGUON-ANH-PHAN-BO.md",
+        "da_chon": "cắt 4:3 từ ảnh tải về; không qua công cụ tạo ảnh"
+      },
+      "chat_luong": { "avif": 50, "webp": 65 },
+      "goc": "phan-bo-dau-than-ngoai-4x3.jpg",
+      "khung": {
+        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [400, 640] }
+      }
+    },
+    "phan-bo-de-suon": {
+      "mo_ta": "Dẻ sườn bò sống trong tô inox — ảnh chụp thật (xem NGUON-ANH-PHAN-BO.md)",
+      "nguon": {
+        "cong_cu": "Ảnh chụp thật của người khác, giấy phép cho dùng lại — web/cong-cu/anh/NGUON-ANH-PHAN-BO.md",
+        "da_chon": "cắt 4:3 từ ảnh tải về; không qua công cụ tạo ảnh"
+      },
+      "goc": "phan-bo-de-suon-4x3.jpg",
+      "khung": {
+        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [400, 640] }
+      }
+    },
+    "phan-bo-diem-than": {
+      "mo_ta": "Lát diềm thăn bò trên vỉ nướng tròn — ảnh chụp thật của T.Tseng (CC BY 2.0), đã chỉnh sửa bằng AI (xem NGUON-ANH-PHAN-BO.md)",
+      "nguon": {
+        "cong_cu": "Ảnh chụp thật của người khác (CC BY 2.0), đã chỉnh sửa bằng AI (GPT qua cầu nối Codex, 23/11/2026: sửa màu, bỏ hơi nước) — web/cong-cu/anh/NGUON-ANH-PHAN-BO.md",
+        "da_chon": "bản GPT 1448×1086 sửa từ ảnh cắt 4:3 của T.Tseng; Khánh quyết 23/11/2026 dùng bản này, không nhãn minh họa"
+      },
+      "chat_luong": { "avif": 45, "webp": 60 },
+      "goc": "phan-bo-diem-than-4x3.png",
+      "khung": {
+        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [400, 640] }
+      }
+    },
+    "phan-bo-nac-vai": {
+      "mo_ta": "Khối nạc vai bò nguyên miếng — ảnh chụp thật (xem NGUON-ANH-PHAN-BO.md)",
+      "nguon": {
+        "cong_cu": "Ảnh chụp thật của người khác, giấy phép cho dùng lại — web/cong-cu/anh/NGUON-ANH-PHAN-BO.md",
+        "da_chon": "cắt 4:3 từ ảnh tải về; không qua công cụ tạo ảnh"
+      },
+      "goc": "phan-bo-nac-vai-4x3.jpg",
+      "khung": {
+        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [400, 640] }
+      }
+    },
+    "phan-bo-loi-vai": {
+      "mo_ta": "Miếng lõi vai bò đã lọc gân — ảnh chụp thật (xem NGUON-ANH-PHAN-BO.md)",
+      "nguon": {
+        "cong_cu": "Ảnh chụp thật của người khác, giấy phép cho dùng lại — web/cong-cu/anh/NGUON-ANH-PHAN-BO.md",
+        "da_chon": "cắt 4:3 từ ảnh tải về; không qua công cụ tạo ảnh"
+      },
+      "goc": "phan-bo-loi-vai-4x3.jpg",
+      "khung": {
+        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [400, 640] }
+      }
     }
   },
   "du_phong": {

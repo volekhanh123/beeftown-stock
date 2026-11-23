@@ -160,11 +160,11 @@ const batMayChu = () => batMayChuBanBuild({ cong: CONG, khongBuild: process.argv
 // Danh sách cố định có đủ mọi trang của CAP_DUONG_DAN, gồm tám trang chính sách (lib/chinh-sach.ts): sitemap hỏng
 // thì vẫn thử đủ (crm/test/test-cong-khai-quet-gia.mjs nhóm 5 giữ).
 async function danhSachTrang(goc) {
-  const bo = new Set(['/', '/thuc-don', '/mua-thit-ve', '/den-beeftown', '/dat-ban', '/tuyen-dung', '/quyen-rieng-tu', '/xoa-du-lieu',
+  const bo = new Set(['/', '/thuc-don', '/mua-thit-ve', '/phan-thit-bo', '/den-beeftown', '/dat-ban', '/tuyen-dung', '/quyen-rieng-tu', '/xoa-du-lieu',
     '/dieu-khoan', '/chinh-sach-gia', '/thanh-toan', '/giao-hang', '/doi-tra-hoan-tien', '/khieu-nai', '/dieu-kien-ban-hang', '/ho-tro',
-    '/en', '/en/menu', '/en/buy-meat', '/en/visit', '/en/book', '/en/jobs', '/en/privacy', '/en/data-deletion',
+    '/en', '/en/menu', '/en/buy-meat', '/en/beef-cuts', '/en/visit', '/en/book', '/en/jobs', '/en/privacy', '/en/data-deletion',
     '/en/terms', '/en/pricing', '/en/payment', '/en/delivery', '/en/returns', '/en/complaints', '/en/conditions', '/en/support',
-    '/ko', '/ko/menu', '/ko/buy-meat', '/ko/visit', '/ko/book', '/ko/jobs', '/ko/privacy', '/ko/data-deletion',
+    '/ko', '/ko/menu', '/ko/buy-meat', '/ko/beef-cuts', '/ko/visit', '/ko/book', '/ko/jobs', '/ko/privacy', '/ko/data-deletion',
     '/ko/terms', '/ko/pricing', '/ko/payment', '/ko/delivery', '/ko/returns', '/ko/complaints', '/ko/conditions', '/ko/support']);
   try {
     const xml = await (await fetch(new URL('/sitemap.xml', goc))).text();

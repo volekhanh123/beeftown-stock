@@ -18,7 +18,11 @@
  *        qua cầu nối Codex cùng ngày), vẫn có nhãn "Ảnh minh họa", cho tới khi có ảnh chụp
  *        thật. Lối vào và thang máy vẫn là KhungAnh: ảnh AI vẽ một cánh cửa, một thang máy
  *        không giống thật thì khách đi tìm dễ lạc.
- *  · ẢNH THẬT (minhHoa: false) — ảnh chụp tại Beeftown. Chưa có tấm nào.
+ *  · ẢNH THẬT (minhHoa: false) — ảnh chụp thật. Chưa có ảnh chụp tại Beeftown. Hiện có năm ảnh
+ *    chụp của người khác, giấy phép cho dùng lại, ở trang Các phần thịt bò (id phan-bo-…, web/cong-cu/anh/NGUON-ANH-PHAN-BO.md):
+ *    không nhãn "Ảnh minh họa" (Khánh quyết 23/11/2026), alt không nói đây là ảnh của quán. NGOẠI LỆ CÓ CHỦ ĐÍCH: phan-bo-diem-than
+ *    là ảnh thật đã chỉnh bằng AI (GPT), Khánh duyệt dùng không nhãn; dòng nguồn ảnh trên trang nói rõ "chỉnh sửa bằng AI".
+ *    Ảnh AI chỉnh từ ảnh thật nói chung vẫn là ảnh AI: phải có nhãn.
  *
  * ẢNH MÓN CỦA TRANG THỰC ĐƠN (26 id mon-…, uong-…) — lấy từ cuốn menu in "bản sáng"
  * (artifact "Beeftown — Menu", Cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026). Vẫn là
@@ -50,6 +54,7 @@ export type IdAnh = 'hero-vi-gas' | 'bo-van-mo-can' | 'bo-cat-lat' | 'sot-cham' 
   | 'mon-com-kim-chi-bo' | 'mon-com-tron-han' | 'mon-com-tron-trung-ca'
   | 'mon-mi-lanh-cay' | 'mon-mi-toowoomba' | 'mon-mi-carbonara' | 'mon-mi-bo-sot-ca'
   | 'uong-milky-cloud-makgeolli' | 'uong-strawberry-crush' | 'uong-berry-rouge-highball' | 'uong-khong-con-ba-ly'
+  | 'phan-bo-dau-than-ngoai' | 'phan-bo-de-suon' | 'phan-bo-diem-than' | 'phan-bo-nac-vai' | 'phan-bo-loi-vai'
   | 'quay-chon-bo' | 'mua-thit-mat' | 'mua-thit-dong-lanh' | 'mua-kim-chi';
 
 export interface MoTaAnh {
@@ -379,6 +384,50 @@ export const DANH_MUC_ANH: Readonly<Record<IdAnh, MoTaAnh>> = {
       vi: 'Ly ade chanh dây, ly ade chanh có lát chanh vàng và ly nước cam đứng cạnh nhau.',
       en: 'A passion fruit ade, a lemon ade with lemon slices and a glass of orange juice, side by side.',
       ko: '패션프루트에이드, 레몬 슬라이스를 넣은 레몬에이드, 오렌지 주스가 나란히 놓여 있어요.',
+    },
+  },
+
+  // --- Ảnh các phần thịt (trang /phan-thit-bo) — ảnh CHỤP THẬT của người khác, giấy phép cho dùng lại ------------
+  // Không nhãn "Ảnh minh họa" (Khánh quyết 23/11/2026; diềm thăn bò đã chỉnh bằng AI — ngoại lệ ở đầu file); không phải ảnh quán nên alt chỉ tả
+  // thứ nhìn thấy. Nguồn, tác giả, giấy phép: web/cong-cu/anh/NGUON-ANH-PHAN-BO.md.
+  'phan-bo-dau-than-ngoai': {
+    minhHoa: false,
+    alt: {
+      vi: 'Một miếng đầu thăn ngoại sống đặt trên thớt gỗ, thấy rõ phần lõi ở giữa, phần nắp ở bên cạnh và vân mỡ mảnh trong thớ thịt.',
+      en: 'A raw ribeye on a wooden board, showing the eye in the middle, the cap beside it and fine marbling through the meat.',
+      ko: '나무 도마 위에 놓인 생 꽃등심으로, 가운데 알등심과 그 옆의 새우살, 살코기 속의 가는 마블링이 보여요.',
+    },
+  },
+  'phan-bo-de-suon': {
+    minhHoa: false,
+    alt: {
+      vi: 'Những miếng dẻ sườn bò sống xếp trong một tô inox, thớ thịt đỏ xen các đường mỡ trắng.',
+      en: 'Raw rib finger beef pieces piled in a stainless steel bowl, red meat with thin white lines of fat.',
+      ko: '스테인리스 그릇에 수북이 담긴 생 갈비살로, 붉은 살결 사이에 흰 지방 줄기가 보여요.',
+    },
+  },
+  'phan-bo-diem-than': {
+    minhHoa: false,
+    alt: {
+      vi: 'Một lát diềm thăn bò vừa áp chảo nằm trên vỉ nướng tròn có nhiều khe, thớ thịt đỏ xen vân mỡ trắng.',
+      en: 'A slice of outside skirt, just seared, lying on a round grill plate with slots, red meat streaked with white marbling.',
+      ko: '홈이 여러 개 난 둥근 그릴 판 위에서 막 지진 안창살 한 점으로, 붉은 살에 흰 마블링이 보여요.',
+    },
+  },
+  'phan-bo-nac-vai': {
+    minhHoa: false,
+    alt: {
+      vi: 'Một khối nạc vai bò nguyên miếng, thịt đỏ có vân mỡ mảnh và những dải mỡ trắng ở rìa, trên nền màu be.',
+      en: 'A whole piece of chuck eye roll, red meat with fine marbling and white fat along the edges, on a beige background.',
+      ko: '베이지색 배경 위에 놓인 통 윗등심 한 덩어리로, 붉은 살에 가는 마블링과 가장자리의 흰 지방이 보여요.',
+    },
+  },
+  'phan-bo-loi-vai': {
+    minhHoa: false,
+    alt: {
+      vi: 'Một miếng lõi vai bò nguyên miếng, mặt cắt phẳng, thớ thịt mịn xen vân mỡ mảnh, trên nền màu be.',
+      en: 'A whole piece of top blade with a flat cut face, fine grain and thin marbling, on a beige background.',
+      ko: '베이지색 배경 위에 놓인 통 부채살 한 덩어리로, 단면이 평평하고 결이 고우며 가는 마블링이 있어요.',
     },
   },
 };
