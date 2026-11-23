@@ -197,6 +197,8 @@ const VI = {
   dong: 'Đóng',
   veTrangChu: 'Beeftown — về trang chủ',
   thongTin: 'Thông tin',
+  // Link chân trang tới trang Các phần thịt bò (cột Thông tin).
+  phanThitBo: 'Các phần thịt bò',
   xoaDuLieu: 'Xóa dữ liệu',
 
   // --- Đường đến ------------------------------------------------------------
@@ -246,9 +248,16 @@ const VI = {
 
   // --- Mua thịt về ----------------------------------------------------------
   // Mô tả (meta description, og:description) của trang Mua thịt về — trang-cong-khai.ts moTaTrangMuaThit() chọn
-  // theo trạng thái trang (mở hay tạm hết ở quầy: câu mở). Câu "chưa mở" không hứa gửi đơn, không nhắc Zalo: trang
-  // ở trạng thái đó không có form, không có nút kênh. Câu mở nhắc gửi đơn qua Zalo — đích đặt hàng TẠM
-  // (lib/dich-dat-hang.ts): PR đổi sang Mini App xem lại câu này.
+  // theo trạng thái trang và theo việc Worker đã cài VNPay chưa. Mỗi câu chỉ nói đúng điều TRANG ĐANG NÓI ở trạng thái đó
+  // (kiểm site thật 23/11/2026: câu cũ hứa "quán gọi lại xác nhận tổng tiền, phí giao" trong khi trang ghi "Giá gói đã
+  // gồm phí giao" và "Trả trước qua VNPay"):
+  //   · moTaMuaThitVnpay — trang mở, đã cài VNPay (dải ba điều: giá gói đã gồm phí giao · trả trước qua VNPay · quán gọi
+  //     hẹn giờ giao sau khi trả tiền). Không nhắc VAT: câu VAT của trang do chủ đổi được (CHO_TRONG), mô tả không chép lại;
+  //   · moTaMuaThit — trang mở, chưa cài VNPay (quán gọi xác nhận tổng tiền, phí giao, giờ giao);
+  //   · moTaMuaThitChuaMo — chưa mở, chưa nối database hay đọc menu lỗi: không hứa gửi đơn, không nhắc Zalo.
+  moTaMuaThitVnpay:
+    'Mua thịt bò chia gói từ quầy Beeftown, giao tận nơi. Giá gói đã gồm phí giao. ' +
+    'Bạn trả trước qua VNPay, rồi quán gọi hẹn giờ giao.',
   moTaMuaThit:
     'Mua thịt bò đóng gói từ quầy Beeftown, giao tận nơi. Chọn gói và đặt hàng trên web; ' +
     'quán gọi lại xác nhận tổng tiền, phí giao và giờ giao.',
@@ -341,6 +350,7 @@ const EN: Bo = {
   dong: 'Close',
   veTrangChu: 'Beeftown — home',
   thongTin: 'Information',
+  phanThitBo: 'Beef cuts',
   xoaDuLieu: 'Data deletion',
 
   tang3: 'Floor 3',
@@ -374,6 +384,9 @@ const EN: Bo = {
     'Beeftown is not taking table requests online yet. To book a table, message Beeftown on Facebook. ' +
     'Floor 3, 63 Hồ Tùng Mậu, former District 1, Ho Chi Minh City.',
 
+  moTaMuaThitVnpay:
+    'Order beef packs from Beeftown, delivered to you. Pack prices include delivery. ' +
+    'Pay in advance with VNPay, then we call to arrange a delivery time.',
   moTaMuaThit:
     'Order packs of beef from the Beeftown counter for delivery. ' +
     'We call back to confirm your order total, delivery fee and delivery time.',
@@ -454,6 +467,7 @@ const KO: Bo = {
   dong: '닫기',
   veTrangChu: 'Beeftown 홈으로',
   thongTin: '안내',
+  phanThitBo: '소고기 부위',
   xoaDuLieu: '데이터 삭제',
 
   tang3: '3층',
@@ -487,6 +501,9 @@ const KO: Bo = {
     '온라인 테이블 예약은 아직 받지 않아요. Facebook에서 Beeftown에 메시지를 보내 주세요. ' +
     '매장은 호치민시 구 1군 Hồ Tùng Mậu 63, 3층에 있어요.',
 
+  moTaMuaThitVnpay:
+    'Beeftown 매장의 소고기를 팩으로 배달해 드려요. 팩 가격에 배달비가 포함돼 있고, ' +
+    'VNPay로 미리 결제하신 뒤 매장에서 전화로 배달 시간을 정해요.',
   moTaMuaThit:
     'Beeftown 매장의 소고기를 팩으로 배달해 드려요. 여기서 팩을 고르고 주문해 주시면 ' +
     '전화로 총액, 배달비, 배달 시간을 확인해 드려요.',

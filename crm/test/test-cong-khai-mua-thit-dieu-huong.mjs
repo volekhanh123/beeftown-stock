@@ -178,7 +178,7 @@ await nhom('4 · ĐƯỜNG DẪN, VỎ TRANG', async () => {
       || (s.match(new RegExp(`duongDan="${duong.replace(/\//g, '\\/')}"`, 'g')) ?? []).length !== 2
       || /duongDan=\{/.test(s)) loiSongSong.push(f);
     if (!/const trangThai = trangThaiMuaThit\(muaThitVeMo\(noiDung\), menu\);/.test(s)
-      || !s.includes(`moTa={moTaTrangMuaThit(${q}, trangThai === 'mo' || trangThai === 'het_quay')}`)
+      || !s.includes(`moTa={moTaTrangMuaThit(${q}, trangThai === 'mo' || trangThai === 'het_quay', vnpay !== null)}`)
       || !s.includes(`const ketQua = ketQuaDatHang(Astro, ${q});`)
       || !/<TrangMuaThitVe ngonNgu="[a-z]+" noiDung=\{noiDung\} menu=\{menu\} trangThai=\{trangThai\} ketQua=\{ketQua\}\s+thamSo=\{\[\.\.\.Astro\.url\.searchParams\]\} duongDan="[^"]+"\s+traVnpay=\{vnpay !== null\} theoGu=\{theoGu\} \/>/.test(s)) loiTrangThai.push(f);
     // POST đặt hàng xử lý TRƯỚC khi đọc nội dung, menu: chuyển hướng 303 về chính trang (lib/xu-ly-form.ts).
@@ -211,6 +211,13 @@ await nhom('4 · ĐƯỜNG DẪN, VỎ TRANG', async () => {
 await nhom('5 · MÔ TẢ TRANG', async () => {
   const MONG = {
     muaThitVe: { vi: 'Mua thịt về', en: 'Take home', ko: '포장 구매' },
+    // Mô tả khi Worker đã cài VNPay — đúng điều dải ba điều của trang nói: "Giá gói đã gồm phí giao" · "Trả trước qua VNPay" ·
+    // "Quán gọi hẹn giờ giao" sau khi trả tiền (rà soát SEO 23/11/2026: câu cũ hứa quán gọi xác nhận tổng tiền, phí giao).
+    moTaMuaThitVnpay: {
+      vi: 'Mua thịt bò chia gói từ quầy Beeftown, giao tận nơi. Giá gói đã gồm phí giao. Bạn trả trước qua VNPay, rồi quán gọi hẹn giờ giao.',
+      en: 'Order beef packs from Beeftown, delivered to you. Pack prices include delivery. Pay in advance with VNPay, then we call to arrange a delivery time.',
+      ko: 'Beeftown 매장의 소고기를 팩으로 배달해 드려요. 팩 가격에 배달비가 포함돼 있고, VNPay로 미리 결제하신 뒤 매장에서 전화로 배달 시간을 정해요.',
+    },
     moTaMuaThit: {
       vi: 'Mua thịt bò đóng gói từ quầy Beeftown, giao tận nơi. Chọn gói và đặt hàng trên web; quán gọi lại xác nhận tổng tiền, phí giao và giờ giao.',
       en: 'Order packs of beef from the Beeftown counter for delivery. We call back to confirm your order total, delivery fee and delivery time.',
@@ -228,13 +235,23 @@ await nhom('5 · MÔ TẢ TRANG', async () => {
     ok(`[${nn}] moTaTrangMuaThit(nn, true) = t.moTaMuaThit; (nn, false) = t.moTaMuaThitChuaMo`,
        typeof moTaTrangMuaThit === 'function' && !!t.moTaMuaThit && moTaTrangMuaThit(nn, true) === t.moTaMuaThit
          && moTaTrangMuaThit(nn, false) === t.moTaMuaThitChuaMo && t.moTaMuaThit !== t.moTaMuaThitChuaMo);
-    ok(`[${nn}] Ba câu đúng chữ (0113: giao tận nơi, đặt trên web, không còn Zalo)`,
+    ok(`[${nn}] moTaTrangMuaThit(nn, mo, traVnpay): đã cài VNPay → t.moTaMuaThitVnpay; chưa mở → câu chưa mở dù VNPay có hay không`,
+       moTaTrangMuaThit(nn, true, true) === t.moTaMuaThitVnpay && moTaTrangMuaThit(nn, true, false) === t.moTaMuaThit
+         && moTaTrangMuaThit(nn, false, true) === t.moTaMuaThitChuaMo && moTaTrangMuaThit(nn, false, false) === t.moTaMuaThitChuaMo
+         && !!t.moTaMuaThitVnpay && t.moTaMuaThitVnpay !== t.moTaMuaThit);
+    ok(`[${nn}] Bốn câu đúng chữ (0113: giao tận nơi, đặt trên web, không còn Zalo; câu VNPay rà soát SEO 23/11/2026)`,
        Object.entries(MONG).every(([k, ba]) => t[k] === ba[nn]),
        Object.keys(MONG).filter(k => t[k] !== MONG[k][nn]).map(k => `${k}: ${t[k]}`).join(' | '));
     ok(`[${nn}] Câu chưa mở không hứa: ${String(HUA[nn])} không có`, !!t.moTaMuaThitChuaMo && !HUA[nn].test(t.moTaMuaThitChuaMo),
        t.moTaMuaThitChuaMo);
-    const cam = ['muaThitVe', 'moTaMuaThit', 'moTaMuaThitChuaMo'].flatMap(k => timChuoiCam(t[k] ?? '').map(c => `${k}: ${c.tim_thay}`));
-    ok(`[${nn}] Không chữ cấm trong ba câu`, cam.length === 0, cam.join(' | '));
+    // Câu VNPay nói đúng ba điều trên trang (phí giao đã gồm · trả trước VNPay · quán gọi hẹn giờ) và không còn hứa gọi xác nhận tổng tiền, phí giao.
+    const VNPAY = { vi: [/đã gồm phí giao/u, /trả trước qua VNPay/u, /quán gọi hẹn giờ giao/u], en: [/include delivery/u, /Pay in advance with VNPay/u, /we call to arrange a delivery time/u],
+      ko: [/배달비가 포함/u, /VNPay로 미리 결제/u, /배달 시간을 정해요/u] };
+    const CU = { vi: /xác nhận tổng tiền|phí giao và giờ giao/u, en: /confirm your order total|delivery fee and delivery time/u, ko: /총액/u };
+    ok(`[${nn}] Câu VNPay có đủ ba điều của trang và không còn hứa xác nhận tổng tiền, phí giao`,
+       VNPAY[nn].every(re => re.test(t.moTaMuaThitVnpay)) && !CU[nn].test(t.moTaMuaThitVnpay), t.moTaMuaThitVnpay);
+    const cam = ['muaThitVe', 'moTaMuaThit', 'moTaMuaThitVnpay', 'moTaMuaThitChuaMo'].flatMap(k => timChuoiCam(t[k] ?? '').map(c => `${k}: ${c.tim_thay}`));
+    ok(`[${nn}] Không chữ cấm trong bốn câu`, cam.length === 0, cam.join(' | '));
   }
   ok('t.muaThitVe đúng "Mua thịt về" / "Take home" / "포장 구매"',
      NGON_NGU.every(nn => chu(nn).muaThitVe === MONG.muaThitVe[nn]));

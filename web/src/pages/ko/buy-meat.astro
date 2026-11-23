@@ -16,7 +16,7 @@ const trangThai = trangThaiMuaThit(muaThitVeMo(noiDung), menu);
 const ketQua = ketQuaDatHang(Astro, 'ko');
 ---
 <Trang ngonNgu="ko" noiDung={noiDung} duongDan="/ko/buy-meat" tieuDe="소고기 포장 구매 — 호치민 Beeftown"
-       moTa={moTaTrangMuaThit('ko', trangThai === 'mo' || trangThai === 'het_quay')}>
+       moTa={moTaTrangMuaThit('ko', trangThai === 'mo' || trangThai === 'het_quay', vnpay !== null)}>
   <TrangMuaThitVe ngonNgu="ko" noiDung={noiDung} menu={menu} trangThai={trangThai} ketQua={ketQua}
                   thamSo={[...Astro.url.searchParams]} duongDan="/ko/buy-meat"
                   traVnpay={vnpay !== null} theoGu={theoGu} />

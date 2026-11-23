@@ -398,7 +398,9 @@ await nhom('9 · SCRIPT: GIỎ RỖNG, BẤM ĐÚP, GIỮ CHỮ, META PIXEL', as
      /SO_GOI_TOI_DA/.test(s) && /dispatchEvent\(new Event\('change', \{ bubbles: true \}\)\)/.test(s) && /CHU_DON\.vuaDoi\[nn\]/.test(s));
   ok('Thanh giỏ ẩn khi khối Đặt hàng trên màn hình (IntersectionObserver), và khi giỏ rỗng',
      /new IntersectionObserver/.test(s) && /thanh\.hidden = donHienTai\.dong\.length === 0 \|\| khoiDatDangHien/.test(s));
-  ok('data-menu dựng bằng rutGonMenu', /data-menu=\{JSON\.stringify\(rutGonMenu\(menu\.sanPham\)\)\}/.test(TRANG.khuon));
+  // SEO 23/11/2026: menu cho script mang tên hiện ra ("Đầu thăn ngoại (Ribeye)"); tenHienThi chỉ đổi `ten`, khóa, giá, tenVi giữ nguyên.
+  ok('data-menu dựng bằng rutGonMenu trên menu mang tên hiện ra (menuHienThi)', /data-menu=\{JSON\.stringify\(rutGonMenu\(menuHienThi\)\)\}/.test(TRANG.khuon)
+       && /const menuHienThi = menu\.sanPham\.map\(sp => \(\{ \.\.\.sp, ten: tenHienThi\(sp, nn\) \}\)\);/.test(TRANG.dau));
   ok('Mọi truy vấn phần tử trong script có kiểu (querySelector<…>)', !/querySelector\((?!<)/.test(s.replace(/querySelector<[^>]+>\(/g, '')));
 });
 

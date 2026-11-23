@@ -12,7 +12,10 @@
  *      "khai trương" trong mô tả; dòng ngày ("Đón bạn từ" / "Mở cửa từ") chỉ khi chủ công bố ngay_khai_truong (giờ Việt
  *      Nam: 23:50 và 00:10, ngày không có thật 31/02).
  *   4. JSON-LD giờ mở cửa: chỉ khi cả hai công tắc đã công bố; chưa công bố thì không gọi database lần hai.
- *   5. JSON-LD Product + Offer của trang Mua thịt về: chỉ gói có giá đã công bố, không dữ liệu bịa.
+ *   4b. JSON-LD `geo` (tọa độ chấm ghim đã xác minh của Google Business Profile): cùng cổng với `hasMap` — chỉ khi đã công bố
+ *      link Google Maps.
+ *   5. JSON-LD Product + Offer của trang Mua thịt về: chỉ gói có giá đã công bố, không dữ liệu bịa; tên Product là tên đang hiện
+ *      trên thẻ ("Đầu thăn ngoại (Ribeye)" ở trang Việt). Mô tả trang Mua thịt về nói đúng điều trang nói (có VNPay / chưa).
  *   6. HSTS một năm (không includeSubDomains, không preload) cho trả lời của Worker và file tĩnh; Cache-Control dài
  *      cho /anh/, /thuong-hieu/, /phong/ (web/public/_headers).
  *   7. Phông Montserrat tự phát: file có thật, @font-face đủ hai bộ ký tự, preload đúng tên, không còn stylesheet
@@ -35,7 +38,7 @@ const doc = (...p) => readFileSync(join(...p), 'utf8');
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — TRANG CÔNG KHAI: SEO');
 
 const { chu, NGON_NGU, CAP_DUONG_DAN, THUONG_HIEU, DIA_CHI_NHA_HANG } = await nap('chu.ts');
-const { tinhTrangKhaiTruong, dongTrangThai, lienHe, jsonTrongScript } = await nap('trang-cong-khai.ts');
+const { tinhTrangKhaiTruong, dongTrangThai, lienHe, jsonTrongScript, toaDoCoCauTruc, TOA_DO_QUAN } = await nap('trang-cong-khai.ts');
 const { docNoiDung } = await nap('noi-dung.ts');
 const { homNayVn } = await nap('gio-vn.ts');
 const { timChuoiCam } = await nap('chuoi-cam.js');
@@ -59,6 +62,8 @@ const TRANG = {
   visit: { vi: 'den-beeftown.astro', en: 'en/visit.astro', ko: 'ko/visit.astro' },
   book: { vi: 'dat-ban.astro', en: 'en/book.astro', ko: 'ko/book.astro' },
   buy: { vi: 'mua-thit-ve.astro', en: 'en/buy-meat.astro', ko: 'ko/buy-meat.astro' },
+  // Cùng ba file; mô tả khi Worker đã cài VNPay (chu.ts moTaMuaThitVnpay) — trang ghi giá đã gồm phí giao, trả trước qua VNPay.
+  buyVnpay: { vi: 'mua-thit-ve.astro', en: 'en/buy-meat.astro', ko: 'ko/buy-meat.astro' },
   cuts: { vi: 'phan-thit-bo.astro', en: 'en/beef-cuts.astro', ko: 'ko/beef-cuts.astro' },
   jobs: { vi: 'tuyen-dung.astro', en: 'en/jobs.astro', ko: 'ko/jobs.astro' },
   privacy: { vi: 'quyen-rieng-tu.astro', en: 'en/privacy.astro', ko: 'ko/privacy.astro' },
@@ -71,6 +76,7 @@ const meta = (trang, nn) => {
   // Trang đặt bàn và Mua thịt về chọn mô tả theo trạng thái trang: câu mở nằm ở chu.ts (câu chưa mở kiểm riêng bên dưới).
   if (trang === 'book') return { tieuDe, moTa: chu(nn).moTaHoiBan };
   if (trang === 'buy') return { tieuDe, moTa: chu(nn).moTaMuaThit };
+  if (trang === 'buyVnpay') return { tieuDe, moTa: chu(nn).moTaMuaThitVnpay };
   return { tieuDe, moTa: s.match(/\bmoTa="([^"]*)"/)?.[1] ?? null };
 };
 
@@ -118,6 +124,10 @@ await nhom('1 · TIÊU ĐỀ VÀ MÔ TẢ: ĐỘ DÀI, TỪ KHÓA, CHỮ CẤM, 
   ok('home [ko]: tiêu đề có "소고기 전문점" và "구 1군"', co('home', 'ko', /소고기 전문점/u) && co('home', 'ko', /구 1군/u), meta('home', 'ko').tieuDe);
   ok('Mô tả EN trang tuyển dụng và Mua thịt về đã cắt về cỡ gần 155 ký tự (trước: 185 và 162)',
      dem(meta('jobs', 'en').moTa) <= 160 && dem(meta('buy', 'en').moTa) <= 160, `${dem(meta('jobs', 'en').moTa)} · ${dem(meta('buy', 'en').moTa)}`);
+  ok('Mô tả Mua thịt về khi có VNPay: vi và en 120–155 ký tự (trang tìm kiếm cắt quanh 155), ko 70–110',
+     dem(meta('buyVnpay', 'vi').moTa) >= 120 && dem(meta('buyVnpay', 'vi').moTa) <= 155 && dem(meta('buyVnpay', 'en').moTa) >= 120 && dem(meta('buyVnpay', 'en').moTa) <= 155
+       && dem(meta('buyVnpay', 'ko').moTa) >= 70 && dem(meta('buyVnpay', 'ko').moTa) <= 110,
+     `${dem(meta('buyVnpay', 'vi').moTa)} · ${dem(meta('buyVnpay', 'en').moTa)} · ${dem(meta('buyVnpay', 'ko').moTa)}`);
   ok('Thuật ngữ "Hỏi bàn" không quay lại: nút ghi "Đặt bàn" (Khánh quyết 23/11/2026) và tiêu đề trang đặt bàn có "Đặt bàn"', chu('vi').datBan === 'Đặt bàn' && co('book', 'vi', /Đặt bàn/u));
 
   // Trang chủ: mọi thẻ mô tả cùng nói đủ ba điều — chọn bò ở quầy, nướng tại bàn, địa chỉ — và khu vực "Quận 1 cũ" đúng cách của thứ tiếng.
@@ -258,6 +268,26 @@ await nhom('4 · JSON-LD GIỜ MỞ CỬA: CHỈ KHI ĐÃ CÔNG BỐ', async () 
 });
 
 // ===========================================================================
+await nhom('4b · JSON-LD `geo`: TỌA ĐỘ CHỈ KHI ĐÃ CÔNG BỐ LINK GOOGLE MAPS (CÙNG CỔNG VỚI hasMap)', async () => {
+  const MAPS = 'https://maps.app.goo.gl/VLgAW3VuVDaRmyV19';
+  const geo = toaDoCoCauTruc(nd({ google_maps_url: MAPS }));
+  ok('Đã công bố link Maps → GeoCoordinates với vĩ độ 10.7718087, kinh độ 106.7039074 (chấm ghim Google Business đã xác minh)',
+     JSON.stringify(geo) === JSON.stringify({ '@type': 'GeoCoordinates', latitude: 10.7718087, longitude: 106.7039074 }), JSON.stringify(geo));
+  ok('Tọa độ là SỐ (không chuỗi), nằm trong TP.HCM (vĩ 10.3–11.2, kinh 106.3–107.1), mười chữ số thập phân không bị làm tròn',
+     typeof geo.latitude === 'number' && typeof geo.longitude === 'number' && geo.latitude > 10.3 && geo.latitude < 11.2 && geo.longitude > 106.3 && geo.longitude < 107.1
+       && TOA_DO_QUAN.vido === 10.7718087 && TOA_DO_QUAN.kinhdo === 106.7039074);
+  for (const [nhan, v] of [['chưa công bố (null)', null], ['chuỗi rỗng', ''], ['chỉ khoảng trắng', '   '], ['"javascript:" (không an toàn → coi như chưa công bố)', 'javascript:alert(1)'], ['không phải URL', 'maps'], ['"data:" ', 'data:text/html,x']]) {
+    ok(`Maps ${nhan} → không có geo (JSON-LD chỉ khai điều đã công bố)`, toaDoCoCauTruc(nd({ google_maps_url: v })) === null && lienHe(nd({ google_maps_url: v })).maps === null);
+  }
+  ok('Cùng cổng với hasMap: toaDoCoCauTruc khác null ⇔ lienHe(nd).maps khác null',
+     [MAPS, 'http://maps.google.com/?cid=1', null, '', 'ftp://x'].every(v => (toaDoCoCauTruc(nd({ google_maps_url: v })) !== null) === (lienHe(nd({ google_maps_url: v })).maps !== null)));
+  const layout = doc(SRC, 'layouts', 'Trang.astro');
+  ok('Trang.astro: geo đứng sau hasMap, lấy từ toaDoCoCauTruc(nd), chỉ gắn khi khác null; không viết tọa độ thẳng trong layout',
+     /if \(lh\.maps\) duLieuCoCauTruc\.hasMap = lh\.maps;\r?\n\/\/ Tọa độ: [^\r\n]*\r?\nconst geo = toaDoCoCauTruc\(nd\);\r?\nif \(geo\) duLieuCoCauTruc\.geo = geo;/.test(layout)
+       && !/10\.7718087|106\.7039074/.test(layout.replace(/\/\*[\s\S]*?\*\//g, '')));
+});
+
+// ===========================================================================
 await nhom('5 · JSON-LD PRODUCT + OFFER CỦA TRANG MUA THỊT VỀ: CHỈ GÓI CÓ GIÁ ĐÃ CÔNG BỐ', async () => {
   const dong = (ma, ten, soGam, gia, them = {}) => ({ san_pham_ma: ma, loai: 'thit', don_vi: 'goi', bao_quan: 'mat', ten, ten_vi: ten, mo_ta: null, cach_dung: null, so_gam: soGam, gia, tam_het: false, ...them });
   const sp = nhomMuaThitVe([
@@ -285,7 +315,7 @@ await nhom('5 · JSON-LD PRODUCT + OFFER CỦA TRANG MUA THỊT VỀ: CHỈ GÓI
 
   const thanh = doc(SRC, 'components', 'TrangMuaThitVe.astro');
   ok('TrangMuaThitVe.astro in thẻ application/ld+json chỉ khi sanPhamJsonLd có kết quả, qua jsonTrongScript',
-     thanh.includes('const jsonSanPham = sanPhamJsonLd(menu, trangThai, THUONG_HIEU.ten);') && thanh.includes('{jsonSanPham && <script type="application/ld+json" set:html={jsonTrongScript(jsonSanPham)} is:inline></script>}'));
+     thanh.includes('const jsonSanPham = sanPhamJsonLd(menu, trangThai, THUONG_HIEU.ten, nn);') && thanh.includes('{jsonSanPham && <script type="application/ld+json" set:html={jsonTrongScript(jsonSanPham)} is:inline></script>}'));
 });
 
 // ===========================================================================

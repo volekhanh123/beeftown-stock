@@ -142,6 +142,8 @@ const { congNgay, homNayVn } = await import(pathToFileURL(join(WEB, 'src', 'lib'
 const { dinhDangNgay } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'noi-dung.ts')).href);
 // Trang Mua thịt về (nhóm 12): đơn mong đợi tính bằng chính lib của trang từ dữ liệu giả.
 const { nhomMuaThitVe, chiaNhom } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'mua-thit-ve.ts')).href);
+// Tên hiện trên thẻ gói và dòng đơn: tên Việt / Hàn kèm tên khay trong ngoặc, và link sang trang Các phần thịt bò.
+const { tenHienThi, lienKetPhanThit } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'ten-phan-thit.ts')).href);
 const { CHU_DON, CAU_HOA_DON, dinhDangTien, docGio, nhanGoi, tinhDon } =
   await import(pathToFileURL(join(WEB, 'src', 'lib', 'don-mua-thit.ts')).href);
 const { CAU_DAT_HANG } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'dat-hang-mua-thit.ts')).href);
@@ -1372,7 +1374,7 @@ try {
     const duongMua = nn => duongDanTuongUng('/mua-thit-ve', nn);
     const menuCua = (kichBan, nn) => nhomMuaThitVe(menuMuaThitVe(kichBan, nn));
     const dongMong = (don, nn) => don.dong.map(d =>
-      motDong(CHU_DON.dongDau[nn](d.sanPham.ten, nhanGoi(d.sanPham.donVi, d.goi.soGam, nn), d.soLuong) + dinhDangTien(d.thanhTien)));
+      motDong(CHU_DON.dongDau[nn](tenHienThi(d.sanPham, nn), nhanGoi(d.sanPham.donVi, d.goi.soGam, nn), d.soLuong) + dinhDangTien(d.thanhTien)));
     const coDuLieuKhach = s => s.includes('0912') || s.includes('Hoa') || s.includes('Nguy');
 
     const mo = async (duong, { rong = 390, cao, js = true } = {}) => {
@@ -1401,6 +1403,7 @@ try {
       return {
         ten: a.querySelector('h3')?.textContent.trim() ?? '',
         lang: a.querySelector('h3')?.getAttribute('lang') ?? null,
+        lienKet: a.querySelector('.mtv-ve-phan a')?.getAttribute('href') ?? null,
         giaTu: (a.querySelector('.mtv-gia-tu')?.textContent ?? '').replace(/\s+/g, ' ').trim(),
         nut: !!nut && nut.checkVisibility(),
         tamHetThe: a.querySelector('.mtv-the-chan [data-mtv-tam-het]')?.textContent.trim() ?? null,
@@ -1420,8 +1423,10 @@ try {
       const re = (datDuoc.length ? datDuoc : sp.goi).reduce((a, b) => (b.gia < a.gia ? b : a));
       const gu = boTaiQuayTheoGu(kichBan, nn).find(x => x.san_pham_ma === sp.ma)?.gu ?? [];
       return {
-        ten: sp.ten,
-        lang: nn !== 'vi' && sp.ten === sp.tenVi ? 'vi' : null,
+        ten: tenHienThi(sp, nn),
+        // Tên đã đổi sang tên Việt / Hàn thì không còn là tên tiếng Việt lạc giữa trang khác: không lang="vi".
+        lang: tenHienThi(sp, nn) === sp.ten && nn !== 'vi' && sp.ten === sp.tenVi ? 'vi' : null,
+        lienKet: lienKetPhanThit(sp, nn),
         giaTu: sp.goi.length === 1 ? dinhDangTien(re.gia) : `${TU[nn]} ${dinhDangTien(re.gia)}`,
         nut: coHop,
         tamHetThe: coHop ? null : TAM_HET[nn],

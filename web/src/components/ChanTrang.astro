@@ -7,7 +7,8 @@
  *     cũ), nên nó có mặt ở MỌI trang công khai — chỉ gọn lại so với một khối riêng.
  *  2. Dải đen, nền phẳng: logo chính trắng của bộ 21/10/2026 (logo-ngang-trang.svg — đầu
  *     bò khoét lộ nền đen; guideline trang 4 vẽ bản trắng trên đỏ), các mục điều hướng,
- *     địa chỉ + câu chỉ đường. Một bề mặt một dấu thương hiệu: không tem, không hoa văn
+ *     địa chỉ + câu chỉ đường. Cột Thông tin: Các phần thịt bò (trang trụ cột cho người tìm tên phần thịt — link từ
+ *     chân trang để mọi trang đều dẫn tới nó), Tuyển dụng, Xóa dữ liệu. Một bề mặt một dấu thương hiệu: không tem, không hoa văn
  *     chữ BEEFTOWN chìm sau chữ. Điện thoại: hai nhóm link đứng cạnh nhau thành 2 cột.
  *     Dưới cùng dải đen: nhóm CHÍNH SÁCH rộng hết hàng — link tới tám trang chính sách (lib/chinh-sach.ts) và
  *     Quyền riêng tư. Nghị định 248/2026, Điều 17 khoản 1 điểm a: nội dung chính sách phải có link ở màn hình
@@ -88,6 +89,7 @@ const c = dich(ngonNgu, {
       <nav class="ct-cot" aria-labelledby="ct-thong-tin">
         <h2 class="ct-tieu-de" id="ct-thong-tin">{t.thongTin}</h2>
         <ul>
+          <li><a href={duongDanTuongUng('/phan-thit-bo', ngonNgu)}>{t.phanThitBo}</a></li>
           <li><a href={duongDanTuongUng('/tuyen-dung', ngonNgu)}>{t.tuyenDung}</a></li>
           <li><a href={duongDanTuongUng('/xoa-du-lieu', ngonNgu)}>{t.xoaDuLieu}</a></li>
         </ul>

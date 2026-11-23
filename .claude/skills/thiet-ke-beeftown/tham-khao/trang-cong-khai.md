@@ -134,7 +134,8 @@ tệ hơn không có nút".
   khối.
 - Quyết định suy ra để ở `trang-cong-khai.ts`, không rải trong component: `formHoiBanMo`,
   `coKenhHoiBan`, `nutMoDau` (thứ bậc hai nút màn đầu), `dieuHuong` (bốn mục; năm khi trang Mua thịt về
-  mở), `moTaTrangMuaThit`. Trang Mua thịt về thêm `muaThitVeMo` (`web/src/lib/dich-dat-hang.ts`) và
+  mở), `moTaTrangMuaThit` (mô tả theo trạng thái và theo việc đã cài VNPay chưa), `toaDoCoCauTruc` (JSON-LD `geo`, cùng
+  cổng với `hasMap`). Trang Mua thịt về thêm `muaThitVeMo` (`web/src/lib/dich-dat-hang.ts`) và
   `trangThaiMuaThit` (`web/src/lib/mua-thit-ve.ts`); gửi đơn ở `web/src/lib/dat-hang-mua-thit.ts`.
 - Giá: chỉ render phần tử giá khi `gia !== null` — không ô trống, không "liên hệ". Trang Mua thịt về in
   giá gói **chủ đã chốt** qua `dinhDangTien` trong phần tử `data-tien` (bộ quét miễn đúng chỗ đó); gói

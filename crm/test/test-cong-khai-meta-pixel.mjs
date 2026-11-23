@@ -26,6 +26,7 @@
  * InitiateCheckout, Contact với link đã công bố, URL sau khi gửi).
  */
 
+import vm from 'node:vm';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname, relative, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -66,12 +67,43 @@ src="https://www.facebook.com/tr?id=1486681409963017&ev=PageView&noscript=1"
 /></noscript>
 <!-- End Meta Pixel Code -->`;
 
+// Chỗ DUY NHẤT khác bản Meta (23/11/2026, rà soát SEO): fbevents.js không chèn ngay lúc đọc <head> mà sau sự kiện load.
+// DONG_META là dòng cuối của hàm trong bản Meta; DOAN_HOAN thay nó.
+const DONG_META = `s.parentNode.insertBefore(t,s)}(window, document,'script',`;
+const DOAN_HOAN = `var d=function(){s.parentNode.insertBefore(t,s)},
+g=function(){f.requestIdleCallback?f.requestIdleCallback(d,{timeout:2500}):f.setTimeout(d,200)};
+b.readyState==='complete'?g():f.addEventListener('load',g)}(window, document,'script',`;
+
+/** Chạy phần <script> của mã gốc trong một "cửa sổ" giả, ghi lại mọi thứ để kiểm thứ tự. */
+function chayMaGoc(ma, { rIC = true, daTai = false } = {}) {
+  const nhatKy = { chen: [], hen: [], tren: {}, setTimeout: [] };
+  const dauTien = { parentNode: { insertBefore: (moi, truoc) => { nhatKy.chen.push({ moi, truoc }); } } };
+  const cuaSo = {
+    addEventListener: (ten, fn) => { nhatKy.tren[ten] = fn; },
+    setTimeout: (fn, ms) => { nhatKy.setTimeout.push({ fn, ms }); },
+  };
+  if (rIC) cuaSo.requestIdleCallback = (fn, tuyChon) => { nhatKy.hen.push({ fn, tuyChon }); };
+  cuaSo.window = cuaSo;
+  cuaSo.document = {
+    readyState: daTai ? 'complete' : 'loading',
+    createElement: ten => ({ ten }),
+    getElementsByTagName: () => [dauTien],
+  };
+  const maJs = /<script>([\s\S]*?)<\/script>/.exec(ma)?.[1] ?? '';
+  vm.runInNewContext(maJs, cuaSo);
+  return { cuaSo, nhatKy, dauTien };
+}
+
 // ===========================================================================
-await nhom('1 · MÃ GỐC ĐÚNG TỪNG CHỮ BẢN META ĐƯA, ĐÚNG ID, KHÔNG SO KHỚP NÂNG CAO', async () => {
+await nhom('1 · MÃ GỐC ĐÚNG TỪNG CHỮ BẢN META ĐƯA (TRỪ MỘT CHỖ HOÃN), ĐÚNG ID, KHÔNG SO KHỚP NÂNG CAO', async () => {
   ok('MA_PIXEL = 1486681409963017 (Beeftown Pixel, Business Beeftown 2104301050185040)', PIXEL.MA_PIXEL === '1486681409963017');
   const ma = PIXEL.khoiMaPixel();
-  ok('khoiMaPixel() đúng từng ký tự mã gốc Meta đưa', ma === MA_META,
-     [...ma].findIndex((c, i) => c !== MA_META[i]) >= 0 ? `lệch từ ký tự ${[...ma].findIndex((c, i) => c !== MA_META[i])}` : `dài ${ma.length} / ${MA_META.length}`);
+  const maHoan = MA_META.replace(DONG_META, DOAN_HOAN);
+  ok('khoiMaPixel() đúng từng ký tự mã gốc Meta đưa, chỉ khác một chỗ: chèn fbevents.js hoãn tới sau sự kiện load', MA_META.includes(DONG_META) && ma === maHoan,
+     [...ma].findIndex((c, i) => c !== maHoan[i]) >= 0 ? `lệch từ ký tự ${[...ma].findIndex((c, i) => c !== maHoan[i])}` : `dài ${ma.length} / ${maHoan.length}`);
+  ok('Đặt lại dòng của Meta vào chỗ đoạn hoãn thì ra đúng từng ký tự bản Meta đưa (mọi dòng khác không bị đụng)',
+     ma.replace(DOAN_HOAN, DONG_META) === MA_META);
+  ok('Giữ thẻ <noscript><img> đo PageView của Meta', ma.includes(MA_META.slice(MA_META.indexOf('<noscript>'), MA_META.indexOf('<!-- End Meta Pixel Code -->'))));
   ok('fbq("init") chỉ có ID — không tham số thứ ba (So khớp nâng cao: email, số điện thoại, tên)',
      /fbq\('init', '\d+'\);/.test(ma) && !/fbq\('init', '\d+',/.test(ma) && !/\b(em|ph|fn|ln|external_id)\s*:/.test(ma));
   ok('Đúng một fbq("track") trong mã gốc, là PageView không kèm tham số',
@@ -79,6 +111,55 @@ await nhom('1 · MÃ GỐC ĐÚNG TỪNG CHỮ BẢN META ĐƯA, ĐÚNG ID, KHÔ
   let nem = 0;
   for (const sai of ['abc', "1'); alert(1); //", '123', '14866814099630170000']) { try { PIXEL.khoiMaPixel(sai); } catch { nem++; } }
   ok('khoiMaPixel() từ chối ID sai dạng (chữ, dấu nháy, quá ngắn, quá dài) — không chèn được gì vào script', nem === 4, `${nem}/4`);
+});
+
+// ===========================================================================
+await nhom('1b · fbevents.js TẢI SAU TRANG; KHÔNG SỰ KIỆN NÀO XẾP HÀNG BỊ MẤT', async () => {
+  const URL_FBEVENTS = 'https://connect.facebook.net/en_US/fbevents.js';
+  const hang = fbq => [...fbq.queue].map(x => [...x]);
+  const mtGia = (fbq, trang = 'thuc-don') => ({ fbq, document: { documentElement: { lang: 'vi' }, body: { dataset: { pixelTrang: trang } } } });
+  const thamSo = { content_name: 'thuc-don', language: 'vi' };
+
+  // Đang đọc <head>: fbq có và đã xếp hàng init + PageView, nhưng KHÔNG chèn fbevents.js.
+  const a = chayMaGoc(PIXEL.khoiMaPixel());
+  ok('Lúc đọc <head>: có fbq, hàng đợi là init rồi PageView, fbevents.js CHƯA được chèn',
+     typeof a.cuaSo.fbq === 'function' && a.nhatKy.chen.length === 0
+       && JSON.stringify(hang(a.cuaSo.fbq)) === JSON.stringify([['init', PIXEL.MA_PIXEL], ['track', 'PageView']]), JSON.stringify(hang(a.cuaSo.fbq)));
+  ok('Chờ đúng sự kiện load của cửa sổ — không đăng ký sự kiện nào khác, chưa hẹn giờ nào', Object.keys(a.nhatKy.tren).join() === 'load'
+       && a.nhatKy.hen.length === 0 && a.nhatKy.setTimeout.length === 0);
+
+  // Sự kiện của trang (ViewContent, Contact…) gửi qua guiSuKien trước khi fbevents.js tới: xếp hàng sau PageView, đúng thứ tự.
+  ok('guiSuKien trước khi fbevents.js tải: trả true và xếp hàng ViewContent rồi Contact sau PageView',
+     PIXEL.guiSuKien('ViewContent', mtGia(a.cuaSo.fbq)) === true && PIXEL.guiSuKien('Contact', mtGia(a.cuaSo.fbq)) === true
+       && JSON.stringify(hang(a.cuaSo.fbq)) === JSON.stringify([['init', PIXEL.MA_PIXEL], ['track', 'PageView'],
+         ['track', 'ViewContent', thamSo], ['track', 'Contact', thamSo]]), JSON.stringify(hang(a.cuaSo.fbq)));
+
+  // Sự kiện load → hẹn lúc rảnh (hạn 2,5 giây); chưa chèn. Tới lúc rảnh → chèn đúng một <script async src=fbevents.js>.
+  a.nhatKy.tren.load();
+  ok('Sau load: requestIdleCallback với hạn 2500 ms, vẫn chưa chèn script', a.nhatKy.hen.length === 1 && a.nhatKy.hen[0].tuyChon?.timeout === 2500
+       && a.nhatKy.chen.length === 0 && a.nhatKy.setTimeout.length === 0);
+  a.nhatKy.hen[0].fn();
+  const chen = a.nhatKy.chen[0];
+  ok('Tới lúc rảnh: chèn đúng một script async, src là fbevents.js của Meta, đặt trước thẻ script đầu tiên của trang',
+     a.nhatKy.chen.length === 1 && chen.moi.ten === 'script' && chen.moi.async === true && chen.moi.src === URL_FBEVENTS && chen.truoc === a.dauTien,
+     JSON.stringify(chen?.moi));
+
+  // Trình duyệt không có requestIdleCallback (Safari cũ): hẹn 200 ms sau load.
+  const b = chayMaGoc(PIXEL.khoiMaPixel(), { rIC: false });
+  b.nhatKy.tren.load();
+  ok('Không có requestIdleCallback: setTimeout 200 ms sau load, rồi chèn script', b.nhatKy.setTimeout.length === 1 && b.nhatKy.setTimeout[0].ms === 200
+       && b.nhatKy.chen.length === 0 && (b.nhatKy.setTimeout[0].fn(), b.nhatKy.chen.length === 1 && b.nhatKy.chen[0].moi.src === URL_FBEVENTS));
+
+  // Trang đã tải xong lúc mã chạy (readyState complete): không chờ load, hẹn ngay.
+  const c = chayMaGoc(PIXEL.khoiMaPixel(), { daTai: true });
+  ok('Trang đã tải xong: không đăng ký load, hẹn lúc rảnh ngay', Object.keys(c.nhatKy.tren).length === 0 && c.nhatKy.hen.length === 1 && c.nhatKy.chen.length === 0);
+
+  // Chạy hai lần (hai khối mã trên một trang): lần hai thấy fbq rồi thì thôi, không hẹn thêm.
+  const d = chayMaGoc(PIXEL.khoiMaPixel());
+  const maJs = /<script>([\s\S]*?)<\/script>/.exec(PIXEL.khoiMaPixel())[1];
+  const truoc = d.nhatKy.tren.load;
+  vm.runInNewContext(maJs.replace(/fbq\('init'[\s\S]*$/, ''), d.cuaSo);
+  ok('Mã gốc chạy lần hai trên cùng trang: thấy fbq có rồi thì thoát, không đăng ký load thêm', d.nhatKy.tren.load === truoc && d.nhatKy.hen.length === 0);
 });
 
 // ===========================================================================

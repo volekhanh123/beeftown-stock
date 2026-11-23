@@ -25,6 +25,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { taoClient, maChiNhanh, type NgonNgu } from './noi-dung.ts';
 import { timChuoiCam } from './chuoi-cam.js';
 import { khoaGoi, type BaoQuan, type DonVi, type GoiMua, type SanPhamMua } from './don-mua-thit.ts';
+import { tenHienThi } from './ten-phan-thit.ts';
 
 /** Một dòng mua_thit_ve_cong_khai() trả về — đúng 11 cột, đúng thứ tự của 0101. */
 export interface DongMuaThitVe {
@@ -192,10 +193,13 @@ export type TrangThaiTrang = 'chua_mo' | 'loi' | 'mo' | 'het_quay';
  * đánh giá, không mã sản phẩm, không hạn giá, không giá khuyến mại.
  *   · chỉ trạng thái 'mo' và 'het_quay' (trang liệt kê gói kèm giá); chưa mở, lỗi → null, không khai gì;
  *   · gói "Tạm hết ở quầy" khai OutOfStock (khách thấy đúng câu đó), gói còn thì InStock;
- *   · tên Offer là cỡ gói ("200 g"), tên Product là tên theo thứ tiếng của trang.
+ *   · tên Offer là cỡ gói ("200 g"), tên Product là tên đang hiện trên thẻ: theo thứ tiếng của trang, và khi truyền
+ *     `ngonNgu` thì qua tenHienThi (lib/ten-phan-thit.ts) — trang Việt "Đầu thăn ngoại (Ribeye)". Không truyền thì tên gốc.
  * Trả về một khối @graph để in vào MỘT thẻ script; không có sản phẩm nào thì null.
  */
-export function sanPhamJsonLd(menu: MenuMuaThit, trangThai: TrangThaiTrang, tenThuongHieu: string): Record<string, unknown> | null {
+export function sanPhamJsonLd(
+  menu: MenuMuaThit, trangThai: TrangThaiTrang, tenThuongHieu: string, ngonNgu?: NgonNgu,
+): Record<string, unknown> | null {
   if (trangThai !== 'mo' && trangThai !== 'het_quay') return null;
   const sanPham = menu.sanPham.filter(sp => sp.goi.length > 0);
   if (sanPham.length === 0) return null;
@@ -203,7 +207,7 @@ export function sanPhamJsonLd(menu: MenuMuaThit, trangThai: TrangThaiTrang, tenT
     '@context': 'https://schema.org',
     '@graph': sanPham.map(sp => ({
       '@type': 'Product',
-      name: sp.ten,
+      name: ngonNgu ? tenHienThi(sp, ngonNgu) : sp.ten,
       ...(sp.moTa ? { description: sp.moTa } : {}),
       brand: { '@type': 'Brand', name: tenThuongHieu },
       offers: sp.goi.map(g => ({

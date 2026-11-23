@@ -139,6 +139,22 @@ export function diaChiCoCauTruc(nd: NoiDung): Record<string, string> {
 }
 
 /**
+ * Tọa độ của quán, lấy từ chấm ghim đã xác minh của Google Business Profile (ftid 0x31752fe62229595b:0x9ebe7e6a44c61084,
+ * kiểm 23/11/2026 — cùng nơi với link Maps đã công bố). Chỉ dùng cho JSON-LD; không in ra trang.
+ */
+export const TOA_DO_QUAN = { vido: 10.7718087, kinhdo: 106.7039074 } as const;
+
+/**
+ * `geo` của JSON-LD Restaurant (schema.org GeoCoordinates). Cùng cổng với `hasMap`: JSON-LD chỉ khai điều đã công bố,
+ * nên chỉ khi chủ đã công bố link Google Maps (khóa google_maps_url của /noi-bo, qua lienHe — link không an toàn thì
+ * coi như chưa công bố). Chưa công bố → null, trang không có trường `geo`.
+ */
+export function toaDoCoCauTruc(nd: NoiDung): Record<string, unknown> | null {
+  if (!lienHe(nd).maps) return null;
+  return { '@type': 'GeoCoordinates', latitude: TOA_DO_QUAN.vido, longitude: TOA_DO_QUAN.kinhdo };
+}
+
+/**
  * JSON để in vào <script type="application/ld+json">. JSON.stringify không thoát "<",
  * nên một mô tả gõ trong /noi-bo có "</script>" sẽ đóng thẻ sớm và phần sau thành HTML.
  * \u003c đọc lại vẫn là "<".
@@ -199,10 +215,16 @@ export function moTaTrangHoiBan(ngonNgu: NgonNgu, moDuoc: boolean): string {
  * Mô tả (meta description, og:description) của trang Mua thịt về. `mo` do file vỏ tính: trạng thái trang là 'mo'
  * hoặc 'het_quay' (trang liệt kê gói kèm giá). Chưa mở, chưa nối database hay đọc menu lỗi thì mô tả nói đúng điều
  * trang nói — chưa mở — không hứa gửi đơn (khuôn moTaTrangHoiBan).
+ *
+ * `traVnpay` (file vỏ truyền `vnpay !== null`): Worker đã cài đủ bí mật VNPay thì trang ghi "Giá gói đã gồm phí giao",
+ * "Trả trước qua VNPay", "Quán gọi hẹn giờ giao sau khi bạn trả tiền" — mô tả nói đúng ba điều đó. Chưa cài thì trang
+ * ghi quán báo phí giao và gọi xác nhận đơn, và mô tả giữ câu cũ. Mô tả luôn theo điều trang đang nói (rà soát SEO
+ * 23/11/2026: câu "quán gọi lại xác nhận tổng tiền, phí giao" từng đi cùng trang ghi giá đã gồm phí giao).
  */
-export function moTaTrangMuaThit(ngonNgu: NgonNgu, mo: boolean): string {
+export function moTaTrangMuaThit(ngonNgu: NgonNgu, mo: boolean, traVnpay: boolean = false): string {
   const t = chu(ngonNgu);
-  return mo ? t.moTaMuaThit : t.moTaMuaThitChuaMo;
+  if (!mo) return t.moTaMuaThitChuaMo;
+  return traVnpay ? t.moTaMuaThitVnpay : t.moTaMuaThit;
 }
 
 export interface Nut {

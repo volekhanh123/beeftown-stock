@@ -197,6 +197,15 @@ const LINK_CHINH_SACH = {
   en: ['/en/terms', '/en/pricing', '/en/payment', '/en/delivery', '/en/returns', '/en/complaints', '/en/conditions', '/en/support', '/en/privacy'],
   ko: ['/ko/terms', '/ko/pricing', '/ko/payment', '/ko/delivery', '/ko/returns', '/ko/complaints', '/ko/conditions', '/ko/support', '/ko/privacy'],
 };
+// Cột Thông tin của chân trang: Các phần thịt bò đứng đầu (SEO 23/11/2026), rồi Tuyển dụng, Xóa dữ liệu. Chép tay.
+const LINK_THONG_TIN = {
+  vi: ['/phan-thit-bo', '/tuyen-dung', '/xoa-du-lieu'],
+  en: ['/en/beef-cuts', '/en/jobs', '/en/data-deletion'],
+  ko: ['/ko/beef-cuts', '/ko/jobs', '/ko/data-deletion'],
+};
+// Link của dải "Nhìn tận mắt, chọn tận tay" (QuayChonBo) — chỉ ở trang chủ.
+const TRANG_CHU_BA = { '/': 'vi', '/en': 'en', '/ko': 'ko' };
+const LINK_QUAY_CHON_BO = { vi: '/phan-thit-bo', en: '/en/beef-cuts', ko: '/ko/beef-cuts' };
 /** Ba dòng ngay dưới dòng ©, đúng thứ tự. */
 const coPhapNhan = (dongChan, iBanQuyen, phapNhan) =>
   iBanQuyen > -1 && phapNhan.every((dong, i) => dongChan[iBanQuyen + 1 + i] === dong);
@@ -396,6 +405,8 @@ try {
             dongChan: (chan?.innerText ?? '').split('\n').map(s => s.trim()).filter(Boolean),
             coChan: !!chan,
             linkChinhSach: [...(chan?.querySelectorAll('nav[aria-labelledby="ct-chinh-sach"] a') ?? [])].map(a => a.getAttribute('href')),
+            linkThongTin: [...(chan?.querySelectorAll('nav[aria-labelledby="ct-thong-tin"] a') ?? [])].map(a => a.getAttribute('href')),
+            linkQuay: [...document.querySelectorAll('.qcb a.lien-ket')].map(a => a.getAttribute('href')),
             // Có chữ trong HTML mà không đọc được thì cũng như không: bị ẩn, khung rỗng, chữ dưới 14px.
             chanAn: !!chan && [...chan.querySelectorAll('p')].some(p => {
               const k = p.getBoundingClientRect();
@@ -429,6 +440,10 @@ try {
              iBanQuyen > -1 && (kq.dongChan[iBanQuyen + 4] ?? '').startsWith(`${NHAN_EMAIL[ngonNguCua(duong)]}: `)
                && JSON.stringify(kq.linkChinhSach) === JSON.stringify(LINK_CHINH_SACH[ngonNguCua(duong)]),
              `${kq.dongChan[iBanQuyen + 4] ?? '(không có dòng)'} · ${kq.linkChinhSach.join(' ')}`),
+          ok(`${nhan}: chân trang — cột Thông tin có link trang Các phần thịt bò đứng đầu, rồi Tuyển dụng, Xóa dữ liệu, đúng thứ tiếng`,
+             JSON.stringify(kq.linkThongTin) === JSON.stringify(LINK_THONG_TIN[ngonNguCua(duong)]), kq.linkThongTin.join(' ')),
+          ok(`${nhan}: ${TRANG_CHU_BA[duong] ? 'dải "Nhìn tận mắt, chọn tận tay" có đúng một link sang trang Các phần thịt bò' : 'không có dải "Nhìn tận mắt, chọn tận tay" (chỉ trang chủ có)'}`,
+             JSON.stringify(kq.linkQuay) === JSON.stringify(TRANG_CHU_BA[duong] ? [LINK_QUAY_CHON_BO[TRANG_CHU_BA[duong]]] : []), kq.linkQuay.join(' ')),
           ok(`${nhan}: đúng một <h1>`, them.soH1 === 1, `${them.soH1} thẻ h1`),
           ok(`${nhan}: mọi <img> có width, height, alt`, !them.anhThieu.length, them.anhThieu.slice(0, 3).join(' | ')),
           ok(`${nhan}: ảnh minh họa dưới màn hình đầu có loading="lazy"`, !them.anhKhongLazy.length, them.anhKhongLazy.slice(0, 3).join(' | ')),
@@ -2377,6 +2392,10 @@ try {
         const nn = ngonNguCua(duong);
         const page = await ctxGhi.newPage();
         lenh.length = 0;
+        // Thứ tự "sự kiện load của trang" và "lúc trình duyệt xin fbevents.js" (SEO 23/11/2026: tải sau trang).
+        const thuTuTai = [];
+        page.on('request', r => { if (/connect\.facebook\.net\/en_US\/fbevents\.js/.test(r.url())) thuTuTai.push('fbevents.js'); });
+        page.on('load', () => thuTuTai.push('load'));
         await page.goto(goc + duong, { waitUntil: 'load', timeout: 30000 });
         await page.waitForFunction(() => typeof window.fbq?.callMethod === 'function', null, { timeout: 10000 }).catch(() => {});
         await page.evaluate(() => {
@@ -2390,6 +2409,8 @@ try {
           ['track', 'Contact', thamSo(duong, nn)]];
         ok(`${duong}: fbevents.js tải được (bản giả) → nhận init, PageView, ViewContent đã xếp hàng rồi Contact khi bấm, đúng thứ tự`,
            JSON.stringify(lenh) === JSON.stringify(mong), JSON.stringify(lenh));
+        ok(`${duong}: fbevents.js chỉ được xin SAU sự kiện load của trang, đúng một lần (không chặn dựng trang)`,
+           JSON.stringify(thuTuTai) === JSON.stringify(['load', 'fbevents.js']), JSON.stringify(thuTuTai));
         await page.close();
       }
       await ctxGhi.close();

@@ -21,6 +21,8 @@
  *     kết quả tìm kiếm, nên khai sai là dẫn khách tới một cánh cửa đóng. Từ 23/11/2026 giờ ĐƯỢC khai, nhưng chỉ khi
  *     cả gio_phuc_vu_da_chot (cổng nội dung) lẫn gio_da_chot của chi nhánh (chi_nhanh_cong_khai()) đã bật —
  *     lib/gio-mo-cua.ts; chưa bật thì không đọc thêm database và không có trường này.
+ * Tọa độ (`geo`, chấm ghim đã xác minh của Google Business Profile) đi cùng `hasMap`: chỉ khi link Google Maps đã
+ * công bố (toaDoCoCauTruc, lib/trang-cong-khai.ts).
  * Logo (`logo`) là biểu tượng 180 × 180 của bộ 21/10/2026 (đầu bò trắng trên nền
  * đỏ phủ kín, web/public/thuong-hieu/bieu-tuong-180.png): Google cần ảnh tối thiểu
  * 112 × 112, nhìn đúng trên nền trắng — ô đỏ phủ kín đạt cả hai, cắt vuông không mất gì.
@@ -46,7 +48,7 @@
 import '../styles/chung.css';
 import '../styles/cong-khai.css';
 import { THUONG_HIEU, NGON_NGU, TEN_NGON_NGU, chu, duongDanTuongUng } from '../lib/chu';
-import { diaChiCoCauTruc, jsonTrongScript, lienHe } from '../lib/trang-cong-khai';
+import { diaChiCoCauTruc, jsonTrongScript, lienHe, toaDoCoCauTruc } from '../lib/trang-cong-khai';
 import { docGioMoCuaChoTrang, gioMoCuaJsonLd } from '../lib/gio-mo-cua';
 import { khoiMaPixel, tenTrangPixel } from '../lib/meta-pixel';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
@@ -121,6 +123,9 @@ if (coAnhThat) duLieuCoCauTruc.image = anhChiaSe.url;
 // Đường dẫn tuyệt đối: chỉ khai khi biết tên miền (bản dựng không có site thì bỏ, như og:image).
 if (goc) duLieuCoCauTruc.logo = { '@type': 'ImageObject', url: `${goc}/thuong-hieu/bieu-tuong-180.png`, width: 180, height: 180 };
 if (lh.maps) duLieuCoCauTruc.hasMap = lh.maps;
+// Tọa độ: cùng cổng với hasMap (toaDoCoCauTruc trả null khi chưa công bố link Google Maps).
+const geo = toaDoCoCauTruc(nd);
+if (geo) duLieuCoCauTruc.geo = geo;
 // Giờ mở cửa: chỉ khi đã công bố (gio-mo-cua.ts: chưa công bố thì không đọc thêm database, không có trường này;
 // đã công bố thì nhớ 60 giây trong Worker, không thêm một lời gọi database mỗi lượt xem trang).
 const gioJson = gioMoCuaJsonLd(khongLapChiMuc ? [] : await docGioMoCuaChoTrang(nd));

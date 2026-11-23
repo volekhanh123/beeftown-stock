@@ -22,7 +22,7 @@ const trangThai = trangThaiMuaThit(muaThitVeMo(noiDung), menu);
 const ketQua = ketQuaDatHang(Astro, 'vi');
 ---
 <Trang ngonNgu="vi" noiDung={noiDung} duongDan="/mua-thit-ve" tieuDe="Mua thịt bò về nhà — Bò chia gói từ quầy Beeftown, TP.HCM"
-       moTa={moTaTrangMuaThit('vi', trangThai === 'mo' || trangThai === 'het_quay')}>
+       moTa={moTaTrangMuaThit('vi', trangThai === 'mo' || trangThai === 'het_quay', vnpay !== null)}>
   <TrangMuaThitVe ngonNgu="vi" noiDung={noiDung} menu={menu} trangThai={trangThai} ketQua={ketQua}
                   thamSo={[...Astro.url.searchParams]} duongDan="/mua-thit-ve"
                   traVnpay={vnpay !== null} theoGu={theoGu} />

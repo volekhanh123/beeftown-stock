@@ -330,7 +330,9 @@ export function theDon(don: readonly DongDonTrang[], menu: readonly SanPhamMua[]
   const tenTrang = new Map(don.map(d => [d.khoa, d.ten]));
   const dong = tinh.dong.map(d => {
     const noi = tenTrang.get(d.goi.khoa) ?? '';
-    const ten = noi && noi.toLowerCase() !== d.sanPham.ten.toLowerCase()
+    // Tên trên menu của trang đã có dạng "tên Việt (tên khay)" (lib/ten-phan-thit.ts) thì dùng nguyên: thêm tên Trang nói
+    // vào nữa thành hai lớp ngoặc.
+    const ten = noi && noi.toLowerCase() !== d.sanPham.ten.toLowerCase() && !/\(.+\)\s*$/.test(d.sanPham.ten)
       ? `${noi.charAt(0).toUpperCase()}${noi.slice(1)} (${d.sanPham.ten})` : d.sanPham.ten;
     return { chu: CHU_DON.dongDau[nn](ten, nhanGoi(d.sanPham.donVi, d.goi.soGam, nn), d.soLuong), thanhTien: d.thanhTien };
   });
