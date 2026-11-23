@@ -60,8 +60,8 @@
  *                 kế tiếp) và dong_trang_thai dài hai câu: màn đầu trang chủ hiện dòng "Đón bạn từ …"
  *   da-mo         như day-du, thêm ngay_khai_truong là một ngày ĐÃ qua (NGAY_DA_MO_THU) và
  *                 dong_trang_thai dài hai câu: màn đầu trang chủ hiện dòng "Mở cửa từ …"
- *   da-mo-chua-doi-cau  như day-du, thêm ngay_khai_truong ĐÃ qua nhưng KHÔNG công bố dong_trang_thai: chủ quên đổi câu
- *                 sau ngày khai trương (23/11/2026) — màn đầu hiện "Mở cửa từ …" và KHÔNG còn câu "đang chuẩn bị"
+ *   da-mo-chua-doi-cau  như day-du, thêm ngay_khai_truong ĐÃ qua nhưng KHÔNG công bố dong_trang_thai (23/11/2026) —
+ *                 màn đầu hiện "Mở cửa từ …" và không có dòng trạng thái nào
  *
  *   Trang Mua thịt về (0101, đặt thẳng trên website từ 0113). hien_mua_thit_ve dưới đây là giá trị DATABASE TRẢ —
  *   công tắc hiệu lực mà noi_dung_cong_khai() đã tính (bật + có gói trên menu web; từ 0113 không còn đòi link Zalo).

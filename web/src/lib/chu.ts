@@ -127,9 +127,6 @@ const VI = {
   // Dòng hiệu trên câu chính ở màn đầu trang chủ (KhoiMoDau.astro): trước đây là descriptor tiếng Anh in nguyên ở cả
   // trang tiếng Việt. Khánh duyệt 23/11/2026; en, ko dịch từ câu này.
   dongHieu: 'Nhà hàng bò nướng tại bàn',
-  // Câu đứng ĐẦU mô tả trang chủ khi ngày khai trương (ngay_khai_truong của /noi-bo) đã công bố mà chưa tới —
-  // moTaTrangChu() của lib/trang-cong-khai.ts; {ngay} là ngày viết đủ theo thứ tiếng ("ngày 2 tháng 12, 2026").
-  khaiTruongCau: 'Khai trương {ngay}.',
   diaChiNgan: '63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM',
   // Mô tả nền của trang chủ (và của JSON-LD): chọn bò → nướng → địa chỉ. Chữ "Quận 1 cũ" xem DIA_CHI_PHAN.
   moTaNgan: 'Chọn bò theo khay tại quầy rồi cùng nướng trên vỉ gas tại bàn. Beeftown là nhà hàng bò nướng ở tầng 3, 63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM.',
@@ -149,10 +146,6 @@ const VI = {
   // Thanh hành động dính đáy màn hình điện thoại (ThanhHanhDong.astro).
   hanhDongNhanh: 'Hành động nhanh',
   goi: 'Gọi',
-
-  // Bản dự phòng khi khóa dong_trang_thai chưa được công bố.
-  trangThaiMacDinh:
-    'Beeftown đang chuẩn bị đón bạn.',
 
   // Đứng TRƯỚC ngày khai trương, khi ngày đó đã công bố.
   moCuaTu: 'Mở cửa từ',
@@ -296,7 +289,6 @@ type Bo = Record<keyof typeof VI, string>;
 const EN: Bo = {
   tieuDeTrangChu: 'Beeftown — Grilled Beef Restaurant · 63 Hồ Tùng Mậu, HCMC',
   dongHieu: 'Beef restaurant with tabletop grilling',
-  khaiTruongCau: 'Opening on {ngay}.',
   diaChiNgan: '63 Hồ Tùng Mậu, former District 1, Ho Chi Minh City',
   moTaNgan: 'Pick beef at the counter, then cook it on a gas grill at your table. Beeftown is on Floor 3, 63 Hồ Tùng Mậu, former District 1, Ho Chi Minh City.',
   cauChinh: 'No need to be a beef expert. Pick what you like, see the price first.',
@@ -310,9 +302,6 @@ const EN: Bo = {
   anhNuong: 'Grill it at your table',
   hanhDongNhanh: 'Quick actions',
   goi: 'Call',
-
-  trangThaiMacDinh:
-    'Beeftown is getting ready to welcome you.',
 
   moCuaTu: 'Open since',
   donBanTu: 'Opening',
@@ -412,7 +401,6 @@ const EN: Bo = {
 const KO: Bo = {
   tieuDeTrangChu: 'Beeftown — 호치민 구 1군 소고기 전문점 · Hồ Tùng Mậu 63',
   dongHieu: '테이블에서 굽는 소고기 전문점',
-  khaiTruongCau: '{ngay} 오픈 예정이에요.',
   diaChiNgan: '호치민시 구 1군 Hồ Tùng Mậu 63',
   moTaNgan: '호치민시 구 1군 Hồ Tùng Mậu 63, 3층에 있는 소고기 구이 전문점이에요. 정육 코너에서 고기를 고르고 테이블에서 가스 그릴로 함께 구워 먹어요.',
   // \u00a0: "함께 온 사람들과" (định ngữ + danh từ) không bị tách hai dòng.
@@ -427,9 +415,6 @@ const KO: Bo = {
   anhNuong: '테이블에서 굽기',
   hanhDongNhanh: '바로가기',
   goi: '전화',
-
-  trangThaiMacDinh:
-    'Beeftown이 손님을 맞이할 준비를 하고 있어요.',
 
   moCuaTu: '오픈일',
   donBanTu: '오픈 예정일',

@@ -2,10 +2,9 @@
 import Trang from '../../layouts/Trang.astro';
 import TrangRaMat from '../../components/TrangRaMat.astro';
 import { docNoiDung } from '../../lib/noi-dung';
-import { moTaTrangChu } from '../../lib/trang-cong-khai';
 
 const noiDung = await docNoiDung('ko');
 ---
-<Trang ngonNgu="ko" noiDung={noiDung} duongDan="/ko" moTa={moTaTrangChu(noiDung, 'ko')}>
+<Trang ngonNgu="ko" noiDung={noiDung} duongDan="/ko">
   <TrangRaMat ngonNgu="ko" noiDung={noiDung} />
 </Trang>

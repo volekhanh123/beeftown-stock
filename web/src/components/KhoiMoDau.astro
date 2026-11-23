@@ -35,10 +35,9 @@
  * dựng cả ba trạng thái (kịch bản sap-mo, da-mo của gia-supabase.mjs).
  *
  * Thứ bậc nút theo mức sẵn sàng mở cửa: lib/trang-cong-khai.ts → nutMoDau().
- * Dòng trạng thái: dong_trang_thai nếu đã công bố; chưa công bố thì câu dự phòng "đang chuẩn bị đón bạn" — CHỈ
- * khi ngày khai trương chưa tới hoặc chưa có ngày. Qua ngày khai trương mà /noi-bo chưa đổi dòng trạng thái thì
- * không in câu "đang chuẩn bị" cũ (dongTrangThai của lib/trang-cong-khai.ts, ngày theo giờ Việt Nam): dòng
- * "Mở cửa từ …" đã nói đủ.
+ * Dòng trạng thái: CHỈ câu chủ đã công bố (dong_trang_thai); chưa công bố thì không có dòng (từ 23/11/2026 trang
+ * chạy như nhà hàng đang hoạt động — không còn câu dự phòng "đang chuẩn bị đón bạn"). Dòng ngày chỉ có khi chủ công
+ * bố ngay_khai_truong.
  */
 import { THUONG_HIEU, chu, duongDanTuongUng } from '../lib/chu';
 import { dinhDangNgay } from '../lib/noi-dung';
@@ -63,7 +62,7 @@ const lh = lienHe(nd);
 const giaiDoanMo = tinhTrangKhaiTruong(nd);
 const ngayMo = giaiDoanMo === 'chua_co' ? null : nd.ngay_khai_truong;
 const daMo = giaiDoanMo === 'da_mo';
-const trangThai = dongTrangThai(nd, ngonNgu);
+const trangThai = dongTrangThai(nd);
 // Ba vế của tagline, mỗi vế một khối: dải hẹp thì xuống dòng giữa hai vế, không cắt đôi "grill / it,".
 // Tách sau dấu phẩy, chấm hay chấm than: "Pick it," "grill it," "love it!" — dấu câu đổi lần nữa vẫn đúng.
 const veKhauHieu = THUONG_HIEU.khauHieu.split(/(?<=[,.!])\s+/);

@@ -127,7 +127,7 @@ CI dựng trang **không có `.env`**. `docNoiDung()` khi đó (hoặc khi datab
 `null`. Luật: **dữ liệu công bố chỉ thêm vào trang, không tắt phần nền**; "một nút dẫn tới hư không
 tệ hơn không có nút".
 
-- Chữ có bản nền: `nd.dong_trang_thai ?? t.trangThaiMacDinh`.
+- Dòng trạng thái ở màn đầu: chỉ `nd.dong_trang_thai` đã công bố (không còn câu dự phòng, 23/11/2026).
 - Công tắc so `=== true` (`null` là chưa duyệt): `nd.hien_thuc_don === true`.
 - Kênh liên hệ luôn qua `lienHe(nd)` (`web/src/lib/trang-cong-khai.ts`) — mỗi trường `string | null`,
   link không an toàn bị bỏ. Dựng `{lh.facebook && (<a …>)}`; cả khối không có gì để hiện thì ẩn cả
