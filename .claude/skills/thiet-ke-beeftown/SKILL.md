@@ -278,6 +278,10 @@ khối: [tham-khao/trang-cong-khai.md](tham-khao/trang-cong-khai.md) (công khai
 
 ## Ảnh, logo
 
+- **Ảnh thật của người khác** (giấy phép cho dùng lại) chỉ có ở trang Các phần thịt bò (`/phan-thit-bo`, Khánh quyết
+  23/11/2026): `minhHoa: false`, **không** nhãn "Ảnh minh họa", alt không nói đây là ảnh của quán, tên người chụp ghi ở cuối
+  trang (CC BY 2.0: kèm giấy phép, trang gốc, việc đã chỉnh), không in tên trang ảnh kho. Nguồn: `web/cong-cu/anh/NGUON-ANH-PHAN-BO.md`.
+  Ảnh đó mà chỉnh bằng AI thì thành ảnh AI và phải có nhãn.
 - **Ảnh minh họa** (AI) chỉ cho ảnh không khí món, ảnh món và bữa ăn, luôn có nhãn **"Ảnh minh họa"** ngay
   trong khung ảnh (`<Anh>` tự gắn). Ảnh món của trang Thực đơn lấy từ cuốn menu bản sáng (11/10/2026) —
   kể cả ảnh "đã duyệt" của menu chuẩn 29/09 chưa rõ chụp thật hay dựng: vẫn gắn nhãn. **Ảnh tách nền**

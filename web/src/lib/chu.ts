@@ -573,8 +573,8 @@ export function dich<B extends Record<string, BaThuTieng<unknown>>>(
 export const CAP_DUONG_DAN: ReadonlyArray<readonly [vi: string, en: string, ko: string]> = [
   ['/',               '/en',         '/ko'],
   ['/thuc-don',       '/en/menu',    '/ko/menu'],
-  ['/phan-thit-bo',   '/en/beef-cuts', '/ko/beef-cuts'],
   ['/mua-thit-ve',    '/en/buy-meat', '/ko/buy-meat'],
+  ['/phan-thit-bo',   '/en/beef-cuts', '/ko/beef-cuts'],
   ['/den-beeftown',   '/en/visit',   '/ko/visit'],
   ['/tuyen-dung',     '/en/jobs',    '/ko/jobs'],
   ['/dat-ban',        '/en/book',    '/ko/book'],
