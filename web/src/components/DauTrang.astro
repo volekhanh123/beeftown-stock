@@ -331,8 +331,9 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
      23/11/2026, trinh-duyet.mjs nhóm 13). */
   .menu-gon summary .mg-chu { display: inline-grid; }
   .menu-gon summary .mg-chu > span { grid-area: 1 / 1; }
-  .menu-gon summary .mg-chu > .mg-dong, .menu-gon[open] summary .mg-chu > .mg-mo { visibility: hidden; }
-  .menu-gon[open] summary .mg-chu > .mg-dong { visibility: visible; }
+  /* Chỉ ẩn nhãn không dùng — không bao giờ đặt lại giá trị "hiện" cho visibility (test-noi-bo-dang-xuat.mjs: phần tử tự đặt
+     visible sẽ lộ ra cả khi trang bị giấu). */
+  .menu-gon:not([open]) summary .mg-chu > .mg-dong, .menu-gon[open] summary .mg-chu > .mg-mo { visibility: hidden; }
   .menu-gon summary:active, .menu-gon[open] summary { background: var(--nut-phu-nen-di); color: var(--nut-phu-chu-di); border-color: var(--nut-phu-chu-di); }
   /* Di chuột: chỉ máy có chuột — trên màn cảm ứng, chạm đóng xong nút phải về lại màu lúc đóng. */
   @media (hover: hover) {
