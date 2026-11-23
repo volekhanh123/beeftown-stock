@@ -139,7 +139,7 @@ export const ANH_TAO_SAN: Readonly<Record<string, Readonly<Record<string, CoAnh>
     '4x3': { rong: 640, cao: 480, cac: [400, 640], mau: '#885850' },
   },
   'phan-bo-diem-than': {
-    '4x3': { rong: 640, cao: 480, cac: [400, 640], mau: '#5A483D' },
+    '4x3': { rong: 640, cao: 480, cac: [400, 640], mau: '#3F2E24' },
   },
   'phan-bo-nac-vai': {
     '4x3': { rong: 640, cao: 480, cac: [400, 640], mau: '#DAAFA0' },

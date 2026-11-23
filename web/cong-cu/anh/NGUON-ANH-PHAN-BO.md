@@ -1,9 +1,10 @@
 # Nguồn và giấy phép — ảnh của trang "Các phần thịt bò" (`/phan-thit-bo`)
 
-Năm ảnh dưới đây là **ảnh chụp thật của người khác**, giấy phép cho dùng lại, không phải ảnh AI và không phải ảnh quán.
-Khánh quyết 23/11/2026: dùng ảnh thật lấy từ web cho trang này, không gắn nhãn "Ảnh minh họa" (nhãn đó chỉ dành cho ảnh AI —
-`web/src/lib/anh.ts`, đầu file). Ảnh chỉ được cắt khung 4:3 và (riêng diềm thăn bò) chỉnh màu bằng Pillow — **không ảnh nào
-trên trang đi qua công cụ tạo ảnh AI** (xem mục "Bản chỉnh bằng GPT, chưa dùng" bên dưới).
+Năm ảnh dưới đây là **ảnh chụp thật của người khác**, giấy phép cho dùng lại, không phải ảnh quán. Khánh quyết 23/11/2026:
+dùng ảnh thật lấy từ web cho trang này, **không gắn nhãn "Ảnh minh họa"**. Bốn ảnh chỉ được cắt khung 4:3. **Ảnh diềm thăn bò là
+ngoại lệ:** ảnh gốc ám hồng và có vệt hơi nước nên đã **chỉnh sửa bằng AI** (GPT qua cầu nối Codex, 23/11/2026) — Khánh duyệt
+dùng bản đó, không nhãn (mục "Ảnh diềm thăn bò chỉnh bằng AI" bên dưới). Vì ảnh đó là ảnh AI chỉnh từ ảnh thật, dòng nguồn ảnh
+trên trang nói rõ "chỉnh sửa bằng AI" (CC BY 2.0 cũng đòi ghi việc đã chỉnh).
 
 File này nằm ngoài `public/` nên không lên trang. Trên trang chỉ ghi tên tác giả (mục "Nguồn ảnh" cuối trang) và, với ảnh
 CC BY 2.0, thêm giấy phép, trang gốc và việc đã chỉnh. Tên các trang kho ảnh (Pexels, Pixabay) **không** được in lên trang:
@@ -13,7 +14,7 @@ CC BY 2.0, thêm giấy phép, trang gốc và việc đã chỉnh. Tên các tr
 |---|---|---|---|---|---|
 | `phan-bo-dau-than-ngoai` | Đầu thăn ngoại (ribeye) | Tiago Morheto | Pexels License (dùng thương mại, không đòi ghi nguồn) | pexels.com/photo/29095929/ | Cắt 4:3 quanh miếng thịt từ ảnh gốc 3:2; không chỉnh màu |
 | `phan-bo-de-suon` | Dẻ sườn bò (galbisal) | 홍대앞고깃집 | Pixabay Content License (dùng thương mại, không đòi ghi nguồn) | pixabay.com, ảnh số 7683984 | Cắt 4:3; không chỉnh màu |
-| `phan-bo-diem-than` | Diềm thăn bò (anchangsal) | T.Tseng | **CC BY 2.0** — bắt buộc ghi tên tác giả, giấy phép và việc đã chỉnh | commons.wikimedia.org/wiki/File:Yazawa_cut_harami_(sliced_outside_skirt)_(24034830974).jpg (chụp 22/01/2016, Yazawa, Beverly Hills) | Cắt 4:3 quanh một lát thịt; **hạ độ bão hòa và xoay hồng về đỏ** cho vùng màu đỏ (ảnh gốc ám hồng cánh sen). Trang ghi "đã cắt khung và chỉnh màu" |
+| `phan-bo-diem-than` | Diềm thăn bò (anchangsal) | T.Tseng | **CC BY 2.0** — bắt buộc ghi tên tác giả, giấy phép và việc đã chỉnh | commons.wikimedia.org/wiki/File:Yazawa_cut_harami_(sliced_outside_skirt)_(24034830974).jpg (chụp 22/01/2016, Yazawa, Beverly Hills) | Cắt 4:3 quanh một lát thịt, rồi **chỉnh sửa bằng AI** (sửa màu về đỏ tự nhiên, bỏ vệt hơi nước trên vỉ; ảnh gốc ám hồng cánh sen). Trang ghi "đã cắt khung và chỉnh sửa bằng AI" |
 | `phan-bo-nac-vai` | Nạc vai bò (chuck eye roll) | BlackRiv | Pixabay Content License | pixabay.com/photos/beef-chuck-roll-meat-raw-food-2864657/ | Cắt 4:3. Ảnh là khối chuck roll nguyên miếng |
 | `phan-bo-loi-vai` | Lõi vai bò (top blade) | BlackRiv | Pixabay Content License | pixabay.com/photos/flat-iron-steak-seemed-beef-meat-3072106/ | Cắt 4:3. Ảnh là miếng flat iron đã lọc gân giữa |
 
@@ -27,18 +28,21 @@ CC BY 2.0, thêm giấy phép, trang gốc và việc đã chỉnh. Tên các tr
   bot), mình không vượt qua. Ảnh Pexels tải lại được từ máy chủ ảnh của Pexels (1600 × 1067).
 - Ba ảnh (dẻ sườn bò, nạc vai bò, lõi vai bò) chỉ có bản 900 px; ảnh đầu thăn ngoại cắt từ bản 1600 px, ảnh diềm thăn bò từ
   bản 1920 px. Mọi bản đã dựng không vượt 640 px (`danh-sach.json`, id `phan-bo-*`) để giữ phần trống của thư mục `public/anh`
-  (8 MB): năm ảnh này dùng 462.110 byte, thư mục còn trống khoảng 0,62 MB sau khi thêm.
+  (8 MB): năm ảnh này dùng khoảng 468 KB, thư mục còn trống khoảng 0,64 MB sau khi thêm (7.746.918 byte).
 
-## Bản chỉnh bằng GPT, chưa dùng (diềm thăn bò)
+## Ảnh diềm thăn bò chỉnh bằng AI (đang dùng)
 
-Ảnh diềm thăn bò gốc ám hồng cánh sen và có vệt hơi nước trên vỉ. Ngày 23/11/2026 mình thử chỉnh bằng cầu nối GPT
-(`image_generate`, chế độ sửa ảnh, một lượt, khoảng một phút): bản GPT cho thịt đỏ tự nhiên, vân mỡ rõ, vỉ sạch, **đẹp hơn
-rõ rệt** bản chỉnh màu bằng Pillow. Nhưng đó là **ảnh AI** (GPT vẽ lại toàn bộ điểm ảnh, vân mỡ không còn giống hệt ảnh gốc),
-nên theo `AGENTS.md` và đầu file `src/lib/anh.ts` trang phải ghi "Ảnh minh họa" — trái với chỉ thị 23/11/2026 không gắn nhãn
-cho trang này. Vì vậy **trang đang dùng bản chỉnh màu bằng Pillow, bản GPT chưa lên trang**. Hai bản để cạnh nhau trong thư
-mục ghi chú của phiên làm việc (ngoài repo). Muốn dùng bản GPT: Khánh quyết hoặc chấp nhận nhãn, hoặc bỏ quy tắc nhãn cho
-trang này; rồi đổi nguồn của `phan-bo-diem-than` trong `danh-sach.json`, chạy `tao-co-anh.py`, khai ảnh là ảnh AI (`minhHoa: true`
-và thêm vào `ANH_AI` của `crm/test/test-cong-khai-anh.mjs`) nếu giữ nhãn.
+Ảnh gốc của T.Tseng ám hồng cánh sen và có vệt hơi nước trên vỉ. Ngày 23/11/2026 chỉnh bằng cầu nối GPT (`image_generate`, chế độ
+sửa ảnh, một lượt, khoảng một phút, ảnh mẫu là bản cắt 4:3 chưa chỉnh): thịt đỏ tự nhiên, vân mỡ rõ, vỉ sạch, **đẹp hơn rõ rệt**
+bản chỉnh màu bằng Pillow. Đây là **ảnh AI** — GPT vẽ lại toàn bộ điểm ảnh, vân mỡ không còn giống hệt ảnh gốc — nên theo
+`AGENTS.md` bình thường phải có nhãn "Ảnh minh họa". **Khánh quyết 23/11/2026: dùng bản GPT, không nhãn.** Đây là ngoại lệ có
+chủ đích cho đúng ảnh này (`phan-bo-diem-than`, khai `minhHoa: false`); không ảnh AI nào khác được bỏ nhãn.
+
+- Điều kiện giữ lại: dòng nguồn ảnh cuối trang nói "chỉnh sửa bằng AI" ở ba thứ tiếng (test-cong-khai-phan-bo nhóm 6); alt tả đúng thứ
+  nhìn thấy, không nói đây là ảnh quán; ảnh chỉ dùng cho trang này.
+- Ảnh GPT (PNG 1448 × 1086) và bản Pillow cũ để trong thư mục ghi chú của phiên làm việc, ngoài repo (`.gitignore` chặn `*.png`).
+  Muốn trả về bản Pillow: bỏ chỉnh AI trong `danh-sach.json` (đổi `goc` về JPG 800 × 600 cắt từ ảnh Commons, hạ bão hòa vùng đỏ),
+  chạy `tao-co-anh.py`, sửa dòng nguồn ảnh và `DA_CHINH_AI` của `test-cong-khai-anh.mjs`.
 
 ## Ảnh gốc để dựng lại
 
@@ -51,5 +55,5 @@ gốc", cắt đúng khung như cột "Đã làm gì", đặt tên `phan-bo-<…
 1. Ảnh nạc vai bò và lõi vai bò là ảnh thịt trên nền be (từ nhà bán), không phải ảnh khay hay quầy. Ảnh dẻ sườn bò là một
    đĩa dọn ở nhà hàng, có thêm hành tây và rau trang trí.
 2. Ảnh thật chụp tại Beeftown (quầy, khay skin-pack) có thì thay: đổi tệp nguồn của id tương ứng trong `danh-sach.json`.
-3. Ảnh đã tạo lại hay chỉnh bằng AI là **ảnh AI** và theo `AGENTS.md` (mục chữ và thương hiệu) phải có nhãn "Ảnh minh họa" —
-   xem mục "Bản chỉnh bằng GPT, chưa dùng". Phải hỏi Khánh trước khi đưa lên trang không nhãn.
+3. Ảnh đã tạo lại hay chỉnh bằng AI là **ảnh AI** và theo `AGENTS.md` phải có nhãn "Ảnh minh họa". Chỉ ảnh diềm thăn bò được bỏ nhãn,
+   theo quyết định của Khánh 23/11/2026; ảnh khác chỉnh bằng AI thì phải hỏi Khánh trước.

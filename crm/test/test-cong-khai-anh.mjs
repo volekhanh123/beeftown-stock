@@ -93,7 +93,9 @@ const TACH_NEN = ANH_MON.filter(id => !['mon-tartare-bo-hoa-tuyet', 'mon-com-tro
 const ANH_TAM = ['quay-chon-bo', 'mua-thit-mat', 'mua-thit-dong-lanh', 'mua-kim-chi'];
 const ANH_AI = [...ANH_CHATGPT, ...ANH_MON, ...ANH_TAM];
 // Năm ảnh CHỤP THẬT của người khác (giấy phép cho dùng lại) ở trang Các phần thịt bò (Khánh quyết 23/11/2026: lấy ảnh thật
-// từ web, không nhãn "Ảnh minh họa"; web/cong-cu/anh/NGUON-ANH-PHAN-BO.md). Không phải ảnh AI → minhHoa: false.
+// từ web, không nhãn "Ảnh minh họa"; web/cong-cu/anh/NGUON-ANH-PHAN-BO.md) → minhHoa: false. Riêng phan-bo-diem-than đã chỉnh bằng AI (GPT):
+// Khánh quyết 23/11/2026 vẫn không nhãn, nên nguồn và dòng nguồn ảnh trên trang phải nói rõ "chỉnh sửa bằng AI" (DA_CHINH_AI).
+const DA_CHINH_AI = ['phan-bo-diem-than'];
 const ANH_THAT = ['phan-bo-dau-than-ngoai', 'phan-bo-de-suon', 'phan-bo-diem-than', 'phan-bo-nac-vai', 'phan-bo-loi-vai'];
 // Ảnh đang đặt trên trang và khung của từng ảnh; bo-xeo-vi là ảnh dự phòng, chưa đặt ở đâu nên không dựng.
 const ANH_DA_DAT = {
@@ -131,7 +133,7 @@ const CO_GOC = {
   'quay-chon-bo-4x3.png': [1448, 1086], 'mua-thit-mat-4x3.png': [1448, 1086], 'mua-thit-dong-lanh-4x3.png': [1448, 1086],
   'mua-kim-chi-4x3.png': [1448, 1086],
   // Năm JPG đã cắt 4:3 từ ảnh chụp thật (NGUON-ANH-PHAN-BO.md): đầu thăn ngoại, dẻ sườn, diềm thăn, nạc vai, lõi vai.
-  'phan-bo-dau-than-ngoai-4x3.jpg': [780, 585], 'phan-bo-de-suon-4x3.jpg': [900, 675], 'phan-bo-diem-than-4x3.jpg': [800, 600],
+  'phan-bo-dau-than-ngoai-4x3.jpg': [780, 585], 'phan-bo-de-suon-4x3.jpg': [900, 675], 'phan-bo-diem-than-4x3.png': [1448, 1086],
   'phan-bo-nac-vai-4x3.jpg': [810, 608], 'phan-bo-loi-vai-4x3.jpg': [810, 608],
 };
 
@@ -221,8 +223,9 @@ await nhom('2 · danh-sach.json: NGUỒN ĐÚNG SỰ THẬT, KHÔNG PHÓNG TO �
            && typeof mt.mo_ta === 'string' && /ảnh tạm/.test(mt.mo_ta), JSON.stringify(mt.nguon));
     } else if (ANH_THAT.includes(id)) {
       // Ảnh chụp thật của người khác: nguồn trỏ tới tệp ghi tác giả và giấy phép, không nhận vơ là ảnh AI.
-      ok(`${id}: nguồn ghi ảnh chụp thật, giấy phép cho dùng lại, trỏ tới NGUON-ANH-PHAN-BO.md; không ghi ChatGPT / Codex`,
-         /ảnh chụp thật/i.test(mt.nguon?.cong_cu ?? '') && /NGUON-ANH-PHAN-BO\.md/.test(mt.nguon?.cong_cu ?? '') && !/ChatGPT|Codex/.test(nguon)
+      ok(DA_CHINH_AI.includes(id) ? `${id}: nguồn ghi ảnh chụp thật đã CHỈNH SỬA BẰNG AI (CC BY 2.0), trỏ tới NGUON-ANH-PHAN-BO.md`
+        : `${id}: nguồn ghi ảnh chụp thật, giấy phép cho dùng lại, trỏ tới NGUON-ANH-PHAN-BO.md; không ghi ChatGPT / Codex`,
+         /ảnh chụp thật/i.test(mt.nguon?.cong_cu ?? '') && /NGUON-ANH-PHAN-BO\.md/.test(mt.nguon?.cong_cu ?? '') && (DA_CHINH_AI.includes(id) ? /chỉnh sửa bằng AI/.test(nguon) : !/ChatGPT|Codex/.test(nguon))
            && typeof mt.mo_ta === 'string' && mt.mo_ta.length > 20, JSON.stringify(mt.nguon));
     } else if (!ANH_MON.includes(id)) {
       ok(`${id}: nguồn ghi ChatGPT (qua Codex), tạo ngày 11/10/2026; có mô tả`,

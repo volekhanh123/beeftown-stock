@@ -18,7 +18,7 @@
  *   5. Đường dẫn: dòng trong CAP_DUONG_DAN (sitemap và hreflang theo đó), ba file trang khai đúng đường dẫn,
  *      tiêu đề và mô tả đúng cỡ.
  *   6. Ảnh: năm ảnh CHỤP THẬT của người khác (minhHoa: false — không nhãn "Ảnh minh họa", Khánh quyết 23/11/2026);
- *      dòng nguồn ảnh ghi tác giả, và ảnh CC BY 2.0 ghi giấy phép, trang gốc, việc đã chỉnh; không ảnh nào là ảnh AI.
+ *      dòng nguồn ảnh ghi tác giả, và ảnh CC BY 2.0 ghi giấy phép, trang gốc, việc đã chỉnh. Ảnh diềm thăn bò đã chỉnh bằng AI (Khánh quyết 23/11/2026: không nhãn "Ảnh minh họa"), nên dòng nguồn nói rõ "chỉnh sửa bằng AI".
  *   7. Trang: một h1, đủ năm phần có neo, hỏi đáp có câu "Dẻ sườn bò là phần nào?", tên ngoại ngữ có thuộc tính lang.
  */
 
@@ -173,7 +173,7 @@ await nhom('6 · ẢNH: CHỤP THẬT, KHÔNG NHÃN, CÓ NGUỒN', async () => {
      /T\.Tseng/.test(CHU_PHAN_BO.nguonDiemThanGiua.vi) && /T\.Tseng/.test(CHU_PHAN_BO.nguonDiemThanGiua.en) && /T\.Tseng/.test(CHU_PHAN_BO.nguonDiemThanGiua.ko)
        && /CC BY 2\.0/.test(trang) && NGUON_ANH_DIEM_THAN.giayPhep === 'https://creativecommons.org/licenses/by/2.0/'
        && /^https:\/\/commons\.wikimedia\.org\/wiki\/File:Yazawa_cut_harami/.test(NGUON_ANH_DIEM_THAN.trang)
-       && /chỉnh màu/.test(CHU_PHAN_BO.nguonDiemThanSau.vi) && /colour-adjusted/.test(CHU_PHAN_BO.nguonDiemThanSau.en) && /보정/.test(CHU_PHAN_BO.nguonDiemThanSau.ko));
+       && /chỉnh sửa bằng AI/.test(CHU_PHAN_BO.nguonDiemThanSau.vi) && /retouched with AI/.test(CHU_PHAN_BO.nguonDiemThanSau.en) && /AI로/.test(CHU_PHAN_BO.nguonDiemThanSau.ko));
   ok('Nguồn ảnh ghi tên cả ba người chụp còn lại: Tiago Morheto, BlackRiv, 홍대앞고깃집',
      NGON_NGU.every(nn => /Tiago Morheto/.test(CHU_PHAN_BO.nguonDan[nn]) && /BlackRiv/.test(CHU_PHAN_BO.nguonDan[nn]) && /홍대앞고깃집/.test(CHU_PHAN_BO.nguonDan[nn])));
   const tep = doc(WEB, 'cong-cu', 'anh', 'NGUON-ANH-PHAN-BO.md');

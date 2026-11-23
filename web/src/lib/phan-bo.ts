@@ -403,9 +403,9 @@ export const CHU_PHAN_BO = {
   nguonDiemThanTruoc: { vi: 'Ảnh diềm thăn bò: ', en: 'Outside skirt photo: ', ko: '안창살 사진: ' },
   nguonDiemThanGiua: { vi: ' của T.Tseng, giấy phép ', en: ' by T.Tseng, licence ', ko: ' (T.Tseng), 라이선스 ' },
   nguonDiemThanSau: {
-    vi: ' (Wikimedia Commons), đã cắt khung và chỉnh màu.',
-    en: ' (Wikimedia Commons), cropped and colour-adjusted.',
-    ko: ' (Wikimedia Commons), 사진을 자르고 색을 보정했어요.',
+    vi: ' (Wikimedia Commons), đã cắt khung và chỉnh sửa bằng AI (sửa màu, bỏ hơi nước trên vỉ).',
+    en: ' (Wikimedia Commons), cropped and retouched with AI (colour corrected, steam haze removed).',
+    ko: ' (Wikimedia Commons), 사진을 자르고 AI로 색 보정과 수증기 제거를 했어요.',
   },
   nguonConBo: {
     vi: 'Hình con bò: krypt (CC0, openclipart.org), đã đổi màu và bỏ chú thích.',

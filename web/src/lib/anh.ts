@@ -18,10 +18,11 @@
  *        qua cầu nối Codex cùng ngày), vẫn có nhãn "Ảnh minh họa", cho tới khi có ảnh chụp
  *        thật. Lối vào và thang máy vẫn là KhungAnh: ảnh AI vẽ một cánh cửa, một thang máy
  *        không giống thật thì khách đi tìm dễ lạc.
- *  · ẢNH THẬT (minhHoa: false) — ảnh chụp thật, không phải ảnh AI. Chưa có ảnh chụp tại Beeftown. Hiện có năm ảnh
+ *  · ẢNH THẬT (minhHoa: false) — ảnh chụp thật. Chưa có ảnh chụp tại Beeftown. Hiện có năm ảnh
  *    chụp của người khác, giấy phép cho dùng lại, ở trang Các phần thịt bò (id phan-bo-…, web/cong-cu/anh/NGUON-ANH-PHAN-BO.md):
- *    không nhãn "Ảnh minh họa" (Khánh quyết 23/11/2026), alt không nói đây là ảnh của quán. Ảnh AI chỉnh từ ảnh thật
- *    vẫn là ảnh AI: phải có nhãn.
+ *    không nhãn "Ảnh minh họa" (Khánh quyết 23/11/2026), alt không nói đây là ảnh của quán. NGOẠI LỆ CÓ CHỦ ĐÍCH: phan-bo-diem-than
+ *    là ảnh thật đã chỉnh bằng AI (GPT), Khánh duyệt dùng không nhãn; dòng nguồn ảnh trên trang nói rõ "chỉnh sửa bằng AI".
+ *    Ảnh AI chỉnh từ ảnh thật nói chung vẫn là ảnh AI: phải có nhãn.
  *
  * ẢNH MÓN CỦA TRANG THỰC ĐƠN (26 id mon-…, uong-…) — lấy từ cuốn menu in "bản sáng"
  * (artifact "Beeftown — Menu", Cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026). Vẫn là
@@ -387,7 +388,7 @@ export const DANH_MUC_ANH: Readonly<Record<IdAnh, MoTaAnh>> = {
   },
 
   // --- Ảnh các phần thịt (trang /phan-thit-bo) — ảnh CHỤP THẬT của người khác, giấy phép cho dùng lại ------------
-  // Không phải ảnh AI nên không nhãn "Ảnh minh họa" (Khánh quyết 23/11/2026); không phải ảnh quán nên alt chỉ tả
+  // Không nhãn "Ảnh minh họa" (Khánh quyết 23/11/2026; diềm thăn bò đã chỉnh bằng AI — ngoại lệ ở đầu file); không phải ảnh quán nên alt chỉ tả
   // thứ nhìn thấy. Nguồn, tác giả, giấy phép: web/cong-cu/anh/NGUON-ANH-PHAN-BO.md.
   'phan-bo-dau-than-ngoai': {
     minhHoa: false,
