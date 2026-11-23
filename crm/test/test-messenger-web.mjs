@@ -933,7 +933,7 @@ await nhom('11 · CHẠY THẬT TRÊN PGLITE: ĐẶT BÀN QUA BOT → dat_ban (u
 await nhom('12 · WORKER, TRANG, MENU, TRANG CÔNG KHAI, README, GIT', async () => {
   const w = readFileSync(join(GOC, 'web/src/worker.ts'), 'utf8');
   ok('worker.ts: /hook/ipos rồi /hook/messenger đều chặn TRƯỚC handle của adapter; messenger nhận ctx',
-     /async fetch\([\s\S]*startsWith\(DUONG_HOOK\)[\s\S]*xuLyHookIpos\([\s\S]*DUONG_MESSENGER[\s\S]*xuLyHookMessenger\(request, \{ env, ctx \}\)[\s\S]*return handle\(/.test(w)
+     /(?:async fetch\(|async function xuLyYeuCau\()[\s\S]*startsWith\(DUONG_HOOK\)[\s\S]*xuLyHookIpos\([\s\S]*DUONG_MESSENGER[\s\S]*xuLyHookMessenger\(request, \{ env, ctx \}\)[\s\S]*return handle\(/.test(w)
      && /import \{ xuLyHookMessenger, DUONG_MESSENGER \} from '\.\/lib\/messenger-hook\.ts'/.test(w) && DUONG_MESSENGER === '/hook/messenger');
   const sch = w.slice(w.indexOf('async scheduled('));
   ok('worker.ts: scheduled giữ nguyên hai việc cron', /waitUntil\(dongBoTatCa\(env\)\)/.test(sch) && /waitUntil\(guiZaloTatCa\(env\)\)/.test(sch) && !/essenger/.test(sch));

@@ -334,8 +334,10 @@ await nhom(`5 · ${CON_TAI_CHO.length} TRANG CÒN DỰNG TẠI CHỖ: TRẢ LỜ
   ok('#194: khung Kho nhập components/kho/XoaThanPost.astro và in <XoaThanPost /> đúng một lần, trong <head>',
      /\nimport XoaThanPost from '\.\.\/components\/kho\/XoaThanPost\.astro';\n/.test(khung) && soLan === 1
      && dauHead > 0 && viTri > dauHead && viTri < cuoiHead, `${soLan} lần · vị trí ${viTri} · <head> ${dauHead}–${cuoiHead}`);
-  ok('…trước thẻ phông chữ (thẻ bảng kiểu đầu tiên của <head>) và trước <SauDangXuat />',
-     viTri > 0 && theKieu > 0 && viTri < dauHead + theKieu && viTri < khung.indexOf('<SauDangXuat />'),
+  // Từ 23/11/2026 phông Montserrat tự phát (chung.css), khung Kho không còn thẻ bảng kiểu chặn nào trong <head>: không còn
+  // gì để đứng trước — nhưng nếu ai thêm lại một thẻ bảng kiểu thì đoạn mã vẫn phải đứng trước nó.
+  ok('…trước thẻ bảng kiểu đầu tiên của <head> (nếu có — Google Fonts đã bỏ) và trước <SauDangXuat />',
+     viTri > 0 && (theKieu < 0 || viTri < dauHead + theKieu) && viTri < khung.indexOf('<SauDangXuat />'),
      `XoaThanPost ${viTri} · bảng kiểu ${dauHead + theKieu} · SauDangXuat ${khung.indexOf('<SauDangXuat />')}`);
   const khungCrm = readFileSync(join(SRC, 'layouts', 'NoiBo.astro'), 'utf8');
   ok('Khung CRM (NoiBo.astro) không có đoạn mã này — Khánh quyết để nguyên bảy màn CRM (#194)',

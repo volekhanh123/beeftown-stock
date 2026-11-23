@@ -761,7 +761,7 @@ await nhom('11 · WORKER, TRANG, MENU, KHÔNG BÍ MẬT TRONG REPO', async () =>
      /import \{ guiZaloTatCa \} from '\.\/lib\/zalo-gui\.ts'/.test(w)
      && /waitUntil\(dongBoTatCa\(env\)\)/.test(sch) && /waitUntil\(guiZaloTatCa\(env\)\)/.test(sch));
   ok('worker.ts: /hook/ipos vẫn chặn trước handle của adapter',
-     /async fetch\([\s\S]*startsWith\(DUONG_HOOK\)[\s\S]*xuLyHookIpos\([\s\S]*return handle\(/.test(w));
+     /(?:async fetch\(|async function xuLyYeuCau\()[\s\S]*startsWith\(DUONG_HOOK\)[\s\S]*xuLyHookIpos\([\s\S]*return handle\(/.test(w));
   const gui = readFileSync(join(GOC, 'web/src/lib/zalo-gui.ts'), 'utf8');
   // Đăng nhập máy dùng chung (lib/tai-khoan-may.ts, rà soát 11/10/2026): zalo-gui.ts phải đi qua đó.
   const mayChung = readFileSync(join(GOC, 'web/src/lib/tai-khoan-may.ts'), 'utf8');
