@@ -76,6 +76,8 @@ const c = dich(ngonNgu, {
     en: 'Every tray has its own label, so the weight and price of each one are right there at the counter.',
     ko: '트레이마다 라벨이 따로 붙어 있어요. 트레이별 중량과 가격은 정육 코너에서 바로 확인하실 수 있어요.',
   },
+  // Link sang trang Các phần thịt bò (/phan-thit-bo): đầu thăn ngoại, dẻ sườn bò, diềm thăn bò… — trang trụ cột cho người tìm tên phần thịt.
+  quayPhanBo: { vi: 'Tìm hiểu các phần thịt bò', en: 'Learn about the beef cuts', ko: '소고기 부위 알아보기' },
   quayNuong: {
     vi: 'Chọn xong, cả bàn cùng nướng trên vỉ gas đặt tại bàn.',
     en: 'Then the whole table grills it together on the gas grill at your table.',
@@ -216,6 +218,7 @@ const coKenh = coKenhHoiBan(nd);
           <p class="dan">{c.quayDan}</p>
           <p>{c.quayGia}</p>
           <p>{c.quayNuong}</p>
+          <p><a class="lien-ket" href={duongDanTuongUng('/phan-thit-bo', ngonNgu)}>{c.quayPhanBo}<BieuTuong ten="mui-ten" /></a></p>
         </div>
         <div class="td-quay-anh">
           <Anh id="bo-cat-lat" ngonNgu={ngonNgu} khung="3x2" thayBang="khay" nenKhung="toi"

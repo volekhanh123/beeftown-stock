@@ -58,6 +58,7 @@ const TRANG = {
   visit: { vi: 'den-beeftown.astro', en: 'en/visit.astro', ko: 'ko/visit.astro' },
   book: { vi: 'dat-ban.astro', en: 'en/book.astro', ko: 'ko/book.astro' },
   buy: { vi: 'mua-thit-ve.astro', en: 'en/buy-meat.astro', ko: 'ko/buy-meat.astro' },
+  cuts: { vi: 'phan-thit-bo.astro', en: 'en/beef-cuts.astro', ko: 'ko/beef-cuts.astro' },
   jobs: { vi: 'tuyen-dung.astro', en: 'en/jobs.astro', ko: 'ko/jobs.astro' },
   privacy: { vi: 'quyen-rieng-tu.astro', en: 'en/privacy.astro', ko: 'ko/privacy.astro' },
   data: { vi: 'xoa-du-lieu.astro', en: 'en/data-deletion.astro', ko: 'ko/data-deletion.astro' },
