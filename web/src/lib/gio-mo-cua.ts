@@ -44,15 +44,18 @@ interface DongChiNhanh {
 
 /**
  * Một dòng chi_nhanh_cong_khai() → các khung giờ đã công bố. Rỗng khi một trong hai công tắc chưa bật. Khung thiếu một
- * đầu, sai dạng, hoặc không có thời lượng dương (mở ≥ đóng — khung qua nửa đêm schema.org khai bằng hai khung, mà
- * bảng chi_nhanh không có kiểu đó) bị bỏ; trưa đứng trước tối.
+ * đầu, sai dạng, hoặc không có thời lượng dương (mở ≥ đóng — ca qua nửa đêm, mà schema.org phải khai bằng hai khung và
+ * bảng chi_nhanh không có kiểu đó) thì KHÔNG khai giờ nào: khai nửa vời (chỉ ca trưa) là nói với Google rằng buổi tối
+ * quán đóng cửa. Chỉ khung trống cả hai đầu (không có ca đó) mới được bỏ qua; trưa đứng trước tối.
  */
 export function khungGioCongBo(nd: Pick<NoiDung, 'gio_phuc_vu_da_chot'>, dong: DongChiNhanh | null | undefined): KhungGio[] {
   if (nd.gio_phuc_vu_da_chot !== true || !dong || dong.gio_da_chot !== true) return [];
   const khung: KhungGio[] = [];
   for (const [d, k] of [[dong.trua_bat_dau, dong.trua_ket_thuc], [dong.toi_bat_dau, dong.toi_ket_thuc]] as const) {
+    if ((d === null || d === undefined) && (k === null || k === undefined)) continue;
     const mo = hhmm(d), dong2 = hhmm(k);
-    if (mo && dong2 && mo < dong2) khung.push({ mo, dong: dong2 });
+    if (!mo || !dong2 || mo >= dong2) return [];
+    khung.push({ mo, dong: dong2 });
   }
   return khung;
 }

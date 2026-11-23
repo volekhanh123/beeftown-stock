@@ -208,6 +208,9 @@ await nhom('4 · JSON-LD GIỜ MỞ CỬA: CHỈ KHI ĐÃ CÔNG BỐ', async () 
      khungGioCongBo(BAT, { ...DONG, trua_ket_thuc: null, toi_bat_dau: '25:00', toi_ket_thuc: '22:00' }).length === 0
        && khungGioCongBo(BAT, { ...DONG, trua_bat_dau: '14:00', trua_ket_thuc: '14:00', toi_bat_dau: '22:00', toi_ket_thuc: '17:00' }).length === 0
        && khungGioCongBo(BAT, { ...DONG, trua_bat_dau: 'sáng', toi_bat_dau: 1700 }).length === 0);
+  ok('Ca tối đóng sau nửa đêm ("00:30", "00:00") → KHÔNG khai giờ nào (không để lại ca trưa một mình, vì Google sẽ hiểu tối quán đóng cửa)',
+     khungGioCongBo(BAT, { ...DONG, toi_ket_thuc: '00:30:00' }).length === 0 && khungGioCongBo(BAT, { ...DONG, toi_ket_thuc: '00:00' }).length === 0);
+  ok('Ca trưa trống cả hai đầu (quán chỉ mở tối) vẫn khai ca tối', khungGioCongBo(BAT, { ...DONG, trua_bat_dau: undefined, trua_ket_thuc: null }).length === 1);
   ok('Giờ một chữ số "9:30" → "09:30"', khungGioCongBo(BAT, { ...DONG, trua_bat_dau: '9:30:00', trua_ket_thuc: '10:30' })[0]?.mo === '09:30');
 
   const ld = gioMoCuaJsonLd(khungGioCongBo(BAT, DONG));
