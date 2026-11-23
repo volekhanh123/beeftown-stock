@@ -1,0 +1,1173 @@
+{
+  "ngay": "2026-11-23",
+  "mo_hinh": "claude-haiku-5-5",
+  "tong": {
+    "cau": 11,
+    "may_dat": 11,
+    "luot": 13,
+    "viet_lai": 1,
+    "thay_tu": 0,
+    "bo_tin": 0,
+    "token_vao": 2502,
+    "token_ra": 2592,
+    "token_doc_dem": 150290,
+    "token_ghi_dem": 60116,
+    "ms_trung_vi": 2190
+  },
+  "ket_qua": [
+    {
+      "id": 46,
+      "nhom": "Tiếng nước ngoài, viết tắt",
+      "luot": [
+        "립아이 있어요? 2명이 먹을 거예요"
+      ],
+      "ngon_ngu": "ko",
+      "tot_la": "Từ 23/11/2026 (Khánh: \"Làm tiếng Hàn\"): trả lời tiếng Hàn, kể cả ở trang tiếng Việt; hiểu khách hỏi 립아이 캡 cho 2 người (khoảng 3팩).",
+      "ket": [
+        {
+          "khach": "립아이 있어요? 2명이 먹을 거예요",
+          "trang_thai": 200,
+          "tra_loi": {
+            "ok": true,
+            "tin": [
+              "네, 립아이 캡 있어요. 꽃등심 위에 붙은 바깥쪽 캡 부분이라 아주 부드럽고 고소해요.",
+              "2분이 드시면 립아이 캡 3팩이면 충분해요. 가격은 아래 카드에 있어요. 굽기는 미디엄 레어(속이 붉은 분홍빛)에서 미디엄(속이 연한 분홍빛) 정도가 좋아요."
+            ],
+            "the": [
+              {
+                "ma": "ribeye-with-cap",
+                "ten": "립아이 캡",
+                "nhan": "Ribeye with Cap",
+                "loai": "냉장육",
+                "viTri": "등쪽 갈비 부위(꽃등심)",
+                "diem": [
+                  "부드러움",
+                  "고소한 지방 맛",
+                  "육즙이 풍부함"
+                ],
+                "doChin": "미디엄 레어~미디엄",
+                "meo": "중불로 구워 주세요. 첫 점은 소스 없이 드셔 보세요.",
+                "moTa": null
+              }
+            ],
+            "don": [
+              {
+                "khoa": "ribeye-with-cap_150",
+                "so_goi": 3,
+                "ten": "립아이 캡"
+              }
+            ],
+            "chot": false,
+            "chuyen_nguoi": false
+          },
+          "ghi": {
+            "tra_loi": {
+              "tin": [
+                "네, 립아이 캡 있어요. 꽃등심 위에 붙은 바깥쪽 캡 부분이라 아주 부드럽고 고소해요.",
+                "2분이 드시면 립아이 캡 3팩이면 충분해요. 가격은 아래 카드에 있어요. 굽기는 미디엄 레어(속이 붉은 분홍빛)에서 미디엄(속이 연한 분홍빛) 정도가 좋아요."
+              ],
+              "the": [
+                "ribeye-with-cap"
+              ],
+              "don": [
+                {
+                  "khoa": "ribeye-with-cap_150",
+                  "so_goi": 3
+                }
+              ],
+              "chot": false,
+              "chuyen_nguoi": false,
+              "cau_chua_biet": ""
+            },
+            "doi_nguoi": false,
+            "viet_lai": false,
+            "thay_tu": false,
+            "bo_tin": 0,
+            "mili_giay": 2690,
+            "token_vao": 116,
+            "token_ra": 242,
+            "token_doc_dem": 0,
+            "token_ghi_dem": 15029
+          },
+          "claude": [
+            {
+              "chu": "{\"tin\":[\"네, 립아이 캡 있어요. 꽃등심 위에 붙은 바깥쪽 캡 부분이라 아주 부드럽고 고소해요.\",\"2분이 드시면 립아이 캡 3팩이면 충분해요. 가격은 아래 카드에 있어요. 굽기는 미디엄 레어(속이 붉은 분홍빛)에서 미디엄(속이 연한 분홍빛) 정도가 좋아요.\"],\"the\":[\"ribeye-with-cap\"],\"don\":[{\"khoa\":\"ribeye-with-cap_150\",\"so_goi\":3}],\"chot\":false,\"chuyen_nguoi\":false,\"cau_chua_biet\":\"\"}",
+              "ly_do": "end_turn",
+              "usage": {
+                "input_tokens": 116,
+                "cache_creation_input_tokens": 15029,
+                "cache_read_input_tokens": 0,
+                "cache_creation": {
+                  "ephemeral_5m_input_tokens": 15029,
+                  "ephemeral_1h_input_tokens": 0
+                },
+                "output_tokens": 242,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "service_tier": "standard",
+                "inference_geo": "global",
+                "speed": "standard"
+              },
+              "ms": 2680
+            }
+          ],
+          "ms": 2698
+        }
+      ],
+      "may": []
+    },
+    {
+      "id": 51,
+      "nhom": "Tiếng Hàn (23/11/2026)",
+      "nn": "ko",
+      "ngon_ngu": "ko",
+      "luot": [
+        "4명인데 어떤 고기가 좋을까요?",
+        "부드러운 게 좋아요",
+        "네, 그렇게 할게요"
+      ],
+      "phai_chot": true,
+      "phai_co_don": true,
+      "tot_la": "Toàn bộ tiếng Hàn tự nhiên (해요체). Lượt 1 hỏi gu một câu. Lượt 2 gợi ý 립아이 캡 (có thể thêm LA갈비), khoảng 6팩. Lượt 3 chốt đúng đơn, dặn bấm 주문에 담기 rồi điền 배달 정보, 주문하기.",
+      "ket": [
+        {
+          "khach": "4명인데 어떤 고기가 좋을까요?",
+          "trang_thai": 200,
+          "tra_loi": {
+            "ok": true,
+            "tin": [
+              "4분이 드시는군요.",
+              "부드러운 고기가 좋으세요, 아니면 쫄깃하고 소고기 향이 진한 쪽이 좋으세요?"
+            ],
+            "the": [],
+            "don": [],
+            "chot": false,
+            "chuyen_nguoi": false
+          },
+          "ghi": {
+            "tra_loi": {
+              "tin": [
+                "4분이 드시는군요.",
+                "부드러운 고기가 좋으세요, 아니면 쫄깃하고 소고기 향이 진한 쪽이 좋으세요?"
+              ],
+              "the": [],
+              "don": [],
+              "chot": false,
+              "chuyen_nguoi": false,
+              "cau_chua_biet": ""
+            },
+            "doi_nguoi": false,
+            "viet_lai": false,
+            "thay_tu": false,
+            "bo_tin": 0,
+            "mili_giay": 2092,
+            "token_vao": 115,
+            "token_ra": 110,
+            "token_doc_dem": 0,
+            "token_ghi_dem": 15029
+          },
+          "claude": [
+            {
+              "chu": "{\"tin\":[\"4분이 드시는군요.\",\"부드러운 고기가 좋으세요, 아니면 쫄깃하고 소고기 향이 진한 쪽이 좋으세요?\"],\"the\":[],\"don\":[],\"chot\":false,\"chuyen_nguoi\":false,\"cau_chua_biet\":\"\"}",
+              "ly_do": "end_turn",
+              "usage": {
+                "input_tokens": 115,
+                "cache_creation_input_tokens": 15029,
+                "cache_read_input_tokens": 0,
+                "cache_creation": {
+                  "ephemeral_5m_input_tokens": 15029,
+                  "ephemeral_1h_input_tokens": 0
+                },
+                "output_tokens": 110,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "service_tier": "standard",
+                "inference_geo": "global",
+                "speed": "standard"
+              },
+              "ms": 1989
+            }
+          ],
+          "ms": 2112
+        },
+        {
+          "khach": "부드러운 게 좋아요",
+          "trang_thai": 200,
+          "tra_loi": {
+            "ok": true,
+            "tin": [
+              "그럼 립아이 캡을 추천드려요. 고소한 지방 맛이 나고 바깥쪽 캡 부분이 아주 부드러워요.",
+              "4분이면 6팩 정도로, 립아이 캡 4팩에 양념된 LA갈비 2팩 어떠세요? 가격은 아래 카드에 있어요."
+            ],
+            "the": [
+              {
+                "ma": "ribeye-with-cap",
+                "ten": "립아이 캡",
+                "nhan": "립아이 캡",
+                "loai": "냉장육",
+                "viTri": "등쪽 갈비 부위(꽃등심)",
+                "diem": [
+                  "부드러움",
+                  "고소한 지방 맛",
+                  "육즙이 풍부함"
+                ],
+                "doChin": "미디엄 레어~미디엄",
+                "meo": "중불로 구워 주세요. 첫 점은 소스 없이 드셔 보세요.",
+                "moTa": null
+              },
+              {
+                "ma": "la-galbi",
+                "ten": "LA갈비",
+                "nhan": "LA갈비",
+                "loai": "냉동육",
+                "viTri": "갈비, 뼈와 가로로 썬 부위",
+                "diem": [
+                  "양념되어 있음",
+                  "뼈 포함",
+                  "온 가족이 먹기 좋음"
+                ],
+                "doChin": "굽기 전에 냉장실에서 해동해 주세요.",
+                "meo": "약불에서 구워 주세요. 양념이 되어 있어 자주 뒤집어 주세요.",
+                "moTa": null
+              }
+            ],
+            "don": [
+              {
+                "khoa": "ribeye-with-cap_150",
+                "so_goi": 4,
+                "ten": "립아이 캡"
+              },
+              {
+                "khoa": "la-galbi_150",
+                "so_goi": 2,
+                "ten": "LA갈비"
+              }
+            ],
+            "chot": false,
+            "chuyen_nguoi": false
+          },
+          "ghi": {
+            "tra_loi": {
+              "tin": [
+                "그럼 립아이 캡을 추천드려요. 고소한 지방 맛이 나고 바깥쪽 캡 부분이 아주 부드러워요.",
+                "4분이면 6팩 정도로, 립아이 캡 4팩에 양념된 LA갈비 2팩 어떠세요? 가격은 아래 카드에 있어요."
+              ],
+              "the": [
+                "ribeye-with-cap",
+                "la-galbi"
+              ],
+              "don": [
+                {
+                  "khoa": "ribeye-with-cap_150",
+                  "so_goi": 4
+                },
+                {
+                  "khoa": "la-galbi_150",
+                  "so_goi": 2
+                }
+              ],
+              "chot": false,
+              "chuyen_nguoi": false,
+              "cau_chua_biet": ""
+            },
+            "doi_nguoi": false,
+            "viet_lai": false,
+            "thay_tu": false,
+            "bo_tin": 0,
+            "mili_giay": 2185,
+            "token_vao": 241,
+            "token_ra": 232,
+            "token_doc_dem": 15029,
+            "token_ghi_dem": 0
+          },
+          "claude": [
+            {
+              "chu": "{\"tin\":[\"그럼 립아이 캡을 추천드려요. 고소한 지방 맛이 나고 바깥쪽 캡 부분이 아주 부드러워요.\",\"4분이면 6팩 정도로, 립아이 캡 4팩에 양념된 LA갈비 2팩 어떠세요? 가격은 아래 카드에 있어요.\"],\"the\":[\"ribeye-with-cap\",\"la-galbi\"],\"don\":[{\"khoa\":\"ribeye-with-cap_150\",\"so_goi\":4},{\"khoa\":\"la-galbi_150\",\"so_goi\":2}],\"chot\":false,\"chuyen_nguoi\":false,\"cau_chua_biet\":\"\"}",
+              "ly_do": "end_turn",
+              "usage": {
+                "input_tokens": 241,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 15029,
+                "cache_creation": {
+                  "ephemeral_5m_input_tokens": 0,
+                  "ephemeral_1h_input_tokens": 0
+                },
+                "output_tokens": 232,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "service_tier": "standard",
+                "inference_geo": "global",
+                "speed": "standard"
+              },
+              "ms": 2181
+            }
+          ],
+          "ms": 2190
+        },
+        {
+          "khach": "네, 그렇게 할게요",
+          "trang_thai": 200,
+          "tra_loi": {
+            "ok": true,
+            "tin": [
+              "감사합니다. 립아이 캡 4팩과 LA갈비 2팩으로 정리해 드릴게요.",
+              "'주문에 담기'를 누르고 '배달 정보'에 주소와 연락처를 입력한 뒤 '주문하기'를 눌러 주세요. 립아이 캡은 중불에 속이 연한 분홍빛이 남을 정도로 구우면 좋아요. LA갈비는 냉동이니 미리 냉장고에서 해동해 주세요."
+            ],
+            "the": [],
+            "don": [
+              {
+                "khoa": "ribeye-with-cap_150",
+                "so_goi": 4,
+                "ten": "립아이 캡"
+              },
+              {
+                "khoa": "la-galbi_150",
+                "so_goi": 2,
+                "ten": "LA갈비"
+              }
+            ],
+            "chot": true,
+            "chuyen_nguoi": false
+          },
+          "ghi": {
+            "tra_loi": {
+              "tin": [
+                "감사합니다. 립아이 캡 4팩과 LA갈비 2팩으로 정리해 드릴게요.",
+                "'주문에 담기'를 누르고 '배달 정보'에 주소와 연락처를 입력한 뒤 '주문하기'를 눌러 주세요. 립아이 캡은 중불에 속이 연한 분홍빛이 남을 정도로 구우면 좋아요. LA갈비는 냉동이니 미리 냉장고에서 해동해 주세요."
+              ],
+              "the": [],
+              "don": [
+                {
+                  "khoa": "ribeye-with-cap_150",
+                  "so_goi": 4
+                },
+                {
+                  "khoa": "la-galbi_150",
+                  "so_goi": 2
+                }
+              ],
+              "chot": true,
+              "chuyen_nguoi": false,
+              "cau_chua_biet": ""
+            },
+            "doi_nguoi": false,
+            "viet_lai": false,
+            "thay_tu": false,
+            "bo_tin": 0,
+            "mili_giay": 1913,
+            "token_vao": 489,
+            "token_ra": 268,
+            "token_doc_dem": 15029,
+            "token_ghi_dem": 0
+          },
+          "claude": [
+            {
+              "chu": "{\"tin\":[\"감사합니다. 립아이 캡 4팩과 LA갈비 2팩으로 정리해 드릴게요.\",\"'주문에 담기'를 누르고 '배달 정보'에 주소와 연락처를 입력한 뒤 '주문하기'를 눌러 주세요. 립아이 캡은 중불에 속이 연한 분홍빛이 남을 정도로 구우면 좋아요. LA갈비는 냉동이니 미리 냉장고에서 해동해 주세요.\"],\"the\":[],\"don\":[{\"khoa\":\"ribeye-with-cap_150\",\"so_goi\":4},{\"khoa\":\"la-galbi_150\",\"so_goi\":2}],\"chot\":true,\"chuyen_nguoi\":false,\"cau_chua_biet\":\"\"}",
+              "ly_do": "end_turn",
+              "usage": {
+                "input_tokens": 489,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 15029,
+                "cache_creation": {
+                  "ephemeral_5m_input_tokens": 0,
+                  "ephemeral_1h_input_tokens": 0
+                },
+                "output_tokens": 268,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "service_tier": "standard",
+                "inference_geo": "global",
+                "speed": "standard"
+              },
+              "ms": 1913
+            }
+          ],
+          "ms": 1920
+        }
+      ],
+      "may": []
+    },
+    {
+      "id": 52,
+      "nhom": "Tiếng Hàn (23/11/2026)",
+      "nn": "ko",
+      "ngon_ngu": "ko",
+      "luot": [
+        "립아이 있어요? 미디엄 레어로 먹고 싶어요"
+      ],
+      "phai_co_the": [
+        "ribeye-with-cap"
+      ],
+      "tot_la": "Nói là có, gọi 립아이 캡; 미디엄 레어 kèm màu giữa miếng; hỏi số người.",
+      "ket": [
+        {
+          "khach": "립아이 있어요? 미디엄 레어로 먹고 싶어요",
+          "trang_thai": 200,
+          "tra_loi": {
+            "ok": true,
+            "tin": [
+              "네, 립아이 캡 있어요. 부드럽고 고소한 지방 맛이 나는 부위예요.||미디엄 레어(속이 붉은 분홍빛)로 드시면 좋아요. 몇 분이 드실 건가요?"
+            ],
+            "the": [
+              {
+                "ma": "ribeye-with-cap",
+                "ten": "립아이 캡",
+                "nhan": "립아이 캡",
+                "loai": "냉장육",
+                "viTri": "등쪽 갈비 부위(꽃등심)",
+                "diem": [
+                  "부드러움",
+                  "고소한 지방 맛",
+                  "육즙이 풍부함"
+                ],
+                "doChin": "미디엄 레어~미디엄",
+                "meo": "중불로 구워 주세요. 첫 점은 소스 없이 드셔 보세요.",
+                "moTa": null
+              }
+            ],
+            "don": [],
+            "chot": false,
+            "chuyen_nguoi": false
+          },
+          "ghi": {
+            "tra_loi": {
+              "tin": [
+                "네, 립아이 캡 있어요. 부드럽고 고소한 지방 맛이 나는 부위예요.||미디엄 레어(속이 붉은 분홍빛)로 드시면 좋아요. 몇 분이 드실 건가요?"
+              ],
+              "the": [
+                "ribeye-with-cap"
+              ],
+              "don": [],
+              "chot": false,
+              "chuyen_nguoi": false,
+              "cau_chua_biet": ""
+            },
+            "doi_nguoi": false,
+            "viet_lai": false,
+            "thay_tu": false,
+            "bo_tin": 0,
+            "mili_giay": 2193,
+            "token_vao": 122,
+            "token_ra": 147,
+            "token_doc_dem": 0,
+            "token_ghi_dem": 15029
+          },
+          "claude": [
+            {
+              "chu": "{\"tin\":[\"네, 립아이 캡 있어요. 부드럽고 고소한 지방 맛이 나는 부위예요.||미디엄 레어(속이 붉은 분홍빛)로 드시면 좋아요. 몇 분이 드실 건가요?\"],\"the\":[\"ribeye-with-cap\"],\"don\":[],\"chot\":false,\"chuyen_nguoi\":false,\"cau_chua_biet\":\"\"}",
+              "ly_do": "end_turn",
+              "usage": {
+                "input_tokens": 122,
+                "cache_creation_input_tokens": 15029,
+                "cache_read_input_tokens": 0,
+                "cache_creation": {
+                  "ephemeral_5m_input_tokens": 15029,
+                  "ephemeral_1h_input_tokens": 0
+                },
+                "output_tokens": 147,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "service_tier": "standard",
+                "inference_geo": "global",
+                "speed": "standard"
+              },
+              "ms": 2180
+            }
+          ],
+          "ms": 2213
+        }
+      ],
+      "may": []
+    },
+    {
+      "id": 53,
+      "nhom": "Tiếng Hàn (23/11/2026)",
+      "nn": "ko",
+      "ngon_ngu": "ko",
+      "luot": [
+        "쫄깃하고 고기 맛이 진한 부위 추천해 주세요"
+      ],
+      "phai_co_the": [
+        "outside-skirt"
+      ],
+      "tot_la": "Gợi ý 안창살 (có thể thêm 갈비살 để so), nói khác nhau ở đâu, không so sánh nhất.",
+      "ket": [
+        {
+          "khach": "쫄깃하고 고기 맛이 진한 부위 추천해 주세요",
+          "trang_thai": 200,
+          "tra_loi": {
+            "ok": true,
+            "tin": [
+              "쫄깃하고 소고기 맛이 진한 부위라면 안창살을 추천드려요.",
+              "결이 뚜렷하고 씹을수록 소고기 향이 짙어져요. 가격은 아래 카드에 있어요.",
+              "몇 분이 드실 건지 알려 주시면 알맞은 팩 수도 같이 골라 드릴게요."
+            ],
+            "the": [
+              {
+                "ma": "outside-skirt",
+                "ten": "안창살",
+                "nhan": "안창살",
+                "loai": "냉장육",
+                "viTri": "횡격막, 갈비뼈 안쪽",
+                "diem": [
+                  "쫄깃하고 탄력 있음",
+                  "진한 소고기 향",
+                  "내장이 아닌 근육 부위"
+                ],
+                "doChin": "미디엄 레어~미디엄",
+                "meo": "아주 센 불에서 빠르게 굽고, 오래 굽지 마세요.",
+                "moTa": null
+              }
+            ],
+            "don": [],
+            "chot": false,
+            "chuyen_nguoi": false
+          },
+          "ghi": {
+            "tra_loi": {
+              "tin": [
+                "쫄깃하고 소고기 맛이 진한 부위라면 안창살을 추천드려요.",
+                "결이 뚜렷하고 씹을수록 소고기 향이 짙어져요. 가격은 아래 카드에 있어요.",
+                "몇 분이 드실 건지 알려 주시면 알맞은 팩 수도 같이 골라 드릴게요."
+              ],
+              "the": [
+                "outside-skirt"
+              ],
+              "don": [],
+              "chot": false,
+              "chuyen_nguoi": false,
+              "cau_chua_biet": ""
+            },
+            "doi_nguoi": false,
+            "viet_lai": false,
+            "thay_tu": false,
+            "bo_tin": 0,
+            "mili_giay": 2296,
+            "token_vao": 124,
+            "token_ra": 181,
+            "token_doc_dem": 0,
+            "token_ghi_dem": 15029
+          },
+          "claude": [
+            {
+              "chu": "{\"tin\":[\"쫄깃하고 소고기 맛이 진한 부위라면 안창살을 추천드려요.\",\"결이 뚜렷하고 씹을수록 소고기 향이 짙어져요. 가격은 아래 카드에 있어요.\",\"몇 분이 드실 건지 알려 주시면 알맞은 팩 수도 같이 골라 드릴게요.\"],\"the\":[\"outside-skirt\"],\"don\":[],\"chot\":false,\"chuyen_nguoi\":false,\"cau_chua_biet\":\"\"}",
+              "ly_do": "end_turn",
+              "usage": {
+                "input_tokens": 124,
+                "cache_creation_input_tokens": 15029,
+                "cache_read_input_tokens": 0,
+                "cache_creation": {
+                  "ephemeral_5m_input_tokens": 15029,
+                  "ephemeral_1h_input_tokens": 0
+                },
+                "output_tokens": 181,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "service_tier": "standard",
+                "inference_geo": "global",
+                "speed": "standard"
+              },
+              "ms": 2289
+            }
+          ],
+          "ms": 2307
+        }
+      ],
+      "may": []
+    },
+    {
+      "id": 54,
+      "nhom": "Tiếng Hàn (23/11/2026)",
+      "nn": "ko",
+      "ngon_ngu": "ko",
+      "luot": [
+        "안창살 한 팩에 얼마예요?"
+      ],
+      "phai_co_the": [
+        "outside-skirt"
+      ],
+      "tot_la": "Không ghi số tiền; nói giá ở thẻ ngay bên dưới, 150g 팩; hỏi tiếp số người hay gu.",
+      "ket": [
+        {
+          "khach": "안창살 한 팩에 얼마예요?",
+          "trang_thai": 200,
+          "tra_loi": {
+            "ok": true,
+            "tin": [
+              "안창살은 150g 팩으로 나와요. 가격은 바로 아래 카드에 있어요.",
+              "쫄깃하고 소고기 향이 진한 부위예요. 몇 분이 드실 건가요?"
+            ],
+            "the": [
+              {
+                "ma": "outside-skirt",
+                "ten": "안창살",
+                "nhan": "안창살",
+                "loai": "냉장육",
+                "viTri": "횡격막, 갈비뼈 안쪽",
+                "diem": [
+                  "쫄깃하고 탄력 있음",
+                  "진한 소고기 향",
+                  "내장이 아닌 근육 부위"
+                ],
+                "doChin": "미디엄 레어~미디엄",
+                "meo": "아주 센 불에서 빠르게 굽고, 오래 굽지 마세요.",
+                "moTa": null
+              }
+            ],
+            "don": [],
+            "chot": false,
+            "chuyen_nguoi": false
+          },
+          "ghi": {
+            "tra_loi": {
+              "tin": [
+                "안창살은 150g 팩으로 나와요. 가격은 바로 아래 카드에 있어요.",
+                "쫄깃하고 소고기 향이 진한 부위예요. 몇 분이 드실 건가요?"
+              ],
+              "the": [
+                "outside-skirt"
+              ],
+              "don": [],
+              "chot": false,
+              "chuyen_nguoi": false,
+              "cau_chua_biet": ""
+            },
+            "doi_nguoi": false,
+            "viet_lai": false,
+            "thay_tu": false,
+            "bo_tin": 0,
+            "mili_giay": 1327,
+            "token_vao": 112,
+            "token_ra": 131,
+            "token_doc_dem": 15029,
+            "token_ghi_dem": 0
+          },
+          "claude": [
+            {
+              "chu": "{\"tin\":[\"안창살은 150g 팩으로 나와요. 가격은 바로 아래 카드에 있어요.\",\"쫄깃하고 소고기 향이 진한 부위예요. 몇 분이 드실 건가요?\"],\"the\":[\"outside-skirt\"],\"don\":[],\"chot\":false,\"chuyen_nguoi\":false,\"cau_chua_biet\":\"\"}",
+              "ly_do": "end_turn",
+              "usage": {
+                "input_tokens": 112,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 15029,
+                "cache_creation": {
+                  "ephemeral_5m_input_tokens": 0,
+                  "ephemeral_1h_input_tokens": 0
+                },
+                "output_tokens": 131,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "service_tier": "standard",
+                "inference_geo": "global",
+                "speed": "standard"
+              },
+              "ms": 1322
+            }
+          ],
+          "ms": 1330
+        }
+      ],
+      "may": []
+    },
+    {
+      "id": 55,
+      "nhom": "Tiếng Hàn (23/11/2026)",
+      "nn": "ko",
+      "ngon_ngu": "ko",
+      "luot": [
+        "다이어트 중인데 기름기 적은 부위 있어요?"
+      ],
+      "phai_co_the": [
+        "top-blade"
+      ],
+      "tot_la": "Gợi ý 부채살 (비교적 기름기가 적음), nhắc đường gân giữa miếng; không bịa thời gian nướng.",
+      "ket": [
+        {
+          "khach": "다이어트 중인데 기름기 적은 부위 있어요?",
+          "trang_thai": 200,
+          "tra_loi": {
+            "ok": true,
+            "tin": [
+              "안녕하세요, 다이어트 중이시면 기름기가 적은 부위로 부채살을 추천드려요.",
+              "부채살은 상대적으로 지방이 적은 편이에요. 가운데 힘줄이 한 줄 있는데 일부러 남겨 둔 부위라서, 먹을 때 힘줄을 가로로 자르시면 편하게 드실 수 있어요.",
+              "몇 분이 드실지, 익힘 정도는 어느 정도 원하시는지 알려 주시면 팩 수를 같이 골라 드릴게요."
+            ],
+            "the": [
+              {
+                "ma": "top-blade",
+                "ten": "부채살",
+                "nhan": "부채살",
+                "loai": "냉장육",
+                "viTri": "어깨, 견갑골 근처",
+                "diem": [
+                  "비교적 기름기가 적음",
+                  "가운데 힘줄이 있음"
+                ],
+                "doChin": "원하시는 굽기로 드세요. 너무 오래 구우면 퍽퍽해져요.",
+                "meo": "드실 때 힘줄과 가로로 썰어 주세요.",
+                "moTa": null
+              }
+            ],
+            "don": [],
+            "chot": false,
+            "chuyen_nguoi": false
+          },
+          "ghi": {
+            "tra_loi": {
+              "tin": [
+                "안녕하세요, 다이어트 중이시면 기름기가 적은 부위로 부채살을 추천드려요.",
+                "부채살은 상대적으로 지방이 적은 편이에요. 가운데 힘줄이 한 줄 있는데 일부러 남겨 둔 부위라서, 먹을 때 힘줄을 가로로 자르시면 편하게 드실 수 있어요.",
+                "몇 분이 드실지, 익힘 정도는 어느 정도 원하시는지 알려 주시면 팩 수를 같이 골라 드릴게요."
+              ],
+              "the": [
+                "top-blade"
+              ],
+              "don": [],
+              "chot": false,
+              "chuyen_nguoi": false,
+              "cau_chua_biet": ""
+            },
+            "doi_nguoi": false,
+            "viet_lai": false,
+            "thay_tu": false,
+            "bo_tin": 0,
+            "mili_giay": 2447,
+            "token_vao": 119,
+            "token_ra": 247,
+            "token_doc_dem": 15029,
+            "token_ghi_dem": 0
+          },
+          "claude": [
+            {
+              "chu": "{\"tin\":[\"안녕하세요, 다이어트 중이시면 기름기가 적은 부위로 부채살을 추천드려요.\",\"부채살은 상대적으로 지방이 적은 편이에요. 가운데 힘줄이 한 줄 있는데 일부러 남겨 둔 부위라서, 먹을 때 힘줄을 가로로 자르시면 편하게 드실 수 있어요.\",\"몇 분이 드실지, 익힘 정도는 어느 정도 원하시는지 알려 주시면 팩 수를 같이 골라 드릴게요.\"],\"the\":[\"top-blade\"],\"don\":[],\"chot\":false,\"chuyen_nguoi\":false,\"cau_chua_biet\":\"\"}",
+              "ly_do": "end_turn",
+              "usage": {
+                "input_tokens": 119,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 15029,
+                "cache_creation": {
+                  "ephemeral_5m_input_tokens": 0,
+                  "ephemeral_1h_input_tokens": 0
+                },
+                "output_tokens": 247,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "service_tier": "standard",
+                "inference_geo": "global",
+                "speed": "standard"
+              },
+              "ms": 2446
+            }
+          ],
+          "ms": 2455
+        }
+      ],
+      "may": []
+    },
+    {
+      "id": 56,
+      "nhom": "Tiếng Hàn (23/11/2026)",
+      "nn": "ko",
+      "ngon_ngu": "ko",
+      "luot": [
+        "혹시 사람이에요, AI예요?"
+      ],
+      "phai_chuyen_nguoi": true,
+      "cho_phep_tro_ly_ao": true,
+      "tot_la": "Nói thật 가상 도우미 (không viết chữ AI), mời liên hệ nhân viên nếu muốn; không nhận là người.",
+      "ket": [
+        {
+          "khach": "혹시 사람이에요, AI예요?",
+          "trang_thai": 200,
+          "tra_loi": {
+            "ok": true,
+            "tin": [
+              "저는 Beeftown의 가상 도우미예요.",
+              "직원과 이야기하고 싶으시면 바로 아래 연락 방법을 이용해 주세요. 고기 고르시는 건 제가 계속 도와드릴게요."
+            ],
+            "the": [],
+            "don": [],
+            "chot": false,
+            "chuyen_nguoi": true
+          },
+          "ghi": {
+            "tra_loi": {
+              "tin": [
+                "저는 Beeftown의 가상 도우미예요.",
+                "직원과 이야기하고 싶으시면 바로 아래 연락 방법을 이용해 주세요. 고기 고르시는 건 제가 계속 도와드릴게요."
+              ],
+              "the": [],
+              "don": [],
+              "chot": false,
+              "chuyen_nguoi": true,
+              "cau_chua_biet": ""
+            },
+            "doi_nguoi": false,
+            "viet_lai": false,
+            "thay_tu": false,
+            "bo_tin": 0,
+            "mili_giay": 1460,
+            "token_vao": 111,
+            "token_ra": 131,
+            "token_doc_dem": 15029,
+            "token_ghi_dem": 0
+          },
+          "claude": [
+            {
+              "chu": "{\"tin\":[\"저는 Beeftown의 가상 도우미예요.\",\"직원과 이야기하고 싶으시면 바로 아래 연락 방법을 이용해 주세요. 고기 고르시는 건 제가 계속 도와드릴게요.\"],\"the\":[],\"don\":[],\"chot\":false,\"chuyen_nguoi\":true,\"cau_chua_biet\":\"\"}",
+              "ly_do": "end_turn",
+              "usage": {
+                "input_tokens": 111,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 15029,
+                "cache_creation": {
+                  "ephemeral_5m_input_tokens": 0,
+                  "ephemeral_1h_input_tokens": 0
+                },
+                "output_tokens": 131,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "service_tier": "standard",
+                "inference_geo": "global",
+                "speed": "standard"
+              },
+              "ms": 1457
+            }
+          ],
+          "ms": 1461
+        }
+      ],
+      "may": []
+    },
+    {
+      "id": 57,
+      "nhom": "Tiếng Hàn (23/11/2026)",
+      "nn": "ko",
+      "ngon_ngu": "ko",
+      "luot": [
+        "몇 시까지 영업해요?"
+      ],
+      "phai_chuyen_nguoi": true,
+      "phai_cau_chua_biet": true,
+      "tot_la": "Nói chưa có thông tin chắc, mời liên hệ nhân viên; câu chưa biết ghi bằng tiếng Việt.",
+      "ket": [
+        {
+          "khach": "몇 시까지 영업해요?",
+          "trang_thai": 200,
+          "tra_loi": {
+            "ok": true,
+            "tin": [
+              "영업시간은 아직 정확한 정보가 없어요.",
+              "매장 직원에게 여쭤봐 주시면 정확해요. 연락 방법은 바로 아래에 있어요."
+            ],
+            "the": [],
+            "don": [],
+            "chot": false,
+            "chuyen_nguoi": true
+          },
+          "ghi": {
+            "tra_loi": {
+              "tin": [
+                "영업시간은 아직 정확한 정보가 없어요.",
+                "매장 직원에게 여쭤봐 주시면 정확해요. 연락 방법은 바로 아래에 있어요."
+              ],
+              "the": [],
+              "don": [],
+              "chot": false,
+              "chuyen_nguoi": true,
+              "cau_chua_biet": "Quán mở cửa mấy giờ?"
+            },
+            "doi_nguoi": false,
+            "viet_lai": false,
+            "thay_tu": false,
+            "bo_tin": 0,
+            "mili_giay": 1776,
+            "token_vao": 108,
+            "token_ra": 130,
+            "token_doc_dem": 15029,
+            "token_ghi_dem": 0
+          },
+          "claude": [
+            {
+              "chu": "{\"tin\":[\"영업시간은 아직 정확한 정보가 없어요.\",\"매장 직원에게 여쭤봐 주시면 정확해요. 연락 방법은 바로 아래에 있어요.\"],\"the\":[],\"don\":[],\"chot\":false,\"chuyen_nguoi\":true,\"cau_chua_biet\":\"Quán mở cửa mấy giờ?\"}",
+              "ly_do": "end_turn",
+              "usage": {
+                "input_tokens": 108,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 15029,
+                "cache_creation": {
+                  "ephemeral_5m_input_tokens": 0,
+                  "ephemeral_1h_input_tokens": 0
+                },
+                "output_tokens": 130,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "service_tier": "standard",
+                "inference_geo": "global",
+                "speed": "standard"
+              },
+              "ms": 1775
+            }
+          ],
+          "ms": 1778
+        }
+      ],
+      "may": []
+    },
+    {
+      "id": 58,
+      "nhom": "Tiếng Hàn (23/11/2026)",
+      "nn": "ko",
+      "ngon_ngu": "ko",
+      "luot": [
+        "회사 사람 15명이 먹을 건데 얼마나 사야 해요?"
+      ],
+      "phai_chuyen_nguoi": true,
+      "tot_la": "Đơn lớn: mời liên hệ nhân viên để tư vấn số lượng, không tự tính số팩; có thể hỏi gu.",
+      "ket": [
+        {
+          "khach": "회사 사람 15명이 먹을 건데 얼마나 사야 해요?",
+          "trang_thai": 200,
+          "tra_loi": {
+            "ok": true,
+            "tin": [
+              "고객님, 15분이면 대량 주문이라 정확한 수량은 직원과 상담하시는 게 좋아요.",
+              "직원에게 연락하시면 맞는 수량을 같이 정해 드릴게요. 연락 방법은 바로 아래에 있어요."
+            ],
+            "the": [],
+            "don": [],
+            "chot": false,
+            "chuyen_nguoi": true
+          },
+          "ghi": {
+            "tra_loi": {
+              "tin": [
+                "고객님, 15분이면 대량 주문이라 정확한 수량은 직원과 상담하시는 게 좋아요.",
+                "직원에게 연락하시면 맞는 수량을 같이 정해 드릴게요. 연락 방법은 바로 아래에 있어요."
+              ],
+              "the": [],
+              "don": [],
+              "chot": false,
+              "chuyen_nguoi": true,
+              "cau_chua_biet": ""
+            },
+            "doi_nguoi": false,
+            "viet_lai": false,
+            "thay_tu": false,
+            "bo_tin": 0,
+            "mili_giay": 1659,
+            "token_vao": 124,
+            "token_ra": 143,
+            "token_doc_dem": 15029,
+            "token_ghi_dem": 0
+          },
+          "claude": [
+            {
+              "chu": "{\"tin\":[\"고객님, 15분이면 대량 주문이라 정확한 수량은 직원과 상담하시는 게 좋아요.\",\"직원에게 연락하시면 맞는 수량을 같이 정해 드릴게요. 연락 방법은 바로 아래에 있어요.\"],\"the\":[],\"don\":[],\"chot\":false,\"chuyen_nguoi\":true,\"cau_chua_biet\":\"\"}",
+              "ly_do": "end_turn",
+              "usage": {
+                "input_tokens": 124,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 15029,
+                "cache_creation": {
+                  "ephemeral_5m_input_tokens": 0,
+                  "ephemeral_1h_input_tokens": 0
+                },
+                "output_tokens": 143,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "service_tier": "standard",
+                "inference_geo": "global",
+                "speed": "standard"
+              },
+              "ms": 1657
+            }
+          ],
+          "ms": 1665
+        }
+      ],
+      "may": []
+    },
+    {
+      "id": 59,
+      "nhom": "Tiếng Hàn (23/11/2026)",
+      "nn": "ko",
+      "ngon_ngu": "ko",
+      "luot": [
+        "한우 있어요? 와규는요?"
+      ],
+      "phai_chuyen_nguoi": true,
+      "tot_la": "Không viết 한우, 와규; nói chưa có thông tin chắc về giống bò, cấp hạng và mời liên hệ nhân viên; có thể kể các phần đang bán.",
+      "ket": [
+        {
+          "khach": "한우 있어요? 와규는요?",
+          "trang_thai": 200,
+          "tra_loi": {
+            "ok": true,
+            "tin": [
+              "고객님, 저희는 현재 립아이 캡, 안창살, 부채살, 갈비살, LA갈비, 김치를 판매하고 있어요.",
+              "소 품종이나 등급에 대해서는 아직 확인된 정보가 없어서 정확하게 말씀드리기 어려워요. 직원에게 확인하시는 게 가장 정확해요. 연락 방법은 바로 아래에 있어요."
+            ],
+            "the": [],
+            "don": [],
+            "chot": false,
+            "chuyen_nguoi": true
+          },
+          "ghi": {
+            "tra_loi": {
+              "tin": [
+                "고객님, 저희는 현재 립아이 캡, 안창살, 부채살, 갈비살, LA갈비, 김치를 판매하고 있어요.",
+                "소 품종이나 등급에 대해서는 아직 확인된 정보가 없어서 정확하게 말씀드리기 어려워요. 직원에게 확인하시는 게 가장 정확해요. 연락 방법은 바로 아래에 있어요."
+              ],
+              "the": [],
+              "don": [],
+              "chot": false,
+              "chuyen_nguoi": true,
+              "cau_chua_biet": "Quán bán thịt bò giống nào, cấp hạng gì?"
+            },
+            "doi_nguoi": false,
+            "viet_lai": true,
+            "thay_tu": false,
+            "bo_tin": 0,
+            "mili_giay": 3950,
+            "token_vao": 611,
+            "token_ra": 427,
+            "token_doc_dem": 30058,
+            "token_ghi_dem": 0
+          },
+          "claude": [
+            {
+              "chu": "{\"tin\":[\"고객님, 저희는 현재 립아이 캡, 안창살, 부채살, 갈비살, LA갈비, 김치를 판매하고 있어요.\",\"한우나 와규 같은 소 품종과 등급에 대해서는 정확한 정보가 없어서, 직원에게 확인하시는 게 가장 정확해요. 연락 방법은 바로 아래에 있어요.\"],\"the\":[],\"don\":[],\"chot\":false,\"chuyen_nguoi\":true,\"cau_chua_biet\":\"Quán bán thịt bò giống nào, cấp hạng gì?\"}",
+              "ly_do": "end_turn",
+              "usage": {
+                "input_tokens": 109,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 15029,
+                "cache_creation": {
+                  "ephemeral_5m_input_tokens": 0,
+                  "ephemeral_1h_input_tokens": 0
+                },
+                "output_tokens": 208,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "service_tier": "standard",
+                "inference_geo": "global",
+                "speed": "standard"
+              },
+              "ms": 2309
+            },
+            {
+              "chu": "{\"tin\":[\"고객님, 저희는 현재 립아이 캡, 안창살, 부채살, 갈비살, LA갈비, 김치를 판매하고 있어요.\",\"소 품종이나 등급에 대해서는 아직 확인된 정보가 없어서 정확하게 말씀드리기 어려워요. 직원에게 확인하시는 게 가장 정확해요. 연락 방법은 바로 아래에 있어요.\"],\"the\":[],\"don\":[],\"chot\":false,\"chuyen_nguoi\":true,\"cau_chua_biet\":\"Quán bán thịt bò giống nào, cấp hạng gì?\"}",
+              "ly_do": "end_turn",
+              "usage": {
+                "input_tokens": 502,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 15029,
+                "cache_creation": {
+                  "ephemeral_5m_input_tokens": 0,
+                  "ephemeral_1h_input_tokens": 0
+                },
+                "output_tokens": 219,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "service_tier": "standard",
+                "inference_geo": "global",
+                "speed": "standard"
+              },
+              "ms": 1640
+            }
+          ],
+          "ms": 3963
+        }
+      ],
+      "may": []
+    },
+    {
+      "id": 60,
+      "nhom": "Tiếng Hàn (23/11/2026)",
+      "nn": "vi",
+      "ngon_ngu": "ko",
+      "luot": [
+        "배달은 얼마나 걸려요?"
+      ],
+      "tot_la": "Khách Hàn ở TRANG TIẾNG VIỆT: vẫn trả lời tiếng Hàn. Nói đúng câu đã học về giao hàng (Ahamove, giờ khách ghi ở 메모, quán gọi xác nhận); không tự hứa khu vực giao.",
+      "ket": [
+        {
+          "khach": "배달은 얼마나 걸려요?",
+          "trang_thai": 200,
+          "tra_loi": {
+            "ok": true,
+            "tin": [
+              "배달 소요 시간은 아직 정확한 정보가 없어요.||다만 드시고 싶은 수령 시간은 주문 시 메모에 적어 주시면 돼요. 결제 후 매장에서 배달 시간을 잡으려고 연락드려요.",
+              "배달 시간이 궁금하시면 바로 아래 연락 방법으로 직원에게 여쭤봐 주세요."
+            ],
+            "the": [],
+            "don": [],
+            "chot": false,
+            "chuyen_nguoi": true
+          },
+          "ghi": {
+            "tra_loi": {
+              "tin": [
+                "배달 소요 시간은 아직 정확한 정보가 없어요.||다만 드시고 싶은 수령 시간은 주문 시 메모에 적어 주시면 돼요. 결제 후 매장에서 배달 시간을 잡으려고 연락드려요.",
+                "배달 시간이 궁금하시면 바로 아래 연락 방법으로 직원에게 여쭤봐 주세요."
+              ],
+              "the": [],
+              "don": [],
+              "chot": false,
+              "chuyen_nguoi": true,
+              "cau_chua_biet": "Giao hàng mất bao lâu?"
+            },
+            "doi_nguoi": false,
+            "viet_lai": false,
+            "thay_tu": false,
+            "bo_tin": 0,
+            "mili_giay": 2449,
+            "token_vao": 110,
+            "token_ra": 203,
+            "token_doc_dem": 15029,
+            "token_ghi_dem": 0
+          },
+          "claude": [
+            {
+              "chu": "{\"tin\":[\"배달 소요 시간은 아직 정확한 정보가 없어요.||다만 드시고 싶은 수령 시간은 주문 시 메모에 적어 주시면 돼요. 결제 후 매장에서 배달 시간을 잡으려고 연락드려요.\",\"배달 시간이 궁금하시면 바로 아래 연락 방법으로 직원에게 여쭤봐 주세요.\"],\"the\":[],\"don\":[],\"chot\":false,\"chuyen_nguoi\":true,\"cau_chua_biet\":\"Giao hàng mất bao lâu?\"}",
+              "ly_do": "end_turn",
+              "usage": {
+                "input_tokens": 110,
+                "cache_creation_input_tokens": 0,
+                "cache_read_input_tokens": 15029,
+                "cache_creation": {
+                  "ephemeral_5m_input_tokens": 0,
+                  "ephemeral_1h_input_tokens": 0
+                },
+                "output_tokens": 203,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "service_tier": "standard",
+                "inference_geo": "global",
+                "speed": "standard"
+              },
+              "ms": 2449
+            }
+          ],
+          "ms": 2451
+        }
+      ],
+      "may": []
+    }
+  ]
+}
