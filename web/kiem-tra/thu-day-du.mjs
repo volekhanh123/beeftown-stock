@@ -1145,8 +1145,8 @@ try {
                r?.status() === 200 && kq.rongTrang <= kq.khung + 1 && kq.tran.length === 0,
                `HTTP ${r?.status()}, rộng ${kq.rongTrang}px / khung ${kq.khung}px, tràn: ${kq.tran.join(', ') || 'không'}`),
             ok(ngayMong ? `${nhan}: dòng ngày ghi "${ngayMong}"` : `${nhan}: chưa công bố ngày → không có dòng ngày`, kq.ngay === ngayMong, String(kq.ngay)),
-            ok(`${nhan}: dòng trạng thái ${kichBan === 'day-du' ? 'là câu dự phòng trong mã' : 'là câu hai câu đã công bố'}`,
-               kq.trangThai === (TRANG_THAI_THU[kichBan] ?? t.trangThaiMacDinh), kq.trangThai),
+            ok(`${nhan}: ${kichBan === 'day-du' ? 'chưa công bố câu trạng thái → không có dòng trạng thái (không câu dự phòng)' : 'dòng trạng thái là câu hai câu đã công bố'}`,
+               kq.trangThai === (TRANG_THAI_THU[kichBan] ?? ''), kq.trangThai),
             ok(`${nhan}: câu chỉ đường nguyên văn, dính ngay dưới dòng địa chỉ (cách đáy địa chỉ −10 đến 8px)`,
                kq.loiLen === t.loiLen && kq.khe !== null && kq.khe >= -10 && kq.khe <= 8, `cách ${kq.khe?.toFixed(1)}px · «${kq.loiLen}»`),
             ok(`${nhan}: thành phần và khung trang đúng quy tắc (${Object.keys(PHEP_DO).length} phép đo của do-giao-dien.mjs)`,
@@ -1160,9 +1160,8 @@ try {
         }
       }
     }
-    // 23/11/2026 — chủ quên đổi câu trạng thái sau ngày khai trương: màn đầu ghi "Mở cửa từ …", KHÔNG còn câu
-    // "đang chuẩn bị đón bạn" cũ (dongTrangThai của lib/trang-cong-khai.ts). Và trước ngày khai trương: thẻ mô tả
-    // trang chủ có câu "Khai trương …" ở đầu (moTaTrangChu), qua ngày thì không.
+    // 23/11/2026 — trang chạy như nhà hàng đang hoạt động: ngày khai trương đã qua mà chủ không công bố câu trạng thái →
+    // màn đầu ghi "Mở cửa từ …", không có dòng trạng thái nào (không câu "đang chuẩn bị đón bạn"), thẻ mô tả là câu nền.
     mayGia.datKichBan('da-mo-chua-doi-cau');
     for (const nn of NGON_NGU) {
       const t = chu(nn);
@@ -1174,18 +1173,9 @@ try {
         chuManDau: (document.querySelector('main .kmd')?.innerText ?? '').replace(/\s+/g, ' '),
         moTa: document.querySelector('meta[name="description"]')?.getAttribute('content') ?? '',
       }));
-      ok(`da-mo-chua-doi-cau ${duong}: dòng "${t.moCuaTu} ${dinhDangNgay(NGAY_DA_MO_THU, nn)}" và KHÔNG còn câu "${t.trangThaiMacDinh}"`,
-         kq.ngay === `${t.moCuaTu} ${dinhDangNgay(NGAY_DA_MO_THU, nn)}` && !kq.coTrangThai && !kq.chuManDau.includes(t.trangThaiMacDinh), JSON.stringify(kq).slice(0, 300));
-      ok(`da-mo-chua-doi-cau ${duong}: thẻ mô tả là câu nền, không còn câu khai trương`, kq.moTa === t.moTaNgan, kq.moTa);
-    }
-    mayGia.datKichBan('sap-mo');
-    for (const nn of NGON_NGU) {
-      const t = chu(nn);
-      const duong = duongDanTuongUng('/', nn);
-      await page.goto(goc + duong, { waitUntil: 'load' });
-      const moTa = await page.evaluate(() => document.querySelector('meta[name="description"]')?.getAttribute('content') ?? '');
-      const mong = `${t.khaiTruongCau.replace('{ngay}', dinhDangNgay(ngaySapMoThu(), nn))} ${t.moTaNgan}`;
-      ok(`sap-mo ${duong}: thẻ mô tả bắt đầu bằng câu khai trương rồi tới câu nền`, moTa === mong, moTa);
+      ok(`da-mo-chua-doi-cau ${duong}: dòng "${t.moCuaTu} ${dinhDangNgay(NGAY_DA_MO_THU, nn)}" và không có dòng trạng thái nào`,
+         kq.ngay === `${t.moCuaTu} ${dinhDangNgay(NGAY_DA_MO_THU, nn)}` && !kq.coTrangThai, JSON.stringify(kq).slice(0, 300));
+      ok(`da-mo-chua-doi-cau ${duong}: thẻ mô tả là câu nền`, kq.moTa === t.moTaNgan, kq.moTa);
     }
     await page.setViewportSize({ width: 390, height: 844 });
     mayGia.datKichBan('day-du');

@@ -40,10 +40,14 @@ export const CHO_TRONG = {
   /** Khung giờ giao trong ngày (ghép sau "Giờ giao:"). Khánh trả lời 16/11/2026: như giờ làm việc. Đơn trả sau
       mấy giờ thì giao hôm sau: chưa trả lời — có thì ghép thêm vào cụm này. */
   GIO_GIAO: { vi: 'trong giờ làm việc của quán', en: 'during our working hours', ko: '매장 영업시간 중' },
-  /** Ai giao: nhân viên quán, Ahamove… (ghép sau "Người giao:"). Hỏi: Sang. */
-  DON_VI_GIAO: { vi: '{{DON_VI_GIAO}}', en: '{{DON_VI_GIAO}}', ko: '{{DON_VI_GIAO}}' },
-  /** Đóng gói giữ lạnh thế nào, tối đa bao lâu trên đường (ghép sau "Giữ lạnh:"). Hỏi: Sang. */
-  GIU_LANH: { vi: '{{GIU_LANH}}', en: '{{GIU_LANH}}', ko: '{{GIU_LANH}}' },
+  /** Ai giao: nhân viên quán, Ahamove… (ghép sau "Người giao:"). Khánh trả lời 23/11/2026: Ahamove. */
+  DON_VI_GIAO: { vi: 'Ahamove', en: 'Ahamove', ko: 'Ahamove' },
+  /** Đóng gói giữ lạnh thế nào, tối đa bao lâu trên đường (ghép sau "Giữ lạnh:"). Khánh trả lời 23/11/2026: ghi lưu ý bỏ vào ngăn mát 0–2 độ ngay (không hứa thời gian trên đường). */
+  GIU_LANH: {
+    vi: 'khi nhận hàng, bạn bỏ thịt vào ngăn mát 0–2 độ C ngay',
+    en: 'when your order arrives, put the meat in the fridge at 0–2 °C right away',
+    ko: '주문을 받으시면 바로 0~2도 냉장칸에 넣어 주세요',
+  },
   /** Gói ghi 150 g: thu đúng giá ghi trên web hay tính lại theo tem cân. Khánh trả lời 16/11/2026: ghi 150 g, bỏ chữ
       "khoảng" (nhãn gói ở trang Mua thịt về cũng bỏ — lib/don-mua-thit.ts) — giá gói là giá ghi trên web. */
   CACH_TINH_GOI: {
@@ -51,18 +55,18 @@ export const CHO_TRONG = {
     en: 'you pay the price shown on the website, with no reweighing',
     ko: '웹사이트에 표시된 가격 그대로 결제하시며, 다시 계량해 가격을 바꾸지 않아요',
   },
-  /** Giá gói đã gồm VAT chưa (ghép sau "VAT:" ở trang Chính sách giá và trang Mua thịt về). Hỏi: Sang, John. */
-  VAT: { vi: '{{VAT}}', en: '{{VAT}}', ko: '{{VAT}}' },
+  /** Giá gói đã gồm VAT chưa (ghép sau "VAT:" ở trang Chính sách giá và trang Mua thịt về). Khánh trả lời 23/11/2026: chưa gồm VAT. */
+  VAT: { vi: 'giá gói chưa gồm VAT', en: 'pack prices do not include VAT', ko: '팩 가격에는 VAT가 포함되어 있지 않아요' },
   /** Khách hẹn lại, giao lần 2 có tính thêm phí không. Khánh trả lời 16/11/2026: không tính phí. */
   GIAO_LAI: { vi: 'không tính thêm phí', en: 'no extra charge', ko: '추가 요금 없음' },
   /** Số giờ khách được báo hàng lỗi, kể từ lúc nhận — chỉ con số. Khánh trả lời 16/11/2026: 1 ngày. */
   GIO_BAO_LOI: '24',
   /** Số ngày làm việc để hoàn tiền về thẻ / ví — chỉ con số. Khánh trả lời 16/11/2026. */
   NGAY_HOAN: '2',
-  /** Trả lời khiếu nại trong bao lâu, giải quyết xong trong bao lâu (ghép sau "Beeftown trả lời trong"). Hỏi: Khánh. */
-  GIO_TRA_LOI: { vi: '{{GIO_TRA_LOI}}', en: '{{GIO_TRA_LOI}}', ko: '{{GIO_TRA_LOI}}' },
+  /** Trả lời khiếu nại trong bao lâu, giải quyết xong trong bao lâu (ghép sau "Beeftown trả lời trong"). Khánh trả lời 23/11/2026: 2 ngày làm việc. */
+  GIO_TRA_LOI: { vi: '2 ngày làm việc', en: '2 working days', ko: '영업일 2일' },
   /** Giờ nhận điện thoại, tin nhắn (ghép sau "Giờ nhận điện thoại, tin nhắn:"). Khánh trả lời 16/11/2026: như giờ làm việc. */
   GIO_HO_TRO: { vi: 'trong giờ làm việc của quán', en: 'during our working hours', ko: '매장 영업시간 중' },
-  /** Giữ đơn mua thịt bao lâu rồi xóa thông tin khách (ghép sau "Đơn mua thịt được giữ"). Hỏi: Khánh. */
-  THOI_GIAN_GIU_DON: { vi: '{{THOI_GIAN_GIU_DON}}', en: '{{THOI_GIAN_GIU_DON}}', ko: '{{THOI_GIAN_GIU_DON}}' },
+  /** Giữ đơn mua thịt bao lâu rồi xóa thông tin khách (ghép sau "Đơn mua thịt được giữ"). Khánh trả lời 23/11/2026: giữ tối thiểu 2 năm. */
+  THOI_GIAN_GIU_DON: { vi: 'tối thiểu 2 năm', en: 'for at least 2 years', ko: '최소 2년' },
 } as const satisfies Record<string, string | BaThuTieng>;

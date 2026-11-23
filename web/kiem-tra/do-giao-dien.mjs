@@ -810,7 +810,8 @@ function doKhiDungYen(conChay = []) {
     // đường tụt khỏi dòng địa chỉ. Ngày mở không gãy giữa chừng. Các ô không đè nhau, không ra ngoài khung.
     if (tin) {
       const [dc, loiLen, ngayMo, trangThai, theoDoi] = ['.kmd-dia-chi', '.kmd-loi-len', '.kmd-ngay', '.kmd-trang-thai', '.kmd-theo-doi'].map(c => tin.querySelector(c));
-      if (![dc, loiLen, trangThai].every(e => e && hien(e))) sai('hàng thông tin màn đầu thiếu địa chỉ, câu chỉ đường hoặc dòng trạng thái');
+      // Dòng trạng thái là TÙY CHỌN từ 23/11/2026: chỉ có khi chủ công bố dong_trang_thai (không còn câu dự phòng).
+      if (![dc, loiLen].every(e => e && hien(e)) || (trangThai && !hien(trangThai))) sai('hàng thông tin màn đầu thiếu địa chỉ hoặc câu chỉ đường (hay dòng trạng thái có mà bị ẩn)');
       else {
         const [kdc, kloi, khop] = [dc, loiLen, tin].map(e => e.getBoundingClientRect());
         const khe = kloi.top - kdc.bottom;
@@ -828,7 +829,7 @@ function doKhiDungYen(conChay = []) {
           const dam = ngayMo.querySelector('strong');
           if (!dam || soDong(dam) !== 1) sai(`ngày mở «${dam?.textContent.trim() ?? ''}» gãy thành ${dam ? soDong(dam) : 0} dòng — ngày phải nằm trên một dòng`);
           if (HAI_COT && soDong(ngayMo) !== 1) sai(`máy tính: dòng «${ngayMo.textContent.replace(/\s+/g, ' ').trim()}» gãy thành ${soDong(ngayMo)} dòng`);
-          if (HAI_COT && ngayMo.getBoundingClientRect().bottom > trangThai.getBoundingClientRect().top + 0.5) sai('máy tính: ngày mở phải nằm trên dòng trạng thái');
+          if (HAI_COT && trangThai && ngayMo.getBoundingClientRect().bottom > trangThai.getBoundingClientRect().top + 0.5) sai('máy tính: ngày mở phải nằm trên dòng trạng thái');
         }
         const o = [['địa chỉ', dc], ['câu chỉ đường', loiLen], ['ngày mở', ngayMo], ['dòng trạng thái', trangThai], ['liên kết theo dõi', theoDoi]]
           .filter(([, e]) => e && hien(e)).map(([ten, e]) => [ten, e.getBoundingClientRect()]);

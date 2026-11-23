@@ -8,8 +8,9 @@
  *      quầy, 63 Hồ Tùng Mậu, Quận 1 cũ), không chữ cấm, không tên phường.
  *   2. Dòng hiệu trên câu chính của trang chủ nói tiếng của trang (không còn "Beef Specialty Restaurant" in nguyên
  *      trên trang tiếng Việt).
- *   3. Ngày khai trương (khóa ngay_khai_truong của /noi-bo): trước ngày đó câu trạng thái và mô tả nhắc tới nó, qua
- *      ngày đó (giờ Việt Nam: 23:50 và 00:10, ngày không có thật 31/02) câu "đang chuẩn bị" cũ không còn in.
+ *   3. Trang chạy như nhà hàng đang hoạt động (Khánh quyết 23/11/2026): không câu "đang chuẩn bị đón bạn", không câu
+ *      "khai trương" trong mô tả; dòng ngày ("Đón bạn từ" / "Mở cửa từ") chỉ khi chủ công bố ngay_khai_truong (giờ Việt
+ *      Nam: 23:50 và 00:10, ngày không có thật 31/02).
  *   4. JSON-LD giờ mở cửa: chỉ khi cả hai công tắc đã công bố; chưa công bố thì không gọi database lần hai.
  *   5. JSON-LD Product + Offer của trang Mua thịt về: chỉ gói có giá đã công bố, không dữ liệu bịa.
  *   6. HSTS một năm (không includeSubDomains, không preload) cho trả lời của Worker và file tĩnh; Cache-Control dài
@@ -34,8 +35,8 @@ const doc = (...p) => readFileSync(join(...p), 'utf8');
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — TRANG CÔNG KHAI: SEO');
 
 const { chu, NGON_NGU, CAP_DUONG_DAN, THUONG_HIEU, DIA_CHI_NHA_HANG } = await nap('chu.ts');
-const { tinhTrangKhaiTruong, dongTrangThai, moTaTrangChu, lienHe, jsonTrongScript } = await nap('trang-cong-khai.ts');
-const { docNoiDung, dinhDangNgay } = await nap('noi-dung.ts');
+const { tinhTrangKhaiTruong, dongTrangThai, lienHe, jsonTrongScript } = await nap('trang-cong-khai.ts');
+const { docNoiDung } = await nap('noi-dung.ts');
 const { homNayVn } = await nap('gio-vn.ts');
 const { timChuoiCam } = await nap('chuoi-cam.js');
 const { khungGioCongBo, gioMoCuaJsonLd, docGioMoCua, docGioMoCuaChoTrang, xoaBoNhoGioMoCua, NHO_GIO_MO_CUA_MS } = await nap('gio-mo-cua.ts');
@@ -128,8 +129,8 @@ await nhom('1 · TIÊU ĐỀ VÀ MÔ TẢ: ĐỘ DÀI, TỪ KHÓA, CHỮ CẤM, 
   }
   const trang = doc(SRC, 'layouts', 'Trang.astro');
   ok('Trang.astro: tiêu đề mặc định (trang chủ) là tieuDeTrangChu, sau tiêu đề trang và tieu_de_og', trang.includes('?? nd.tieu_de_og\n  ?? t.tieuDeTrangChu;'));
-  for (const [f, nn] of [['index.astro', 'vi'], ['en/index.astro', 'en'], ['ko/index.astro', 'ko']]) {
-    ok(`pages/${f}: mô tả trang chủ qua moTaTrangChu(noiDung, '${nn}')`, doc(SRC, 'pages', f).includes(`moTa={moTaTrangChu(noiDung, '${nn}')}`));
+  for (const f of ['index.astro', 'en/index.astro', 'ko/index.astro']) {
+    ok(`pages/${f}: mô tả trang chủ là câu nền moTaNgan (hoặc mo_ta_og đã duyệt) — không truyền moTa riêng`, !/moTa=/.test(doc(SRC, 'pages', f)) && !doc(SRC, 'pages', f).includes('moTaTrangChu'));
   }
   ok('Địa chỉ in trên trang (DIA_CHI_NHA_HANG) ghi "Quận 1 cũ", không tên phường', DIA_CHI_NHA_HANG.includes('Quận 1 cũ') && !PHUONG_QUAN.tim(DIA_CHI_NHA_HANG), DIA_CHI_NHA_HANG);
 });
@@ -146,54 +147,36 @@ await nhom('2 · DÒNG HIỆU TRÊN CÂU CHÍNH: ĐÚNG TIẾNG CỦA TRANG', as
 });
 
 // ===========================================================================
-await nhom('3 · NGÀY KHAI TRƯƠNG: TRƯỚC NGÀY, QUA NGÀY, GIỜ VIỆT NAM, NGÀY KHÔNG CÓ THẬT', async () => {
+await nhom('3 · KHÔNG CÒN CHỮ VỀ GIAI ĐOẠN RA MẮT (TRANG CHẠY NHƯ NHÀ HÀNG ĐANG HOẠT ĐỘNG); NGÀY KHAI TRƯƠNG CHỈ KHI CHỦ CÔNG BỐ', async () => {
   const MO = '2026-12-02';
-  const co = (them, homNay) => ({ nd: nd(them), homNay });
   ok('Chưa công bố ngày → chua_co', tinhTrangKhaiTruong(nd(), '2026-12-01') === 'chua_co');
-  ok('01/12 (trước ngày) → sap_mo', tinhTrangKhaiTruong(nd({ ngay_khai_truong: MO }), '2026-12-01') === 'sap_mo');
-  ok('02/12 (đúng ngày) → da_mo', tinhTrangKhaiTruong(nd({ ngay_khai_truong: MO }), '2026-12-02') === 'da_mo');
-  ok('03/12 và 2027 → da_mo', ['2026-12-03', '2027-01-01'].every(h => tinhTrangKhaiTruong(nd({ ngay_khai_truong: MO }), h) === 'da_mo'));
+  ok('Ngày chưa tới → sap_mo ("Đón bạn từ …")', tinhTrangKhaiTruong(nd({ ngay_khai_truong: MO }), '2026-12-01') === 'sap_mo');
+  ok('Đúng ngày, và các ngày sau → da_mo ("Mở cửa từ …")', ['2026-12-02', '2026-12-03', '2027-01-01'].every(h => tinhTrangKhaiTruong(nd({ ngay_khai_truong: MO }), h) === 'da_mo'));
   // Giờ Việt Nam: 23:50 ngày 01/12 giờ VN là 16:50 UTC cùng ngày; 00:10 ngày 02/12 giờ VN vẫn là ngày 01/12 theo UTC.
   const vn2350 = homNayVn(Date.UTC(2026, 11, 1, 16, 50)), vn0010 = homNayVn(Date.UTC(2026, 11, 1, 17, 10));
-  ok('Mốc 23:50 ngày 01/12 giờ VN → chưa khai trương; 00:10 ngày 02/12 giờ VN (UTC còn 01/12) → đã khai trương',
+  ok('Mốc 23:50 ngày 01/12 giờ VN → sap_mo; 00:10 ngày 02/12 giờ VN (UTC còn 01/12) → da_mo',
      vn2350 === '2026-12-01' && vn0010 === '2026-12-02'
        && tinhTrangKhaiTruong(nd({ ngay_khai_truong: MO }), vn2350) === 'sap_mo' && tinhTrangKhaiTruong(nd({ ngay_khai_truong: MO }), vn0010) === 'da_mo', `${vn2350} · ${vn0010}`);
   for (const sai of ['2026-02-31', '2026-13-01', '2026-12-32', 'sắp mở', '02/12/2026', '2026-12-2', 5, true]) {
-    ok(`Ngày không có thật hay sai dạng ${JSON.stringify(sai)} → chua_co (không in câu về ngày đó)`, tinhTrangKhaiTruong(nd({ ngay_khai_truong: sai }), '2026-12-01') === 'chua_co'
-       && moTaTrangChu(nd({ ngay_khai_truong: sai }), 'vi', '2026-12-01') === chu('vi').moTaNgan);
+    ok(`Ngày không có thật hay sai dạng ${JSON.stringify(sai)} → chua_co (không in dòng ngày)`, tinhTrangKhaiTruong(nd({ ngay_khai_truong: sai }), '2026-12-01') === 'chua_co');
   }
 
-  // Dòng trạng thái.
+  // Dòng trạng thái: chỉ câu chủ đã công bố; không câu dự phòng ở bất kỳ ngày nào.
+  ok('Chưa công bố dong_trang_thai → không có dòng, dù chưa có ngày, ngày chưa tới hay đã qua', [undefined, MO].every(ngay => dongTrangThai(nd(ngay ? { ngay_khai_truong: ngay } : {})) === null));
+  ok('Câu đã công bố được in nguyên, bỏ khoảng trắng hai đầu', dongTrangThai(nd({ dong_trang_thai: '  Đã mở cửa.  ' })) === 'Đã mở cửa.');
+  ok('Câu chỉ có khoảng trắng coi như chưa công bố', dongTrangThai(nd({ dong_trang_thai: '   ' })) === null);
   for (const nn of NGON_NGU) {
-    const t = chu(nn);
-    ok(`[${nn}] chưa có ngày → câu dự phòng "${t.trangThaiMacDinh}"`, dongTrangThai(nd(), nn, '2026-12-05') === t.trangThaiMacDinh);
-    ok(`[${nn}] ngày chưa tới, chưa công bố câu trạng thái → vẫn câu dự phòng`, dongTrangThai(nd({ ngay_khai_truong: MO }), nn, '2026-12-01') === t.trangThaiMacDinh);
-    ok(`[${nn}] qua ngày khai trương, chưa công bố câu trạng thái → KHÔNG in "đang chuẩn bị" cũ (null)`, dongTrangThai(nd({ ngay_khai_truong: MO }), nn, '2026-12-02') === null
-       && dongTrangThai(nd({ ngay_khai_truong: MO }), nn, '2026-12-20') === null);
+    const moi = Object.entries(chu(nn));
+    ok(`[${nn}] chu.ts không còn khóa trangThaiMacDinh, khaiTruongCau`, !('trangThaiMacDinh' in chu(nn)) && !('khaiTruongCau' in chu(nn)));
+    const sot = moi.filter(([, v]) => /chuẩn bị đón|getting ready|손님을 맞이할 준비|khai trương|opening on|오픈 예정이에요/i.test(v)).map(([k]) => k);
+    ok(`[${nn}] chu.ts không có câu "đang chuẩn bị đón bạn" hay "khai trương"`, sot.length === 0, sot.join(', '));
+    ok(`[${nn}] thẻ mô tả nền không nhắc giai đoạn ra mắt`, !/khai trương|opening|오픈/i.test(chu(nn).moTaNgan), chu(nn).moTaNgan);
   }
-  ok('Câu trạng thái đã công bố luôn thắng (trước và sau ngày), bỏ khoảng trắng hai đầu',
-     dongTrangThai(nd({ ngay_khai_truong: MO, dong_trang_thai: '  Đã mở cửa.  ' }), 'vi', '2026-12-20') === 'Đã mở cửa.'
-       && dongTrangThai(nd({ dong_trang_thai: 'Sắp mở.' }), 'vi', '2026-11-23') === 'Sắp mở.');
-  ok('Câu trạng thái chỉ có khoảng trắng coi như chưa công bố', dongTrangThai(nd({ dong_trang_thai: '   ' }), 'vi', '2026-11-23') === chu('vi').trangThaiMacDinh);
-
-  // Mô tả trang chủ.
-  const NGAY = { vi: 'Khai trương ngày 2 tháng 12, 2026.', en: 'Opening on 2 December 2026.', ko: '2026년 12월 2일 오픈 예정이에요.' };
-  for (const nn of NGON_NGU) {
-    const truoc = moTaTrangChu(nd({ ngay_khai_truong: MO }), nn, '2026-11-23');
-    ok(`[${nn}] trước ngày: mô tả bắt đầu bằng "${NGAY[nn]}" rồi tới câu nền`, truoc === `${NGAY[nn]} ${chu(nn).moTaNgan}`, truoc);
-    ok(`[${nn}] câu ngày khớp dinhDangNgay (cùng cách viết với dòng "Đón bạn từ")`, dinhDangNgay(MO, nn) && truoc.includes(dinhDangNgay(MO, nn)), dinhDangNgay(MO, nn));
-    ok(`[${nn}] qua ngày: mô tả về câu nền, không còn câu khai trương`, moTaTrangChu(nd({ ngay_khai_truong: MO }), nn, '2026-12-02') === chu(nn).moTaNgan);
-    ok(`[${nn}] chưa công bố ngày: mô tả là câu nền`, moTaTrangChu(nd(), nn, '2026-11-23') === chu(nn).moTaNgan);
-    ok(`[${nn}] mô tả trước ngày không dính chữ cấm, không tên phường`, timChuoiCam(truoc).length === 0 && !PHUONG_QUAN.tim(truoc), truoc);
-  }
-  ok('mo_ta_og đã duyệt trong /noi-bo thay hết, không chen câu ngày vào', moTaTrangChu(nd({ ngay_khai_truong: MO, mo_ta_og: ' Câu đã duyệt. ' }), 'vi', '2026-11-23') === 'Câu đã duyệt.');
-  ok('mo_ta_og chỉ có khoảng trắng coi như chưa công bố', moTaTrangChu(nd({ mo_ta_og: '  ' }), 'vi', '2026-11-23') === chu('vi').moTaNgan);
 
   const kmd = doc(SRC, 'components', 'KhoiMoDau.astro');
-  ok('KhoiMoDau.astro: dòng trạng thái chỉ in khi dongTrangThai() có câu; ngày và "Mở cửa từ" theo tinhTrangKhaiTruong',
-     kmd.includes('{trangThai && <li class="trang-thai kmd-trang-thai"><p>{trangThai}</p></li>}') && kmd.includes('const giaiDoanMo = tinhTrangKhaiTruong(nd);'));
-  const nguon = doc(LIB, 'trang-cong-khai.ts');
-  ok('Không có ngày 02/12/2026 viết cứng trong mã (ngày nằm ở khóa ngay_khai_truong của /noi-bo)', !/2026-12-02|02\/12\/2026/.test(nguon) && !/2026-12-02/.test(doc(SRC, 'lib', 'chu.ts')));
+  ok('KhoiMoDau.astro: dòng trạng thái chỉ in khi dongTrangThai(nd) có câu; ngày và "Mở cửa từ" theo tinhTrangKhaiTruong',
+     kmd.includes('{trangThai && <li class="trang-thai kmd-trang-thai"><p>{trangThai}</p></li>}') && kmd.includes('const giaiDoanMo = tinhTrangKhaiTruong(nd);') && kmd.includes('dongTrangThai(nd);'));
+  ok('Không có ngày 02/12/2026 viết cứng trong mã (nếu có thì nằm ở khóa ngay_khai_truong của /noi-bo)', !/2026-12-02|02\/12\/2026/.test(doc(LIB, 'trang-cong-khai.ts')) && !/2026-12-02/.test(doc(SRC, 'lib', 'chu.ts')));
 });
 
 // ===========================================================================

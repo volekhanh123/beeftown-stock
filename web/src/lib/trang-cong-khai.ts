@@ -10,7 +10,7 @@
 import { DIA_CHI_NHA_HANG, DIA_CHI_PHAN, chu, duongDanTuongUng, type BaThuTieng } from './chu.ts';
 import { muaThitVeMo } from './dich-dat-hang.ts';
 import { congNgay, homNayVn, laNgayCoThat } from './gio-vn.ts';
-import { dinhDangNgay, type NgonNgu, type NoiDung } from './noi-dung.ts';
+import type { NgonNgu, NoiDung } from './noi-dung.ts';
 
 /**
  * Chỉ nhận đường dẫn http(s). Cổng nội dung do người gõ tay: một "javascript:…"
@@ -148,11 +148,13 @@ export function jsonTrongScript(duLieu: unknown): string {
 }
 
 /**
- * NGÀY KHAI TRƯƠNG so với hôm nay (giờ Việt Nam, lib/gio-vn.ts) — một chỗ cho màn đầu và thẻ mô tả trang chủ.
- *   · chua_co — khóa ngay_khai_truong chưa công bố, hoặc không phải một ngày có thật trên lịch ("2026-02-31", chữ lạ);
+ * NGÀY KHAI TRƯƠNG (khóa ngay_khai_truong của /noi-bo, nếu chủ có công bố) so với hôm nay (giờ Việt Nam, lib/gio-vn.ts):
+ * chỉ để màn đầu chọn "Đón bạn từ <ngày>" hay "Mở cửa từ <ngày>". Trang chạy như một nhà hàng đang hoạt động (Khánh quyết
+ * 23/11/2026): không công bố ngày thì không có dòng nào về giai đoạn ra mắt — không câu "đang chuẩn bị đón bạn", không
+ * câu "Khai trương …" trong thẻ mô tả.
+ *   · chua_co — chưa công bố, hoặc không phải một ngày có thật trên lịch ("2026-02-31", chữ lạ);
  *   · sap_mo  — ngày đó CHƯA tới (mai trở đi);
- *   · da_mo   — ngày đó là hôm nay hoặc đã qua — đúng như KhoiMoDau chọn "Mở cửa từ" thay "Đón bạn từ".
- * Không có ngày khai trương trong mã: ngày nằm ở khóa của /noi-bo, nên đổi ngày không cần deploy.
+ *   · da_mo   — ngày đó là hôm nay hoặc đã qua.
  * `homNay` chỉ để kiểm thử.
  */
 export function tinhTrangKhaiTruong(nd: NoiDung, homNay: string = homNayVn()): 'chua_co' | 'sap_mo' | 'da_mo' {
@@ -162,30 +164,10 @@ export function tinhTrangKhaiTruong(nd: NoiDung, homNay: string = homNayVn()): '
   return ngay <= homNay ? 'da_mo' : 'sap_mo';
 }
 
-/**
- * Dòng trạng thái ở màn đầu trang chủ: câu đã công bố (dong_trang_thai) nếu có; chưa công bố thì câu dự phòng
- * "đang chuẩn bị đón bạn" — nhưng qua ngày khai trương thì KHÔNG in nó nữa (null): câu đó thành sai ngay sáng
- * hôm khai trương, và không ai nhớ vào /noi-bo xóa. Ngày khai trương chưa tới thì dòng "Đón bạn từ <ngày>" ngay
- * trên (KhoiMoDau) đứng cạnh câu dự phòng, nên cả hai cùng nói đúng.
- */
-export function dongTrangThai(nd: NoiDung, ngonNgu: NgonNgu, homNay: string = homNayVn()): string | null {
+/** Dòng trạng thái ở màn đầu: CHỈ câu chủ đã công bố (dong_trang_thai, bỏ khoảng trắng hai đầu); chưa công bố thì không có dòng. */
+export function dongTrangThai(nd: NoiDung): string | null {
   const congBo = typeof nd.dong_trang_thai === 'string' ? nd.dong_trang_thai.trim() : '';
-  if (congBo) return congBo;
-  return tinhTrangKhaiTruong(nd, homNay) === 'da_mo' ? null : chu(ngonNgu).trangThaiMacDinh;
-}
-
-/**
- * Mô tả (meta description, og:description) của trang chủ. Bản đã duyệt trong /noi-bo (mo_ta_og) thay hết. Không
- * thì là câu nền (moTaNgan), và khi ngày khai trương đã công bố mà CHƯA tới thì có thêm câu "Khai trương <ngày>."
- * Ở ĐẦU: kết quả tìm kiếm cắt phần đuôi, mà ngày khai trương là thứ người ta tìm lúc này. Qua ngày đó câu tự bỏ
- * (trang được dựng lúc có người mở, không phải lúc build). Chỉ dữ kiện đã công bố: không có ngày thì không có câu.
- */
-export function moTaTrangChu(nd: NoiDung, ngonNgu: NgonNgu, homNay: string = homNayVn()): string {
-  const congBo = typeof nd.mo_ta_og === 'string' ? nd.mo_ta_og.trim() : '';
-  if (congBo) return congBo;
-  const t = chu(ngonNgu);
-  if (!nd.ngay_khai_truong || tinhTrangKhaiTruong(nd, homNay) !== 'sap_mo') return t.moTaNgan;
-  return `${t.khaiTruongCau.replace('{ngay}', dinhDangNgay(nd.ngay_khai_truong, ngonNgu))} ${t.moTaNgan}`;
+  return congBo || null;
 }
 
 /** Form hỏi bàn trên web đang mở (công tắc). Trang /dat-ban còn hỏi lịch trống. */
