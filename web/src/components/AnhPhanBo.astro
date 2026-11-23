@@ -1,6 +1,6 @@
 ---
 /**
- * ẢNH CỦA NĂM PHẦN THỊT BÒ (TrangPhanBo.astro)
+ * ẢNH CỦA BẢY PHẦN THỊT BÒ (TrangPhanBo.astro)
  *
  * Mỗi id ảnh viết THẲNG thành một thẻ <Anh>: kiểm thử (crm/test/test-cong-khai-anh.mjs, nhóm 3) đọc id và khung từ chữ
  * để chắc không file ảnh nào đã dựng mà không ai gọi, và không ai gọi một khung chưa dựng. Chỗ gọi bằng biểu thức
@@ -19,3 +19,5 @@ const { phan, ngonNgu, sizes } = Astro.props;
 {phan === 'diem-than' && <Anh id="phan-bo-diem-than" ngonNgu={ngonNgu} khung="4x3" sizes={sizes} thayBang="khay" />}
 {phan === 'nac-vai' && <Anh id="phan-bo-nac-vai" ngonNgu={ngonNgu} khung="4x3" sizes={sizes} thayBang="khay" />}
 {phan === 'loi-vai' && <Anh id="phan-bo-loi-vai" ngonNgu={ngonNgu} khung="4x3" sizes={sizes} thayBang="khay" />}
+{phan === 'la-galbi' && <Anh id="phan-bo-la-galbi" ngonNgu={ngonNgu} khung="4x3" sizes={sizes} thayBang="khay" />}
+{phan === 'ba-chi' && <Anh id="phan-bo-ba-chi" ngonNgu={ngonNgu} khung="4x3" sizes={sizes} thayBang="khay" />}

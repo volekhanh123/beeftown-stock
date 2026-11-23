@@ -17,9 +17,9 @@
  *   4. Ba thứ tiếng đủ: mọi chuỗi có vi, en, ko; bản Hàn có chữ Hàn, bản Anh không lẫn chữ Việt có dấu ngoài tên riêng.
  *   5. Đường dẫn: dòng trong CAP_DUONG_DAN (sitemap và hreflang theo đó), ba file trang khai đúng đường dẫn,
  *      tiêu đề và mô tả đúng cỡ.
- *   6. Ảnh: năm ảnh CHỤP THẬT của người khác (minhHoa: false — không nhãn "Ảnh minh họa", Khánh quyết 23/11/2026);
+ *   6. Ảnh: bảy ảnh CHỤP THẬT của người khác (minhHoa: false — không nhãn "Ảnh minh họa", Khánh quyết 23/11/2026);
  *      dòng nguồn ảnh ghi tác giả, và ảnh CC BY 2.0 ghi giấy phép, trang gốc, việc đã chỉnh. Ảnh diềm thăn bò đã chỉnh bằng AI (Khánh quyết 23/11/2026: không nhãn "Ảnh minh họa"), nên dòng nguồn nói rõ "chỉnh sửa bằng AI".
- *   7. Trang: một h1, đủ năm phần có neo, hỏi đáp có câu "Dẻ sườn bò là phần nào?", tên ngoại ngữ có thuộc tính lang.
+ *   7. Trang: một h1, đủ bảy phần có neo (#pb-la-galbi và #pb-ba-chi được trang Mua thịt về trỏ tới), hỏi đáp có câu "Dẻ sườn bò là phần nào?", tên ngoại ngữ có thuộc tính lang.
  */
 
 import { readFileSync, existsSync } from 'node:fs';
@@ -40,11 +40,12 @@ const { timChuoiCam } = await nap('chuoi-cam.js');
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — TRANG CÁC PHẦN THỊT BÒ');
 
 // Chép tay ở đây, KHÔNG đọc từ phan-bo.ts: sửa nhầm một tên ở đó thì phép thử này đỏ.
-const TEN_VI = { 'dau-than-ngoai': 'Đầu thăn ngoại', 'de-suon': 'Dẻ sườn bò', 'diem-than': 'Diềm thăn bò', 'nac-vai': 'Nạc vai bò', 'loi-vai': 'Lõi vai bò' };
-const TEN_KO = { 'dau-than-ngoai': '꽃등심', 'de-suon': '갈비살', 'diem-than': '안창살', 'nac-vai': '윗등심', 'loi-vai': '부채살' };
+const TEN_VI = { 'dau-than-ngoai': 'Đầu thăn ngoại', 'de-suon': 'Dẻ sườn bò', 'diem-than': 'Diềm thăn bò', 'nac-vai': 'Nạc vai bò', 'loi-vai': 'Lõi vai bò',
+  'la-galbi': 'LA Galbi (sườn bò cắt ngang)', 'ba-chi': 'Ba chỉ bò' };
+const TEN_KO = { 'dau-than-ngoai': '꽃등심', 'de-suon': '갈비살', 'diem-than': '안창살', 'nac-vai': '윗등심', 'loi-vai': '부채살', 'la-galbi': 'LA갈비', 'ba-chi': '우삼겹' };
 const ANH_CUA_PHAN = {
   'dau-than-ngoai': 'phan-bo-dau-than-ngoai', 'de-suon': 'phan-bo-de-suon', 'diem-than': 'phan-bo-diem-than',
-  'nac-vai': 'phan-bo-nac-vai', 'loi-vai': 'phan-bo-loi-vai',
+  'nac-vai': 'phan-bo-nac-vai', 'loi-vai': 'phan-bo-loi-vai', 'la-galbi': 'phan-bo-la-galbi', 'ba-chi': 'phan-bo-ba-chi',
 };
 const CHU_VIET_CO_DAU = /[ăâđêôơưàáạảãằắặẳẵầấậẩẫèéẹẻẽềếệểễìíịỉĩòóọỏõồốộổỗờớợởỡùúụủũừứựửữỳýỵỷỹ]/i;
 
@@ -61,11 +62,11 @@ const CHU_TRANG = TAT_CA.filter(([d]) => !d.startsWith('NGUON'));
 const theoNgon = nn => CHU_TRANG.filter(([d]) => d.endsWith(`.${nn}`));
 
 await nhom('1 · TÊN TIẾNG VIỆT, HÀN, ANH CỦA NĂM PHẦN THỊT', async () => {
-  ok('Đúng năm phần thịt, theo thứ tự trang: đầu thăn ngoại, dẻ sườn bò, diềm thăn bò, nạc vai bò, lõi vai bò',
+  ok('Đúng bảy phần thịt, theo thứ tự trang: đầu thăn ngoại, dẻ sườn bò, diềm thăn bò, nạc vai bò, lõi vai bò, LA Galbi, ba chỉ bò',
      JSON.stringify(PHAN_BO.map(p => p.id)) === JSON.stringify(Object.keys(TEN_VI)), PHAN_BO.map(p => p.id).join(', '));
   for (const p of PHAN_BO) {
     ok(`${p.id}: tên Việt "${TEN_VI[p.id]}", tên Hàn "${TEN_KO[p.id]}", có tên Anh và phiên âm Latin của tên Hàn`,
-       p.ten.vi === TEN_VI[p.id] && p.ten.ko === TEN_KO[p.id] && /^[A-Za-z][A-Za-z ()-]+$/.test(p.ten.en) && /^[a-z]+$/.test(p.hanLatin),
+       p.ten.vi === TEN_VI[p.id] && p.ten.ko === TEN_KO[p.id] && /^[A-Za-z][A-Za-z ()-]+$/.test(p.ten.en) && /^[A-Za-z ]+$/.test(p.hanLatin),
        JSON.stringify(p.ten) + ' ' + p.hanLatin);
   }
   const toanVi = theoNgon('vi').map(([, c]) => c).join('\n');
@@ -74,8 +75,8 @@ await nhom('1 · TÊN TIẾNG VIỆT, HÀN, ANH CỦA NĂM PHẦN THỊT', async
   ok('Đầu thăn ngoại luôn có chữ "đầu": câu hỏi đáp nói thẳng "thăn ngoại" không có chữ "đầu" là striploin',
      /striploin/.test(CHU_PHAN_BO.hoi[1].d.vi) && /striploin/.test(CHU_PHAN_BO.hoi[1].d.en) && /đầu/.test(CHU_PHAN_BO.hoi[1].d.ko));
   ok('Chimasal / yukhoe CHƯA có trong trang (chưa chốt tên tiếng Việt cho phần thịt này)',
-     !/chimasal|치마살|yukhoe|육회|flank/i.test(TAT_CA.map(([, c]) => c).join('\n')));
-  ok('Tên Hàn của năm phần chỉ xuất hiện như tên gọi khác / bản Hàn; trang tiếng Việt không dùng chúng làm tiêu đề',
+     !/chimasal|치마살|yukhoe|육회|flank steak/i.test(TAT_CA.map(([, c]) => c).join('\n')));
+  ok('Tên Hàn của bảy phần chỉ xuất hiện như tên gọi khác / bản Hàn; trang tiếng Việt không dùng chúng làm tiêu đề',
      PHAN_BO.every(p => p.ten.vi !== p.ten.ko && !/[가-힣]/.test(p.ten.vi)));
 });
 
@@ -161,7 +162,7 @@ await nhom('6 · ẢNH: CHỤP THẬT, KHÔNG NHÃN, CÓ NGUỒN', async () => {
          && !/của quán|tại Beeftown|at Beeftown|Beeftown의|ảnh chụp tại|taken at/i.test(Object.values(mt.alt ?? {}).join(' ')), JSON.stringify(mt));
   }
   const goi = doc(SRC, 'components', 'AnhPhanBo.astro');
-  ok('AnhPhanBo.astro gọi đúng năm id, khung 4:3, hình thay là khay',
+  ok('AnhPhanBo.astro gọi đúng bảy id, khung 4:3, hình thay là khay',
      JSON.stringify([...goi.matchAll(/<Anh id="([^"]+)" ngonNgu=\{ngonNgu\} khung="4x3" sizes=\{sizes\} thayBang="khay" \/>/g)].map(m => m[1]))
        === JSON.stringify(Object.values(ANH_CUA_PHAN)));
   const trang = doc(SRC, 'components', 'TrangPhanBo.astro');
@@ -198,6 +199,27 @@ await nhom('7 · TRANG: MỘT H1, NĂM PHẦN CÓ NEO, HỎI ĐÁP, LANG CỦA T
   const nuong = CHU_PHAN_BO.nuong.map(m => m.vi).join(' ');
   ok('Phần "nướng chung" chỉ có điều tài liệu đào tạo nêu: nói trước mức chín, nếm thử, chuyển ra rìa vỉ, lật thịt, nhờ nhân viên nướng giúp',
      CHU_PHAN_BO.nuong.length === 5 && /(mức|độ) chín/.test(nuong) && /nếm/.test(nuong) && /rìa vỉ/.test(nuong) && /nhân viên nướng giúp/.test(nuong));
+});
+
+await nhom('8 · BA GÓI MUA VỀ: LA GALBI, BA CHỈ BÒ, RIBEYE CÒN NẮP (23/11/2026)', async () => {
+  const trang = doc(SRC, 'components', 'TrangPhanBo.astro');
+  const id = ten => PHAN_BO.find(p => p.id === ten);
+  ok('Hai neo cố định cho trang Mua thịt về: #pb-la-galbi và #pb-ba-chi (section id = pb-<id>; tiêu đề pb-h-<id>; hình pb-vung-<id>) — KHÔNG đổi tên',
+     !!id('la-galbi') && !!id('ba-chi') && /id=\{`pb-\$\{p\.id\}`\}/.test(trang) && /id=\{`pb-h-\$\{p\.id\}`\}/.test(trang) && /id=\{`pb-vung-\$\{p\.id\}`\}/.test(trang));
+  ok('Ribeye còn nắp: ghi chú nằm TRONG phần đầu thăn ngoại (them), ba thứ tiếng, nhắc tên "Ribeye with Cap" và phần nắp',
+     NGON_NGU.every(nn => /Ribeye with Cap/i.test(id('dau-than-ngoai').them?.chu[nn] ?? '')) && id('dau-than-ngoai').coGoiMuaVe === true);
+  ok('LA Galbi: sườn bò cắt ngang xương (flanken), có xương, đã ướp sẵn, cấp đông — đúng mô tả của quán trên trang Mua thịt về',
+     /cắt ngang/.test(id('la-galbi').noi.vi) && /flanken/i.test(id('la-galbi').noi.vi) && /đã ướp sẵn và cấp đông/.test(id('la-galbi').an.vi) && /còn xương, đã ướp sẵn và cấp đông/.test(id('la-galbi').them.chu.vi));
+  ok('Ba chỉ bò: mỡ xen nạc, cấp đông, hợp nướng nhanh trên vỉ hoặc nhúng lẩu — đúng mô tả của quán; tên Anh và Hàn',
+     /mỡ xen nạc/.test(id('ba-chi').noi.vi) && /cấp đông/.test(id('ba-chi').an.vi) && /nướng nhanh trên vỉ hoặc nhúng lẩu/.test(id('ba-chi').an.vi) && /short plate/i.test(id('ba-chi').noi.vi) && id('ba-chi').ten.ko === '우삼겹');
+  ok('Link sang trang Mua thịt về chỉ khi trang đó đang mở (muaThitVeMo, cùng công tắc với mục menu) và chỉ ở phần có gói',
+     /import \{ muaThitVeMo \} from '\.\.\/lib\/dich-dat-hang'/.test(trang) && /p\.coGoiMuaVe && muaVeMo &&/.test(trang) && /duongDanTuongUng\('\/mua-thit-ve', ngonNgu\)/.test(trang)
+       && PHAN_BO.filter(p => p.coGoiMuaVe).map(p => p.id).join() === 'dau-than-ngoai,la-galbi,ba-chi');
+  ok('Bảng so sánh và hỏi đáp có đủ ba phần mới (hàng bảng ba thứ tiếng; câu hỏi LA galbi, ba chỉ bò, ribeye còn nắp)',
+     ['la-galbi', 'ba-chi'].every(k => NGON_NGU.every(nn => (CHU_PHAN_BO.bang[k]?.[nn] ?? '').length > 20))
+       && ['LA Galbi (sườn bò cắt ngang) là gì?', 'Ba chỉ bò là phần nào?', 'Đầu thăn ngoại còn nắp (Ribeye with Cap) là gì?'].every(h => CHU_PHAN_BO.hoi.some(q => q.h.vi.startsWith(h))));
+  ok('Ba chỉ bò nói thái mỏng / lát mỏng chỉ như điều thường gặp, không hứa độ dày; không nói xuất xứ hay cấp hạng (đã kiểm ở nhóm 2)',
+     !/\d\s?mm|\d\s?ly/i.test(JSON.stringify(id('ba-chi'))) && /thường được thái lát mỏng/.test(id('ba-chi').an.vi));
 });
 
 process.exit(ketThuc('TRANG CÁC PHẦN THỊT BÒ'));

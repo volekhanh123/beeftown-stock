@@ -536,7 +536,7 @@ function doKhiDungYen(conChay = []) {
   ].join('|') + ')-\\d+x\\d+-\\d+\\.(?:avif|webp)(?:$|[?#])');
   // Ảnh CHỤP THẬT của người khác (trang Các phần thịt bò, Khánh quyết 23/11/2026): KHÔNG nhãn "Ảnh minh họa" (nhãn chỉ dành
   // cho ảnh AI); vẫn đo alt, bóng đổ, tỷ lệ, lấp đúng khung, không phần tử nào đè lên ảnh. Chép tay như ANH_AI.
-  const ANH_THAT = new RegExp('/anh/(?:' + ['phan-bo-dau-than-ngoai', 'phan-bo-de-suon', 'phan-bo-diem-than', 'phan-bo-nac-vai', 'phan-bo-loi-vai'].join('|')
+  const ANH_THAT = new RegExp('/anh/(?:' + ['phan-bo-dau-than-ngoai', 'phan-bo-de-suon', 'phan-bo-diem-than', 'phan-bo-nac-vai', 'phan-bo-loi-vai', 'phan-bo-la-galbi', 'phan-bo-ba-chi'].join('|')
     + ')-\\d+x\\d+-\\d+\\.(?:avif|webp)(?:$|[?#])');
   const NHAN_ANH = { vi: 'Ảnh minh họa', en: 'Illustrative image', ko: '연출 이미지' };
   const cuonDau = scrollY;

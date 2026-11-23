@@ -387,10 +387,12 @@ Mọi file AVIF + WebP ≤ 300 KB, cả thư mục ≤ 8 MB (8.388.608 byte — 
 | `phan-bo-diem-than` | Diềm thăn bò | T.Tseng · **CC BY 2.0**, đã cắt khung và **chỉnh sửa bằng AI** | 4:3 (400 / 640) |
 | `phan-bo-nac-vai` | Nạc vai bò | BlackRiv · giấy phép cho dùng lại | 4:3 (400 / 640) |
 | `phan-bo-loi-vai` | Lõi vai bò | BlackRiv · giấy phép cho dùng lại | 4:3 (400 / 640) |
+| `phan-bo-la-galbi` | LA Galbi (gói Mua thịt về) | 홍대앞고깃집 · giấy phép cho dùng lại | 4:3 (400 / 640) |
+| `phan-bo-ba-chi` | Ba chỉ bò (gói Mua thịt về) | 홍대앞고깃집 · giấy phép cho dùng lại | 4:3 (400 / 629) |
 
-Nguồn từng ảnh, kiểm giấy phép, cách dựng lại: `cong-cu/anh/NGUON-ANH-PHAN-BO.md`. Hình con bò nhỏ ở dòng "Nằm ở đâu" là đồ họa SVG CC0 (krypt, openclipart 169325) đổi về bảng màu — `src/lib/so-do-con-bo.ts`; năm vùng tô đỏ là vị trí **tương đối**, không phải đường cắt của quán. Năm ảnh dùng khoảng 468 KB của `public/anh/`: đo lại 23/11/2026 là **7.746.918 byte, 300 file — còn trống 641.690 byte (≈ 0,61 MB)**, phần dành cho ảnh chụp thật tại quán nay nhỏ đi tương ứng. Chi tiết ảnh diềm thăn chỉnh bằng AI: NGUON-ANH-PHAN-BO.md.
+Nguồn từng ảnh, kiểm giấy phép, cách dựng lại: `cong-cu/anh/NGUON-ANH-PHAN-BO.md`. Hình con bò nhỏ ở dòng "Nằm ở đâu" là đồ họa SVG CC0 (krypt, openclipart 169325) đổi về bảng màu — `src/lib/so-do-con-bo.ts`; năm vùng tô đỏ là vị trí **tương đối**, không phải đường cắt của quán. Năm ảnh đợt đầu dùng khoảng 468 KB của `public/anh/` (7.746.918 byte), hai ảnh gói mua về (LA Galbi, ba chỉ bò) thêm khoảng 177 KB: đo lại 23/11/2026 là **7.923.813 byte, 308 file — còn trống 464.795 byte (≈ 0,44 MB)**, phần dành cho ảnh chụp thật tại quán nay nhỏ đi tương ứng. Chi tiết ảnh diềm thăn chỉnh bằng AI: NGUON-ANH-PHAN-BO.md.
 
-**Điểm cần người xem lại bằng mắt:** ảnh nạc vai bò và lõi vai bò là ảnh khối thịt trên nền be của nhà bán, không phải khay hay quầy; ảnh dẻ sườn bò là một đĩa dọn ở nhà hàng; ảnh diềm thăn bò là lát thịt vừa áp chảo trên vỉ nhà hàng khác. Có ảnh chụp thật tại Beeftown thì thay (đổi nguồn của id trong `danh-sach.json`, chạy `tao-co-anh.py`).
+**Điểm cần người xem lại bằng mắt:** ảnh nạc vai bò và lõi vai bò là ảnh khối thịt trên nền be của nhà bán, không phải khay hay quầy; ảnh dẻ sườn bò là một đĩa dọn ở nhà hàng; ảnh diềm thăn bò là lát thịt vừa áp chảo trên vỉ nhà hàng khác; ảnh LA Galbi và ảnh ba chỉ bò là hai ảnh của một nhà hàng Hàn (khay đen, có nấm, củ cải, rau kèm). **Ảnh LA Galbi không thấy rõ các mặt cắt xương tròn của kiểu flanken** (GPT nhận xét 23/11/2026), và ảnh ba chỉ bò nhìn không phân biệt được ba chỉ (short plate) với thịt ức — nên alt của hai ảnh chỉ tả thứ nhìn thấy, không gọi tên phần thịt; muốn khớp hơn thì thay bằng ảnh khay thật của quán. Có ảnh chụp thật tại Beeftown thì thay (đổi nguồn của id trong `danh-sach.json`, chạy `tao-co-anh.py`).
 
 ### Khung ảnh đồ họa — chờ ảnh chụp thật (`KhungAnh.astro`)
 

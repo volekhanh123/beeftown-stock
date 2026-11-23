@@ -3,9 +3,11 @@
  * TRANG CÁC PHẦN THỊT BÒ — /phan-thit-bo, /en/beef-cuts, /ko/beef-cuts
  *
  * Trang trụ cột cho người đang tìm tên các phần thịt ("đầu thăn ngoại", "dẻ sườn bò là phần
- * nào", "diềm thăn bò"): năm phần thịt bò nướng của Beeftown, mỗi phần có ảnh, chỗ nằm trên con
- * bò, cảm giác khi ăn, cách nướng trên vỉ gas tại bàn. Chữ và nguồn sự thật: lib/phan-bo.ts
- * (đọc chú thích đầu file đó — đặc biệt danh sách thứ KHÔNG được viết ra).
+ * nào", "diềm thăn bò"): năm phần thịt bò nướng của Beeftown cùng ba gói của trang Mua thịt về
+ * (LA Galbi, ba chỉ bò, ribeye còn nắp), mỗi phần có ảnh, chỗ nằm trên con bò, cảm giác khi ăn,
+ * cách nướng. Neo #pb-la-galbi và #pb-ba-chi được trang Mua thịt về trỏ tới — không đổi tên.
+ * Chữ và nguồn sự thật: lib/phan-bo.ts (đọc chú thích đầu file đó — đặc biệt danh sách thứ KHÔNG được
+ * viết ra).
  *
  * Ảnh là ảnh chụp thật của người khác, giấy phép cho dùng lại (web/cong-cu/anh/NGUON-ANH-PHAN-BO.md),
  * không phải ảnh quán: không nhãn "Ảnh minh họa" (Khánh quyết 23/11/2026; riêng ảnh diềm thăn bò đã chỉnh bằng AI, dòng nguồn
@@ -19,6 +21,7 @@
  */
 import { chu, duongDanTuongUng } from '../lib/chu';
 import { coKenhHoiBan } from '../lib/trang-cong-khai';
+import { muaThitVeMo } from '../lib/dich-dat-hang';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import { CHU_PHAN_BO as c, NGUON_ANH_DIEM_THAN, PHAN_BO, type PhanBo } from '../lib/phan-bo';
 import { CON_BO_THAN, VIEWBOX_CON_BO, VUNG_CON_BO } from '../lib/so-do-con-bo';
@@ -29,6 +32,8 @@ interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; }
 const { ngonNgu, noiDung: nd } = Astro.props;
 const t = chu(ngonNgu);
 const coKenh = coKenhHoiBan(nd);
+// Link tới gói trong trang Mua thịt về: chỉ khi trang đó đang mở (cùng công tắc với mục menu của đầu trang).
+const muaVeMo = muaThitVeMo(nd);
 
 // Tên khác của một phần thịt = tên ở hai thứ tiếng còn lại, mỗi tên đánh dấu đúng thứ tiếng của nó.
 // Tên Hàn kèm phiên âm Latin để tìm được bằng bàn phím Việt / Anh.
@@ -104,7 +109,7 @@ const SIZES_ANH = '(min-width: 900px) 42vw, (min-width: 600px) 560px, calc(100vw
   </div>
 </section>
 
-{/* Năm phần thịt: ảnh một bên, chữ một bên (so le trên màn rộng); nền xen trắng và xám nhạt. */}
+{/* Bảy phần thịt: ảnh một bên, chữ một bên (so le trên màn rộng); nền xen trắng và xám nhạt. */}
 {PHAN_BO.map((p, i) => (
   <section class:list={['muc', i % 2 === 0 ? 'be-kem' : 'be-kem-dam', 'pb-phan', { 'pb-chan': i % 2 === 1 }]} id={`pb-${p.id}`} aria-labelledby={`pb-h-${p.id}`}>
     <div class="khung pb-luoi">
@@ -139,7 +144,10 @@ const SIZES_ANH = '(min-width: 900px) 42vw, (min-width: 600px) 560px, calc(100vw
           {p.them && (
             <div>
               <dt>{p.them.nhan[ngonNgu]}</dt>
-              <dd>{p.them.chu[ngonNgu]}</dd>
+              <dd>
+                <p class="pb-them">{p.them.chu[ngonNgu]}</p>
+                {p.coGoiMuaVe && muaVeMo && <p class="pb-them"><a class="lien-ket" href={duongDanTuongUng('/mua-thit-ve', ngonNgu)}>{c.xemGoi[ngonNgu]}<BieuTuong ten="mui-ten" /></a></p>}
+              </dd>
             </div>
           )}
           <div>
@@ -223,7 +231,7 @@ const SIZES_ANH = '(min-width: 900px) 42vw, (min-width: 600px) 560px, calc(100vw
     border-bottom: 1px solid var(--vien);
   }
   .pb-bang tbody th, .pb-bang tbody td { padding: var(--k-4) var(--k-4) var(--k-4) 0; border-bottom: 1px solid var(--vien); vertical-align: top; text-align: left; }
-  .pb-bang tbody th { font-size: 18px; font-weight: 700; white-space: nowrap; }
+  .pb-bang tbody th { font-size: 18px; font-weight: 700; }
   .pb-bang tbody th a { display: inline-flex; align-items: center; min-height: var(--cham); color: inherit; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
   @media (hover: hover) { .pb-bang tbody th a:hover { color: var(--nhan); } }
   .pb-ghi-chu { margin: var(--k-5) 0 0; max-width: 70ch; color: var(--chu-phu); }
@@ -241,7 +249,8 @@ const SIZES_ANH = '(min-width: 900px) 42vw, (min-width: 600px) 560px, calc(100vw
       font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--nhan-nho);
     }
   }
-  @media (min-width: 720px) { .pb-bang tbody td:nth-child(2) { width: 42%; } }
+  /* Từ 720px: ba cột theo tỷ lệ — tên dài ("LA Galbi (sườn bò cắt ngang)") xuống dòng, không ép cột "Hợp với ai" còn ~90px. */
+  @media (min-width: 720px) { .pb-bang tbody th { width: 26%; padding-right: var(--k-5); } .pb-bang tbody td:nth-child(2) { width: 36%; } }
 
   /* Hai thứ nên nhìn trên khay. */
   .pb-doc { margin-top: var(--k-8); }
@@ -271,6 +280,8 @@ const SIZES_ANH = '(min-width: 900px) 42vw, (min-width: 600px) 560px, calc(100vw
   .pb-ds > div:last-child { border-bottom: 1px solid var(--vien); }
   .pb-ds dt { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--nhan-nho); margin-bottom: var(--k-2); }
   .pb-ds dd { margin: 0; max-width: 62ch; }
+  .pb-them { margin: 0; }
+  .pb-them + .pb-them { margin-top: var(--k-2); }
   /* Dòng "Nằm ở đâu": chữ và hình con bò nhỏ cạnh nhau từ 600px; điện thoại thì hình xuống dưới chữ. */
   .pb-ds dd.pb-noi { max-width: none; display: grid; gap: var(--k-4); grid-template-columns: 1fr; align-items: start; }
   .pb-noi p { margin: 0; max-width: 56ch; }

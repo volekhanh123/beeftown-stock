@@ -18,7 +18,7 @@
  *        qua cầu nối Codex cùng ngày), vẫn có nhãn "Ảnh minh họa", cho tới khi có ảnh chụp
  *        thật. Lối vào và thang máy vẫn là KhungAnh: ảnh AI vẽ một cánh cửa, một thang máy
  *        không giống thật thì khách đi tìm dễ lạc.
- *  · ẢNH THẬT (minhHoa: false) — ảnh chụp thật. Chưa có ảnh chụp tại Beeftown. Hiện có năm ảnh
+ *  · ẢNH THẬT (minhHoa: false) — ảnh chụp thật. Chưa có ảnh chụp tại Beeftown. Hiện có bảy ảnh
  *    chụp của người khác, giấy phép cho dùng lại, ở trang Các phần thịt bò (id phan-bo-…, web/cong-cu/anh/NGUON-ANH-PHAN-BO.md):
  *    không nhãn "Ảnh minh họa" (Khánh quyết 23/11/2026), alt không nói đây là ảnh của quán. NGOẠI LỆ CÓ CHỦ ĐÍCH: phan-bo-diem-than
  *    là ảnh thật đã chỉnh bằng AI (GPT), Khánh duyệt dùng không nhãn; dòng nguồn ảnh trên trang nói rõ "chỉnh sửa bằng AI".
@@ -54,7 +54,7 @@ export type IdAnh = 'hero-vi-gas' | 'bo-van-mo-can' | 'bo-cat-lat' | 'sot-cham' 
   | 'mon-com-kim-chi-bo' | 'mon-com-tron-han' | 'mon-com-tron-trung-ca'
   | 'mon-mi-lanh-cay' | 'mon-mi-toowoomba' | 'mon-mi-carbonara' | 'mon-mi-bo-sot-ca'
   | 'uong-milky-cloud-makgeolli' | 'uong-strawberry-crush' | 'uong-berry-rouge-highball' | 'uong-khong-con-ba-ly'
-  | 'phan-bo-dau-than-ngoai' | 'phan-bo-de-suon' | 'phan-bo-diem-than' | 'phan-bo-nac-vai' | 'phan-bo-loi-vai'
+  | 'phan-bo-dau-than-ngoai' | 'phan-bo-de-suon' | 'phan-bo-diem-than' | 'phan-bo-nac-vai' | 'phan-bo-loi-vai' | 'phan-bo-la-galbi' | 'phan-bo-ba-chi'
   | 'quay-chon-bo' | 'mua-thit-mat' | 'mua-thit-dong-lanh' | 'mua-kim-chi';
 
 export interface MoTaAnh {
@@ -428,6 +428,22 @@ export const DANH_MUC_ANH: Readonly<Record<IdAnh, MoTaAnh>> = {
       vi: 'Một miếng lõi vai bò nguyên miếng, mặt cắt phẳng, thớ thịt mịn xen vân mỡ mảnh, trên nền màu be.',
       en: 'A whole piece of top blade with a flat cut face, fine grain and thin marbling, on a beige background.',
       ko: '베이지색 배경 위에 놓인 통 부채살 한 덩어리로, 단면이 평평하고 결이 고우며 가는 마블링이 있어요.',
+    },
+  },
+  'phan-bo-la-galbi': {
+    minhHoa: false,
+    alt: {
+      vi: 'Những lát thịt bò đã ướp, rắc hành lá, xếp trên khay đen cạnh nấm hương, củ cải thái lát và cà rốt.',
+      en: 'Strips of marinated beef scattered with chopped spring onion on a black tray, beside a shiitake mushroom, sliced radish and carrot sticks.',
+      ko: '검은 접시 위에 다진 쪽파를 뿌린 양념한 소고기 몇 점이 놓여 있고, 옆에 표고버섯과 무 슬라이스, 당근이 있어요.',
+    },
+  },
+  'phan-bo-ba-chi': {
+    minhHoa: false,
+    alt: {
+      vi: 'Những lát thịt bò thái mỏng, mỡ trắng xen nạc đỏ, xếp chồng lên nhau trên khay đen.',
+      en: 'Thin slices of beef with white fat running between the red lean, laid in overlapping rows on a black tray.',
+      ko: '검은 접시에 겹쳐 놓은 얇게 썬 소고기로, 붉은 살코기 사이에 흰 지방이 층을 이루고 있어요.',
     },
   },
 };
