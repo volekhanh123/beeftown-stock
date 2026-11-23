@@ -256,7 +256,7 @@ await nhom('6 · BỐN MỤC ĐIỀU HƯỚNG (vi, en, ko)', async () => {
     ok(`[${nn}] Trải nghiệm / Thực đơn / Đến Beeftown / Hỏi bàn — đúng thứ tự, đúng đường dẫn thứ tiếng này`,
        dh.length === 4 && dh.every((m, i) => m.url === mong[i][0] && m.chu === mong[i][1]),
        JSON.stringify(dh.map(m => [m.url, m.chu])));
-    ok(`[${nn}] Mục cuối (nút đỏ) là "${t.datBan}"`, dh.at(-1)?.chu === { vi: 'Hỏi bàn', en: 'Ask for a table', ko: '테이블 문의' }[nn],
+    ok(`[${nn}] Mục cuối (nút đỏ) là "${t.datBan}"`, dh.at(-1)?.chu === { vi: 'Đặt bàn', en: 'Book a table', ko: '테이블 예약' }[nn],
        dh.at(-1)?.chu);
     ok(`[${nn}] Không mục nào chép tay đường dẫn của thứ tiếng khác`,
        dh.every(m => (nn === 'vi' ? !/^\/(en|ko)(\/|#|$)/.test(m.url) : m.url.startsWith(`/${nn}`))),

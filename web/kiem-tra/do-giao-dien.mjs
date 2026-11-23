@@ -19,7 +19,7 @@
 export const PHEP_DO = {
   vungCham: 'nút, link điều hướng, link chân trang, summary, ô nhập, ô chọn giờ cao ≥ 48px',
   dauTrang: 'đầu trang nền đen, cao 64px (dưới 1080px) / 80px (từ 1080px), rộng hết cửa sổ; điều hướng 15–16px; logo phụ trắng chu-beeftown-trang ≥ 148px (≥ 176px từ 1080px; dưới 360px: brandmark trắng dau-bo-trang ≥ 48px), đúng tỷ lệ',
-  ngonNgu: 'bộ chọn ngôn ngữ đủ 3 thứ tiếng, thứ tiếng đang xem đánh dấu bằng chữ đậm và nét gạch (không chỉ bằng màu)',
+  ngonNgu: 'bộ chọn ngôn ngữ: từ 768px một nút quả địa cầu ghi mã VI / EN / KO trên thanh; danh sách đủ 3 thứ tiếng, thứ tiếng đang xem đánh dấu bằng chữ đậm và nét gạch (không chỉ bằng màu)',
   nenTrongBang: 'mọi màu nền (kể cả dải màu background-image và phần tử giả ::before / ::after) thuộc bảng 22/10/2026 của trang công khai; html và body nền trắng; ô đánh dấu tự vẽ',
   nut: 'nút: bo 4px, đệm ngang 20px, đúng màu theo bề mặt; mỗi nhóm nút một nút chính',
   the: 'thẻ: nền trắng hoặc xám nhạt F4, đệm 20px (điện thoại) / 24px, viền mảnh, không bóng đổ; thẻ khác màu nền phía sau hoặc viền tương phản ≥ 1,35 : 1',
@@ -31,6 +31,7 @@ export const PHEP_DO = {
   nhanKhay: 'thẻ "Cách đọc nhãn khay": đặt thẳng, không bóng đổ, nền trắng hoặc F4, đủ 5 trường theo thứ tự, chỉ tên trường (không giá trị mẫu), đủ lớn để đọc; logo chính đỏ ≥ 160px đúng tỷ lệ',
   trangChu: 'trang chủ: đủ 8 khối theo thứ tự, dải đen và dải đỏ giữ nguyên, khối sáng trắng / F4; màn đầu có ảnh, không logo trong khối hình, câu chính đứng trước ảnh trên điện thoại, hai cột cân nhau trên máy tính, tagline "Pick it, grill it, love it!" là một dải đỏ gọn không đè lên ảnh; ba bước, cả bữa, đi nhóm đúng bố cục',
   thucDon: 'thực đơn: "Bò tại quầy" vẫn dải đen, có ảnh lát bò và thẻ đọc nhãn khay; "Món ăn" chưa có món thì có ảnh sốt chấm, đã có món thì từng nhóm kiểu cuốn menu (tên nhóm 28px tới cỡ h1, chữ hoa); thẻ món không tràn chữ, thẻ dẫn đầu từ 768px có ảnh bên phải chữ, dưới 600px món đứng sau món dẫn đầu là hàng gọn (ảnh 112–128px bên trái chữ, nhãn ảnh một dòng ở 20 % đáy khung), nhóm không có món dẫn đầu giữ thẻ to; "Đồ uống" có ảnh ba ly không cồn, chưa công bố đồ uống không cồn nào thì vẫn có tên các nhóm không cồn; không phần tử giá',
+  oForm: 'form: nhãn, ô nhập, ô chọn, nút không đè lên nhau',
   logoDungNen: 'logo bộ 21/10/2026 đúng bản cho nền (bản trắng trên đen / đỏ, bản đỏ / đen trên nền sáng), không đặt trên ảnh, không kéo giãn; lockup ≥ 160px, brandmark ≥ 48px; không còn hình của bộ cũ (lớp nen-van-mo, net, trang-tri, net-goc; nền hay mặt nạ trỏ /thuong-hieu/)',
 };
 
@@ -226,11 +227,25 @@ function doKhiDungYen(conChay = []) {
   }
 
   // --- 3. Bộ chọn ngôn ngữ ----------------------------------------------------------------------
+  // Trên thanh (từ 768px): MỘT nút quả địa cầu ghi mã thứ tiếng đang xem (VI / EN / KO), bấm thì thả xuống danh sách
+  // ba thứ tiếng (Khánh quyết 23/11/2026). Danh sách đo cả khi đang đóng — thứ tự, mục đang xem, link — vì nội dung
+  // của <details> đóng vẫn có kiểu tính được; trong bảng danh mục điện thoại là hàng ba thứ tiếng như trước.
   kq.ngonNgu = [];
-  const boChon = moi('.dt-ngon-ngu, .mg-ngon-ngu').filter(hien);
-  if (RONG >= 768 && !boChon.some(u => u.closest('.dt-phai') && !u.closest('.mg-bang'))) {
-    kq.ngonNgu.push('từ 768px bộ chọn ngôn ngữ phải hiện ngay trên thanh đầu trang');
+  const nutNgonNgu = moi('details.dt-ngon-ngu').filter(hien);
+  if (RONG >= 768) {
+    const tren = nutNgonNgu.filter(d => d.closest('.dt-phai') && !d.closest('.mg-bang'));
+    const nutNN = tren[0]?.querySelector(':scope > summary');
+    if (tren.length !== 1 || !nutNN || !hien(nutNN)) kq.ngonNgu.push('từ 768px nút ngôn ngữ phải hiện ngay trên thanh đầu trang');
+    else {
+      const ma = nutNN.querySelector('.dt-ma-nn');
+      if (!ma || !hien(ma) || ma.textContent.trim() !== NGON_NGU.toUpperCase()) {
+        kq.ngonNgu.push(`nút ngôn ngữ phải ghi mã thứ tiếng đang xem «${NGON_NGU.toUpperCase()}» — thấy «${ma?.textContent.trim() ?? ''}»`);
+      }
+      if (!nutNN.querySelector('svg[viewBox="0 0 24 24"]')) kq.ngonNgu.push('nút ngôn ngữ thiếu biểu tượng quả địa cầu');
+    }
   }
+  if (moi('ul.dt-ngon-ngu').length) kq.ngonNgu.push('thanh đầu trang còn in ba thứ tiếng liền nhau (ul.dt-ngon-ngu) — từ 23/11/2026 là một nút thả xuống');
+  const boChon = [...moi('.mg-ngon-ngu').filter(hien), ...nutNgonNgu.map(d => d.querySelector('.dt-nn-bang')).filter(Boolean)];
   for (const u of boChon) {
     const muc = [...u.querySelectorAll('.doi-ngon-ngu')];
     const ten = `${moTa(u)}:`;
@@ -951,6 +966,28 @@ function doKhiDungYen(conChay = []) {
   for (const el of moi('.nen-van-mo, .net, .trang-tri, .net-goc, .hoa-van-chu')) kq.logoDungNen.push(`${moTa(el).slice(0, 50)}: lớp trang trí của bộ hình cũ`);
   // Nền / mặt nạ trỏ /thuong-hieu/: gom ở vòng duyệt của mục 4 (nenTroThuongHieu).
   kq.logoDungNen.push(...nenTroThuongHieu);
+
+  // --- 16. Form: nhãn, ô, nút không đè lên nhau ------------------------------------------------------
+  // Lỗi thật 23/11/2026: ô "Ngày đến" và "Số người" của đặt bàn nhanh (màn đầu trang chủ) nằm chồng đúng một chỗ từ
+  // 600px — tên vùng lưới của bố cục điện thoại (grid-area: ngay / nguoi) lọt sang lưới hai cột không khai tên vùng,
+  // nên cả hai ô rơi vào cùng một cột ngầm; hai nhãn in đè thành "Sốngười Ngàyđến". Mọi phép đo khác đều đạt (ô vẫn cao
+  // 48px, nền trắng, viền đúng màu) — phải đo vị trí. Trong mỗi form: không hai phần tử nhìn thấy nào (nhãn, ô nhập, ô
+  // chọn, nút) đè lên nhau; phần tử nằm trong phần tử kia (nhãn bọc ô đánh dấu) thì không tính. Hộp mỏng dưới 2px (chữ
+  // chỉ cho trình đọc màn hình, ô thật nằm dưới hình tự vẽ) bỏ qua.
+  kq.oForm = [];
+  for (const form of moi('form').filter(hien)) {
+    const phan = [...form.querySelectorAll('label, input:not([type="hidden"]), select, textarea, button, a.nut')]
+      .filter(el => hien(el) && Math.min(el.getBoundingClientRect().width, el.getBoundingClientRect().height) >= 2);
+    for (let i = 0; i < phan.length; i++) {
+      for (let j = i + 1; j < phan.length; j++) {
+        const [a, b] = [phan[i], phan[j]];
+        if (a.contains(b) || b.contains(a)) continue;
+        if (giao(a.getBoundingClientRect(), b.getBoundingClientRect())) {
+          kq.oForm.push(`${moTa(form).slice(0, 30)}: ${moTa(a).slice(0, 50)} đè lên ${moTa(b).slice(0, 50)}`);
+        }
+      }
+    }
+  }
 
   if (conChay.length) {
     const ten = a => (typeof a === 'string' ? a

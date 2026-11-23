@@ -124,8 +124,8 @@ const VI = {
   gioiThieu:
     'Bò được cắt và đóng khay sẵn tại quầy, giá ghi trên nhãn từng khay. Nhân viên quầy ' +
     'gợi ý phần hợp gu, rồi cả bàn cùng nướng trên vỉ gas đặt tại bàn.',
-  // Màn đầu: thanh hỏi bàn nhanh (ngày, số người → trang Hỏi bàn) và chú thích hai ảnh Pick → Grill.
-  hoiBanNhanh: 'Hỏi bàn nhanh',
+  // Màn đầu: thanh đặt bàn nhanh (ngày, số người → trang Đặt bàn) và chú thích hai ảnh Pick → Grill.
+  hoiBanNhanh: 'Đặt bàn nhanh',
   ngayDen: 'Ngày đến',
   soNguoi: 'Số người',
   anhQuay: 'Chọn khay tại quầy',
@@ -170,9 +170,10 @@ const VI = {
   // Luật quảng cáo rượu bia: in kèm MỌI chỗ nhắc tới đồ uống có cồn.
   luatRuou: 'Beeftown không phục vụ đồ uống có cồn cho người dưới 18 tuổi.',
   khamPhaThucDon: 'Khám phá thực đơn',
-  // Nút và mục điều hướng tới trang /dat-ban. "Hỏi bàn" chứ không "Đặt bàn":
-  // gửi yêu cầu chưa phải là có bàn — nhà hàng kiểm tra rồi gọi xác nhận.
-  datBan: 'Hỏi bàn',
+  // Nút và mục điều hướng tới trang /dat-ban. "Đặt bàn" từ 23/11/2026 (Khánh quyết; trước đó "Hỏi bàn").
+  // Tên nút đổi, sự thật thì không: gửi yêu cầu chưa phải là có bàn — nhà hàng kiểm tra rồi gọi xác nhận,
+  // nên câu kết quả vẫn là "đã nhận yêu cầu", không bao giờ "đặt bàn thành công" (chuoi-cam.js).
+  datBan: 'Đặt bàn',
 
   // --- Điều hướng ------------------------------------------------------------
   dieuHuongChinh: 'Điều hướng chính',
@@ -218,21 +219,21 @@ const VI = {
     'Facebook là nhanh nhất.',
 
   // --- Đặt bàn --------------------------------------------------------------
-  datBanChuaMo: 'Beeftown chưa mở hỏi bàn trực tuyến',
+  datBanChuaMo: 'Beeftown chưa mở đặt bàn trực tuyến',
   // Không hứa thời gian trả lời — brief 06/10/2026 cấm. Phải còn chữ "Facebook":
-  // trinh-duyet.mjs kiểm trang hỏi bàn chỉ đường sang đó khi form đóng.
+  // trinh-duyet.mjs kiểm trang đặt bàn chỉ đường sang đó khi form đóng.
   datBanChuaMoGiaiThich:
-    'Muốn hỏi bàn, bạn nhắn cho Beeftown qua Facebook — nhà hàng sẽ kiểm tra và ' +
+    'Muốn đặt bàn, bạn nhắn cho Beeftown qua Facebook — nhà hàng sẽ kiểm tra và ' +
     'liên hệ lại với bạn.',
-  // Mô tả (meta description, og:description) của trang hỏi bàn — trang-cong-khai.ts moTaTrangHoiBan()
+  // Mô tả (meta description, og:description) của trang đặt bàn — trang-cong-khai.ts moTaTrangHoiBan()
   // chọn theo form có dựng được không. Form không dựng được thì KHÔNG hứa "gửi yêu cầu, nhà hàng gọi
   // lại" (kiểm site thật 07/10/2026): nói đúng điều thẻ "chưa mở" nói — nhắn qua Facebook.
   moTaHoiBan:
-    'Hỏi bàn tại Beeftown, nhà hàng chuyên bò ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM. ' +
+    'Đặt bàn tại Beeftown, nhà hàng chuyên bò ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM. ' +
     'Bạn gửi yêu cầu, nhà hàng kiểm tra rồi gọi lại để xác nhận.',
   moTaHoiBanChuaMo:
-    'Beeftown, nhà hàng chuyên bò ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM, chưa mở hỏi bàn trực tuyến. ' +
-    'Muốn hỏi bàn, bạn nhắn cho Beeftown qua Facebook.',
+    'Beeftown, nhà hàng chuyên bò ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM, chưa mở đặt bàn trực tuyến. ' +
+    'Muốn đặt bàn, bạn nhắn cho Beeftown qua Facebook.',
 
   // --- Mua thịt về ----------------------------------------------------------
   // Mô tả (meta description, og:description) của trang Mua thịt về — trang-cong-khai.ts moTaTrangMuaThit() chọn
@@ -284,7 +285,7 @@ const EN: Bo = {
   gioiThieu:
     'Our beef is cut and packed in trays at the counter, with the price on each tray\u2019s label. Our counter ' +
     'staff suggest cuts to suit your taste, then everyone grills together on the gas grill at your table.',
-  hoiBanNhanh: 'Quick table request',
+  hoiBanNhanh: 'Quick table booking',
   ngayDen: 'Date',
   soNguoi: 'Guests',
   anhQuay: 'Pick a tray at the counter',
@@ -321,7 +322,7 @@ const EN: Bo = {
   setSot: 'Sauce set for the grill (optional)',
   luatRuou: 'Beeftown does not serve alcohol to anyone under 18.',
   khamPhaThucDon: 'Explore the menu',
-  datBan: 'Ask for a table',
+  datBan: 'Book a table',
 
   dieuHuongChinh: 'Main navigation',
   traiNghiem: 'Experience',
@@ -358,13 +359,13 @@ const EN: Bo = {
 
   datBanChuaMo: 'Online table requests are not open yet',
   datBanChuaMoGiaiThich:
-    'To ask about a table, message Beeftown on Facebook — we will check and get back to you.',
+    'To book a table, message Beeftown on Facebook — we will check and get back to you.',
   moTaHoiBan:
-    'Ask for a table at Beeftown, a beef specialty restaurant on Floor 3, 63 Hồ Tùng Mậu, Ho Chi Minh City. ' +
+    'Book a table at Beeftown, a beef specialty restaurant on Floor 3, 63 Hồ Tùng Mậu, Ho Chi Minh City. ' +
     'Send a request and we will call you back to confirm.',
   moTaHoiBanChuaMo:
     'Beeftown, a beef specialty restaurant on Floor 3, 63 Hồ Tùng Mậu, Ho Chi Minh City, is not taking ' +
-    'table requests online yet. To ask about a table, message Beeftown on Facebook.',
+    'table requests online yet. To book a table, message Beeftown on Facebook.',
 
   moTaMuaThit:
     'Beef from the Beeftown counter in packs, delivered to you. Choose your packs and order here; ' +
@@ -399,7 +400,7 @@ const KO: Bo = {
   gioiThieu:
     '소고기는 정육 코너에서 손질해 트레이에 담아 두고, 각 트레이의 라벨에 가격을 표시해요. ' +
     '직원이 취향에 맞는 부위를 추천해 드려요. 고른 소고기는 테이블에 있는 가스 그릴에서 다 함께 직접 구워 드시면 돼요.',
-  hoiBanNhanh: '빠른 테이블 문의',
+  hoiBanNhanh: '빠른 테이블 예약',
   ngayDen: '방문 날짜',
   soNguoi: '인원',
   anhQuay: '카운터에서 트레이 고르기',
@@ -436,7 +437,7 @@ const KO: Bo = {
   setSot: '구이용 소스 세트 (선택)',
   luatRuou: 'Beeftown은 만 18세 미만에게 주류를 제공하지 않아요.',
   khamPhaThucDon: '메뉴 둘러보기',
-  datBan: '테이블 문의',
+  datBan: '테이블 예약',
 
   dieuHuongChinh: '주요 메뉴',
   traiNghiem: '이용 방법',
@@ -471,15 +472,15 @@ const KO: Bo = {
     '온라인 지원 창구는 아직 열리지 않았어요. Facebook으로 ' +
     'Beeftown에 직접 메시지를 보내 주시는 게 가장 빨라요.',
 
-  datBanChuaMo: 'Beeftown은 아직 온라인 테이블 문의를 받지 않아요',
+  datBanChuaMo: 'Beeftown은 아직 온라인 테이블 예약을 받지 않아요',
   datBanChuaMoGiaiThich:
-    '테이블 문의는 Facebook으로 Beeftown에 메시지를 보내 주세요. 확인한 뒤 연락드릴게요.',
+    '테이블 예약은 Facebook으로 Beeftown에 메시지를 보내 주세요. 확인한 뒤 연락드릴게요.',
   moTaHoiBan:
-    '호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점 Beeftown에 테이블 문의를 보내 주세요. ' +
+    '호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점 Beeftown에 테이블 예약 요청을 보내 주세요. ' +
     '매장에서 확인한 뒤 전화드려요.',
   moTaHoiBanChuaMo:
-    '호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점 Beeftown은 아직 온라인 테이블 문의를 받지 않아요. ' +
-    '테이블 문의는 Facebook으로 Beeftown에 메시지를 보내 주세요.',
+    '호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점 Beeftown은 아직 온라인 테이블 예약을 받지 않아요. ' +
+    '테이블 예약은 Facebook으로 Beeftown에 메시지를 보내 주세요.',
 
   moTaMuaThit:
     'Beeftown 매장의 소고기를 팩으로 배달해 드려요. 여기서 팩을 고르고 주문해 주시면 ' +

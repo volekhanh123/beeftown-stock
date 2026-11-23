@@ -87,7 +87,7 @@ const CAU = {
     ko: '지원서를 보내지 못했어요.',
   },
   datBanChuaSan: {
-    vi: 'Hỏi bàn trực tuyến chưa sẵn sàng. Vui lòng nhắn cho Beeftown qua Facebook.',
+    vi: 'Đặt bàn trực tuyến chưa sẵn sàng. Vui lòng nhắn cho Beeftown qua Facebook.',
     en: 'Online table requests are not open yet. Please message Beeftown on Facebook.',
     ko: '온라인 테이블 문의가 아직 준비되지 않았어요. Facebook으로 Beeftown에 메시지를 보내 주세요.',
   },

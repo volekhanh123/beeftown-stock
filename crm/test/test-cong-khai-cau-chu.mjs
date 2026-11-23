@@ -252,8 +252,8 @@ await nhom('6 · CÂU CHUNG CỦA web/src/lib/chu.ts (VI / EN / KO)', async () =
       const lan = cau.filter(([, s]) => CHU_VIET.test(boTenRieng(s)));
       ok(`chu.ts [${nn}]: không lẫn chữ Việt ngoài tên riêng`, lan.length === 0, lan.map(([k, s]) => `${k} «${s.slice(0, 40)}»`).join(' | '));
     }
-    ok(`chu.ts [${nn}]: nút tới /dat-ban là "${{ vi: 'Hỏi bàn', en: 'Ask for a table', ko: '테이블 문의' }[nn]}"`,
-       bo.datBan === { vi: 'Hỏi bàn', en: 'Ask for a table', ko: '테이블 문의' }[nn], bo.datBan);
+    ok(`chu.ts [${nn}]: nút tới /dat-ban là "${{ vi: 'Đặt bàn', en: 'Book a table', ko: '테이블 예약' }[nn]}"`,
+       bo.datBan === { vi: 'Đặt bàn', en: 'Book a table', ko: '테이블 예약' }[nn], bo.datBan);
     // Chữ của câu là Claude đề xuất, chờ Khánh duyệt; giữ đúng từng chữ để ba bản không lệch nhau.
     ok(`chu.ts [${nn}]: câu chỉ đường nói rõ lối vào riêng ngay cạnh GS25 và thang máy lên tầng 3, đúng từng chữ câu đang dùng`,
        bo.loiLen === {

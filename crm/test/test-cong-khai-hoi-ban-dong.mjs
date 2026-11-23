@@ -42,26 +42,27 @@ const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — TRANG HỎI BÀN KHI FORM �
 // Câu mô tả của ba trang trên main khi form mở — chép tay: lúc form mở, câu này phải còn nguyên.
 // (Địa chỉ theo main từ 11/10/2026: Tầng 3, 63 Hồ Tùng Mậu — PR #63–#67.)
 const MO_TA_KHI_MO = {
-  vi: 'Hỏi bàn tại Beeftown, nhà hàng chuyên bò ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM. Bạn gửi yêu cầu, nhà hàng kiểm tra rồi gọi lại để xác nhận.',
-  en: 'Ask for a table at Beeftown, a beef specialty restaurant on Floor 3, 63 Hồ Tùng Mậu, Ho Chi Minh City. Send a request and we will call you back to confirm.',
-  ko: '호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점 Beeftown에 테이블 문의를 보내 주세요. 매장에서 확인한 뒤 전화드려요.',
+  vi: 'Đặt bàn tại Beeftown, nhà hàng chuyên bò ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM. Bạn gửi yêu cầu, nhà hàng kiểm tra rồi gọi lại để xác nhận.',
+  en: 'Book a table at Beeftown, a beef specialty restaurant on Floor 3, 63 Hồ Tùng Mậu, Ho Chi Minh City. Send a request and we will call you back to confirm.',
+  ko: '호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점 Beeftown에 테이블 예약 요청을 보내 주세요. 매장에서 확인한 뒤 전화드려요.',
 };
 // Lời hứa của form: gửi yêu cầu trên trang, nhà hàng gọi lại.
 const HUA_FORM = {
   vi: /gọi lại|gửi yêu cầu/i,
   en: /call you back|(?<!cannot )send (?:a|your)(?: table)? request/i,
-  ko: /전화드려요|전화로 안내|문의를 보내 주세요/,
+  ko: /전화드려요|전화로 안내|문의를 보내 주세요|요청을 보내 주세요/,
 };
 const HUA_GOI_LAI = { vi: /gọi lại/i, en: /call you back/i, ko: /전화드려요|전화로 안내/ };
-// "Bạn chưa gửi được yêu cầu", "chưa mở hỏi bàn": đúng khi database đã từ chối, sai khi KHÔNG CHẮC đã
+// "Bạn chưa gửi được yêu cầu", "chưa mở đặt bàn" (trước 23/11/2026: "chưa mở hỏi bàn"): đúng khi database đã từ chối, sai khi KHÔNG CHẮC đã
 // ghi — chép tay, như web/kiem-tra/thu-day-du.mjs.
 const CHUA_GUI_DUOC = {
-  vi: /chưa gửi được|không gửi được|chưa mở hỏi bàn/i,
+  vi: /chưa gửi được|không gửi được|chưa mở (?:hỏi|đặt) bàn/i,
   en: /cannot send|could not (?:be )?sen[dt]|not open yet/i,
   ko: /보낼 수 없어요|보내지 못했어요|받지 않아요/,
 };
-// Mời hỏi bàn thêm một lần (qua bất kỳ kênh nào) — sau lượt gửi KHÔNG CHẮC thì không được.
-const MOI_HOI_BAN = { vi: /hỏi bàn/i, en: /ask (?:for|about) a table/i, ko: /테이블 문의|문의하는/ };
+// Mời đặt bàn thêm một lần (qua bất kỳ kênh nào) — sau lượt gửi KHÔNG CHẮC thì không được. Tên cũ ("Hỏi bàn", trước
+// 23/11/2026) vẫn bắt.
+const MOI_HOI_BAN = { vi: /hỏi bàn|đặt bàn/i, en: /ask (?:for|about) a table|book a table/i, ko: /테이블 문의|문의하는|테이블 예약|예약하는/ };
 
 const TRANG = [['dat-ban.astro', 'vi'], ['en/book.astro', 'en'], ['ko/book.astro', 'ko']];
 const docTrang = f => readFileSync(join(SRC, 'pages', f), 'utf8');

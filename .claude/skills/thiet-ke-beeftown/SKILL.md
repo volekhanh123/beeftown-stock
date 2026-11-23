@@ -227,7 +227,7 @@ Thang chữ trang công khai (khai trên `.ck`; theo plan redesign 11/10/2026):
 - Chuyển màu `--nhanh` 180ms. Di chuột: đổi màu, **không phóng to, không bóng đổ**. Không hiệu ứng
   khi cuộn. `prefers-reduced-motion` tắt mọi chuyển động (đã có trong `chung.css`).
 - Mốc màn hình: **600** (điện thoại → máy tính bảng) ·
-  **768** (đầu trang: ngôn ngữ và Hỏi bàn lên thanh) · **900** (hai cột) · **1024** · **1080** (đầu
+  **768** (đầu trang: nút ngôn ngữ và Đặt bàn lên thanh) · **900** (hai cột) · **1024** · **1080** (đầu
   trang đủ điều hướng). Kiểm ở 360 / 390 / 430 / 768 / 1024 / 1440px; không tràn ngang từ 320px (dưới
   360px đầu trang dùng brandmark trắng thay logo phụ, và màn đầu trang chủ đưa ảnh lên ngay sau câu
   chính: phần chữ ở cỡ đó dài hơn một màn hình, ảnh tải ngay không được nằm hẳn dưới màn hình đầu. Từ
@@ -250,12 +250,13 @@ khối: [tham-khao/trang-cong-khai.md](tham-khao/trang-cong-khai.md) (công khai
   đệm ngang 20px, bo 4px. **Mỗi nhóm nút (`.hang-nut`) chỉ một nút chính.** Đang gửi:
   `aria-busy="true"` → **tối đi chứ không mờ đi**. **Mọi `:hover` của trang công khai nằm trong
   `@media (hover: hover)`** (màn cảm ứng giữ `:hover` sau khi chạm); phản hồi lúc chạm là `:active`,
-  đặt ngoài khối đó. Nút / link tới `/dat-ban` luôn ghi **"Hỏi bàn" /
-  "Ask for a table" / "테이블 문의"** (`t.datBan`).
+  đặt ngoài khối đó. Nút / link tới `/dat-ban` luôn ghi **"Đặt bàn" /
+  "Book a table" / "테이블 예약"** (`t.datBan`; Khánh đổi từ "Hỏi bàn" ngày 23/11/2026 — câu kết quả vẫn là
+  "đã nhận yêu cầu", không bao giờ "đặt bàn thành công").
 - **Liên kết có mũi tên** `.lien-ket` + `<BieuTuong ten="mui-ten" />` — chữ gạch chân, không đóng hộp.
 - **Biểu tượng**: hai bộ SVG nét tự vẽ, không trộn. Trang công khai: `web/src/components/BieuTuong.astro`
   (nét 1,5px) — mui-ten, menu, dong, cong, tru, khay, nhan, vi-gas, thang-may, nhom, ghim, sao-chep,
-  da-chep, dien-thoai, tin-nhan, mon-song, co-con, cua, xe-giao, the-tra. Bộ này hiện ở cỡ 24px, nét không co theo cỡ;
+  da-chep, dien-thoai, tin-nhan, mon-song, co-con, cua, xe-giao, the-tra, dia-cau. Bộ này hiện ở cỡ 24px, nét không co theo cỡ;
   biểu tượng trong thứ bấm được luôn kèm nhãn chữ. Nội bộ và kho:
   `web/src/components/kho/BieuTuong.astro` (nét 2px, tên trong `web/src/lib/kho/bieu-tuong.ts`).
   Thiếu thì vẽ thêm vào đúng bộ, cùng lưới 24 và cùng nét — **không emoji, không thư viện biểu tượng**.

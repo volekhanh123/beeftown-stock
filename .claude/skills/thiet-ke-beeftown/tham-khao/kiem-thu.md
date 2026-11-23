@@ -25,7 +25,7 @@ Cần `npm ci` ở `web/` trước — bộ quét chữ dính đọc template b�
 |---|---|
 | `test-cong-khai-giao-dien.mjs` | Mọi dòng `CAP_DUONG_DAN` có đủ ba file trang, mọi trang công khai nằm trong bảng · khối `:root` đầu tiên của `chung.css` khai đúng **11 biến gốc** (`--do`, `--do-dam`, `--kem`, `--kem-sau`, `--than`, `--da`, `--muc-nhat`, `--vach`, `--vach-kem`, `--vien-o`, `--rong`) với giá trị của bảng 22/10/2026 (`BIEN_GOC`, chép tay), mỗi biến khai một lần — đó là bảng `/noi-bo` và kho đang đọc; hai biến vàng của bảng cũ không còn khai ở đâu (`BIEN_BO`) · `cong-khai.css` **chỉ** `Trang.astro` nạp; mọi bộ chọn bắt đầu bằng `.ck` hoặc `html:has(body.ck)`; chỉ `@media`, `@keyframes` (không `@import`, `@supports`, `@font-face`, `@layer`, `@container`) · **nhóm 3 — bộ logo 21/10/2026**: `web/public/thuong-hieu` đúng tập file (logo chính, logo phụ, brandmark, mỗi thứ ba bản đỏ / đen / trắng, `net-dau-bo.svg`, hai PNG), không file nào của bộ hình cũ; SVG có `viewBox`, không `<script>`, `on…=`, `<text>`, `<image>`, href ra ngoài; màu chỉ `#BD0000`, `#000000`, `#FFFFFF` (`BANG_MAU`) và mỗi bản đúng bộ màu của nó (bản trắng khoét đầu bò lộ nền) · tên file tài sản ASCII; ảnh đủ `.avif` + `.webp`, ≤ 300 KB mỗi file, ≤ 8 MB cả thư mục · tài sản được git thấy; ảnh chia sẻ đúng 1200 × 630 · **nhóm 6 — bảng 22/10/2026 ở trang công khai**: 12 biến của khối `.ck` đầu tiên trong `cong-khai.css` đúng từng mã (`BANG_MAU_CHOT`, chép tay), mỗi biến khai một lần; không file công khai nào (trang, component, `cong-khai.css`, SVG) còn mã hex hay bộ ba số RGB của bảng cũ, kể cả trong chú thích; `theme-color` là đen; tương phản của hệ bề mặt đạt ngưỡng · **nhóm 7 — thành phần và khung trang**: mã màu viết thẳng trong file công khai chỉ là mã 6 chữ số của bảng (`#FFFFFF` hợp lệ; `white`, `#fff`, mã trắng ngà, `color-mix` với trắng bị bắt; ngoại lệ duy nhất, ghi tên: `@media print`); ô nhập nền `var(--kem)` cao 48px; tương phản viền ô với nền ô và với thẻ form tính lại bằng công thức WCAG, khớp con số tài liệu ghi; `--co-than` 16px, h1 32 → 48px, `--rong-ck` 1200px, `--muc-dem`, `--cao-dau` 64 / 80px, `.nut` 48px đệm 20px; chân trang không `hoa-van-chu`, không tem tròn, logo `logo-ngang-trang.svg` đúng tỷ lệ 578 × 130; đầu trang, thẻ nhãn khay đúng bản logo; `BieuTuong` nét không co theo cỡ; bộ chọn ngôn ngữ nhận đủ ba thứ tiếng; nhãn nút đóng đủ ba thứ tiếng; **sau rà soát 11/10/2026**: mã hex 4 và 8 chữ số cũng phải thuộc bảng; `rgb()` / `rgba()` chỉ dùng bộ ba của bảng; không `hsl()`, `oklch()`, `color()`…, không tên màu CSS, màu hệ thống chỉ trong `forced-colors` (phép quét tự thử trên 23 cách viết màu ngoài bảng); nút, `summary`, ô nhập không khai chiều cao dưới 48px; mọi `:hover` nằm trong `@media (hover: hover)`, `:active` của nút nằm ngoài; không dùng `scrollbar-gutter` (khoá cuộn bù bề rộng thanh cuộn bằng `--rong-thanh-cuon` do script đo); lớp phủ và khoá cuộn của menu gọn gắn với `[data-co-script]`, script nghe click ngay trên `<details>`; có luật `:autofill`; không quy tắc nào đặt cỡ h1 riêng theo thứ tiếng |
 | `test-cong-khai-anh.mjs` | **Ảnh, nhãn "Ảnh minh họa", thẻ đọc nhãn khay, bốn quyết định của Khánh ngày 11/10/2026, ảnh món của cuốn menu bản sáng** — đọc mã nguồn: `DANH_MUC_ANH` đúng 37 id (bảy ảnh ChatGPT, 26 ảnh món, bốn ảnh tạm 10/11/2026), ảnh AI nào cũng `minhHoa: true`, alt đủ vi / en / ko, tả ảnh ChatGPT tạo 11/10/2026 (không còn chữ của bộ ảnh cũ, không chữ cấm, không nói là ảnh của quán, không kể tên món phụ, không than / lửa / khói, tiếng Hàn văn 해요체) · `danh-sach.json`: nguồn đúng sự thật (ảnh món: artifact "Beeftown — Menu" Version 45; ảnh AI qua cầu nối Codex rồi tách nền, hay menu chuẩn 29/09 chưa rõ chụp thật), không khung nào đòi bề rộng lớn hơn vùng cắt của ảnh gốc (ảnh tách nền: lớn hơn khung dựng quanh cả ảnh gốc), ảnh tách nền khai `tach_nen` với dải đáy ≥ 12 % · **khung nào component gọi thì đã dựng, khung nào đã dựng thì có component gọi** (không ảnh chết), không PNG gốc trong repo · nhãn tự gắn, đủ ba thứ tiếng, chữ ≥ 13px, đọc được cả trên vùng ảnh trắng tinh (≥ 4,5 : 1, tính từ CSS); không component nào tự viết `/anh/…`; chỉ ảnh màn đầu `uuTien` · hai dải đen còn `be-toi`, "Cả bữa" còn `be-kem-dam` (nền xám nhạt), "Rủ cả nhà" còn đỏ; câu chính đúng từng chữ ở ba thứ tiếng; trang chủ đủ bảy khối theo thứ tự; hai ảnh bữa ăn ở đúng khối; Đến Beeftown: lối vào, thang máy vẫn là `KhungAnh`, quầy là ảnh tạm `quay-chon-bo`; thẻ Mua thịt về chọn ảnh tạm theo loại (kim chi, đông lạnh, còn lại thịt mát); ảnh tạm chỉ ở đúng chỗ của nó · nhãn "Ảnh minh họa" chữ trắng trên đen 78 % · thẻ nhãn khay: logo chính đỏ `logo-ngang-do.svg` (578 × 130), năm trường theo thứ tự, tên trường chép tay ba thứ tiếng, không con số, không mã vạch giả, không `transform`, không `box-shadow`, không mã màu viết thẳng · **nhóm 7 — ảnh món**: `ANH_CUA_MON` ghép đúng 25 mã món của bảng danh mục với ảnh, khung đã dựng; cờ `tachNen`; khung `.tach-nen` trong suốt, nhãn của nó chỉ đổi chỗ; chỉ `ThucDonNhomAnh.astro` gọi `<Anh>` bằng biểu thức (`id={x.id} khung={x.khung}`), và chỉ trang Thực đơn dùng nó. **Thêm ảnh hay đổi khung thì sửa các danh sách chép tay ở đầu file** |
-| `test-cong-khai-cau-chu.mjs` | Đọc mọi `{ vi, en, ko }`, chữ trong template, `alt`, `title`, `aria-label`, `placeholder`… của trang công khai: câu có vi + en thì phải có ko · không chữ cấm, không chữ "chờ duyệt / đang cập nhật / TBD / coming soon" · trang hỏi bàn, ứng tuyển, tuyển dụng không "thành công / success / 성공" · en, ko không dấu tiếng Việt (trừ tên riêng) · `t.datBan` đúng "Hỏi bàn / Ask for a table / 테이블 문의"; câu chỉ đường `t.loiLen` đúng từng chữ ở ba thứ tiếng · **nhóm 7 — địa điểm**: chữ khách đọc không ghi địa chỉ nào khác, không phường hay quận, không lối lên nào khác thang máy, không gọi là "tòa nhà", không kể chuyện đổi địa điểm, không chỗ gửi xe, lối cho xe lăn, số đo đường đi; bảng câu thử `CAU_THU` giữ cho mẫu không bắt nhầm câu đúng |
+| `test-cong-khai-cau-chu.mjs` | Đọc mọi `{ vi, en, ko }`, chữ trong template, `alt`, `title`, `aria-label`, `placeholder`… của trang công khai: câu có vi + en thì phải có ko · không chữ cấm, không chữ "chờ duyệt / đang cập nhật / TBD / coming soon" · trang hỏi bàn, ứng tuyển, tuyển dụng không "thành công / success / 성공" · en, ko không dấu tiếng Việt (trừ tên riêng) · `t.datBan` đúng "Đặt bàn / Book a table / 테이블 예약" (Khánh đổi 23/11/2026); câu chỉ đường `t.loiLen` đúng từng chữ ở ba thứ tiếng · **nhóm 7 — địa điểm**: chữ khách đọc không ghi địa chỉ nào khác, không phường hay quận, không lối lên nào khác thang máy, không gọi là "tòa nhà", không kể chuyện đổi địa điểm, không chỗ gửi xe, lối cho xe lăn, số đo đường đi; bảng câu thử `CAU_THU` giữ cho mẫu không bắt nhầm câu đúng |
 | `test-cong-khai-dia-diem.mjs` | Quét **mã nguồn** của trang công khai theo đồ thị import (kể cả chú thích, tên lớp, tên biểu tượng): không tên đường hay phường của địa chỉ khác — trừ đúng một dòng địa chỉ pháp nhân (`PHAP_NHAN.diaChi`), dòng này và số điện thoại pháp nhân phải còn nguyên từng ký tự · không chữ về lối lên nào khác thang máy · ba câu chỉ đường có mặt ở trang Đến Beeftown · JSON-LD ghi `streetAddress` "Tầng 3, 63 Hồ Tùng Mậu", không tên phường · cách ghi địa điểm từng thứ tiếng; hình và biểu tượng lối lên là thang máy · không component hay layout nào gõ sẵn địa chỉ hoặc đọc thẳng `DIA_CHI_NHA_HANG` (bản công bố trong `/noi-bo` phải tới được mọi chỗ in địa chỉ) · bảng từ của máy dịch (`web/src/lib/may-dich.ts`) theo địa điểm hiện tại |
 | `test-cong-khai-dinh-chu.mjs` | Quét **mọi** `.astro` dưới `web/src` ngoài khu nội bộ: không hai mẩu chữ dính nhau vì xuống dòng |
 | `test-cong-khai-trang-chu.mjs` | Thứ bậc hai nút màn đầu theo trạng thái form và kênh; link chỉ http(s); địa chỉ cố định "Tầng 3, 63 Hồ Tùng Mậu, TP.HCM" và bản công bố thay vào khi có (`diaChi`, `diaChiSauTang`, `diaChiManDau`, JSON-LD — kể cả bản công bố gõ dở, số phòng "P.301"); điều hướng đúng bốn mục theo thứ tự Trải nghiệm / Thực đơn / Đến Beeftown / Hỏi bàn (năm mục khi trang Mua thịt về mở: `test-cong-khai-mua-thit-dieu-huong.mjs`) |
@@ -48,7 +48,7 @@ là điện thoại rộng nhất, nơi lề `--le` đã lớn hơn 20px):
 
 - HTTP 200, đúng `lang`, không lỗi JavaScript, **không tràn ngang**.
 - Đúng **một `h1`**; mọi `<img>` có `width`, `height`, `alt`; ảnh dưới màn đầu `loading="lazy"`.
-- **Thành phần và khung trang** — mười lăm phép đo của `web/kiem-tra/do-giao-dien.mjs`, chạy trong trang
+- **Thành phần và khung trang** — mười sáu phép đo của `web/kiem-tra/do-giao-dien.mjs`, chạy trong trang
   (dùng chung với `thu-day-du.mjs`), bảng màu chép tay trong file đó, không ngoại lệ nào. Phép đo chờ trang
   **đứng yên** rồi mới đo (`choDungYen`: không còn chuyển màu 180ms nào đang chạy — không đọc màu nửa chừng của
   nút đang đổi màu); phép thử tự đọc màu ngay sau cú bấm thì gọi `page.evaluate(choDungYen)` trước, không chờ
@@ -57,9 +57,11 @@ là điện thoại rộng nhất, nơi lề `--le` đã lớn hơn 20px):
     tab, ô nhập, ô chọn, ô chọn giờ, hàng ô đánh dấu cao **≥ 48px**.
   - `dauTrang`: cao 64px (dưới 1080px) / 80px, rộng hết cửa sổ (trang không chừa dải trống bên phải);
     nền đen; điều hướng 15–16px; logo phụ trắng `chu-beeftown-trang.svg` ≥ 148px (≥ 176px từ 1080px;
-    dưới 360px: brandmark trắng `dau-bo-trang.svg` ≥ 48px), không kéo giãn; từ 768px nút Hỏi bàn ở ngay trên thanh.
-  - `ngonNgu`: đủ vi, en, ko theo thứ tự; đúng một mục `aria-current="true"` trùng `lang` của trang, mục
-    đó đậm hơn và có nét gạch, các mục khác là link có `hreflang`; chữ ≥ 14px.
+    dưới 360px: brandmark trắng `dau-bo-trang.svg` ≥ 48px), không kéo giãn; từ 768px nút Đặt bàn ở ngay trên thanh.
+  - `ngonNgu`: từ 768px trên thanh có đúng **một nút ngôn ngữ** (`details.dt-ngon-ngu`): quả địa cầu và mã thứ
+    tiếng đang xem (VI / EN / KO); không còn `ul.dt-ngon-ngu` ba chữ liền nhau. Danh sách của nút đó (đo cả khi
+    đang đóng) và hàng ngôn ngữ trong bảng danh mục: đủ vi, en, ko theo thứ tự; đúng một mục `aria-current="true"`
+    trùng `lang` của trang, mục đó đậm hơn và có nét gạch, các mục khác là link có `hreflang`; chữ ≥ 14px.
   - `nenTrongBang`: màu nền của mọi phần tử thuộc bảng 22/10/2026, `html` và `body` nền trắng — đọc cả `background-color`, màu trong
     `background-image` (dải màu) và nền của phần tử giả `::before` / `::after`; ô đánh dấu còn hiện phải
     là ô tự vẽ. Không ngoại lệ: thẻ nhãn khay và nền chờ của khung ảnh cũng phải là màu của bảng.
@@ -68,6 +70,9 @@ là điện thoại rộng nhất, nơi lề `--le` đã lớn hơn 20px):
   - `the`: `.the`, `.hb-the`, `.lt3-gon` nền trắng hoặc `#F4F4F4`, đệm 20 / 24px, có viền, không bóng đổ;
     thẻ cùng màu với nền phía sau thì viền phải tương phản với nền đó ≥ 1,35 : 1.
   - `cauHoi`: mỗi `summary` cao ≥ 56px, rộng bằng khối, có biểu tượng.
+  - `oForm` (từ 23/11/2026): trong mỗi form, không nhãn, ô nhập, ô chọn, nút nào đè lên nhau (phần tử nằm trong
+    phần tử kia — nhãn bọc ô đánh dấu — không tính). Lỗi thật: ô "Ngày đến" và "Số người" của đặt bàn nhanh chồng
+    đúng lên nhau từ 600px vì tên vùng lưới của bố cục điện thoại lọt sang lưới hai cột.
   - `bieuTuong`: cỡ 24px (kể cả biểu tượng của nhãn món), nét 1,5–2px không co theo cỡ, đỏ trên nền
     sáng / trắng trên đỏ / trắng hoặc đỏ trên đen, nằm trong thứ bấm được thì có nhãn chữ.
   - `chu`: chỉ Montserrat; chữ chạy 16/24px; h1 32/38px (tới 390px) và 48/56px (từ 1366px), ở giữa
@@ -121,14 +126,19 @@ là điện thoại rộng nhất, nơi lề `--le` đã lớn hơn 20px):
 - Mẫu tìm chữ sai về địa điểm dùng chung cho cả ba nơi (hai kiểm thử ở `crm/test/` và trình duyệt):
   `web/kiem-tra/mau-dia-diem.mjs`, kèm bảng câu thử. Mẫu bắt nhầm một câu đúng thì sửa mẫu và thêm câu
   đó vào bảng câu thử — không gỡ luật.
-- Không database: trang hỏi bàn, tuyển dụng **không có `<form>`**.
+- Không database: trang đặt bàn, tuyển dụng **không có `<form>`**.
 - Menu gọn ở 320, 360 và 768px: không JavaScript vẫn mở / đóng được; đang mở thì nút ghi "Đóng" / "Close" /
-  "닫기", dưới 768px trong bảng có Hỏi bàn là nút chính và bộ chọn ba thứ tiếng (từ 768px hai thứ đó ở trên
+  "닫기", dưới 768px trong bảng có Đặt bàn là nút chính và bộ chọn ba thứ tiếng (từ 768px hai thứ đó ở trên
   thanh, bảng không lặp lại); có JavaScript thì Esc đóng và trả focus, Enter mở / đóng, Tab đi qua từng
   mục với vòng focus ≥ 2px, Tab ra khỏi mục cuối thì đóng. Có JavaScript: đang mở thì có lớp phủ tối
   (con trỏ bàn tay) và lăn chuột không cuộn được trang; đóng bằng Esc, bằng nút đóng, bằng cách bấm vào
   lớp phủ thì trang cuộn lại được. Tắt JavaScript: không lớp phủ, không khoá cuộn, bấm link neo trong
   bảng xong trang vẫn cuộn được.
+- **Nút ngôn ngữ** (nhóm 13) ở 768 và 1440px, có và tắt JavaScript: một nút quả địa cầu ghi mã VI / EN / KO, lúc
+  đầu đóng; bấm thì thả xuống ba thứ tiếng đúng thứ tự, thứ tiếng đang xem không phải link, hai thứ tiếng kia dẫn
+  tới đúng trang tương ứng; danh sách nằm trọn trong màn hình, ngay dưới thanh; mở danh sách thì danh mục đóng và
+  ngược lại (cùng `name="dau-trang"`, chạy cả khi tắt JavaScript). Có JavaScript: Esc đóng và trả focus, bấm ra
+  ngoài thì đóng, Tab ra khỏi link cuối thì đóng.
 - Câu hỏi thường gặp ở 390 và 1440px: Enter mở, phím cách đóng, Tab sang câu kế có vòng focus, bấm ở
   mép phải của hàng cũng mở.
 - **Màn cảm ứng** (nhóm 7; Playwright `hasTouch` → `(hover: none)`): con trỏ ở trên nút, link, hàng câu
@@ -139,7 +149,7 @@ là điện thoại rộng nhất, nơi lề `--le` đã lớn hơn 20px):
   phần bù bằng đúng bề rộng thanh cuộn; đóng lại thì hết phần bù; khung nội dung cân giữa.
 - **Trang không có (404)** (nhóm 9) ở 360 và 1366px, đường dẫn lạ dưới `/`, `/en/`, `/ko/`: mã 404,
   `lang` theo tiền tố, link về ba trang chủ, chân trang công khai, `noindex`, không canonical / hreflang /
-  JSON-LD — và **đủ mười lăm phép đo** của `do-giao-dien.mjs` như mọi trang công khai (`pages/404.astro`
+  JSON-LD — và **đủ mười sáu phép đo** của `do-giao-dien.mjs` như mọi trang công khai (`pages/404.astro`
   dùng `Trang.astro`, `.mo-dau-trang`, `.hang-nut`, `.nut`; không có ảnh). Sửa thành phần chung thì trang
   404 đổi theo.
 - **Ảnh về chậm** (nhóm 10) ở 390, 768, 1440px trên `/`, `/ko`, `/thuc-don`: giữ mọi file `/anh/` lại,
@@ -152,12 +162,12 @@ là điện thoại rộng nhất, nơi lề `--le` đã lớn hơn 20px):
   `uong-khong-con-ba-ly` của tab "Đồ uống").
   Nhóm này bấm từng tab (Món ăn → Đồ uống → Bò tại quầy), chờ ảnh lazy của phần vừa mở tải xong rồi gọi
   lại `doGiaoDien`: đúng phần đó hiện, đúng ảnh của nó (bảng `ANH_CUA_PHAN` chép tay), phép đo `anh` và
-  mười bốn phép đo còn lại đều đạt; rồi **giấu nhãn "Ảnh minh họa" của ảnh trong phần vừa mở — phép đo
+  mười lăm phép đo còn lại đều đạt; rồi **giấu nhãn "Ảnh minh họa" của ảnh trong phần vừa mở — phép đo
   `anh` phải đỏ** (chứng minh phép đo có nhìn thấy ảnh của tab đó). Thêm ảnh vào một tab: sửa `ANH_CUA_PHAN`.
 
 `thu-day-du.mjs` chạy với Supabase giả: bấm đúp chỉ gửi **một** yêu cầu; nút đang gửi có
 `aria-busy="true"` và "Đang gửi…"; khung kết quả nhận focus; lỗi 500 giữ lại dữ liệu đã gõ; không bao
-giờ "thành công"; mọi trang × ba kịch bản ở 360 và 1440px không tràn ngang và qua đủ mười lăm phép đo
+giờ "thành công"; mọi trang × ba kịch bản ở 360 và 1440px không tràn ngang và qua đủ mười sáu phép đo
 của `do-giao-dien.mjs` (kịch bản `day-du` có món mang nhãn Món sống / Có cồn — biểu tượng nhãn món 24px
 được đo ở đó). **Nhóm 8 — thành phần của form** (390 và 1440px): form hỏi bàn và form nộp hồ sơ
 (kịch bản `tuyen-dung-mo` của `gia-supabase.mjs` trả hai tin mẫu) — ô một dòng (kể cả ô ngày) cao
@@ -173,14 +183,14 @@ gọn và JSON-LD của cả ba thứ tiếng — không chỗ nào còn in bả
 thái của khóa `ngay_khai_truong` — chưa có ngày (`day-du`), sắp mở (`sap-mo`: ngày 13/11 kế tiếp, "Đón
 bạn từ …"), đã mở (`da-mo`: 01/10/2026, "Mở cửa từ …"); hai kịch bản sau kèm `dong_trang_thai` dài hai
 câu. Mỗi trạng thái: dòng ngày đúng chữ, câu chỉ đường nguyên văn và dính ngay dưới dòng địa chỉ, ngày
-trên một dòng, không ô nào của hàng thông tin tràn khung, không cuộn ngang, đủ mười lăm phép đo. CI
+trên một dòng, không ô nào của hàng thông tin tràn khung, không cuộn ngang, đủ mười sáu phép đo. CI
 không có database nên `trinh-duyet.mjs` chỉ thấy trạng thái chưa có ngày — sửa hàng thông tin của màn
 đầu thì chạy `npm run thu-day-du -- --chi 9`. **Nhóm 11 — trang Thực đơn theo cuốn menu bản sáng**: kịch bản
 `day-du` trả đúng danh mục 11/10/2026 đã công bố (`MON_MAU`: 22 món ăn kể cả S01, ba ly signature, chữ
 nguyên văn, giá null); bấm từng tab ở 320 / 360 / 390 / 430 / 768 / 1024 / 1440px (en, ko ở 390 và 1440):
 mọi món hiện đúng tên ở đúng phần, món có ảnh (`ANH_CUA_MON`) thì ảnh đúng, alt đúng thứ tiếng, nhãn đang
 hiện; món sống có nhãn và câu cảnh báo; câu dưới tên nhóm đúng `CAU_NHOM`; không phần tử giá, không số tiền;
-không cuộn ngang; đủ mười lăm phép đo trên từng tab. `khong-con-tat`: ba ly signature, nhãn Có cồn, dòng luật
+không cuộn ngang; đủ mười sáu phép đo trên từng tab. `khong-con-tat`: ba ly signature, nhãn Có cồn, dòng luật
 rượu không hiện. `thuc-don-thu-suc` (`MON_THU_SUC`): món không ảnh, tên và mô tả rất dài, nhóm mã lạ chưa có
 câu, nhóm đồ uống dạng danh sách. `day-du` chỉ có ba ly signature (có cồn) ở Đồ uống: tên ba nhóm không cồn
 phải đứng đầu cột thực đơn, cạnh ảnh ba ly không cồn; có món không cồn thì không. Sửa thẻ món thì chạy
