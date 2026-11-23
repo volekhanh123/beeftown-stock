@@ -183,7 +183,7 @@ các ngưỡng này ở trang công khai; `test-noi-bo-bang-mau.mjs` tính các 
 
 ## Chữ
 
-- **Một họ phông: Montserrat** (Google Fonts, OFL). Website đang chạy dùng bốn độ đậm: **400** chữ
+- **Một họ phông: Montserrat** (OFL; website tự phát từ 23/11/2026, bản biến thiên ở web/public/phong/ — chỉ /ko còn tải Noto Sans KR từ Google Fonts). Website đang chạy dùng bốn độ đậm: **400** chữ
   chạy · **600** điều hướng, nhãn ô, chú thích · **700** tiêu đề, nút, tên món · **800** tên thương
   hiệu, số lớn và tên nhóm món của trang Thực đơn (chữ hoa). Guideline 21/10/2026 chỉ ghi **phông của
   logo**: Figtree ExtraBold / SemiBold — chỉ nằm trong logo, vì Figtree thiếu chữ có dấu tiếng Việt.

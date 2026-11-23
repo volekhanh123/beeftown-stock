@@ -4,7 +4,10 @@
  *
  * Câu chính (h1): "Không cần rành bò. Chọn theo gu, thấy giá trước." — câu chính cho khách của
  * THUONG-HIEU.md, Khánh đưa lên màn đầu ngày 12/11/2026 (thay câu của brief 06/10/2026, câu đó chuyển
- * xuống đoạn dẫn). Hai câu, mỗi câu một dòng; câu sau màu nhấn của bề mặt. Descriptor đứng trên.
+ * xuống đoạn dẫn). Hai câu, mỗi câu một dòng; câu sau màu nhấn của bề mặt. Dòng hiệu đứng trên: chữ tiếng
+ * Việt "Nhà hàng bò nướng tại bàn" (dongHieu của lib/chu.ts; en, ko dịch từ đó) — từ 23/11/2026, thay descriptor
+ * "Beef Specialty Restaurant" ghi nguyên tiếng Anh trên cả trang tiếng Việt (descriptor vẫn ở dòng bản quyền
+ * ở chân trang).
  *
  * Hình: hai ảnh minh họa kể đúng thứ tự Pick → Grill — quầy khay (quay-chon-bo, ảnh tạm Khánh cho dùng
  * ở đây từ 12/11/2026, tới khi có ảnh quầy chụp thật) rồi vỉ gas (hero-vi-gas, ảnh ưu tiên tải ngay).
@@ -32,13 +35,16 @@
  * dựng cả ba trạng thái (kịch bản sap-mo, da-mo của gia-supabase.mjs).
  *
  * Thứ bậc nút theo mức sẵn sàng mở cửa: lib/trang-cong-khai.ts → nutMoDau().
- * Dòng trạng thái và ngày mở giữ đúng logic cũ: dong_trang_thai, ngay_khai_truong.
+ * Dòng trạng thái: dong_trang_thai nếu đã công bố; chưa công bố thì câu dự phòng "đang chuẩn bị đón bạn" — CHỈ
+ * khi ngày khai trương chưa tới hoặc chưa có ngày. Qua ngày khai trương mà /noi-bo chưa đổi dòng trạng thái thì
+ * không in câu "đang chuẩn bị" cũ (dongTrangThai của lib/trang-cong-khai.ts, ngày theo giờ Việt Nam): dòng
+ * "Mở cửa từ …" đã nói đủ.
  */
 import { THUONG_HIEU, chu, duongDanTuongUng } from '../lib/chu';
-import { dinhDangNgay, homNayVn } from '../lib/noi-dung';
+import { dinhDangNgay } from '../lib/noi-dung';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import {
-  SO_KHACH_HOI_NHANH, SO_KHACH_MAC_DINH, cumDiaChi, diaChiManDau, formHoiBanMo, lienHe, ngayHoiNhanh, nhanSoKhach, nutMoDau,
+  SO_KHACH_HOI_NHANH, SO_KHACH_MAC_DINH, cumDiaChi, diaChiManDau, dongTrangThai, formHoiBanMo, lienHe, ngayHoiNhanh, nhanSoKhach, nutMoDau, tinhTrangKhaiTruong,
 } from '../lib/trang-cong-khai';
 import Anh from './Anh.astro';
 import BieuTuong from './BieuTuong.astro';
@@ -53,8 +59,11 @@ const ngayChon = hoiNhanh ? ngayHoiNhanh(ngonNgu) : [];
 // Câu chính hai câu, mỗi câu một khối: tách sau dấu chấm (cả "요." tiếng Hàn). Chữ giữ nguyên — test đọc nguyên câu.
 const cauChinh = t.cauChinh.split(/(?<=[.!?])\s+/u);
 const lh = lienHe(nd);
-const ngayMo = nd.ngay_khai_truong;
-const daMo = !!(ngayMo && ngayMo <= homNayVn());
+// Một nguồn cho cả dòng ngày và dòng trạng thái (lib/trang-cong-khai.ts): ngày không có thật coi như chưa công bố.
+const giaiDoanMo = tinhTrangKhaiTruong(nd);
+const ngayMo = giaiDoanMo === 'chua_co' ? null : nd.ngay_khai_truong;
+const daMo = giaiDoanMo === 'da_mo';
+const trangThai = dongTrangThai(nd, ngonNgu);
 // Ba vế của tagline, mỗi vế một khối: dải hẹp thì xuống dòng giữa hai vế, không cắt đôi "grill / it,".
 // Tách sau dấu phẩy, chấm hay chấm than: "Pick it," "grill it," "love it!" — dấu câu đổi lần nữa vẫn đúng.
 const veKhauHieu = THUONG_HIEU.khauHieu.split(/(?<=[,.!])\s+/);
@@ -68,7 +77,7 @@ const cumDc = cumDiaChi(diaChiManDau(nd));
 <section class="kmd be-kem" aria-labelledby="kmd-tieu-de">
   <div class="khung kmd-luoi">
     <div class="kmd-dau">
-      <p class="hieu"><span lang="en">{THUONG_HIEU.descriptor}</span></p>
+      <p class="hieu">{t.dongHieu}</p>
       <h1 id="kmd-tieu-de">{cauChinh.map((cau, i) => <>{i > 0 && ' '}<span class:list={['kmd-cau', { 'kmd-cau-nhan': i > 0 }]}>{cau}</span></>)}</h1>
     </div>
     <p class="dan kmd-dan">{t.gioiThieu}</p>
@@ -131,7 +140,7 @@ const cumDc = cumDiaChi(diaChiManDau(nd));
       {ngayMo && (
         <li class="kmd-ngay">{daMo ? t.moCuaTu : t.donBanTu} <strong>{dinhDangNgay(ngayMo, ngonNgu)}</strong></li>
       )}
-      <li class="trang-thai kmd-trang-thai"><p>{nd.dong_trang_thai ?? t.trangThaiMacDinh}</p></li>
+      {trangThai && <li class="trang-thai kmd-trang-thai"><p>{trangThai}</p></li>}
       {lh.facebook && (
         <li class="kmd-theo-doi"><a class="lien-ket" href={lh.facebook} rel="noopener">{t.theoDoi}<BieuTuong ten="mui-ten" /></a></li>
       )}

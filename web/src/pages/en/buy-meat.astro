@@ -15,7 +15,7 @@ const [noiDung, menu, vnpay, theoGu] = await Promise.all([docNoiDung('en'), docM
 const trangThai = trangThaiMuaThit(muaThitVeMo(noiDung), menu);
 const ketQua = ketQuaDatHang(Astro, 'en');
 ---
-<Trang ngonNgu="en" noiDung={noiDung} duongDan="/en/buy-meat" tieuDe="Beef to take home — Beeftown"
+<Trang ngonNgu="en" noiDung={noiDung} duongDan="/en/buy-meat" tieuDe="Buy Beef to Take Home — Packs from the Beeftown Counter"
        moTa={moTaTrangMuaThit('en', trangThai === 'mo' || trangThai === 'het_quay')}>
   <TrangMuaThitVe ngonNgu="en" noiDung={noiDung} menu={menu} trangThai={trangThai} ketQua={ketQua}
                   thamSo={[...Astro.url.searchParams]} duongDan="/en/buy-meat"

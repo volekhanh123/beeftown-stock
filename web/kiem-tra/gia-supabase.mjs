@@ -60,6 +60,8 @@
  *                 kế tiếp) và dong_trang_thai dài hai câu: màn đầu trang chủ hiện dòng "Đón bạn từ …"
  *   da-mo         như day-du, thêm ngay_khai_truong là một ngày ĐÃ qua (NGAY_DA_MO_THU) và
  *                 dong_trang_thai dài hai câu: màn đầu trang chủ hiện dòng "Mở cửa từ …"
+ *   da-mo-chua-doi-cau  như day-du, thêm ngay_khai_truong ĐÃ qua nhưng KHÔNG công bố dong_trang_thai: chủ quên đổi câu
+ *                 sau ngày khai trương (23/11/2026) — màn đầu hiện "Mở cửa từ …" và KHÔNG còn câu "đang chuẩn bị"
  *
  *   Trang Mua thịt về (0101, đặt thẳng trên website từ 0113). hien_mua_thit_ve dưới đây là giá trị DATABASE TRẢ —
  *   công tắc hiệu lực mà noi_dung_cong_khai() đã tính (bật + có gói trên menu web; từ 0113 không còn đòi link Zalo).
@@ -143,7 +145,7 @@ import { homNayVn } from '../src/lib/gio-vn.ts';
 
 export const CONG_MAC_DINH = 54331;
 export const KICH_BAN = ['rong', 'day-du', 'dat-ban-dong', 'dat-ban-loi', 'dat-ban-500', 'dat-ban-dut', 'dat-ban-sap', 'dia-chi-cong-bo',
-  'tuyen-dung-mo', 'tuyen-dung-dut', 'tuyen-dung-loi', 'sap-mo', 'da-mo', 'khong-con-tat', 'thuc-don-thu-suc',
+  'tuyen-dung-mo', 'tuyen-dung-dut', 'tuyen-dung-loi', 'sap-mo', 'da-mo', 'da-mo-chua-doi-cau', 'khong-con-tat', 'thuc-don-thu-suc',
   'mua-thit-mo', 'mua-thit-giao', 'mua-thit-het-quay', 'mua-thit-rong', 'mua-thit-khong-zalo',
   'mua-thit-lech', 'mua-thit-loi', 'mua-thit-dut', 'mua-thit-treo', 'mua-thit-dat-loi', 'mua-thit-dat-dut', 'mua-thit-trang'];
 
@@ -273,6 +275,7 @@ export function noiDung(kichBan, nn = 'vi') {
     ...(kichBan === 'dia-chi-cong-bo' ? { dia_chi_hien_thi: DIA_CHI_CONG_BO_THU } : {}),
     ...(kichBan === 'sap-mo' ? { ngay_khai_truong: ngaySapMoThu(), dong_trang_thai: TRANG_THAI_THU['sap-mo'] } : {}),
     ...(kichBan === 'da-mo' ? { ngay_khai_truong: NGAY_DA_MO_THU, dong_trang_thai: TRANG_THAI_THU['da-mo'] } : {}),
+    ...(kichBan === 'da-mo-chua-doi-cau' ? { ngay_khai_truong: NGAY_DA_MO_THU } : {}),
     ...noiDungMuaThit(kichBan, n),
   };
 }

@@ -18,7 +18,7 @@
  *   · "rẻ", lợi thế giá, "best beef in town", "số một", "duy nhất"
  *   · Wagyu, MB9, số ngày ủ, nguồn gốc hay grade thịt
  *   · phòng riêng, chỗ gửi xe, lối cho xe lăn — chưa xác nhận
- *   · tên phường của nhà hàng — chưa có giấy xác nhận (xem DIA_CHI_PHAN)
+ *   · tên phường của nhà hàng — chưa có giấy xác nhận (xem DIA_CHI_PHAN); "Quận 1 cũ" thì được ghi
  *   · kinh nghiệm 25 năm của John và Sang gán cho Khánh
  *   · than hoa, than củi — nhà hàng nướng bằng vỉ gas đặt trên bàn
  */
@@ -70,6 +70,13 @@ export const PHAP_NHAN = {
  * khóa tang3 / loiLen bên dưới. Trong câu văn tiếng Anh ghi "Floor 3, 63 Hồ Tùng
  * Mậu", tiếng Hàn ghi "Hồ Tùng Mậu 63, 3층".
  *
+ * QUẬN 1 CŨ — ĐƯỢC GHI (Khánh quyết 23/11/2026). 63 Hồ Tùng Mậu thuộc Quận 1 trước đợt sáp
+ * nhập tháng 7/2025; khách vẫn tìm quán bằng "Quận 1", nên khu vực viết là "Quận 1 cũ" (vi),
+ * "former District 1" (en), "구 1군" (ko) — đúng ba cách đó, không cách nào khác: luật PHUONG_QUAN
+ * của web/kiem-tra/mau-dia-diem.mjs chỉ cho ba cụm này qua, "Quận 1" trơ trọi vẫn bị bắt. Khu vực nằm
+ * trong DIA_CHI_NHA_HANG (mọi chỗ in địa chỉ), diaChiNgan và các thẻ mô tả; JSON-LD giữ streetAddress
+ * là "Tầng 3, 63 Hồ Tùng Mậu" vì schema.org không có trường quận (addressLocality là chỗ của phường).
+ *
  * KHÔNG CÓ TÊN PHƯỜNG: phường của 63 Hồ Tùng Mậu chưa có giấy xác nhận, nên không
  * ghi ở đâu cả — trang, thẻ mô tả, JSON-LD. Địa chỉ này KHÔNG liên quan tới
  * PHAP_NHAN.diaChi ở trên. Khi có giấy, sửa CÙNG LÚC:
@@ -89,9 +96,10 @@ export const PHAP_NHAN = {
  */
 export const DIA_CHI_PHAN = {
   duong: 'Tầng 3, 63 Hồ Tùng Mậu',
+  khu: 'Quận 1 cũ',
   thanhPho: 'TP.HCM',
 } as const;
-export const DIA_CHI_NHA_HANG = `${DIA_CHI_PHAN.duong}, ${DIA_CHI_PHAN.thanhPho}`;
+export const DIA_CHI_NHA_HANG = `${DIA_CHI_PHAN.duong}, ${DIA_CHI_PHAN.khu}, ${DIA_CHI_PHAN.thanhPho}`;
 
 /**
  * Mọi ngôn ngữ của trang công khai. Thứ tự này cũng là thứ tự cột của
@@ -113,10 +121,18 @@ export const TEN_NGON_NGU: Record<NgonNgu, string> = {
 
 const VI = {
   // --- Phần nền, luôn hiện --------------------------------------------------
-  // Dùng trong tiêu đề trang khi cổng nội dung chưa có tiêu đề đã duyệt.
-  nganhHang: 'Nhà hàng chuyên bò',
-  diaChiNgan: '63 Hồ Tùng Mậu, TP.HCM',
-  moTaNgan: 'Nhà hàng chuyên bò ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM. Chọn bò tại quầy, cùng cả bàn nướng và thưởng thức.',
+  // Tiêu đề trang chủ khi cổng nội dung chưa có tiêu đề đã duyệt (tieu_de_og). SEO 23/11/2026: ~60 ký tự, có từ người ta
+  // tìm (bò nướng, chọn bò tại quầy) và địa chỉ; trang con có tiêu đề riêng ở từng file pages/.
+  tieuDeTrangChu: 'Beeftown — Nhà hàng bò nướng, chọn bò tại quầy · 63 Hồ Tùng Mậu',
+  // Dòng hiệu trên câu chính ở màn đầu trang chủ (KhoiMoDau.astro): trước đây là descriptor tiếng Anh in nguyên ở cả
+  // trang tiếng Việt. Khánh duyệt 23/11/2026; en, ko dịch từ câu này.
+  dongHieu: 'Nhà hàng bò nướng tại bàn',
+  // Câu đứng ĐẦU mô tả trang chủ khi ngày khai trương (ngay_khai_truong của /noi-bo) đã công bố mà chưa tới —
+  // moTaTrangChu() của lib/trang-cong-khai.ts; {ngay} là ngày viết đủ theo thứ tiếng ("ngày 2 tháng 12, 2026").
+  khaiTruongCau: 'Khai trương {ngay}.',
+  diaChiNgan: '63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM',
+  // Mô tả nền của trang chủ (và của JSON-LD): chọn bò → nướng → địa chỉ. Chữ "Quận 1 cũ" xem DIA_CHI_PHAN.
+  moTaNgan: 'Chọn bò theo khay tại quầy rồi cùng nướng trên vỉ gas tại bàn. Beeftown là nhà hàng bò nướng ở tầng 3, 63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM.',
   // Câu chính của trang chủ (h1) — câu chính cho khách của THUONG-HIEU.md, Khánh đưa lên màn đầu ngày
   // 12/11/2026 (thay câu "Chọn phần bò bạn thích…" của brief 06/10/2026). Hai câu: KhoiMoDau.astro in mỗi câu
   // một dòng, câu sau màu nhấn. \u00a0: "rành bò", "giá trước" không bị tách hai dòng ở màn hẹp.
@@ -229,10 +245,10 @@ const VI = {
   // chọn theo form có dựng được không. Form không dựng được thì KHÔNG hứa "gửi yêu cầu, nhà hàng gọi
   // lại" (kiểm site thật 07/10/2026): nói đúng điều thẻ "chưa mở" nói — nhắn qua Facebook.
   moTaHoiBan:
-    'Đặt bàn tại Beeftown, nhà hàng chuyên bò ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM. ' +
+    'Đặt bàn tại Beeftown, nhà hàng bò nướng ở tầng 3, 63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM. ' +
     'Bạn gửi yêu cầu, nhà hàng kiểm tra rồi gọi lại để xác nhận.',
   moTaHoiBanChuaMo:
-    'Beeftown, nhà hàng chuyên bò ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM, chưa mở đặt bàn trực tuyến. ' +
+    'Beeftown, nhà hàng bò nướng ở tầng 3, 63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM, chưa mở đặt bàn trực tuyến. ' +
     'Muốn đặt bàn, bạn nhắn cho Beeftown qua Facebook.',
 
   // --- Mua thịt về ----------------------------------------------------------
@@ -241,7 +257,7 @@ const VI = {
   // ở trạng thái đó không có form, không có nút kênh. Câu mở nhắc gửi đơn qua Zalo — đích đặt hàng TẠM
   // (lib/dich-dat-hang.ts): PR đổi sang Mini App xem lại câu này.
   moTaMuaThit:
-    'Thịt bò của quầy Beeftown chia gói, giao tận nơi. Chọn gói và đặt hàng trên web; ' +
+    'Mua thịt bò đóng gói từ quầy Beeftown, giao tận nơi. Chọn gói và đặt hàng trên web; ' +
     'quán gọi lại xác nhận tổng tiền, phí giao và giờ giao.',
   moTaMuaThitChuaMo: 'Beeftown chưa mở mua thịt về qua website.',
 
@@ -278,9 +294,11 @@ const VI = {
 type Bo = Record<keyof typeof VI, string>;
 
 const EN: Bo = {
-  nganhHang: THUONG_HIEU.descriptor,
-  diaChiNgan: '63 Hồ Tùng Mậu, Ho Chi Minh City',
-  moTaNgan: 'A beef specialty restaurant on Floor 3, 63 Hồ Tùng Mậu, Ho Chi Minh City. Pick your beef at the counter, then grill and share it at your table.',
+  tieuDeTrangChu: 'Beeftown — Grilled Beef Restaurant · 63 Hồ Tùng Mậu, HCMC',
+  dongHieu: 'Beef restaurant with tabletop grilling',
+  khaiTruongCau: 'Opening on {ngay}.',
+  diaChiNgan: '63 Hồ Tùng Mậu, former District 1, Ho Chi Minh City',
+  moTaNgan: 'Pick beef at the counter, then cook it on a gas grill at your table. Beeftown is on Floor 3, 63 Hồ Tùng Mậu, former District 1, Ho Chi Minh City.',
   cauChinh: 'No need to be a beef expert. Pick what you like, see the price first.',
   gioiThieu:
     'Our beef is cut and packed in trays at the counter, with the price on each tray\u2019s label. Our counter ' +
@@ -361,15 +379,15 @@ const EN: Bo = {
   datBanChuaMoGiaiThich:
     'To book a table, message Beeftown on Facebook — we will check and get back to you.',
   moTaHoiBan:
-    'Book a table at Beeftown, a beef specialty restaurant on Floor 3, 63 Hồ Tùng Mậu, Ho Chi Minh City. ' +
-    'Send a request and we will call you back to confirm.',
+    'Book a table at Beeftown. Send a request and we will call you back to confirm. ' +
+    'Floor 3, 63 Hồ Tùng Mậu, former District 1, Ho Chi Minh City.',
   moTaHoiBanChuaMo:
-    'Beeftown, a beef specialty restaurant on Floor 3, 63 Hồ Tùng Mậu, Ho Chi Minh City, is not taking ' +
-    'table requests online yet. To book a table, message Beeftown on Facebook.',
+    'Beeftown is not taking table requests online yet. To book a table, message Beeftown on Facebook. ' +
+    'Floor 3, 63 Hồ Tùng Mậu, former District 1, Ho Chi Minh City.',
 
   moTaMuaThit:
-    'Beef from the Beeftown counter in packs, delivered to you. Choose your packs and order here; ' +
-    'we call you back to confirm the total, the delivery fee and the time.',
+    'Order packs of beef from the Beeftown counter for delivery. ' +
+    'We call back to confirm your order total, delivery fee and delivery time.',
   moTaMuaThitChuaMo: 'Take-home orders on the Beeftown website are not open yet.',
 
   khongCoTieuDeTrang: 'Page not found — Beeftown',
@@ -392,9 +410,11 @@ const EN: Bo = {
 // Tiếng Hàn: văn lịch sự 해요체 từ đầu đến cuối. Tên đường Hồ Tùng Mậu để nguyên
 // chữ Việt vì đó là chữ khách sẽ thấy trên biển đường và trên bản đồ.
 const KO: Bo = {
-  nganhHang: '소고기 전문점',
-  diaChiNgan: '호치민시 Hồ Tùng Mậu 63',
-  moTaNgan: '호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점이에요. 정육 코너에서 고기를 고르고 테이블에서 함께 구워 드세요.',
+  tieuDeTrangChu: 'Beeftown — 호치민 구 1군 소고기 전문점 · Hồ Tùng Mậu 63',
+  dongHieu: '테이블에서 굽는 소고기 전문점',
+  khaiTruongCau: '{ngay} 오픈 예정이에요.',
+  diaChiNgan: '호치민시 구 1군 Hồ Tùng Mậu 63',
+  moTaNgan: '호치민시 구 1군 Hồ Tùng Mậu 63, 3층에 있는 소고기 구이 전문점이에요. 정육 코너에서 고기를 고르고 테이블에서 가스 그릴로 함께 구워 먹어요.',
   // \u00a0: "함께 온 사람들과" (định ngữ + danh từ) không bị tách hai dòng.
   cauChinh: '소고기를 잘 몰라도 괜찮아요. 취향대로 고르고, 가격은 먼저\u00a0확인하세요.',
   gioiThieu:
@@ -476,11 +496,11 @@ const KO: Bo = {
   datBanChuaMoGiaiThich:
     '테이블 예약은 Facebook으로 Beeftown에 메시지를 보내 주세요. 확인한 뒤 연락드릴게요.',
   moTaHoiBan:
-    '호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점 Beeftown에 테이블 예약 요청을 보내 주세요. ' +
-    '매장에서 확인한 뒤 전화드려요.',
+    '테이블 예약을 요청하시면 매장에서 확인한 뒤 전화드려요. ' +
+    'Beeftown은 호치민시 구 1군 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점이에요.',
   moTaHoiBanChuaMo:
-    '호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점 Beeftown은 아직 온라인 테이블 예약을 받지 않아요. ' +
-    '테이블 예약은 Facebook으로 Beeftown에 메시지를 보내 주세요.',
+    '온라인 테이블 예약은 아직 받지 않아요. Facebook에서 Beeftown에 메시지를 보내 주세요. ' +
+    '매장은 호치민시 구 1군 Hồ Tùng Mậu 63, 3층에 있어요.',
 
   moTaMuaThit:
     'Beeftown 매장의 소고기를 팩으로 배달해 드려요. 여기서 팩을 고르고 주문해 주시면 ' +

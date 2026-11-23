@@ -1,0 +1,21 @@
+# Header của FILE TĨNH — Cloudflare Workers static assets đọc file này lúc triển khai (cú pháp: đường dẫn, rồi
+# các dòng "Tên: giá trị" thụt vào). Chỉ phủ file do lớp assets phát (ảnh, CSS, JS, phông); trả lời do Worker dựng
+# (trang, hook, /noi-bo) thêm HSTS ở src/worker.ts (lib/header-https.ts) — hai nơi, cùng giá trị.
+#
+# /anh/ và /thuong-hieu/: tên file KHÔNG có mã băm (đổi ảnh là ghi đè cùng tên), nên không đặt immutable.
+# Một ngày là "tươi", sau đó trình duyệt vẫn hiện bản cũ NGAY và hỏi lại ngầm tới 7 ngày (stale-while-revalidate): khách
+# quay lại thấy trang tức thì, và ảnh thay mới hiện ra ở lượt xem kế tiếp, tối đa chậm một lượt. Trước đây là
+# "max-age=0, must-revalidate": mỗi ảnh mỗi lượt xem đều hỏi lại máy chủ. Đổi ảnh mà cần thấy ngay: đặt tên file mới.
+/anh/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+/thuong-hieu/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=604800
+
+# /phong/: tên file có số phiên bản của phông (montserrat-5.3.0-…) — đổi phông là đổi tên, nên immutable an toàn.
+/phong/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# HSTS một năm, KHÔNG includeSubDomains, KHÔNG preload — lý do ở lib/header-https.ts.
+/*
+  Strict-Transport-Security: max-age=31536000

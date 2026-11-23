@@ -5,6 +5,8 @@
  * Điều đã biết về địa điểm của quán (Khánh quyết ngày 07/10 và 09/10/2026; có thang máy: Khánh
  * xác nhận ngày 11/10/2026): Tầng 3, 63 Hồ Tùng Mậu · lối vào riêng ngay cạnh GS25 · khách đi
  * thang máy lên tầng 3. Ngoài mấy điều đó trang không được nói gì thêm về đường đến.
+ * Khu vực: từ 23/11/2026 (Khánh quyết) trang ĐƯỢC ghi "Quận 1 cũ" — 63 Hồ Tùng Mậu thuộc Quận 1 trước đợt sáp nhập
+ * tháng 7/2025 — nhưng chỉ ba cách viết đó (QUAN_1_CU bên dưới). Tên PHƯỜNG vẫn cấm ở mọi chỗ.
  *
  * File này chỉ chứa MẪU TÌM CHỮ SAI. Ba nơi dùng:
  *   · crm/test/test-cong-khai-cau-chu.mjs nhóm 7 — chữ khách đọc, đọc từ mã nguồn;
@@ -39,6 +41,16 @@ function luat(ten, ...mau) {
 }
 
 /**
+ * BA CÁCH VIẾT "QUẬN 1 CŨ" ĐƯỢC PHÉP (Khánh quyết 23/11/2026), mỗi thứ tiếng một cách:
+ *   vi "Quận 1 cũ" · en "former District 1" (hoa chữ đầu trong tiêu đề) · ko "구 1군".
+ * Luật PHUONG_QUAN cắt đúng ba cụm này ra khỏi chữ trước khi tìm: "Quận 1" trơ trọi, "District 1" trơ trọi, "1군"
+ * trơ trọi, "Quận 10 cũ", "former District 12" vẫn bị bắt. Cụm phải đứng trọn: "Quận 1 cũng" hay "구 1군데" không
+ * phải cụm. Mọi vế phường đứng cạnh nó ("Quận 1 cũ, phường Sài Gòn") vẫn bị bắt.
+ */
+export const QUAN_1_CU = /Quận\s*1\s+cũ(?![\p{L}])|former\s+District\s+1(?!\d)|구\s*1군(?![\d가-힣])/giu;
+const boQuan1Cu = chu => String(chu ?? '').replace(QUAN_1_CU, ' ');
+
+/**
  * TÊN ĐƯỜNG, TÊN KHU của hai mặt bằng đã khai trước, và phường của chúng khi viết như một vế địa
  * chỉ. Toàn là tên riêng nên tìm được cả trong mã nguồn và HTML thô. "Sài Gòn" đứng một mình thì
  * KHÔNG bắt — "Bia Sài Gòn", "Sài Gòn Thương Tín" là chữ đúng.
@@ -68,21 +80,23 @@ export const SO_NHA_KHAC = luat(
 );
 
 /**
- * MỌI VẾ PHƯỜNG / QUẬN. Phường của 63 Hồ Tùng Mậu chưa có giấy xác nhận, nên chữ khách đọc không
- * được có vế phường hay quận nào — tên gì cũng vậy. Dùng sau khi đã bỏ dòng địa chỉ pháp nhân.
+ * MỌI VẾ PHƯỜNG / QUẬN, trừ "Quận 1 cũ" (QUAN_1_CU). Phường của 63 Hồ Tùng Mậu chưa có giấy xác nhận, nên chữ khách
+ * đọc không được có vế phường hay quận nào khác — tên gì cũng vậy. Dùng sau khi đã bỏ dòng địa chỉ pháp nhân.
  *   vi: "phường X", "P. X", "P.12", "quận X", "Q.1", "Q1"
  *   en: "… Ward", "District …", "Dist. 1"
- *   ko: "1군", "벤응에동" khi viết kiểu địa chỉ (đứng sau 호치민시 hoặc sau số nhà), "Bến Nghé동", "프엉 …"
+ *   ko: "1군" (trơ trọi), "벤응에동" khi viết kiểu địa chỉ (đứng sau 호치민시 hoặc sau số nhà), "Bến Nghé동", "프엉 …"
  */
 export const PHUONG_QUAN = luat(
-  'ghi tên phường hay quận (phường của 63 Hồ Tùng Mậu chưa có giấy xác nhận)',
-  /(?<![\p{L}])(?:phường|quận)\s+[\p{L}\d]/iu,
-  /(?<![\p{L}\d])P\.\s?(?=[\p{Lu}\d])/u,
-  /(?<![\p{L}\d])Q\.?\s?\d{1,2}(?![\p{L}\d])/u,
-  /\bwards?\b|\bdistricts?\b|\bdist\.\s?\d/iu,
-  /\d+\s*군(?!데)|(?:프엉|푸엉|꾸언|꾸안)\s*[\p{L}\d]|[A-Za-zÀ-ỹ]\s?(?:동|군|구)(?![가-힣])/u,
-  /호치민시?\s+(?:\S+\s+){0,2}?\S*[\p{L}\d](?:동|군|구)(?=[\s,.]|$)/u,
-  /Hồ\s*Tùng\s*Mậu\s*63\s*,?\s+\S*[\p{L}\d](?:동|군|구)(?=[\s,.]|$)/u,
+  'ghi tên phường hay quận ngoài "Quận 1 cũ" (phường của 63 Hồ Tùng Mậu chưa có giấy xác nhận)',
+  ...[
+    /(?<![\p{L}])(?:phường|quận)\s+[\p{L}\d]/iu,
+    /(?<![\p{L}\d])P\.\s?(?=[\p{Lu}\d])/u,
+    /(?<![\p{L}\d])Q\.?\s?\d{1,2}(?![\p{L}\d])/u,
+    /\bwards?\b|\bdistricts?\b|\bdist\.\s?\d/iu,
+    /\d+\s*군(?!데)|(?:프엉|푸엉|꾸언|꾸안)\s*[\p{L}\d]|[A-Za-zÀ-ỹ]\s?(?:동|군|구)(?![가-힣])/u,
+    /호치민시?\s+(?:\S+\s+){0,2}?\S*[\p{L}\d](?:동|군|구)(?=[\s,.]|$)/u,
+    /Hồ\s*Tùng\s*Mậu\s*63\s*,?\s+\S*[\p{L}\d](?:동|군|구)(?=[\s,.]|$)/u,
+  ].map(mau => chu => boQuan1Cu(chu).match(mau)?.[0] ?? null),
 );
 
 /** Khách đi thang máy: chữ về cầu thang bộ, hay câu nói không có thang máy, đều sai. */
@@ -168,12 +182,16 @@ export const CAU_THU = [
   { luat: PHUONG_QUAN,
     bat: ['Beeftown ở tầng 3, 63 Hồ Tùng Mậu, phường Bến Nghé, Quận 1, TP.HCM.', 'Floor 3, 63 Hồ Tùng Mậu, Ben Nghe Ward, District 1',
       'P. Bến Nghé', 'P.12, Q.10', 'Q1, TP.HCM', 'quận 1', 'phường Sài Gòn', 'Saigon Ward', 'Dist. 1',
+      '63 Hồ Tùng Mậu, Quận 1, TP.HCM', 'Quận 1 cũng được', 'Quận 10 cũ', 'Quận 1 cũ, phường Sài Gòn', 'Floor 3, 63 Hồ Tùng Mậu, District 1, Ho Chi Minh City',
+      'Floor 3, former District 12', 'former District 1, Ben Nghe Ward', '호치민시 구 1군 벤응에동 Hồ Tùng Mậu 63',
       '호치민시 1군 Hồ Tùng Mậu 63', '호치민시 벤응에동 Hồ Tùng Mậu 63', 'Hồ Tùng Mậu 63, 사이공동', 'Bến Nghé동', '프엉 벤응에'],
     khong: ['Tầng 3, 63 Hồ Tùng Mậu, TP.HCM', 'Nhà hàng chuyên bò ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM. Chọn bò tại quầy, cùng cả bàn nướng và thưởng thức.',
       'A beef specialty restaurant on Floor 3, 63 Hồ Tùng Mậu, Ho Chi Minh City.', 'We look forward to seeing you.', 'Send your CV to us.',
       '호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점이에요. 정육 코너에서 고기를 고르고 테이블에서 함께 구워 드세요.',
       'Beeftown이 호치민시 Hồ Tùng Mậu 63 매장의 오픈 팀을 모집해요: 소고기 정육사, 포장 및 정육 코너 보조 직원, 경력 주방 직원, 파트타임 홀 직원.',
-      'Hồ Tùng Mậu 63으로 오세요', 'GS25 바로 옆 전용 입구로 들어와 엘리베이터로 3층까지 올라오세요.', '세 군데', '함께 구워 드세요', '9명 이상 단체는 Beeftown에 직접 연락해 주세요.'] },
+      'Hồ Tùng Mậu 63으로 오세요',
+      'Tầng 3, 63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM', 'Beeftown ở tầng 3, 63 Hồ Tùng Mậu, quận 1 cũ, TP.HCM.', 'Floor 3, 63 Hồ Tùng Mậu, former District 1, Ho Chi Minh City',
+      'How to Find Beeftown — 63 Hồ Tùng Mậu, Former District 1, HCMC', '호치민시 구 1군 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점이에요.', 'Beeftown — 호치민 구 1군 소고기 전문점', 'GS25 바로 옆 전용 입구로 들어와 엘리베이터로 3층까지 올라오세요.', '세 군데', '함께 구워 드세요', '9명 이상 단체는 Beeftown에 직접 연락해 주세요.'] },
   { luat: CAU_THANG,
     bat: ['Khách lên tầng 3 bằng cầu thang bộ', 'by the stairs', '계단으로 올라오셔야 해요', 'không có thang máy cho khách', 'there is no guest lift', '손님용 엘리베이터는 없어요'],
     khong: ['Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3.', 'Use our own entrance, right next to GS25, and take the lift to Floor 3.',

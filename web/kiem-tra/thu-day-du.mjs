@@ -1160,6 +1160,33 @@ try {
         }
       }
     }
+    // 23/11/2026 — chủ quên đổi câu trạng thái sau ngày khai trương: màn đầu ghi "Mở cửa từ …", KHÔNG còn câu
+    // "đang chuẩn bị đón bạn" cũ (dongTrangThai của lib/trang-cong-khai.ts). Và trước ngày khai trương: thẻ mô tả
+    // trang chủ có câu "Khai trương …" ở đầu (moTaTrangChu), qua ngày thì không.
+    mayGia.datKichBan('da-mo-chua-doi-cau');
+    for (const nn of NGON_NGU) {
+      const t = chu(nn);
+      const duong = duongDanTuongUng('/', nn);
+      await page.goto(goc + duong, { waitUntil: 'load' });
+      const kq = await page.evaluate(() => ({
+        ngay: (document.querySelector('main .kmd .kmd-ngay')?.textContent ?? '').replace(/\s+/g, ' ').trim(),
+        coTrangThai: !!document.querySelector('main .kmd .kmd-trang-thai'),
+        chuManDau: (document.querySelector('main .kmd')?.innerText ?? '').replace(/\s+/g, ' '),
+        moTa: document.querySelector('meta[name="description"]')?.getAttribute('content') ?? '',
+      }));
+      ok(`da-mo-chua-doi-cau ${duong}: dòng "${t.moCuaTu} ${dinhDangNgay(NGAY_DA_MO_THU, nn)}" và KHÔNG còn câu "${t.trangThaiMacDinh}"`,
+         kq.ngay === `${t.moCuaTu} ${dinhDangNgay(NGAY_DA_MO_THU, nn)}` && !kq.coTrangThai && !kq.chuManDau.includes(t.trangThaiMacDinh), JSON.stringify(kq).slice(0, 300));
+      ok(`da-mo-chua-doi-cau ${duong}: thẻ mô tả là câu nền, không còn câu khai trương`, kq.moTa === t.moTaNgan, kq.moTa);
+    }
+    mayGia.datKichBan('sap-mo');
+    for (const nn of NGON_NGU) {
+      const t = chu(nn);
+      const duong = duongDanTuongUng('/', nn);
+      await page.goto(goc + duong, { waitUntil: 'load' });
+      const moTa = await page.evaluate(() => document.querySelector('meta[name="description"]')?.getAttribute('content') ?? '');
+      const mong = `${t.khaiTruongCau.replace('{ngay}', dinhDangNgay(ngaySapMoThu(), nn))} ${t.moTaNgan}`;
+      ok(`sap-mo ${duong}: thẻ mô tả bắt đầu bằng câu khai trương rồi tới câu nền`, moTa === mong, moTa);
+    }
     await page.setViewportSize({ width: 390, height: 844 });
     mayGia.datKichBan('day-du');
   });

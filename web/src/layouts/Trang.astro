@@ -18,7 +18,9 @@
  *   · aggregateRating / review — chưa có một đánh giá thật nào, và khai số
  *     liệu đánh giá bịa vừa vi phạm chính sách Google vừa là quảng cáo sai;
  *   · openingHoursSpecification khi giờ chưa chốt — Google đưa giờ này lên
- *     kết quả tìm kiếm, nên khai sai là dẫn khách tới một cánh cửa đóng.
+ *     kết quả tìm kiếm, nên khai sai là dẫn khách tới một cánh cửa đóng. Từ 23/11/2026 giờ ĐƯỢC khai, nhưng chỉ khi
+ *     cả gio_phuc_vu_da_chot (cổng nội dung) lẫn gio_da_chot của chi nhánh (chi_nhanh_cong_khai()) đã bật —
+ *     lib/gio-mo-cua.ts; chưa bật thì không đọc thêm database và không có trường này.
  * Logo (`logo`) là biểu tượng 180 × 180 của bộ 21/10/2026 (đầu bò trắng trên nền
  * đỏ phủ kín, web/public/thuong-hieu/bieu-tuong-180.png): Google cần ảnh tối thiểu
  * 112 × 112, nhìn đúng trên nền trắng — ô đỏ phủ kín đạt cả hai, cắt vuông không mất gì.
@@ -45,6 +47,7 @@ import '../styles/chung.css';
 import '../styles/cong-khai.css';
 import { THUONG_HIEU, NGON_NGU, TEN_NGON_NGU, chu, duongDanTuongUng } from '../lib/chu';
 import { diaChiCoCauTruc, jsonTrongScript, lienHe } from '../lib/trang-cong-khai';
+import { docGioMoCuaChoTrang, gioMoCuaJsonLd } from '../lib/gio-mo-cua';
 import { khoiMaPixel, tenTrangPixel } from '../lib/meta-pixel';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import DauTrang from '../components/DauTrang.astro';
@@ -67,10 +70,11 @@ const t = chu(ngonNgu);
 const goc = Astro.site?.origin ?? '';
 const duongDanDayDu = goc + duongDan;
 
-// Tiêu đề: ưu tiên bản đã duyệt trong cổng nội dung, sau đó mới tới bản nền.
+// Tiêu đề: ưu tiên bản đã duyệt trong cổng nội dung, sau đó mới tới bản nền (tieuDeTrangChu của lib/chu.ts —
+// trang không truyền tieuDe là trang chủ; trang con truyền tiêu đề riêng).
 const tieuDeTrang = tieuDe
   ?? nd.tieu_de_og
-  ?? `${THUONG_HIEU.ten} — ${t.nganhHang} · ${t.diaChiNgan}`;
+  ?? t.tieuDeTrangChu;
 
 // Mô tả ưu tiên bản đã duyệt trong cổng nội dung. Đây là lý do cụ thể vì sao
 // trang phải dựng ở phía máy chủ: thẻ mô tả là một HÀM của trạng thái database,
@@ -117,6 +121,10 @@ if (coAnhThat) duLieuCoCauTruc.image = anhChiaSe.url;
 // Đường dẫn tuyệt đối: chỉ khai khi biết tên miền (bản dựng không có site thì bỏ, như og:image).
 if (goc) duLieuCoCauTruc.logo = { '@type': 'ImageObject', url: `${goc}/thuong-hieu/bieu-tuong-180.png`, width: 180, height: 180 };
 if (lh.maps) duLieuCoCauTruc.hasMap = lh.maps;
+// Giờ mở cửa: chỉ khi đã công bố (gio-mo-cua.ts: chưa công bố thì không đọc thêm database, không có trường này;
+// đã công bố thì nhớ 60 giây trong Worker, không thêm một lời gọi database mỗi lượt xem trang).
+const gioJson = gioMoCuaJsonLd(khongLapChiMuc ? [] : await docGioMoCuaChoTrang(nd));
+if (gioJson.length) duLieuCoCauTruc.openingHoursSpecification = gioJson;
 // Trang thực đơn chỉ được khai khi thực đơn đang hiện.
 if (nd.hien_thuc_don === true && goc) duLieuCoCauTruc.hasMenu = goc + duongDanTuongUng('/thuc-don', ngonNgu);
 const sameAs = [lh.facebook, lh.instagram, lh.tiktok].filter(Boolean);
@@ -166,21 +174,28 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
     <link rel="preload" href="/thuong-hieu/chu-beeftown-trang.svg" as="image" type="image/svg+xml" />
     <slot name="dau" />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap"
-    />
+    {/* Montserrat TỰ PHÁT (@font-face ở chung.css, file ở public/phong/, bản biến thiên 100–900, OFL): không còn
+        link tới Google Fonts, không còn stylesheet chặn dựng trang. Preload bộ latin (chữ thường, số, dấu câu —
+        mọi trang cần); trang tiếng Việt preload thêm bộ vietnamese (ư ơ đ ă và các chữ có dấu mũ, hỏi, ngã,
+        nặng) để dòng chữ đầu tiên không nháy từ phông hệ thống sang Montserrat. crossorigin là bắt buộc với
+        preload phông, kể cả cùng tên miền. Tên file khớp @font-face — đổi một nơi thì đổi cả hai. */}
+    <link rel="preload" href="/phong/montserrat-5.3.0-latin-wght.woff2" as="font" type="font/woff2" crossorigin />
+    {ngonNgu === 'vi' && (
+      <link rel="preload" href="/phong/montserrat-5.3.0-vietnamese-wght.woff2" as="font" type="font/woff2" crossorigin />
+    )}
     {/* Montserrat không có chữ Hangul. Chỉ trang tiếng Hàn tải thêm Noto Sans
-        KR — Google cắt phông này thành nhiều mảnh theo dải ký tự nên trình
+        KR từ Google Fonts — Google cắt phông này thành nhiều mảnh theo dải ký tự nên trình
         duyệt chỉ tải mảnh có chữ đang hiện; trang tiếng Việt và tiếng Anh
-        không tải gì thêm. Thứ tự phông nằm ở :root:lang(ko) trong chung.css. */}
+        không tải gì thêm (và không kết nối tới Google). Thứ tự phông nằm ở :root:lang(ko) trong chung.css. */}
     {ngonNgu === 'ko' && (
-      <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;800&display=swap"
-      />
+      <>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;800&display=swap"
+        />
+      </>
     )}
 
     {!khongLapChiMuc && <script type="application/ld+json" set:html={jsonTrongScript(duLieuCoCauTruc)} is:inline />}

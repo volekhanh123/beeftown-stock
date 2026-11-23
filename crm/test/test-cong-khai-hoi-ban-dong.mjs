@@ -40,11 +40,12 @@ const { chu, NGON_NGU } = await nap('chu.ts');
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — TRANG HỎI BÀN KHI FORM ĐÓNG');
 
 // Câu mô tả của ba trang trên main khi form mở — chép tay: lúc form mở, câu này phải còn nguyên.
-// (Địa chỉ theo main từ 11/10/2026: Tầng 3, 63 Hồ Tùng Mậu — PR #63–#67.)
+// (Địa chỉ theo main từ 11/10/2026: Tầng 3, 63 Hồ Tùng Mậu — PR #63–#67; SEO 23/11/2026: thêm "Quận 1 cũ" / "former District 1" /
+// "구 1군", câu "nhà hàng bò nướng" thay "nhà hàng chuyên bò"; lời hứa gửi yêu cầu → gọi lại giữ nguyên.)
 const MO_TA_KHI_MO = {
-  vi: 'Đặt bàn tại Beeftown, nhà hàng chuyên bò ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM. Bạn gửi yêu cầu, nhà hàng kiểm tra rồi gọi lại để xác nhận.',
-  en: 'Book a table at Beeftown, a beef specialty restaurant on Floor 3, 63 Hồ Tùng Mậu, Ho Chi Minh City. Send a request and we will call you back to confirm.',
-  ko: '호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점 Beeftown에 테이블 예약 요청을 보내 주세요. 매장에서 확인한 뒤 전화드려요.',
+  vi: 'Đặt bàn tại Beeftown, nhà hàng bò nướng ở tầng 3, 63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM. Bạn gửi yêu cầu, nhà hàng kiểm tra rồi gọi lại để xác nhận.',
+  en: 'Book a table at Beeftown. Send a request and we will call you back to confirm. Floor 3, 63 Hồ Tùng Mậu, former District 1, Ho Chi Minh City.',
+  ko: '테이블 예약을 요청하시면 매장에서 확인한 뒤 전화드려요. Beeftown은 호치민시 구 1군 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점이에요.',
 };
 // Lời hứa của form: gửi yêu cầu trên trang, nhà hàng gọi lại.
 const HUA_FORM = {
