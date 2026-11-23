@@ -7,8 +7,8 @@
  * Khánh 18/11/2026: trợ lý tên Trang, nói như nhân viên quầy, không chữ AI, bot, tự động trong lời chào hay tin nào; ĐÚNG
  * MỘT chỗ khách biết đây là trợ lý ảo (dòng gạch dưới cố định dưới tên Trang, bấm vào mở phần giải thích). Nhân viên nhận
  * chat (0126 mục 4b): lệnh xem, tin nhân viên có nhãn riêng, đầu khung đổi sang nhân viên. Theo 9 mục "xong":
- *   1. quyen — khung chỉ dựng khi công tắc bật, trang mở, trang tiếng Việt, có địa chỉ hàm; lời gọi không mang cookie,
- *      chỉ năm ô (cuộc, mã tin, tin, trả trước, chi nhánh); lệnh xem chỉ bốn ô (hanh_dong, cuoc, sau, chi_nhanh).
+ *   1. quyen — khung chỉ dựng khi công tắc bật, trang mở, trang tiếng Việt hay tiếng Hàn, có địa chỉ hàm; lời gọi không
+ *      mang cookie, chỉ sáu ô (cuộc, mã tin, tin, trả trước, chi nhánh, nn); lệnh xem chỉ bốn ô (hanh_dong, cuoc, sau, chi_nhanh).
  *   2. bam-hai-lan — nút Gửi khóa khi đang chờ; gửi lại dùng đúng mã tin cũ (Edge Function không trả lời hai lần).
  *   4. chu-va-so — tiền của thẻ đơn tính bằng tinhDon (giá gói của trang), in qua dinhDangTien trong data-tien; số gói 1–10.
  *   5. mat-mang — trả lời hỏng, lỗi mạng: câu "chưa được trả lời" + Gửi lại; không bao giờ bịa câu của Trang.
@@ -45,10 +45,11 @@ const MENU = [
 await nhom('1 · KHI NÀO KHUNG HIỆN (troLyTrangMo)', async () => {
   const u = 'https://x.supabase.co/functions/v1/tro-ly-trang';
   ok('Bật + trang mở + tiếng Việt + có địa chỉ hàm → hiện', TL.troLyTrangMo(true, 'mo', 'vi', u) === true);
+  ok('Trang tiếng Hàn (Khánh 23/11/2026 "Làm tiếng Hàn") → hiện', TL.troLyTrangMo(true, 'mo', 'ko', u) === true);
   for (const [ten, a] of [['công tắc null (chưa công bố)', [null, 'mo', 'vi', u]], ['công tắc false', [false, 'mo', 'vi', u]],
     ['chuỗi "true"', ['true', 'mo', 'vi', u]], ['trang chưa mở', [true, 'chua_mo', 'vi', u]], ['mọi gói tạm hết', [true, 'het_quay', 'vi', u]],
-    ['đọc menu lỗi', [true, 'loi', 'vi', u]], ['trang tiếng Anh (chờ Khánh chọn)', [true, 'mo', 'en', u]], ['trang tiếng Hàn', [true, 'mo', 'ko', u]],
-    ['chưa nối database (CI)', [true, 'mo', 'vi', null]]]) {
+    ['đọc menu lỗi', [true, 'loi', 'vi', u]], ['trang tiếng Anh (chờ Khánh chọn)', [true, 'mo', 'en', u]],
+    ['trang tiếng Hàn, công tắc tắt', [false, 'mo', 'ko', u]], ['chưa nối database (CI)', [true, 'mo', 'vi', null]]]) {
     ok(`${ten} → không hiện`, TL.troLyTrangMo(...a) === false);
   }
   const vo = docNguon('web', 'src', 'components', 'TrangMuaThitVe.astro');
@@ -60,6 +61,12 @@ await nhom('2 · CHỈ MỘT CHỖ NÓI LÀ TRỢ LÝ ẢO; LỜI CHÀO TRÙNG L
     JSON.stringify(TL.LOI_CHAO) === JSON.stringify(HAM.LOI_CHAO));
   ok('Trang tự giới thiệu "em là Trang bên Beeftown"', TL.LOI_CHAO[0] === 'Dạ em chào anh/chị, em là Trang bên Beeftown ạ.', TL.LOI_CHAO[0]);
   ok('Lời chào không nhắc AI, trợ lý, máy, tự động, bot', TL.LOI_CHAO.every(t => !/\bAI\b|trợ lý|máy|tự động|\bbot\b/i.test(t)));
+  ok('Lời chào tiếng Hàn của trang trùng LOI_CHAO_HAN của Edge Function', JSON.stringify(TL.LOI_CHAO_HAN) === JSON.stringify(HAM.LOI_CHAO_HAN));
+  ok('Lời chào tiếng Hàn: có chữ Hàn, không chữ Việt, không AI / 봇 / 도우미 / 자동',
+    TL.LOI_CHAO_HAN.every(t => /[가-힯]/.test(t) && !/[àáảãạăâđèéêìíòóôơùúưỳý]/i.test(t) && !/\bAI\b|봇|도우미|자동/.test(t)));
+  ok('loiChao: trang tiếng Hàn chào tiếng Hàn, trang khác chào tiếng Việt',
+    TL.loiChao('ko') === TL.LOI_CHAO_HAN && TL.loiChao('vi') === TL.LOI_CHAO && TL.loiChao('en') === TL.LOI_CHAO);
+  ok('nnGuiHam: chỉ gửi "ko" hay "vi"', TL.nnGuiHam('ko') === 'ko' && TL.nnGuiHam('vi') === 'vi' && TL.nnGuiHam('en') === 'vi');
   for (const cach of [1, 2, 3]) {
     const d = TL.CACH_DONG_AO[cach];
     ok(`Cách ${cach}: chữ hiện sẵn có "trợ lý ảo" / "virtual assistant" / "가상 도우미" (chỉ "Chính sách tư vấn" thì không đạt)`,
@@ -162,7 +169,9 @@ await nhom('6 · LỜI GỌI EDGE FUNCTION: KHÔNG COOKIE, CHỈ NĂM Ô, GỬI 
   ok('text/plain (không hỏi trước CORS), credentials: omit, hết giờ 45 giây', /'Content-Type': 'text\/plain;charset=UTF-8'/.test(tp) && /credentials: 'omit'/.test(tp)
     && /setTimeout\(\(\) => huy\.abort\(\), 45000\)/.test(tp));
   const than = tp.match(/body: JSON\.stringify\(\{ (cuoc, ma_tin[^}]*)\}\)/)?.[1] ?? '';
-  ok('Thân gửi đúng năm ô: cuoc, ma_tin, tin, tra_truoc, chi_nhanh', JSON.stringify(than.split(',').map(x => x.trim().split(':')[0].trim())) === JSON.stringify(['cuoc', 'ma_tin', 'tin', 'tra_truoc', 'chi_nhanh']), than);
+  ok('Thân gửi đúng sáu ô: cuoc, ma_tin, tin, tra_truoc, chi_nhanh, nn (trang đang mở, 23/11/2026)',
+    JSON.stringify(than.split(',').map(x => x.trim().split(':')[0].trim())) === JSON.stringify(['cuoc', 'ma_tin', 'tin', 'tra_truoc', 'chi_nhanh', 'nn'])
+    && /nn: nnGuiHam\(nn\)/.test(than), than);
   const xem = tp.match(/body: JSON\.stringify\(\{ (hanh_dong[^}]*)\}\)/)?.[1] ?? '';
   ok('Lệnh xem gửi đúng bốn ô: hanh_dong xem, cuoc, sau (mốc đã hiện), chi_nhanh; hết giờ 15 giây',
     xem.trim() === "hanh_dong: 'xem', cuoc, sau: moc, chi_nhanh: goc.dataset.chiNhanh" && /setTimeout\(\(\) => huy\.abort\(\), 15000\)/.test(tp), xem);

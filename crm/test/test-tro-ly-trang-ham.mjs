@@ -98,7 +98,9 @@ await nhom('2 · MÁY KIỂM TIẾNG VIỆT VÀ CHỮ CẤM', async () => {
   ok('Lời chào sạch', trang.LOI_CHAO.every(t => !tv.chuNgoai(t).length && !tv.chuCam(t).length));
   ok('Câu an toàn sạch', !tv.chuNgoai(trang.CAU_AN_TOAN).length && !tv.chuCam(trang.CAU_AN_TOAN).length);
   ok('Lời chào không nhắc AI, trợ lý, tự động, bot', trang.LOI_CHAO.every(t => !/\bAI\b|trợ lý|tự động|\bbot\b|máy/i.test(t)));
-  const em = trang.LOI_DAY_CO_DINH.split('\n').filter(d => d.startsWith('Em: ')).map(d => d.slice(4).replace(/\s*\[[^\]]*\]$/, '').split('||')).flat();
+  const emTat = trang.LOI_DAY_CO_DINH.split('\n').filter(d => d.startsWith('Em: ')).map(d => d.slice(4).replace(/\s*\[[^\]]*\]$/, '').split('||')).flat();
+  // Mẫu tiếng Hàn (23/11/2026) kiểm bằng máy kiểm tiếng Hàn ở nhóm 11.
+  const em = emTat.filter(t => !tv.coChuHan(t));
   ok(`Đoạn chat mẫu: ${em.length} tin của Trang, không tin nào có chữ nước ngoài hay chữ cấm`,
     em.length >= 20 && em.every(t => !tv.chuNgoai(t).length && !tv.chuCam(t).length),
     em.filter(t => tv.chuNgoai(t).length || tv.chuCam(t).length).join(' | '));
@@ -186,7 +188,9 @@ await nhom('5 · THAM SỐ GỬI CLAUDE (dịch vụ ngoài)', async () => {
   const p = c.goi[0];
   ok('Mô hình claude-haiku-5-5', p.model === 'claude-haiku-5-5');
   ok('Không suy nghĩ thêm (thinking disabled)', p.thinking?.type === 'disabled');
-  ok('Hai khối system, cả hai lưu đệm; khối đầu là lời dặn cố định', p.system?.length === 2 && p.system.every(s => s.cache_control?.type === 'ephemeral') && p.system[0].text === trang.LOI_DAY_CO_DINH);
+  ok('Ba khối system: lời dặn cố định và khối dữ liệu lưu đệm; khối cuối (ngôn ngữ lượt này, tiếng Việt) không lưu đệm',
+    p.system?.length === 3 && p.system.slice(0, 2).every(s => s.cache_control?.type === 'ephemeral') && p.system[0].text === trang.LOI_DAY_CO_DINH
+    && !p.system[2].cache_control && p.system[2].text === trang.khoiNgonNgu('vi'));
   ok('Khuôn JSON bắt buộc (output_config.format json_schema)', p.output_config?.format?.type === 'json_schema' && JSON.stringify(p.output_config.format.schema) === JSON.stringify(trang.KHUON_KET_QUA));
   ok('Không gửi temperature, top_p, top_k (API 2026-10-21 từ chối)', !('temperature' in p) && !('top_p' in p) && !('top_k' in p));
   ok('Tin khách gửi Claude đã che số điện thoại và địa chỉ', p.messages.at(-1).content === 'nhà 4 người, số chị [số điện thoại], giao [địa chỉ]', p.messages.at(-1).content);
@@ -385,6 +389,99 @@ await nhom('10 · SAU BỘ CHẤM LẦN 1: ĐƠN LỚN LUÔN HIỆN CÁCH LIÊN 
     L.includes('trả lời theo câu ĐÃ HỌC THÊM về giao hàng') && L.includes('không tự nói giao được, không giao được, hay chỉ giao trong khu nào') && !L.includes('TP.HCM (giao bao lâu') && L.includes('립아이 là ribeye') && L.includes('không bao giờ nói "không có"'));
   ok('Lời dặn (sau lần 2): nhắc đúng mẹo của dữ liệu; chỉ hướng dẫn nút có trên trang (Chọn gói, Cho vào đơn chỉ ở thẻ đơn); dẻ sườn bò chưa ướp; hỏi phần rẻ thì nói thẳng phần giá thấp hơn',
     L.includes('nhắc đúng câu của dữ liệu, không thêm') && L.includes('nút "Cho vào đơn" chỉ có ở thẻ đơn em gửi') && L.includes('Dẻ sườn bò là thịt mát, chưa ướp') && L.includes('không lảng sang hỏi gu'));
+});
+
+await nhom('11 · TIẾNG HÀN (Khánh 23/11/2026 "Làm tiếng Hàn")', async () => {
+  // Chọn ngôn ngữ của lượt.
+  for (const [tin, macDinh, mong] of [['4명인데 뭐가 좋아요?', 'vi', 'ko'], ['LA갈비 있어요?', 'vi', 'ko'], ['nhà 4 người', 'ko', 'vi'],
+    ['ok', 'ko', 'ko'], ['ok', 'vi', 'vi'], ['4', 'ko', 'ko'], ['nha 4 nguoi', 'vi', 'vi']]) {
+    ok(`ngonNguTraLoi("${tin}", ${macDinh}) = ${mong}`, tv.ngonNguTraLoi(tin, macDinh) === mong);
+  }
+
+  // Chữ cố định tiếng Hàn sạch dưới máy kiểm tiếng Hàn.
+  const coDinh = [...trang.LOI_CHAO_HAN, trang.CAU_AN_TOAN_HAN,
+    ...Object.values(trang.PHAN_THIT).flatMap(p => [p.han.ten, p.han.viTri, ...p.han.diem, p.han.doChin, p.han.meo])];
+  const ban = coDinh.filter(t => tv.chuNgoaiHan(t).length || tv.chuCamHan(t).length || !tv.coChuHan(t));
+  ok(`Lời chào, câu an toàn, chữ thẻ tiếng Hàn (${coDinh.length} câu): có chữ Hàn, không chữ lạ, không chữ cấm`, ban.length === 0, ban.join(' | '));
+  const emHan = trang.LOI_DAY_CO_DINH.split('\n').filter(d => d.startsWith('Em: ')).map(d => d.slice(4).replace(/\s*\[[^\]]*\]$/, '').split('||')).flat().filter(t => tv.coChuHan(t));
+  ok(`Đoạn chat mẫu tiếng Hàn: ${emHan.length} tin, không chữ lạ hay chữ cấm`,
+    emHan.length >= 8 && emHan.every(t => !tv.chuNgoaiHan(t).length && !tv.chuCamHan(t).length),
+    emHan.filter(t => tv.chuNgoaiHan(t).length || tv.chuCamHan(t).length).join(' | '));
+
+  // Máy kiểm bắt đúng chỗ.
+  ok('chuNgoaiHan: bắt "ribeye", "AI", câu tiếng Việt; cho qua LA갈비, 150g, Beeftown, địa chỉ quán',
+    tv.chuNgoaiHan('립아이 캡은 ribeye예요').includes('ribeye') && tv.chuNgoaiHan('저는 AI예요').includes('ai')
+    && tv.chuNgoaiHan('Dạ có ạ').includes(tv.KHONG_CO_CHU_HAN)
+    && tv.chuNgoaiHan('LA갈비 150g 팩은 Beeftown 63 Hồ Tùng Mậu 매장에서 와요').length === 0);
+  for (const [tin, mong] of [['한 팩에 30만 원이에요', true], ['300,000원이에요', true], ['가장 저렴한 부위예요', true], ['저는 챗봇이에요', true],
+    ['저는 진짜 사람이에요', true], ['잠시만 기다려 주세요', true], ['직원에게 물어보고 알려 드릴게요', true], ['최고의 고기예요', true],
+    ['숯불에 구우면 좋아요', true], ['한우예요', true], ['매장 직원에게 여쭤봐 주시면 정확해요.', false], ['4명이면 6팩 정도예요', false],
+    ['가격은 아래 카드에 있어요', false]]) {
+    ok(`chuCamHan("${tin}") ${mong ? 'bắt' : 'cho qua'}`, (tv.chuCamHan(tin).length > 0) === mong, tv.chuCamHan(tin).join(' '));
+  }
+  ok('thayBangTuHan: tên tiếng Anh → tên trang tiếng Hàn', tv.thayBangTuHan('ribeye with cap 추천해요') === '립아이 캡 추천해요'
+    && tv.thayBangTuHan('outside skirt는 medium rare로') === '안창살는 미디엄 레어로');
+
+  // Số người, đòi gặp người, che thông tin — tiếng Hàn.
+  for (const [tin, mong] of [['4명인데', 4], ['12명이서 먹어요', 12], ['10인분 주세요', 10], ['4인 가족이에요', 4], ['2024년에', 0]]) {
+    ok(`soNguoiKhachNoi("${tin}") = ${mong}`, trang.soNguoiKhachNoi(tin) === mong, String(trang.soNguoiKhachNoi(tin)));
+  }
+  for (const [tin, mong] of [['직원 연결', true], ['사람이랑 얘기하고 싶어요', true], ['상담원 있어요?', true], ['직원분 친절해요?', false], ['4명인데 뭐가 좋아요', false]]) {
+    ok(`khachDoiNguoi("${tin}") = ${mong}`, trang.khachDoiNguoi(tin) === mong);
+  }
+  const che = trang.cheThongTin('주소는 호치민시 1군 레러이 12번지예요. 제 이름은 김민수예요');
+  ok('Che địa chỉ, tên tiếng Hàn', che.includes('[주소]') && !che.includes('레러이') && !che.includes('김민수'), che);
+
+  // Menu đọc theo tiếng Hàn.
+  const mKo = trang.docMenu(MENU, 'ko');
+  ok('docMenu ko: tên tiếng Hàn của trang, kim chi là 김치, sản phẩm không có tên tiếng Hàn bị bỏ',
+    mKo.find(s => s.ma === 'ribeye-with-cap')?.tenNoi === '립아이 캡' && mKo.find(s => s.ma === 'thu-kim-chi')?.tenNoi === '김치'
+    && !mKo.some(s => s.ma === 'mystery-cut'), mKo.map(s => `${s.ma}=${s.tenNoi}`).join(', '));
+  ok('docMenu vi không đổi', trang.docMenu(MENU).find(s => s.ma === 'ribeye-with-cap')?.tenNoi === 'đầu thăn ngoại còn nắp');
+  ok('Lời dặn có phần TIẾNG HÀN: tên trang tiếng Hàn, độ chín, cau_chua_biet vẫn tiếng Việt, hỏi người hay máy thì 가상 도우미',
+    trang.LOI_DAY_CO_DINH.includes('TIẾNG HÀN (khi NGÔN NGỮ LƯỢT NÀY là tiếng Hàn)') && trang.LOI_DAY_CO_DINH.includes('립아이 캡 = đầu thăn ngoại còn nắp')
+    && trang.LOI_DAY_CO_DINH.includes('미디엄 레어') && trang.LOI_DAY_CO_DINH.includes('cau_chua_biet LUÔN viết bằng tiếng Việt')
+    && trang.LOI_DAY_CO_DINH.includes('저는 Beeftown의 가상 도우미예요.'));
+
+  // Một lượt tiếng Hàn: khối ngôn ngữ, thẻ và đơn tiếng Hàn.
+  const kqHan = KQ({ tin: ['립아이 캡을 추천드려요.', '4분이면 6팩 정도 어떠세요?'], the: ['ribeye-with-cap'], don: [{ khoa: 'ribeye-with-cap_150', so_goi: 4 }] });
+  const c1 = claudeGia(kqHan);
+  const { r, j } = await chay(yc(THAN({ tin: '4명인데 부드러운 고기 추천해 주세요' })), { goiClaude: c1.f, rpc: dbGia().rpc });
+  ok('Khách viết tiếng Hàn ở trang tiếng Việt: khối cuối là tiếng Hàn, 200', r.status === 200 && c1.goi[0].system[2].text === trang.khoiNgonNgu('ko'), JSON.stringify(j));
+  ok('Thẻ tiếng Hàn; "nhan" là tên trang tiếng Việt ghi (Ribeye with Cap); đơn ghi tên tiếng Hàn',
+    j?.the?.[0]?.ten === '립아이 캡' && j.the[0].nhan === 'Ribeye with Cap' && j.the[0].loai === '냉장육' && j.the[0].viTri === trang.PHAN_THIT['ribeye-with-cap'].han.viTri
+    && j?.don?.[0]?.ten === '립아이 캡', JSON.stringify(j));
+  const { j: jKo } = await chay(yc(THAN({ tin: '4명인데 부드러운 고기 추천해 주세요', nn: 'ko' })), { goiClaude: claudeGia(kqHan).f, rpc: dbGia().rpc });
+  ok('Ở trang tiếng Hàn: "nhan" trùng tên (trang không hiện dòng "이 페이지 표기")', jKo?.the?.[0]?.nhan === '립아이 캡');
+
+  const c2 = claudeGia(KQ({ tin: ['Dạ nhà mình thích thịt mềm hay dai ạ?'] }), KQ({ tin: ['부드러운 고기가 좋으세요, 쫄깃한 고기가 좋으세요?'] }));
+  const db2 = dbGia();
+  const { j: j2 } = await chay(yc(THAN({ tin: '4명이에요' })), { goiClaude: c2.f, rpc: db2.rpc });
+  ok('Claude trả tiếng Việt cho khách Hàn → viết lại một lần bằng tiếng Hàn', c2.goi.length === 2 && /tiếng Hàn/.test(c2.goi[1].messages.at(-1).content)
+    && j2?.tin?.[0]?.startsWith('부드러운') && db2.ghi()[0]?.viet_lai === true, JSON.stringify(j2));
+  const c3 = claudeGia(KQ({ tin: ['Dạ nhà mình thích thịt mềm hay dai ạ?'] }));
+  const { j: j3 } = await chay(yc(THAN({ tin: '4명이에요' })), { goiClaude: c3.f, rpc: dbGia().rpc });
+  ok('Viết lại vẫn tiếng Việt → câu an toàn tiếng Hàn, mời liên hệ quán', j3?.tin?.[0] === trang.CAU_AN_TOAN_HAN && j3?.chuyen_nguoi === true, JSON.stringify(j3));
+
+  const c4 = claudeGia(KQ({ tin: ['몇 분이 드세요?'] }));
+  await chay(yc(THAN({ tin: 'ok', nn: 'ko' })), { goiClaude: c4.f, rpc: dbGia().rpc });
+  ok('Trang tiếng Hàn, khách gõ "ok", chưa có lịch sử → tiếng Hàn', c4.goi[0].system[2].text === trang.khoiNgonNgu('ko'));
+  const lichSu = [{ khach: '4명', tra_loi: KQ({ tin: ['부드러운 고기가 좋으세요?'] }) }];
+  const c5 = claudeGia(KQ({ tin: ['네, 알겠어요.'] }));
+  await chay(yc(THAN({ tin: '4' })), { goiClaude: c5.f, rpc: dbGia({ duoc: true, luot: 2, lich_su: lichSu, menu: MENU, so_hoc: SO_HOC }).rpc });
+  ok('Trang tiếng Việt, cuộc chat đang nói tiếng Hàn, khách gõ "4" → vẫn tiếng Hàn', c5.goi[0].system[2].text === trang.khoiNgonNgu('ko'));
+  const c6 = claudeGia(KQ());
+  await chay(yc(THAN({ tin: 'nhà 4 người', nn: 'ko' })), { goiClaude: c6.f, rpc: dbGia().rpc });
+  ok('Trang tiếng Hàn, khách viết tiếng Việt có dấu → tiếng Việt', c6.goi[0].system[2].text === trang.khoiNgonNgu('vi'));
+  const c7 = claudeGia(KQ());
+  await chay(yc(THAN({ tin: 'nhà 4 người', nn: 'xx' })), { goiClaude: c7.f, rpc: dbGia().rpc });
+  ok('nn lạ → coi như trang tiếng Việt', c7.goi.length === 1 && c7.goi[0].system[2].text === trang.khoiNgonNgu('vi'));
+
+  // Bấm đúp ở cuộc tiếng Hàn: trả lại câu cũ với thẻ tiếng Hàn.
+  const daTra = { duoc: false, ly_do: 'da_tra_loi', tra_loi: kqHan, menu: MENU };
+  const c8 = claudeGia(KQ());
+  const { j: j8 } = await chay(yc(THAN({ tin: '4명인데', nn: 'ko' })), { goiClaude: c8.f, rpc: dbGia(daTra).rpc });
+  ok('Đã trả lời (tiếng Hàn) → câu cũ, thẻ tiếng Hàn, không gọi Claude', c8.goi.length === 0 && j8?.the?.[0]?.ten === '립아이 캡' && j8?.tin?.[0] === kqHan.tin[0], JSON.stringify(j8));
 });
 
 process.exit(ketThuc('TRỢ LÝ TRANG — EDGE FUNCTION'));

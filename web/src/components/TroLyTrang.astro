@@ -3,8 +3,8 @@
  * TRỢ LÝ TRANG — khung nhắn tin tư vấn chọn bò ở trang Mua thịt về (0126; Khánh 17–18/11/2026)
  * ============================================================================================
  *
- * Dựng khi troLyTrangMo(): công tắc hien_tro_ly_trang bật, trang đang mở có gói đặt được, trang tiếng Việt, web đã nối
- * database. Chỉ chạy được nhờ JavaScript (khung nhắn tin gọi Edge Function tro-ly-trang), nên cả khối ra trang với
+ * Dựng khi troLyTrangMo(): công tắc hien_tro_ly_trang bật, trang đang mở có gói đặt được, trang tiếng Việt hay tiếng
+ * Hàn (23/11/2026 — lời chào loiChao(nn), mỗi tin gửi kèm nn để Trang biết trang khách đang mở), web đã nối database. Chỉ chạy được nhờ JavaScript (khung nhắn tin gọi Edge Function tro-ly-trang), nên cả khối ra trang với
  * hidden và script hiện nó khi trình duyệt có <dialog> và fetch — tắt JavaScript thì trang y như chưa có Trang.
  *
  * Bố cục: một thẻ mời ngay dưới dải ba điều ("Chưa biết chọn phần nào?" + nút viền "Nhắn Trang" — nút chính của trang
@@ -218,8 +218,8 @@ const veGap = lh.hotline ? CHU_TRO_LY.veGapGoi[nn](lh.hotline) : CHU_TRO_LY.veGa
 <script>
   // Script là toàn bộ khung nhắn tin (không có nó khối ở yên hidden). Nhịp, chữ, thẻ đơn: lib/tro-ly-trang.ts.
   import {
-    CACH_DONG_AO_CHON, CHU_TRO_LY, LOI_CHAO, NHIP, NHIP_XEM, docTraLoi, docXem, dongAo, goiCuaSanPham, theDon, thoiGianGo,
-    trongKhoang, type DaToiNhanVien, type LoiTrang, type ThePhanThit, type TinXem, type TraLoiTrang,
+    CACH_DONG_AO_CHON, CHU_TRO_LY, NHIP, NHIP_XEM, docTraLoi, docXem, dongAo, goiCuaSanPham, loiChao, nnGuiHam, theDon,
+    thoiGianGo, trongKhoang, type DaToiNhanVien, type LoiTrang, type ThePhanThit, type TinXem, type TraLoiTrang,
   } from '../lib/tro-ly-trang';
   import { dinhDangTien, type SanPhamMua } from '../lib/don-mua-thit';
 
@@ -283,7 +283,7 @@ const veGap = lh.hotline ? CHU_TRO_LY.veGapGoi[nn](lh.hotline) : CHU_TRO_LY.veGa
     document.addEventListener('visibilitychange', () => { if (document.hidden) thoiXem(); else if (hop.open) void xem(); });
 
     function moHop() {
-      if (!daChao) { for (const t of LOI_CHAO) tinTrang(t); daChao = true; }
+      if (!daChao) { for (const t of loiChao(nn)) tinTrang(t); daChao = true; }
       document.documentElement.classList.add('tlt-khoa');
       hop!.showModal();
       o!.focus();
@@ -490,7 +490,7 @@ const veGap = lh.hotline ? CHU_TRO_LY.veGapGoi[nn](lh.hotline) : CHU_TRO_LY.veGa
         // text/plain: yêu cầu "đơn giản", trình duyệt không hỏi trước (CORS) — nhanh hơn một vòng mạng.
         const r = await fetch(diaChi, {
           method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, credentials: 'omit', signal: huy.signal,
-          body: JSON.stringify({ cuoc, ma_tin: maTin, tin, tra_truoc: !!goc.dataset.traTruoc, chi_nhanh: goc.dataset.chiNhanh }),
+          body: JSON.stringify({ cuoc, ma_tin: maTin, tin, tra_truoc: !!goc.dataset.traTruoc, chi_nhanh: goc.dataset.chiNhanh, nn: nnGuiHam(nn) }),
         });
         return docTraLoi(await r.json().catch(() => null));
       } catch {

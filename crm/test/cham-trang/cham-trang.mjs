@@ -16,6 +16,11 @@
  * Máy chấm từng câu theo cau-hoi.json (JSON đúng khuôn, tiếng Việt, chữ cấm kể cả AI / bot / tự động, "trợ lý ảo" chỉ khi khách hỏi, các ô phai_* /
  * khong_*). Kết quả: ket-qua-<ngày>.json (đủ chi tiết, cả bản Claude trả lần đầu) và ket-qua-<ngày>.md (bảng để người
  * chấm đọc từng câu theo "tot_la" rồi ghi Đạt / Không đạt). Ngưỡng bật cho khách: từ 45/50 câu Đạt.
+ *
+ * TIẾNG HÀN (Khánh 23/11/2026 "Làm tiếng Hàn"): câu có "ngon_ngu": "ko" kiểm bằng máy kiểm tiếng Hàn (chuNgoaiHan, chuCamHan —
+ * mỗi tin phải có chữ Hàn), "가상 도우미" chỉ khi khách hỏi; "nn" là trang khách đang mở (ko: /ko/buy-meat). Câu 51–60
+ * là mười câu tiếng Hàn; ngưỡng bật trang tiếng Hàn: từ 9/10 câu 51–60 Đạt, và người Hàn của quán đọc lại giọng văn.
+ *     ANTHROPIC_API_KEY=… node test/cham-trang/cham-trang.mjs --chi 46,51,52,53,54,55,56,57,58,59,60
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -25,7 +30,7 @@ const DAY = dirname(fileURLToPath(import.meta.url));
 const GOC = join(DAY, '..', '..', '..');
 const nap = p => import(pathToFileURL(join(GOC, p)).href);
 const { xuLyYeuCau, WORKSPACE_MAC_DINH, MO_HINH } = await nap('crm/supabase/functions/tro-ly-trang/xu-ly.ts');
-const { chuNgoai, chuCam } = await nap('web/src/lib/tieng-viet-trang.ts');
+const { chuNgoai, chuCam, chuNgoaiHan, chuCamHan } = await nap('web/src/lib/tieng-viet-trang.ts');
 
 const thamSo = process.argv.slice(2);
 const lay = ten => { const i = thamSo.indexOf(ten); return i >= 0 ? thamSo[i + 1] : null; };
@@ -98,7 +103,7 @@ async function chamMotCau(c) {
     const truoc = tho.length;
     const req = new Request('https://bzfzutyuqwxjarlsmgjt.supabase.co/functions/v1/tro-ly-trang', {
       method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8', Origin: 'https://beeftown.vn', 'x-forwarded-for': '203.0.113.50' },
-      body: JSON.stringify({ cuoc, ma_tin: crypto.randomUUID(), tin, tra_truoc: true, chi_nhanh: 'q1' }),
+      body: JSON.stringify({ cuoc, ma_tin: crypto.randomUUID(), tin, tra_truoc: true, chi_nhanh: 'q1', nn: c.nn === 'ko' ? 'ko' : 'vi' }),
     });
     const batDau = Date.now();
     const r = await xuLyYeuCau(req, { goiClaude, rpc: db.rpc, ghiLog: () => {} });
@@ -113,15 +118,18 @@ function chamMay(c, luot) {
   const loi = [];
   const cuoi = luot.at(-1)?.tra_loi;
   if (!cuoi?.ok) { loi.push(`lượt cuối không trả lời được (${luot.at(-1)?.trang_thai} ${cuoi?.loi ?? ''})`); return loi; }
+  const han = c.ngon_ngu === 'ko';
+  const ngoaiCua = han ? chuNgoaiHan : chuNgoai;
+  const camCua = han ? chuCamHan : chuCam;
   for (const [i, l] of luot.entries()) {
     const tin = l.tra_loi?.tin ?? [];
     if (!l.tra_loi?.ok) loi.push(`lượt ${i + 1} lỗi`);
     if (tin.length < 1 || tin.length > 3) loi.push(`lượt ${i + 1}: ${tin.length} tin`);
     for (const t of tin) {
-      if (chuNgoai(t).length) loi.push(`chữ nước ngoài: ${chuNgoai(t).join(', ')}`);
-      if (chuCam(t).length) loi.push(`chữ cấm: ${chuCam(t).join(' ')}`);
+      if (ngoaiCua(t).length) loi.push(`chữ ${han ? 'không phải tiếng Hàn' : 'nước ngoài'}: ${ngoaiCua(t).join(', ')}`);
+      if (camCua(t).length) loi.push(`chữ cấm: ${camCua(t).join(' ')}`);
       // Chữ AI, bot, tự động đã bị chuCam bắt ở mọi câu (Khánh 18/11/2026). "Trợ lý ảo" chỉ khi khách hỏi.
-      if (!c.cho_phep_tro_ly_ao && /trợ lý ảo|là máy/i.test(t)) loi.push(`tự nhắc trợ lý ảo khi khách không hỏi: "${t}"`);
+      if (!c.cho_phep_tro_ly_ao && (han ? /가상\s?도우미/ : /trợ lý ảo|là máy/i).test(t)) loi.push(`tự nhắc trợ lý ảo khi khách không hỏi: "${t}"`);
     }
   }
   const tinCuoi = cuoi.tin.join(' ');

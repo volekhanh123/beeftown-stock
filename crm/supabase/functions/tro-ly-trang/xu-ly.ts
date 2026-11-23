@@ -3,7 +3,9 @@
  * ==========================================================================
  *
  * Trình duyệt (khung chat Trang ở trang Mua thịt về — web/src/components/TroLyTrang.astro) gửi:
- *   POST { cuoc: uuid, ma_tin: uuid, tin: "…", tra_truoc?: boolean, chi_nhanh?: "q1" }          — một tin khách
+ *   POST { cuoc: uuid, ma_tin: uuid, tin: "…", tra_truoc?: boolean, chi_nhanh?: "q1", nn?: "vi"|"ko" } — một tin khách
+ *        (nn: trang khách đang mở. Trang trả lời tiếng Hàn khi tin có chữ Hàn, hay khi tin không rõ tiếng mà cuộc chat
+ *        đang nói tiếng Hàn / trang là /ko — ngonNguTraLoi của tieng-viet-trang.ts; Khánh 23/11/2026 "Làm tiếng Hàn")
  *   POST { hanh_dong: "xem", cuoc: uuid, sau: số, chi_nhanh?: "q1" }                            — hỏi lại khi đang mở
  * Trả về (luôn JSON):
  *   200 { ok: true, tin: [...], the: [ThePhanThit], don: [{khoa, so_goi}], chot, chuyen_nguoi }  — Trang trả lời
@@ -29,9 +31,10 @@
  */
 import {
   DON_LON_TU, KHUON_KET_QUA, LOI_DAY_CO_DINH, cauVietLai, cheThongTin, docKetQua, docMenu, docXen, duLieuLuot,
-  ghiChuNhanVien, gotTin, khachDoiNguoi, kiemTin, soNguoiKhachNoi, theCua,
-  type SanPhamCuaTrang, type SoHoc, type ThePhanThit, type TraLoi,
+  ghiChuNhanVien, gotTin, khachDoiNguoi, khoiNgonNgu, kiemTin, soNguoiKhachNoi, theCua,
+  type NgonNguTrang, type SanPhamCuaTrang, type SoHoc, type ThePhanThit, type TraLoi,
 } from './trang.ts';
+import { coChuHan, ngonNguTraLoi } from './tieng-viet-trang.ts';
 
 /** Mô hình mặc định (Khánh duyệt 18/11/2026: "Oke" với Haiku 5.5, khoảng 58 đ mỗi cuộc chat). */
 export const MO_HINH = 'claude-haiku-5-5';
@@ -88,7 +91,7 @@ export function ipKhach(req: Request): string | null {
   return [...ds].reverse().find(s => !IP_NOI_BO.test(s)) ?? null;
 }
 
-interface YeuCau { cuoc: string; maTin: string; tin: string; traTruoc: boolean; chiNhanh: string | null }
+interface YeuCau { cuoc: string; maTin: string; tin: string; traTruoc: boolean; chiNhanh: string | null; nnTrang: NgonNguTrang }
 interface YeuCauXem { cuoc: string; sau: number; chiNhanh: string | null }
 
 async function docThan(req: Request): Promise<Record<string, unknown> | null> {
@@ -106,7 +109,16 @@ function docYeuCau(o: Record<string, unknown>): YeuCau | null {
   const tin = typeof o.tin === 'string' ? o.tin.replace(/\s+/g, ' ').trim() : '';
   if (typeof o.cuoc !== 'string' || !UUID.test(o.cuoc) || typeof o.ma_tin !== 'string' || !UUID.test(o.ma_tin)) return null;
   if (!tin || [...tin].length > TIN_TOI_DA) return null;
-  return { cuoc: o.cuoc.toLowerCase(), maTin: o.ma_tin.toLowerCase(), tin, traTruoc: o.tra_truoc === true, chiNhanh: docChiNhanh(o.chi_nhanh) };
+  return {
+    cuoc: o.cuoc.toLowerCase(), maTin: o.ma_tin.toLowerCase(), tin, traTruoc: o.tra_truoc === true, chiNhanh: docChiNhanh(o.chi_nhanh),
+    nnTrang: o.nn === 'ko' ? 'ko' : 'vi',
+  };
+}
+
+/** Ngôn ngữ của một câu trả lời đã có (nhật ký, lịch sử): có chữ Hàn → tiếng Hàn. */
+function ngonNguCua(traLoi: unknown): NgonNguTrang {
+  const tin = (traLoi as { tin?: unknown } | null)?.tin;
+  return Array.isArray(tin) && tin.some(t => coChuHan(t)) ? 'ko' : 'vi';
 }
 
 function docYeuCauXem(o: Record<string, unknown>): YeuCauXem | null {
@@ -159,8 +171,8 @@ interface DuLieuMo { luot: number; lich_su: { khach: string; tra_loi: TraLoi | n
  * Thứ trả trình duyệt: thẻ dựng lại từ menu hiện tại (nhật ký chỉ lưu mã); mỗi dòng đơn kèm tên Trang nói, để thẻ đơn
  * ghi "Đầu thăn ngoại còn nắp (Ribeye with Cap)" — tiền do trang tự tính từ menu của chính nó.
  */
-function goiChoKhach(kq: TraLoi, menu: readonly SanPhamCuaTrang[]) {
-  const the = kq.the.map(ma => theCua(ma, menu)).filter((x): x is ThePhanThit => x !== null);
+function goiChoKhach(kq: TraLoi, menu: readonly SanPhamCuaTrang[], nn: NgonNguTrang = 'vi', nnTrang: NgonNguTrang = nn) {
+  const the = kq.the.map(ma => theCua(ma, menu, nn, nnTrang)).filter((x): x is ThePhanThit => x !== null);
   const tenCua = (khoa: string) => menu.find(sp => sp.goi.some(g => g.khoa === khoa))?.tenNoi ?? '';
   const don = kq.don.map(d => ({ khoa: d.khoa, so_goi: d.so_goi, ten: tenCua(d.khoa) }));
   return { ok: true, tin: kq.tin, the, don, chot: kq.chot, chuyen_nguoi: kq.chuyen_nguoi };
@@ -261,9 +273,10 @@ export async function xuLyYeuCau(req: Request, mt: MoiTruong): Promise<Response>
     const lyDo = String(mo.ly_do ?? '');
     if (lyDo === 'da_tra_loi') {
       // Cùng ma_tin đã trả lời (bấm đúp, trình duyệt gửi lại): trả đúng câu cũ, không gọi Claude.
-      const menuCu = docMenu(mo.menu);
+      const nnCu = ngonNguCua(mo.tra_loi);
+      const menuCu = docMenu(mo.menu, nnCu);
       const cu = docKetQua(mo.tra_loi, menuCu);
-      if (cu) return traJson(goiChoKhach(cu, menuCu), 200, nguon);
+      if (cu) return traJson(goiChoKhach(cu, menuCu, nnCu, yc.nnTrang), 200, nguon);
       return traJson({ ok: false, loi: 'tam_thoi' }, 503, nguon);
     }
     // Nhân viên đang nhận cuộc này: database đã ghi tin cho nhân viên — không gọi Claude, không câu trả lời của Trang.
@@ -279,7 +292,11 @@ export async function xuLyYeuCau(req: Request, mt: MoiTruong): Promise<Response>
   }
 
   const du = mo as unknown as DuLieuMo;
-  const menu = docMenu(du.menu);
+  // Ngôn ngữ lượt này: theo chữ khách gõ; tin không rõ tiếng thì theo câu Trang trả lời gần nhất, chưa có thì theo trang.
+  const lichSu = Array.isArray(du.lich_su) ? du.lich_su : [];
+  const truoc = lichSu.at(-1)?.tra_loi;
+  const nn = ngonNguTraLoi(yc.tin, truoc ? ngonNguCua(truoc) : yc.nnTrang);
+  const menu = docMenu(du.menu, nn);
   const soHoc = (Array.isArray(du.so_hoc) ? du.so_hoc : []).filter(x => typeof x?.hoi === 'string' && typeof x?.dap === 'string');
 
   const thamSo = {
@@ -289,6 +306,8 @@ export async function xuLyYeuCau(req: Request, mt: MoiTruong): Promise<Response>
     system: [
       { type: 'text', text: LOI_DAY_CO_DINH, cache_control: { type: 'ephemeral' } },
       { type: 'text', text: duLieuLuot(menu, soHoc, yc.traTruoc), cache_control: { type: 'ephemeral' } },
+      // Khối cuối, không lưu đệm: ngôn ngữ của lượt này (hai khối trên dùng chung giữa mọi cuộc chat cùng thứ tiếng).
+      { type: 'text', text: khoiNgonNgu(nn) },
     ],
     // Nhân viên vừa trả cuộc lại: lượt này kèm ghi chú các tin họ đã nhắn với khách (ghiChuNhanVien).
     messages: [...lichSuThanhTin(du.lich_su), { role: 'user', content: ghiChuNhanVien(docXen(du.xen), tinChe) }],
@@ -304,13 +323,13 @@ export async function xuLyYeuCau(req: Request, mt: MoiTruong): Promise<Response>
     dung = lan1.dung;
     kq = lan1.chu === null ? null : docKetQua(lan1.chu, menu);
     if (kq) {
-      const k = kiemTin(kq.tin);
+      const k = kiemTin(kq.tin, nn);
       if (k.ngoai.length || k.cam.length) {
         vietLai = true;
         try {
           const lan2 = chuCuaClaude(await mt.goiClaude({
             ...thamSo,
-            messages: [...thamSo.messages, { role: 'assistant', content: lan1.chu }, { role: 'user', content: cauVietLai(k) }],
+            messages: [...thamSo.messages, { role: 'assistant', content: lan1.chu }, { role: 'user', content: cauVietLai(k, nn) }],
           }));
           dung = congToken(dung, lan2.dung);
           const kq2 = lan2.chu === null ? null : docKetQua(lan2.chu, menu);
@@ -333,7 +352,7 @@ export async function xuLyYeuCau(req: Request, mt: MoiTruong): Promise<Response>
     // Từ chối, hết token giữa chừng, JSON hỏng: câu an toàn, mời liên hệ quán — đúng sự thật, không bịa.
     kq = { tin: [], the: [], don: [], chot: false, chuyen_nguoi: true, cau_chua_biet: '' };
   }
-  const got = gotTin(kq);
+  const got = gotTin(kq, nn);
   kq = got.kq;
   // Đơn lớn (từ 9 người): luôn hiện cách liên hệ quán, kể cả khi Claude quên đặt chuyen_nguoi (bộ chấm lần 1, câu #7).
   if (!kq.chuyen_nguoi && soNguoiKhachNoi(yc.tin) >= DON_LON_TU) kq = { ...kq, chuyen_nguoi: true };
@@ -345,7 +364,7 @@ export async function xuLyYeuCau(req: Request, mt: MoiTruong): Promise<Response>
     tra_loi: kq, doi_nguoi: khachDoiNguoi(yc.tin), viet_lai: vietLai, thay_tu: thayTu, bo_tin: boTin,
     mili_giay: bayGio() - batDau, ...tokenGhi(dung),
   }, log);
-  return traJson(goiChoKhach(kq, menu), 200, nguon);
+  return traJson(goiChoKhach(kq, menu, nn, yc.nnTrang), 200, nguon);
 }
 
 function tokenGhi(d: DungToken) {

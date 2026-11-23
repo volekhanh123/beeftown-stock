@@ -2654,6 +2654,10 @@ try {
       await chupTrang('1-the-moi');
       await p.goto(goc + '/en/buy-meat', { waitUntil: 'load', timeout: 60000 });
       ok('Trang tiếng Anh: chưa có Trang (tạm, chờ Khánh chọn)', await p.locator('[data-tlt]').count() === 0);
+      // Trang tiếng Hàn (Khánh 23/11/2026 "Làm tiếng Hàn"): thẻ mời tiếng Hàn.
+      await p.goto(goc + '/ko/buy-meat', { waitUntil: 'load', timeout: 60000 });
+      ok('Trang tiếng Hàn: thẻ mời hiện, nút ghi bằng tiếng Hàn', await p.locator('[data-tlt-mo]').isVisible()
+        && motDong(await p.locator('[data-tlt-mo]').innerText()) === CHU_TRO_LY.moNut.ko);
       await p.goto(goc + '/mua-thit-ve', { waitUntil: 'load', timeout: 60000 });
 
       await p.locator('[data-tlt-mo]').click();
