@@ -130,10 +130,10 @@ await nhom('3 · CHỖ DÙNG: THẺ, ĐƠN, JSON-LD, THẺ ĐƠN CỦA TRANG; Đ
   const the = doc('components', 'MuaThitThe.astro').replace(/<style[\s\S]*?<\/style>/, '');
   ok('MuaThitThe.astro: tên hiện qua tenHienThi, link qua lienKetPhanThit', /import \{ lienKetPhanThit, tenHienThi \} from '\.\.\/lib\/ten-phan-thit';/.test(the)
        && /const ten = tenHienThi\(sanPham, ngonNgu\);/.test(the) && /const lienKetPhan = lienKetPhanThit\(sanPham, ngonNgu\);/.test(the));
-  ok('MuaThitThe.astro: h3, tên trong hộp chọn, nhãn đọc màn hình (chọn, số lượng, bớt, thêm) đều dùng `ten`, không còn sanPham.ten ngoài việc tính lang',
+  ok('MuaThitThe.astro: h3, tên trong hộp chọn, nhãn đọc màn hình (chọn, số lượng, bớt, thêm) đều dùng `ten`; khuôn trang (ngoài phần đầu file) không còn sanPham.ten',
      /<h3 lang=\{langTenHienThi\}>\{ten\}<\/h3>/.test(the) && /<p class="mtv-hop-ten" id=\{`\$\{idHop\}-ten`\} lang=\{langTenHienThi\}>\{ten\}<\/p>/.test(the)
        && /c\.soGoi\(nhan, ten\)/.test(the) && /c\.bot\(nhan, ten\)/.test(the) && /c\.them\(nhan, ten\)/.test(the) && /<span class="an-chu">: \{ten\}<\/span>/.test(the)
-       && (the.match(/sanPham\.ten\b/g) ?? []).length === 3, (the.match(/.*sanPham\.ten\b.*/g) ?? []).join(' | '));
+       && !/sanPham\.ten\b/.test(the.replace(/^---\n[\s\S]*?\n---\n/, '')), (the.replace(/^---\n[\s\S]*?\n---\n/, '').match(/.*sanPham\.ten\b.*/g) ?? []).join(' | '));
   ok('MuaThitThe.astro: link trên thẻ là .lien-ket (vùng chạm 48px, mũi tên), chữ có tên phần thịt ở phần ẩn cho trình đọc màn hình, chỉ khi có link',
      /\{lienKetPhan && \(\s*<p class="mtv-ve-phan"><a class="lien-ket" href=\{lienKetPhan\}>\{c\.vePhan\}<span class="an-chu">: \{ten\}<\/span><BieuTuong ten="mui-ten" \/><\/a><\/p>\s*\)\}/.test(the));
   ok('MuaThitThe.astro: chữ link đủ ba thứ tiếng', /vePhan: \{ vi: 'Xem phần thịt này', en: 'About this cut', ko: '이 부위 알아보기' \}/.test(the));
