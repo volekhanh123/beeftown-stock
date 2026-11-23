@@ -24,7 +24,7 @@
 ## Nhịp trang
 
 Trang chủ (`TrangRaMat.astro`): trắng (màn đầu: câu chính "Không cần rành bò. Chọn theo gu, thấy giá
-trước." hai dòng, hỏi bàn nhanh — ô ngày, ô số người, nút Hỏi bàn — khi form mở, rồi hai ảnh Pick → Grill có
+trước." hai dòng, đặt bàn nhanh — ô ngày, ô số người, nút Đặt bàn — khi form mở, rồi hai ảnh Pick → Grill có
 chú thích số và dải tagline đỏ dính dưới ảnh — dải có `aria-hidden`, tagline được đọc một lần ở dòng hiệu
 của ba bước; điện thoại chỉ một ảnh vỉ gas 4:5) → trắng (ba bước) →
 **đen** (quầy, thịt sáng lên) → xám nhạt (cả bữa, lớp `.be-kem-dam`) → **đỏ** (đi nhóm) → trắng (tầng 3)
@@ -39,7 +39,7 @@ Khối có ảnh xếp so le trên máy tính (ảnh trái – chữ phải, r�
 chữ và nút đứng trước ảnh, trừ dải đen "Quầy chọn bò" mở bằng ảnh. Nút của một khối nằm ngay sau đoạn
 giải thích của nó, không đẩy xuống cuối khối.
 
-Trang con (Thực đơn, Mua thịt về, Đến Beeftown, Hỏi bàn, Tuyển dụng):
+Trang con (Thực đơn, Mua thịt về, Đến Beeftown, Đặt bàn, Tuyển dụng):
 
 1. `section.mo-dau-trang.be-kem` — `.khung > p.hieu + h1 + p.dan` — không hình trang trí.
 2. Các khối `section.muc.be-*` xen kẽ bề mặt — không hai dải đen hay hai dải đỏ liền nhau.
@@ -161,7 +161,7 @@ theo ngày — `web/THIET-KE.md` mục 10.
 | `Anh` | `id`, `ngonNgu`, `khung`, `khungNho?`, `sizes?`, `uuTien?`, `thayBang?`, `nenKhung?` | Ảnh AVIF / WebP trong khung tự giữ tỷ lệ (`khung` từ 600px, `khungNho` dưới 600px), tự gắn nhãn "Ảnh minh họa"; `uuTien` chỉ cho ảnh màn đầu (mỗi trang nhiều nhất một, và nó phải nằm trong màn hình đầu); `nenKhung` (`kem` / `toi` / `do` — tên giữ; nền chờ xám E2 / trắng 8 % / đỏ đậm) theo dải đặt ảnh; ảnh `tachNen` thì khung tự thêm `.tach-nen` (trong suốt, nhãn giữa đáy, dưới món). `id` và `khung` viết bằng chữ thẳng — kiểm thử đọc chúng từ mã; ngoại lệ duy nhất: ảnh món trong `ThucDonNhomAnh.astro`, `id={anh.id} khung={anh.khung}` lấy từ `ANH_CUA_MON` |
 | `KhungAnh` | `loai` (`quay`, `khay`, `thang-may`, `loi-vao`, `ban-nuong`), `tiLe?`, `tiLeNho?`, `nen?` | Chỗ của ảnh chụp thật chưa có — đúng tỷ lệ, không chữ |
 | `NhanKhay` | `ngonNgu` | Thiết bị chữ ký "Đọc nhãn khay": một thẻ `.the` đặt thẳng, không bóng đổ — logo chính đỏ, tiêu đề, năm trường theo thứ tự (số, tên trường, lời giải thích); không con số, không giá trị mẫu |
-| `LenTang3` | `ngonNgu`, `noiDung`, `gon?`, `capTieuDe?`, `anHieu?`, `tieuDe?`, `khongLinkDuongDen?` | "Tầng 3" và đường lên; bản gọn cho trang Hỏi bàn. In địa chỉ và câu chỉ đường `t.loiLen` (lối vào riêng ngay cạnh GS25, thang máy lên tầng 3) — không viết lại câu đó trong component khác |
+| `LenTang3` | `ngonNgu`, `noiDung`, `gon?`, `capTieuDe?`, `anHieu?`, `tieuDe?`, `khongLinkDuongDen?` | "Tầng 3" và đường lên; bản gọn cho trang Đặt bàn. In địa chỉ và câu chỉ đường `t.loiLen` (lối vào riêng ngay cạnh GS25, thang máy lên tầng 3) — không viết lại câu đó trong component khác |
 | `CauHoi` | `ngonNgu`, `noiDung` | Hỏi đáp bằng `<details>` — chỉ dữ kiện đã xác nhận. Mỗi `<summary>` có hai biểu tượng `cong` (`.bt-mo`) và `tru` (`.bt-dong`); hàng cao 56px, bấm được trên toàn chiều rộng |
 | `TrangVanBan` | `hieu`, `tieuDe` + `<slot>` | Trang pháp lý |
 | `TrangChinhSach` | `ngonNgu`, `khoa` | Tám trang chính sách (Điều khoản, Chính sách giá, Thanh toán, Giao hàng, Đổi trả hoàn tiền, Khiếu nại, Điều kiện bán hàng, Hỗ trợ) trong khung `TrangVanBan`; chữ ba thứ tiếng ở `lib/chinh-sach.ts`, link trong câu: chữ trong ngoặc vuông, đường dẫn tiếng Việt trong ngoặc tròn liền sau, ngày cập nhật ở cuối. Thông tin vận hành chưa chốt lấy từ `lib/cho-trong.ts` — `npm run deploy` từ chối khi còn chỗ trống |
@@ -172,8 +172,8 @@ theo ngày — `web/THIET-KE.md` mục 10.
 | `ThucDonNhomAnh` | `nhom`, `ngonNgu`, `kieu?` (`dan-dau` / `deu`), `ghiChu?`, `tieuDeNho?`, `nenKhung?`, `khongGia?` | Một nhóm món kiểu cuốn menu bản sáng: tên nhóm chữ hoa `--co-nhom`, câu của nhóm (`CAU_NHOM`), món dẫn đầu chữ trái – ảnh phải từ 768px, lưới thẻ ảnh trên chữ dưới (2 / 3 cột) từ 600px; dưới 600px món đứng sau món dẫn đầu là hàng gọn `tdn-gon` (ảnh 128px trái, chữ phải) — nhóm không có món dẫn đầu giữ thẻ to; `deu` cho ba ly signature (luôn là thẻ); `tieuDeNho` trong dải đen Bò tại quầy |
 | `ThucDonMon` | `mon`, `ngonNgu`, `lon?`, `khongGia?` | Chữ của một món: tên (chữ thường đậm 700), giá chỉ khi `gia !== null`, mô tả, nhãn Món sống / Có cồn, câu cảnh báo món sống |
 | `ChonTheoGu` | `ngonNgu`, `phanCat` | Khối "Chọn theo gu" ở tab Bò tại quầy của Thực đơn (0116): nút lọc là radio thật (lọc bằng CSS `:has()`, không cần JavaScript; đang chọn: nền đặc + chữ 800), thẻ `.the` tên, gu, mô tả, dòng giá ở nhãn khay — không giá. Trang en / ko in thêm tên tiếng Việt để khách nói với quầy. Danh sách rỗng thì không dựng |
-| `ThanhHanhDong` | `ngonNgu`, `noiDung`, `duongDan` | Thanh đen dính đáy màn hình dưới 768px (layout đã gắn, sau chân trang) ở trang chủ, Thực đơn, Đến Beeftown: một nút chính (Hỏi bàn / Khám phá thực đơn), "Gọi" và "Chỉ đường" chỉ khi hotline, Google Maps đã công bố. Quyết định ở `thanhHanhDong()` (`lib/trang-cong-khai.ts`). Ẩn khi nhóm nút màn đầu đang trên màn hình, trên màn thấp dưới 500px |
-| `DauTrang`, `ChanTrang` | — | Layout đã gắn sẵn. Đầu trang cao 64 / 80px, bộ chọn ngôn ngữ in đủ ba thứ tiếng (thứ tiếng đang xem: `aria-current="true"`, chữ đậm và nét gạch), menu gọn có nút đóng và nút chính Hỏi bàn (lớp phủ tối và khoá cuộn chỉ có khi script đã chạy — `data-co-script`). Đầu trang đen, logo phụ trắng (dưới 360px brandmark trắng). Chân trang: hai dải đen, logo chính trắng, không tem, không hoa văn chữ, chữ ≥ 14px, `<footer>` pháp nhân duy nhất, giữ nguyên từng ký tự, dòng email ngay dưới số điện thoại; nhóm Chính sách (`nav.ct-chinh-sach`, chín link: tám trang chính sách rồi Quyền riêng tư) rộng hết hàng dưới bốn cột — hai cột trên điện thoại, xếp theo độ dài chữ từ 900px; biểu tượng xác nhận của cơ quan quản lý chỉ in khi `XAC_NHAN_CO_QUAN` có mã |
+| `ThanhHanhDong` | `ngonNgu`, `noiDung`, `duongDan` | Thanh đen dính đáy màn hình dưới 768px (layout đã gắn, sau chân trang) ở trang chủ, Thực đơn, Đến Beeftown: một nút chính (Đặt bàn / Khám phá thực đơn), "Gọi" và "Chỉ đường" chỉ khi hotline, Google Maps đã công bố. Quyết định ở `thanhHanhDong()` (`lib/trang-cong-khai.ts`). Ẩn khi nhóm nút màn đầu đang trên màn hình, trên màn thấp dưới 500px |
+| `DauTrang`, `ChanTrang` | — | Layout đã gắn sẵn. Đầu trang cao 64 / 80px; từ 768px trên thanh là **một nút ngôn ngữ** (`details.dt-ngon-ngu`, name `dau-trang`: quả địa cầu `dia-cau` + mã VI / EN / KO; bấm thì thả xuống đủ ba thứ tiếng — Khánh quyết 23/11/2026), dưới 768px hàng ba thứ tiếng nằm trong bảng danh mục (thứ tiếng đang xem: `aria-current="true"`, chữ đậm và nét gạch); menu gọn có nút đóng và nút chính Đặt bàn (lớp phủ tối và khoá cuộn chỉ có khi script đã chạy — `data-co-script`). Đầu trang đen, logo phụ trắng (dưới 360px brandmark trắng). Chân trang: hai dải đen, logo chính trắng, không tem, không hoa văn chữ, chữ ≥ 14px, `<footer>` pháp nhân duy nhất, giữ nguyên từng ký tự, dòng email ngay dưới số điện thoại; nhóm Chính sách (`nav.ct-chinh-sach`, chín link: tám trang chính sách rồi Quyền riêng tư) rộng hết hàng dưới bốn cột — hai cột trên điện thoại, xếp theo độ dài chữ từ 900px; biểu tượng xác nhận của cơ quan quản lý chỉ in khi `XAC_NHAN_CO_QUAN` có mã |
 
 Thêm biểu tượng: vẽ thêm một dòng vào `NET` và kiểu `TenBieuTuong` trong `BieuTuong.astro`, lưới 24,
 nét 1,5, đầu tròn — rồi cập nhật danh sách tên trong `SKILL.md` và `web/THIET-KE.md` mục 5.

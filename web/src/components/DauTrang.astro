@@ -24,23 +24,27 @@
  * thì bốn mục như cũ. Nút đỏ chọn theo đường dẫn Hỏi bàn, không theo vị trí.
  *
  * Ba bề rộng (thanh cao 64px; từ 1080px cao 80px — --cao-dau trong cong-khai.css):
- *   · dưới 768px   logo | nút "Danh mục". Hỏi bàn (nút chính) và ngôn ngữ nằm trong bảng.
- *   · từ 768px     logo | ngôn ngữ | Hỏi bàn | nút "Danh mục" (bảng chỉ còn ba trang — bốn khi
- *                  trang Mua thịt về mở).
- *   · từ 1080px    logo | ba trang (bốn khi trang Mua thịt về mở) | ngôn ngữ | Hỏi bàn. Không
+ *   · dưới 768px   logo | nút "Danh mục". Đặt bàn (nút chính) và ngôn ngữ nằm trong bảng.
+ *   · từ 768px     logo | nút ngôn ngữ | Đặt bàn | nút "Danh mục" (bảng chỉ còn ba trang — bốn
+ *                  khi trang Mua thịt về mở).
+ *   · từ 1080px    logo | ba trang (bốn khi trang Mua thịt về mở) | nút ngôn ngữ | Đặt bàn. Không
  *                  còn nút "Danh mục".
  *
- * Bộ chọn ngôn ngữ in ĐỦ ba thứ tiếng theo một thứ tự cố định, mỗi cái ghi bằng chính
- * thứ tiếng đó. Thứ tiếng đang xem không phải link: in đậm và có nét gạch dưới
- * (aria-current="true") — nhận ra được mà không cần nhìn màu.
+ * Nút ngôn ngữ trên thanh (Khánh quyết 23/11/2026, thay ba chữ in liền nhau): MỘT nút quả địa cầu
+ * kèm mã thứ tiếng đang xem (VI / EN / KO); bấm thì thả xuống danh sách ĐỦ ba thứ tiếng theo thứ tự
+ * cố định, mỗi cái ghi bằng chính thứ tiếng đó. Trong danh sách (và ở hàng ngôn ngữ của bảng danh
+ * mục điện thoại), thứ tiếng đang xem không phải link: in đậm và có nét gạch dưới (aria-current="true")
+ * — nhận ra được mà không cần nhìn màu.
  *
- * Màn hẹp: <details> — mở / đóng được KHÔNG cần JavaScript (bấm, Enter, phím cách);
- * đang mở thì nút đổi thành nút đóng có chữ. Script bên dưới chỉ thêm: Esc để đóng,
- * bấm ra ngoài hoặc bấm một mục thì đóng, Tab ra khỏi mục cuối thì đóng, phóng to
- * cửa sổ qua mốc màn rộng thì đóng. Lớp phủ tối dưới bảng và việc khoá cuộn trang CHỈ
- * có khi script đã chạy (script gắn data-co-script lên <details>): không script thì
- * không gì đóng được danh mục sau khi khách bấm một link neo, nên trang phải cuộn được
- * và không có lớp phủ nào che nó.
+ * Nút ngôn ngữ và nút danh mục đều là <details> — mở / đóng được KHÔNG cần JavaScript (bấm,
+ * Enter, phím cách). Hai cái cùng name="dau-trang": trình duyệt chỉ cho mở một cái một lúc
+ * (script cũng đóng cái kia, cho trình duyệt cũ chưa biết thuộc tính name). Danh mục đang mở
+ * thì nút đổi thành nút đóng có chữ. Script bên dưới chỉ thêm: Esc để đóng, bấm ra ngoài hoặc
+ * bấm một mục thì đóng, Tab ra khỏi mục cuối thì đóng, phóng to cửa sổ qua mốc màn rộng thì
+ * đóng danh mục. Lớp phủ tối dưới bảng danh mục và việc khoá cuộn trang CHỈ có khi script đã
+ * chạy (script gắn data-co-script lên <details>): không script thì không gì đóng được danh mục
+ * sau khi khách bấm một link neo, nên trang phải cuộn được và không có lớp phủ nào che nó.
+ * Danh sách ngôn ngữ nhỏ, không lớp phủ, không khoá cuộn.
  */
 import { chu, duongDanTuongUng } from '../lib/chu';
 import { diaChiSauTang, dieuHuong } from '../lib/trang-cong-khai';
@@ -81,22 +85,26 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
     </nav>
 
     <div class="dt-phai">
-      <ul class="dt-ngon-ngu" aria-label={t.chonNgonNgu}>
-        {doiNgonNgu.map(n => (
-          <li>{n.nn === ngonNgu
-            ? <span class="doi-ngon-ngu" aria-current="true" lang={n.nn}>{n.ten}</span>
-            : <a class="doi-ngon-ngu" href={n.url} lang={n.nn} hreflang={n.nn}>{n.ten}</a>}</li>
-        ))}
-      </ul>
+      {/* Tên đọc được của nút: mã nhìn thấy (VI) đứng đầu, rồi chữ "Ngôn ngữ" chỉ cho trình đọc màn hình. */}
+      <details class="dt-ngon-ngu" name="dau-trang">
+        <summary><BieuTuong ten="dia-cau" /><span class="dt-ma-nn">{ngonNgu.toUpperCase()}</span>{' '}<span class="an-chu">{t.chonNgonNgu}</span></summary>
+        <ul class="dt-nn-bang be-kem" aria-label={t.chonNgonNgu}>
+          {doiNgonNgu.map(n => (
+            <li>{n.nn === ngonNgu
+              ? <span class="doi-ngon-ngu" aria-current="true" lang={n.nn}>{n.ten}</span>
+              : <a class="doi-ngon-ngu" href={n.url} lang={n.nn} hreflang={n.nn}>{n.ten}</a>}</li>
+          ))}
+        </ul>
+      </details>
       <a class="nut nut-chinh nut-nho dt-hoi-ban" href={hoiBan.url}
          aria-current={hienTai(hoiBan.duong) ? 'page' : undefined}>{hoiBan.chu}</a>
 
-      <details class="menu-gon">
+      <details class="menu-gon" name="dau-trang">
         <summary>
           <BieuTuong ten="menu" class="mg-mo" />
           <BieuTuong ten="dong" class="mg-dong" />
-          <span class="mg-mo">{t.moMenu}</span>
-          <span class="mg-dong">{t.dong}</span>
+          {/* Hai nhãn chồng trong cùng một ô lưới: nút rộng bằng nhãn dài hơn ở cả hai trạng thái. */}
+          <span class="mg-chu"><span class="mg-mo">{t.moMenu}</span><span class="mg-dong">{t.dong}</span></span>
         </summary>
         <div class="mg-bang be-kem">
           <nav aria-label={t.dieuHuongChinh}>
@@ -127,20 +135,40 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
 </header>
 
 <script>
-  // Thêm vào <details>: Esc đóng (trả tiêu điểm về nút), bấm ra ngoài / bấm lớp phủ / bấm một
-  // mục thì đóng, cửa sổ rộng qua mốc màn rộng thì đóng. Không có script: vẫn mở/đóng được,
-  // không lớp phủ, trang không khoá cuộn.
+  // Thêm vào hai <details> của thanh (danh mục, nút ngôn ngữ): Esc đóng (trả tiêu điểm về nút), bấm ra
+  // ngoài / bấm một mục thì đóng, Tab ra khỏi mục cuối thì đóng, mở cái này thì đóng cái kia (trình duyệt
+  // đã biết name="dau-trang" thì tự làm việc này). Không có script: vẫn mở / đóng được.
+  const hop = [...document.querySelectorAll<HTMLDetailsElement>('.dau-trang details')];
+  const dongHop = (d: HTMLDetailsElement, traTieuDiem: boolean) => {
+    if (!d.open) return;
+    d.open = false;
+    if (traTieuDiem) d.querySelector('summary')?.focus();
+  };
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') hop.forEach(d => dongHop(d, true)); });
+  // Bấm ra ngoài <details> (logo, khoảng trống của thanh, nút kia, phần trang phía dưới).
+  document.addEventListener('click', e => {
+    for (const d of hop) if (d.open && !d.contains(e.target as Node)) dongHop(d, false);
+  });
+  for (const d of hop) {
+    d.addEventListener('toggle', () => { if (d.open) hop.forEach(khac => { if (khac !== d) khac.open = false; }); });
+    d.querySelectorAll('a').forEach(a => a.addEventListener('click', () => dongHop(d, false)));
+    // Tab ra khỏi mục cuối: bảng (position absolute) sẽ che chính phần tử vừa nhận tiêu điểm
+    // (WCAG 2.4.11) — đóng lại. relatedTarget null (chạm vào chữ không focus được trong bảng)
+    // thì giữ nguyên, kẻo bảng tự đóng khi khách chỉ chạm vào dòng địa chỉ.
+    d.addEventListener('focusout', e => {
+      const toi = e.relatedTarget as Node | null;
+      if (d.open && toi && !d.contains(toi)) dongHop(d, false);
+    });
+  }
+
+  // Riêng danh mục: lớp phủ, khoá cuộn, đóng khi cửa sổ rộng qua mốc màn rộng. Không có script: không
+  // lớp phủ, trang không khoá cuộn.
   const menu = document.querySelector<HTMLDetailsElement>('.menu-gon');
   if (menu) {
     // Từ đây mới có thứ đóng được danh mục: CSS chỉ hiện lớp phủ và khoá cuộn khi thấy thuộc tính này.
     menu.dataset.coScript = '';
     const nut = menu.querySelector('summary');
-    const dong = (traTieuDiem: boolean) => {
-      if (!menu.open) return;
-      menu.open = false;
-      if (traTieuDiem) nut?.focus();
-    };
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') dong(true); });
+    const dong = (traTieuDiem: boolean) => dongHop(menu, traTieuDiem);
     // Khoá cuộn làm thanh cuộn kiểu cổ điển (Windows, chuột cắm vào Mac: 15px) biến mất — cả trang xô sang
     // phải rồi xô lại lúc đóng. Đo bề rộng thanh cuộn NGAY TRƯỚC khi mở (click chạy trước khi <details> đổi
     // trạng thái; Enter và phím cách trên nút cũng phát click) rồi ghi vào biến CSS: quy tắc khoá cuộn bù
@@ -153,18 +181,6 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
     // phát click cho phần tử không bấm được nếu chính nó (hay cha nó) không có trình nghe click hoặc
     // cursor: pointer — lớp phủ có cả hai.
     menu.addEventListener('click', e => { if (e.target === menu) dong(false); });
-    // Bấm ra ngoài <details> (logo, khoảng trống của thanh đầu trang).
-    document.addEventListener('click', e => {
-      if (menu.open && !menu.contains(e.target as Node)) dong(false);
-    });
-    menu.querySelectorAll('.mg-bang a').forEach(a => a.addEventListener('click', () => dong(false)));
-    // Tab ra khỏi mục cuối: bảng (position absolute) sẽ che chính phần tử vừa nhận tiêu điểm
-    // (WCAG 2.4.11) — đóng lại. relatedTarget null (chạm vào chữ không focus được trong bảng)
-    // thì giữ nguyên, kẻo menu tự đóng khi khách chỉ chạm vào dòng địa chỉ.
-    menu.addEventListener('focusout', e => {
-      const toi = e.relatedTarget as Node | null;
-      if (menu.open && toi && !menu.contains(toi)) dong(false);
-    });
     const rong = matchMedia('(min-width: 1080px)');
     rong.addEventListener('change', e => { if (e.matches) dong(false); });
   }
@@ -204,11 +220,11 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
 
   ul { list-style: none; margin: 0; padding: 0; }
 
-  /* --- Bộ chọn ngôn ngữ ------------------------------------------------------ */
+  /* --- Danh sách ngôn ngữ ------------------------------------------------------ */
   /* Ba thứ tiếng cùng cỡ, cùng màu chữ chính của bề mặt (không xám, không nhỏ). Thứ tiếng
-     đang xem: chữ đậm + gạch 2px màu --nhan (trắng trên đầu trang đen, đỏ trong bảng thả
-     xuống) — hai dấu hiệu không phụ thuộc màu; thứ tiếng khác là link, di chuột mới hiện
-     gạch mảnh. Bộ chọn nằm cả trên thanh đen lẫn trong bảng trắng nên chỉ đọc biến bề mặt. */
+     đang xem: chữ đậm + gạch 2px màu --nhan (đỏ trên hai bảng trắng: danh sách thả xuống của nút
+     ngôn ngữ, hàng ngôn ngữ của bảng danh mục) — hai dấu hiệu không phụ thuộc màu; thứ tiếng khác
+     là link, di chuột mới hiện gạch mảnh. Chỉ đọc biến bề mặt. */
   .doi-ngon-ngu {
     display: inline-flex; align-items: center; min-height: var(--cham);
     padding-inline: var(--k-2);
@@ -226,14 +242,43 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
   @media (forced-colors: active) {
     .doi-ngon-ngu[aria-current='true'] { text-decoration-color: Highlight; text-decoration-thickness: 3px; }
   }
-  .dt-ngon-ngu { gap: 0; }
 
-  /* --- Từ 768px: ngôn ngữ và Hỏi bàn lên thanh --------------------------------- */
+  /* --- Nút ngôn ngữ trên thanh (từ 768px) --------------------------------------- */
+  /* Một nút: quả địa cầu + mã thứ tiếng đang xem (VI / EN / KO), chữ trắng trên thanh đen, không
+     viền — để nút chính duy nhất trên thanh vẫn là Đặt bàn và nút có viền duy nhất là Danh mục. Di
+     chuột: nền trắng 12 %. Đang mở: thêm viền trắng — khác lúc đóng bằng nét, không chỉ bằng màu. */
+  .dt-ngon-ngu { position: relative; }
+  .dt-ngon-ngu summary {
+    display: inline-flex; align-items: center; gap: 6px;
+    min-height: var(--cham); padding: 0 var(--k-3);
+    border: 1.5px solid transparent; border-radius: var(--bo);
+    font-weight: 700; font-size: 15px; line-height: 1.2; letter-spacing: .04em;
+    cursor: pointer; list-style: none; color: var(--chu-chinh);
+    transition: background-color var(--nhanh), border-color var(--nhanh);
+  }
+  .dt-ngon-ngu summary::-webkit-details-marker { display: none; }
+  .dt-ngon-ngu summary :global(svg) { width: 24px; height: 24px; flex: none; }
+  .dt-ngon-ngu summary:active, .dt-ngon-ngu[open] summary { background: var(--nut-phu-nen-di); border-color: var(--nut-phu-chu); }
+  @media (hover: hover) { .dt-ngon-ngu summary:hover { background: var(--nut-phu-nen-di); } }
+  @media (forced-colors: active) { .dt-ngon-ngu[open] summary { border-color: Highlight; } }
+  /* Danh sách thả xuống: bề mặt sáng (.be-kem), treo ngay dưới nét kẻ của thanh, canh mép phải của nút;
+     viền xám --vien-o (4,54 : 1 trên trắng — nhìn ra mép bảng khi nằm đè lên phần trang trắng), kết
+     thúc bằng nét đỏ như bảng danh mục. Không bóng đổ. */
+  .dt-nn-bang {
+    position: absolute; inset-inline-end: 0; z-index: 2;
+    top: calc(100% + (var(--cao-dau) - var(--cham)) / 2);
+    min-width: 12rem; margin: 0; padding: var(--k-2) 0;
+    background: var(--kem);
+    border: 1px solid var(--vien-o); border-top: 0; border-bottom: 2px solid var(--do);
+  }
+  .dt-nn-bang .doi-ngon-ngu { display: flex; padding-inline: var(--k-4); }
+
+  /* --- Từ 768px: ngôn ngữ và Đặt bàn lên thanh --------------------------------- */
   @media (min-width: 768px) {
-    .dt-ngon-ngu { display: flex; }
+    .dt-ngon-ngu { display: block; }
     .dt-hoi-ban { display: inline-flex; }
   }
-  /* 768–899px bản tiếng Anh ("Ask for a table" + "Pages") vừa khít thanh: giữ khe 12px, từ 900px mới nới. */
+  /* 768–899px bản tiếng Anh ("Book a table" + "Pages") vừa khít thanh: giữ khe 12px, từ 900px mới nới. */
   @media (min-width: 900px) { .dt-phai { gap: var(--k-4); } }
 
   /* --- Màn rộng ------------------------------------------------------------ */
@@ -265,7 +310,7 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
   /* --- Màn hẹp: danh mục gọn ----------------------------------------------- */
   /* Nút danh mục đọc biến nút phụ của bề mặt: trên đầu trang đen là nền trong, viền và chữ
      trắng, cao 48px. Đang mở thì thành nút đóng: dấu × và chữ "Đóng", nền trắng 12 % — vẫn là
-     nút phụ, để nút chính duy nhất trong tầm mắt là "Hỏi bàn". */
+     nút phụ, để nút chính duy nhất trong tầm mắt là "Đặt bàn". */
   .menu-gon summary {
     display: inline-flex; align-items: center; gap: var(--k-2);
     min-height: var(--cham); padding: 0 var(--k-4) 0 var(--k-3);
@@ -277,9 +322,18 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
   .menu-gon summary::-webkit-details-marker { display: none; }
   .menu-gon summary span { white-space: nowrap; }
   .menu-gon summary :global(svg) { width: 24px; height: 24px; flex: none; }
-  .menu-gon summary :global(.mg-dong), .menu-gon[open] summary :global(.mg-mo) { display: none; }
+  .menu-gon summary :global(svg.mg-dong), .menu-gon[open] summary :global(svg.mg-mo) { display: none; }
   .menu-gon[open] summary :global(svg.mg-dong) { display: block; }
-  .menu-gon[open] summary :global(span.mg-dong) { display: inline; }
+  /* Nhãn "Danh mục" và "Đóng" nằm chồng trong cùng một ô lưới, nhãn không dùng thì ẩn bằng visibility (vẫn giữ
+     chỗ, không vào tên đọc được): nút KHÔNG đổi bề rộng khi mở / đóng. Đổi bề rộng thì mọi thứ bên trái nó trên
+     thanh (nút ngôn ngữ, Đặt bàn) xô sang một khúc ngay lúc danh mục đóng — mà danh mục đóng ngay khi nhấn chuột
+     xuống nút khác (mất tiêu điểm), nên lúc nhả chuột con trỏ đã ở ngoài nút vừa nhấn: cú bấm mất (lỗi thật
+     23/11/2026, trinh-duyet.mjs nhóm 13). */
+  .menu-gon summary .mg-chu { display: inline-grid; }
+  .menu-gon summary .mg-chu > span { grid-area: 1 / 1; }
+  /* Chỉ ẩn nhãn không dùng — không bao giờ đặt lại giá trị "hiện" cho visibility (test-noi-bo-dang-xuat.mjs: phần tử tự đặt
+     visible sẽ lộ ra cả khi trang bị giấu). */
+  .menu-gon:not([open]) summary .mg-chu > .mg-dong, .menu-gon[open] summary .mg-chu > .mg-mo { visibility: hidden; }
   .menu-gon summary:active, .menu-gon[open] summary { background: var(--nut-phu-nen-di); color: var(--nut-phu-chu-di); border-color: var(--nut-phu-chu-di); }
   /* Di chuột: chỉ máy có chuột — trên màn cảm ứng, chạm đóng xong nút phải về lại màu lúc đóng. */
   @media (hover: hover) {

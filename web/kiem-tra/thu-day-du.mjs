@@ -250,12 +250,12 @@ const BAT_KY_DA_NHAN = /đã nhận|\breceived\b|접수되었(?!는지)/i;
 const CHU_THANH_CONG = /thành công|\bsuccess|성공/i;
 // Lời hứa của form hỏi bàn: gửi yêu cầu trên trang, nhà hàng gọi lại — chép tay, như
 // crm/test/test-cong-khai-hoi-ban-dong.mjs. Form đóng thì mô tả và đoạn mở đầu không được nói câu này.
-const HUA_FORM = { vi: /gọi lại|gửi yêu cầu/i, en: /call you back|(?<!cannot )send (?:a|your)(?: table)? request/i, ko: /전화드려요|전화로 안내|문의를 보내 주세요/ };
+const HUA_FORM = { vi: /gọi lại|gửi yêu cầu/i, en: /call you back|(?<!cannot )send (?:a|your)(?: table)? request/i, ko: /전화드려요|전화로 안내|문의를 보내 주세요|요청을 보내 주세요/ };
 const HUA_GOI_LAI = { vi: /gọi lại/i, en: /call you back/i, ko: /전화드려요|전화로 안내/ };
-// "Bạn chưa gửi được yêu cầu", "chưa mở hỏi bàn trực tuyến" — đúng khi database đã từ chối, sai khi
+// "Bạn chưa gửi được yêu cầu", "chưa mở đặt bàn trực tuyến" (trước 23/11/2026: "hỏi bàn") — đúng khi database đã từ chối, sai khi
 // KHÔNG CHẮC đã ghi (nhóm 4). Gồm cả cách nói "không gửi được" khác của trang (CAU_DAT_BAN.chuaGhi…).
 const CHUA_GUI_DUOC = {
-  vi: /chưa gửi được|không gửi được|chưa mở hỏi bàn/i,
+  vi: /chưa gửi được|không gửi được|chưa mở (?:hỏi|đặt) bàn/i,
   en: /cannot send|could not (?:be )?sen[dt]|not open yet/i,
   ko: /보낼 수 없어요|보내지 못했어요|받지 않아요/,
 };
@@ -381,7 +381,7 @@ try {
       const totHoiNhanh = [
         ok(`${trangChu}: hỏi bàn nhanh → ${duongDanTuongUng('/dat-ban', nn)}?ngay=${ngayChon}&so_khach=4#hb-gio`,
            diaChi.searchParams.get('ngay') === ngayChon && diaChi.searchParams.get('so_khach') === '4' && diaChi.hash === '#hb-gio', page.url()),
-        ok(`${trangChu}: trang Hỏi bàn mở đúng ngày đã chọn và ô số người chọn sẵn 4`,
+        ok(`${trangChu}: trang Đặt bàn mở đúng ngày đã chọn và ô số người chọn sẵn 4`,
            await page.locator('form[data-doi-ngay] input[name="ngay"]').getAttribute('value') === ngayChon
              && await page.locator('form[data-hoi-ban] select[name="so_khach"]').inputValue() === '4'),
       ];
@@ -683,7 +683,7 @@ try {
         ok(`dat-ban-sap ${hoiBan}: khung "KHÔNG CHẮC đã ghi" hiện (role="alert", data-ket-qua="khong-chac")`,
            await page.locator('[role="alert"][data-ket-qua="khong-chac"]').count() === 1),
         ok(`dat-ban-sap ${hoiBan}: đoạn mở đầu là câu trung tính «${DAN_KHONG_CHAC[nn]}»`, dan === DAN_KHONG_CHAC[nn], `«${dan}»`),
-        ok(`dat-ban-sap ${hoiBan}: cả trang KHÔNG nói "chưa gửi được" / "chưa mở hỏi bàn" (cãi khung "không chắc, đừng gửi lại")`,
+        ok(`dat-ban-sap ${hoiBan}: cả trang KHÔNG nói "chưa gửi được" / "chưa mở đặt bàn" (cãi khung "không chắc, đừng gửi lại")`,
            !!chuMain && !CHUA_GUI_DUOC[nn].test(chuMain), chuMain.match(CHUA_GUI_DUOC[nn])?.[0]),
         ok(`dat-ban-sap ${hoiBan}: thẻ không có tiêu đề "chưa mở" (h2), vẫn có nút sang Facebook đã công bố để kiểm tra`,
            await page.locator('.hb-chua-mo h2').count() === 0

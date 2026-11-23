@@ -31,7 +31,7 @@ con số cụ thể **khi con số đã được xác nhận**.
 - **Thứ ghi dữ liệu và thứ quyết định câu thông báo là cùng một biểu thức `await`.** Ghi hỏng thì nói
   hỏng và chỉ đường khác (Facebook); hết giờ chờ thì nói **không chắc** đã ghi nhận chưa và đừng gửi
   lại; chỉ khi database xác nhận mới nói đã nhận.
-- Yêu cầu hỏi bàn **khác** bàn đã giữ: câu kết quả là "**đã nhận yêu cầu**" — nhà hàng kiểm tra rồi
+- Yêu cầu đặt bàn **khác** bàn đã giữ: câu kết quả là "**đã nhận yêu cầu**" — nhà hàng kiểm tra rồi
   liên hệ xác nhận. Trang hỏi bàn, form ứng tuyển, tuyển dụng không chứa "thành công" / "success" /
   "성공" (có kiểm thử).
 - **Đọc lỗi khác không có.** Mạng đứt, hết giờ chờ database: nói "chưa đọc được …" / "chưa kiểm được …"
@@ -111,8 +111,9 @@ của trang Mua thịt về), ưu đãi, đếm ngược, số bàn, "Thịt chu
   - Kiểm thử gác: `crm/test/test-cong-khai-dia-diem.mjs` (mã nguồn), `test-cong-khai-cau-chu.mjs` nhóm 7
     (chữ khách đọc), `web/kiem-tra/trinh-duyet.mjs` (trang đã dựng); mẫu dùng chung ở
     `web/kiem-tra/mau-dia-diem.mjs`.
-- Nút / link tới trang hỏi bàn: **"Hỏi bàn" / "Ask for a table" / "테이블 문의"** — không "Đặt bàn
-  ngay", không "Book now".
+- Nút / link tới trang đặt bàn: **"Đặt bàn" / "Book a table" / "테이블 예약"** (Khánh đổi từ "Hỏi bàn" /
+  "Ask for a table" / "테이블 문의" ngày 23/11/2026) — không "Đặt bàn ngay", không "Book now". Tên nút đổi,
+  sự thật thì không: câu kết quả vẫn là "đã nhận yêu cầu", nhà hàng gọi lại xác nhận.
 - Nhãn khay: tên phần cắt, giá mỗi 100g, trọng lượng, giá cuối (đã gồm VAT), ngày đóng gói. "Đã gồm
   VAT" chỉ nói về giá trên nhãn khay, không bao giờ mở rộng thành cam kết cho cả hóa đơn.
 - Nhãn món chỉ có hai: **Món sống** (luôn kèm câu cảnh báo) và **Có cồn**. Không tự thêm nhãn chay, dị

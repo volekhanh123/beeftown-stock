@@ -88,6 +88,12 @@
  *      ViewContent), mỗi sự kiện chỉ kèm content_name và language. Bấm link tel:, Zalo, Messenger → Contact (cả bấm
  *      chuột giữa); link khác, chuột phải thì không. fbevents.js tải được (bản giả) thì nhận đủ lời gọi đã xếp hàng. Tắt JavaScript: ảnh noscript gọi đúng
  *      địa chỉ đo, trang vẫn đủ. Trang 404 không có pixel. Không lượt nào tới được Meta. Chạy cả với --url.
+ *  13. Nút ngôn ngữ trên thanh đầu trang (768 và 1440 px, có và TẮT JavaScript; Khánh quyết 23/11/2026): một nút quả địa
+ *      cầu ghi mã VI / EN / KO, lúc đầu đóng; bấm thì thả xuống Tiếng Việt · English · 한국어 đúng thứ tự, thứ tiếng
+ *      đang xem không phải link, hai thứ tiếng kia dẫn tới đúng trang tương ứng; danh sách nằm trọn trong màn hình, ngay
+ *      dưới thanh, đạt các phép đo của do-giao-dien.mjs khi đang mở; mở danh sách thì danh mục đóng và ngược lại (cùng
+ *      name="dau-trang"). Có JavaScript: Esc đóng và trả tiêu điểm, bấm ra ngoài thì đóng, Tab ra khỏi link cuối thì
+ *      đóng. Bấm một thứ tiếng khác thì tới trang đó, nút ghi mã mới.
  *
  * Hỏng thì ảnh chụp màn hình nằm ở kiem-tra/anh-loi/ (CI tải lên thành artifact).
  */
@@ -1661,12 +1667,12 @@ try {
   }
 
   // =========================================================================
-  // Nhãn của nút danh mục, nút Hỏi bàn và đường dẫn của nó — chép tay, KHÔNG đọc lib/chu.ts (cùng lý do
+  // Nhãn của nút danh mục, nút Đặt bàn (tên từ 23/11/2026; trước đó "Hỏi bàn") và đường dẫn của nó — chép tay, KHÔNG đọc lib/chu.ts (cùng lý do
   // với CAU_CHI_DUONG ở trên).
   const NHAN_MENU = {
-    vi: { mo: 'Danh mục', dong: 'Đóng', hoiBan: 'Hỏi bàn', duong: '/dat-ban' },
-    en: { mo: 'Pages', dong: 'Close', hoiBan: 'Ask for a table', duong: '/en/book' },
-    ko: { mo: '바로가기', dong: '닫기', hoiBan: '테이블 문의', duong: '/ko/book' },
+    vi: { mo: 'Danh mục', dong: 'Đóng', hoiBan: 'Đặt bàn', duong: '/dat-ban' },
+    en: { mo: 'Pages', dong: 'Close', hoiBan: 'Book a table', duong: '/en/book' },
+    ko: { mo: '바로가기', dong: '닫기', hoiBan: '테이블 예약', duong: '/ko/book' },
   };
   const tieuDiem = page => page.evaluate(() => {
     const a = document.activeElement;
@@ -1894,7 +1900,7 @@ try {
       ['link chân trang', 'footer .ct-cot a', 390],
       ['dòng địa chỉ ở khối mở đầu', '.kmd-dia-chi', 390],
       ['link điều hướng trên thanh', '.dt-nav a:not([aria-current])', 1440],
-      ['thứ tiếng khác trên thanh', '.dt-ngon-ngu a.doi-ngon-ngu', 1440],
+      ['nút ngôn ngữ trên thanh', 'details.dt-ngon-ngu summary', 1440],
     ];
     for (const camUng of [true, false]) {
       for (const rong of [390, 1440]) {
@@ -2412,6 +2418,114 @@ try {
     ok('Không lượt nào tới được Meta trong cả nhóm (CI không gửi lượt đo nào lên Beeftown Pixel thật)', toiMeta.length === 0,
        toiMeta.slice(0, 3).join(' | '));
     await ctx.close();
+  });
+
+  // =========================================================================
+  // Nút ngôn ngữ trên thanh đầu trang (từ 768px; Khánh quyết 23/11/2026 — thay ba chữ in liền nhau): một nút quả địa
+  // cầu ghi mã thứ tiếng đang xem, bấm thì thả xuống ba thứ tiếng. Là <details> nên tắt JavaScript vẫn mở / đóng được.
+  // Mã, tên thứ tiếng và đường dẫn tương ứng chép tay — không đọc lib/chu.ts (cùng lý do với NHAN_MENU).
+  const MA_NN = { vi: 'VI', en: 'EN', ko: 'KO' };
+  const TEN_NN = ['Tiếng Việt', 'English', '한국어'];
+  const BAN_CUA = { '/': ['/', '/en', '/ko'], '/en/menu': ['/thuc-don', '/en/menu', '/ko/menu'], '/ko/book': ['/dat-ban', '/en/book', '/ko/book'] };
+  await nhom('13 · NÚT NGÔN NGỮ Ở 768 VÀ 1440 PX: MỘT NÚT QUẢ ĐỊA CẦU THẢ XUỐNG BA THỨ TIẾNG; TẮT JAVASCRIPT VẪN MỞ / ĐÓNG; Esc, BẤM RA NGOÀI, TAB, CHỈ MỞ MỘT BẢNG', async () => {
+    for (const rong of [768, 1440]) {
+      for (const coJs of [false, true]) {
+        const ctx = await trinhDuyet.newContext({ viewport: { width: rong, height: 900 }, javaScriptEnabled: coJs });
+        const page = await ctx.newPage();
+        for (const [duong, banKhac] of Object.entries(BAN_CUA)) {
+          await page.goto(goc + duong);
+          const nn = ngonNguCua(duong);
+          const nhan = `${duong} · ${rong}px · ${coJs ? 'có' : 'TẮT'} JavaScript`;
+          const hop = page.locator('header details.dt-ngon-ngu');
+          const nut = hop.locator('summary');
+          const bang = hop.locator('.dt-nn-bang');
+          const mo = () => hop.evaluate(d => d.open).catch(() => null);
+          const tot = [];
+          if (!ok(`${nhan}: thanh có đúng một nút ngôn ngữ, lúc đầu đóng, ghi «${MA_NN[nn]}» cạnh quả địa cầu, danh sách chưa hiện`,
+                  await hop.count() === 1 && await nut.isVisible() && await mo() === false && !(await bang.isVisible())
+                    && motDong(await nut.locator('.dt-ma-nn').innerText()) === MA_NN[nn] && await nut.locator('svg').count() === 1,
+                  await nut.innerText().catch(() => ''))) {
+            await chupLoi(page, `nut-ngon-ngu${duong.replace(/\//g, '-')}-${rong}-${coJs ? 'js' : 'khong-js'}`);
+            continue;
+          }
+          await nut.click();
+          const muc = await bang.locator('.doi-ngon-ngu').evaluateAll(es => es.map(e => ({
+            chu: e.textContent.trim(), the: e.tagName, href: e.getAttribute('href'), dangXem: e.getAttribute('aria-current') === 'true',
+            hien: e.checkVisibility(),
+          })));
+          tot.push(ok(`${nhan}: bấm nút → mở, thấy ${TEN_NN.join(' · ')} đúng thứ tự`,
+            await mo() === true && muc.length === 3 && muc.every(m => m.hien) && muc.map(m => m.chu).join('|') === TEN_NN.join('|'), JSON.stringify(muc)));
+          const viTri = ['vi', 'en', 'ko'].indexOf(nn);
+          tot.push(ok(`${nhan}: thứ tiếng đang xem không phải link (aria-current), hai thứ tiếng kia là link tới đúng trang tương ứng`,
+            muc.every((m, i) => (i === viTri ? m.dangXem && m.the !== 'A' : !m.dangXem && m.the === 'A' && m.href === banKhac[i])), JSON.stringify(muc)));
+          const khung = await page.evaluate(() => {
+            const b = document.querySelector('header .dt-nn-bang').getBoundingClientRect();
+            return { trai: b.left, phai: b.right, tren: b.top, day: document.querySelector('header.dau-trang').getBoundingClientRect().bottom,
+              rong: document.documentElement.clientWidth, tran: document.documentElement.scrollWidth - innerWidth };
+          });
+          tot.push(ok(`${nhan}: danh sách nằm trọn trong màn hình, treo ngay dưới thanh đầu trang, không làm trang tràn ngang`,
+            khung.trai >= 0 && khung.phai <= khung.rong + 0.5 && Math.abs(khung.tren - khung.day) <= 1.5 && khung.tran <= 1, JSON.stringify(khung)));
+          const gd = await page.evaluate(doGiaoDien);
+          for (const khoa of ['vungCham', 'dauTrang', 'ngonNgu', 'nenTrongBang', 'bieuTuong']) {
+            tot.push(ok(`${nhan}: danh sách đang mở — ${PHEP_DO[khoa]}`, gd[khoa]?.length === 0, (gd[khoa] ?? ['không đo được']).slice(0, 4).join(' | ')));
+          }
+          if (rong < 1080) {
+            // Nút danh mục và nút ngôn ngữ cùng name="dau-trang": mở cái này thì cái kia đóng (cả khi tắt JavaScript).
+            const menu = page.locator('details.menu-gon');
+            const hopTrenThanh = () => page.evaluate(() => ['.dt-ngon-ngu > summary', '.dt-hoi-ban', '.menu-gon > summary']
+              .map(c => { const k = document.querySelector(`header ${c}`).getBoundingClientRect(); return [Math.round(k.left), Math.round(k.width)]; }));
+            const truocMo = await hopTrenThanh();
+            await menu.locator('summary').click();
+            tot.push(ok(`${nhan}: đang mở danh sách mà bấm Danh mục → danh sách đóng, danh mục mở (chỉ một bảng một lúc)`,
+              await mo() === false && await menu.evaluate(d => d.open)));
+            // Lỗi thật 23/11/2026: nút danh mục đổi bề rộng ("Danh mục" ↔ "Đóng") nên nút ngôn ngữ và Đặt bàn xô đi 37px
+            // ngay lúc danh mục đóng — đóng lúc nhấn chuột xuống (mất tiêu điểm), nên cú bấm nhả ra ngoài nút và mất.
+            const sauMo = await hopTrenThanh();
+            tot.push(ok(`${nhan}: mở danh mục không làm nút ngôn ngữ, Đặt bàn, Danh mục xô lệch hay đổi bề rộng`,
+              JSON.stringify(sauMo) === JSON.stringify(truocMo), `trước ${JSON.stringify(truocMo)} · sau ${JSON.stringify(sauMo)}`));
+            await nut.click();
+            tot.push(ok(`${nhan}: đang mở danh mục mà bấm nút ngôn ngữ → danh mục đóng, danh sách mở`,
+              await mo() === true && !(await menu.evaluate(d => d.open))));
+          }
+          if (coJs) {
+            await page.keyboard.press('Escape');
+            tot.push(ok(`${nhan}: Esc → đóng, tiêu điểm về nút ngôn ngữ`, await mo() === false && await nut.evaluate(s => document.activeElement === s)));
+            await nut.click();
+            // Góc dưới bên trái màn hình: chắc chắn ngoài danh sách (ở 768px danh sách che giữa câu tiêu đề).
+            await page.mouse.click(8, page.viewportSize().height - 8);
+            tot.push(ok(`${nhan}: mở rồi bấm ra ngoài (góc dưới trang) → đóng`, await mo() === false));
+            // Bàn phím: Enter mở, Tab đi qua hai link, Tab ra khỏi link cuối thì đóng (bảng không che phần tử vừa nhận tiêu điểm).
+            await nut.focus();
+            await page.keyboard.press('Enter');
+            const diQua = [];
+            for (let i = 0; i < 2; i++) {
+              await page.keyboard.press('Tab');
+              diQua.push(await page.evaluate(() => {
+                const a = document.activeElement, cs = getComputedStyle(a);
+                return { trong: !!a.closest('.dt-nn-bang'), vong: cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 2 };
+              }));
+            }
+            tot.push(ok(`${nhan}: Enter mở, Tab qua hai link — tiêu điểm trong danh sách, có vòng focus, danh sách còn mở`,
+              diQua.every(t => t.trong && t.vong) && await mo() === true, JSON.stringify(diQua)));
+            await page.keyboard.press('Tab');
+            tot.push(ok(`${nhan}: Tab ra khỏi link cuối → danh sách đóng`, await mo() === false));
+          } else {
+            await nut.click();
+            tot.push(ok(`${nhan}: bấm nút lần nữa → đóng`, await mo() === false && !(await bang.isVisible())));
+          }
+          // Bấm một thứ tiếng khác → tới đúng trang tương ứng, nút ở trang đó ghi mã mới.
+          const khac = (viTri + 1) % 3;
+          await nut.click();
+          await Promise.all([page.waitForURL(u => new URL(u).pathname === banKhac[khac], { timeout: 15_000 }).catch(() => {}),
+            bang.locator('a.doi-ngon-ngu', { hasText: TEN_NN[khac] }).click()]);
+          tot.push(ok(`${nhan}: bấm «${TEN_NN[khac]}» → tới ${banKhac[khac]}, nút ghi «${Object.values(MA_NN)[khac]}», danh sách đóng`,
+            new URL(page.url()).pathname === banKhac[khac] && motDong(await page.locator('header .dt-ma-nn').innerText()) === Object.values(MA_NN)[khac]
+              && await mo() === false, page.url()));
+          if (tot.includes(false)) await chupLoi(page, `nut-ngon-ngu${duong.replace(/\//g, '-')}-${rong}-${coJs ? 'js' : 'khong-js'}`);
+        }
+        await ctx.close();
+      }
+    }
   });
 } catch (e) {
   ok('Chạy được đến cuối', false, e.stack || e.message);

@@ -98,7 +98,7 @@ const loi = dich(ngonNgu, CAU_DAT_BAN);
 // Tiếng Hàn giữ đúng ranh giới của bản tiếng Việt: 문의 / 요청 (hỏi, yêu cầu)
 // và 접수 (đã nhận) — không bao giờ là chữ nói bàn đã được giữ.
 const t = dich(ngonNgu, {
-  tieuDe:  { vi: 'Hỏi bàn', en: 'Ask for a table', ko: '테이블 문의' },
+  tieuDe:  { vi: 'Đặt bàn', en: 'Book a table', ko: '테이블 예약' },
   dan: {
     vi: 'Cho Beeftown biết ngày, giờ và số người. Nhà hàng kiểm tra rồi gọi lại để xác nhận với bạn.',
     en: 'Tell us the date, the time and how many of you are coming. We will check and call you back to confirm.',
@@ -106,9 +106,9 @@ const t = dich(ngonNgu, {
   },
   // Thẻ "chưa mở" đang hiện: không hứa form, chỉ khách xuống thẻ (Facebook, gọi nhà hàng).
   danChuaMo: {
-    vi: 'Hiện bạn chưa gửi được yêu cầu hỏi bàn trên trang này. Cách hỏi bàn lúc này ở ngay bên dưới.',
-    en: 'You cannot send a table request on this page yet. Here is how to ask for a table for now.',
-    ko: '아직 이 페이지에서는 테이블 문의를 보낼 수 없어요. 지금 문의하는 방법은 바로 아래에서 확인해 주세요.',
+    vi: 'Hiện bạn chưa gửi được yêu cầu đặt bàn trên trang này. Cách đặt bàn lúc này ở ngay bên dưới.',
+    en: 'You cannot send a table request on this page yet. Here is how to book a table for now.',
+    ko: '아직 이 페이지에서는 테이블 예약 요청을 보낼 수 없어요. 지금 예약하는 방법은 바로 아래에서 확인해 주세요.',
   },
   // khongChacKhiChuaMo: không nói "chưa gửi được", không mời hỏi bàn lần nữa — chỉ khách xuống
   // nút liên hệ, nơi khung lỗi bảo khách nhắn để kiểm tra.
@@ -119,7 +119,7 @@ const t = dich(ngonNgu, {
   },
 
   // --- Ghi chú quy trình: ba dòng ngắn -----------------------------------
-  cachHoi: { vi: 'Hỏi bàn diễn ra thế nào', en: 'How it works', ko: '이렇게 진행돼요' },
+  cachHoi: { vi: 'Đặt bàn diễn ra thế nào', en: 'How it works', ko: '이렇게 진행돼요' },
   buoc1: {
     vi: 'Bạn gửi yêu cầu với ngày, giờ và số người.',
     en: 'You send a request with the date, time and number of people.',
