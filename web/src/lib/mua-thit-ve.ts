@@ -25,7 +25,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { taoClient, maChiNhanh, type NgonNgu } from './noi-dung.ts';
 import { timChuoiCam } from './chuoi-cam.js';
 import { khoaGoi, type BaoQuan, type DonVi, type GoiMua, type SanPhamMua } from './don-mua-thit.ts';
-import { tenHienThi } from './ten-phan-thit.ts';
+import { mucPhanThit, tenHienThi } from './ten-phan-thit.ts';
+import { duongDanTuongUng } from './chu.ts';
 
 /** Một dòng mua_thit_ve_cong_khai() trả về — đúng 11 cột, đúng thứ tự của 0101. */
 export interface DongMuaThitVe {
@@ -186,11 +187,87 @@ export async function docMuaThitVe(
 export type TrangThaiTrang = 'chua_mo' | 'loi' | 'mo' | 'het_quay';
 
 /**
+ * NEO CỦA MỘT GÓI: id của thẻ sản phẩm trên trang Mua thịt về (MuaThitThe.astro), `goi-<mã sản phẩm>`. Mã sản phẩm của
+ * 0099 chỉ có chữ thường không dấu, số, gạch nối (MA_SAN_PHAM) nên là id hợp lệ và ổn định — không đổi khi chủ đổi tên,
+ * giá hay thứ tự. Ba nơi dùng cùng hàm này: id của thẻ, link "Xem các gói" ở đầu trang, và `url` trong JSON-LD.
+ */
+export function idNeoGoi(maSanPham: string): string {
+  return `goi-${maSanPham}`;
+}
+
+/**
+ * Link từ trang Các phần thịt bò tới gói tương ứng trên trang Mua thịt về cùng thứ tiếng: id phần thịt (PHAN_BO) →
+ * `/mua-thit-ve#goi-<mã>` (đã đổi sang đường dẫn của thứ tiếng). Dùng đúng bảng ghép của ten-phan-thit.ts
+ * (PHAN_THIT, chiều ngược của lienKetPhanThit), nên "Ribeye" và "Ribeye with Cap" cùng thuộc đầu thăn ngoại: lấy gói
+ * đứng trước trong menu. Chỉ khi trang Mua thịt về đang liệt kê gói (mo, het_quay) và gói CÓ trong menu đó — phần thịt
+ * không có gói thì không có mục, link không bao giờ trỏ vào neo không tồn tại. Menu rỗng, trang chưa mở hay lỗi → {}.
+ */
+export function duongGoiTheoPhan(
+  menu: MenuMuaThit, trangThai: TrangThaiTrang, ngonNgu: NgonNgu,
+): Record<string, string> {
+  if (trangThai !== 'mo' && trangThai !== 'het_quay') return {};
+  const kq: Record<string, string> = {};
+  for (const sp of menu.sanPham) {
+    const muc = sp.goi.length > 0 ? mucPhanThit(sp) : null;
+    if (muc && !(muc in kq)) kq[muc] = `${duongDanTuongUng('/mua-thit-ve', ngonNgu)}#${idNeoGoi(sp.ma)}`;
+  }
+  return kq;
+}
+
+/**
+ * Thứ JSON-LD cần biết về trang (trang truyền vào, không bịa trong lib):
+ *   · goc — Astro.site.origin ("https://beeftown.vn"; rỗng khi không có site: url thành đường dẫn tương đối);
+ *   · duongTrang — đường dẫn của chính trang ("/mua-thit-ve", "/en/buy-meat"), không chuỗi truy vấn;
+ *   · duongDoiTra — trang Đổi trả và hoàn tiền cùng thứ tiếng;
+ *   · phiGiaoDaGom — trang CÓ in câu "Giá gói đã gồm phí giao" (traVnpay của TrangMuaThitVe.astro). Khi trang chưa
+ *     in câu đó (khách được báo phí giao khi quán gọi xác nhận) thì KHÔNG khai phí giao 0 đồng.
+ */
+export interface TrangJsonLd {
+  goc: string;
+  duongTrang: string;
+  duongDoiTra: string;
+  phiGiaoDaGom: boolean;
+}
+
+/** Địa chỉ của gói trên trang: trang + neo của thẻ. Product và mọi Offer của nó cùng một địa chỉ. */
+const urlGoi = (trang: TrangJsonLd, maSanPham: string): string => `${trang.goc}${trang.duongTrang}#${idNeoGoi(maSanPham)}`;
+
+/**
+ * Phí giao và đổi trả của mỗi Offer — chỉ dữ kiện đã in trên trang:
+ *   · shippingDetails: 0 đồng, tới TP.HCM (ISO 3166-2 "VN-SG"), chỉ khi `phiGiaoDaGom`. Căn cứ: trang Mua thịt về "Giá gói
+ *     đã gồm phí giao" (c.dieuGiaVnpay) và trang Chính sách giá "Giá gói đã gồm phí giao trong khu vực ở trang Giao hàng".
+ *     Không khai giờ giao hay số ngày giao: trang Giao hàng chỉ nói "trong giờ làm việc của quán", quán gọi hẹn giờ.
+ *   · hasMerchantReturnPolicy: trang Đổi trả và hoàn tiền (lib/chinh-sach.ts, doiTra) "Beeftown không nhận trả khi bạn
+ *     đổi ý sau khi đã nhận hàng, vì thịt và kim chi đã giao không bán lại được" → MerchantReturnNotPermitted. Không khai
+ *     số ngày: thời hạn báo lỗi của trang là 24 GIỜ và chỉ áp dụng cho hàng lỗi (giao sai, thiếu, rách, không còn lạnh, quá
+ *     hạn), không phải thời hạn trả hàng — nên không dùng MerchantReturnFiniteReturnWindow (đòi merchantReturnDays) và
+ *     không bịa số ngày. Link sang trang đổi trả để khách đọc phần hàng lỗi.
+ */
+function chinhSachOffer(trang: TrangJsonLd): Record<string, unknown> {
+  return {
+    ...(trang.phiGiaoDaGom ? {
+      shippingDetails: {
+        '@type': 'OfferShippingDetails',
+        shippingRate: { '@type': 'MonetaryAmount', value: 0, currency: 'VND' },
+        shippingDestination: { '@type': 'DefinedRegion', addressCountry: 'VN', addressRegion: 'VN-SG' },
+      },
+    } : {}),
+    hasMerchantReturnPolicy: {
+      '@type': 'MerchantReturnPolicy',
+      applicableCountry: 'VN',
+      returnPolicyCategory: 'https://schema.org/MerchantReturnNotPermitted',
+      merchantReturnLink: `${trang.goc}${trang.duongDoiTra}`,
+    },
+  };
+}
+
+/**
  * DỮ LIỆU CÓ CẤU TRÚC (JSON-LD Product + Offer) CỦA TRANG MUA THỊT VỀ — chỉ gói có giá đã công bố.
  * Menu của file này đã là thứ database cho hiện (mua_thit_ve_cong_khai(): công tắc bật, sản phẩm Đang bán, giá
  * đã chốt ở /noi-bo/ban-le) và nhomMuaThitVe đã bỏ gói không có giá nguyên dương, tên dính chữ cấm hay còn ngoặc vuông
  * — nên mỗi Offer ở đây là một dòng đang in ra trang, đúng giá đang in ra trang. Không có gì bịa: không ảnh, không
- * đánh giá, không mã sản phẩm, không hạn giá, không giá khuyến mại.
+ * đánh giá, không hạn giá, không giá khuyến mại. Mã sản phẩm, địa chỉ từng gói, phí giao và đổi trả chỉ có khi trang
+ * truyền `trang` (TrangJsonLd) — xem hàm dưới.
  *   · chỉ trạng thái 'mo' và 'het_quay' (trang liệt kê gói kèm giá); chưa mở, lỗi → null, không khai gì;
  *   · gói "Tạm hết ở quầy" khai OutOfStock (khách thấy đúng câu đó), gói còn thì InStock;
  *   · tên Offer là cỡ gói ("200 g"), tên Product là tên đang hiện trên thẻ: theo thứ tiếng của trang, và khi truyền
@@ -198,7 +275,7 @@ export type TrangThaiTrang = 'chua_mo' | 'loi' | 'mo' | 'het_quay';
  * Trả về một khối @graph để in vào MỘT thẻ script; không có sản phẩm nào thì null.
  */
 export function sanPhamJsonLd(
-  menu: MenuMuaThit, trangThai: TrangThaiTrang, tenThuongHieu: string, ngonNgu?: NgonNgu,
+  menu: MenuMuaThit, trangThai: TrangThaiTrang, tenThuongHieu: string, ngonNgu?: NgonNgu, trang?: TrangJsonLd,
 ): Record<string, unknown> | null {
   if (trangThai !== 'mo' && trangThai !== 'het_quay') return null;
   const sanPham = menu.sanPham.filter(sp => sp.goi.length > 0);
@@ -208,14 +285,17 @@ export function sanPhamJsonLd(
     '@graph': sanPham.map(sp => ({
       '@type': 'Product',
       name: ngonNgu ? tenHienThi(sp, ngonNgu) : sp.ten,
+      ...(trang ? { sku: sp.ma, url: urlGoi(trang, sp.ma) } : {}),
       ...(sp.moTa ? { description: sp.moTa } : {}),
       brand: { '@type': 'Brand', name: tenThuongHieu },
       offers: sp.goi.map(g => ({
         '@type': 'Offer',
         name: `${g.soGam} g`,
+        ...(trang ? { sku: g.khoa, url: urlGoi(trang, sp.ma) } : {}),
         price: String(g.gia),
         priceCurrency: 'VND',
         availability: g.tamHet ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+        ...(trang ? chinhSachOffer(trang) : {}),
       })),
     })),
   };

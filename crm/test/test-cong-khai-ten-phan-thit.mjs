@@ -139,7 +139,7 @@ await nhom('3 · CHỖ DÙNG: THẺ, ĐƠN, JSON-LD, THẺ ĐƠN CỦA TRANG; Đ
   ok('MuaThitThe.astro: chữ link đủ ba thứ tiếng', /vePhan: \{ vi: 'Xem phần thịt này', en: 'About this cut', ko: '이 부위 알아보기' \}/.test(the));
 
   const trang = doc('components', 'TrangMuaThitVe.astro');
-  ok('TrangMuaThitVe.astro: JSON-LD nhận thứ tiếng của trang (sanPhamJsonLd(…, nn))', trang.includes('const jsonSanPham = sanPhamJsonLd(menu, trangThai, THUONG_HIEU.ten, nn);'));
+  ok('TrangMuaThitVe.astro: JSON-LD nhận thứ tiếng của trang (sanPhamJsonLd(…, nn))', trang.includes('const jsonSanPham = sanPhamJsonLd(menu, trangThai, THUONG_HIEU.ten, nn, thongTinTrang);'));
   ok('TrangMuaThitVe.astro: menu cho script (data-menu) mang tên hiện ra ở `ten`; dòng "Đơn của bạn" của máy chủ dùng cùng tên',
      trang.includes('const menuHienThi = menu.sanPham.map(sp => ({ ...sp, ten: tenHienThi(sp, nn) }));') && trang.includes('data-menu={JSON.stringify(rutGonMenu(menuHienThi))}')
        && trang.includes('CHU_DON.dongDau[nn](tenHienThi(d.sanPham, nn), nhanGoi(d.sanPham.donVi, d.goi.soGam, nn), d.soLuong)'));

@@ -58,7 +58,7 @@
 import { THUONG_HIEU, dich as dichCau, duongDanTuongUng } from '../lib/chu';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import { jsonTrongScript, lienHe } from '../lib/trang-cong-khai';
-import { sanPhamJsonLd, type LoaiNhom, type MenuMuaThit, type TrangThaiTrang } from '../lib/mua-thit-ve';
+import { idNeoGoi, sanPhamJsonLd, type LoaiNhom, type MenuMuaThit, type TrangThaiTrang } from '../lib/mua-thit-ve';
 import { tenHienThi } from '../lib/ten-phan-thit';
 import { CHU_DON, dinhDangTien, docGio, nhanGoi, rutGonMenu, tinhDon } from '../lib/don-mua-thit';
 import type { KetQuaDatHang } from '../lib/dat-hang-mua-thit';
@@ -88,7 +88,12 @@ const { ngonNgu: nn, noiDung: nd, menu, trangThai, ketQua, thamSo, duongDan, tra
 const congThu = /sandbox/.test(CONG_VNPAY);
 const lh = lienHe(nd);
 // JSON-LD Product + Offer: chỉ gói có giá đã công bố (sanPhamJsonLd — không có gì bịa).
-const jsonSanPham = sanPhamJsonLd(menu, trangThai, THUONG_HIEU.ten, nn);
+// Địa chỉ từng gói (neo #goi-<mã>), phí giao 0 đồng (chỉ khi trang in "Giá gói đã gồm phí giao" = traVnpay) và đổi trả:
+// xem TrangJsonLd và chinhSachOffer trong lib/mua-thit-ve.ts.
+const thongTinTrang = {
+  goc: Astro.site?.origin ?? '', duongTrang: duongDan, duongDoiTra: duongDanTuongUng(CHINH_SACH.doiTra.duong, nn), phiGiaoDaGom: traVnpay,
+};
+const jsonSanPham = sanPhamJsonLd(menu, trangThai, THUONG_HIEU.ten, nn, thongTinTrang);
 const { gio, boTamHet } = docGio(thamSo, menu.sanPham);
 const don = tinhDon(gio, menu.sanPham, boTamHet);
 const gioRong = don.dong.length === 0;
@@ -164,6 +169,15 @@ const c = dichCau(nn, {
   nhomMat: { vi: 'Thịt mát', en: 'Chilled beef', ko: '냉장 소고기' },
   nhomDong: { vi: 'Thịt đông lạnh', en: 'Frozen beef', ko: '냉동 소고기' },
   nhomKimChi: { vi: 'Kim chi', en: 'Kimchi', ko: '김치' },
+  // SEO 24/11/2026: nhảy tới gói đầu tiên ngay trong màn hình đầu trên điện thoại, và một dòng giao hàng nói đúng chữ của
+  // trang Giao hàng (lib/chinh-sach.ts, giaoHang: khu vực, giờ giao, quán gọi hẹn giờ — cùng CHO_TRONG) kèm link sang trang đó.
+  xemGoi: { vi: 'Xem các gói', en: 'See the packs', ko: '세트 보기' },
+  giaoTom: {
+    vi: `Giao ${CHO_TRONG.VUNG_GIAO.vi}, ${CHO_TRONG.GIO_GIAO.vi}; quán gọi hẹn giờ.`,
+    en: `Delivery to ${CHO_TRONG.VUNG_GIAO.en}, ${CHO_TRONG.GIO_GIAO.en}; we call to agree a time.`,
+    ko: `배달 지역: ${CHO_TRONG.VUNG_GIAO.ko}. 배달 시간: ${CHO_TRONG.GIO_GIAO.ko}. 전화로 시간을 정해요.`,
+  },
+  chiTietGiao: { vi: 'Chi tiết giao hàng', en: 'Delivery details', ko: '배달 안내 보기' },
 
   // --- Giao hàng -----------------------------------------------------------------------
   giaoHang: { vi: 'Giao hàng', en: 'Delivery', ko: '배달 정보' },
@@ -336,6 +350,9 @@ const coKimChi = menu.nhom.some(n => n.loai === 'kim_chi');
 const duongQuyenRiengTu = duongDanTuongUng('/quyen-rieng-tu', nn);
 const duongDieuKhoan = duongDanTuongUng(CHINH_SACH.dieuKhoan.duong, nn);
 const duongDoiTra = duongDanTuongUng(CHINH_SACH.doiTra.duong, nn);
+const duongGiaoHang = duongDanTuongUng(CHINH_SACH.giaoHang.duong, nn);
+// Gói đầu tiên trên trang (thẻ đầu của nhóm đầu): đích của link "Xem các gói" ở màn đầu.
+const goiDau = menu.nhom[0]?.sanPham[0];
 const dem = CHU_DON.dem[nn](don.soGoi, don.soHop);
 // Tên hiện trên trang: tên Việt (hay Hàn) kèm tên gốc trong ngoặc (lib/ten-phan-thit.ts). Menu cho script của trang (data-menu)
 // mang tên đó ở `ten`, nên dòng "Đơn của bạn" và thẻ của Trang dùng cùng tên với thẻ gói; khóa gói, giá, tenVi không đổi.
@@ -416,6 +433,10 @@ const menuHienThi = menu.sanPham.map(sp => ({ ...sp, ten: tenHienThi(sp, nn) }))
         <h1 id="mtv-tieu-de">{c.h1}</h1>
         <p class="dan">{coKimChi ? `${c.dan} ${c.coKimChi}` : c.dan}</p>
         {trangThai === 'het_quay' && (<p class="mtv-loi"><strong>{c.hetQuay}</strong></p>)}
+        <p class="mtv-giao-tom" data-mtv-giao-tom>{c.giaoTom} <a class="lien-ket" href={duongGiaoHang}>{c.chiTietGiao}</a></p>
+        {goiDau && (
+          <div class="hang-nut mtv-xem-goi"><a class="nut nut-vien" href={`#${idNeoGoi(goiDau.ma)}`} data-mtv-xem-goi>{c.xemGoi}</a></div>
+        )}
         <ul class="mtv-ba-dieu" aria-label={c.baDieu}>
           {baDieu.map(d => (
             <li><BieuTuong ten={d.bt} /><div><p class="mtv-dieu">{d.chu}</p>{d.phu && <p class="mtv-dieu-phu">{d.phu}</p>}{d.them && <p class="mtv-dieu-phu" data-vat>{d.them}</p>}</div></li>
@@ -892,6 +913,9 @@ const menuHienThi = menu.sanPham.map(sp => ({ ...sp, ten: tenHienThi(sp, nn) }))
   [hidden] { display: none !important; }
 
   .mtv-hang-nut-dau { margin-top: var(--k-6); }
+  /* Dòng giao hàng và nút "Xem các gói" ngay dưới đoạn dẫn: màn đầu 375×812 còn thấy nút mà không cuộn. */
+  .mtv-giao-tom { margin: var(--k-3) 0 0; font-size: var(--co-nho); color: var(--chu-phu); max-width: 62ch; }
+  .mtv-xem-goi { margin-top: var(--k-4); }
   .mtv-dau { padding-bottom: 0; }
 
   /* --- Dải ba điều: một cột (vạch ngang giữa các điều) dưới 600px; ba cột ngăn bằng vạch dọc từ 600px ------- */

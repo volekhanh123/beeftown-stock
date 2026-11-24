@@ -379,7 +379,7 @@ await nhom('5 · JSON-LD PRODUCT + OFFER CỦA TRANG MUA THỊT VỀ: CHỈ GÓI
   ok('Tên Offer là cỡ gói ("200 g"), tên Product là tên sản phẩm, có thương hiệu, mô tả chỉ khi đã công bố',
      ribeye.offers[0].name === '200 g' && ribeye.name === 'Ribeye' && ribeye.brand.name === 'Beeftown' && !('description' in ribeye) && json['@graph'][1].description === 'Kim chi nhà làm.');
   const cam = ['aggregateRating', 'review', 'image', 'sku', 'gtin', 'mpn', 'priceValidUntil', 'itemCondition', 'url'];
-  ok('Không khai thứ chưa có dữ kiện: đánh giá, ảnh, mã sản phẩm, hạn giá, tình trạng hàng', !cam.some(k => JSON.stringify(json).includes(`"${k}"`)), JSON.stringify(json).slice(0, 200));
+  ok('Gọi không kèm thông tin trang (trang truyền thêm: test-cong-khai-seo-ban-thit.mjs) → không khai thứ chưa có dữ kiện: đánh giá, ảnh, mã sản phẩm, hạn giá, tình trạng hàng', !cam.some(k => JSON.stringify(json).includes(`"${k}"`)), JSON.stringify(json).slice(0, 200));
   ok('Trang mở mà mọi gói tạm hết (het_quay) vẫn liệt kê, tất cả OutOfStock',
      (() => { const het = nhomMuaThitVe([dong('ribeye', 'Ribeye', 200, 189000, { tam_het: true })]); const j = sanPhamJsonLd({ tinhTrang: 'co', sanPham: het, nhom: chiaNhom(het) }, trangThaiMuaThit(true, { tinhTrang: 'co', sanPham: het, nhom: [] }), 'Beeftown'); return j?.['@graph'][0].offers.every(o => o.availability.endsWith('OutOfStock')); })());
   for (const tt of ['chua_mo', 'loi']) ok(`Trạng thái "${tt}" → không khai gì (null)`, sanPhamJsonLd(menu, tt, 'Beeftown') === null);
@@ -388,7 +388,7 @@ await nhom('5 · JSON-LD PRODUCT + OFFER CỦA TRANG MUA THỊT VỀ: CHỈ GÓI
 
   const thanh = doc(SRC, 'components', 'TrangMuaThitVe.astro');
   ok('TrangMuaThitVe.astro in thẻ application/ld+json chỉ khi sanPhamJsonLd có kết quả, qua jsonTrongScript',
-     thanh.includes('const jsonSanPham = sanPhamJsonLd(menu, trangThai, THUONG_HIEU.ten, nn);') && thanh.includes('{jsonSanPham && <script type="application/ld+json" set:html={jsonTrongScript(jsonSanPham)} is:inline></script>}'));
+     thanh.includes('const jsonSanPham = sanPhamJsonLd(menu, trangThai, THUONG_HIEU.ten, nn, thongTinTrang);') && thanh.includes('{jsonSanPham && <script type="application/ld+json" set:html={jsonTrongScript(jsonSanPham)} is:inline></script>}'));
 });
 
 // ===========================================================================
