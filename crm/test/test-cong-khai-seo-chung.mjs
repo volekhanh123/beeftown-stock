@@ -61,6 +61,7 @@ const FILE_SO_HUU = [
 // ===========================================================================
 await nhom('1 · JSON-LD RESTAURANT VÀ WEBSITE', async () => {
   ok('soDienThoaiE164: "tel:0961245124" → "+84961245124"', soDienThoaiE164('tel:0961245124') === '+84961245124', String(soDienThoaiE164('tel:0961245124')));
+  ok('soDienThoaiE164: "tel:84961245124" (đã có mã nước, thiếu +) → "+84961245124"', soDienThoaiE164('tel:84961245124') === '+84961245124');
   ok('soDienThoaiE164: số đã có "+" thì giữ ("tel:+84961245124")', soDienThoaiE164('tel:+84961245124') === '+84961245124');
   ok('soDienThoaiE164: số 11 chữ số trong nước ("tel:02838221234") → "+842838221234"', soDienThoaiE164('tel:02838221234') === '+842838221234', String(soDienThoaiE164('tel:02838221234')));
   ok('soDienThoaiE164: đầu số tổng đài không bị đoán ("tel:19001234" → giữ chữ số)', soDienThoaiE164('tel:19001234') === '19001234', String(soDienThoaiE164('tel:19001234')));
@@ -156,7 +157,7 @@ await nhom('4 · TRANG CHỦ: TIÊU ĐỀ, H1, ĐOẠN GIỚI THIỆU', async ()
      chu('vi').gioiThieuNhaHang.replace('{diaChi}', DIA_CHI_NHA_HANG).startsWith('Beeftown là nhà hàng bò nướng tại bàn ở Tầng 3, 63 Hồ Tùng Mậu, Quận 1 cũ, TP.HCM.'));
   ok('[vi] địa chỉ trong đoạn giới thiệu là "{diaChi}" (thay lúc dựng trang bằng diaChi(nd) — bản công bố trong /noi-bo thắng), không viết cứng',
      chu('vi').gioiThieuNhaHang.includes('{diaChi}') && !chu('vi').gioiThieuNhaHang.includes('Hồ Tùng Mậu')
-       && kmd.includes("const gioiThieuNhaHang = t.gioiThieuNhaHang.replace('{diaChi}', diaChi(nd));"));
+       && kmd.includes("const gioiThieuNhaHang = t.gioiThieuNhaHang.replace('{diaChi}', () => diaChi(nd));"));
   ok('[ko] đoạn giới thiệu viết bằng tiếng Hàn, [en] không có chữ Hàn', HANGUL.test(chu('ko').gioiThieuNhaHang) && !HANGUL.test(chu('en').gioiThieuNhaHang));
   ok('KhoiMoDau.astro in đoạn giới thiệu nhà hàng SAU hàng địa điểm (dưới ảnh, không đẩy ảnh tải ngay xuống dưới màn hình đầu); đoạn cũ trên ảnh giữ nguyên',
      kmd.includes('<p class="dan kmd-gioi-thieu">{gioiThieuNhaHang}</p>') && kmd.indexOf('kmd-gioi-thieu">') > kmd.indexOf('class="kmd-hinh"')

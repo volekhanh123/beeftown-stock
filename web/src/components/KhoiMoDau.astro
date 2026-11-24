@@ -75,7 +75,7 @@ const veLoiLen = t.loiLen.split(/(?<=,)\s+/u);
 const cumDc = cumDiaChi(diaChiManDau(nd));
 // Đoạn giới thiệu nhà hàng (gioiThieuNhaHang): bản tiếng Việt mang "{diaChi}" — thay bằng địa chỉ đang in trên trang (bản công bố
 // trong /noi-bo nếu có, không thì địa chỉ cố định), để cả trang chỉ có MỘT địa chỉ. Bản en, ko không có chỗ thay.
-const gioiThieuNhaHang = t.gioiThieuNhaHang.replace('{diaChi}', diaChi(nd));
+const gioiThieuNhaHang = t.gioiThieuNhaHang.replace('{diaChi}', () => diaChi(nd));
 ---
 <section class="kmd be-kem" aria-labelledby="kmd-tieu-de">
   <div class="khung kmd-luoi">

@@ -89,6 +89,7 @@ export function soDienThoaiE164(goi: string | null | undefined): string | null {
   const chuSo = so.replace(/\D/g, '');
   if (chuSo.length < 8) return null;
   if (so.startsWith('+')) return `+${chuSo}`;
+  if (chuSo.startsWith('84') && chuSo.length >= 11) return `+${chuSo}`;
   if (chuSo.startsWith('0')) return `+84${chuSo.slice(1)}`;
   return so;
 }
