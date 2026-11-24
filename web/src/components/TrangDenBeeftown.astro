@@ -14,12 +14,16 @@
  * lạc. Bước 3 (quầy) là ảnh AI TẠM quay-chon-bo, có nhãn "Ảnh minh họa" — Khánh quyết
  * 10/11/2026, tới khi có ảnh quầy chụp thật (src/lib/anh.ts, ngoại lệ ở đầu file).
  *
- * Không có: giờ mở cửa, chỗ gửi xe, lối cho xe lăn (chưa xác nhận), bản đồ nhúng.
+ * Khối hỏi đáp (24/11/2026): giờ mở cửa (chỉ khi đã công bố — gio-mo-cua.ts), đường lên, đặt bàn (chỉ khi có kênh thật),
+ * "Beeftown này ở đâu?" — chữ hiện sẵn cho người và máy tìm kiếm; cộng link viết đánh giá Google.
+ *
+ * Không có: chỗ gửi xe, mốc đường, khoảng cách, lối cho xe lăn (chưa xác nhận), bản đồ nhúng.
  * "Chỉ đường" chỉ hiện khi link Google Maps đã công bố (LenTang3); liên hệ chỉ hiện
  * mục đã công bố.
  */
 import { chu, dich, duongDanTuongUng } from '../lib/chu';
-import { coKenhHoiBan, cumDiaChi, diaChi, lienHe } from '../lib/trang-cong-khai';
+import { LINK_DANH_GIA_GOOGLE, coKenhHoiBan, cumDiaChi, diaChi, formHoiBanMo, lienHe } from '../lib/trang-cong-khai';
+import { cauGioMoCua, docGioMoCuaTrongLuot } from '../lib/gio-mo-cua';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import Anh from './Anh.astro';
 import BieuTuong from './BieuTuong.astro';
@@ -36,8 +40,43 @@ const dc = diaChi(nd);
 const email = lh.thu ? lh.thu.replace(/^mailto:/, '') : null;
 const coLienHe = !!(lh.facebook || lh.goi || email);
 const coKenh = coKenhHoiBan(nd);
+const formMo = formHoiBanMo(nd);
+// Giờ mở cửa: chỉ khi đã công bố — cùng khung giờ, cùng hai công tắc, cùng lần đọc với JSON-LD, chân trang và khối địa chỉ (gio-mo-cua.ts).
+const cauGio = cauGioMoCua(await docGioMoCuaTrongLuot(Astro.request, nd), ngonNgu);
+const cumDc = cumDiaChi(dc);
 
 const c = dich(ngonNgu, {
+  // --- Hỏi đáp (khối chữ hiện sẵn, không gập): giờ, đường lên, đặt bàn, "Beeftown này ở đâu?" -----------------
+  hdHieu: { vi: 'Hỏi nhanh', en: 'Good to know', ko: '미리 알아 두세요' },
+  hdTieuDe: { vi: 'Hỏi đáp trước khi đến', en: 'Before you visit', ko: '방문 전에 자주 묻는 질문' },
+  hdGioH: { vi: 'Beeftown mở cửa mấy giờ?', en: 'What are Beeftown’s opening hours?', ko: 'Beeftown은 몇 시에 영업하나요?' },
+  hdLenH: { vi: 'Lên Beeftown bằng đường nào?', en: 'How do I get up to Beeftown?', ko: 'Beeftown에는 어떻게 올라가나요?' },
+  hdLenD: {
+    vi: 'Beeftown ở Tầng 3 và có thang máy.',
+    en: 'Beeftown is on Floor 3, and there is a lift.',
+    ko: 'Beeftown은 3층에 있고, 엘리베이터가 있어요.',
+  },
+  hdDatH: { vi: 'Đặt bàn thế nào?', en: 'How do I book a table?', ko: '테이블 예약은 어떻게 하나요?' },
+  // Hai câu này giữ đúng nghĩa của d5Form / d5Nhan trong CauHoi.astro: yêu cầu chưa phải là có bàn.
+  hdDatForm: {
+    vi: 'Bạn gửi yêu cầu ở trang Đặt bàn. Nhà hàng kiểm tra tình trạng bàn rồi liên hệ để xác nhận — bàn chỉ được giữ sau khi nhà hàng xác nhận với bạn.',
+    en: 'Send a request on the Book a table page. We check availability and get in touch to confirm — a table is only held once we have confirmed it with you.',
+    ko: '테이블 예약 페이지에서 요청을 보내 주세요. 매장에서 자리를 확인한 뒤 연락드릴게요. 자리는 매장에서 확인해 드린 뒤에만 잡혀요.',
+  },
+  hdDatNhan: {
+    vi: 'Bạn báo cho Beeftown ngày, giờ và số người. Nhà hàng kiểm tra rồi liên hệ để xác nhận — bàn chỉ được giữ sau khi nhà hàng xác nhận với bạn.',
+    en: 'Tell Beeftown the date, time and number of people. We will check and get back to you to confirm — a table is only held once we have confirmed it with you.',
+    ko: '날짜, 시간, 인원을 Beeftown에 알려 주세요. 매장에서 확인한 뒤 연락드릴게요. 자리는 매장에서 확인해 드린 뒤에만 잡혀요.',
+  },
+  hdGoi: { vi: 'Cần hỏi nhanh? Gọi hotline:', en: 'Need a quick answer? Call the hotline:', ko: '빠른 문의는 전화로 해 주세요:' },
+  // Giúp khách và máy tìm kiếm phân biệt Beeftown này với nơi khác: tên, loại hình, địa chỉ — không thêm gì ngoài điều đã biết.
+  hdOdauH: { vi: 'Beeftown này ở đâu?', en: 'Where is this Beeftown?', ko: '이 Beeftown은 어디에 있나요?' },
+  hdOdauD: {
+    vi: 'Đây là Beeftown, nhà hàng bò nướng tại bàn. Khách vào bằng lối riêng ngay cạnh GS25.',
+    en: 'This is Beeftown, the tabletop beef grill restaurant. Guests use our own entrance, right next to GS25.',
+    ko: '이곳은 테이블에서 굽는 소고기 전문점 Beeftown이에요. GS25 바로 옆 전용 입구로 들어오세요.',
+  },
+
   // Tiêu đề khối địa chỉ: h1 đã nói "tầng 3", nên khối bên dưới gọi đúng việc nó làm.
   tieuDeDiaChi: { vi: 'Địa chỉ và lối lên', en: 'Address and the way up', ko: '주소와 올라오는 길' },
   tieuDe: { vi: 'Hẹn gặp bạn ở tầng 3', en: 'See you on Floor 3', ko: '3층에서 만나요' },
@@ -149,6 +188,53 @@ const c = dich(ngonNgu, {
   </div>
 </section>
 
+{/* Hỏi đáp: chữ hiện sẵn (không gập), ngắn, mỗi câu trả lời chỉ nói điều đã biết. Giờ mở cửa chỉ khi đã công bố (cauGio),
+    câu đặt bàn chỉ khi có kênh thật để hỏi (như khối cuối trang) — không câu nào dẫn tới hư không. Không chỗ gửi xe, mốc đường,
+    khoảng cách: chưa ai xác nhận (đầu file). Mỗi thẻ viết liền trên một dòng: compressHTML bỏ dấu cách có xuống dòng cạnh thẻ. */}
+<section class="muc be-kem db-hoi-dap" aria-labelledby="db-h-hd">
+  <div class="khung db-hd-luoi">
+    <div>
+      <p class="hieu">{c.hdHieu}</p>
+      <h2 id="db-h-hd">{c.hdTieuDe}</h2>
+    </div>
+    <div>
+      <dl class="db-hd-ds">
+        {cauGio && (
+          <div class="db-hd-muc">
+            <dt>{c.hdGioH}</dt>
+            <dd><p>{cauGio}</p></dd>
+          </div>
+        )}
+        <div class="db-hd-muc">
+          <dt>{c.hdLenH}</dt>
+          <dd>
+            <p>{c.hdLenD}</p>
+            <p>{t.loiLen}</p>
+          </dd>
+        </div>
+        {coKenh && (
+          <div class="db-hd-muc">
+            <dt>{c.hdDatH}</dt>
+            <dd>
+              <p>{formMo ? c.hdDatForm : c.hdDatNhan}</p>
+              <p><a class="lien-ket" href={duongDanTuongUng('/dat-ban', ngonNgu)}>{t.datBan}<BieuTuong ten="mui-ten" /></a></p>
+              {lh.goi && <p>{c.hdGoi} <a class="lien-ket" href={lh.goi}>{lh.hotline}</a></p>}
+            </dd>
+          </div>
+        )}
+        <div class="db-hd-muc">
+          <dt>{c.hdOdauH}</dt>
+          <dd>
+            <p>Beeftown · <span lang="vi">{cumDc.map(cum => <><span class:list={{ lien: cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</span></p>
+            <p>{c.hdOdauD}</p>
+          </dd>
+        </div>
+      </dl>
+      <p class="db-hd-danh-gia"><a class="lien-ket" href={LINK_DANH_GIA_GOOGLE} rel="noopener">{t.danhGiaGoogle}<BieuTuong ten="mui-ten" /></a></p>
+    </div>
+  </div>
+</section>
+
 {/* Liên hệ: chỉ mục đã công bố trong /noi-bo — chưa có mục nào thì bỏ cả khối. */}
 {coLienHe && (
   <section class="muc be-kem db-lien-he" aria-labelledby="db-h-lh">
@@ -227,6 +313,19 @@ const c = dich(ngonNgu, {
   .db-chu p { margin: 0; color: var(--chu-phu); max-width: 42ch; }
   /* "63 Hồ Tùng Mậu" không gãy giữa số nhà và tên đường, giữa các chữ của một tên. */
   .db-chu .lien { white-space: nowrap; }
+
+  /* --- Hỏi đáp ---------------------------------------------------------------- */
+  .db-hd-luoi { display: grid; gap: var(--k-6); grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .db-hd-luoi { grid-template-columns: 5fr 7fr; gap: var(--k-8); align-items: start; } }
+  .db-hd-luoi h2 { margin-bottom: 0; max-width: 18ch; }
+  .db-hd-ds { margin: 0; border-top: 2px solid var(--chu-chinh); }
+  .db-hd-muc { padding: var(--k-4) 0; border-bottom: 1px solid var(--vien); }
+  .db-hd-muc dt { font-size: 18px; font-weight: 700; line-height: 1.35; margin: 0 0 var(--k-2); }
+  .db-hd-muc dd { margin: 0; }
+  .db-hd-muc dd p { margin: 0 0 var(--k-2); max-width: 60ch; }
+  .db-hd-muc dd p:last-child { margin-bottom: 0; }
+  .db-hd-muc .lien { white-space: nowrap; }
+  .db-hd-danh-gia { margin: var(--k-4) 0 0; }
 
   /* --- Liên hệ --------------------------------------------------------------- */
   .db-lh-luoi { display: grid; gap: var(--k-6); grid-template-columns: 1fr; }

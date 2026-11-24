@@ -123,7 +123,8 @@ const VI = {
   // --- Phần nền, luôn hiện --------------------------------------------------
   // Tiêu đề trang chủ khi cổng nội dung chưa có tiêu đề đã duyệt (tieu_de_og). SEO 23/11/2026: ~60 ký tự, có từ người ta
   // tìm (bò nướng, chọn bò tại quầy) và địa chỉ; trang con có tiêu đề riêng ở từng file pages/.
-  tieuDeTrangChu: 'Beeftown — Nhà hàng bò nướng, chọn bò tại quầy · 63 Hồ Tùng Mậu',
+  // SEO 24/11/2026: nói loại hình ("nhà hàng bò nướng tại bàn") và khu vực "Quận 1 cũ" — hai thứ khách gõ khi tìm; ≤ 65 ký tự.
+  tieuDeTrangChu: 'Beeftown — Nhà hàng bò nướng tại bàn, Quận 1 cũ, TP.HCM',
   // Dòng hiệu trên câu chính ở màn đầu trang chủ (KhoiMoDau.astro): trước đây là descriptor tiếng Anh in nguyên ở cả
   // trang tiếng Việt. Khánh duyệt 23/11/2026; en, ko dịch từ câu này.
   dongHieu: 'Nhà hàng bò nướng tại bàn',
@@ -137,6 +138,13 @@ const VI = {
   gioiThieu:
     'Bò được cắt và đóng khay sẵn tại quầy, giá ghi trên nhãn từng khay. Nhân viên quầy ' +
     'gợi ý phần hợp gu, rồi cả bàn cùng nướng trên vỉ gas đặt tại bàn.',
+  // Đoạn giới thiệu nhà hàng (SEO 24/11/2026): nói Beeftown là gì và ở đâu bằng chữ người đọc thấy; 40–60 từ ở cả ba thứ tiếng
+  // (crm/test/test-cong-khai-seo-chung.mjs), chỉ dựng từ dữ kiện đã có trên trang. KhoiMoDau.astro in nó DƯỚI hàng địa điểm,
+  // không trên ảnh: đoạn dài ở màn đầu đẩy ảnh tải ngay xuống dưới màn hình đầu 360 × 740px (do-giao-dien.mjs). "{diaChi}"
+  // (chỉ bản tiếng Việt) được thay bằng địa chỉ đang in trên trang — bản công bố trong /noi-bo nếu có (diaChi, lib/trang-cong-khai.ts).
+  gioiThieuNhaHang:
+    'Beeftown là nhà hàng bò nướng tại bàn ở {diaChi}. Bạn chọn khay bò đã cắt sẵn tại quầy, xem giá trên nhãn từng khay, ' +
+    'rồi cả bàn cùng nướng trên vỉ gas đặt tại bàn. Nhân viên quầy gợi ý phần hợp gu nếu bạn cần.',
   // Màn đầu: thanh đặt bàn nhanh (ngày, số người → trang Đặt bàn) và chú thích hai ảnh Pick → Grill.
   hoiBanNhanh: 'Đặt bàn nhanh',
   ngayDen: 'Ngày đến',
@@ -219,7 +227,7 @@ const VI = {
   tuyenDung: 'Tuyển dụng',
   tuyenDungTieuDe: 'Beeftown đang tìm người',
   tuyenDungDan:
-    'Nhà hàng đang tuyển đội mở cửa cho ba bộ phận: quầy thịt, bếp và sảnh. ' +
+    'Beeftown đang tuyển cho ba bộ phận: quầy thịt, bếp và sảnh. ' +
     'Nhân viên sảnh làm bán thời gian, nhận cả người chưa có kinh nghiệm; quầy thịt và bếp cần người đã có tay nghề.',
   tuyenDungCachNop:
     'Gửi cho Beeftown họ tên, vị trí muốn ứng tuyển và số điện thoại. ' +
@@ -286,6 +294,13 @@ const VI = {
   // Nhóm link tới tám trang chính sách và Quyền riêng tư ở chân trang (lib/chinh-sach.ts).
   chinhSach: 'Chính sách',
   boQuaToiNoiDung: 'Bỏ qua, tới nội dung chính',
+  // SEO 24/11/2026. Nhãn đứng trên dòng pháp nhân ở chân trang: địa chỉ pháp nhân là trụ sở công ty, không phải nhà hàng
+  // — để Google và khách không nhầm hai nơi (chữ pháp nhân bên dưới giữ nguyên, xem PHAP_NHAN).
+  truSoCongTy: 'Trụ sở công ty',
+  // Link chân trang và trang Đến Beeftown tới trang viết đánh giá của Google Business Profile (LINK_DANH_GIA_GOOGLE, lib/trang-cong-khai.ts).
+  danhGiaGoogle: 'Viết đánh giá trên Google',
+  // og:image:alt khi chưa có ảnh chụp thật: ảnh dự phòng là logo trắng trên nền đỏ (Trang.astro) — mô tả đúng ảnh, đúng thứ tiếng của trang.
+  altAnhChiaSe: 'Logo Beeftown — nhà hàng bò nướng tại bàn',
 };
 
 /**
@@ -304,6 +319,10 @@ const EN: Bo = {
   gioiThieu:
     'Our beef is cut and packed in trays at the counter, with the price on each tray\u2019s label. Our counter ' +
     'staff suggest cuts to suit your taste, then everyone grills together on the gas grill at your table.',
+  gioiThieuNhaHang:
+    'Beeftown is a tabletop beef grill restaurant on Floor 3, 63 Hồ Tùng Mậu, former District 1, Ho Chi Minh City. ' +
+    'You pick a ready-cut tray of beef at the counter, check the price on each tray\u2019s label, then everyone grills ' +
+    'together on the gas grill at your table. Our counter staff can suggest cuts.',
   hoiBanNhanh: 'Quick table booking',
   ngayDen: 'Date',
   soNguoi: 'Guests',
@@ -316,7 +335,7 @@ const EN: Bo = {
   donBanTu: 'Opening',
 
   theoDoi: 'Follow Beeftown',
-  theoDoiPhu: 'Updates from the kitchen, the counter, and our opening date',
+  theoDoiPhu: 'Updates from the kitchen, the counter, and our opening hours',
   nhanTin: 'Message Beeftown',
   guiEmail: 'Email Beeftown',
   chiDuong: 'Directions',
@@ -364,7 +383,7 @@ const EN: Bo = {
   tuyenDung: 'Careers',
   tuyenDungTieuDe: 'Beeftown is hiring',
   tuyenDungDan:
-    'We are building our opening team across three departments: Butcher, Kitchen and Hall. ' +
+    'Beeftown is hiring across three departments: Butcher, Kitchen and Hall. ' +
     'Hall Crew roles are part-time and open to people without experience; Butcher and Kitchen roles need hands-on experience.',
   tuyenDungCachNop:
     'Send us your name, the role you want, and your phone number. ' +
@@ -407,6 +426,9 @@ const EN: Bo = {
   email: 'Email',
   chinhSach: 'Policies',
   boQuaToiNoiDung: 'Skip to main content',
+  truSoCongTy: 'Company office',
+  danhGiaGoogle: 'Review us on Google',
+  altAnhChiaSe: 'Beeftown logo — tabletop beef grill restaurant',
 };
 
 // Tiếng Hàn: văn lịch sự 해요체 từ đầu đến cuối. Tên đường Hồ Tùng Mậu để nguyên
@@ -421,6 +443,10 @@ const KO: Bo = {
   gioiThieu:
     '소고기는 정육 코너에서 손질해 트레이에 담아 두고, 각 트레이의 라벨에 가격을 표시해요. ' +
     '직원이 취향에 맞는 부위를 추천해 드려요. 고른 소고기는 테이블에 있는 가스 그릴에서 다 함께 직접 구워 드시면 돼요.',
+  gioiThieuNhaHang:
+    'Beeftown은 호치민시 구 1군 Hồ Tùng Mậu 63, 3층에 있는 테이블에서 굽는 소고기 전문점이에요. ' +
+    '정육 코너에서 트레이에 담긴 소고기를 직접 보고 고르고, 라벨에서 가격을 먼저 확인한 뒤, ' +
+    '테이블에 있는 가스 그릴에서 다 함께 구워 드시면 돼요. 부위가 고민되면 정육 코너 직원에게 편하게 물어보세요.',
   hoiBanNhanh: '빠른 테이블 예약',
   ngayDen: '방문 날짜',
   soNguoi: '인원',
@@ -433,7 +459,7 @@ const KO: Bo = {
   donBanTu: '오픈 예정일',
 
   theoDoi: 'Beeftown 팔로우하기',
-  theoDoiPhu: '주방과 정육 코너, 오픈 일정 소식',
+  theoDoiPhu: '주방과 정육 코너, 영업 시간 소식',
   nhanTin: 'Beeftown에 메시지 보내기',
   guiEmail: 'Beeftown에 이메일 보내기',
   chiDuong: '길찾기',
@@ -481,7 +507,7 @@ const KO: Bo = {
   tuyenDung: '채용',
   tuyenDungTieuDe: 'Beeftown에서 함께할 분을 찾고 있어요',
   tuyenDungDan:
-    '오픈 팀을 정육, 주방, 홀 세 파트로 꾸리고 있어요. ' +
+    'Beeftown에서 정육, 주방, 홀 세 파트 직원을 모집하고 있어요. ' +
     '홀 직원은 파트타임이고 경력이 없어도 지원할 수 있어요. 정육과 주방은 실무 경력이 있는 분을 찾고 있어요.',
   tuyenDungCachNop:
     'Beeftown에 이름, 지원하려는 포지션, 전화번호를 보내 주세요. ' +
@@ -526,6 +552,9 @@ const KO: Bo = {
   email: '이메일',
   chinhSach: '정책',
   boQuaToiNoiDung: '본문으로 바로가기',
+  truSoCongTy: '회사 사무소',
+  danhGiaGoogle: '구글 리뷰 남기기',
+  altAnhChiaSe: 'Beeftown 로고 — 테이블에서 굽는 소고기 전문점',
 };
 
 const BO: Record<NgonNgu, Bo> = { vi: VI, en: EN, ko: KO };

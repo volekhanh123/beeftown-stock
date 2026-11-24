@@ -424,7 +424,7 @@ await nhom('5 · BỐN QUYẾT ĐỊNH CỦA KHÁNH (11/10/2026): DẢI TỐI, C
   const kmdNguon = doc(SRC, 'components', 'KhoiMoDau.astro');
   ok('KhoiMoDau.astro: câu chính là <h1> của trang chủ — t.cauChinh tách theo câu, mỗi câu một khối, câu sau màu nhấn',
      kmdNguon.includes('const cauChinh = t.cauChinh.split(/(?<=[.!?])\\s+/u);')
-       && kmdNguon.includes(`<h1 id="kmd-tieu-de">{cauChinh.map((cau, i) => <>{i > 0 && ' '}<span class:list={['kmd-cau', { 'kmd-cau-nhan': i > 0 }]}>{cau}</span></>)}</h1>`));
+       && kmdNguon.includes(`<h1 id="kmd-tieu-de"><span class="hieu">{t.dongHieu}</span><span class="an-chu">.</span>{' '}{cauChinh.map((cau, i) => <>{i > 0 && ' '}<span class:list={['kmd-cau', { 'kmd-cau-nhan': i > 0 }]}>{cau}</span></>)}</h1>`));
   for (const nn of NGON_NGU) ok(`[${nn}] Câu chính có đúng hai câu (hai dòng của h1)`, chu(nn).cauChinh.split(/(?<=[.!?])\s+/u).length === 2, chu(nn).cauChinh);
   // Tagline có ở hai khối liền nhau: dải đỏ dưới ảnh màn đầu (để nhìn) và dòng hiệu của khối ba bước (để đọc).
   // Trình đọc màn hình chỉ đọc MỘT lần: dải dưới ảnh là aria-hidden, dòng hiệu của ba bước thì không.

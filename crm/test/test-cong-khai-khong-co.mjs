@@ -104,8 +104,10 @@ await nhom('4 · LAYOUT Trang: TRANG KHÔNG LẬP CHỈ MỤC', async () => {
      iRobots > -1 && iCanonical > -1 && iHreflang > -1 && /khongLapChiMuc\s*\?/.test(doanNhanh), doanNhanh.slice(0, 160));
   // Trang 404 dựng với bộ nội dung rỗng: JSON-LD của nó sẽ khai sai về nhà hàng thật (acceptsReservations,
   // điện thoại, mạng xã hội) — không in.
-  ok('JSON-LD chỉ in khi KHÔNG khongLapChiMuc', /\{!khongLapChiMuc && <script type="application\/ld\+json"/.test(layout)
-     && (layout.match(/application\/ld\+json/g) ?? []).length === 1);
+  // Hai khối JSON-LD (SEO 24/11/2026): Restaurant và WebSite — cả hai cùng cổng khongLapChiMuc.
+  ok('JSON-LD (Restaurant và WebSite) chỉ in khi KHÔNG khongLapChiMuc', /\{!khongLapChiMuc && <script type="application\/ld\+json"/.test(layout)
+     && /\{!khongLapChiMuc && duLieuTrangWeb && <script type="application\/ld\+json"/.test(layout)
+     && (layout.match(/application\/ld\+json/g) ?? []).length === 2);
 });
 
 // ===========================================================================

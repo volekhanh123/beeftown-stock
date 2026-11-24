@@ -3,8 +3,9 @@
  * CHÂN TRANG — tuyển dụng, điều hướng phụ, địa chỉ, pháp nhân
  *
  * Ba tầng:
- *  1. Dải tuyển dụng gọn. Tuyển đội mở cửa là "đường găng" của ngày mở (TrangRaMat
- *     cũ), nên nó có mặt ở MỌI trang công khai — chỉ gọn lại so với một khối riêng.
+ *  1. Dải tuyển dụng gọn. Tuyển người cho quầy thịt, bếp và sảnh vẫn là việc gấp (TrangRaMat
+ *     cũ), nên nó có mặt ở MỌI trang công khai — chỉ gọn lại so với một khối riêng. Câu viết như nhà
+ *     hàng đang hoạt động (Khánh, 24/11/2026): không nói về giai đoạn ra mắt.
  *  2. Dải đen, nền phẳng: logo chính trắng của bộ 21/10/2026 (logo-ngang-trang.svg — đầu
  *     bò khoét lộ nền đen; guideline trang 4 vẽ bản trắng trên đỏ), các mục điều hướng,
  *     địa chỉ + câu chỉ đường. Cột Thông tin: Các phần thịt bò (trang trụ cột cho người tìm tên phần thịt — link từ
@@ -16,7 +17,8 @@
  *  3. Pháp nhân, cùng nền đen, ngăn với dải trên bằng một vạch mảnh (--vien: trắng 22 %).
  *     web/kiem-tra/trinh-duyet.mjs đọc chữ của <footer> ĐẦU
  *     TIÊN trên trang: ngay dưới dòng "© … Beeftown · Beef Specialty Restaurant" phải
- *     là ba dòng pháp nhân (tên · mã số thuế, địa chỉ, điện thoại), đúng từng ký tự —
+ *     một dòng nhãn "Trụ sở công ty" (24/11/2026: để Google không nhầm địa chỉ pháp nhân là nhà hàng)
+ *     rồi ba dòng pháp nhân (tên · mã số thuế, địa chỉ, điện thoại), đúng từng ký tự —
  *     khớp Thông tin doanh nghiệp trên Meta; mọi <p> trong chân trang phải hiện. Dòng thứ tư là
  *     email (CHO_TRONG.EMAIL — còn chờ Khánh trả lời). Biểu tượng xác nhận của cơ quan quản lý
  *     (XAC_NHAN_CO_QUAN) chỉ in khi đã có mã.
@@ -27,7 +29,7 @@
  * dung, không ép chữ nhỏ cho vừa); mọi link cao 48px. do-giao-dien.mjs đo cả hai.
  */
 import { THUONG_HIEU, PHAP_NHAN, chu, dich, duongDanTuongUng } from '../lib/chu';
-import { cumDiaChi, dieuHuong, diaChi, lienHe } from '../lib/trang-cong-khai';
+import { LINK_DANH_GIA_GOOGLE, cumDiaChi, dieuHuong, diaChi, lienHe } from '../lib/trang-cong-khai';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import { namVn } from '../lib/gio-vn';
 import { cauGioMoCua, docGioMoCuaTrongLuot } from '../lib/gio-mo-cua';
@@ -59,9 +61,9 @@ const chinhSach = [
 
 const c = dich(ngonNgu, {
   tuyenDungNgan: {
-    vi: 'Nhà hàng đang tuyển đội mở cửa cho quầy thịt, bếp và sảnh.',
-    en: 'We are building our opening team for the butcher counter, kitchen and hall.',
-    ko: '정육, 주방, 홀에서 함께할 오픈 팀원을 모집하고 있어요.',
+    vi: 'Beeftown đang tuyển quầy thịt, bếp và sảnh.',
+    en: 'Beeftown is hiring for the butcher counter, kitchen and hall.',
+    ko: 'Beeftown에서 정육, 주방, 홀 직원을 모집하고 있어요.',
   },
   theoDoi: { vi: 'Theo dõi', en: 'Follow', ko: '팔로우' },
 });
@@ -108,6 +110,8 @@ const c = dich(ngonNgu, {
               là link tel: bấm được; số in đúng như đã công bố. Cùng link với trang Đến Beeftown và thanh hành động. */}
           {lh.goi && lh.hotline && <p class="ct-goi"><a href={lh.goi}><BieuTuong ten="dien-thoai" /><span>{lh.hotline}</span></a></p>}
         </address>
+        {/* Link viết đánh giá Google (GBP đã xác minh): có ở MỌI trang công khai, đúng thứ tiếng của trang. */}
+        <p class="ct-danh-gia"><a href={LINK_DANH_GIA_GOOGLE} rel="noopener">{t.danhGiaGoogle}<BieuTuong ten="mui-ten" /></a></p>
         {mangXaHoi.length > 0 && (
           <ul class="ct-mxh" aria-label={c.theoDoi}>
             {mangXaHoi.map(m => <li><a href={m.url} rel="noopener">{m.ten}</a></li>)}
@@ -134,6 +138,7 @@ const c = dich(ngonNgu, {
             lang="vi" để trình đọc màn hình của trang Anh / Hàn đọc đúng giọng. Điện thoại:
             nhãn theo thứ tiếng của trang, số giữ nguyên và không gãy giữa chừng. */}
         <div class="phap-nhan">
+          <p class="chan-dong chan-nhan">{t.truSoCongTy}</p>
           <p class="chan-dong"><span class="lien" lang="vi">{PHAP_NHAN.ten}</span> · <span class="lien">{t.maSoThue}: {PHAP_NHAN.maSoThue}</span></p>
           <p class="chan-dong" lang="vi">{PHAP_NHAN.diaChi}</p>
           <p class="chan-dong">{t.dienThoai}: <span class="lien">{PHAP_NHAN.dienThoai}</span></p>
@@ -220,6 +225,11 @@ const c = dich(ngonNgu, {
      màn hẹp thì xuống dòng ở dấu "·". */
   .phap-nhan { margin-top: var(--k-2); }
   .phap-nhan .chan-dong { color: var(--chu-phu); }
+  .phap-nhan .chan-nhan { font-weight: 700; }
+  .ct-danh-gia { margin: 0 0 var(--k-3); }
+  /* Cột địa chỉ hẹp ở 900px: chữ xuống dòng được, mũi tên giữ đủ 24px (không co lại cạnh chữ). */
+  .ct-danh-gia a { gap: var(--k-2); }
+  .ct-danh-gia :global(svg) { width: 24px; height: 24px; flex: none; }
   .phap-nhan .lien { white-space: nowrap; }
   .ct-xac-nhan img { display: block; height: auto; max-width: 160px; }
 </style>

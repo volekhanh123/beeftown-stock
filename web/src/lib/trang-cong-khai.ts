@@ -71,6 +71,28 @@ export function lienHe(nd: NoiDung): LienHe {
   };
 }
 
+/**
+ * Link viết đánh giá của Google Business Profile (g.page, lấy từ GBP đã xác minh 23/11/2026). Cố định trong mã: link
+ * công khai, không đổi theo công bố nội dung; in ở chân MỌI trang công khai và ở trang Đến Beeftown.
+ */
+export const LINK_DANH_GIA_GOOGLE = 'https://g.page/r/CYQQxkRqfr6eEBM/review';
+
+/**
+ * Số gọi ("tel:0961245124", "tel:+84961245124") → dạng E.164 cho JSON-LD ("+84961245124"). Google và các máy đọc
+ * dữ liệu có cấu trúc muốn mã quốc gia; trên trang số vẫn in đúng như đã công bố ("0961 245 124"). Số trong nước bắt đầu
+ * bằng 0 thì thay 0 bằng +84; đã có "+" thì giữ. Số không có dạng nào trong hai dạng đó (đầu số tổng đài "1900…") không
+ * có dạng E.164 để đoán — trả lại chữ số như đã công bố, đúng như trước đây.
+ */
+export function soDienThoaiE164(goi: string | null | undefined): string | null {
+  if (typeof goi !== 'string' || !goi.startsWith('tel:')) return null;
+  const so = goi.slice('tel:'.length);
+  const chuSo = so.replace(/\D/g, '');
+  if (chuSo.length < 8) return null;
+  if (so.startsWith('+')) return `+${chuSo}`;
+  if (chuSo.startsWith('0')) return `+84${chuSo.slice(1)}`;
+  return so;
+}
+
 /** Địa chỉ in trên trang: bản công bố trong /noi-bo nếu có, không thì địa chỉ cố định. */
 export function diaChi(nd: NoiDung): string {
   const congBo = typeof nd.dia_chi_hien_thi === 'string' ? nd.dia_chi_hien_thi.trim() : '';
