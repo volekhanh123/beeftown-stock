@@ -736,7 +736,11 @@ function doKhiDungYen(conChay = []) {
     }[NGON_NGU];
     if (!kmd || !h1 || !dan || !nut || !hinh || !tin) sai('màn đầu thiếu một trong: câu chính, mô tả, nhóm nút, hình, dòng địa điểm');
     else {
-      if (h1.textContent.replace(/\s+/g, ' ').trim() !== CAU_CHINH) sai(`câu chính «${h1.textContent.trim()}» — phải giữ nguyên «${CAU_CHINH}»`);
+      // Từ 24/11/2026 h1 mở đầu bằng dòng hiệu (loại hình, span.hieu) và dấu chấm ẩn (span.an-chu); phần còn lại là câu chính.
+      const h1BoHieu = h1.cloneNode(true);
+      h1BoHieu.querySelectorAll('.hieu, .an-chu').forEach(e => e.remove());
+      if (h1BoHieu.textContent.replace(/\s+/g, ' ').trim() !== CAU_CHINH) sai(`câu chính «${h1BoHieu.textContent.trim()}» — phải giữ nguyên «${CAU_CHINH}»`);
+      if (!h1.querySelector(':scope > .hieu')) sai('h1 phải mở đầu bằng dòng hiệu loại hình (span.hieu)');
       if (!anhDau || !hien(anhDau)) sai('màn đầu không có ảnh hero-vi-gas');
       else {
         const [kh1, kdan, knut, kanh, ktin, khinh] = [h1, dan, nut, anhDau, tin, hinh].map(e => e.getBoundingClientRect());

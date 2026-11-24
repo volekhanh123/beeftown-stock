@@ -184,7 +184,11 @@ const motDong = chu => chu.replace(/\s+/g, ' ').trim();
 const DONG_BAN_QUYEN = /^© \d{4} Beeftown · Beef Specialty Restaurant$/;
 const NHAN_MA_SO_THUE = { vi: 'Mã số thuế', en: 'Tax code', ko: '세금 코드' };
 const NHAN_DIEN_THOAI = { vi: 'Điện thoại', en: 'Phone', ko: '전화' };
+// Nhãn "Trụ sở công ty" đứng ngay dưới dòng © (SEO 24/11/2026), trên ba dòng pháp nhân — để Google không nhầm địa chỉ
+// pháp nhân là nhà hàng.
+const NHAN_TRU_SO = { vi: 'Trụ sở công ty', en: 'Company office', ko: '회사 사무소' };
 const dongPhapNhan = nn => [
+  NHAN_TRU_SO[nn],
   `CÔNG TY TNHH SLK GROUP · ${NHAN_MA_SO_THUE[nn]}: 0319712805`,
   '53 Võ Trường Toản, Phường An Khánh, Thành phố Hồ Chí Minh',
   `${NHAN_DIEN_THOAI[nn]}: 0961 245 124`,
@@ -422,8 +426,8 @@ try {
         const phapNhan = dongPhapNhan(ngonNguCua(duong));
         // Chữ của trang sau khi bỏ dòng pháp nhân: tên đường / tên phường của địa chỉ khác tìm cả trong HTML thô,
         // số nhà và vế phường / quận chỉ tìm trong chữ khách đọc.
-        const chuKhongPhapNhan = boPhapNhan(them.chuCaTrang, phapNhan[1]);
-        const diaChiKhac = TEN_DIA_CHI_KHAC.tim(boPhapNhan(them.htmlTrang, phapNhan[1]))
+        const chuKhongPhapNhan = boPhapNhan(them.chuCaTrang, phapNhan[2]);
+        const diaChiKhac = TEN_DIA_CHI_KHAC.tim(boPhapNhan(them.htmlTrang, phapNhan[2]))
           ?? TEN_DIA_CHI_KHAC.tim(chuKhongPhapNhan) ?? SO_NHA_KHAC.tim(chuKhongPhapNhan);
         const phuongQuan = PHUONG_QUAN.tim(chuKhongPhapNhan);
         const tot = [
@@ -437,9 +441,9 @@ try {
              !kq.coChan ? 'trang không có <footer>'
                : kq.chanAn ? 'một dòng chân trang bị ẩn hoặc chữ dưới 14px' : JSON.stringify(kq.dongChan)),
           ok(`${nhan}: chân trang — dòng "${NHAN_EMAIL[ngonNguCua(duong)]}: …" ngay dưới số điện thoại pháp nhân; nhóm Chính sách đủ 9 link đúng thứ tự, đúng thứ tiếng`,
-             iBanQuyen > -1 && (kq.dongChan[iBanQuyen + 4] ?? '').startsWith(`${NHAN_EMAIL[ngonNguCua(duong)]}: `)
+             iBanQuyen > -1 && (kq.dongChan[iBanQuyen + 5] ?? '').startsWith(`${NHAN_EMAIL[ngonNguCua(duong)]}: `)
                && JSON.stringify(kq.linkChinhSach) === JSON.stringify(LINK_CHINH_SACH[ngonNguCua(duong)]),
-             `${kq.dongChan[iBanQuyen + 4] ?? '(không có dòng)'} · ${kq.linkChinhSach.join(' ')}`),
+             `${kq.dongChan[iBanQuyen + 5] ?? '(không có dòng)'} · ${kq.linkChinhSach.join(' ')}`),
           ok(`${nhan}: chân trang — cột Thông tin có link trang Các phần thịt bò đứng đầu, rồi Tuyển dụng, Xóa dữ liệu, đúng thứ tiếng`,
              JSON.stringify(kq.linkThongTin) === JSON.stringify(LINK_THONG_TIN[ngonNguCua(duong)]), kq.linkThongTin.join(' ')),
           ok(`${nhan}: ${TRANG_CHU_BA[duong] ? 'dải "Nhìn tận mắt, chọn tận tay" có đúng một link sang trang Các phần thịt bò' : 'không có dải "Nhìn tận mắt, chọn tận tay" (chỉ trang chủ có)'}`,
@@ -478,8 +482,8 @@ try {
                && !TEN_DIA_CHI_KHAC.tim(JSON.stringify(them.diaChiJsonLd)) && !SO_NHA_KHAC.tim(JSON.stringify(them.diaChiJsonLd)),
              JSON.stringify(them.diaChiJsonLd)),
           ok(`${nhan}: ngoài dòng pháp nhân (có đúng một lần), cả trang không còn địa chỉ nào khác ${DUONG_NHA_HANG}`,
-             them.htmlTrang.split(phapNhan[1]).length === 2 && !diaChiKhac,
-             `dòng pháp nhân có ${them.htmlTrang.split(phapNhan[1]).length - 1} lần; thấy «${diaChiKhac ?? ''}»`),
+             them.htmlTrang.split(phapNhan[2]).length === 2 && !diaChiKhac,
+             `dòng pháp nhân có ${them.htmlTrang.split(phapNhan[2]).length - 1} lần; thấy «${diaChiKhac ?? ''}»`),
           ok(`${nhan}: ngoài dòng pháp nhân, chữ khách đọc không ghi tên phường hay quận nào (trừ "Quận 1 cũ")`, !phuongQuan, `thấy «${phuongQuan ?? ''}»`),
           ok(`${nhan}: không còn chữ về cầu thang bộ, không câu nào nói không có thang máy`, !CAU_THANG.tim(them.chuCaTrang),
              CAU_THANG.tim(them.chuCaTrang) ?? ''),
@@ -2146,8 +2150,9 @@ try {
       soHreflang: document.querySelectorAll('link[rel="alternate"][hreflang]').length,
       soJsonLd: document.querySelectorAll('script[type="application/ld+json"]').length,
     }));
-    ok('/en/book (trang thường): vẫn có canonical, đủ 4 hreflang, JSON-LD, không noindex',
-       thuong.robots === 0 && thuong.soCanonical === 1 && thuong.soHreflang === 4 && thuong.soJsonLd === 1, JSON.stringify(thuong));
+    // Hai khối JSON-LD từ 24/11/2026: Restaurant và WebSite.
+    ok('/en/book (trang thường): vẫn có canonical, đủ 4 hreflang, JSON-LD (Restaurant + WebSite), không noindex',
+       thuong.robots === 0 && thuong.soCanonical === 1 && thuong.soHreflang === 4 && thuong.soJsonLd === 2, JSON.stringify(thuong));
     await ctx.close();
   });
 

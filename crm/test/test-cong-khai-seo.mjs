@@ -114,8 +114,8 @@ await nhom('1 · TIÊU ĐỀ VÀ MÔ TẢ: ĐỘ DÀI, TỪ KHÓA, CHỮ CẤM, 
 
   // Trang xếp hạng được: có từ khóa người ta tìm, theo từng thứ tiếng.
   const co = (trang, nn, re) => re.test(meta(trang, nn).tieuDe);
-  ok('Tiêu đề trang chủ tiếng Việt là câu Khánh duyệt: "Beeftown — Nhà hàng bò nướng, chọn bò tại quầy · 63 Hồ Tùng Mậu"',
-     meta('home', 'vi').tieuDe === 'Beeftown — Nhà hàng bò nướng, chọn bò tại quầy · 63 Hồ Tùng Mậu', meta('home', 'vi').tieuDe);
+  ok('Tiêu đề trang chủ tiếng Việt (SEO 24/11/2026): "Beeftown — Nhà hàng bò nướng tại bàn, Quận 1 cũ, TP.HCM"',
+     meta('home', 'vi').tieuDe === 'Beeftown — Nhà hàng bò nướng tại bàn, Quận 1 cũ, TP.HCM', meta('home', 'vi').tieuDe);
   for (const trang of ['home', 'menu', 'book', 'jobs']) ok(`${trang} [vi]: tiêu đề có "bò nướng"`, co(trang, 'vi', /bò nướng/iu), meta(trang, 'vi').tieuDe);
   ok('menu [vi]: tiêu đề có "chọn bò tại quầy" và "Quận 1 cũ"', co('menu', 'vi', /chọn bò tại quầy/iu) && co('menu', 'vi', /Quận 1 cũ/u), meta('menu', 'vi').tieuDe);
   ok('visit [vi]: tiêu đề có "63 Hồ Tùng Mậu", "Quận 1 cũ", "TP.HCM"', co('visit', 'vi', /63 Hồ Tùng Mậu/u) && co('visit', 'vi', /Quận 1 cũ/u) && co('visit', 'vi', /TP\.HCM/u), meta('visit', 'vi').tieuDe);
@@ -154,7 +154,7 @@ await nhom('2 · DÒNG HIỆU TRÊN CÂU CHÍNH: ĐÚNG TIẾNG CỦA TRANG', as
   ok('[ko] dòng hiệu viết bằng tiếng Hàn', HANGUL.test(chu('ko').dongHieu), chu('ko').dongHieu);
   for (const nn of NGON_NGU) ok(`[${nn}] dòng hiệu không dính chữ cấm`, timChuoiCam(chu(nn).dongHieu).length === 0);
   const kmd = doc(SRC, 'components', 'KhoiMoDau.astro');
-  ok('KhoiMoDau.astro in <p class="hieu">{t.dongHieu}</p> và không còn in descriptor tiếng Anh ở màn đầu', kmd.includes('<p class="hieu">{t.dongHieu}</p>') && !kmd.includes('{THUONG_HIEU.descriptor}'));
+  ok('KhoiMoDau.astro in <span class="hieu">{t.dongHieu}</span> (nằm trong h1 từ 24/11/2026) và không còn in descriptor tiếng Anh ở màn đầu', kmd.includes('<span class="hieu">{t.dongHieu}</span>') && !kmd.includes('{THUONG_HIEU.descriptor}'));
   ok('Chân trang vẫn ghi descriptor "Beef Specialty Restaurant" (dòng bản quyền)', doc(SRC, 'components', 'ChanTrang.astro').includes('{THUONG_HIEU.descriptor}') && THUONG_HIEU.descriptor === 'Beef Specialty Restaurant');
 });
 

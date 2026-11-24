@@ -2,7 +2,8 @@
 /**
  * MÀN HÌNH ĐẦU TRANG CHỦ
  *
- * Câu chính (h1): "Không cần rành bò. Chọn theo gu, thấy giá trước." — câu chính cho khách của
+ * H1 = dòng hiệu ("Nhà hàng bò nướng tại bàn", từ 24/11/2026 nằm TRONG h1, xem bên dưới) + câu chính.
+ * Câu chính: "Không cần rành bò. Chọn theo gu, thấy giá trước." — câu chính cho khách của
  * THUONG-HIEU.md, Khánh đưa lên màn đầu ngày 12/11/2026 (thay câu của brief 06/10/2026, câu đó chuyển
  * xuống đoạn dẫn). Hai câu, mỗi câu một dòng; câu sau màu nhấn của bề mặt. Dòng hiệu đứng trên: chữ tiếng
  * Việt "Nhà hàng bò nướng tại bàn" (dongHieu của lib/chu.ts; en, ko dịch từ đó) — từ 23/11/2026, thay descriptor
@@ -43,7 +44,7 @@ import { THUONG_HIEU, chu, duongDanTuongUng } from '../lib/chu';
 import { dinhDangNgay } from '../lib/noi-dung';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import {
-  SO_KHACH_HOI_NHANH, SO_KHACH_MAC_DINH, cumDiaChi, diaChiManDau, dongTrangThai, formHoiBanMo, lienHe, ngayHoiNhanh, nhanSoKhach, nutMoDau, tinhTrangKhaiTruong,
+  SO_KHACH_HOI_NHANH, SO_KHACH_MAC_DINH, cumDiaChi, diaChi, diaChiManDau, dongTrangThai, formHoiBanMo, lienHe, ngayHoiNhanh, nhanSoKhach, nutMoDau, tinhTrangKhaiTruong,
 } from '../lib/trang-cong-khai';
 import Anh from './Anh.astro';
 import BieuTuong from './BieuTuong.astro';
@@ -72,12 +73,17 @@ const veKhauHieu = THUONG_HIEU.khauHieu.split(/(?<=[,.!])\s+/);
 const veLoiLen = t.loiLen.split(/(?<=,)\s+/u);
 // Địa chỉ bản ngắn (diaChiManDau): xuống dòng sau dấu phẩy, không giữa "Hồ Tùng / Mậu" (vế dài để nguyên, không tràn).
 const cumDc = cumDiaChi(diaChiManDau(nd));
+// Đoạn giới thiệu nhà hàng (gioiThieuNhaHang): bản tiếng Việt mang "{diaChi}" — thay bằng địa chỉ đang in trên trang (bản công bố
+// trong /noi-bo nếu có, không thì địa chỉ cố định), để cả trang chỉ có MỘT địa chỉ. Bản en, ko không có chỗ thay.
+const gioiThieuNhaHang = t.gioiThieuNhaHang.replace('{diaChi}', () => diaChi(nd));
 ---
 <section class="kmd be-kem" aria-labelledby="kmd-tieu-de">
   <div class="khung kmd-luoi">
     <div class="kmd-dau">
-      <p class="hieu">{t.dongHieu}</p>
-      <h1 id="kmd-tieu-de">{cauChinh.map((cau, i) => <>{i > 0 && ' '}<span class:list={['kmd-cau', { 'kmd-cau-nhan': i > 0 }]}>{cau}</span></>)}</h1>
+      {/* H1 nói loại hình trước ("Nhà hàng bò nướng tại bàn" — dongHieu), rồi hai câu chính (SEO 24/11/2026: h1 trước đây chỉ có câu
+          khẩu hiệu, không chữ nào nói đây là nhà hàng gì). Dấu chấm ẩn giữa hai phần để trình đọc màn hình và máy tìm kiếm
+          đọc thành câu riêng; mắt thấy dòng nhãn nhỏ như trước. */}
+      <h1 id="kmd-tieu-de"><span class="hieu">{t.dongHieu}</span><span class="an-chu">.</span>{' '}{cauChinh.map((cau, i) => <>{i > 0 && ' '}<span class:list={['kmd-cau', { 'kmd-cau-nhan': i > 0 }]}>{cau}</span></>)}</h1>
     </div>
     <p class="dan kmd-dan">{t.gioiThieu}</p>
 
@@ -144,6 +150,10 @@ const cumDc = cumDiaChi(diaChiManDau(nd));
         <li class="kmd-theo-doi"><a class="lien-ket" href={lh.facebook} rel="noopener">{t.theoDoi}<BieuTuong ten="mui-ten" /></a></li>
       )}
     </ul>
+
+    {/* Đoạn giới thiệu nhà hàng 40–60 từ (SEO 24/11/2026): chữ hiện sẵn, cho người đọc và máy tìm kiếm biết đây là nhà hàng gì, ở đâu.
+        Đứng dưới hàng địa điểm — không trên ảnh, để ảnh tải ngay vẫn nằm trong màn hình đầu ở 360 × 740px. */}
+    <p class="dan kmd-gioi-thieu">{gioiThieuNhaHang}</p>
   </div>
 </section>
 
@@ -154,12 +164,15 @@ const cumDc = cumDiaChi(diaChiManDau(nd));
     padding-block: var(--k-5) var(--k-7);
   }
   .kmd h1 { margin: 0 0 var(--k-5); }
+  /* Dòng hiệu nằm trong h1: khối riêng một dòng, chữ nhãn nhỏ như khi nó còn là <p> đứng trên h1. */
+  .kmd h1 .hieu { display: flex; line-height: 1.5; }
   /* Mỗi câu một khối; câu sau màu nhấn của bề mặt (đỏ trên trắng: 6,64 : 1, chữ ≥ 32px đậm). */
   .kmd-cau { display: block; }
   .kmd-cau-nhan { color: var(--nhan); }
   .kmd-dan { margin: 0 0 var(--k-5); }
   .kmd-nut { margin-bottom: var(--k-6); }
   .kmd-hinh { margin-bottom: var(--k-6); }
+  .kmd-gioi-thieu { margin: var(--k-6) 0 0; }
 
   /* Đặt bàn nhanh. Ô chọn dùng ô nhập chung của trang (.o: nhãn trên ô, cao 48px, chữ 16px, viền --vien-o).
      Từ 600px: hai ô chọn cạnh nhau (ngày rộng hơn — "Wednesday, 18 November"), nhóm nút ngay dưới.
@@ -282,6 +295,7 @@ const cumDc = cumDiaChi(diaChiManDau(nd));
     .kmd-trang-thai { grid-area: 1 / 2 / 3 / 3; align-self: center; min-width: 14em; }
     .kmd-ngay ~ .kmd-trang-thai { grid-area: 2 / 2; align-self: start; margin-top: -10px; }
     .kmd-theo-doi { grid-area: 1 / 3 / 3 / 4; align-self: center; }
+    .kmd-gioi-thieu { grid-area: 5 / 1 / 6 / 3; margin-top: var(--k-6); }
   }
   @media (min-width: 1200px) {
     .kmd-luoi { column-gap: var(--k-8); }
