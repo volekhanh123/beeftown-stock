@@ -978,6 +978,15 @@ try {
           o.soO >= 6 && o.oSai.length === 0, o.oSai.slice(0, 4).join(' | ')));
         tot.push(ok(`${nhan}: mỗi ô có nhãn 14–16px đặt trên ô, không ô nào dùng placeholder thay nhãn`,
           o.nhanSai.length === 0, o.nhanSai.slice(0, 4).join(' | ')));
+        // Migration 0127: database trả cong_bo_luc nên tin có ngày đăng thật ra đúng MỘT JobPosting (tin sảnh, 2026-11-20,
+        // bán thời gian); tin bếp có cong_bo_luc null (và chưa có mô tả) thì không có — trang không đoán ngày.
+        const jobPosting = await page.evaluate(() => [...document.querySelectorAll('script[type="application/ld+json"]')]
+          .map(s => { try { return JSON.parse(s.textContent); } catch { return null; } })
+          .filter(j => j?.['@type'] === 'JobPosting')
+          .map(j => ({ ma: j.identifier?.value, ngay: j.datePosted, loai: j.employmentType, luong: 'baseSalary' in j })));
+        tot.push(ok(`${nhan}: đúng một JobPosting — tin sảnh, datePosted 2026-11-20 (ngày VN của cong_bo_luc), PART_TIME, không baseSalary; tin không có ngày công bố thì không có`,
+          jobPosting.length === 1 && jobPosting[0].ma === 'SANH-THU' && jobPosting[0].ngay === '2026-11-20'
+            && jobPosting[0].loai === 'PART_TIME' && jobPosting[0].luong === false, JSON.stringify(jobPosting)));
         if (tot.includes(false)) await chupLoi(`thanh-phan${tuyenDung}-${rong}`);
       }
     }

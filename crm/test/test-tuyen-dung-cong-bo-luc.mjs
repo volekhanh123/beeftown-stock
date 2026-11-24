@@ -142,10 +142,12 @@ await nhom('2 · HÀM TRẢ NGÀY CÔNG BỐ, KHÔNG LỘ THÊM GÌ, RA ĐÚNG J
   ok('Tin chưa từng có mốc trả null, không bịa giờ (không now(), không created_at)',
      tin.find(t => t.ma === 'quan-ly-cua-hang').cong_bo_luc === null);
 
-  // Không lộ thêm: đúng 21 cột, hai mươi cột cũ nguyên tên nguyên thứ tự, cong_bo_luc đứng cuối.
+  // Không lộ thêm: hai mươi cột cũ nguyên tên nguyên thứ tự ở đầu, cong_bo_luc có mặt. Cố ý KHÔNG đòi "đúng 21 cột":
+  // migration sau thêm cột cho hàm này là việc hợp lệ, không phải lỗi của 0127. Cột nào thêm sau phải qua mắt
+  // phép thử "không cột riêng nào theo ra" dưới đây.
   const cot = Object.keys(tin[0]);
-  ok('Đúng 21 cột: 20 cột cũ nguyên thứ tự rồi cong_bo_luc',
-     JSON.stringify(cot) === JSON.stringify([...COT_CU, 'cong_bo_luc']), cot.join(','));
+  ok('20 cột cũ nguyên tên, nguyên thứ tự ở đầu; có cong_bo_luc',
+     JSON.stringify(cot.slice(0, COT_CU.length)) === JSON.stringify(COT_CU) && cot.includes('cong_bo_luc'), cot.join(','));
   ok('Không cột riêng nào theo ra (người đăng, người duyệt, mã chi nhánh, giờ sửa, lương đề xuất…)',
      !cot.some(c => /nguoi|duyet|chi_nhanh|created|updated|de_xuat|ghi_chu/.test(c)));
 
