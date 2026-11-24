@@ -31,10 +31,11 @@ import { chu, dich, duongDanTuongUng, type BaThuTieng } from '../lib/chu';
 import { dinhDangNgay, type NgonNgu, type NoiDung } from '../lib/noi-dung';
 import type { KetQuaNop } from '../lib/nop-ho-so';
 import type { TruongForm } from '../lib/truong-form';
-import { BO_PHAN, LOAI_HOP_DONG, dinhDangLuong, nhanEnum } from '../lib/tuyen-dung';
-import { lienHe } from '../lib/trang-cong-khai';
+import { BO_PHAN, LOAI_HOP_DONG, dinhDangLuong, nhanEnum, tachQuyenLoiChung, tinTuyenDungJsonLd } from '../lib/tuyen-dung';
+import { diaChiCoCauTruc, jsonTrongScript, lienHe } from '../lib/trang-cong-khai';
 import BieuTuong from './BieuTuong.astro';
 import FormUngTuyen from './FormUngTuyen.astro';
+import KhoiChuTin from './KhoiChuTin.astro';
 
 /** Một tin đã công bố, kèm công tắc từng trường của form (0026). */
 export interface ViTri extends TruongForm {
@@ -53,6 +54,11 @@ export interface ViTri extends TruongForm {
   luong_den: number | null;
   luong_don_vi: string | null;
   han_nop: string | null;
+  /**
+   * Ngày công bố tin (cột cong_bo_luc, ISO). Chỉ để dựng JSON-LD JobPosting (datePosted): hàm
+   * tin_tuyen_dung_cong_khai() CHƯA trả cột này, nên tới khi có migration thêm nó, trang không khai JobPosting.
+   */
+  cong_bo_luc?: string | null;
 }
 
 interface Props {
@@ -64,7 +70,7 @@ interface Props {
 const { ngonNgu, noiDung: nd, viTri, ketQuaNop = null } = Astro.props;
 const t = chu(ngonNgu);
 
-// Danh sách dự phòng khi chưa nối database: bốn vị trí đội mở cửa theo JD
+// Danh sách dự phòng khi chưa nối database: bốn vị trí theo JD
 // (BEEF_TOWN_Recruitment_EN_FINAL, 26/09/2026), cùng thứ tự với tin thật
 // (tin_tuyen_dung_cong_khai xếp theo bộ phận rồi tên). Chỉ là TÊN VỊ TRÍ.
 // Bộ phận ghi bằng MÃ enum và lấy nhãn từ BO_PHAN, giống hệt tin thật từ
@@ -106,6 +112,19 @@ const tachMoTa = (s: string | null) => {
 };
 const theViTri = viTri.map(v => ({ v, ...tachMoTa(v.mo_ta) }));
 
+// Quyền lợi giống hệt nhau giữa các tin chỉ in MỘT lần (khối "Quyền lợi chung" dưới danh sách); mỗi thẻ chỉ giữ phần
+// riêng của nó (lib/tuyen-dung.ts, tachQuyenLoiChung). Bản đầu lặp nguyên khối này dưới từng vị trí.
+const quyenLoi = tachQuyenLoiChung(viTri);
+
+// JobPosting cho Google for Jobs: một thẻ script cho mỗi tin có ngày công bố thật (lib/tuyen-dung.ts, tinTuyenDungJsonLd).
+const goc = new URL('/', Astro.site ?? Astro.url).href;
+const jobPostings = tinTuyenDungJsonLd(viTri, {
+  trangUrl: new URL(Astro.url.pathname, goc).href,
+  tenToChuc: 'Beeftown',
+  diaChi: diaChiCoCauTruc(nd),
+  goc,
+});
+
 // Nút nhắn tin: Facebook trước, không có thì email — và chữ trên nút nói đúng
 // kênh đó (một link mailto ghi "Nhắn Beeftown" là hứa một thứ, mở ra thứ khác).
 const nutNhanTin =
@@ -127,8 +146,10 @@ const tRieng = dich(ngonNgu, {
     en: (n: number) => (n === 1 ? '1 position' : `${n} positions`),
     ko: (n: number) => `${n}명 모집`,
   },
-  yeuCau:         { vi: 'Yêu cầu: ', en: 'Requirements: ', ko: '자격 요건: ' },
-  quyenLoi:       { vi: 'Quyền lợi: ', en: 'Benefits: ', ko: '복리후생: ' },
+  yeuCau:         { vi: 'Yêu cầu', en: 'Requirements', ko: '자격 요건' },
+  quyenLoi:       { vi: 'Quyền lợi', en: 'Benefits', ko: '복리후생' },
+  quyenLoiRieng:  { vi: 'Quyền lợi riêng của vị trí này', en: 'Benefits specific to this role', ko: '이 포지션만의 복리후생' },
+  quyenLoiChung:  { vi: 'Quyền lợi chung cho mọi vị trí', en: 'Benefits for every role', ko: '모든 포지션 공통 복리후생' },
   hanNop:         { vi: 'Hạn nộp: ', en: 'Apply by ', ko: '지원 마감: ' },
   cachUngTuyen:   { vi: 'Cách ứng tuyển', en: 'How to apply', ko: '지원 방법' },
   nopHoSo:        { vi: 'Nộp hồ sơ', en: 'Apply now', ko: '지원하기' },
@@ -150,6 +171,9 @@ const tRieng = dich(ngonNgu, {
 
 {/* Đầu trang con chung của trang công khai (.mo-dau-trang, cong-khai.css):
     nền trắng, nhãn đỏ, tiêu đề lớn — không nét trang trí. */}
+{/* Thẻ script cặp mở / đóng (không tự đóng "/>"): kiểm thử đọc mã nguồn tách thẻ script theo cặp. */}
+{jobPostings.map(j => <script type="application/ld+json" set:html={jsonTrongScript(j)} is:inline></script>)}
+
 <section class="mo-dau-trang be-kem td-dau">
   <div class="khung">
     <p class="hieu">{t.tuyenDung}</p>
@@ -203,22 +227,22 @@ const tRieng = dich(ngonNgu, {
                   {tRieng.hanNop}{dinhDangNgay(v.han_nop, ngonNgu)}
                 </p>
               )}
-              {(conLai || v.yeu_cau || v.quyen_loi) && (
+              {(conLai || v.yeu_cau || quyenLoi.rieng.get(v.ma)) && (
                 <details class="chi-tiet">
                   <summary>{tRieng.xemChiTiet}</summary>
-                  {/* pre-line: xuống dòng người soạn gõ ở màn nội bộ phải còn nguyên. */}
-                  {conLai && <p class="td-doan td-giu-dong">{conLai}</p>}
+                  {/* Dòng gạch đầu dòng của người soạn thành <ul> thật (KhoiChuTin.astro). */}
+                  <KhoiChuTin chu={conLai} />
                   {v.yeu_cau && (
-                    <p class="nho td-doan td-giu-dong">
-                      <strong>{tRieng.yeuCau}</strong>
-                      {v.yeu_cau}
-                    </p>
+                    <>
+                      <p class="nho td-doan td-nhan-muc"><strong>{tRieng.yeuCau}</strong></p>
+                      <KhoiChuTin chu={v.yeu_cau} nho />
+                    </>
                   )}
-                  {v.quyen_loi && (
-                    <p class="nho td-doan td-giu-dong">
-                      <strong>{tRieng.quyenLoi}</strong>
-                      {v.quyen_loi}
-                    </p>
+                  {quyenLoi.rieng.get(v.ma) && (
+                    <>
+                      <p class="nho td-doan td-nhan-muc"><strong>{quyenLoi.chung ? tRieng.quyenLoiRieng : tRieng.quyenLoi}</strong></p>
+                      <KhoiChuTin chu={quyenLoi.rieng.get(v.ma)} nho />
+                    </>
                   )}
                 </details>
               )}
@@ -230,6 +254,13 @@ const tRieng = dich(ngonNgu, {
             </div>
           ))}
     </div>
+
+    {!dungDuPhong && quyenLoi.chung && (
+      <div class="td-chung">
+        <h3>{tRieng.quyenLoiChung}</h3>
+        <KhoiChuTin chu={quyenLoi.chung} />
+      </div>
+    )}
 
     {/*
       KẾT QUẢ ĐỨNG NGOÀI CÙNG, KIỂM TRƯỚC MỌI THỨ KHÁC.
@@ -475,7 +506,10 @@ const tRieng = dich(ngonNgu, {
   .td-dong { margin: 0; }
   .td-doan { margin: var(--k-2) 0 0; }
   .td-luong { font-weight: 700; color: var(--do); }
-  .td-giu-dong { white-space: pre-line; }
+  .td-nhan-muc { margin-top: var(--k-3); }
+  /* Khối quyền lợi chung: một lần cho mọi vị trí, dưới danh sách thẻ. */
+  .td-chung { margin-top: var(--k-6); max-width: 72ch; }
+  .td-chung h3 { font-size: var(--co-h3); line-height: 1.3; margin: 0; }
   /* Nút "Ứng tuyển vị trí này" dồn xuống đáy thẻ: thẻ cùng hàng cao bằng nhau,
      nên các nút cũng thẳng hàng dù mô tả dài ngắn khác nhau. */
   .td-nut-the { margin: auto 0 0; padding-top: var(--k-4); }
