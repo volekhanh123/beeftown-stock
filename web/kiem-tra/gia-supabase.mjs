@@ -18,7 +18,7 @@
  *   lich_trong_theo_ma(p_chi_nhanh_ma, p_ngay) → [{ gio 'HH:MM:SS', buoi, con_cho, da_qua }] (0013)
  *   tao_dat_ban(14 tham số, 0013)          → [{ dat_ban_id, ma_dat_ban, con_trong }]
  *   tin_tuyen_dung_cong_khai(p_ngon_ngu)   → [] (trang dùng danh sách dự phòng); kịch bản
- *                                            tuyen-dung-* trả hai tin mẫu, đủ cột của 0026 / 0043
+ *                                            tuyen-dung-* trả hai tin mẫu, đủ cột của 0026 / 0043 và cong_bo_luc (0127)
  *   nop_ho_so_ung_tuyen(16 tham số, 0026)  → chuỗi mã hồ sơ 'BT-UV-YYMM-XXXXX'
  *   mua_thit_ve_cong_khai(p_ngon_ngu, p_chi_nhanh_ma) → bảng 11 cột (0101): mỗi dòng một gói khách chọn được;
  *                                            kịch bản cũ trả [] (kênh chưa mở), mua-thit-* trả MENU_THU
@@ -613,14 +613,17 @@ function lichTrong(kichBan) {
 // (interface ViTri trong components/TrangTuyenDung.astro): tên vị trí theo danh sách dự phòng của trang,
 // không mức lương, không hạn nộp (chưa con số nào được duyệt). Tin đầu hỏi đủ mọi trường tùy chọn của
 // form (0026) để phép đo thấy hết các loại ô; tin sau tắt bớt.
+// cong_bo_luc (0127) viết như PostgREST trả timestamptz: chuỗi ISO có phần lẻ giây và +00:00. Tin đầu có ngày đăng
+// thật → trang ra một JobPosting (datePosted 2026-11-20); tin sau chưa có mốc (đăng trước khi hệ thống ghi) → null,
+// không JobPosting — phép đo thấy cả hai kiểu.
 const TIN_TUYEN_DUNG_THU = [
   { ma: 'SANH-THU', ten: ba('Nhân viên sảnh', 'Hall Crew', '홀 직원'), bo_phan: 'sanh', loai_hop_dong: 'ban_thoi_gian',
     mo_ta: ba('Đón khách, hướng dẫn chọn bò tại quầy và phục vụ tại bàn.',
               'Welcome guests, guide them at the beef counter and serve at the table.',
               '손님을 맞이하고 정육 코너 안내와 테이블 서비스를 맡아요.'),
-    hoi: true },
+    hoi: true, cong_bo_luc: '2026-11-20T03:12:45.123456+00:00' },
   { ma: 'BEP-THU', ten: ba('Nhân viên bếp có kinh nghiệm', 'Experienced Kitchen Crew', '경력 주방 직원'), bo_phan: 'bep', loai_hop_dong: null,
-    mo_ta: null, hoi: false },
+    mo_ta: null, hoi: false, cong_bo_luc: null },
 ];
 function tinTuyenDung(kichBan, nn) {
   if (!kichBan.startsWith('tuyen-dung-')) return [];
@@ -630,6 +633,7 @@ function tinTuyenDung(kichBan, nn) {
     mo_ta: t.mo_ta?.[n] ?? null, yeu_cau: null, quyen_loi: null, ca_lam: null,
     luong_tu: null, luong_den: null, luong_don_vi: null, han_nop: null,
     hoi_email: t.hoi, hoi_nam_sinh: t.hoi, hoi_ca_lam: t.hoi, hoi_gioi_thieu: t.hoi, hoi_kinh_nghiem: t.hoi, hoi_cv: t.hoi,
+    cong_bo_luc: t.cong_bo_luc,
   }));
 }
 
