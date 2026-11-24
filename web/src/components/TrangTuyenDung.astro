@@ -55,8 +55,9 @@ export interface ViTri extends TruongForm {
   luong_don_vi: string | null;
   han_nop: string | null;
   /**
-   * Ngày công bố tin (cột cong_bo_luc, ISO). Chỉ để dựng JSON-LD JobPosting (datePosted): hàm
-   * tin_tuyen_dung_cong_khai() CHƯA trả cột này, nên tới khi có migration thêm nó, trang không khai JobPosting.
+   * Ngày công bố tin (cột cong_bo_luc, ISO). Chỉ để dựng JSON-LD JobPosting (datePosted). Hàm
+   * tin_tuyen_dung_cong_khai() trả cột này từ migration 0127; trước khi 0127 chạy, hay với tin đăng trước khi
+   * hệ thống ghi mốc, nó vắng hoặc null và tin đó không có JobPosting (không đoán ngày).
    */
   cong_bo_luc?: string | null;
 }
