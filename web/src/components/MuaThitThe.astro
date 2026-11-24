@@ -41,6 +41,7 @@ import type { NgonNgu } from '../lib/noi-dung';
 import { CHU_DON, SO_GOI_TOI_DA, dinhDangTien, nhanGoi, type SanPhamMua } from '../lib/don-mua-thit';
 import { TEN_GU, type Gu } from '../lib/chon-theo-gu';
 import { lienKetPhanThit, tenHienThi } from '../lib/ten-phan-thit';
+import { idNeoGoi } from '../lib/mua-thit-ve';
 import Anh from './Anh.astro';
 import BieuTuong from './BieuTuong.astro';
 
@@ -121,7 +122,7 @@ const lienKetPhan = lienKetPhanThit(sanPham, ngonNgu);
 // Tên đã đổi sang tiếng của trang (Việt trên trang Việt, Hàn trên trang Hàn) thì không còn là "tên tiếng Việt lạc giữa trang khác".
 const langTenHienThi = ten === sanPham.ten ? langTen : undefined;
 ---
-<article class:list={['the', 'mtv-the', { 'mtv-the-kim-chi': laKimChi }]} data-mtv-the={sanPham.ma}>
+<article class:list={['the', 'mtv-the', { 'mtv-the-kim-chi': laKimChi }]} id={idNeoGoi(sanPham.ma)} data-mtv-the={sanPham.ma}>
   <div class="mtv-anh">
     {laKimChi ? (
       <Anh id="mua-kim-chi" ngonNgu={ngonNgu} khung="4x3" khungNho="1x1" thayBang="khay" sizes={SIZES_ANH} />
@@ -214,6 +215,8 @@ const langTenHienThi = ten === sanPham.ten ? langTen : undefined;
      trang Thực đơn) bên phải, giá và nút dòng dưới — 96px như lúc còn khung vẽ thì nhãn "Ảnh minh họa" (13px) tràn
      ra ngoài ảnh. Từ 600px: ảnh trên, tên, rồi giá và nút ở đáy thẻ (thẻ cùng hàng cao bằng nhau, nút thẳng hàng). */
   .mtv-the { display: grid; gap: var(--k-4); grid-template-columns: minmax(0, 1fr) var(--k-10); align-content: start; }
+  /* Neo #goi-<mã> (link "Xem các gói", link từ trang Các phần thịt bò, url của JSON-LD): đầu trang dính không che thẻ. */
+  .mtv-the { scroll-margin-top: var(--cao-dau); }
   .mtv-anh { grid-column: 2; grid-row: 1; }
   .mtv-the-chu { grid-column: 1; grid-row: 1; min-width: 0; }
   .mtv-the-chan { grid-column: 1 / -1; }

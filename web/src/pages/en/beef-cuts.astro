@@ -2,8 +2,12 @@
 import Trang from '../../layouts/Trang.astro';
 import TrangPhanBo from '../../components/TrangPhanBo.astro';
 import { docNoiDung } from '../../lib/noi-dung';
+import { docMuaThitVe, duongGoiTheoPhan, trangThaiMuaThit } from '../../lib/mua-thit-ve';
+import { muaThitVeMo } from '../../lib/dich-dat-hang';
 
-const noiDung = await docNoiDung('en');
+// Menu Mua thịt về (không bao giờ ném lỗi): phần thịt nào có gói trong menu thì có link "Mua gói này về nhà" tới gói đó.
+const [noiDung, menu] = await Promise.all([docNoiDung('en'), docMuaThitVe('en')]);
+const goiTheoPhan = duongGoiTheoPhan(menu, trangThaiMuaThit(muaThitVeMo(noiDung), menu), 'en');
 ---
 <Trang
   ngonNgu="en"
@@ -12,5 +16,5 @@ const noiDung = await docNoiDung('en');
   tieuDe="Beef cuts: ribeye, rib finger, outside skirt — Beeftown"
   moTa="Ribeye, rib finger, outside skirt, chuck eye roll and top blade: where each cut sits on the animal, how it eats and how to grill it on the gas grill at your table."
 >
-  <TrangPhanBo ngonNgu="en" noiDung={noiDung} />
+  <TrangPhanBo ngonNgu="en" noiDung={noiDung} goiTheoPhan={goiTheoPhan} />
 </Trang>

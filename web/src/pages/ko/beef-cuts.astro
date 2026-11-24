@@ -2,8 +2,12 @@
 import Trang from '../../layouts/Trang.astro';
 import TrangPhanBo from '../../components/TrangPhanBo.astro';
 import { docNoiDung } from '../../lib/noi-dung';
+import { docMuaThitVe, duongGoiTheoPhan, trangThaiMuaThit } from '../../lib/mua-thit-ve';
+import { muaThitVeMo } from '../../lib/dich-dat-hang';
 
-const noiDung = await docNoiDung('ko');
+// Menu Mua thịt về (không bao giờ ném lỗi): phần thịt nào có gói trong menu thì có link "Mua gói này về nhà" tới gói đó.
+const [noiDung, menu] = await Promise.all([docNoiDung('ko'), docMuaThitVe('ko')]);
+const goiTheoPhan = duongGoiTheoPhan(menu, trangThaiMuaThit(muaThitVeMo(noiDung), menu), 'ko');
 ---
 <Trang
   ngonNgu="ko"
@@ -12,5 +16,5 @@ const noiDung = await docNoiDung('ko');
   tieuDe="소고기 부위: 꽃등심, 갈비살, 안창살 — Beeftown"
   moTa="꽃등심, 갈비살, 안창살, 윗등심, 부채살. 각 부위가 소의 어디에 있는지, 어떤 맛과 식감인지, 테이블 가스 그릴에서 어떻게 구우면 좋은지 알려 드려요."
 >
-  <TrangPhanBo ngonNgu="ko" noiDung={noiDung} />
+  <TrangPhanBo ngonNgu="ko" noiDung={noiDung} goiTheoPhan={goiTheoPhan} />
 </Trang>

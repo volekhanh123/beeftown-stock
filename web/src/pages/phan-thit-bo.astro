@@ -2,8 +2,12 @@
 import Trang from '../layouts/Trang.astro';
 import TrangPhanBo from '../components/TrangPhanBo.astro';
 import { docNoiDung } from '../lib/noi-dung';
+import { docMuaThitVe, duongGoiTheoPhan, trangThaiMuaThit } from '../lib/mua-thit-ve';
+import { muaThitVeMo } from '../lib/dich-dat-hang';
 
-const noiDung = await docNoiDung('vi');
+// Menu Mua thịt về (không bao giờ ném lỗi): phần thịt nào có gói trong menu thì có link "Mua gói này về nhà" tới gói đó.
+const [noiDung, menu] = await Promise.all([docNoiDung('vi'), docMuaThitVe('vi')]);
+const goiTheoPhan = duongGoiTheoPhan(menu, trangThaiMuaThit(muaThitVeMo(noiDung), menu), 'vi');
 ---
 <Trang
   ngonNgu="vi"
@@ -12,5 +16,5 @@ const noiDung = await docNoiDung('vi');
   tieuDe="Phần thịt bò: đầu thăn ngoại, dẻ sườn bò, diềm thăn — Beeftown"
   moTa="Đầu thăn ngoại, dẻ sườn bò, diềm thăn bò, nạc vai và lõi vai: mỗi phần nằm ở đâu trên con bò, ăn ra sao, nướng mức chín nào trên vỉ gas tại bàn."
 >
-  <TrangPhanBo ngonNgu="vi" noiDung={noiDung} />
+  <TrangPhanBo ngonNgu="vi" noiDung={noiDung} goiTheoPhan={goiTheoPhan} />
 </Trang>

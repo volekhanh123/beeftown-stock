@@ -362,6 +362,8 @@ export const CHU_PHAN_BO = {
   nhanAn: { vi: 'Ăn ra sao', en: 'Flavour and texture', ko: '맛과 식감' },
   nhanNuong: { vi: 'Cách nướng', en: 'How to grill', ko: '굽는 법' },
   xemGoi: { vi: 'Xem gói trên trang Mua thịt về', en: 'View the pack on the Take home page', ko: '포장 구매에서 보기' },
+  // SEO 24/11/2026: link tới ĐÚNG gói của phần thịt (neo #goi-<mã> trên trang Mua thịt về cùng thứ tiếng), chỉ hiện khi gói có trong menu.
+  muaGoiNay: { vi: 'Mua gói này về nhà', en: 'Buy this pack to take home', ko: '이 팩 포장 구매하기' },
   nhanHop: { vi: 'Hợp với ai', en: 'Who it suits', ko: '추천 대상' },
   // Hình con bò nhỏ ở dòng "Nằm ở đâu" (lib/so-do-con-bo.ts). {ten} = tên phần thịt theo thứ tiếng của trang.
   hinhConBo: {

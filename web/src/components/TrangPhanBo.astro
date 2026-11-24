@@ -28,8 +28,13 @@ import { CON_BO_THAN, VIEWBOX_CON_BO, VUNG_CON_BO } from '../lib/so-do-con-bo';
 import AnhPhanBo from './AnhPhanBo.astro';
 import BieuTuong from './BieuTuong.astro';
 
-interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; }
-const { ngonNgu, noiDung: nd } = Astro.props;
+interface Props {
+  ngonNgu: NgonNgu;
+  noiDung: NoiDung;
+  /** id phần thịt → `/mua-thit-ve#goi-<mã>` của gói tương ứng (lib/mua-thit-ve.ts, duongGoiTheoPhan): chỉ phần có gói trong menu. */
+  goiTheoPhan?: Readonly<Record<string, string>>;
+}
+const { ngonNgu, noiDung: nd, goiTheoPhan = {} } = Astro.props;
 const t = chu(ngonNgu);
 const coKenh = coKenhHoiBan(nd);
 // Link tới gói trong trang Mua thịt về: chỉ khi trang đó đang mở (cùng công tắc với mục menu của đầu trang).
@@ -146,7 +151,7 @@ const SIZES_ANH = '(min-width: 900px) 42vw, (min-width: 600px) 560px, calc(100vw
               <dt>{p.them.nhan[ngonNgu]}</dt>
               <dd>
                 <p class="pb-them">{p.them.chu[ngonNgu]}</p>
-                {p.coGoiMuaVe && muaVeMo && <p class="pb-them"><a class="lien-ket" href={duongDanTuongUng('/mua-thit-ve', ngonNgu)}>{c.xemGoi[ngonNgu]}<BieuTuong ten="mui-ten" /></a></p>}
+                {p.coGoiMuaVe && muaVeMo && !goiTheoPhan[p.id] && <p class="pb-them"><a class="lien-ket" href={duongDanTuongUng('/mua-thit-ve', ngonNgu)}>{c.xemGoi[ngonNgu]}<BieuTuong ten="mui-ten" /></a></p>}
               </dd>
             </div>
           )}
@@ -155,6 +160,10 @@ const SIZES_ANH = '(min-width: 900px) 42vw, (min-width: 600px) 560px, calc(100vw
             <dd>{p.hop[ngonNgu]}</dd>
           </div>
         </dl>
+        {/* SEO 24/11/2026: phần nào có gói trong menu Mua thịt về thì dẫn thẳng tới thẻ gói đó (neo #goi-<mã>); không có gói thì không có nút. */}
+        {goiTheoPhan[p.id] && (
+          <div class="hang-nut pb-mua"><a class="nut nut-vien" href={goiTheoPhan[p.id]} data-pb-mua-goi={p.id}>{c.muaGoiNay[ngonNgu]}</a></div>
+        )}
       </div>
     </div>
   </section>
@@ -282,6 +291,7 @@ const SIZES_ANH = '(min-width: 900px) 42vw, (min-width: 600px) 560px, calc(100vw
   .pb-ds dd { margin: 0; max-width: 62ch; }
   .pb-them { margin: 0; }
   .pb-them + .pb-them { margin-top: var(--k-2); }
+  .pb-mua { margin-top: var(--k-5); }
   /* Dòng "Nằm ở đâu": chữ và hình con bò nhỏ cạnh nhau từ 600px; điện thoại thì hình xuống dưới chữ. */
   .pb-ds dd.pb-noi { max-width: none; display: grid; gap: var(--k-4); grid-template-columns: 1fr; align-items: start; }
   .pb-noi p { margin: 0; max-width: 56ch; }

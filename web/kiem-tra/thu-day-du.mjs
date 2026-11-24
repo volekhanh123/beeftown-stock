@@ -1574,6 +1574,39 @@ try {
           const phuGio = motDong(await p.locator('.mtv-ba-dieu li').nth(2).locator('.mtv-dieu-phu').innerText().catch(() => ''));
           tot.push(ok(`${nhan}: dải ba điều — ${BA_DIEU[nn].join(' · ')}; dòng phụ thứ ba là giờ giao đã công bố`,
                       JSON.stringify(dieu) === JSON.stringify(BA_DIEU[nn]) && phuGio === motDong(GIO_NHAN_THU[nn]), `${JSON.stringify(dieu)} · ${phuGio}`));
+          // SEO 24/11/2026 · màn đầu: dòng giao hàng (khu vực, giờ, hẹn giờ — chữ của trang Giao hàng) kèm link, nút "Xem các gói"
+          // nhảy tới thẻ đầu (từ 390px nằm trong màn đầu không cuộn); JSON-LD: mọi Product / Offer có sku và url có neo có thật
+          // trong trang. Máy thử chưa cài VNPay nên trang không in "Giá gói đã gồm phí giao" → không shippingDetails. Chép tay.
+          const seoMua = await p.evaluate(() => {
+            const a = document.querySelector('[data-mtv-xem-goi]');
+            const r = a?.getBoundingClientRect();
+            const tom = document.querySelector('[data-mtv-giao-tom]');
+            const khoi = [...document.querySelectorAll('script[type="application/ld+json"]')].map(s => JSON.parse(s.textContent)).find(j => j['@graph']?.some(x => x['@type'] === 'Product'));
+            const sp = khoi?.['@graph'].filter(x => x['@type'] === 'Product') ?? [];
+            const offers = sp.flatMap(x => x.offers.map(o => ({ x, o })));
+            return {
+              chuLink: a?.textContent.trim(), href: a?.getAttribute('href'), dauThe: document.querySelector('#chon-goi article')?.id,
+              // Vị trí trên TRANG (cộng scrollY): các bước trước đã bấm "Chọn gói" nên trang có thể đã cuộn.
+              trongManDau: !!r && r.top + scrollY >= 0 && r.bottom + scrollY <= innerHeight,
+              giaoTom: tom?.textContent.replace(/\s+/g, ' ').trim(), linkGiao: tom?.querySelector('a')?.getAttribute('href'),
+              nSp: sp.length, nOffer: offers.length,
+              neoDu: offers.length > 0 && sp.every(x => x.sku && document.getElementById(String(x.url).split('#')[1] ?? '#')) && offers.every(({ x, o }) => o.sku && o.url === x.url),
+              coVanChuyen: JSON.stringify(khoi ?? {}).includes('shippingDetails'), doiTra: offers.every(({ o }) => o.hasMerchantReturnPolicy?.returnPolicyCategory === 'https://schema.org/MerchantReturnNotPermitted'),
+            };
+          });
+          const SEO_MUA = {
+            xem: ba('Xem các gói', 'See the packs', '팩 보기'),
+            tom: ba('Giao tới nội thành TP.HCM trong giờ làm việc của quán. Quán gọi hẹn giờ giao. Chi tiết giao hàng',
+                    'We deliver to central Ho Chi Minh City during our working hours. We call to arrange a delivery time. Delivery details',
+                    '매장 영업시간 중에 호치민시 시내로 배달해요. 매장에서 전화로 배달 시간을 함께 정해요. 배달 안내 보기'),
+          };
+          tot.push(ok(`${nhan}: nút "${SEO_MUA.xem[nn]}" nhảy tới thẻ đầu${rong < 600 ? ', nằm trong màn đầu không cuộn' : ''}; dòng giao hàng đúng chữ, link ${duongDanTuongUng('/giao-hang', nn)}`,
+                      seoMua.chuLink === SEO_MUA.xem[nn] && seoMua.href === `#${seoMua.dauThe}` && /^goi-/.test(seoMua.dauThe ?? '')
+                        && (rong >= 600 || seoMua.trongManDau) && seoMua.giaoTom === SEO_MUA.tom[nn] && seoMua.linkGiao === duongDanTuongUng('/giao-hang', nn),
+                      JSON.stringify(seoMua)));
+          tot.push(ok(`${nhan}: JSON-LD — mọi Product và Offer có sku, url có neo có thật trong trang; đổi trả có; chưa cài VNPay thì không phí giao`,
+                      seoMua.nSp === menu.length && seoMua.nOffer === menu.reduce((n, sp) => n + sp.goi.length, 0) && seoMua.neoDu && seoMua.doiTra && !seoMua.coVanChuyen,
+                      JSON.stringify(seoMua)));
           // Khánh giao 16/11/2026 · câu cạnh nút Đặt hàng: "Xem Quyền riêng tư, Điều khoản, Đổi trả và hoàn tiền." — ba link
           // đúng thứ tiếng, chữ liền (không dính ở chỗ ghép). Chép tay, không đọc lib/chinh-sach.ts.
           const cauCs = p.locator('.mtv-don [data-chinh-sach]');
@@ -1978,6 +2011,31 @@ try {
              r?.status() === 200 && await p.locator('form').count() === 0 && await p.locator('[data-tien]').count() === 0 && !loiJs.length
                && (kichBan === 'mua-thit-lech' || (dh.so === 4 && !dh.coMua && await moTaMeta(p) === chu(nn).moTaMuaThitChuaMo)),
              `${dh.so} mục · ${await moTaMeta(p)}`);
+        }
+        await c.close();
+      }
+    }
+
+    // ---- SEO 24/11/2026 · từ trang Các phần thịt bò tới đúng gói ---------------------------------------------------------
+    // Menu thử có Ribeye with Cap và LA Galbi (hai phần có mục ở trang kia); "Ba chỉ bò Mỹ" chưa khớp tên "Ba chỉ bò" của
+    // bảng ghép nên không có link; mọi phần khác không có gói. Mỗi link bấm được: tới trang Mua thịt về cùng thứ tiếng, thẻ
+    // gói có thật và hiện. Chưa mở (mua-thit-rong): không nút nào. Nhãn chép tay.
+    const NUT_MUA_GOI = ba('Mua gói này về nhà', 'Buy this pack to take home', '이 팩 포장 구매하기');
+    const TRANG_PHAN = ba('/phan-thit-bo', '/en/beef-cuts', '/ko/beef-cuts');
+    for (const [kichBan, mong] of [['mua-thit-mo', [['dau-than-ngoai', 'ribeye-cap'], ['la-galbi', 'la-galbi']]], ['mua-thit-rong', []]]) {
+      mayGia.datKichBan(kichBan);
+      for (const nn of ['vi', 'en', 'ko']) {
+        const { c, p, r } = await mo(TRANG_PHAN[nn], { rong: 390 });
+        const nut = await p.locator('[data-pb-mua-goi]').evaluateAll(as => as.map(a => [a.dataset.pbMuaGoi, a.getAttribute('href'), a.textContent.trim()]));
+        ok(`${kichBan} ${TRANG_PHAN[nn]}: ${mong.length ? `nút "${NUT_MUA_GOI[nn]}" ở ${mong.map(m => m[0]).join(', ')} (và chỉ ở đó), đúng neo ${duongMua(nn)}#goi-<mã>` : 'trang Mua thịt về chưa mở → không nút nào'}`,
+           r?.status() === 200 && JSON.stringify(nut) === JSON.stringify(mong.map(([phan, ma]) => [phan, `${duongMua(nn)}#goi-${ma}`, NUT_MUA_GOI[nn]])), JSON.stringify(nut));
+        for (const [phan, href] of nut.map(n => [n[0], n[1]])) {
+          await p.locator(`[data-pb-mua-goi="${phan}"]`).click();
+          await p.waitForURL(u => u.pathname === duongMua(nn) && u.hash === `#${href.split('#')[1]}`, { timeout: 15000 }).catch(() => {});
+          const the = p.locator(`#${href.split('#')[1]}`);
+          ok(`${kichBan} ${TRANG_PHAN[nn]}: bấm nút của ${phan} → ${href}, thẻ gói có thật và hiện`,
+             p.url().endsWith(href) && await the.count() === 1 && await the.isVisible(), p.url());
+          await p.goBack();
         }
         await c.close();
       }

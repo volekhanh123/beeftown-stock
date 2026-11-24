@@ -108,6 +108,16 @@ export function tenHienThi(sp: SanPhamCoTen, ngonNgu: NgonNgu): string {
 const MUC_CO_SAN: ReadonlySet<string> = new Set(PHAN_BO.map(p => p.id));
 
 /**
+ * id của phần thịt (PHAN_BO) mà gói này thuộc về; null khi gói không thuộc phần nào đã biết hay trang Các phần thịt bò
+ * chưa có mục đó. Chiều ngược của lienKetPhanThit: trang Các phần thịt bò dùng nó để tìm gói của từng phần
+ * (SEO 24/11/2026, mua-thit-ve.ts duongGoiTheoPhan) — một bảng ghép duy nhất cho cả hai chiều.
+ */
+export function mucPhanThit(sp: SanPhamCoTen): string | null {
+  const p = timPhanThit(sp);
+  return p && MUC_CO_SAN.has(p.muc) ? p.muc : null;
+}
+
+/**
  * Link tới mục của phần thịt này ở trang Các phần thịt bò (/phan-thit-bo, /en/beef-cuts, /ko/beef-cuts + #pb-<id>);
  * null khi sản phẩm không thuộc phần nào đã biết hay trang kia chưa có mục đó.
  */
