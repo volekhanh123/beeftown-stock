@@ -1432,6 +1432,8 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
         en: 'Cuts need a **scale code** (so labels can be scanned) and a **counter minimum** (to warn when the counter is running low).' },
       { vi: 'Sốt, gia vị, đồ uống: ghi **Đơn vị** kho đếm (chai, lon, hộp…) và **Số cái trong một thùng** nếu nhập theo thùng. Kho giữ số cái, không cân; hạn dùng ghi lúc nhận hàng theo ngày in trên sản phẩm.',
         en: 'Sauces, spices, drinks: enter the **Unit** stock is counted in (bottle, can, jar…) and the **Number per case** if they come in cases. Stock keeps the count, no weighing; the use-by date is entered at receiving from the date printed on the product.' },
+      { vi: 'Bấm **Sửa** ở một món: dưới form có mục **Ai bán món này** — nhà cung cấp chính đứng đầu, kèm lần giao trước. Muốn thêm, bỏ hay đổi nhà cung cấp chính: bấm tên nhà cung cấp.',
+        en: 'Press **Edit** on an item: below the form, **Who sells this item** lists the suppliers — the main supplier first, with the last delivery. To add, remove or change the main supplier, press the supplier\'s name.' },
     ],
     link: { href: '/noi-bo/kho/cai-dat/mat-hang', chu: { vi: 'Mở Mặt hàng', en: 'Open Items' } },
   },
