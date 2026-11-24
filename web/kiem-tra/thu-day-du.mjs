@@ -1595,10 +1595,10 @@ try {
             };
           });
           const SEO_MUA = {
-            xem: ba('Xem các gói', 'See the packs', '세트 보기'),
-            tom: ba('Giao nội thành TP.HCM, trong giờ làm việc của quán; quán gọi hẹn giờ. Chi tiết giao hàng',
-                    'Delivery to central Ho Chi Minh City, during our working hours; we call to agree a time. Delivery details',
-                    '배달 지역: 호치민시 시내. 배달 시간: 매장 영업시간 중. 전화로 시간을 정해요. 배달 안내 보기'),
+            xem: ba('Xem các gói', 'See the packs', '팩 보기'),
+            tom: ba('Giao tới nội thành TP.HCM trong giờ làm việc của quán. Quán gọi hẹn giờ giao. Chi tiết giao hàng',
+                    'We deliver to central Ho Chi Minh City during our working hours. We call to arrange a delivery time. Delivery details',
+                    '매장 영업시간 중에 호치민시 시내로 배달해요. 매장에서 전화로 배달 시간을 함께 정해요. 배달 안내 보기'),
           };
           tot.push(ok(`${nhan}: nút "${SEO_MUA.xem[nn]}" nhảy tới thẻ đầu${rong < 600 ? ', nằm trong màn đầu không cuộn' : ''}; dòng giao hàng đúng chữ, link ${duongDanTuongUng('/giao-hang', nn)}`,
                       seoMua.chuLink === SEO_MUA.xem[nn] && seoMua.href === `#${seoMua.dauThe}` && /^goi-/.test(seoMua.dauThe ?? '')
@@ -2020,7 +2020,7 @@ try {
     // Menu thử có Ribeye with Cap và LA Galbi (hai phần có mục ở trang kia); "Ba chỉ bò Mỹ" chưa khớp tên "Ba chỉ bò" của
     // bảng ghép nên không có link; mọi phần khác không có gói. Mỗi link bấm được: tới trang Mua thịt về cùng thứ tiếng, thẻ
     // gói có thật và hiện. Chưa mở (mua-thit-rong): không nút nào. Nhãn chép tay.
-    const NUT_MUA_GOI = ba('Mua gói này về nhà', 'Buy this pack to take home', '이 세트 포장 구매');
+    const NUT_MUA_GOI = ba('Mua gói này về nhà', 'Buy this pack to take home', '이 팩 포장 구매하기');
     const TRANG_PHAN = ba('/phan-thit-bo', '/en/beef-cuts', '/ko/beef-cuts');
     for (const [kichBan, mong] of [['mua-thit-mo', [['dau-than-ngoai', 'ribeye-cap'], ['la-galbi', 'la-galbi']]], ['mua-thit-rong', []]]) {
       mayGia.datKichBan(kichBan);

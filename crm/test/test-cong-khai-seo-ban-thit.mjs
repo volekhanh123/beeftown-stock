@@ -136,7 +136,7 @@ await nhom('3 · NEO CỦA THẺ GÓI, LINK "XEM CÁC GÓI" VÀ DÒNG GIAO HÀNG
   ok('Thẻ có scroll-margin-top (đầu trang dính không che thẻ khi nhảy tới neo)', /\.mtv-the \{ scroll-margin-top: var\(--cao-dau\); \}/.test(the));
 
   const thanh = doc('components', 'TrangMuaThitVe.astro');
-  ok('"Xem các gói" / "See the packs" / "세트 보기"', thanh.includes("xemGoi: { vi: 'Xem các gói', en: 'See the packs', ko: '세트 보기' }"));
+  ok('"Xem các gói" / "See the packs" / "팩 보기"', thanh.includes("xemGoi: { vi: 'Xem các gói', en: 'See the packs', ko: '팩 보기' }"));
   ok('Link nằm trong màn đầu (khối mtv-dau), ngay sau đoạn dẫn và dòng giao hàng, trước dải ba điều, và trỏ tới thẻ ĐẦU TIÊN (nhóm đầu, sản phẩm đầu)',
      /const goiDau = menu\.nhom\[0\]\?\.sanPham\[0\];/.test(thanh)
        && /<p class="dan">[^\n]*<\/p>[\s\S]{0,400}data-mtv-giao-tom[\s\S]{0,500}href=\{`#\$\{idNeoGoi\(goiDau\.ma\)\}`\} data-mtv-xem-goi[\s\S]{0,200}<ul class="mtv-ba-dieu"/.test(thanh));
@@ -150,7 +150,7 @@ await nhom('3 · NEO CỦA THẺ GÓI, LINK "XEM CÁC GÓI" VÀ DÒNG GIAO HÀNG
          && giaoHang.includes(CHO_TRONG.VUNG_GIAO[nn]) && giaoHang.includes(CHO_TRONG.GIO_GIAO[nn]));
   }
   ok('Dòng giao hàng nói quán gọi hẹn giờ (trang Giao hàng: "Quán gọi số điện thoại bạn ghi để hẹn giờ"), không thêm số liệu nào',
-     thanh.includes('; quán gọi hẹn giờ.`') && thanh.includes('we call to agree a time.`') && thanh.includes('전화로 시간을 정해요.`') && giaoHang.includes('Quán gọi số điện thoại bạn ghi để hẹn giờ.'));
+     thanh.includes('. Quán gọi hẹn giờ giao.`') && thanh.includes('We call to arrange a delivery time.`') && thanh.includes('매장에서 전화로 배달 시간을 함께 정해요.`') && giaoHang.includes('Quán gọi số điện thoại bạn ghi để hẹn giờ.'));
   ok('Dòng giao hàng có link sang trang Giao hàng cùng thứ tiếng: "Chi tiết giao hàng" / "Delivery details" / "배달 안내 보기"',
      thanh.includes("chiTietGiao: { vi: 'Chi tiết giao hàng', en: 'Delivery details', ko: '배달 안내 보기' }")
        && thanh.includes('const duongGiaoHang = duongDanTuongUng(CHINH_SACH.giaoHang.duong, nn);')
@@ -159,7 +159,7 @@ await nhom('3 · NEO CỦA THẺ GÓI, LINK "XEM CÁC GÓI" VÀ DÒNG GIAO HÀNG
      BA.every(nn => !/\d/.test(`${CHO_TRONG.VUNG_GIAO[nn]} ${CHO_TRONG.GIO_GIAO[nn]}`.replace(/TP\.HCM/g, ''))));
   ok('Câu VAT giữ nguyên chữ ở cả ba thứ tiếng', thanh.includes("vat: { vi: `VAT: ${CHO_TRONG.VAT.vi}.`, en: `VAT: ${CHO_TRONG.VAT.en}.`, ko: `VAT: ${CHO_TRONG.VAT.ko}.` }")
      && CHO_TRONG.VAT.vi === 'giá gói chưa gồm VAT' && CHO_TRONG.VAT.en === 'pack prices do not include VAT' && CHO_TRONG.VAT.ko === '팩 가격에는 VAT가 포함되어 있지 않아요');
-  ok('Chữ mới không dính chữ cấm', ['Xem các gói', 'See the packs', '세트 보기', 'Chi tiết giao hàng', 'Delivery details', '배달 안내 보기'].every(s => timChuoiCam(s).length === 0));
+  ok('Chữ mới không dính chữ cấm', ['Xem các gói', 'See the packs', '팩 보기', 'Chi tiết giao hàng', 'Delivery details', '배달 안내 보기'].every(s => timChuoiCam(s).length === 0));
 });
 
 // ===========================================================================
@@ -188,8 +188,8 @@ await nhom('4 · TỪ PHẦN THỊT TỚI GÓI: duongGoiTheoPhan VÀ NÚT "MUA G
 
   // Nút ở trang Các phần thịt bò.
   const nhan = CHU_PHAN_BO.muaGoiNay;
-  ok('Nút "Mua gói này về nhà" / "Buy this pack to take home" / "이 세트 포장 구매"',
-     nhan.vi === 'Mua gói này về nhà' && nhan.en === 'Buy this pack to take home' && nhan.ko === '이 세트 포장 구매');
+  ok('Nút "Mua gói này về nhà" / "Buy this pack to take home" / "이 팩 포장 구매하기"',
+     nhan.vi === 'Mua gói này về nhà' && nhan.en === 'Buy this pack to take home' && nhan.ko === '이 팩 포장 구매하기');
   ok('Nhãn mới không dính chữ cấm, không tên phường', BA.every(nn => timChuoiCam(nhan[nn]).length === 0));
   const trang = doc('components', 'TrangPhanBo.astro');
   ok('TrangPhanBo.astro: nhận goiTheoPhan; nút chỉ hiện khi phần đó có link (goiTheoPhan[p.id]), href đúng link đó, ở mọi phần có gói — kể cả phần không có khối "them"',
