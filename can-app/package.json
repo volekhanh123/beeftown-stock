@@ -11,11 +11,11 @@
     "dong-goi": "bun scripts/dong-goi.ts"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.117.3"
+    "@supabase/supabase-js": "^2.118.0"
   },
   "devDependencies": {
-    "@types/bun": "^1.4.2",
-    "bun": "^1.4.2",
+    "@types/bun": "^1.4.4",
+    "bun": "^1.4.4",
     "typescript": "^7.0.2"
   }
 }
