@@ -5,13 +5,13 @@
  *
  * Giữ những điều rà soát SEO 23/11/2026 yêu cầu cho cả site (Khánh duyệt làm 24/11/2026), để không ai gỡ nhầm:
  *   1. JSON-LD Restaurant: telephone E.164 (+84…), hasMenu tuyệt đối đúng thứ tiếng và luôn có, image tuyệt đối, sameAs có
- *      Zalo OA khi đã công bố, @id; khối WebSite thứ hai trỏ về nhà hàng bằng @id; vẫn KHÔNG có priceRange, đánh giá.
+ *      Zalo OA khi đã công bố, @id; khối WebSite thứ hai trỏ về nhà hàng bằng @id; priceRange = khoảng chi tiêu Khánh nói 24/11/2026; vẫn KHÔNG có đánh giá.
  *   2. Chân trang: link viết đánh giá Google ở mọi trang, đúng thứ tiếng; khối pháp nhân có nhãn "Trụ sở công ty".
  *   3. Trang đang hoạt động: không còn ba cụm nói về "đội ngũ khai trương" (viết ghép ở nhóm 3 để git grep không bắt chính file này).
  *   4. Trang chủ: tiêu đề tiếng Việt có "Quận 1 cũ" (≤ 65 ký tự), h1 nói loại hình nhà hàng, đoạn giới thiệu 40–60 từ ở cả ba
  *      thứ tiếng, chỉ dựng từ dữ kiện đã có.
  *   5. Trang Đến Beeftown: khối hỏi đáp (giờ — cùng cổng với chân trang, đường lên, đặt bàn, "Beeftown này ở đâu?") và link
- *      đánh giá; không chỗ gửi xe, mốc đường, khoảng cách.
+ *      đánh giá; giá mỗi người và chỗ gửi xe đúng lời Khánh 24/11/2026; không mốc đường, khoảng cách.
  *   6. og:image:alt đúng thứ tiếng của trang.
  *
  * Phần dựng thật (HTML sau khi build, trình duyệt) kiểm ở web/kiem-tra/trinh-duyet.mjs và bằng tay — file này đọc mã nguồn và
@@ -34,9 +34,9 @@ const mau = s => s.replace(/\r\n/g, '\n');
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — TRANG CÔNG KHAI: SEO CHUNG');
 
 const { chu, NGON_NGU, THUONG_HIEU, DIA_CHI_NHA_HANG } = await nap('chu.ts');
-const { soDienThoaiE164, lienHe, LINK_DANH_GIA_GOOGLE } = await nap('trang-cong-khai.ts');
+const { soDienThoaiE164, lienHe, LINK_DANH_GIA_GOOGLE, KHOANG_GIA_MOI_NGUOI } = await nap('trang-cong-khai.ts');
 const { PHUONG_QUAN } = await import(pathToFileURL(join(WEB, 'kiem-tra', 'mau-dia-diem.mjs')).href);
-const { timChuoiCam } = await nap('chuoi-cam.js');
+const { timChuoiCam, KHOANG_GIA_DA_DUYET } = await nap('chuoi-cam.js');
 const { docNoiDung } = await nap('noi-dung.ts');
 
 const NEN = await docNoiDung('vi', null);
@@ -89,7 +89,10 @@ await nhom('1 · JSON-LD RESTAURANT VÀ WEBSITE', async () => {
      /\{!khongLapChiMuc && duLieuTrangWeb && <script type="application\/ld\+json"/.test(trang));
   // Chỉ xét phần mã (bỏ chú thích): priceRange / đánh giá chưa được duyệt, không có trường nào trong JSON-LD.
   const maTrang = trang.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-  ok('Trang.astro: không có priceRange, aggregateRating, review trong mã JSON-LD', !/priceRange|aggregateRating|\breview\b/.test(maTrang));
+  ok('Trang.astro: không có aggregateRating, review trong mã JSON-LD (chưa có đánh giá thật nào)', !/aggregateRating|\breview\b/.test(maTrang));
+  ok('priceRange = "300.000–500.000 VND" (lời Khánh 24/11/2026), một giá trị cho cả ba thứ tiếng, dưới 100 ký tự, in qua KHOANG_GIA_MOI_NGUOI',
+     KHOANG_GIA_MOI_NGUOI === '300.000–500.000 VND' && [...KHOANG_GIA_MOI_NGUOI].length < 100 && /priceRange: KHOANG_GIA_MOI_NGUOI,/.test(trang), KHOANG_GIA_MOI_NGUOI);
+  ok('priceRange qua máy quét chữ cấm (ngoại lệ khoảng giá đã duyệt)', timChuoiCam(KHOANG_GIA_MOI_NGUOI).length === 0);
   ok('Trang.astro: không ghi tên phường nào trong mã JSON-LD', !PHUONG_QUAN.tim(maTrang));
 });
 
@@ -109,7 +112,7 @@ await nhom('2 · CHÂN TRANG: LINK ĐÁNH GIÁ GOOGLE VÀ NHÃN TRỤ SỞ CÔNG
      /<div class="phap-nhan">\s*<p class="chan-dong chan-nhan">\{t\.truSoCongTy\}<\/p>\s*<p class="chan-dong"><span class="lien" lang="vi">\{PHAP_NHAN\.ten\}/.test(chan));
   ok('ChanTrang.astro: chữ pháp nhân giữ nguyên (địa chỉ in từ PHAP_NHAN.diaChi, không chép tay)', chan.includes('<p class="chan-dong" lang="vi">{PHAP_NHAN.diaChi}</p>'));
   ok('ChanTrang.astro: dải tuyển dụng viết như nhà hàng đang hoạt động',
-     chan.includes("vi: 'Beeftown đang tuyển quầy thịt, bếp và sảnh.'") && chan.includes("en: 'Beeftown is hiring for the butcher counter, kitchen and hall.'")
+     chan.includes("vi: 'Beeftown đang tuyển nhân viên quầy thịt, bếp và sảnh.'") && chan.includes("en: 'Beeftown is hiring for the butcher counter, kitchen and hall.'")
        && chan.includes("ko: 'Beeftown에서 정육, 주방, 홀 직원을 모집하고 있어요.'"));
 });
 
@@ -178,8 +181,30 @@ await nhom('5 · /DEN-BEEFTOWN: HỎI ĐÁP VÀ LINK ĐÁNH GIÁ', async () => {
   ok('TrangDenBeeftown.astro: đường lên dùng đúng câu chỉ đường t.loiLen (lối riêng cạnh GS25, thang máy lên Tầng 3)', denBeeftown.includes('<p>{t.loiLen}</p>'));
   ok('TrangDenBeeftown.astro: có link đánh giá Google (LINK_DANH_GIA_GOOGLE, rel="noopener")', denBeeftown.includes('<a class="lien-ket" href={LINK_DANH_GIA_GOOGLE} rel="noopener">{t.danhGiaGoogle}'));
   const phanChu = denBeeftown.slice(denBeeftown.indexOf('hdHieu:'), denBeeftown.indexOf('// --- Ba bước'));
-  ok('Khối hỏi đáp không nhắc chỗ gửi xe, mốc đường, khoảng cách, lối xe lăn (chưa ai xác nhận)',
-     !/gửi xe|đỗ xe|parking|주차|landmark|lối cho xe lăn|wheelchair|\d+\s?(?:km|mét|metres|meters|phút đi bộ|minutes? on foot)/iu.test(phanChu), phanChu.length + ' ký tự');
+  ok('Khối hỏi đáp không nhắc mốc đường, khoảng cách, lối xe lăn (chưa ai xác nhận)',
+     !/landmark|lối cho xe lăn|wheelchair|\d+\s?(?:km|mét|metres|meters|phút đi bộ|minutes? on foot)/iu.test(phanChu), phanChu.length + ' ký tự');
+  // Khoảng chi tiêu và chỗ gửi xe: đúng lời Khánh 24/11/2026, ba thứ tiếng, không thêm điều Khánh chưa nói (VAT, đồ uống, loại xe, phí).
+  const gt = khoa => phanChu.match(new RegExp(`${khoa}:\\s*\\{([\\s\\S]*?)\\},?\\n`))?.[1] ?? '';
+  const gtD = { gia: gt('hdGiaD'), xe: gt('hdXeD') };
+  ok('Hỏi đáp: "Ăn ở Beeftown khoảng bao nhiêu tiền?" → "Khoảng 300.000–500.000 đ/người." (en "About 300,000–500,000 VND per person.", ko "1인당 약 300,000–500,000동이에요.")',
+     gtD.gia.includes("'Khoảng 300.000–500.000 đ/người.'") && gtD.gia.includes("'About 300,000–500,000 VND per person.'") && gtD.gia.includes("'1인당 약 300,000–500,000동이에요.'")
+       && denBeeftown.includes("vi: 'Ăn ở Beeftown khoảng bao nhiêu tiền?'") && denBeeftown.includes('<dt>{c.hdGiaH}</dt>') && denBeeftown.includes('<dd><p>{c.hdGiaD}</p></dd>'));
+  ok('Hỏi đáp: "Gửi xe ở đâu?" → "Có chỗ gửi xe ngay trước nhà hàng." (en "Parking is right in front of the restaurant.", ko "식당 바로 앞에 주차할 수 있어요.")',
+     gtD.xe.includes("'Có chỗ gửi xe ngay trước nhà hàng.'") && gtD.xe.includes("'Parking is right in front of the restaurant.'") && gtD.xe.includes("'식당 바로 앞에 주차할 수 있어요.'")
+       && denBeeftown.includes("vi: 'Gửi xe ở đâu?'") && denBeeftown.includes('<dt>{c.hdXeH}</dt>') && denBeeftown.includes('<dd><p>{c.hdXeD}</p></dd>'));
+  ok('Hỏi đáp giá và gửi xe không thêm điều Khánh chưa nói: không VAT, đồ uống, loại xe, phí, miễn phí, tên bãi',
+     !/VAT|부가세|đồ uống|drinks?|음료|xe máy|ô tô|oto|motorbike|\bcars?\b|오토바이|자동차|phí|\bfees?\b|free|miễn|무료|bãi|lot\b/iu.test(`${gtD.gia}\n${gtD.xe}`), `${gtD.gia}${gtD.xe}`.replace(/\s+/g, ' ').slice(0, 160));
+  ok('Hỏi đáp giá nằm ngoài cổng: không phụ thuộc giờ / kênh đặt bàn (luôn in), cùng chỗ gửi xe',
+     !/\{cauGio && \([\s\S]{0,80}hdGiaH/.test(denBeeftown) && !/\{coKenh && \([\s\S]{0,80}hdGiaH/.test(denBeeftown) && !/\{coKenh && \([\s\S]{0,80}hdXeH/.test(denBeeftown));
+  for (const nn of NGON_NGU) {
+    const bo = nn === 'vi' ? 0 : nn === 'en' ? 1 : 2;
+    const khoangGia = [gtD.gia, gtD.xe].map(s => [...s.matchAll(/(vi|en|ko): '([^']*)'/g)].map(m => m[2])[bo]);
+    ok(`[${nn}] câu giá và gửi xe qua máy quét chữ cấm (khoảng giá đã duyệt là ngoại lệ duy nhất)`, khoangGia.every(c => c && timChuoiCam(c).length === 0), khoangGia.join(' | '));
+  }
+  ok('Chữ cấm: đúng khoảng 300.000–500.000 (vi / en / ko) được qua; con số khác vẫn bị chặn',
+     ['Khoảng 300.000–500.000 đ/người.', 'About 300,000–500,000 VND per person.', '1인당 약 300,000–500,000동이에요.', '300.000–500.000 VND'].every(c => timChuoiCam(c).length === 0)
+       && ['Khoảng 300.000–600.000 đ/người.', 'Ribeye 250.000 đ', '300.000 đ', '500.000đ', 'About 300,000–450,000 VND', '300.000–500.000 đ và 250.000 đ'].every(c => timChuoiCam(c).length > 0));
+  ok('chuoi-cam.js: KHOANG_GIA_DA_DUYET đúng một ngoại lệ, chỉ khoảng 300–500 nghìn', KHOANG_GIA_DA_DUYET.source.includes('300') && KHOANG_GIA_DA_DUYET.source.includes('500') && !/\\d\+/.test(KHOANG_GIA_DA_DUYET.source), KHOANG_GIA_DA_DUYET.source);
   ok('Khối hỏi đáp không ghi tên phường', !PHUONG_QUAN.tim(phanChu));
   // Mỗi câu hỏi/đáp ở ba thứ tiếng: đếm khóa hd* trong dich() — mỗi khóa phải đủ vi, en, ko (dich() báo lỗi biên dịch nếu thiếu, ở đây giữ cứng số khóa).
   const khoaHd = [...phanChu.matchAll(/^\s{2}(hd[A-Za-z]+):\s*\{/gm)].map(m => m[1]);

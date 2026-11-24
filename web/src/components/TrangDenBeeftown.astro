@@ -14,10 +14,12 @@
  * lạc. Bước 3 (quầy) là ảnh AI TẠM quay-chon-bo, có nhãn "Ảnh minh họa" — Khánh quyết
  * 10/11/2026, tới khi có ảnh quầy chụp thật (src/lib/anh.ts, ngoại lệ ở đầu file).
  *
- * Khối hỏi đáp (24/11/2026): giờ mở cửa (chỉ khi đã công bố — gio-mo-cua.ts), đường lên, đặt bàn (chỉ khi có kênh thật),
- * "Beeftown này ở đâu?" — chữ hiện sẵn cho người và máy tìm kiếm; cộng link viết đánh giá Google.
+ * Khối hỏi đáp (24/11/2026): giờ mở cửa (chỉ khi đã công bố — gio-mo-cua.ts), khoảng chi tiêu mỗi người và chỗ gửi xe (cả hai
+ * Khánh nói 24/11/2026: "300.000–500.000 đ/người", "ngay trước nhà hàng" — chỉ đúng chừng đó, không thêm VAT, đồ uống,
+ * loại xe, phí), đường lên, đặt bàn (chỉ khi có kênh thật), "Beeftown này ở đâu?" — chữ hiện sẵn cho người và máy tìm
+ * kiếm; cộng link viết đánh giá Google.
  *
- * Không có: chỗ gửi xe, mốc đường, khoảng cách, lối cho xe lăn (chưa xác nhận), bản đồ nhúng.
+ * Không có: mốc đường, khoảng cách, lối cho xe lăn (chưa xác nhận), bản đồ nhúng.
  * "Chỉ đường" chỉ hiện khi link Google Maps đã công bố (LenTang3); liên hệ chỉ hiện
  * mục đã công bố.
  */
@@ -48,9 +50,23 @@ const cumDc = cumDiaChi(dc);
 const c = dich(ngonNgu, {
   // --- Hỏi đáp (khối chữ hiện sẵn, không gập): giờ, đường lên, đặt bàn, "Beeftown này ở đâu?" -----------------
   hdHieu: { vi: 'Hỏi nhanh', en: 'Good to know', ko: '미리 알아 두세요' },
-  hdTieuDe: { vi: 'Hỏi đáp trước khi đến', en: 'Before you visit', ko: '방문 전에 자주 묻는 질문' },
-  hdGioH: { vi: 'Beeftown mở cửa mấy giờ?', en: 'What are Beeftown’s opening hours?', ko: 'Beeftown은 몇 시에 영업하나요?' },
-  hdLenH: { vi: 'Lên Beeftown bằng đường nào?', en: 'How do I get up to Beeftown?', ko: 'Beeftown에는 어떻게 올라가나요?' },
+  hdTieuDe: { vi: 'Hỏi đáp trước khi đến', en: 'Before you visit', ko: '방문 전 자주 묻는 질문' },
+  hdGioH: { vi: 'Beeftown mở cửa mấy giờ?', en: 'What are Beeftown’s opening hours?', ko: 'Beeftown 영업시간은 어떻게 되나요?' },
+  // Khoảng chi tiêu mỗi người: đúng lời Khánh (24/11/2026), không nói gì thêm về VAT, đồ uống hay phần gồm trong giá.
+  hdGiaH: { vi: 'Ăn ở Beeftown khoảng bao nhiêu tiền?', en: 'Roughly how much does a meal at Beeftown cost?', ko: 'Beeftown에서 식사하면 얼마 정도 드나요?' },
+  hdGiaD: {
+    vi: 'Khoảng 300.000–500.000 đ/người.',
+    en: 'About 300,000–500,000 VND per person.',
+    ko: '1인당 약 300,000–500,000동이에요.',
+  },
+  // Chỗ gửi xe: đúng lời Khánh (24/11/2026) — không loại xe, phí, tên bãi.
+  hdXeH: { vi: 'Gửi xe ở đâu?', en: 'Where can I park?', ko: '주차는 어디에 하나요?' },
+  hdXeD: {
+    vi: 'Có chỗ gửi xe ngay trước nhà hàng.',
+    en: 'Parking is right in front of the restaurant.',
+    ko: '식당 바로 앞에 주차할 수 있어요.',
+  },
+  hdLenH: { vi: 'Lên Beeftown bằng lối nào?', en: 'How do I get up to Beeftown?', ko: 'Beeftown에는 어떻게 올라가나요?' },
   hdLenD: {
     vi: 'Beeftown ở Tầng 3 và có thang máy.',
     en: 'Beeftown is on Floor 3, and there is a lift.',
@@ -68,12 +84,12 @@ const c = dich(ngonNgu, {
     en: 'Tell Beeftown the date, time and number of people. We will check and get back to you to confirm — a table is only held once we have confirmed it with you.',
     ko: '날짜, 시간, 인원을 Beeftown에 알려 주세요. 매장에서 확인한 뒤 연락드릴게요. 자리는 매장에서 확인해 드린 뒤에만 잡혀요.',
   },
-  hdGoi: { vi: 'Cần hỏi nhanh? Gọi hotline:', en: 'Need a quick answer? Call the hotline:', ko: '빠른 문의는 전화로 해 주세요:' },
+  hdGoi: { vi: 'Cần hỏi nhanh? Gọi hotline:', en: 'Need a quick answer? Call the hotline:', ko: '빠른 답변이 필요하면 전화해 주세요:' },
   // Giúp khách và máy tìm kiếm phân biệt Beeftown này với nơi khác: tên, loại hình, địa chỉ — không thêm gì ngoài điều đã biết.
   hdOdauH: { vi: 'Beeftown này ở đâu?', en: 'Where is this Beeftown?', ko: '이 Beeftown은 어디에 있나요?' },
   hdOdauD: {
     vi: 'Đây là Beeftown, nhà hàng bò nướng tại bàn. Khách vào bằng lối riêng ngay cạnh GS25.',
-    en: 'This is Beeftown, the tabletop beef grill restaurant. Guests use our own entrance, right next to GS25.',
+    en: 'This is Beeftown, a beef restaurant with tabletop grilling. Guests use our own entrance, right next to GS25.',
     ko: '이곳은 테이블에서 굽는 소고기 전문점 Beeftown이에요. GS25 바로 옆 전용 입구로 들어오세요.',
   },
 
@@ -190,7 +206,7 @@ const c = dich(ngonNgu, {
 
 {/* Hỏi đáp: chữ hiện sẵn (không gập), ngắn, mỗi câu trả lời chỉ nói điều đã biết. Giờ mở cửa chỉ khi đã công bố (cauGio),
     câu đặt bàn chỉ khi có kênh thật để hỏi (như khối cuối trang) — không câu nào dẫn tới hư không. Không chỗ gửi xe, mốc đường,
-    khoảng cách: chưa ai xác nhận (đầu file). Mỗi thẻ viết liền trên một dòng: compressHTML bỏ dấu cách có xuống dòng cạnh thẻ. */}
+    khoảng cách, loại xe, phí gửi xe: chưa ai xác nhận (đầu file). Mỗi thẻ viết liền trên một dòng: compressHTML bỏ dấu cách có xuống dòng cạnh thẻ. */}
 <section class="muc be-kem db-hoi-dap" aria-labelledby="db-h-hd">
   <div class="khung db-hd-luoi">
     <div>
@@ -206,11 +222,19 @@ const c = dich(ngonNgu, {
           </div>
         )}
         <div class="db-hd-muc">
+          <dt>{c.hdGiaH}</dt>
+          <dd><p>{c.hdGiaD}</p></dd>
+        </div>
+        <div class="db-hd-muc">
           <dt>{c.hdLenH}</dt>
           <dd>
             <p>{c.hdLenD}</p>
             <p>{t.loiLen}</p>
           </dd>
+        </div>
+        <div class="db-hd-muc">
+          <dt>{c.hdXeH}</dt>
+          <dd><p>{c.hdXeD}</p></dd>
         </div>
         {coKenh && (
           <div class="db-hd-muc">

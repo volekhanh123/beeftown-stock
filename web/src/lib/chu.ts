@@ -14,10 +14,13 @@
  *
  * ĐIỀU KHÔNG ĐƯỢC XUẤT HIỆN Ở ĐÂY:
  *   · giá, ngày mở, giờ phục vụ, số điện thoại của nhà hàng — chưa chốt, thuộc cổng nội dung
- *     (số điện thoại của pháp nhân trong PHAP_NHAN là chữ pháp lý đã chốt, không phải hotline)
+ *     (số điện thoại của pháp nhân trong PHAP_NHAN là chữ pháp lý đã chốt, không phải hotline).
+ *     Ngoại lệ: khoảng chi tiêu mỗi người (300.000–500.000 đ, Khánh nói 24/11/2026) — chỉ ở hỏi đáp trang Đến Beeftown
+ *     và priceRange của JSON-LD, không ở file này; xem KHOANG_GIA_DA_DUYET trong chuoi-cam.js
  *   · "rẻ", lợi thế giá, "best beef in town", "số một", "duy nhất"
  *   · Wagyu, MB9, số ngày ủ, nguồn gốc hay grade thịt
- *   · phòng riêng, chỗ gửi xe, lối cho xe lăn — chưa xác nhận
+ *   · phòng riêng, lối cho xe lăn — chưa xác nhận. (Chỗ gửi xe: Khánh nói 24/11/2026 "ngay trước nhà hàng" — chỉ đúng câu
+ *     đó, ở hỏi đáp trang Đến Beeftown; không thêm loại xe, phí hay tên bãi)
  *   · tên phường của nhà hàng — chưa có giấy xác nhận (xem DIA_CHI_PHAN); "Quận 1 cũ" thì được ghi
  *   · kinh nghiệm 25 năm của John và Sang gán cho Khánh
  *   · than hoa, than củi — nhà hàng nướng bằng vỉ gas đặt trên bàn
@@ -144,7 +147,7 @@ const VI = {
   // (chỉ bản tiếng Việt) được thay bằng địa chỉ đang in trên trang — bản công bố trong /noi-bo nếu có (diaChi, lib/trang-cong-khai.ts).
   gioiThieuNhaHang:
     'Beeftown là nhà hàng bò nướng tại bàn ở {diaChi}. Bạn chọn khay bò đã cắt sẵn tại quầy, xem giá trên nhãn từng khay, ' +
-    'rồi cả bàn cùng nướng trên vỉ gas đặt tại bàn. Nhân viên quầy gợi ý phần hợp gu nếu bạn cần.',
+    'rồi cả bàn cùng nướng trên bếp ga đặt trên bàn. Nhân viên quầy gợi ý phần hợp gu nếu bạn cần.',
   // Màn đầu: thanh đặt bàn nhanh (ngày, số người → trang Đặt bàn) và chú thích hai ảnh Pick → Grill.
   hoiBanNhanh: 'Đặt bàn nhanh',
   ngayDen: 'Ngày đến',
@@ -320,9 +323,9 @@ const EN: Bo = {
     'Our beef is cut and packed in trays at the counter, with the price on each tray\u2019s label. Our counter ' +
     'staff suggest cuts to suit your taste, then everyone grills together on the gas grill at your table.',
   gioiThieuNhaHang:
-    'Beeftown is a tabletop beef grill restaurant on Floor 3, 63 Hồ Tùng Mậu, former District 1, Ho Chi Minh City. ' +
-    'You pick a ready-cut tray of beef at the counter, check the price on each tray\u2019s label, then everyone grills ' +
-    'together on the gas grill at your table. Our counter staff can suggest cuts.',
+    'Beeftown is a beef restaurant with tabletop grilling on Floor 3, 63 Hồ Tùng Mậu, former District 1, Ho Chi Minh City. ' +
+    'Choose trays of pre-cut beef at the counter, check each tray\u2019s price label, then grill together on the gas grill ' +
+    'at your table. If you need help, counter staff can suggest cuts to suit your taste.',
   hoiBanNhanh: 'Quick table booking',
   ngayDen: 'Date',
   soNguoi: 'Guests',
@@ -428,7 +431,7 @@ const EN: Bo = {
   boQuaToiNoiDung: 'Skip to main content',
   truSoCongTy: 'Company office',
   danhGiaGoogle: 'Review us on Google',
-  altAnhChiaSe: 'Beeftown logo — tabletop beef grill restaurant',
+  altAnhChiaSe: 'Beeftown logo — beef restaurant with tabletop grilling',
 };
 
 // Tiếng Hàn: văn lịch sự 해요체 từ đầu đến cuối. Tên đường Hồ Tùng Mậu để nguyên
@@ -445,8 +448,8 @@ const KO: Bo = {
     '직원이 취향에 맞는 부위를 추천해 드려요. 고른 소고기는 테이블에 있는 가스 그릴에서 다 함께 직접 구워 드시면 돼요.',
   gioiThieuNhaHang:
     'Beeftown은 호치민시 구 1군 Hồ Tùng Mậu 63, 3층에 있는 테이블에서 굽는 소고기 전문점이에요. ' +
-    '정육 코너에서 트레이에 담긴 소고기를 직접 보고 고르고, 라벨에서 가격을 먼저 확인한 뒤, ' +
-    '테이블에 있는 가스 그릴에서 다 함께 구워 드시면 돼요. 부위가 고민되면 정육 코너 직원에게 편하게 물어보세요.',
+    '정육 코너에서 미리 썰어 트레이에 담아 놓은 소고기를 고르고, 각 트레이 라벨에 적힌 가격을 확인한 뒤 ' +
+    '테이블 위 가스 그릴에서 다 함께 구워 드세요. 도움이 필요하면 정육 코너 직원이 취향에 맞는 부위를 추천해 드려요.',
   hoiBanNhanh: '빠른 테이블 예약',
   ngayDen: '방문 날짜',
   soNguoi: '인원',

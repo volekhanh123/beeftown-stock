@@ -78,6 +78,13 @@ export function lienHe(nd: NoiDung): LienHe {
 export const LINK_DANH_GIA_GOOGLE = 'https://g.page/r/CYQQxkRqfr6eEBM/review';
 
 /**
+ * Khoảng chi tiêu mỗi người, đúng lời Khánh 24/11/2026 ("giá: 300.000–500.000 đ/người") — JSON-LD `priceRange`, một giá trị
+ * cho cả ba thứ tiếng. Không nói VAT, đồ uống hay phần gồm trong giá: Khánh chưa nói. Ngoại lệ tương ứng của danh sách chữ cấm:
+ * KHOANG_GIA_DA_DUYET (chuoi-cam.js).
+ */
+export const KHOANG_GIA_MOI_NGUOI = '300.000–500.000 VND';
+
+/**
  * Số gọi ("tel:0961245124", "tel:+84961245124") → dạng E.164 cho JSON-LD ("+84961245124"). Google và các máy đọc
  * dữ liệu có cấu trúc muốn mã quốc gia; trên trang số vẫn in đúng như đã công bố ("0961 245 124"). Số trong nước bắt đầu
  * bằng 0 thì thay 0 bằng +84; đã có "+" thì giữ. Số không có dạng nào trong hai dạng đó (đầu số tổng đài "1900…") không

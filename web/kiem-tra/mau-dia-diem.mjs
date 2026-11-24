@@ -130,12 +130,25 @@ export const CHUYEN_DIA_DIEM = luat(
   /(?:매장|가게|식당|Beeftown)(?:을|를|이|가|은|는)?\s*(?:이전|옮)|이전\s*(?:했|하였|합니다|해요)|옮겼/u,
 );
 
-/** Chưa xác nhận ở 63 Hồ Tùng Mậu: chỗ gửi xe, lối cho xe lăn. */
+/**
+ * CÂU GỬI XE ĐÃ DUYỆT (Khánh nói 24/11/2026: "gửi xe: ngay trước nhà hàng"): đúng câu hỏi và câu trả lời của hỏi đáp trang Đến
+ * Beeftown, ba thứ tiếng — chỉ chừng đó. Câu phải đứng trọn (sau câu là dấu chấm, khoảng trắng hoặc hết chữ): "Có chỗ gửi xe
+ * ngay trước nhà hàng, miễn phí" hay "…gửi xe máy" vẫn bị bắt như cũ.
+ */
+export const CAU_GUI_XE_DA_DUYET = new RegExp([
+  'Gửi xe ở đâu\\??', 'Có chỗ gửi xe ngay trước nhà hàng',
+  'Where can I park\\??', 'Parking is right in front of the restaurant',
+  '주차는 어디에 하나요\\??', '식당 바로 앞에 주차할 수 있어요',
+].map(c => `(?:${c})(?=[.!]?(?:\\s|$))`).join('|'), 'giu');
+
+/** Chưa xác nhận ở 63 Hồ Tùng Mậu: lối cho xe lăn; chỗ gửi xe chỉ được nói ĐÚNG câu đã duyệt (CAU_GUI_XE_DA_DUYET). */
 export const TIEN_ICH_CHUA_XAC_NHAN = luat(
-  'nói chỗ gửi xe hay lối cho xe lăn (chưa xác nhận)',
-  /gửi\s*xe|giữ\s*xe|bãi\s*(?:đỗ\s*|đậu\s*)?xe|đỗ\s*xe|đậu\s*xe|xe\s*lăn/iu,
-  /\bparking\b|\bvalet\b|car\s*park|wheelchair|step-free|barrier-free/iu,
-  /주차|발레|휠체어|무장애/u,
+  'nói chỗ gửi xe (ngoài câu đã duyệt) hay lối cho xe lăn (chưa xác nhận)',
+  ...[
+    /gửi\s*xe|giữ\s*xe|bãi\s*(?:đỗ\s*|đậu\s*)?xe|đỗ\s*xe|đậu\s*xe|xe\s*lăn/iu,
+    /\bparking\b|\bvalet\b|car\s*park|wheelchair|step-free|barrier-free/iu,
+    /주차|발레|휠체어|무장애/u,
+  ].map(re => s => s.replace(CAU_GUI_XE_DA_DUYET, ' ').match(re)?.[0]),
 );
 
 /**
@@ -206,8 +219,11 @@ export const CAU_THU = [
       'Nhà hàng kiểm tra rồi liên hệ để xác nhận với bạn.', 'Your request has been sent to the restaurant.', '이전에 문의하신 적이 있다면', 'We will check and contact you to confirm.',
       'Beeftown chuyển tới đơn vị cung cấp dịch vụ những thông tin cần thiết', 'If we moved your request to another day', 'We are moving your data to a new provider'] },
   { luat: TIEN_ICH_CHUA_XAC_NHAN,
-    bat: ['Có chỗ gửi xe máy', 'bãi đỗ xe', 'Free parking', '주차 가능', 'lối cho xe lăn', 'wheelchair access', '휠체어'],
-    khong: ['Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3.', 'Xem trước đường lên tầng 3 để cả nhóm tìm tới dễ dàng.'] },
+    bat: ['Có chỗ gửi xe máy', 'bãi đỗ xe', 'Free parking', '주차 가능', 'lối cho xe lăn', 'wheelchair access', '휠체어',
+      'Có chỗ gửi xe ngay trước nhà hàng, miễn phí', 'Parking is right in front of the restaurant, free of charge', '식당 바로 앞에 주차할 수 있어요, 무료예요 주차'],
+    khong: ['Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3.', 'Xem trước đường lên tầng 3 để cả nhóm tìm tới dễ dàng.',
+      'Gửi xe ở đâu?', 'Có chỗ gửi xe ngay trước nhà hàng.', 'Where can I park?', 'Parking is right in front of the restaurant.',
+      '주차는 어디에 하나요?', '식당 바로 앞에 주차할 수 있어요.'] },
   { luat: SO_DO_DUONG_DI,
     bat: ['đi bộ 2 phút', 'Xem trước đường lên tầng 3, đi bộ 2 phút từ GS25.', 'cách 50 m', 'cách GS25 20 mét', 'chỉ 30 bước từ lối vào',
       'Thang máy lên tầng 3 mất 1 phút', '2 phút là tới quán', '3 minutes on foot', '50 m from GS25', 'a 2-minute walk', 'a 50-metre corridor',

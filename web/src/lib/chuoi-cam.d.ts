@@ -12,3 +12,6 @@ export interface ChoCam {
 export const CAM: ReadonlyArray<MucCam>;
 
 export function timChuoiCam(chu: string): ChoCam[];
+
+/** Khoảng giá mỗi người đã duyệt — ngoại lệ duy nhất của mẫu "Giá tiền" (xem chuoi-cam.js). */
+export const KHOANG_GIA_DA_DUYET: RegExp;

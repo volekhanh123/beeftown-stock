@@ -14,7 +14,6 @@
  *
  * DỮ LIỆU CÓ CẤU TRÚC (JSON-LD):
  * Chỉ khai những gì đã công bố. Cụ thể là KHÔNG có:
- *   · priceRange — chưa có khoảng giá nào được duyệt;
  *   · aggregateRating / review — chưa có một đánh giá thật nào, và khai số
  *     liệu đánh giá bịa vừa vi phạm chính sách Google vừa là quảng cáo sai;
  *   · openingHoursSpecification khi giờ chưa chốt — Google đưa giờ này lên
@@ -26,7 +25,8 @@
  * Từ 24/11/2026 (SEO): `telephone` ở dạng E.164 (+84…, trang vẫn in số như đã công bố); `image` là ảnh og:image (ảnh thật nếu
  * có, không thì ảnh thương hiệu trong bản build); `hasMenu` luôn có, trỏ về trang Thực đơn cùng thứ tiếng (trang này luôn
  * tồn tại — công tắc hien_thuc_don chỉ bật khối món bên trong); `sameAs` thêm Zalo OA khi đã công bố; thêm khối WebSite thứ
- * hai, publisher trỏ về nhà hàng bằng @id. Vẫn chưa có priceRange (chờ chủ duyệt khoảng giá).
+ * hai, publisher trỏ về nhà hàng bằng @id. `priceRange` = "300.000–500.000 VND" (KHOANG_GIA_MOI_NGUOI): đúng lời Khánh nói
+ * 24/11/2026 ("300.000–500.000 đ/người"), một giá trị cho cả ba thứ tiếng; trang Đến Beeftown cũng ghi khoảng này thành chữ.
  * Logo (`logo`) là biểu tượng 180 × 180 của bộ 21/10/2026 (đầu bò trắng trên nền
  * đỏ phủ kín, web/public/thuong-hieu/bieu-tuong-180.png): Google cần ảnh tối thiểu
  * 112 × 112, nhìn đúng trên nền trắng — ô đỏ phủ kín đạt cả hai, cắt vuông không mất gì.
@@ -52,7 +52,7 @@
 import '../styles/chung.css';
 import '../styles/cong-khai.css';
 import { THUONG_HIEU, NGON_NGU, TEN_NGON_NGU, chu, duongDanTuongUng } from '../lib/chu';
-import { diaChiCoCauTruc, jsonTrongScript, lienHe, soDienThoaiE164, toaDoCoCauTruc } from '../lib/trang-cong-khai';
+import { KHOANG_GIA_MOI_NGUOI, diaChiCoCauTruc, jsonTrongScript, lienHe, soDienThoaiE164, toaDoCoCauTruc } from '../lib/trang-cong-khai';
 import { docGioMoCuaTrongLuot, gioMoCuaJsonLd } from '../lib/gio-mo-cua';
 import { khoiMaPixel, tenTrangPixel } from '../lib/meta-pixel';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
@@ -121,6 +121,7 @@ const duLieuCoCauTruc: Record<string, unknown> = {
   // Form đặt bàn chưa mở thì đây đúng là false — thuộc tính này sinh ra để
   // nói điều đó.
   acceptsReservations: nd.form_dat_ban_dang_mo === true,
+  priceRange: KHOANG_GIA_MOI_NGUOI,
 };
 // Địa chỉ cố định trong mã (lib/chu.ts); bản công bố trong /noi-bo (nếu có) thay vào.
 duLieuCoCauTruc.address = diaChiCoCauTruc(nd);

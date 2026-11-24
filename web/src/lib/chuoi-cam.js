@@ -53,6 +53,14 @@ export const CAM = [
 ];
 
 /**
+ * NGOẠI LỆ DUY NHẤT của mẫu "Giá tiền" ở trên: khoảng chi tiêu mỗi người của cả bữa, Khánh nói 24/11/2026 ("giá:
+ * 300.000–500.000 đ/người"). Đúng khoảng đó, ở các cách viết vi ("300.000–500.000 đ"), en ("300,000–500,000 VND"),
+ * ko ("300,000–500,000동") — dùng cho trang Đến Beeftown (hỏi đáp) và priceRange của JSON-LD. Mọi con số khác, kể cả
+ * "300.000–600.000 đ" hay một giá món, vẫn bị chặn. Bỏ khoảng này khỏi đoạn chữ TRƯỚC khi so mẫu.
+ */
+export const KHOANG_GIA_DA_DUYET = /300[.,]000\s?[–\-~]\s?500[.,]000\s?(?:đ|vnđ|vnd|₫|동)/gi;
+
+/**
  * Tìm mọi mẫu cấm trong một đoạn chữ. Trả về mảng rỗng nếu sạch.
  * Mỗi mẫu báo tối đa ba chỗ khác nhau — đủ để người đọc thấy vấn đề, không
  * đủ để làm ngập màn hình khi một trang lặp một từ hai chục lần.
@@ -69,7 +77,7 @@ const VO_HINH = new RegExp(CO_VO_HINH.source, 'g');
 
 export function timChuoiCam(chu) {
   const thay = [];
-  const goc = String(chu ?? '').normalize('NFKC');
+  const goc = String(chu ?? '').normalize('NFKC').replace(KHOANG_GIA_DA_DUYET, ' ');
   const cacBan = CO_VO_HINH.test(goc) ? [goc.replace(VO_HINH, ''), goc.replace(VO_HINH, ' ')] : [goc];
   for (const { re, vi_sao } of CAM) {
     const tim = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g');
