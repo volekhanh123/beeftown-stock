@@ -11,7 +11,7 @@
     "don-mau": "bun scripts/don-mau.ts"
   },
   "dependencies": {
-    "@fontsource/montserrat": "5.2.8",
+    "@fontsource/montserrat": "5.3.0",
     "qrcode": "1.5.4"
   },
   "devDependencies": {
