@@ -13,7 +13,9 @@
  *   · /hook/vnpay-ipn → xuLyIpnVnpay (lib/vnpay-hook.ts) — VNPay báo kết quả trả tiền của đơn Mua thịt về (0115).
  *     Chặn trước Astro như hai hook trên: không cookie, không phiên người; truyền env để đọc bí mật VNPAY_*.
  *   · mọi đường dẫn khác: đúng handler mặc định của @astrojs/cloudflare.
- *   Mọi trả lời đi ra đều qua datHsts (lib/header-https.ts): Strict-Transport-Security một năm, không includeSubDomains.
+ *   Mọi trả lời đi ra đều qua datHsts (lib/header-https.ts): Strict-Transport-Security một năm, không includeSubDomains,
+ *   rồi datHeaderBaoVe: nosniff, Referrer-Policy, X-Frame-Options SAMEORIGIN (không ghi đè DENY của /noi-bo), Permissions-Policy.
+ *   Đường dẫn có gạch cuối (/thuc-don/) được 301 về bản không gạch trước tất cả (lib/chuyen-huong-dau-gach.ts).
  *   File tĩnh (ảnh, CSS, phông) do lớp assets của Cloudflare phát, không qua đây — header của chúng ở web/public/_headers.
  * `scheduled`: Cron Trigger khai ở wrangler.toml `[triggers] crons` — mỗi 5 phút
  * chạy `dongBoTatCa` (lib/kho/ipos-dong-bo.ts): kéo bù hóa đơn iPOS vừa cập nhật +
@@ -40,7 +42,8 @@ import { guiZaloTatCa } from './lib/zalo-gui.ts';
 import { xuLyHookMessenger, DUONG_MESSENGER } from './lib/messenger-hook.ts';
 import { baoDongTatCa, CRON_BAO_DONG } from './lib/bao-dong.ts';
 import { xuLyIpnVnpay, DUONG_IPN_VNPAY } from './lib/vnpay-hook.ts';
-import { datHsts } from './lib/header-https.ts';
+import { datHsts, datHeaderBaoVe } from './lib/header-https.ts';
+import { chuyenHuongDauGach } from './lib/chuyen-huong-dau-gach.ts';
 
 interface NguCanh {
   waitUntil(p: Promise<unknown>): void;
@@ -48,6 +51,9 @@ interface NguCanh {
 
 async function xuLyYeuCau(request: Request, env: Record<string, unknown>, ctx: NguCanh): Promise<Response> {
   const duong = new URL(request.url).pathname;
+  // Gạch cuối (/thuc-don/ → /thuc-don): 301 trước mọi thứ; /hook/* và /noi-bo được chừa (lib/chuyen-huong-dau-gach.ts).
+  const veKhongGach = chuyenHuongDauGach(request);
+  if (veKhongGach) return veKhongGach;
   if (duong.startsWith(DUONG_HOOK)) {
     const khoa = khoaTuDuong(duong);
     if (khoa === null) return new Response('Không tìm thấy', { status: 404 });
@@ -65,7 +71,7 @@ async function xuLyYeuCau(request: Request, env: Record<string, unknown>, ctx: N
 
 export default {
   async fetch(request: Request, env: Record<string, unknown>, ctx: NguCanh) {
-    return datHsts(await xuLyYeuCau(request, env, ctx));
+    return datHeaderBaoVe(datHsts(await xuLyYeuCau(request, env, ctx)));
   },
   async scheduled(dieuKhien: { cron?: string } | undefined, env: Record<string, unknown>, ctx: NguCanh) {
     // Cron riêng của việc báo động: chỉ chạy việc đó.

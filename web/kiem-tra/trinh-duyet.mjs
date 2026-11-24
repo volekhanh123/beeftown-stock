@@ -48,7 +48,7 @@
  *      hook iPOS không lộ lỗi nội bộ; khóa sai dạng vẫn là 404 chữ trơn của src/worker.ts.
  *      Mọi trả lời dưới /noi-bo cấm nhúng vào khung (frame-ancestors 'none', X-Frame-Options:
  *      DENY) và không vào bộ đệm dùng chung (private), không bị ép no-store; đăng xuất mang
- *      Clear-Site-Data: "cache"; trang công khai thì không bị gắn gì.
+ *      Clear-Site-Data: "cache"; trang công khai chỉ có bộ header chung (SAMEORIGIN…), không bị gắn gì của khu nội bộ.
  *      Bấm Đăng xuất rồi bấm Quay lại: trang cũ không hiện lại từ bộ nhớ quay lại của trình duyệt
  *      (bfcache) mà được xin lại từ máy chủ, và đã bị giấu từ lúc rời trang — thử bằng Chromium BẢN
  *      ĐẦY ĐỦ có bfcache bật, kèm một phép đối chứng là trình duyệt đó có bfcache thật; Quay lại bình
@@ -597,8 +597,11 @@ try {
       const dn = (await page.request.get(goc + '/noi-bo/dang-nhap', { maxRedirects: 0 })).headers();
       ok('Trang đăng nhập không bị ép no-store', !/no-store/.test(dn['cache-control'] ?? ''), tomDau(dn));
       const ck = (await page.request.get(goc + '/', { maxRedirects: 0 })).headers();
-      ok('Trang chủ công khai không bị gắn header của khu nội bộ', !camNhung(ck) && !/private|no-store/.test(ck['cache-control'] ?? '')
-         && !/frame-ancestors/.test(ck['content-security-policy'] ?? '') && ck['x-frame-options'] === undefined, tomDau(ck));
+      // Trang công khai chỉ có bộ header chung của Worker (lib/header-https.ts, SAMEORIGIN) — không có DENY / frame-ancestors / private của khu nội bộ.
+      ok('Trang chủ công khai không bị gắn header của khu nội bộ (chỉ X-Frame-Options SAMEORIGIN chung)', !camNhung(ck) && !/private|no-store/.test(ck['cache-control'] ?? '')
+         && !/frame-ancestors/.test(ck['content-security-policy'] ?? '') && ck['x-frame-options'] === 'SAMEORIGIN', tomDau(ck));
+      ok('Trang chủ công khai có đủ bốn header bảo vệ chung và HSTS nguyên', ck['x-content-type-options'] === 'nosniff' && ck['referrer-policy'] === 'strict-origin-when-cross-origin'
+         && (ck['permissions-policy'] ?? '').startsWith('camera=(self), microphone=()') && ck['strict-transport-security'] === 'max-age=31536000', JSON.stringify(ck));
       // Đăng xuất (chưa đăng nhập cũng gửi được: /noi-bo/dang-xuat mở cho mọi người): về trang đăng nhập, kèm lệnh
       // bảo trình duyệt bỏ bản lưu đệm và các trang đã nằm trong bộ nhớ quay lại của nó. Riêng trang vừa bấm Đăng
       // xuất thì lệnh này không gỡ được — khối "NÚT QUAY LẠI" ngay dưới.

@@ -3,6 +3,7 @@
 import { taoClient } from './noi-dung.ts';
 import type { NgonNgu } from './noi-dung';
 import type { BaThuTieng } from './chu';
+import { homNayVn } from './gio-vn.ts';
 import type { ViTri } from '../components/TrangTuyenDung.astro';
 
 export async function docViTri(ngonNgu: NgonNgu = 'vi'): Promise<ViTri[]> {
@@ -90,4 +91,153 @@ export function nhanEnum(
   bang: Record<string, BaThuTieng>, ma: string, ngonNgu: NgonNgu = 'vi',
 ): string {
   return bang[ma]?.[ngonNgu] ?? ma;
+}
+
+// =============================================================================
+// CHỮ CỦA TIN → KHỐI HIỂN THỊ, QUYỀN LỢI CHUNG, JSON-LD JobPosting (rà soát SEO 23/11/2026)
+// =============================================================================
+
+/** Một khối chữ của tin: đoạn văn, hoặc danh sách gạch đầu dòng. */
+export type KhoiChu = { kieu: 'doan'; chu: string } | { kieu: 'ds'; muc: string[] };
+
+// Người soạn tin gõ mỗi ý trên một dòng, mở đầu bằng "–" (hay "-", "•"…) — màn soạn là ô văn bản thuần.
+const DONG_GACH = /^\s*[-–—•·*]\s+(\S.*)$/u;
+
+/**
+ * Chữ nhiều dòng → các khối: dòng gạch đầu dòng liền nhau thành MỘT danh sách (<ul><li>), mỗi dòng khác là một đoạn.
+ * Trước đây cả khối nằm trong một <p> với white-space: pre-line: người xem thấy gạch, còn máy đọc trang (Google, trợ lý
+ * AI) gộp cả khối thành một câu dài.
+ */
+export function tachKhoiChu(s: string | null | undefined): KhoiChu[] {
+  const khoi: KhoiChu[] = [];
+  for (const dong of (s ?? '').split(/\r?\n/)) {
+    const g = DONG_GACH.exec(dong);
+    if (g) {
+      const cuoi = khoi[khoi.length - 1];
+      if (cuoi?.kieu === 'ds') cuoi.muc.push(g[1].trim());
+      else khoi.push({ kieu: 'ds', muc: [g[1].trim()] });
+    } else if (dong.trim()) {
+      khoi.push({ kieu: 'doan', chu: dong.trim() });
+    }
+  }
+  return khoi;
+}
+
+/** Dòng so sánh: bỏ gạch đầu dòng, gộp khoảng trắng, không phân biệt hoa thường. */
+const dongSoSanh = (d: string) => d.replace(DONG_GACH, '$1').replace(/\s+/gu, ' ').trim().toLowerCase();
+
+/**
+ * Tách phần quyền lợi GIỐNG NHAU của các tin ra một khối chung. Bản đầu của trang lặp nguyên văn khối "Quyền lợi" (cả
+ * dòng đóng "Beeftown tách rõ kỹ năng…") dưới từng vị trí — bốn lần. Quy tắc: một dòng có mặt trong quyền lợi của MỌI
+ * tin đang có quyền lợi (từ hai tin trở lên) là dòng chung; mỗi tin chỉ còn giữ phần riêng của nó. Tin có quyền lợi
+ * khác thật thì giữ nguyên phần khác đó — không gộp ép.
+ *
+ * Trả về `chung` (chữ dựng lại từ các dòng chung, theo thứ tự của tin đầu tiên; null nếu không có dòng chung nào) và
+ * `rieng`: mã tin → chữ quyền lợi riêng còn lại (null nếu hết).
+ */
+export function tachQuyenLoiChung(
+  tin: { ma: string; quyen_loi: string | null }[],
+): { chung: string | null; rieng: Map<string, string | null> } {
+  const dongCua = (s: string | null) => (s ?? '').split(/\r?\n/).filter(d => d.trim());
+  const co = tin.filter(t => dongCua(t.quyen_loi).length > 0);
+  const rieng = new Map<string, string | null>(tin.map(t => [t.ma, t.quyen_loi?.trim() || null]));
+  if (co.length < 2) return { chung: null, rieng };
+
+  const taoTap = (t: { quyen_loi: string | null }) => new Set(dongCua(t.quyen_loi).map(dongSoSanh));
+  const taps = co.map(taoTap);
+  const chungKhoa = new Set([...taps[0]].filter(k => taps.every(tap => tap.has(k))));
+  if (chungKhoa.size === 0) return { chung: null, rieng };
+
+  const daLay = new Set<string>();
+  const chung = dongCua(co[0].quyen_loi).filter(d => {
+    const k = dongSoSanh(d);
+    if (!chungKhoa.has(k) || daLay.has(k)) return false;
+    daLay.add(k);
+    return true;
+  }).join('\n');
+  for (const t of co) {
+    const con = dongCua(t.quyen_loi).filter(d => !chungKhoa.has(dongSoSanh(d))).join('\n');
+    rieng.set(t.ma, con || null);
+  }
+  return { chung, rieng };
+}
+
+/** schema.org employmentType của từng loại hợp đồng; chưa chốt (null) hoặc loại lạ thì không khai. */
+const LOAI_JSON_LD: Record<string, string> = {
+  toan_thoi_gian: 'FULL_TIME',
+  ban_thoi_gian: 'PART_TIME',
+  thoi_vu: 'TEMPORARY',
+  thuc_tap: 'INTERN',
+};
+
+const thoatHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/** Chữ của tin → HTML tối thiểu cho trường description của JobPosting (Google đọc HTML: <p>, <ul><li>). */
+function htmlMoTa(khoi: KhoiChu[]): string {
+  return khoi
+    .map(k => (k.kieu === 'doan' ? `<p>${thoatHtml(k.chu)}</p>` : `<ul>${k.muc.map(m => `<li>${thoatHtml(m)}</li>`).join('')}</ul>`))
+    .join('');
+}
+
+/** Mốc thời gian của database (timestamptz, ISO) → ngày YYYY-MM-DD theo giờ Việt Nam; không đọc được thì null. */
+export function ngayDangTuMoc(moc: string | null | undefined): string | null {
+  if (!moc) return null;
+  const ms = Date.parse(moc);
+  return Number.isFinite(ms) ? homNayVn(ms) : null;
+}
+
+/** Tin tối thiểu mà JSON-LD cần (ViTri của TrangTuyenDung.astro là tập con rộng hơn của nó). */
+export interface TinChoJsonLd {
+  ma: string;
+  ten: string;
+  loai_hop_dong: string | null;
+  mo_ta: string | null;
+  yeu_cau: string | null;
+  quyen_loi: string | null;
+  han_nop: string | null;
+  /** Ngày công bố tin (cột cong_bo_luc). Tin không có ngày thật thì KHÔNG có JobPosting. */
+  cong_bo_luc?: string | null;
+}
+
+/**
+ * JSON-LD JobPosting, MỘT cho mỗi tin đang tuyển (Google for Jobs). Chỉ khai điều có thật và đang hiện trên trang:
+ *   · datePosted là bắt buộc của Google và phải là ngày thật → tin không có `cong_bo_luc` thì bị BỎ (không đoán ngày).
+ *   · validThrough = hạn nộp (han_nop) của tin, khi có; không bịa hạn.
+ *   · employmentType theo loai_hop_dong; chưa chốt thì bỏ trường.
+ *   · KHÔNG baseSalary: trang chỉ hiện lương khi đã duyệt, và chưa có tin nào ghi (khai lương không hiện trên trang là sai chính sách).
+ *   · KHÔNG phường: jobLocation dùng đúng địa chỉ cấu trúc của cả web (diaChiCoCauTruc).
+ *   · directApply: form nộp hồ sơ nằm ngay trang này.
+ */
+export function tinTuyenDungJsonLd(
+  tin: TinChoJsonLd[],
+  boiCanh: { trangUrl: string; tenToChuc: string; diaChi: Record<string, string>; goc: string },
+): Record<string, unknown>[] {
+  const ra: Record<string, unknown>[] = [];
+  for (const t of tin) {
+    const datePosted = ngayDangTuMoc(t.cong_bo_luc);
+    if (!datePosted || !t.ten.trim()) continue;
+    const moTa = htmlMoTa([
+      ...tachKhoiChu(t.mo_ta),
+      ...tachKhoiChu(t.yeu_cau),
+      ...tachKhoiChu(t.quyen_loi),
+    ]);
+    if (!moTa) continue;
+    const loai = t.loai_hop_dong ? LOAI_JSON_LD[t.loai_hop_dong] : undefined;
+    const hanNop = t.han_nop && /^\d{4}-\d{2}-\d{2}$/.test(t.han_nop) ? t.han_nop : null;
+    ra.push({
+      '@context': 'https://schema.org',
+      '@type': 'JobPosting',
+      title: t.ten.trim(),
+      description: moTa,
+      datePosted,
+      ...(hanNop ? { validThrough: hanNop } : {}),
+      ...(loai ? { employmentType: loai } : {}),
+      identifier: { '@type': 'PropertyValue', name: boiCanh.tenToChuc, value: t.ma },
+      hiringOrganization: { '@type': 'Organization', name: boiCanh.tenToChuc, sameAs: boiCanh.goc },
+      jobLocation: { '@type': 'Place', address: boiCanh.diaChi },
+      directApply: true,
+      url: boiCanh.trangUrl,
+    });
+  }
+  return ra;
 }

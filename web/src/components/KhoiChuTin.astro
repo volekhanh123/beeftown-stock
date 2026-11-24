@@ -1,0 +1,25 @@
+---
+/**
+ * CHỮ NHIỀU DÒNG CỦA TIN TUYỂN DỤNG → ĐOẠN VĂN VÀ DANH SÁCH THẬT
+ * ===============================================================
+ * Mô tả / yêu cầu / quyền lợi do người soạn gõ trong một ô văn bản, mỗi ý một dòng, mở đầu bằng "–". Trước đây cả khối
+ * nằm trong một <p> kiểu pre-line: nhìn thì có gạch, nhưng máy đọc trang thấy một câu dài. Ở đây dòng gạch liền nhau
+ * thành <ul><li>, dòng khác thành <p> (lib/tuyen-dung.ts, tachKhoiChu). Không có chữ thì không in gì.
+ *
+ * Mỗi <li> nằm trọn trên một dòng mã: compressHTML dính chữ khi có xuống dòng giữa hai mẩu chữ (web/CLAUDE.md).
+ */
+import { tachKhoiChu } from '../lib/tuyen-dung';
+
+interface Props { chu: string | null | undefined; nho?: boolean; }
+const { chu, nho = false } = Astro.props;
+const khoi = tachKhoiChu(chu);
+---
+{khoi.map(k => k.kieu === 'ds'
+  ? <ul class:list={['kct-ds', { nho }]}>{k.muc.map(m => <li>{m}</li>)}</ul>
+  : <p class:list={['kct-doan', { nho }]}>{k.chu}</p>)}
+
+<style>
+  .kct-doan { margin: var(--k-2) 0 0; }
+  .kct-ds { margin: var(--k-2) 0 0; padding-left: 1.25em; list-style: disc; }
+  .kct-ds li + li { margin-top: var(--k-1); }
+</style>

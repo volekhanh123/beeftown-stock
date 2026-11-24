@@ -687,7 +687,7 @@ await nhom('8 · WORKER, WRANGLER, TRANG, KHÔNG TOKEN TRONG REPO', async () => 
   const w = readFileSync(join(GOC, 'web/src/worker.ts'), 'utf8');
   ok('src/worker.ts: fetch chặn /hook/ipos → xuLyHookIpos TRƯỚC handle của adapter; scheduled gọi dongBoTatCa qua waitUntil',
      /from '@astrojs\/cloudflare\/handler'/.test(w) && /(?:async fetch\(|async function xuLyYeuCau\()[\s\S]*startsWith\(DUONG_HOOK\)[\s\S]*xuLyHookIpos\([\s\S]*return handle\(/.test(w)
-     && /return datHsts\(await xuLyYeuCau\(/.test(w)
+     && /return datHeaderBaoVe\(datHsts\(await xuLyYeuCau\(/.test(w)
      && /async scheduled\([^)]*\)\s*\{[\s\S]*waitUntil\(dongBoTatCa\(env\)\)/.test(w));
   const t = readFileSync(join(GOC, 'web/wrangler.toml'), 'utf8');
   ok('wrangler.toml: main = src/worker.ts, crons 5 phút (+ cron báo động lệch 2 phút, 0060), giữ workers_dev / preview_urls = false',

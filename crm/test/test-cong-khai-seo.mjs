@@ -404,7 +404,7 @@ await nhom('6 · HSTS VÀ CACHE-CONTROL', async () => {
   ok('Lỗi 500 cũng có HSTS (mọi trả lời của Worker)', d.status === 500 && d.headers.get('strict-transport-security') === HSTS);
 
   const w = doc(SRC, 'worker.ts');
-  ok('worker.ts: MỌI lối ra của fetch (hook, trang, 404) đi qua datHsts', w.includes("import { datHsts } from './lib/header-https.ts';") && w.includes('return datHsts(await xuLyYeuCau(request, env, ctx));')
+  ok('worker.ts: MỌI lối ra của fetch (hook, trang, 404) đi qua datHsts', w.includes("import { datHsts, datHeaderBaoVe } from './lib/header-https.ts';") && w.includes('return datHeaderBaoVe(datHsts(await xuLyYeuCau(request, env, ctx)));')
        && /async function xuLyYeuCau[\s\S]*xuLyHookIpos[\s\S]*xuLyHookMessenger[\s\S]*xuLyIpnVnpay[\s\S]*handle\(request/.test(w));
   ok('worker.ts: scheduled không đổi (cron báo động tách riêng)', w.includes('if (dieuKhien?.cron === CRON_BAO_DONG)') && w.includes('ctx.waitUntil(dongBoTatCa(env));'));
 
