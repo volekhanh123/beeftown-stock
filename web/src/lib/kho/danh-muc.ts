@@ -17,7 +17,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  boDau, cauLoiKho, docKg, docSoNguyen, docTien, goiYMa, kqHai, kqLoi, laUuid, TEN_LOAI_MAT_HANG_NB,
+  boDau, cauLoiKho, docKg, docSoNguyen, docTien, docTungTrang, goiYMa, kqHai, kqLoi, laUuid, TEN_LOAI_MAT_HANG_NB,
   type HaiThuTieng, type KetQua, type NgonNguNB,
 } from './chung.ts';
 import { dichCau } from '../cau-noi-bo.ts';
@@ -322,12 +322,13 @@ export interface MonU { mat_hang_id: string; ma: string; ten: string; ma_can: st
  * đọc. Lỗi → ném: người gọi không đoán (thiếu danh sách là đưa món ủ lên FABi).
  */
 export async function docMonU(client: SupabaseClient): Promise<MonU[]> {
-  const { data, error } = await client.from('kho_v_mon_u').select('mat_hang_id, ma, ten, ma_can').order('ten');
-  if (error) throw error;
-  return (data ?? []).map(r => ({
+  // Đọc đủ mọi trang (max_rows của PostgREST): thiếu một món ủ là đưa nó lên FABi.
+  const ds = await docTungTrang<{ mat_hang_id: unknown; ma: unknown; ten: unknown; ma_can: unknown }>((tu, den) =>
+    client.from('kho_v_mon_u').select('mat_hang_id, ma, ten, ma_can', { count: 'exact' }).order('mat_hang_id').range(tu, den));
+  return ds.map(r => ({
     mat_hang_id: String(r.mat_hang_id), ma: String(r.ma ?? ''), ten: String(r.ten ?? ''),
     ma_can: r.ma_can == null ? null : String(r.ma_can),
-  }));
+  })).sort((a, b) => a.ten.localeCompare(b.ten, 'vi'));
 }
 
 /** Giá trị thu hồi của phụ phẩm (đ/kg). Vai không xem giá: RLS trả rỗng. */

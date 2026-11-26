@@ -146,13 +146,15 @@ let bangU = new Map<string, DongBangU[]>();
 let oMa = new Map<string, DongOMa[]>();
 let dinhNghia: DinhNghiaTruong[] = [];
 let loiDoc = k.loiDoc;
+// 0128: món ủ — chỉ để ghi chú trên trang này (luật nằm ở database); đọc lỗi thì không ghi chú, trang vẫn chạy.
+// Bắt đầu đọc cùng lúc với phần chính.
+const docU = docMonU(k.client).catch(() => []);
 try {
   [matHang, thuHoi, dinhNghia, bangU, oMa] = await Promise.all([
     docMatHang(k.client), docGiaTriThuHoi(k.client), docDinhNghia(k.client, 'mat_hang'), docBangU(k.client), docOMa(k.client),
   ]);
 } catch (e) { loiDoc = cauLoiKho(e, t.khongDoc); }
-// 0128: món ủ — chỉ để ghi chú trên trang này (luật nằm ở database); đọc lỗi thì không ghi chú, trang vẫn chạy.
-const idMonU = new Set((await docMonU(k.client).catch(() => [])).map(u => u.mat_hang_id));
+const idMonU = new Set((await docU).map(u => u.mat_hang_id));
 
 let bao: KetQua | null = k.bao;
 let nhapLai: FormData | null = null;
