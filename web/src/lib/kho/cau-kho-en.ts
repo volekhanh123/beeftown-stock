@@ -1113,6 +1113,9 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
     en: 'Not recorded yet: iPOS reports {1} packs of "{2}" sold — the number of packs must be a whole number. If this item is sold by kg, change "Sold by" in Match dish' },
   { vi: 'Chưa ghi được: "%" tính theo kg mà iPOS bán theo gói — điền "mỗi gói = … kg" ở Ghép món',
     en: 'Not recorded yet: "{1}" is counted by kg but iPOS sells it by the pack — fill in "each pack = … kg" in Match dish' },
+  // 0128 — đứng TRƯỚC mẫu chung "Chưa ghi được: %" (mẫu đầu tiên khớp thắng)
+  { vi: 'Chưa ghi được: Món ủ "%" chỉ ở kho, không bán qua FABi — ghép mã này với món bán ra ở Ghép món',
+    en: 'Not recorded yet: Aging item "{1}" is inventory only, never sold through FABi — match this code with the item actually sold in Match dish' },
   { vi: 'Chưa ghi được: %', en: 'Not recorded yet: {1}' },
   { vi: 'Còn % dòng bán iPOS trước lúc gửi chưa trừ được kho (thiếu hàng / chưa ghép món) — xử lý ở Bán hàng iPOS rồi duyệt',
     en: 'iPOS sale lines from before the count was sent are still not deducted from stock (short on stock / dish not matched): {1} — handle them in iPOS sales, then approve' },
@@ -1369,6 +1372,13 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
     en: 'Aging primal {1} has already been cut — its aging days stay as they were at cutting, for later analysis' },
   { vi: 'Tảng ủ % không còn trong kho — không ghi ngày ủ được',
     en: 'Aging primal {1} is no longer in stock — aging days cannot be recorded' },
+
+  // 0128_kho_mon_u_chi_o_kho — món ủ chỉ ở kho, không bao giờ bán qua FABi
+  { vi: '"%" là món ủ — chỉ ở kho, không bán qua FABi: không ghép được mã iPOS với món này',
+    en: '"{1}" is an aging item — inventory only, never sold through FABi: no iPOS code can be matched to it' },
+  //   · hàm ghi vào bảng cho người đọc (kho_ipos_dong.ly_do; dạng "Chưa ghi được: …" ở trên, trước mẫu chung)
+  { vi: 'Món ủ "%" chỉ ở kho, không bán qua FABi — ghép mã này với món bán ra ở Ghép món',
+    en: 'Aging item "{1}" is inventory only, never sold through FABi — match this code with the item actually sold in Match dish' },
 ];
 
 type Mau = readonly [RegExp, (m: RegExpMatchArray) => string];

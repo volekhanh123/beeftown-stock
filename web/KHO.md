@@ -909,6 +909,30 @@ từ trim tới cắt xong % (gồm phần nhẹ đi lúc ủ, phần bỏ, hao 
 đường khác — bán, xuất bếp, huỷ, trả NCC, xuất khác), tình trạng (đang ủ / đã cắt / không còn trong kho, chưa cắt).
 Kiểm thử: `crm/test/test-kho-ghi-ngay-u.mjs`.
 
+**Món ủ chỉ ở kho, không bao giờ lên FABi (0128).** Khánh 26/11/2026: "FABI sẽ không có các món này, chỉ có phần mềm
+kho của tôi thôi" — "cứ tảng ủ là trong kho thôi". Món ủ = món **loại tảng là đầu ra của công thức pha lóc đang dùng
+của món khác** (công thức Trim — đúng luật tảng ủ ở trên), tự nhận, không ô tích, không theo tên ("Củ cải ủ chua"
+không phải món ủ). Một chỗ định nghĩa: view `kho_v_mon_u` (security_invoker); web đọc bằng `docMonU`
+(`lib/kho/danh-muc.ts`, lỗi → ném). Món ủ **vẫn giữ được mã cân** (Khánh: "dù cái mã đó chả làm gì nhưng chứa thông
+tin" — tem trong kho), nên luật nằm ở chỗ khớp món, không ở chỗ cấm mã cân. Khách mua khay cắt ra (mã cân riêng),
+tảng ủ trừ lúc chốt phiên Cắt. Năm chỗ giữ luật:
+- **Món cần có trên FABi**, `mon-fabi.csv`, `mon-fabi.xlsx`: `monCanCoTrenFabi` bỏ món trong `monU` — cả mã cân, ô mã,
+  mã giảm của nó (`docMonFabi` đọc `docMonU`; trang Ghép món truyền danh sách đọc cùng phần chính). Mục FABi kể tên món
+  ủ đang có mã cân ("Không đưa lên FABi (món ủ, chỉ ở kho): …").
+- **Ô chọn món ở Ghép món** không có món ủ; mã đã ghép với món ủ từ trước thì bảng Đã ghép ghi "món ủ, chỉ ở kho — bấm
+  Bỏ ghép".
+- **Kho tự nhận**: `laMaKhoTuNhan` / `maCanTuNhan` / `oThucDon` coi mã cân, ô, mã giảm của món ủ là mã thường
+  (`NguCanhGhep.monU`); `kiemGhep` từ chối ghép với món ủ (chọn món, chọn ô, hàng cân nhãn) trước khi gọi database.
+- **Database**: trigger `kho_ipos_ma_hang_khong_mon_u` chặn mọi ghép mã iPOS với món ủ (câu "… là món ủ — chỉ ở kho,
+  không bán qua FABi: không ghép được mã iPOS với món này"). `kho_ipos_ghi_dong`: sau khi khớp món (ghép tay cũ, ô,
+  mã giảm, nhãn cân, mã món = mã cân), món ủ → dòng **Chưa khớp**, lý do "Món ủ "…" chỉ ở kho, không bán qua FABi —
+  ghép mã này với món bán ra ở Ghép món", không dòng sổ nào. FABi lỡ có món khác mang đúng mã đó: ghép "Không phải
+  hàng kho" vẫn được.
+- **Mặt hàng**: danh sách ghi "món ủ · chỉ ở kho", form sửa có câu giải thích (đọc `docMonU` lỗi thì không ghi chú).
+Tắt công thức Trim thì món thôi là món ủ (ngay, không cần lưu lại món). Beeftown Cân không đổi: như mọi món, món ủ
+có mã cân và giá thì lên cân để in tem, thiếu giá thì cân bỏ qua. Form Mặt hàng không có ô mã cân cho món loại tảng
+(`O_THEO_LOAI`) — đặt mã cân cho tảng ủ ở Sửa nhanh. Kiểm thử: `crm/test/test-kho-mon-u-chi-kho.mjs`.
+
 **Khay của tảng nào trừ đúng lô tảng đó — theo tem đã quét lúc cắt (0106).** Khánh chốt 28/10/2026: nhiều tảng
 cắt ra quầy cùng lúc, FABi chỉ gửi "mã món + kg", không nói khay của tảng nào; trước 0106 kho trừ lô hạn gần nhất
 (khay các tảng cắt cùng ngày cùng hạn → luôn trừ tảng cắt trước, truy vết / báo cáo theo tảng lệch). Món đếm gói

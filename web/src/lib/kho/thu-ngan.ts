@@ -14,6 +14,8 @@
  *     Tải CSV đối chiếu: /noi-bo/kho/ban-ipos/mon-fabi.csv (taoTepMonFabi).
  *     Tải file nhập cho FABi: /noi-bo/kho/ban-ipos/mon-fabi.xlsx (taoTepNhapFabi) — đúng sheet "Menu" của mẫu
  *     create-item.xlsx ("Thêm món từ file" của FABi, chỉ THÊM món mới): chỉ món chưa bán, chưa ghép, có giá.
+ *     Món ủ (0128, kho_v_mon_u — đầu ra công thức Trim) chỉ ở kho: không bao giờ vào danh sách hay hai file này,
+ *     kể cả khi có mã cân, ô mã, mã giảm.
  *   · Bán hàng iPOS (/noi-bo/kho/ban-ipos, vai duyet + xem_gia): "Bán không biết tảng · 7 ngày"
  *     — dòng đã trừ kho của món có ô mà không qua ô, không mã giảm; và dòng lệch ô.
  *
@@ -29,7 +31,7 @@ import { congNgay, docGioVnDiaPhuong, gioVnTuMs, homNayVn } from '../gio-vn.ts';
 import { docOMa, type DongOMa } from './o-ma.ts';
 import { docMaGiam, giaGiam, tenGiam, type DongMaGiam } from './ma-giam.ts';
 import { soChuSoMa } from './can-tma.ts';
-import { docMatHang } from './danh-muc.ts';
+import { docMatHang, docMonU } from './danh-muc.ts';
 import { docMaDaGhep } from './ban-ipos.ts';
 import { taoCsv, type CotBaoCao } from './bao-cao.ts';
 import { taoTepExcel } from './tep-excel.ts';
@@ -312,6 +314,8 @@ export interface DuLieuMonFabi {
   soChuSo: number;
   /** 0103: mã món iPOS đã từng có dòng bán ở chi nhánh (kho_ipos_ma_da_ban). Không truyền = không biết. */
   daBan?: readonly string[];
+  /** 0128: id món ủ (docMonU) — chỉ ở kho, không bao giờ cần trên FABi. Mọi chỗ gọi trong web đều truyền. */
+  monU?: ReadonlySet<string>;
 }
 
 const BO_GHEP_GIAM: HaiThuTieng = {
@@ -357,9 +361,10 @@ const CHUA_GIA_CAN: HaiThuTieng = {
  * dùng → một món cần có trên FABi. Xếp theo tên món: mã cân, rồi ô (theo số ô), rồi mã giảm (theo mức
  * giảm). "Trên FABi": có trong thực đơn (so sau khi bỏ số 0 đầu) hoặc — với ô — một mã khác đã ghép tay
  * đúng ô và có trong thực đơn; không thế thì đã có dòng bán qua iPOS (da_ban).
+ * Món ủ (0128, `du.monU`) chỉ ở kho: bỏ hẳn — cả mã cân, ô mã lẫn mã giảm của nó.
  */
 export function monCanCoTrenFabi(du: DuLieuMonFabi): DongMonFabi[] {
-  const mon = new Map(du.matHang.filter(m => m.dang_dung).map(m => [m.id, m]));
+  const mon = new Map(du.matHang.filter(m => m.dang_dung && !du.monU?.has(m.id)).map(m => [m.id, m]));
   const menu = new Map<string, boolean>();
   for (const m of du.menu) {
     const k = bo0(m.ma_ipos);
@@ -520,16 +525,16 @@ export function mucMonFabi(them: ThemMonFabi | null, loi: string | null, soMon: 
   return { kieu: 'co', soMon, chuaDocMenu: them.menu.length === 0, menuLuc: them.menuLuc, soMonMenu: them.menu.length };
 }
 
-/** Đủ dữ liệu cho file CSV: món, ô, mã đã ghép, thực đơn, mã giảm. Lỗi → ném. */
+/** Đủ dữ liệu cho file CSV / file nhập: món, ô, mã đã ghép, thực đơn, mã giảm, món ủ (0128). Lỗi → ném. */
 export async function docMonFabi(client: SupabaseClient, chiNhanhId: string): Promise<{
   dong: DongMonFabi[]; menuLuc: string | null; soMonMenu: number;
 }> {
-  const [matHang, oMa, daGhep, them] = await Promise.all([
-    docMatHang(client), docOMa(client), docMaDaGhep(client, chiNhanhId), docThemMonFabi(client, chiNhanhId),
+  const [matHang, oMa, daGhep, them, monU] = await Promise.all([
+    docMatHang(client), docOMa(client), docMaDaGhep(client, chiNhanhId), docThemMonFabi(client, chiNhanhId), docMonU(client),
   ]);
   return {
     dong: monCanCoTrenFabi({ matHang, oMa: [...oMa.values()].flat(), maGiam: them.maGiam, menu: them.menu, daGhep,
-                             soChuSo: them.soChuSo, daBan: them.daBan }),
+                             soChuSo: them.soChuSo, daBan: them.daBan, monU: new Set(monU.map(u => u.mat_hang_id)) }),
     menuLuc: them.menuLuc,
     soMonMenu: them.menu.length,
   };

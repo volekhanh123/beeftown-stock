@@ -17,7 +17,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  boDau, cauLoiKho, docKg, docSoNguyen, docTien, goiYMa, kqHai, kqLoi, laUuid, TEN_LOAI_MAT_HANG_NB,
+  boDau, cauLoiKho, docKg, docSoNguyen, docTien, docTungTrang, goiYMa, kqHai, kqLoi, laUuid, TEN_LOAI_MAT_HANG_NB,
   type HaiThuTieng, type KetQua, type NgonNguNB,
 } from './chung.ts';
 import { dichCau } from '../cau-noi-bo.ts';
@@ -310,6 +310,25 @@ export async function docMatHang(client: SupabaseClient): Promise<MatHang[]> {
     kho_toi_da_kg: r.kho_toi_da_kg === null || r.kho_toi_da_kg === undefined ? null : Number(r.kho_toi_da_kg),
     noi_de_sau_pha: r.noi_de_sau_pha === 'kho' || r.noi_de_sau_pha === 'quay' ? r.noi_de_sau_pha : null,
   })) as MatHang[];
+}
+
+/** Một món ủ (0128, view `kho_v_mon_u`). */
+export interface MonU { mat_hang_id: string; ma: string; ten: string; ma_can: string | null }
+
+/**
+ * Món ủ (0128): món loại tảng là đầu ra của công thức pha lóc đang dùng của món khác — công thức Trim, đúng luật tảng
+ * ủ của 0107. Khánh 26/11/2026: "cứ tảng ủ là trong kho thôi" — món ủ không bao giờ lên FABi, không ghép mã iPOS,
+ * không "kho tự nhận" theo mã cân; vẫn được giữ mã cân (tem trong kho). Luật nằm MỘT chỗ ở database (view), web chỉ
+ * đọc. Lỗi → ném: người gọi không đoán (thiếu danh sách là đưa món ủ lên FABi).
+ */
+export async function docMonU(client: SupabaseClient): Promise<MonU[]> {
+  // Đọc đủ mọi trang (max_rows của PostgREST): thiếu một món ủ là đưa nó lên FABi.
+  const ds = await docTungTrang<{ mat_hang_id: unknown; ma: unknown; ten: unknown; ma_can: unknown }>((tu, den) =>
+    client.from('kho_v_mon_u').select('mat_hang_id, ma, ten, ma_can', { count: 'exact' }).order('mat_hang_id').range(tu, den));
+  return ds.map(r => ({
+    mat_hang_id: String(r.mat_hang_id), ma: String(r.ma ?? ''), ten: String(r.ten ?? ''),
+    ma_can: r.ma_can == null ? null : String(r.ma_can),
+  })).sort((a, b) => a.ten.localeCompare(b.ten, 'vi'));
 }
 
 /** Giá trị thu hồi của phụ phẩm (đ/kg). Vai không xem giá: RLS trả rỗng. */

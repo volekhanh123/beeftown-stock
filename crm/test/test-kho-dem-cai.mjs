@@ -750,7 +750,8 @@ await nhom('9 · XUẤT BẾP, KIỂM KÊ, TRẢ HÀNG — HÀM THUẦN VÀ MÃ 
   const tkh = doc('web/src/pages/noi-bo/kho/the-kho/[mat_hang_id].astro');
   ok('Thẻ kho: món đếm theo cái không có cột kg', /const coKg = !laDemCai\(mh\);/.test(tkh) && /\{coKg && <th class="so">\{t\.cotKg\}<\/th>\}/.test(tkh));
   ok('Ghép món iPOS: chưa có sốt, đồ uống trong danh sách (trừ theo mã món làm ở đợt 2)',
-    /const dangDung = matHang\.filter\(m => m\.dang_dung && !laDemCai\(m\)\);/.test(doc('web/src/pages/noi-bo/kho/ban-ipos/ghep.astro')));
+    // 0128 thêm điều kiện bỏ món ủ (test-kho-mon-u-chi-kho.mjs) — điều kiện bỏ sốt, đồ uống giữ nguyên.
+    /const dangDung = matHang\.filter\(m => m\.dang_dung && !laDemCai\(m\) && !idMonU\.has\(m\.id\)\);/.test(doc('web/src/pages/noi-bo/kho/ban-ipos/ghep.astro')));
   ok('Định lượng món: ChonMatHang không bật demCai (sốt, đồ uống chưa vào định lượng gam)',
     !/demCai/.test(doc('web/src/pages/noi-bo/kho/cai-dat/dinh-luong.astro')));
   ok('Phiếu hủy đã duyệt: câu "Đã ghi hủy" kể cả kg thịt lẫn số chai / lon (chuDaHuy)',

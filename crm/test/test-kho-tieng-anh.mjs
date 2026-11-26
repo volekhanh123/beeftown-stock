@@ -166,7 +166,7 @@ nhom('2 · CÂU LỖI DATABASE CỦA KHO CÓ BẢN TIẾNG ANH');
   // Gói "câu database" bật cờ này khi lib/kho/cau-kho-en.ts đã đủ câu.
   const DA_DICH_DU = true;
   // Giữ giống hệt danh sách ở test-noi-bo-tieng-anh.mjs — bên đó kiểm các migration còn lại.
-  const KHO = /^(0017|0018|0019|0020|0021|0022|0023|0024|0029_kho|0030|0031|0032|0033|0034|0035|0037|0038|0039|0040|0041|0042|0044_kho|0048_kho|0049_kho|0050_kho|0051_kho|0054_kho|0061_kho|0072_kho|0088_kho|0089_kho|0090_kho|0092_kho|0097_kho|0098_kho|0103_kho|0104_kho|0105_kho|0106_kho|0107_kho|0108_kho|0109_kho|0110_kho|0111_kho|0112_kho|0123_kho)/;
+  const KHO = /^(0017|0018|0019|0020|0021|0022|0023|0024|0029_kho|0030|0031|0032|0033|0034|0035|0037|0038|0039|0040|0041|0042|0044_kho|0048_kho|0049_kho|0050_kho|0051_kho|0054_kho|0061_kho|0072_kho|0088_kho|0089_kho|0090_kho|0092_kho|0097_kho|0098_kho|0103_kho|0104_kho|0105_kho|0106_kho|0107_kho|0108_kho|0109_kho|0110_kho|0111_kho|0112_kho|0123_kho|0128_kho)/;
   const tep = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql') && KHO.test(f)).sort();
   // Quên thêm migration kho vào KHO thì câu hàm kho trả về của nó không ai kiểm (0048–0051, 0054 đã lọt).
   const sotKho = readdirSync(MIGRATIONS_DIR).filter(f => /^\d{4}_kho_.*\.sql$/.test(f) && !KHO.test(f));
@@ -322,6 +322,8 @@ nhom('2 · CÂU LỖI DATABASE CỦA KHO CÓ BẢN TIẾNG ANH');
     // 0104 — ghi chú sổ kho của dòng chênh lệch cân lúc bán qua iPOS, lý do trong báo cáo hao hụt
     'Chênh lệch cân khi bán hết lô ở quầy · iPOS %', 'Kg bán vượt kg còn lại của lô · iPOS %',
     'Chênh lệch cân lúc bán (iPOS) — thiếu', 'Chênh lệch cân lúc bán (iPOS) — thừa',
+    // 0128 — dòng bán iPOS khớp ra món ủ (chỉ ở kho): lý do "Chưa khớp"
+    'Món ủ "%" chỉ ở kho, không bán qua FABi — ghép mã này với món bán ra ở Ghép món',
     // câu rộng (tiền tố + giá trị) — thẻ kho
     'Nhập từ %', 'Pha lóc %',
   ];
@@ -343,6 +345,7 @@ nhom('2 · CÂU LỖI DATABASE CỦA KHO CÓ BẢN TIẾNG ANH');
     'Số lượng bán trên iPOS phải lớn hơn 0',
     'iPOS báo bán % gói "%" — số gói phải là số nguyên. Món này bán theo kg thì đổi "Bán theo" ở Ghép món',
     '"%" tính theo kg mà iPOS bán theo gói — điền "mỗi gói = … kg" ở Ghép món',
+    'Món ủ "%" chỉ ở kho, không bán qua FABi — ghép mã này với món bán ra ở Ghép món',   // 0128
   ]) TRA_VE.push(`Chưa ghi được: ${x}`);
   // 0040 kho_cong_no_theo_ky — diễn giải dòng thanh toán: nhãn [+ ": ghi chú"] + " — phiếu …".
   for (const n of ['Trả tiền', 'Trả tiền (chuyển khoản)', 'Trả tiền (tiền mặt)', 'Giảm trừ', 'Bù trừ công nợ',

@@ -25,7 +25,7 @@ import BaoKho from '../../../../components/kho/BaoKho.astro';
 import FormMatHang from '../../../../components/kho/FormMatHang.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import {
-  docMatHang, docGiaTriThuHoi, docDinhNghia, luuMatHang, nhapCsvMatHang, taoDanhMucMau,
+  docMatHang, docMonU, docGiaTriThuHoi, docDinhNghia, luuMatHang, nhapCsvMatHang, taoDanhMucMau,
   xemTruocDanMatHang, chuKyDan, TEN_COT_DAN_NB,
   demMacDinh, laLoaiMatHang, type MatHang, type GiaTriFormMatHang, type XemTruocDan, type DongGhiMatHang, type CotDan,
 } from '../../../../lib/kho/danh-muc.ts';
@@ -67,6 +67,11 @@ const t = dichNB(nn, {
   capNhat: { vi: 'Cập nhật', en: 'Update' },
   ngungDungNho: { vi: ' · ngừng dùng', en: ' · no longer used' },
   theoTangNho: { vi: 'theo dõi theo tảng', en: 'tracked per primal' },
+  monUNho: { vi: 'món ủ · chỉ ở kho', en: 'aging item · inventory only' },
+  monUGiai: {
+    vi: 'Món ủ — chỉ ở kho. Kho tự nhận vì món này ra từ công thức Trim của món khác (Thiết lập kho → Công thức pha lóc): không bao giờ có trong danh sách món cần có trên FABi hay file nhập món cho FABi, không ghép được mã iPOS; dòng bán iPOS nào khớp ra món này nằm ở "Chưa khớp", không trừ kho. Mã cân (nếu có) chỉ để in tem dùng trong kho.',
+    en: 'Aging item — inventory only. Recognised automatically because a Trim recipe of another item produces it (Inventory setup → Butchery recipes): never in the list of dishes needed on FABi or the FABi import file, no iPOS code can be matched to it; any iPOS sale line that resolves to it stays "Unmatched" and deducts nothing. Its scale code (if any) is only for labels used inside inventory.',
+  },
   themMoi: { vi: 'Thêm mới', en: 'New' },
   chiCoTen: { vi: 'Chỉ có tên — điền giá, hạn dùng sau.', en: 'Name only — fill in the price and use-by later.' },
   xacNhanNhap: { vi: 'Xác nhận nhập', en: 'Confirm import' },
@@ -141,11 +146,15 @@ let bangU = new Map<string, DongBangU[]>();
 let oMa = new Map<string, DongOMa[]>();
 let dinhNghia: DinhNghiaTruong[] = [];
 let loiDoc = k.loiDoc;
+// 0128: món ủ — chỉ để ghi chú trên trang này (luật nằm ở database); đọc lỗi thì không ghi chú, trang vẫn chạy.
+// Bắt đầu đọc cùng lúc với phần chính.
+const docU = docMonU(k.client).catch(() => []);
 try {
   [matHang, thuHoi, dinhNghia, bangU, oMa] = await Promise.all([
     docMatHang(k.client), docGiaTriThuHoi(k.client), docDinhNghia(k.client, 'mat_hang'), docBangU(k.client), docOMa(k.client),
   ]);
 } catch (e) { loiDoc = cauLoiKho(e, t.khongDoc); }
+const idMonU = new Set((await docU).map(u => u.mat_hang_id));
 
 let bao: KetQua | null = k.bao;
 let nhapLai: FormData | null = null;
@@ -345,6 +354,7 @@ const coXemGia = k.duoc('xem_gia');
   {gtSua && (
     <>
       <h2>{t.sua}{dangSua!.ten}</h2>
+      {idMonU.has(dangSua!.id) && <p class="nb-bao">{t.monUGiai}</p>}
       <FormMatHang gt={gtSua} dinhNghia={dinhNghia} coXemGia={coXemGia} nutLuu={t.luuThayDoi} moThem={!!(nhapLai && idLoi)} />
       <p><a href="/noi-bo/kho/cai-dat/mat-hang">{t.dongKhongSua}</a></p>
     </>
@@ -405,7 +415,7 @@ const coXemGia = k.duoc('xem_gia');
           {ds.map(m => (
             <tr style={m.dang_dung ? '' : 'opacity:.5'}>
               <td><strong>{m.ten}</strong><br /><span class="kho-phu">{m.ma}{m.nhom ? ` · ${m.nhom}` : ''}{m.ten_phu ? ` · ${m.ten_phu}` : ''}{!m.dang_dung ? t.ngungDungNho : ''}</span></td>
-              <td>{nhanKho(TEN_LOAI_MAT_HANG_NB, m.loai, nn)}{m.theo_tang && <><br /><span class="kho-phu" title={moTaBangU(bangU.get(m.id) ?? [], nn)}>{t.theoTangNho}</span></>}
+              <td>{nhanKho(TEN_LOAI_MAT_HANG_NB, m.loai, nn)}{m.theo_tang && <><br /><span class="kho-phu" title={moTaBangU(bangU.get(m.id) ?? [], nn)}>{t.theoTangNho}</span></>}{idMonU.has(m.id) && <><br /><span class="kho-phu">{t.monUNho}</span></>}
                 {m.dem_theo_cai && <><br /><span class="kho-phu">{t.donViThung(m.don_vi_goi, m.so_trong_thung)}</span></>}</td>
               <td class="so">{m.gia_ban_kg !== null && !m.dem_theo_cai ? dinhDangTien(m.gia_ban_kg, nn) : (m.loai === 'phan_cat' ? <span class="kho-han sap_het">{t.chuaCoGia}</span> : '—')}</td>
               <td class="so">{m.han_dung_ngay ? t.soNgay(m.han_dung_ngay) : '—'}</td>
