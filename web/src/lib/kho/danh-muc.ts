@@ -312,6 +312,24 @@ export async function docMatHang(client: SupabaseClient): Promise<MatHang[]> {
   })) as MatHang[];
 }
 
+/** Một món ủ (0128, view `kho_v_mon_u`). */
+export interface MonU { mat_hang_id: string; ma: string; ten: string; ma_can: string | null }
+
+/**
+ * Món ủ (0128): món loại tảng là đầu ra của công thức pha lóc đang dùng của món khác — công thức Trim, đúng luật tảng
+ * ủ của 0107. Khánh 26/11/2026: "cứ tảng ủ là trong kho thôi" — món ủ không bao giờ lên FABi, không ghép mã iPOS,
+ * không "kho tự nhận" theo mã cân; vẫn được giữ mã cân (tem trong kho). Luật nằm MỘT chỗ ở database (view), web chỉ
+ * đọc. Lỗi → ném: người gọi không đoán (thiếu danh sách là đưa món ủ lên FABi).
+ */
+export async function docMonU(client: SupabaseClient): Promise<MonU[]> {
+  const { data, error } = await client.from('kho_v_mon_u').select('mat_hang_id, ma, ten, ma_can').order('ten');
+  if (error) throw error;
+  return (data ?? []).map(r => ({
+    mat_hang_id: String(r.mat_hang_id), ma: String(r.ma ?? ''), ten: String(r.ten ?? ''),
+    ma_can: r.ma_can == null ? null : String(r.ma_can),
+  }));
+}
+
 /** Giá trị thu hồi của phụ phẩm (đ/kg). Vai không xem giá: RLS trả rỗng. */
 export async function docGiaTriThuHoi(client: SupabaseClient): Promise<Map<string, number | null>> {
   const { data } = await client.from('kho_mat_hang_gia').select('mat_hang_id, gia_tri_thu_hoi_kg');

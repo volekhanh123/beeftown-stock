@@ -464,6 +464,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_so_cai_dem_cai_kiem', 'kho_mat_hang_doi_kieu_dem_kiem',
     // 0111: các cặp của danh mục NCC – món — chỉ kho_goi_y_dat_hang (definer) gọi
     'kho_cap_ncc_mon',
+    // 0128: trigger không ghép mã iPOS với món ủ (món ủ chỉ ở kho)
+    'kho_ipos_ma_hang_khong_mon_u',
   ].sort();
 
   const { rows } = await db.query(`

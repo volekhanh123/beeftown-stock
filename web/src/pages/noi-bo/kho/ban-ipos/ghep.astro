@@ -32,13 +32,16 @@
  * giảm đang bật một món, đối chiếu thực đơn iPOS và mã đã bán qua iPOS (không biết → không kết luận); tải
  * file nhập món cho FABi mon-fabi.xlsx (chỉ món chưa thấy trên FABi) và bảng đối chiếu mon-fabi.csv. Đọc
  * riêng — lỗi chỉ báo ở mục đó. Giá/kg ở mục này là giá bán (không giá vốn).
+ *
+ * Món ủ (0128, docMonU — đầu ra công thức Trim) chỉ ở kho: không có trong ô chọn món, không vào mục FABi (dù có
+ * mã cân), mã cân của nó không "kho tự nhận"; mã đã ghép với món ủ từ trước thì bảng Đã ghép nhắc Bỏ ghép.
  * Quyền danh_muc (quản lý, chủ).
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import PhanTrang from '../../../../components/kho/PhanTrang.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
-import { docMatHang, type MatHang } from '../../../../lib/kho/danh-muc.ts';
+import { docMatHang, docMonU, type MatHang, type MonU } from '../../../../lib/kho/danh-muc.ts';
 import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, dinhDangTien, laDemCai, type KetQua } from '../../../../lib/kho/chung.ts';
 import { docTimDs, catTrang, linkDs } from '../../../../lib/kho/tim-ds.ts';
 import {
@@ -208,6 +211,16 @@ const t = dichNB(nn, {
   loaiO: { vi: (ten: string, so: number) => `${ten} · ô ${so}`, en: (ten: string, so: number) => `${ten} · slot ${so}` },
   loaiGiam: { vi: (ten: string, pt: number) => `${ten} · giảm ${pt}%`, en: (ten: string, pt: number) => `${ten} · ${pt}% off` },
   quaMa: { vi: (ma: string) => `qua mã ${ma} đã ghép`, en: (ma: string) => `through matched code ${ma}` },
+  monUGiai: {
+    vi: 'Món ủ (tảng ủ — món ra từ công thức Trim) chỉ ở kho: không bao giờ có trên FABi, không ghép được mã iPOS, kể cả khi có mã cân.',
+    en: 'Aging items (aging primals — items produced by a Trim recipe) stay in inventory only: never on FABi, no iPOS code can be matched to them, even with a scale code.',
+  },
+  monUCoMaCan: {
+    vi: (ds: string) => `Không đưa lên FABi (món ủ, chỉ ở kho): ${ds}.`,
+    en: (ds: string) => `Not put on FABi (aging items, inventory only): ${ds}.`,
+  },
+  monUMa: { vi: (ten: string, ma: string) => `${ten} (mã cân ${ma})`, en: (ten: string, ma: string) => `${ten} (scale code ${ma})` },
+  monUBoGhep: { vi: ' · món ủ, chỉ ở kho — bấm Bỏ ghép', en: ' · aging item, inventory only — press Unmatch' },
 });
 
 let bao: KetQua | null = k.bao;
@@ -227,6 +240,8 @@ const maChon = guiLai?.ma || (sp.get('ma') ?? '').trim().slice(0, 100);
 let chuaGhep: MaChuaGhep[] = [];
 let daGhep: MaIposDaGhep[] = [];
 let matHang: MatHang[] = [];
+/** 0128: món ủ — đọc cùng phần chính: thiếu danh sách thì ô chọn món không biết món nào phải giấu. */
+let monU: MonU[] = [];
 let menu: MonMenuIpos[] = [];
 let menuCoSau = false;
 let oMaTheoMon = new Map<string, DongOMa[]>();
@@ -240,12 +255,13 @@ let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   try {
     let trangMenu: MonMenuIpos[];
-    [chuaGhep, daGhep, matHang, trangMenu, monChon, tenChon] = await Promise.all([
+    [chuaGhep, daGhep, matHang, trangMenu, monChon, tenChon, monU] = await Promise.all([
       docMaChuaGhep(k.client, k.chiNhanh.id), docMaDaGhep(k.client, k.chiNhanh.id), docMatHang(k.client),
       docMenuIpos(k.client, k.chiNhanh.id, tim),
       maChon ? docMonMenu(k.client, k.chiNhanh.id, maChon) : Promise.resolve(null),
       // Tên chỉ để hiển thị: đọc lỗi thì để trống, không làm hỏng cả trang.
       maChon ? docTenMaIpos(k.client, k.chiNhanh.id, maChon).catch(() => null) : Promise.resolve(null),
+      docMonU(k.client),
     ]);
     ({ ds: menu, coSau: menuCoSau } = catTrang(trangMenu));
     // 0051: ô mã để ghép món ô trên FABi. Lỗi đọc (database chưa có 0049) → không có nhóm này.
@@ -270,7 +286,9 @@ if (maChon) {
 const daGhepTheoMa = new Map(daGhep.map(m => [m.ma_ipos, m]));
 // Sốt, đồ uống (0105) chưa ghép được: kho trừ đồ uống theo mã món iPOS (1 chai / lon mỗi suất) làm ở đợt 2 — ghép bây
 // giờ thì dòng bán bị trừ theo kg / gói ở quầy và báo lỗi.
-const dangDung = matHang.filter(m => m.dang_dung && !laDemCai(m));
+// 0128: món ủ chỉ ở kho — không có trong ô chọn món (database cũng chặn ghép).
+const idMonU = new Map(monU.map(u => [u.mat_hang_id, u.ten]));
+const dangDung = matHang.filter(m => m.dang_dung && !laDemCai(m) && !idMonU.has(m.id));
 const tenMon = new Map(matHang.map(m => [m.id, m.ten]));
 const cacO = [...oMaTheoMon.values()].flat()
   .map(o => ({ ...o, ten: tenMon.get(o.mat_hang_id) ?? '—' }))
@@ -280,17 +298,20 @@ const chuKieu = (m: MaIposDaGhep) => m.o_ma_id && oTheoId.has(m.o_ma_id)
   ? t.oChu(oTheoId.get(m.o_ma_id)!.ten, oTheoId.get(m.o_ma_id)!.so_o, oTheoId.get(m.o_ma_id)!.ma_can)
   : m.don_vi_ban === 'suat' ? t.monCheBien
   : m.kieu === 'bo_qua' ? t.khongPhaiHangKhoNgan
-  : m.kieu === 'goi_can' ? `${t.hangCanNhan}${m.mat_hang_id ? ` (${tenMon.get(m.mat_hang_id) ?? '—'})` : ''}`
-  : `${tenMon.get(m.mat_hang_id ?? '') ?? '—'}${m.kieu === 'mon' && m.mat_hang_id && oMaTheoMon.has(m.mat_hang_id) ? t.khongO : ''}`;
+  : m.kieu === 'goi_can' ? `${t.hangCanNhan}${m.mat_hang_id ? ` (${tenMon.get(m.mat_hang_id) ?? '—'})` : ''}${m.mat_hang_id && idMonU.has(m.mat_hang_id) ? t.monUBoGhep : ''}`
+  : `${tenMon.get(m.mat_hang_id ?? '') ?? '—'}${m.kieu === 'mon' && m.mat_hang_id && oMaTheoMon.has(m.mat_hang_id) ? t.khongO : ''}${m.mat_hang_id && idMonU.has(m.mat_hang_id) ? t.monUBoGhep : ''}`;
 // Mã kho tự nhận (mã giảm, mã ô): mã giảm chỉ biết khi đọc được phần FABi — không biết thì thôi nhãn, form vẫn chặn.
 // Ô / mã giảm của món đã ngừng dùng: kho không tự nhận (kho_ipos_ghi_dong 0054) — monDangDung để oThucDon hiện nút Ghép.
 const idDangDung = new Set(dangDung.map(m => m.id));
-const ngGhep: NguCanhGhep = { oMa: cacO, maGiam: them?.maGiam ?? [], monDangDung: idDangDung, monMaCan: matHang };
+const ngGhep: NguCanhGhep = { oMa: cacO, maGiam: them?.maGiam ?? [], monDangDung: idDangDung, monMaCan: matHang, monU: idMonU };
 // Chọn được trong form chỉ ô của món đang dùng — ô của món đã ngừng dùng thì kho_ipos_gan_o_ma (0051) luôn từ chối.
 const oDangDung = cacO.filter(o => idDangDung.has(o.mat_hang_id));
 const dsFabi: DongMonFabi[] = them
-  ? monCanCoTrenFabi({ matHang, oMa: cacO, maGiam: them.maGiam, menu: them.menu, daGhep, soChuSo: them.soChuSo, daBan: them.daBan })
+  ? monCanCoTrenFabi({ matHang, oMa: cacO, maGiam: them.maGiam, menu: them.menu, daGhep, soChuSo: them.soChuSo, daBan: them.daBan,
+                       monU: new Set(idMonU.keys()) })
   : [];
+// 0128: món ủ đang dùng có mã cân — kể tên ở mục FABi để người xem biết vì sao nó không có trong danh sách.
+const monUCoMaCan = monU.filter(u => u.ma_can && matHang.some(m => m.id === u.mat_hang_id && m.dang_dung));
 const soVaoFile = dsFabi.filter(d => d.vaoFile).length;
 // Mục FABi in gì (hàm thuần): lỗi → chỉ câu lỗi; chưa đọc đủ → không số, không kết luận.
 const mucFabi = mucMonFabi(them, loiFabi, dsFabi.length);
@@ -419,7 +440,10 @@ const idMa = (ma: string) => `ma-${ma.replace(/[^A-Za-z0-9_-]/g, '_')}`;
       )}
 
       <h2 id="mon-fabi">{t.monFabi}{mucFabi.kieu === 'co' ? ` · ${mucFabi.soMon}` : ''}</h2>
-      <p class="kho-phu">{t.monFabiGiai}</p>
+      <p class="kho-phu">{t.monFabiGiai} {t.monUGiai}</p>
+      {mucFabi.kieu === 'co' && monUCoMaCan.length > 0 && (
+        <p class="kho-phu">{t.monUCoMaCan(monUCoMaCan.map(u => t.monUMa(u.ten, u.ma_can ?? '')).join(', '))}</p>
+      )}
       {mucFabi.kieu === 'loi' ? (
         <p class="nb-bao loi">{dichCau(nn, mucFabi.cau)}</p>
       ) : mucFabi.kieu === 'co' && (
