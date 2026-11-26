@@ -12,7 +12,8 @@
  *        · trang chỉ đọc mã: giữ mã trong ô, báo chưa đọc được.
  *   2. Hàng chờ tự gửi khi: mở trang, có mạng lại (sự kiện online), quay lại thẻ (visibilitychange), mỗi
  *      data-hen-gui-ms (mặc định 20 giây) khi còn lượt chờ, bấm "Gửi ngay". Mỗi lượt POST lại đúng các ô đã lưu
- *      (fetch, theo chuyển hướng) rồi xếp loại trả lời bằng xepLoaiTraLoi(). Chỉ báo "Kho đã nhận" khi chính trả lời
+ *      (fetch, theo chuyển hướng; quá data-cho-gui-lai-ms — mặc định 30 giây — thì coi như mất mạng) rồi xếp loại
+ *      trả lời bằng xepLoaiTraLoi(). Chỉ báo "Kho đã nhận" khi chính trả lời
  *      đó là chuyển hướng về trang của lượt.
  *   3. Còn lượt chờ của trang này thì mọi nút gửi form POST khác của trang (Quét xong, Gửi quản lý, Chốt, −1, Bỏ
  *      lượt…) bị chặn kèm câu giải thích — Quét xong lúc còn nhãn chưa vào sổ là món đó bị ghi "đã bán hết".
@@ -29,6 +30,8 @@ import {
 import type { HaiThuTieng, NgonNguNB } from '../ngon-ngu-noi-bo.ts';
 
 const CHO_THU_MANG_MS = 5_000;
+/** Một lần gửi lại quá chừng này thì coi như mất mạng (sóng yếu: kết nối mở mà trả lời không về). */
+const CHO_GUI_LAI_MS = 30_000;
 const HEN_GUI_MS = 20_000;
 const KHOA_KHOA = 'bt-kho-quet-cho';
 type Kieu = 'xong' | 'luu-y' | 'loi';
@@ -84,6 +87,7 @@ export function ganQuetLuuTam(goc: HTMLElement): void {
   const ghiSo = guiLai.length > 0;
   const thuMang = goc.dataset.thuMang || '/kho/js/ean13.js';
   const henMs = Number(goc.dataset.henGuiMs) > 0 ? Number(goc.dataset.henGuiMs) : HEN_GUI_MS;
+  const choGuiLaiMs = Number(goc.dataset.choGuiLaiMs) > 0 ? Number(goc.dataset.choGuiLaiMs) : CHO_GUI_LAI_MS;
   const diaChi = () => new URL(form.action, location.href);
   const duong = chuanDuong(diaChi().pathname);
   const kho = nguoi ? layKho() : null;
@@ -161,21 +165,33 @@ export function ganQuetLuuTam(goc: HTMLElement): void {
     const gan = daNhan.slice(-3);
     gan.forEach((c, i) => them('xong', c, coSoMoi && i === gan.length - 1
       ? [theNut(cau(CAU_LUU_TAM.taiLai), 'quetTaiLai', () => {
+        // Pha lóc: kg gõ tay chưa lưu (gửi lại không mang ô gõ tay) — hỏi trước khi bỏ.
+        if (coChuChuaLuu() && !window.confirm(cau(CAU_LUU_TAM.hoiTaiLai))) return;
         // GET lại trang — không gửi lại lượt POST khi trang đang là trả lời của một lượt POST.
         location.assign(location.pathname + location.search);
       })]
       : []));
     if (cua.length > 0) {
-      them('luu-y', cau(CAU_LUU_TAM.dangCho(cua)), [
-        theNut(cau(CAU_LUU_TAM.guiNgay), 'quetGuiNgay', () => { void guiNgay(); }),
-        theNut(cau(CAU_LUU_TAM.bo), 'quetBo', boLuotCho),
-      ]);
+      // "Bỏ" chỉ bỏ lượt của CHÍNH trang này — lượt của trang khác bỏ ở trang đó, nơi người dùng thấy số.
+      const nutThem = [theNut(cau(CAU_LUU_TAM.guiNgay), 'quetGuiNgay', () => { void guiNgay(); })];
+      if (cuaTrang(ds, nguoi, duong).length > 0) nutThem.push(theNut(cau(CAU_LUU_TAM.bo), 'quetBo', boLuotCho));
+      them('luu-y', cau(CAU_LUU_TAM.dangCho(cua)), nutThem);
     }
     for (const l of dung) them('loi', cau(CAU_LUU_TAM.dung(l, Date.now())));
     if (canDangNhap && cua.length > 0) them('loi', cau(CAU_LUU_TAM.dangNhap(cua.length)));
     if (khac.length > 0) them('luu-y', cau(CAU_LUU_TAM.nguoiKhac(khac.length)));
     khung.hidden = khung.childElementCount === 0;
   };
+
+  /** Trang còn ô gõ tay đã đổi mà chưa gửi (ô quét không tính — nó có bản nháp riêng). */
+  const coChuChuaLuu = (): boolean => [...document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+    'form[method="post" i] input, form[method="post" i] textarea, form[method="post" i] select',
+  )].some(e => {
+    if (e.name === 'ma_quet' || (e instanceof HTMLInputElement && e.type === 'hidden')) return false;
+    if (e instanceof HTMLSelectElement) return [...e.options].some(op => op.selected !== op.defaultSelected);
+    if (e instanceof HTMLInputElement && (e.type === 'checkbox' || e.type === 'radio')) return e.checked !== e.defaultChecked;
+    return e.value !== e.defaultValue;
+  });
 
   // --- Hỏi mạng -------------------------------------------------------------------
   const kiemMang = async (): Promise<boolean> => {
@@ -207,18 +223,23 @@ export function ganQuetLuuTam(goc: HTMLElement): void {
         // Thẻ khác có thể vừa gửi xong lượt này.
         if (!docHang().some(x => x.ma_gui === l.ma_gui)) continue;
         let r: Response | null = null;
+        // Đọc cả thân trang đích trong cùng hạn giờ: sóng yếu thì trả lời có thể không bao giờ về.
+        let bao: { kieu: 'xong' | 'loi' | null; cau: string } = { kieu: null, cau: '' };
+        const huy = new AbortController();
+        const henHuy = setTimeout(() => huy.abort(), choGuiLaiMs);
         try {
           r = await fetch(l.url, {
             method: 'POST', body: new URLSearchParams(l.truong), credentials: 'same-origin', redirect: 'follow',
-            cache: 'no-store',
+            cache: 'no-store', signal: huy.signal,
           });
+          // Trang đích chỉ đọc khi đã chuyển hướng (đọc thân hỏng = không thấy câu báo = chưa coi là đã nhận).
+          if (r.redirected) {
+            try { bao = cauBaoCua(await r.text()); } catch { /* giữ kieu null */ }
+          }
         } catch {
           r = null;
-        }
-        // Trang đích chỉ đọc khi đã chuyển hướng (đọc thân hỏng = không thấy câu báo = chưa coi là đã nhận).
-        let bao: { kieu: 'xong' | 'loi' | null; cau: string } = { kieu: null, cau: '' };
-        if (r?.redirected) {
-          try { bao = cauBaoCua(await r.text()); } catch { /* giữ kieu null */ }
+        } finally {
+          clearTimeout(henHuy);
         }
         const kq = xepLoaiTraLoi(r && { redirected: r.redirected, status: r.status, url: r.url }, l.duong, bao.kieu);
         if (kq === 'mat-mang') { matMang = true; break; }
@@ -276,10 +297,11 @@ export function ganQuetLuuTam(goc: HTMLElement): void {
   };
 
   const boLuotCho = () => {
-    const cua = cuaNguoi(docHang(), nguoi);
+    const cua = cuaTrang(docHang(), nguoi, duong);
     if (cua.length === 0) return;
     if (!window.confirm(cau(CAU_LUU_TAM.hoiBo(cua)))) return;
-    ghiHang(docHang().filter(l => l.nguoi !== nguoi));
+    const bo = new Set(cua.map(l => l.ma_gui));
+    ghiHang(docHang().filter(l => !bo.has(l.ma_gui)));
     baoTam = null;
     canDangNhap = false;
     ve();

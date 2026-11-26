@@ -25,10 +25,12 @@
  *      không có sự kiện online → nhịp hẹn giờ tự gửi.
  *   7. Database lỗi lúc gửi lại (200, không chuyển hướng) → giữ lượt, chưa thôi tự gửi; lần sau gửi được.
  *   8. Kho trả câu lỗi (303 + câu lỗi) → giữ lượt, thôi tự gửi, hiện NGUYÊN câu của kho; vẫn chặn Quét xong; "Bỏ các
- *      lượt chờ" hỏi lại rồi mới xóa.
+ *      lượt chờ" hỏi lại rồi mới xóa, và chỉ xóa lượt của chính trang đó.
  *   9. Phiên hết (chuyển sang trang đăng nhập) → giữ lượt, câu "Cần đăng nhập lại".
  *  10. Lượt của tài khoản khác trên cùng máy: không gửi, chỉ báo.
- *  11. Pha lóc: gửi lại chỉ mang viec, ma_quet, ma_gui — không so_ra, phien_ban, ô gõ tay.
+ *  11. Pha lóc: gửi lại chỉ mang viec, ma_quet, ma_gui — không so_ra, phien_ban, ô gõ tay; còn kg gõ tay chưa lưu
+ *      thì nút "Tải lại" hỏi trước.
+ *  11b. Sóng yếu: lần gửi lại không có trả lời thì hết hạn chờ, lần sau gửi được (không treo cả hàng).
  *  12. Trang chỉ đọc mã (Quét nhãn, form GET): mất mạng thì không rời trang, mã còn trong ô, không vào hàng chờ; có
  *      mạng thì đi như cũ.
  *  13. Bản nháp: gõ mã chưa gửi rồi tải lại trang → mã được đưa lại vào ô, kèm câu báo.
@@ -75,7 +77,7 @@ const CAN = ['data-quet-ma', '<textarea name="ma_quet"', 'data-quet-gui', 'data-
 const thieuMarkup = CAN.filter(c => !quetMa.includes(c));
 
 const oQuet = ({ guiLai = '', giaTri = '', nhanNut = 'Cộng vào số đếm', nguoi = NGUOI } = {}) => `
-  <div class="kho-quet" data-quet-ma data-nn="vi" data-nguoi="${nguoi}"${guiLai ? ` data-gui-lai="${guiLai}"` : ''} data-hen-gui-ms="300">
+  <div class="kho-quet" data-quet-ma data-nn="vi" data-nguoi="${nguoi}"${guiLai ? ` data-gui-lai="${guiLai}"` : ''} data-hen-gui-ms="300" data-cho-gui-lai-ms="1500">
     <label class="nb-o"><span>Quét nhãn cân</span><textarea name="ma_quet" rows="3">${giaTri}</textarea></label>
     <div class="kho-thanh-nut"><button type="submit" name="viec" value="quet" class="nb-nut phu" formnovalidate data-quet-gui>${nhanNut}</button></div>
   </div>`;
@@ -93,10 +95,10 @@ const { outputFiles } = await build({
 const GOI_JS = outputFiles[0].text;
 
 const may = {
-  cheDo: 'thuong',       // thuong | db-loi | tu-choi | dang-nhap
+  cheDo: 'thuong',       // thuong | db-loi | tu-choi | dang-nhap | treo (không bao giờ trả lời)
   cat: false,            // true: cắt mọi kết nối (WiFi có, Internet không)
   luot: new Map(),       // ma_gui → số nhãn đã cộng (đếm quầy)
-  xong: 0, bao: null, gui: [], hoi: 0, pha: [],
+  xong: 0, bao: null, gui: [], hoi: 0, pha: [], treo: [],
 };
 const datLai = () => Object.assign(may, { cheDo: 'thuong', cat: false, luot: new Map(), xong: 0, bao: null, gui: [], hoi: 0, pha: [] });
 const tongNhan = () => [...may.luot.values()].reduce((s, n) => s + n, 0);
@@ -160,6 +162,7 @@ const mayChu = createServer(async (req, res) => {
   }
   if (u.pathname !== DEM) return tra(res, 404, 'không có');
   may.gui.push(truong);
+  if (may.cheDo === 'treo') { may.treo.push(res); return; }
   if (may.cheDo === 'dang-nhap') return tra(res, 302, '', { location: '/noi-bo/dang-nhap' });
   if (may.cheDo === 'db-loi') {
     may.bao = { kieu: 'loi', cau: 'Không kết nối được database.' };
@@ -194,7 +197,8 @@ const page = await ngu.newPage();
 const loiJs = [];
 page.on('pageerror', e => loiJs.push(e.message));
 let hoiBo = 0;
-page.on('dialog', d => { hoiBo++; void d.accept(); });
+let dongYHoi = true;
+page.on('dialog', d => { hoiBo++; void (dongYHoi ? d.accept() : d.dismiss()); });
 
 const hang = () => page.evaluate(() => JSON.parse(localStorage.getItem('bt-kho-quet-cho') ?? '[]'));
 const chuKhung = () => page.evaluate(() => document.querySelector('[data-quet-cho]')?.textContent ?? '');
@@ -339,9 +343,20 @@ try {
     await page.click('#quet-xong');
     ok('Vẫn chặn "Quét xong"', await choKhung(/Còn 1 lượt quét \(2 nhãn\) chưa vào sổ/) && may.xong === 1);
     may.cheDo = 'thuong';
+    // Một lượt chờ của trang khác (pha lóc) cùng người: "Bỏ" ở trang này không được đụng tới nó.
+    await page.evaluate(nguoi => {
+      const ds = JSON.parse(localStorage.getItem('bt-kho-quet-cho') ?? '[]');
+      ds.push({ ma_gui: 'ffffffff-ffff-4fff-8fff-ffffffffffff', duong: '/noi-bo/kho/pha-loc/x', url: '/noi-bo/kho/pha-loc/x',
+        truong: [['viec', 'quet'], ['ma_quet', '1'], ['ma_gui', 'ffffffff-ffff-4fff-8fff-ffffffffffff']],
+        so_nhan: 1, luc: Date.now(), nguoi, lan_thu: 0, dung: true, cau_kho: '' });
+      localStorage.setItem('bt-kho-quet-cho', JSON.stringify(ds));
+    }, NGUOI);
     const hoiTruoc = hoiBo;
     await page.click('[data-quet-cho] button[data-quet-bo]');
-    ok('Bỏ: hỏi lại trước khi xóa, rồi hàng chờ rỗng', hoiBo === hoiTruoc + 1 && (await hang()).length === 0);
+    const conLai = await hang();
+    ok('Bỏ: hỏi lại trước khi xóa, chỉ bỏ lượt của CHÍNH trang này (lượt trang pha lóc còn nguyên)',
+      hoiBo === hoiTruoc + 1 && conLai.length === 1 && conLai[0].duong === '/noi-bo/kho/pha-loc/x', JSON.stringify(conLai));
+    await xoaMay();
   });
 
   await nhom('9 · PHIÊN HẾT: GIỮ LƯỢT, CẦN ĐĂNG NHẬP LẠI', async () => {
@@ -383,6 +398,31 @@ try {
     const t = may.pha.at(-1) ?? [];
     ok('Thân lượt gửi lại: viec, ma_quet, ma_gui — không so_ra, phien_ban, ô gõ tay',
       t.map(([k]) => k).join() === 'viec,ma_quet,ma_gui', JSON.stringify(t));
+    // Kg gõ tay chưa lưu: nút "Tải lại" hỏi trước; bấm Hủy thì ở nguyên trang, số vẫn còn.
+    await page.fill('input[name="r0_so_kg"]', '3,2');
+    const hoiTruoc = hoiBo;
+    dongYHoi = false;
+    await page.click('[data-quet-cho] button[data-quet-tai-lai]');
+    dongYHoi = true;
+    ok('Tải lại khi còn kg gõ tay chưa lưu → hỏi trước; Hủy thì không rời trang, số còn nguyên',
+      hoiBo === hoiTruoc + 1 && (await page.inputValue('input[name="r0_so_kg"]')) === '3,2');
+  });
+
+  await nhom('11b · SÓNG YẾU: GỬI LẠI KHÔNG CÓ TRẢ LỜI → HẾT HẠN, GỬI LẠI SAU', async () => {
+    await moTrang(DEM);
+    await ngu.setOffline(true);
+    await quet(nhan(10013, 300));
+    await choKhung(/đã lưu tạm 1 nhãn/);
+    may.cheDo = 'treo';
+    await ngu.setOffline(false);
+    const toi = Date.now() + 5000;
+    while (may.treo.length === 0 && Date.now() < toi) await new Promise(r => setTimeout(r, 100));
+    ok('Lần gửi lại đầu treo (máy chủ không trả lời)', may.treo.length >= 1);
+    may.cheDo = 'thuong';
+    const tongTruoc = tongNhan();
+    const xong = await page.waitForFunction(() => !localStorage.getItem('bt-kho-quet-cho'), null, { timeout: 10000 }).then(() => true, () => false);
+    ok('Hết hạn chờ thì bỏ lần treo, lần sau gửi được, cộng đúng một lần', xong && tongNhan() === tongTruoc + 1, `${tongNhan()} / ${tongTruoc}`);
+    for (const r of may.treo.splice(0)) r.destroy?.() ?? r.socket?.destroy();
   });
 
   await nhom('12 · TRANG CHỈ ĐỌC MÃ (form GET): MẤT MẠNG THÌ GIỮ MÃ TRONG Ô', async () => {

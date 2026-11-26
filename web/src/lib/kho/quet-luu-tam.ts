@@ -187,7 +187,7 @@ export const cuaTrang = (ds: readonly LuotCho[], nguoi: string, duong: string) =
 /** Kết cục của một lần gửi lại. */
 export type KetCucGui =
   | 'da-nhan'     // chuyển hướng về chính trang, câu báo "xong" — bỏ khỏi hàng
-  | 'tu-choi'     // chuyển hướng về chính trang, câu báo lỗi / không thấy câu báo — giữ, thôi tự gửi, hiện câu
+  | 'tu-choi'     // chuyển hướng về chính trang, câu báo lỗi — giữ, thôi tự gửi, hiện câu
   | 'dang-nhap'   // phiên hết / máy khóa — giữ, chờ đăng nhập
   | 'bi-chuyen'   // chuyển sang trang khác (mất quyền, trang không còn) — giữ, thôi tự gửi
   | 'mat-mang'    // không tới được máy chủ — giữ, gửi lại khi có mạng
@@ -206,7 +206,9 @@ export function xepLoaiTraLoi(
   if (!traLoi.redirected) return 'chua-nhan';
   let cuoi: string;
   try { cuoi = chuanDuong(new URL(traLoi.url).pathname); } catch { return 'chua-nhan'; }
-  if (cuoi === chuanDuong(duong)) return bao === 'xong' ? 'da-nhan' : 'tu-choi';
+  // Không thấy câu báo (cookie câu báo dùng chung cả khu kho — một lượt xem khác của người dùng có thể đọc mất): chưa
+  // biết kết quả → gửi lại sau; gửi lại an toàn, lần sau database trả "đã có" kèm câu báo.
+  if (cuoi === chuanDuong(duong)) return bao === 'xong' ? 'da-nhan' : bao === 'loi' ? 'tu-choi' : 'chua-nhan';
   if (TRANG_DANG_NHAP.some(t => cuoi === t || cuoi.startsWith(t + '/'))) return 'dang-nhap';
   return 'bi-chuyen';
 }
@@ -330,6 +332,11 @@ export const CAU_LUU_TAM = {
     en: `Put back into the box ${nhanEn(soNhan)} scanned at ${gioLuotEn(luc, bayGio)} that were not sent.`,
   }),
   taiLai: { vi: 'Tải lại trang để thấy số mới', en: 'Reload the page to see the new numbers' } satisfies HaiThuTieng,
+  /** Bấm "Tải lại" khi trang còn ô gõ tay chưa lưu (pha lóc: kg phụ phẩm). */
+  hoiTaiLai: {
+    vi: 'Trang còn số gõ tay chưa lưu — tải lại sẽ mất các số đó. Vẫn tải lại? (Muốn giữ: bấm Hủy rồi bấm Lưu.)',
+    en: 'This page has typed numbers that are not saved — reloading loses them. Reload anyway? (To keep them: press Cancel, then Save.)',
+  } satisfies HaiThuTieng,
   guiNgay: { vi: 'Gửi ngay', en: 'Send now' } satisfies HaiThuTieng,
   bo: { vi: 'Bỏ các lượt chờ', en: 'Discard waiting scans' } satisfies HaiThuTieng,
   hoiBo: (ds: readonly LuotCho[]): HaiThuTieng => ({

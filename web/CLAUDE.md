@@ -84,7 +84,7 @@ npm run quet                                 # build KHÔNG database rồi quét
 npm run thu-trinh-duyet -- --khong-build     # trình duyệt thật, không database (sau npm run quet)
 npm run thu-day-du                           # trình duyệt thật, Supabase giả (đã nối database)
 npm run thu-day-du -- --chi 12               # chỉ vài nhóm (cả thu-trinh-duyet) — sửa nhanh một chỗ; CI chạy hết
-npm run thu-quet-luu-tam                     # ô quét nhãn của kho khi mất mạng (Chromium, máy chủ giả, ~30 giây)
+npm run thu-quet-luu-tam                     # ô quét nhãn của kho khi mất mạng (Chromium, máy chủ giả, ~10 giây)
 ```
 
 `--khong-build` chỉ dùng ngay sau `npm run quet`. `npm run quet` và `npm run thu-trinh-duyet` (không kèm

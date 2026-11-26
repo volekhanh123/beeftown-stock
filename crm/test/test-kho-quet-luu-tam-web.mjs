@@ -16,8 +16,8 @@
  *      · Hàng chờ: chữ hỏng → rỗng; lượt sai dạng bị bỏ, lượt bản cũ thiếu cau_kho vẫn đọc được; cùng ma_gui
  *        không bao giờ hai bản; ghiLanThu đếm lần, thôi tự gửi khi kho trả câu lỗi / bị chuyển / đủ 5 lần, giữ câu của
  *        kho; choGuiLai chỉ mở lại lượt của đúng người; lượt của người khác (máy dùng chung) tách riêng.
- *      · xepLoaiTraLoi: chỉ "chuyển hướng về chính trang + câu báo xong" mới là đã nhận; câu lỗi hay không có câu báo
- *        là tu-choi (giữ); không chuyển hướng / 5xx là chua-nhan; fetch ném lỗi là mat-mang; trang đăng nhập và
+ *      · xepLoaiTraLoi: chỉ "chuyển hướng về chính trang + câu báo xong" mới là đã nhận; câu lỗi là tu-choi (giữ,
+ *        thôi tự gửi); không thấy câu báo, không chuyển hướng, 5xx là chua-nhan (gửi lại sau); fetch ném lỗi là mat-mang; trang đăng nhập và
  *        màn máy dùng chung là dang-nhap; trang khác là bi-chuyen. Đường dẫn có ?… hay / cuối vẫn là chính trang.
  *      · Bản nháp: đúng người, đúng trang, còn hạn 12 giờ; ô trống xóa bản của trang; bản quá hạn bị dọn; giờ máy
  *        lùi (luc ở tương lai) → không đưa lại.
@@ -141,11 +141,12 @@ await nhom('1 · HÀM THUẦN: DỰNG LƯỢT, HÀNG CHỜ, XẾP LOẠI TRẢ L
   ok('Chuyển hướng về chính trang + câu "xong" → da-nhan (cả khi có ?… và / cuối)',
     xepLoaiTraLoi(tl(true, goc + PHA), PHA, 'xong') === 'da-nhan'
     && xepLoaiTraLoi(tl(true, `${goc}${DEM}/?vi_tri=q1`), DEM, 'xong') === 'da-nhan');
-  ok('Chuyển hướng về chính trang nhưng câu lỗi, hay không có câu báo → tu-choi (giữ, không tự xóa)',
-    xepLoaiTraLoi(tl(true, goc + PHA), PHA, 'loi') === 'tu-choi' && xepLoaiTraLoi(tl(true, goc + PHA), PHA, null) === 'tu-choi'
-    && xepLoaiTraLoi(tl(true, goc + PHA), PHA) === 'tu-choi');
+  ok('Chuyển hướng về chính trang nhưng câu lỗi → tu-choi (giữ, thôi tự gửi, không tự xóa)',
+    xepLoaiTraLoi(tl(true, goc + PHA), PHA, 'loi') === 'tu-choi');
+  ok('Chuyển hướng về chính trang mà không thấy câu báo (lượt xem khác đọc mất cookie câu báo) → chua-nhan (gửi lại sau)',
+    xepLoaiTraLoi(tl(true, goc + PHA), PHA, null) === 'chua-nhan' && xepLoaiTraLoi(tl(true, goc + PHA), PHA) === 'chua-nhan');
   ok('Trang chuyển hướng 500 sau khi đã xử lý: câu báo quyết định',
-    xepLoaiTraLoi(tl(true, goc + PHA, 500), PHA, null) === 'tu-choi');
+    xepLoaiTraLoi(tl(true, goc + PHA, 500), PHA, null) === 'chua-nhan' && xepLoaiTraLoi(tl(true, goc + PHA, 500), PHA, 'xong') === 'da-nhan');
   ok('Trang đăng nhập / màn máy dùng chung → dang-nhap (chưa xử lý)',
     xepLoaiTraLoi(tl(true, `${goc}/noi-bo/dang-nhap?x=1`), PHA, 'loi') === 'dang-nhap'
     && xepLoaiTraLoi(tl(true, `${goc}/noi-bo/kho/may`), PHA) === 'dang-nhap'
@@ -197,7 +198,7 @@ await nhom('3 · CÂU THÔNG BÁO', async () => {
     dangNhap: CAU_LUU_TAM.dangNhap(2), nguoiKhac: CAU_LUU_TAM.nguoiKhac(1),
     daNhan: CAU_LUU_TAM.daNhan(LUC, 2, 'Đã cộng 2 nhãn.', LUC), daNhanTrong: CAU_LUU_TAM.daNhan(LUC, 1, '', LUC),
     chan: CAU_LUU_TAM.chan([l]), chuaDoc: CAU_LUU_TAM.chuaDoc, chuaGui: CAU_LUU_TAM.chuaGui,
-    khongLuuDuoc: CAU_LUU_TAM.khongLuuDuoc, duaLai: CAU_LUU_TAM.duaLai(3, LUC, LUC), taiLai: CAU_LUU_TAM.taiLai,
+    khongLuuDuoc: CAU_LUU_TAM.khongLuuDuoc, hoiTaiLai: CAU_LUU_TAM.hoiTaiLai, duaLai: CAU_LUU_TAM.duaLai(3, LUC, LUC), taiLai: CAU_LUU_TAM.taiLai,
     guiNgay: CAU_LUU_TAM.guiNgay, bo: CAU_LUU_TAM.bo, hoiBo: CAU_LUU_TAM.hoiBo([l]),
   };
   const thieu = Object.entries(cau).filter(([, c]) => !(typeof c.vi === 'string' && c.vi && typeof c.en === 'string' && c.en));
