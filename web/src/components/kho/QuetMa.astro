@@ -8,9 +8,12 @@
  *
  * Nút "Quét bằng camera" là phần THÊM: hiện khi trình duyệt mở được camera.
  *   · Có BarcodeDetector đọc được EAN-13 (Chrome trên Android): dùng nó.
- *   · Không có (Safari trên iPhone/iPad, GĐ5b): bấm nút thì nạp
- *     /kho/js/ean13.js — đọc mã bằng JavaScript thuần trên từng khung hình
- *     (vẽ vào canvas, thu về ≤ 640 điểm ảnh ngang cho nhẹ máy).
+ *   · Không có (Safari trên iPhone/iPad, GĐ5b): nạp /kho/js/ean13.js — đọc
+ *     mã bằng JavaScript thuần trên từng khung hình (vẽ vào canvas, thu về
+ *     ≤ 640 điểm ảnh ngang cho nhẹ máy). Nạp NGAY KHI MỞ TRANG (8 KB), không
+ *     đợi bấm nút: trước đây lần bấm camera đầu tiên rơi vào lúc mất sóng
+ *     (kho lạnh) thì không quét được gì (26/11/2026). Nạp hỏng thì lần bấm
+ *     nút thử nạp lại.
  * Không có camera thì không thấy nút — vẫn dùng máy quét hoặc gõ tay được.
  * Không có JavaScript thì trang vẫn chạy đủ.
  *
@@ -23,6 +26,14 @@
  * hệt" ngay trong khung camera.
  *
  * Bấm "Xong" trong khung camera là gửi luôn (không phải bấm thêm "Đọc mã").
+ *
+ * MẤT MẠNG (26/11/2026 — lib/kho/quet-luu-tam.ts, quet-luu-tam-trinh-duyet.ts): bấm nút thì hỏi mạng trước;
+ * không tới được máy chủ thì không gửi form (trang lỗi của trình duyệt làm mất mã):
+ *   · trang có `guiLai` (pha lóc, đếm quầy — lượt quét ghi thẳng vào sổ, database chống cộng đôi theo ma_gui):
+ *     lượt quét vào hàng chờ trên máy, có mạng thì tự gửi lại; còn lượt chờ thì các nút khác của trang bị chặn.
+ *     `guiLai` = tên các ô ẩn của form phải gửi kèm (luôn có ma_gui), KHÔNG kèm ô gõ tay;
+ *   · trang khác (chỉ đọc mã): giữ mã trong ô, báo chưa đọc được.
+ * Chữ trong ô được chép vào máy mỗi lần đổi — tải lại trang mà ô trống thì đưa lại.
  *
  * Hai thứ tiếng: chữ trên trang theo nn; hai câu báo lỗi của script đi qua
  * data-loi-tai / data-loi-camera (script inline không đọc được Astro.locals).
@@ -37,8 +48,14 @@ interface Props {
   tuFocus?: boolean;
   /** Mã đang có trong ô (hiện lại sau lỗi, để không phải quét lại từ đầu). */
   giaTri?: string;
+  /**
+   * Trang ghi thẳng lượt quét vào sổ: tên các ô ẩn của form gửi kèm khi gửi lại một lượt đã lưu tạm lúc mất mạng,
+   * cách nhau bằng dấu cách — phải có "ma_gui". Bỏ trống = trang chỉ đọc mã (không lưu tạm lượt, chỉ giữ mã trong ô).
+   */
+  guiLai?: string;
 }
-const t = dichNB(nnCua(Astro), {
+const nn = nnCua(Astro);
+const t = dichNB(nn, {
   nhan: { vi: 'Đọc mã đã quét', en: 'Read scanned codes' },
   goiY: { vi: 'Quét từng nhãn — mỗi mã một dòng. Có thể dán nhiều mã cách nhau bằng dấu phẩy.',
           en: 'Scan one label at a time — one code per line. You can also paste several codes separated by commas.' },
@@ -58,9 +75,13 @@ const {
   goiY = t.goiY,
   tuFocus = false,
   giaTri = '',
+  guiLai = '',
 } = Astro.props;
+// Người đang đăng nhập: lượt lưu tạm chỉ được gửi lại dưới phiên của đúng người đã quét (máy dùng chung đổi người bằng PIN).
+const nguoi = Astro.locals.phien?.nhanSu.id ?? '';
 ---
-<div class="kho-quet" data-quet-ma data-loi-tai={t.loiTai} data-loi-camera={t.loiCamera}>
+<div class="kho-quet" data-quet-ma data-loi-tai={t.loiTai} data-loi-camera={t.loiCamera}
+  data-nn={nn} data-nguoi={nguoi} data-gui-lai={guiLai || undefined}>
   <label class="nb-o" style="margin-bottom:.5rem">
     <span>{t.quetNhan}</span>
     <small>{goiY}</small>
@@ -88,7 +109,8 @@ const {
   if ('BarcodeDetector' in window) {
     try { coDetector = (await window.BarcodeDetector.getSupportedFormats()).includes('ean_13'); } catch { coDetector = false; }
   }
-  // iPhone: nạp /kho/js/ean13.js lần đầu bấm nút (một lần cho cả trang).
+  // iPhone: nạp /kho/js/ean13.js ngay khi mở trang (một lần cho cả trang) — lúc
+  // bấm nút có thể đã mất sóng. Hỏng thì napJs về null: bấm nút là nạp lại.
   let napJs = null;
   const napEan13 = () => {
     if (window.KhoEan13) return Promise.resolve();
@@ -103,6 +125,7 @@ const {
     }
     return napJs;
   };
+  if (!coDetector) napEan13().catch(() => {});
 
   document.querySelectorAll('[data-quet-ma]').forEach(goc => {
     const nut = goc.querySelector('[data-quet-camera]');
@@ -129,6 +152,8 @@ const {
 
     const ghi = ma => {
       o.value = (o.value.trim() ? o.value.trim() + '\n' : '') + ma;
+      // Như gõ tay: phần lưu tạm chép ô vào máy theo sự kiện input.
+      o.dispatchEvent(new Event('input', { bubbles: true }));
       so += 1; dem.textContent = String(so);
       cuoi = ma; them.hidden = false;
       if (navigator.vibrate) navigator.vibrate(60);
@@ -195,4 +220,10 @@ const {
     hop.addEventListener('close', dung);
   });
 })();
+</script>
+
+<script>
+  // Mất mạng: hỏi mạng trước khi gửi, lưu tạm lượt quét, tự gửi lại — lib/kho/quet-luu-tam-trinh-duyet.ts.
+  import { ganQuetLuuTam } from '../../lib/kho/quet-luu-tam-trinh-duyet.ts';
+  document.querySelectorAll<HTMLElement>('[data-quet-ma]').forEach(goc => ganQuetLuuTam(goc));
 </script>

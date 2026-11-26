@@ -715,8 +715,9 @@ const tenNguon = (ma: string) => nhanKho(TEN_NGUON_DU_KIEN_NB, ma, nn);
               </div>
             ) : (
               <div class="nb-the">
+                {/* Mất mạng: lượt quét lưu tạm trên máy, gửi lại chỉ với ma_gui — KHÔNG kèm so_ra nên máy chủ không lưu lại phần gõ tay cũ. */}
                 <QuetMa nhan={t.congNhan} tuFocus giaTri={maConLai || maThamSo}
-                  goiY={t.quetGoiY} />
+                  goiY={t.quetGoiY} guiLai="ma_gui" />
               </div>
             )}
 

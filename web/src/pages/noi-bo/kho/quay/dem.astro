@@ -330,8 +330,9 @@ const idPhieu = dangDem ? mo!.id : '';
         <input type="hidden" name="kiem_ke_id" value={idPhieu} />
         <input type="hidden" name="ma_gui" value={maGuiLai ?? crypto.randomUUID()} />
         <input type="hidden" name="ma_gui_mo" value={crypto.randomUUID()} />
+        {/* Mất mạng: lượt quét lưu tạm trên máy, gửi lại với đúng bốn ô ẩn này (ma_gui_mo: chưa có phiếu thì mở đúng một phiếu). */}
         <QuetMa nhan={t.congVaoDem} tuFocus giaTri={maConLai}
-          goiY={t.quetGoiY} />
+          goiY={t.quetGoiY} guiLai="ma_gui ma_gui_mo kiem_ke_id vi_tri_id" />
       </form>
 
       {mon.length === 0 ? (
