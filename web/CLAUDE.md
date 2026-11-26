@@ -40,6 +40,7 @@ Mỗi màn: thư mục trang dưới `src/pages/noi-bo/kho/`, file logic chính 
 | Nhận hàng (thủ kho, chỉ kg) | `nhan-hang/` | `nhan-hang.ts` | 3, 3d "Gọn phần mua và nhận hàng" |
 | Điền giá, duyệt phiếu nhập | `nhap/`, `duyet.astro` | `nhap.ts` | 3, 3b |
 | Tồn kho, thẻ kho, quét nhãn | `ton.astro`, `the-kho/`, `quet.astro` | `ton.ts`, `the-kho.ts`, `quet-nhan.ts` | 3d |
+| Ô quét nhãn khi mất mạng (lưu tạm, tự gửi lại — mọi màn có ô quét) | `src/components/kho/QuetMa.astro` | `quet-luu-tam.ts`, `quet-luu-tam-trinh-duyet.ts` | 4 "Ô quét khi mất mạng" |
 | Quầy: yêu cầu, nhận, đếm | `quay/` | `quay.ts`, `dem-quay.ts` | 3c |
 | Chuyển, xuất bếp, hủy | `xuat/` | `xuat.ts` | 3c, 3d "Gọn phần pha lóc, quầy, xuất" |
 | Kiểm kê | `kiem-ke/` | `kiem-ke.ts` | 3c, 3d |
@@ -83,6 +84,7 @@ npm run quet                                 # build KHÔNG database rồi quét
 npm run thu-trinh-duyet -- --khong-build     # trình duyệt thật, không database (sau npm run quet)
 npm run thu-day-du                           # trình duyệt thật, Supabase giả (đã nối database)
 npm run thu-day-du -- --chi 12               # chỉ vài nhóm (cả thu-trinh-duyet) — sửa nhanh một chỗ; CI chạy hết
+npm run thu-quet-luu-tam                     # ô quét nhãn của kho khi mất mạng (Chromium, máy chủ giả, ~10 giây)
 ```
 
 `--khong-build` chỉ dùng ngay sau `npm run quet`. `npm run quet` và `npm run thu-trinh-duyet` (không kèm

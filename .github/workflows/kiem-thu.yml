@@ -237,6 +237,11 @@ jobs:
       - name: Kiểm thử trình duyệt khi đã nối database (Supabase giả)
         working-directory: web
         run: npm run thu-day-du
+      # Ô quét nhãn của kho khi mất mạng (Chromium thật, máy chủ giả trên 127.0.0.1 — không cần bản build, database):
+      # lưu tạm lượt quét, tự gửi lại, chặn nút khác của trang, không cộng đôi (web/kiem-tra/thu-quet-luu-tam.mjs).
+      - name: Kiểm thử ô quét nhãn khi mất mạng
+        working-directory: web
+        run: npm run thu-quet-luu-tam
       - name: Ảnh chụp khi hỏng
         if: failure()
         uses: actions/upload-artifact@v7   # cùng bản với dong-goi-can.yml, sao-luu.yml (v4 còn chạy trên Node 20)

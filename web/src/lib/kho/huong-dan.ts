@@ -538,6 +538,8 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
     meo: [
       { vi: 'Quét nhầm một gói: bấm **−1** ở món đó, hoặc **Bỏ lượt vừa quét**.',
         en: 'Scanned a pack by mistake? Press **−1** on that item, or **Undo the last scan**.' },
+      { vi: 'Mất sóng lúc quét (kho lạnh): cứ bấm **Cộng nhãn vào phiên** — máy báo **đã lưu tạm** và tự gửi khi có sóng lại. Ra chỗ có sóng, chờ máy báo **Kho đã nhận** rồi mới chốt; còn nhãn chưa vào sổ thì máy chặn các nút khác. Đừng xóa dữ liệu trình duyệt trước khi gửi xong.',
+        en: 'Lost signal while scanning (cold store)? Just press **Add labels to session** — the device says **saved on this device** and sends them when the signal is back. Go where there is signal and wait for **The stock system received** before closing; while labels are not in the books yet, the other buttons are blocked. Do not clear the browser data before they are sent.' },
       { vi: 'Đang pha dở mà phải đi: cứ để đó, vào **Pha lóc** bấm phiên đang dở để làm tiếp.',
         en: 'Have to leave halfway through? Just leave it; go to **Butchery** and press the unfinished session to carry on.' },
       { vi: 'Chốt nhầm: mở **Mở lại phiên để sửa**, ghi lý do, bấm **Mở lại phiên** (khi các gói mới chưa bị đụng tới).',
@@ -790,6 +792,8 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
     meo: [
       { vi: 'Còn chuyến hàng chưa bấm nhận thì phải nhận trước rồi mới gửi được.',
         en: 'If a delivery has not been confirmed yet, receive it first — then you can send.' },
+      { vi: 'Mất sóng lúc quét: cứ bấm **Cộng vào số đếm** — máy báo **đã lưu tạm** và tự gửi khi có sóng lại. Chờ máy báo **Kho đã nhận** rồi mới bấm **Quét xong** (còn nhãn chưa vào sổ thì máy chặn nút đó), và gửi trước khi quầy bán tiếp.',
+        en: 'Lost signal while scanning? Just press **Add to count** — the device says **saved on this device** and sends them when the signal is back. Wait for **The stock system received** before pressing **Done scanning** (the button is blocked while labels are not in the books), and send before the counter starts selling again.' },
       { vi: 'Gói mất nhãn: mở phiếu đếm (link ở cuối màn) và ghi tay — số ghi tay được cộng với số đã quét.',
         en: 'A pack without a label? Open the count sheet (link at the bottom of the screen) and enter it by hand — hand-entered numbers are added to the scanned ones.' },
       { vi: 'Quản lý trả về thì đếm lại chỗ được nhắc rồi gửi lại.',

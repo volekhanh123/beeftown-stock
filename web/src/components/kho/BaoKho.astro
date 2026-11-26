@@ -29,6 +29,6 @@ const cauFormHong = baoFormHong ? (nn === 'en' ? baoFormHong.cauEn ?? baoFormHon
 ---
 {baoFormHong && <div class="nb-bao loi" role="alert"><p>{cauFormHong}</p></div>}
 {bao && (
-  <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`} role={bao.ok ? 'status' : 'alert'}><p>{cauBao}</p></div>
+  <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`} role={bao.ok ? 'status' : 'alert'} data-bao-ket-qua={bao.ok ? 'xong' : 'loi'}><p>{cauBao}</p></div>
 )}
 {loiDoc && <div class="nb-bao loi" role="alert"><p>{dichCau(nn, loiDoc)}</p></div>}

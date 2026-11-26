@@ -1602,8 +1602,24 @@ Test (`test-kho-giao-dien.mjs`, nhóm 7) đọc cỡ ảnh và từng điểm �
 Bản 192 còn là biểu tượng `BeeftownCan.exe` (`can-app/scripts/dong-goi.ts` bọc vào `.ico`). Bun chỉ gắn
 biểu tượng khi đóng gói **trên Windows**. Bản `dong-goi-can.yml` đóng gói trên Ubuntu nên không có biểu tượng.
 
-**Chưa có service worker** — mất mạng thì app báo lỗi như trang web thường. Chế độ ngoại tuyến
-cần hàng đợi phiếu phía máy và xử lý trùng; chưa làm.
+**Chưa có service worker** — trang chưa mở được khi mất mạng (mở trang cần máy chủ).
+
+### Ô quét khi mất mạng
+
+26/11/2026 — kho quét bằng camera điện thoại, kho lạnh hay mất sóng; ý tưởng và quy tắc ở đầu
+`lib/kho/quet-luu-tam.ts`. Trang đã mở thì bấm nút của ô quét (`QuetMa`) là hỏi mạng trước (HEAD
+`/kho/js/ean13.js`, ≤ 5 giây); không tới được máy chủ thì không gửi form.
+- Pha lóc, Đếm quầy (`QuetMa guiLai="…"`, lượt quét ghi thẳng vào sổ): lượt vào **hàng chờ** trên máy
+  (localStorage `bt-kho-quet-cho`), mang `viec`, `ma_quet` và đúng các ô ẩn trang khai — không mang ô gõ tay, nên pha
+  lóc thiếu `so_ra` thì máy chủ chỉ cộng nhãn. Có mạng thì tự gửi lại; cùng `ma_gui` không bao giờ cộng hai lần
+  (`kho_quet_phien_pha`, `kho_quet_kiem_ke`). Chỉ bỏ khỏi hàng khi trả lời là 303 về chính trang **và** câu báo
+  `data-bao-ket-qua="xong"` (`BaoKho`); câu lỗi thì giữ, thôi tự gửi, hiện nguyên câu của kho. Còn lượt chờ thì
+  các nút POST khác của trang (Quét xong, Gửi quản lý, Chốt, −1…) bị chặn. Lượt gắn với người đã quét — máy dùng
+  chung không gửi lượt của người này dưới phiên người khác.
+- Quét nhãn, Kiểm kê, phiếu chuyển / xuất (chỉ đọc mã): giữ mã trong ô, báo chưa đọc được.
+- Mọi ô quét: chữ trong ô chép vào máy (`bt-kho-quet-nhap`, 12 giờ) — tải lại trang mà ô trống thì đưa lại.
+
+Chưa làm: mở trang khi đã mất mạng từ trước (cần service worker và danh mục lưu sẵn để hiện tên món).
 
 ## 5. JavaScript: chỉ để tăng cường
 
@@ -1613,7 +1629,7 @@ dùng ở:
 
 | Chỗ | Để làm gì |
 |---|---|
-| `components/kho/QuetMa.astro` (script trong file) | Camera đọc mã (`BarcodeDetector` trên Chrome Android; không có thì nạp `ean13.js`), đếm gói trùng mã, bấm "Xong" tự gửi form |
+| `components/kho/QuetMa.astro` (script trong file) | Camera đọc mã (`BarcodeDetector` trên Chrome Android; không có thì nạp `ean13.js` ngay khi mở trang), đếm gói trùng mã, bấm "Xong" tự gửi form; script thứ hai gọi `lib/kho/quet-luu-tam-trinh-duyet.ts` — hỏi mạng trước khi gửi, lưu tạm lượt quét khi mất mạng, tự gửi lại (mục 4, "Ô quét khi mất mạng") |
 | `public/kho/js/ean13.js` | (GĐ5b) Giải mã EAN-13 bằng JS thuần cho iPhone — Safari không có `BarcodeDetector` |
 | `public/kho/js/may-chung.js` | (GĐ5d) Đếm giờ tự khóa máy dùng chung |
 | `public/kho/js/in-an.js` | Hiện nút "In phiếu" và gọi `window.print()` (GĐ4b); nút "Chia sẻ" `[data-chia-se]` của đơn đặt hàng gọi Web Share API khi máy có (GĐ8a) |
